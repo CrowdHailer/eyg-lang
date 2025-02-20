@@ -1,17 +1,20 @@
 import dag_json as dag_json_lib
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/io
 import gleam/json
+import gleam/list
 import gleam/result
 import gleam/string
 import midas/task as t
 import snag
 import supa/client
+import website/sync/cache
 
 pub const client = client.Client(
   "wrdiolbafudgmcgvqhnb.supabase.co",
@@ -71,16 +74,12 @@ pub fn get_releases() {
   t.done(data)
 }
 
-pub type Release {
-  Release(package_id: String, version: Int, created_at: String, hash: String)
-}
-
 fn release_decoder() {
   use package_id <- decode.field("package_id", decode.string)
   use version <- decode.field("version", decode.int)
   use created_at <- decode.field("created_at", decode.string)
   use hash <- decode.field("hash", decode.string)
-  decode.success(Release(package_id, version, created_at, hash))
+  decode.success(cache.Release(package_id, version, created_at, hash))
 }
 
 pub fn get_registrations() {
@@ -121,3 +120,32 @@ pub fn invite(email_address) {
   use data <- t.try(decode(response, todo))
   t.done(data)
 }
+
+pub fn load_task() {
+  use registrations <- t.do(get_registrations())
+  let registrations =
+    dict.from_list(
+      list.map(registrations, fn(registration) {
+        #(registration.name, registration.package_id)
+      }),
+    )
+
+  use releases <- t.do(get_releases())
+  let releases =
+    list.group(releases, fn(release) { release.package_id })
+    |> dict.map_values(fn(_, releases) {
+      list.map(releases, fn(release) { #(release.version, release) })
+      |> dict.from_list
+    })
+
+  t.done(cache.Index(registrations, releases))
+}
+// pub fn do_load(message) {
+//   fn(d) {
+//     {
+//       use result <- promise.map(browser.run(load_task()))
+//       d(message(sync.DumpDownLoaded(result)))
+//     }
+//     Nil
+//   }
+// }

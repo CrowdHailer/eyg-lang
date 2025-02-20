@@ -7,20 +7,12 @@ import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/javascript/promise
 import gleam/list
-import gleam/option.{None, Some}
-import website/sync/supabase
-
-// render snippet takes cache as an argument to show loading or errored
 
 // I like the always ask aproach but that means returns answer state and tasks
 // message passing value ready Request(Nil, ref)
 
-// use #(value,type) <- lookupref
-
 // run relies on cache, cache relies on run
-// never waiting on effect in cache so can show as error
 
 // when sync message effects are to 
 
@@ -48,10 +40,10 @@ pub fn start(exp, scope) {
 
 // Need to handle effect and ref at the same time because they could be in any order
 fn fetch_named_cid(cache, package, release) {
-  let Cache(registry: registry, packages: packages, ..) = cache
-  case dict.get(registry, package) {
+  let Cache(index: index, ..) = cache
+  case dict.get(index.registry, package) {
     Ok(package_id) ->
-      case dict.get(packages, package_id) {
+      case dict.get(index.packages, package_id) {
         Ok(package) ->
           case dict.get(package, release) {
             Ok(release) -> Ok(release.hash)
@@ -92,34 +84,6 @@ pub fn run(return, cache, resume) {
 
 // snippet has run id or page
 
-// might belong on a run 
-pub fn run_blocking(return, cache, extrinsic, resume) {
-  let return = run(return, cache, resume)
-  case return {
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      case list.key_find(extrinsic, label) {
-        Ok(#(_lift, _reply, blocking)) ->
-          case blocking(lift) {
-            Ok(p) -> #(
-              return,
-              Some(
-                p,
-                // promise.map(p, fn(reply) {
-              //   // don't call run blocking recursivly because the cache might have updated
-              //   // resume(reply, env, k)
-              //   reply
-              // }),
-              ),
-            )
-            Error(reason) -> #(Error(#(reason, meta, env, k)), None)
-          }
-        _ -> #(return, None)
-      }
-    }
-    _ -> #(return, None)
-  }
-}
-
 // can resolve ref and resolve eff be separate
 
 // -------------------------------------
@@ -128,16 +92,27 @@ pub type Fragment {
   Fragment(source: ir.Node(Nil), value: Return)
 }
 
-pub type Cache {
-  Cache(
+pub type Release {
+  Release(package_id: String, version: Int, created_at: String, hash: String)
+}
+
+pub type Index {
+  Index(
     registry: Dict(String, String),
-    packages: Dict(String, Dict(Int, supabase.Release)),
-    fragments: Dict(String, Fragment),
+    packages: Dict(String, Dict(Int, Release)),
   )
 }
 
+pub fn index_init() {
+  Index(registry: dict.new(), packages: dict.new())
+}
+
+pub type Cache {
+  Cache(index: Index, fragments: Dict(String, Fragment))
+}
+
 pub fn init() {
-  Cache(dict.new(), dict.new(), dict.new())
+  Cache(index: index_init(), fragments: dict.new())
 }
 
 pub fn install_fragment(cache, cid, bytes) {

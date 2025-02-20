@@ -50,7 +50,7 @@ pub type Sync {
     // loaded is blobs
     loaded: Dict(String, Computed),
     registry: Dict(String, String),
-    packages: Dict(String, Dict(Int, supabase.Release)),
+    // packages: Dict(String, Dict(Int, supabase.Release)),
   )
 }
 
@@ -62,24 +62,26 @@ pub type Message {
 // fromdump
 // Could rename as set_remote
 pub fn init(origin) {
-  Sync(origin, dict.new(), [], dict.new(), dict.new(), dict.new())
+  // Sync(origin, dict.new(), [], dict.new(), dict.new(), dict.new())
+  todo as "init remove"
 }
 
 pub fn missing(sync, refs) {
-  let Sync(pending: pending, loaded: loaded, ..) = sync
-  // walk_missing(store, refs, [])
-  list.flat_map(refs, fn(r) {
-    case dict.get(loaded, r) {
-      Ok(_) -> []
-      Error(Nil) ->
-        case list.key_find(pending, r) {
-          // Do need recursive lookup
-          // TODO need to test this recursive lookup
-          Ok(#(dep, _source)) -> missing(sync, dep)
-          Error(Nil) -> [r]
-        }
-    }
-  })
+  todo as "remove"
+  // let Sync(pending: pending, loaded: loaded, ..) = sync
+  // // walk_missing(store, refs, [])
+  // list.flat_map(refs, fn(r) {
+  //   case dict.get(loaded, r) {
+  //     Ok(_) -> []
+  //     Error(Nil) ->
+  //       case list.key_find(pending, r) {
+  //         // Do need recursive lookup
+  //         // TODO need to test this recursive lookup
+  //         Ok(#(dep, _source)) -> missing(sync, dep)
+  //         Error(Nil) -> [r]
+  //       }
+  //   }
+  // })
 }
 
 pub fn fetch_missing(sync, refs) {
@@ -130,27 +132,28 @@ pub fn values(sync) {
 }
 
 pub fn named_values(sync) {
-  let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
-  list.flat_map(dict.to_list(registry), fn(entry) {
-    let #(name, package_id) = entry
-    case dict.get(packages, package_id) {
-      Error(Nil) -> []
-      Ok(releases) -> {
-        list.filter_map(dict.to_list(releases), fn(release) {
-          let #(version, supabase.Release(hash: hash_ref, ..)) = release
-          use Computed(value: value, ..) <- result.try(dict.get(
-            loaded,
-            hash_ref,
-          ))
-          use value <- result.try(
-            value
-            |> result.replace_error(Nil),
-          )
-          Ok(#(named_ref(name, version), value))
-        })
-      }
-    }
-  })
+  todo as "remove"
+  // let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
+  // list.flat_map(dict.to_list(registry), fn(entry) {
+  //   let #(name, package_id) = entry
+  //   case dict.get(packages, package_id) {
+  //     Error(Nil) -> []
+  //     Ok(releases) -> {
+  //       list.filter_map(dict.to_list(releases), fn(release) {
+  //         let #(version, supabase.Release(hash: hash_ref, ..)) = release
+  //         use Computed(value: value, ..) <- result.try(dict.get(
+  //           loaded,
+  //           hash_ref,
+  //         ))
+  //         use value <- result.try(
+  //           value
+  //           |> result.replace_error(Nil),
+  //         )
+  //         Ok(#(named_ref(name, version), value))
+  //       })
+  //     }
+  //   }
+  // })
 }
 
 fn values_from_loaded(loaded) {
@@ -179,23 +182,24 @@ fn named_ref(name, version) {
 }
 
 pub fn named_types(sync) {
-  let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
-  list.flat_map(dict.to_list(registry), fn(entry) {
-    let #(name, package_id) = entry
-    case dict.get(packages, package_id) {
-      Error(Nil) -> []
-      Ok(releases) -> {
-        list.filter_map(dict.to_list(releases), fn(release) {
-          let #(version, supabase.Release(hash: hash_ref, ..)) = release
-          use Computed(type_: type_, ..) <- result.try(dict.get(
-            loaded,
-            hash_ref,
-          ))
-          Ok(#(named_ref(name, version), type_))
-        })
-      }
-    }
-  })
+  todo as "remove"
+  // let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
+  // list.flat_map(dict.to_list(registry), fn(entry) {
+  //   let #(name, package_id) = entry
+  //   case dict.get(packages, package_id) {
+  //     Error(Nil) -> []
+  //     Ok(releases) -> {
+  //       list.filter_map(dict.to_list(releases), fn(release) {
+  //         let #(version, supabase.Release(hash: hash_ref, ..)) = release
+  //         use Computed(type_: type_, ..) <- result.try(dict.get(
+  //           loaded,
+  //           hash_ref,
+  //         ))
+  //         Ok(#(named_ref(name, version), type_))
+  //       })
+  //     }
+  //   }
+  // })
 }
 
 pub fn do_resolve(pending, loaded) {
@@ -342,97 +346,99 @@ pub fn decode_bytes(bytes) {
 }
 
 pub fn load(sync, dump: dump.Dump) {
+  todo as "remove"
   // let Dump(registry,packages, _raw) = dump
-  let Sync(registry: registry, packages: packages, ..) = sync
-  let registry = dict.merge(registry, dump.registry)
-  let packages = dict.merge(packages, dump.packages)
-  // Can work out value of blobs eagerly and stick them in the map.
-  // use the checksum as lookup key
-  let loaded =
-    list.fold(
-      dump.fragments,
-      sync.loaded,
-      fn(loaded, fragment: supabase.Fragment) {
-        // List all references and then put them in the loaded map
-        // This is bluring things a bit
-        let expression = ir.map_annotation(fragment.code, fn(_) { [] })
-        let named =
-          ir.list_named_references(expression)
-          |> list.map(fn(ref) {
-            let #(name, release, _) = ref
-            case dict.get(registry, name) {
-              Ok(package_id) ->
-                case dict.get(packages, package_id) {
-                  Ok(releases) ->
-                    case dict.get(releases, release) {
-                      Ok(release) ->
-                        case dict.get(loaded, release.hash) {
-                          Ok(computed) -> #(
-                            "@" <> name <> ":" <> int.to_string(release.version),
-                            computed,
-                          )
-                          Error(Nil) -> panic as "computed should be done"
-                        }
-                      Error(Nil) -> panic as "release should be in history"
-                    }
-                  Error(Nil) ->
-                    panic as { "package should be in history " <> name }
-                }
-              Error(Nil) -> panic as { "name should be in registry " <> name }
-            }
-          })
-          |> dict.from_list
-        case compute(expression, dict.merge(loaded, named)) {
-          Ok(computed) -> dict.insert(loaded, fragment.hash, computed)
-          Error(reason) -> {
-            io.debug(reason)
-            loaded
-          }
-        }
-      },
-    )
+  // let Sync(registry: registry, packages: packages, ..) = sync
+  // let registry = dict.merge(registry, dump.registry)
+  // let packages = dict.merge(packages, dump.packages)
+  // // Can work out value of blobs eagerly and stick them in the map.
+  // // use the checksum as lookup key
+  // let loaded =
+  //   list.fold(
+  //     dump.fragments,
+  //     sync.loaded,
+  //     fn(loaded, fragment: supabase.Fragment) {
+  //       // List all references and then put them in the loaded map
+  //       // This is bluring things a bit
+  //       let expression = ir.map_annotation(fragment.code, fn(_) { [] })
+  //       let named =
+  //         ir.list_named_references(expression)
+  //         |> list.map(fn(ref) {
+  //           let #(name, release, _) = ref
+  //           case dict.get(registry, name) {
+  //             Ok(package_id) ->
+  //               case dict.get(packages, package_id) {
+  //                 Ok(releases) ->
+  //                   case dict.get(releases, release) {
+  //                     Ok(release) ->
+  //                       case dict.get(loaded, release.hash) {
+  //                         Ok(computed) -> #(
+  //                           "@" <> name <> ":" <> int.to_string(release.version),
+  //                           computed,
+  //                         )
+  //                         Error(Nil) -> panic as "computed should be done"
+  //                       }
+  //                     Error(Nil) -> panic as "release should be in history"
+  //                   }
+  //                 Error(Nil) ->
+  //                   panic as { "package should be in history " <> name }
+  //               }
+  //             Error(Nil) -> panic as { "name should be in registry " <> name }
+  //           }
+  //         })
+  //         |> dict.from_list
+  //       case compute(expression, dict.merge(loaded, named)) {
+  //         Ok(computed) -> dict.insert(loaded, fragment.hash, computed)
+  //         Error(reason) -> {
+  //           io.debug(reason)
+  //           loaded
+  //         }
+  //       }
+  //     },
+  //   )
 
-  Sync(..sync, registry: registry, packages: packages, loaded: loaded)
+  // Sync(..sync, registry: registry, packages: packages, loaded: loaded)
 }
 
 pub fn package_index(sync) {
-  let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
-  dict.to_list(registry)
-  |> list.filter_map(fn(entry) {
-    let #(name, package_id) = entry
-    use package <- result.try(dict.get(packages, package_id))
+  todo as "remove"
+  // let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
+  // dict.to_list(registry)
+  // |> list.filter_map(fn(entry) {
+  //   let #(name, package_id) = entry
+  //   use package <- result.try(dict.get(packages, package_id))
 
-    case dict.size(package) {
-      x if x > 0 -> {
-        // We start on version 1
-        let latest = x
-        case dict.get(package, latest) {
-          Ok(supabase.Release(hash: hash_ref, ..)) ->
-            case dict.get(loaded, hash_ref) {
-              Ok(Computed(type_: type_, ..)) ->
-                Ok(#(name <> ":" <> int.to_string(latest), type_))
-              Error(Nil) -> {
-                console.warn(
-                  "failed to load package ref "
-                  <> name
-                  <> ":"
-                  <> int.to_string(latest),
-                )
-                Error(Nil)
-              }
-            }
-          Error(Nil) -> {
-            console.warn(
-              "failed get latest for package ref "
-              <> name
-              <> ":"
-              <> int.to_string(latest),
-            )
-            Error(Nil)
-          }
-        }
-      }
-      _ -> Error(Nil)
-    }
-  })
+  //   case dict.size(package) {
+  //     x if x > 0 -> {
+  //       // We start on version 1
+  //       let latest = x
+  //       case dict.get(package, latest) {
+  //         Ok(supabase.Release(hash: hash_ref, ..)) ->
+  //           case dict.get(loaded, hash_ref) {
+  //             Ok(Computed(type_: type_, ..)) ->
+  //               Ok(#(name <> ":" <> int.to_string(latest), type_))
+  //             Error(Nil) -> {
+  //               console.warn(
+  //                 "failed to load package ref "
+  //                 <> name
+  //                 <> ":"
+  //                 <> int.to_string(latest),
+  //               )
+  //               Error(Nil)
+  //             }
+  //           }
+  //         Error(Nil) -> {
+  //           console.warn(
+  //             "failed get latest for package ref "
+  //             <> name
+  //             <> ":"
+  //             <> int.to_string(latest),
+  //           )
+  //           Error(Nil)
+  //         }
+  //       }
+  //     }
+  //     _ -> Error(Nil)
+  //   }
+  // })
 }

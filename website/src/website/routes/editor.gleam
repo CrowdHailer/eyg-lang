@@ -128,7 +128,9 @@ pub fn init(_) {
       snippet.init(source, [], harness.effects(), cache)
     })
   let state = State(cache, snippet, shell, False)
-  #(state, effect.from(browser.do_load(SyncMessage)))
+  // #(state, effect.from(browser.do_load(SyncMessage)))
+  io.debug("load index")
+  #(state, effect.none())
 }
 
 pub type Message {

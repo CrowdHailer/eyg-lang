@@ -294,7 +294,7 @@ pub fn init(_) {
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      effect.from(browser.do_load(SyncMessage)),
+      // effect.from(browser.do_load(SyncMessage)),
     ]),
   )
 }

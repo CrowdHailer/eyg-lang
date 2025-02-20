@@ -406,13 +406,7 @@ fn action_failed(state, error) {
 }
 
 pub fn update(state, message) {
-  let Snippet(
-    status: status,
-    source: #(proj, editable, _),
-    run: run,
-    effects: effects,
-    ..,
-  ) = state
+  let Snippet(status: status, source: #(proj, editable, _), ..) = state
   case message, status {
     UserFocusedOnCode, Idle -> #(
       Snippet(..state, status: Editing(Command)),
@@ -570,7 +564,7 @@ fn run_handle_effect(state, task_id, value) {
       let task_id = task_id + 1
       let #(return, task) =
         block.resume(value, env, k)
-        |> cache.run_blocking(state.cache, state.effects, block.resume)
+        |> run_blocking(state.cache, state.effects, block.resume)
       let run = Running(return, effects)
       let state = Snippet(..state, task_counter: task_id, run: run)
       io.debug("might conclude")
@@ -596,6 +590,24 @@ fn run_handle_effect(state, task_id, value) {
   //       }
   //     }
   // }
+}
+
+// might belong on a run 
+fn run_blocking(return, cache, extrinsic, resume) {
+  let return = cache.run(return, cache, resume)
+  case return {
+    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+      case list.key_find(extrinsic, label) {
+        Ok(#(_lift, _reply, blocking)) ->
+          case blocking(lift) {
+            Ok(p) -> #(return, Some(p))
+            Error(reason) -> #(Error(#(reason, meta, env, k)), None)
+          }
+        _ -> #(return, None)
+      }
+    }
+    _ -> #(return, None)
+  }
 }
 
 fn move_right(state) {
@@ -1059,7 +1071,7 @@ fn run_effects(state) {
   let Snippet(evaluated: evaluated, task_counter: task_counter, ..) = state
   let task_counter = task_counter + 1
   let #(return, task) =
-    cache.run_blocking(evaluated, state.cache, state.effects, block.resume)
+    run_blocking(evaluated, state.cache, state.effects, block.resume)
   let run = Running(return, [])
   let state = Snippet(..state, run: run, task_counter: task_counter)
   case task {

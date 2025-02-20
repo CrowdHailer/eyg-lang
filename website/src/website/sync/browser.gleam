@@ -29,35 +29,3 @@ pub fn do_sync(tasks, message) {
     Nil
   }
 }
-
-pub fn load_task() {
-  use registrations <- t.do(supabase.get_registrations())
-  let registrations =
-    dict.from_list(
-      list.map(registrations, fn(registration) {
-        #(registration.name, registration.package_id)
-      }),
-    )
-
-  use releases <- t.do(supabase.get_releases())
-  let releases =
-    list.group(releases, fn(release) { release.package_id })
-    |> dict.map_values(fn(_, releases) {
-      list.map(releases, fn(release) { #(release.version, release) })
-      |> dict.from_list
-    })
-
-  use fragments <- t.do(supabase.get_fragments())
-
-  t.done(dump.Dump(registrations, releases, fragments))
-}
-
-pub fn do_load(message) {
-  fn(d) {
-    {
-      use result <- promise.map(browser.run(load_task()))
-      d(message(sync.DumpDownLoaded(result)))
-    }
-    Nil
-  }
-}
