@@ -149,7 +149,9 @@ pub type Snippet {
     menu: menu.State,
     // edit history
     history: History,
-    source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
+    projection: p.Projection,
+    // editable is derived from projection
+    editable: e.Expression,
     // ------------------
     // Context of code snippet
     // scope before anything runs
@@ -158,6 +160,10 @@ pub type Snippet {
     effects: List(#(String, EffectSpec)),
     cache: cache.Cache,
     // ------------------
+    // Analysis might need to change i.e. reload
+    analysis: Option(analysis.Analysis),
+    // ------------------
+    // Run object could be global would change in other components
     // Computed values, relies on the cache, scope and effects
     // this is the value from the expression not part of run at all
     evaluated: Return,
@@ -186,15 +192,18 @@ pub type Snippet {
 pub fn init(editable, scope, effects, cache) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
+  io.debug("Do reall anaalysis")
   Snippet(
     status: Idle,
     expanding: None,
     menu: menu.init(),
     history: History([], []),
-    source: new_source(proj, editable, scope, effects),
+    projection: proj,
+    editable: editable,
     scope: scope,
     effects: effects,
     cache: cache,
+    analysis: Some(do_analysis(editable, scope, effects)),
     evaluated: evaluate(editable, scope, cache),
     task_counter: -1,
     run: NotRunning,
@@ -211,23 +220,24 @@ fn evaluate(editable, scope, cache) {
 pub fn active(editable, scope, effects, cache) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
-
   Snippet(
     Editing(Command),
     expanding: None,
     menu: menu.init(),
     history: History([], []),
-    source: new_source(proj, editable, scope, effects),
+    projection: proj,
+    editable: editable,
     scope: scope,
     effects: effects,
     cache: cache,
+    analysis: Some(do_analysis(editable, scope, effects)),
     evaluated: evaluate(editable, scope, cache),
     task_counter: -1,
     run: NotRunning,
   )
 }
 
-fn new_source(proj, editable, scope, effects) {
+fn do_analysis(editable, scope, effects) {
   let eff =
     effect_types(effects)
     |> list.fold(t.Empty, fn(acc, new) {
@@ -245,7 +255,7 @@ fn new_source(proj, editable, scope, effects) {
       ),
       eff,
     )
-  #(proj, editable, Some(analysis))
+  analysis
 }
 
 fn effect_types(effects: List(#(String, EffectSpec))) {
@@ -258,15 +268,20 @@ pub fn run(state) {
 }
 
 pub fn source(state) {
-  let Snippet(source: #(_, source, _), ..) = state
-  source
+  let Snippet(editable:, ..) = state
+  editable
 }
 
 pub fn set_references(state, cache) {
+  // If evaluated changes then run should change in the same way
   let evaluated = evaluate(source(state), state.scope, cache)
-  let source = state.source
-  let source = new_source(source.0, source.1, state.scope, state.effects)
-  Snippet(..state, source: source, evaluated: evaluated)
+  let run = case state.run {
+    NotRunning -> state.run
+    Running(return, effects) ->
+      Running(cache.run(return, cache, block.resume), effects)
+  }
+  let analysis = Some(do_analysis(state.editable, state.scope, state.effects))
+  Snippet(..state, cache:, evaluated:, run:, analysis:)
 }
 
 pub fn references(state) {
@@ -353,27 +368,29 @@ pub fn await_running_effect(promise) {
 }
 
 fn navigate_source(proj, state) {
-  let Snippet(source: #(_, editable, analysis), ..) = state
-  let source = #(proj, editable, analysis)
   let status = Editing(Command)
-  let state = Snippet(..state, status: status, source: source)
+  let state = Snippet(..state, status: status, projection: proj)
   #(state, Nothing)
 }
 
 fn update_source(proj, state) {
-  let Snippet(source: #(old, _, _), history: history, ..) = state
+  let Snippet(projection: old, history: history, ..) = state
   let editable = p.rebuild(proj)
-  let source = new_source(proj, editable, state.scope, state.effects)
   let History(undo: undo, ..) = history
   let undo = [old, ..undo]
   let history = History(undo: undo, redo: [])
   let status = Editing(Command)
+
+  let analysis = Some(do_analysis(editable, state.scope, state.effects))
   Snippet(
     ..state,
     status: status,
-    source: source,
+    projection: proj,
+    editable: editable,
     history: history,
+    analysis:,
     evaluated: evaluate(editable, state.scope, state.cache),
+    run: NotRunning,
   )
 }
 
@@ -406,7 +423,7 @@ fn action_failed(state, error) {
 }
 
 pub fn update(state, message) {
-  let Snippet(status: status, source: #(proj, editable, _), ..) = state
+  let Snippet(status: status, ..) = state
   case message, status {
     UserFocusedOnCode, Idle -> #(
       Snippet(..state, status: Editing(Command)),
@@ -469,25 +486,25 @@ pub fn update(state, message) {
     }
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
     UserClickedPath(path), _ ->
-      navigate_source(p.focus_at(editable, path), state)
+      navigate_source(p.focus_at(state.editable, path), state)
 
     // This is unhelpful as hard if big blocks are selected
     // case listx.starts_with(path, p.path(proj)) && p.path(proj) != [] {
     UserClickedCode(path), _ -> {
       let state = Snippet(..state, status: Editing(Command))
-      case proj, p.path(proj) == path {
+      case state.projection, p.path(state.projection) == path {
         #(p.Assign(p.AssignStatement(_), _, _, _, _), _), True ->
           toggle_open(state)
         _, _ ->
           case
-            // listx.starts_with(path, p.path(proj))
+            // listx.starts_with(path, p.path(state.projection))
             // path expanding real just means it was the last thing clicked
-            Some(path) == state.expanding && p.path(proj) != []
+            Some(path) == state.expanding && p.path(state.projection) != []
           {
             True -> increase(state)
             False -> {
               let state = Snippet(..state, expanding: Some(path))
-              navigate_source(p.focus_at(editable, path), state)
+              navigate_source(p.focus_at(state.editable, path), state)
             }
           }
       }
@@ -534,7 +551,7 @@ pub fn update(state, message) {
         Ok(text) ->
           case dag_json.from_block(bit_array.from_string(text)) {
             Ok(expression) -> {
-              let assert #(p.Exp(_), zoom) = proj
+              let assert #(p.Exp(_), zoom) = state.projection
               let proj = #(p.Exp(e.from_annotated(expression)), zoom)
               update_source_from_buffer(proj, state)
             }
@@ -611,17 +628,17 @@ fn run_blocking(return, cache, extrinsic, resume) {
 }
 
 fn move_right(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
   navigate_source(navigation.next(proj), state)
 }
 
 fn move_left(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
   navigate_source(navigation.previous(proj), state)
 }
 
 fn move_up(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case navigation.move_up(proj) {
     Ok(new) -> navigate_source(navigation.next(new), state)
@@ -630,7 +647,7 @@ fn move_up(state) {
 }
 
 fn move_down(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case navigation.move_down(proj) {
     Ok(new) -> navigate_source(navigation.next(new), state)
@@ -639,7 +656,7 @@ fn move_down(state) {
 }
 
 fn copy(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case proj {
     #(p.Exp(expression), _) -> {
@@ -658,7 +675,7 @@ fn paste(state) {
 }
 
 fn search_vacant(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
   let new = do_search_vacant(proj)
   navigate_source(new, state)
 }
@@ -674,14 +691,14 @@ fn do_search_vacant(proj) {
 }
 
 fn toggle_open(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   let proj = navigation.toggle_open(proj)
   navigate_source(proj, state)
 }
 
 fn call_with(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
   case transformation.call_with(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> action_failed(state, "call as argument")
@@ -689,7 +706,7 @@ fn call_with(state) {
 }
 
 fn assign_to(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.assign(proj) {
     Ok(rebuild) -> {
@@ -701,7 +718,7 @@ fn assign_to(state) {
 }
 
 fn assign_above(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.assign_before(proj) {
     Ok(rebuild) -> {
@@ -713,7 +730,7 @@ fn assign_above(state) {
 }
 
 fn insert_record(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
   case action.make_record(proj, analysis) {
     Ok(action.Updated(proj)) -> update_source_from_buffer(proj, state)
     Ok(action.Choose(value, hints, rebuild)) -> {
@@ -725,7 +742,7 @@ fn insert_record(state) {
 }
 
 fn overwrite_record(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.overwrite_record(proj, analysis) {
     Ok(#(hints, rebuild)) -> {
@@ -737,7 +754,7 @@ fn overwrite_record(state) {
 }
 
 fn insert_tag(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.make_tagged(proj, analysis) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
@@ -750,7 +767,7 @@ fn insert_tag(state) {
 }
 
 fn extend_before(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.extend_before(proj, analysis) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
@@ -763,7 +780,7 @@ fn extend_before(state) {
 }
 
 fn extend_after(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.extend_after(proj, analysis) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
@@ -776,7 +793,7 @@ fn extend_after(state) {
 }
 
 fn insert_mode(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case proj {
     #(p.Exp(e.String(value)), zoom) ->
@@ -794,7 +811,7 @@ fn insert_mode(state) {
 }
 
 fn insert_perform(state) {
-  let Snippet(source: #(proj, _, _), effects: effects, ..) = state
+  let Snippet(projection: proj, effects: effects, ..) = state
   let hints = effect_types(effects)
   case action.perform(proj) {
     Ok(#(filter, rebuild)) -> {
@@ -806,7 +823,7 @@ fn insert_perform(state) {
 }
 
 fn increase(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case navigation.increase(proj) {
     Ok(new) -> navigate_source(new, state)
@@ -815,7 +832,7 @@ fn increase(state) {
 }
 
 fn insert_string(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.string(proj) {
     Ok(#(value, rebuild)) -> change_mode(state, EditText(value, rebuild))
@@ -824,7 +841,7 @@ fn insert_string(state) {
 }
 
 fn delete(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.delete(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
@@ -833,7 +850,7 @@ fn delete(state) {
 }
 
 fn insert_function(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.function(proj) {
     Ok(rebuild) -> change_mode(state, Pick(picker.new("", []), rebuild))
@@ -842,7 +859,7 @@ fn insert_function(state) {
 }
 
 fn select_field(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.select_field(proj, analysis) {
     Ok(#(hints, rebuild)) -> {
@@ -854,7 +871,7 @@ fn select_field(state) {
 }
 
 fn insert_handle(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.handle(proj, analysis) {
     Ok(#(filter, hints, rebuild)) -> {
@@ -866,7 +883,7 @@ fn insert_handle(state) {
 }
 
 fn insert_builtin(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case action.insert_builtin(proj, contextual.builtins()) {
     Ok(#(filter, hints, rebuild)) -> {
@@ -878,7 +895,7 @@ fn insert_builtin(state) {
 }
 
 fn insert_list(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.list(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
@@ -887,7 +904,7 @@ fn insert_list(state) {
 }
 
 fn insert_named_reference(state) {
-  let Snippet(source: #(proj, _, _), cache: cache, ..) = state
+  let Snippet(projection: proj, cache: cache, ..) = state
 
   let index =
     cache.package_index(cache)
@@ -902,7 +919,7 @@ fn insert_named_reference(state) {
 }
 
 fn insert_reference(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case action.insert_reference(proj) {
     Ok(#(filter, rebuild)) -> {
@@ -913,7 +930,7 @@ fn insert_reference(state) {
 }
 
 fn call_function(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.call_function(proj, analysis) {
     Ok(new) -> update_source_from_buffer(new, state)
@@ -922,7 +939,7 @@ fn call_function(state) {
 }
 
 fn insert_variable(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.insert_variable(proj, analysis) {
     Ok(#(filter, hints, rebuild)) -> {
@@ -934,7 +951,7 @@ fn insert_variable(state) {
 }
 
 fn insert_binary(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.binary(proj) {
     Ok(#(value, rebuild)) -> update_source_from_buffer(rebuild(value), state)
@@ -943,7 +960,7 @@ fn insert_binary(state) {
 }
 
 fn insert_integer(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.integer(proj) {
     Ok(#(value, rebuild)) -> change_mode(state, EditInteger(value, rebuild))
@@ -952,7 +969,7 @@ fn insert_integer(state) {
 }
 
 fn insert_case(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.make_case(proj, analysis) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
@@ -965,7 +982,7 @@ fn insert_case(state) {
 }
 
 fn insert_open_case(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
   case action.make_open_case(proj, analysis) {
     Ok(#(filter, hints, rebuild)) -> {
@@ -977,7 +994,7 @@ fn insert_open_case(state) {
 }
 
 fn spread_list(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.spread_list(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
@@ -986,7 +1003,7 @@ fn spread_list(state) {
 }
 
 fn toggle_spread(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.toggle_spread(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
@@ -995,7 +1012,7 @@ fn toggle_spread(state) {
 }
 
 fn toggle_otherwise(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case transformation.toggle_otherwise(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
@@ -1004,39 +1021,57 @@ fn toggle_otherwise(state) {
 }
 
 fn undo(state) {
-  let Snippet(source: #(proj, _, _), history: history, ..) = state
+  let Snippet(projection: proj, history: history, ..) = state
   case history.undo {
     [] -> action_failed(state, "undo")
     [saved, ..rest] -> {
-      let source =
-        new_source(saved, p.rebuild(saved), state.scope, state.effects)
+      let editable = p.rebuild(saved)
+      let analysis = Some(do_analysis(editable, state.scope, state.effects))
       let history = History(undo: rest, redo: [proj, ..history.redo])
       let status = Editing(Command)
       let state =
-        Snippet(..state, status: status, source: source, history: history)
+        Snippet(
+          ..state,
+          status: status,
+          projection: saved,
+          editable:,
+          history: history,
+          analysis:,
+          evaluated: evaluate(editable, state.scope, state.cache),
+          run: NotRunning,
+        )
       #(state, Nothing)
     }
   }
 }
 
 fn redo(state) {
-  let Snippet(source: #(proj, _, _), history: history, ..) = state
+  let Snippet(projection: proj, history: history, ..) = state
   case history.redo {
     [] -> action_failed(state, "redo")
     [saved, ..rest] -> {
-      let source =
-        new_source(saved, p.rebuild(saved), state.scope, state.effects)
+      let editable = p.rebuild(saved)
+      let analysis = Some(do_analysis(editable, state.scope, state.effects))
       let history = History(undo: [proj, ..history.undo], redo: rest)
       let status = Editing(Command)
       let state =
-        Snippet(..state, status: status, source: source, history: history)
+        Snippet(
+          ..state,
+          status: status,
+          projection: saved,
+          editable:,
+          history: history,
+          analysis:,
+          evaluated: evaluate(editable, state.scope, state.cache),
+          run: NotRunning,
+        )
       #(state, Nothing)
     }
   }
 }
 
 pub fn copy_escaped(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(projection: proj, ..) = state
 
   case proj {
     #(p.Exp(expression), _) -> {
@@ -1094,12 +1129,13 @@ pub fn render_embedded(state: Snippet, failure) {
 pub fn bare_render(state, failure) {
   let Snippet(
     status: status,
-    source: source,
+    projection: proj,
+    editable:,
+    analysis:,
     evaluated: evaluated,
     run: run,
     ..,
   ) = state
-  let #(proj, _, analysis) = source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
@@ -1143,7 +1179,7 @@ pub fn bare_render(state, failure) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(source.1, errors),
+        render.statements(editable, errors),
       ),
       render_current(errors, run, evaluated),
     ]
@@ -1202,8 +1238,8 @@ pub fn render_pallet(state) {
 }
 
 pub fn render_just_projection(state, autofocus) {
-  let Snippet(status: status, source: source, ..) = state
-  let #(proj, _, analysis) = source
+  let Snippet(status: status, projection: proj, editable:, analysis:, ..) =
+    state
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
@@ -1220,7 +1256,7 @@ pub fn render_just_projection(state, autofocus) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(source.1, errors),
+        render.statements(editable, errors),
       )
   }
 }
@@ -1420,8 +1456,8 @@ pub fn menu_content(status, projection, submenu) {
 
 pub fn render_embedded_with_top_menu(snippet, failure) {
   let display_help = True
-  let Snippet(status: status, source: source, menu: menu, ..) = snippet
-  let #(top, subcontent) = menu_content(status, source.0, menu)
+  let Snippet(status: status, projection:, menu: menu, ..) = snippet
+  let #(top, subcontent) = menu_content(status, projection, menu)
 
   h.pre(
     [
@@ -1514,8 +1550,8 @@ pub fn render_embedded_with_menu(snippet, failure) {
 }
 
 fn render_menu(snippet, display_help) {
-  let Snippet(status: status, source: source, menu: menu, ..) = snippet
-  let #(top, subcontent) = menu_content(status, source.0, menu)
+  let Snippet(status: status, projection:, menu: menu, ..) = snippet
+  let #(top, subcontent) = menu_content(status, projection, menu)
   h.div(
     [
       a.class("eyg-menu-container"),
