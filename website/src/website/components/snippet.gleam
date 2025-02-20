@@ -1080,7 +1080,13 @@ pub fn render_embedded(state: Snippet, failure) {
 }
 
 pub fn bare_render(state, failure) {
-  let Snippet(status: status, source: source, run: run, ..) = state
+  let Snippet(
+    status: status,
+    source: source,
+    evaluated: evaluated,
+    run: run,
+    ..,
+  ) = state
   let #(proj, _, analysis) = source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
@@ -1095,7 +1101,7 @@ pub fn bare_render(state, failure) {
           case failure {
             Some(failure) ->
               footer_area(neo_orange_4, [element.text(fail_message(failure))])
-            None -> render_current(errors, run)
+            None -> render_current(errors, run, evaluated)
           },
         ]
         Pick(picker, _rebuild) -> [
@@ -1127,15 +1133,15 @@ pub fn bare_render(state, failure) {
         ],
         render.statements(source.1, errors),
       ),
-      render_current(errors, run),
+      render_current(errors, run, evaluated),
     ]
   }
 }
 
 // TODO remove
-pub fn render_current(errors, run) {
+pub fn render_current(errors, run, evaluated) {
   case errors {
-    [] -> render_run(run)
+    [] -> render_run(run, evaluated)
     _ -> render_errors(errors)
   }
 }
@@ -1289,16 +1295,30 @@ fn render_projection(proj, errors) {
   }
 }
 
-fn render_run(run) {
+fn render_run(run, evaluated) {
   case run {
-    NotRunning -> footer_area(neo_green_3, [element.text("not running")])
-    //   footer_area(neo_blue_3, [
-    //     h.span([event.on_click(UserClickRunEffects)], [
-    //       element.text("Will run "),
-    //       element.text(label),
-    //       element.text(" effect. click to continue."),
-    //     ]),
-    //   ])
+    NotRunning ->
+      case evaluated {
+        Ok(#(value, _scope)) ->
+          footer_area(neo_green_3, [
+            case value {
+              Some(value) -> output.render(value)
+              None -> element.none()
+            },
+          ])
+        Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
+          footer_area(neo_blue_3, [
+            h.span([event.on_click(UserClickRunEffects)], [
+              element.text("Will run "),
+              element.text(label),
+              element.text(" effect. click to continue."),
+            ]),
+          ])
+        Error(#(reason, _, _, _)) ->
+          footer_area(neo_orange_4, [
+            element.text(simple_debug.reason_to_string(reason)),
+          ])
+      }
     Running(Ok(#(value, _scope)), _effects) ->
       // (value, _) ->
       footer_area(neo_green_3, [

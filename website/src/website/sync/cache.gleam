@@ -10,6 +10,7 @@ import gleam/dict.{type Dict}
 import gleam/javascript/promise
 import gleam/list
 import gleam/option.{None, Some}
+import website/sync/supabase
 
 // render snippet takes cache as an argument to show loading or errored
 
@@ -46,13 +47,29 @@ pub fn start(exp, scope) {
 // snippets are not installed in the cache
 
 // Need to handle effect and ref at the same time because they could be in any order
+fn fetch_named_cid(cache, package, release) {
+  let Cache(registry: registry, packages: packages, ..) = cache
+  case dict.get(registry, package) {
+    Ok(package_id) ->
+      case dict.get(packages, package_id) {
+        Ok(package) ->
+          case dict.get(package, release) {
+            Ok(release) -> Ok(release.hash)
+            Error(Nil) -> Error(Nil)
+          }
+        Error(Nil) -> Error(Nil)
+      }
+    Error(Nil) -> Error(Nil)
+  }
+}
+
 pub fn run(return, cache, resume) {
-  let Cache(fragments: fragments) = cache
+  let Cache(fragments: fragments, ..) = cache
   case return {
     Error(#(reason, _meta, env, k)) ->
       case reason {
         break.UndefinedRelease(package, release, cid) -> {
-          case todo as "fetch cid" {
+          case fetch_named_cid(cache, package, release) {
             Ok(c) if c == cid ->
               case dict.get(fragments, cid) {
                 Ok(Fragment(value: Ok(value), ..)) -> resume(value, env, k)
@@ -112,11 +129,15 @@ pub type Fragment {
 }
 
 pub type Cache {
-  Cache(fragments: Dict(String, Fragment))
+  Cache(
+    registry: Dict(String, String),
+    packages: Dict(String, Dict(Int, supabase.Release)),
+    fragments: Dict(String, Fragment),
+  )
 }
 
 pub fn init() {
-  Cache(dict.new())
+  Cache(dict.new(), dict.new(), dict.new())
 }
 
 pub fn install_fragment(cache, cid, bytes) {
@@ -144,11 +165,11 @@ pub fn install_source(cache, cid, source) {
     run(expression.execute_next(source, scope), cache, expression.resume)
   let fragment = Fragment(source, return)
   let fragments = dict.insert(cache.fragments, cid, fragment)
-  case return {
+  let fragments = case return {
     Ok(value) -> resolve_references(fragments, [#(cid, value)])
     Error(_) -> fragments
   }
-  |> Cache
+  Cache(..cache, fragments:)
 }
 
 pub fn resolve_references(fragments, remaining) {
