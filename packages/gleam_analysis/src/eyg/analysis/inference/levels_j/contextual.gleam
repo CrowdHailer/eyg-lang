@@ -4,7 +4,6 @@ import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/dict
-import gleam/int
 import gleam/list
 import gleam/set
 
@@ -377,10 +376,10 @@ pub fn builtins() {
     // #("decode_uri_component", pure1(t.String, t.String)),
     // #("base64_encode", pure1(t.Binary, t.String)),
 
-    // #("int_compare", {
-    //   let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
-    //   pure2(t.Integer, t.Integer, return)
-    // }),
+    #("int_compare", {
+      let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
+      pure2(t.Integer, t.Integer, return)
+    }),
     #("int_add", pure2(t.Integer, t.Integer, t.Integer)),
     #("int_subtract", pure2(t.Integer, t.Integer, t.Integer)),
     #("int_multiply", pure2(t.Integer, t.Integer, t.Integer)),
