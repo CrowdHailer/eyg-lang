@@ -73,7 +73,8 @@ fn builtins() {
   |> dict.insert("int_parse", builtin.int_parse)
   |> dict.insert("int_to_string", builtin.int_to_string)
   // String
-  |> dict.insert("string_append", builtin.append)
+  |> dict.insert("string_append", builtin.string_append)
+  |> dict.insert("string_split", builtin.string_split)
   // List
   |> dict.insert("list_fold", builtin.list_fold)
 }

@@ -1,7 +1,9 @@
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import gleam/dict
 import gleam/int
+import gleam/list
 import gleam/order
 import gleam/result.{try}
 import gleam/string
@@ -43,14 +45,6 @@ fn do_subtract(left, right, _meta, env, k) {
   use left <- try(cast.as_integer(left))
   use right <- try(cast.as_integer(right))
   Ok(#(state.V(v.Integer(left - right)), env, k))
-}
-
-pub const append = state.Arity2(do_append)
-
-fn do_append(left, right, _meta, env, k) {
-  use left <- try(cast.as_string(left))
-  use right <- try(cast.as_string(right))
-  Ok(#(state.V(v.String(string.append(left, right))), env, k))
 }
 
 pub const multiply = state.Arity2(do_multiply)
@@ -96,6 +90,31 @@ pub const int_to_string = state.Arity1(do_int_to_string)
 fn do_int_to_string(x, _meta, env, k) {
   use x <- result.then(cast.as_integer(x))
   Ok(#(state.V(v.String(int.to_string(x))), env, k))
+}
+
+pub const string_append = state.Arity2(do_string_append)
+
+fn do_string_append(left, right, _meta, env, k) {
+  use left <- try(cast.as_string(left))
+  use right <- try(cast.as_string(right))
+  Ok(#(state.V(v.String(string.append(left, right))), env, k))
+}
+
+pub const string_split = state.Arity2(do_string_split)
+
+pub fn do_string_split(s, pattern, _meta, env, k) {
+  use s <- result.then(cast.as_string(s))
+  use pattern <- result.then(cast.as_string(pattern))
+  let assert [first, ..parts] = string.split(s, pattern)
+  let parts = v.LinkedList(list.map(parts, v.String))
+
+  Ok(#(
+    state.V(
+      v.Record(dict.from_list([#("head", v.String(first)), #("tail", parts)])),
+    ),
+    env,
+    k,
+  ))
 }
 
 pub const list_fold = state.Arity3(do_list_fold)

@@ -5,34 +5,18 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import gleam/bit_array
 import gleam/dict
-import gleam/list
 import gleam/result
 import gleam/string
 
 pub fn append() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.Str))
-  #(type_, builtin.append)
+  #(type_, builtin.string_append)
 }
 
 pub fn split() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
-  #(type_, state.Arity2(do_split))
-}
-
-pub fn do_split(s, pattern, _meta, env, k) {
-  use s <- result.then(cast.as_string(s))
-  use pattern <- result.then(cast.as_string(pattern))
-  let assert [first, ..parts] = string.split(s, pattern)
-  let parts = v.LinkedList(list.map(parts, v.String))
-
-  Ok(#(
-    state.V(
-      v.Record(dict.from_list([#("head", v.String(first)), #("tail", parts)])),
-    ),
-    env,
-    k,
-  ))
+  #(type_, builtin.string_split)
 }
 
 pub fn split_once() {
