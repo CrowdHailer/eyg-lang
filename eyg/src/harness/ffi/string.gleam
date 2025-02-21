@@ -56,33 +56,23 @@ pub fn lowercase() {
 pub fn starts_with() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
-  #(type_, state.Arity2(do_starts_with))
-}
-
-pub fn do_starts_with(value, prefix, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  use prefix <- result.then(cast.as_string(prefix))
-  let ret = case string.split_once(value, prefix) {
-    Ok(#("", post)) -> v.ok(v.String(post))
-    _ -> v.error(v.unit())
-  }
-  Ok(#(state.V(ret), env, k))
+  #(
+    type_,
+    state.Arity1(fn(_, _, _, _) {
+      panic as "implementation doesn't return result use pop prefix"
+    }),
+  )
 }
 
 pub fn ends_with() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
-  #(type_, state.Arity2(do_ends_with))
-}
-
-pub fn do_ends_with(value, suffix, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  use suffix <- result.then(cast.as_string(suffix))
-  let ret = case string.split_once(value, suffix) {
-    Ok(#(pre, "")) -> v.ok(v.String(pre))
-    _ -> v.error(v.unit())
-  }
-  Ok(#(state.V(ret), env, k))
+  #(
+    type_,
+    state.Arity1(fn(_, _, _, _) {
+      panic as "implementation doesn't return result"
+    }),
+  )
 }
 
 pub fn length() {

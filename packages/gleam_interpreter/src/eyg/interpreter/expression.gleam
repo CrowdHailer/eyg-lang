@@ -78,6 +78,8 @@ fn builtins() {
   |> dict.insert("string_split_once", builtin.string_split_once)
   |> dict.insert("string_uppercase", builtin.string_uppercase)
   |> dict.insert("string_lowercase", builtin.string_lowercase)
+  |> dict.insert("string_starts_with", builtin.string_starts_with)
+  |> dict.insert("string_ends_with", builtin.string_ends_with)
   // List
   |> dict.insert("list_fold", builtin.list_fold)
 }

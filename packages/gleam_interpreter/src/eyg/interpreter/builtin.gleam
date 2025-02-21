@@ -145,6 +145,31 @@ pub fn do_string_lowercase(value, _meta, env, k) {
   Ok(#(state.V(v.String(string.lowercase(value))), env, k))
 }
 
+pub const string_starts_with = state.Arity2(do_string_starts_with)
+
+pub fn do_string_starts_with(value, t, _meta, env, k) {
+  use value <- result.then(cast.as_string(value))
+  use t <- result.then(cast.as_string(t))
+
+  Ok(#(state.V(bool(string.starts_with(value, t))), env, k))
+}
+
+pub const string_ends_with = state.Arity2(do_string_ends_with)
+
+pub fn do_string_ends_with(value, t, _meta, env, k) {
+  use value <- result.then(cast.as_string(value))
+  use t <- result.then(cast.as_string(t))
+
+  Ok(#(state.V(bool(string.ends_with(value, t))), env, k))
+}
+
+fn bool(value) {
+  case value {
+    True -> v.true()
+    False -> v.false()
+  }
+}
+
 pub const list_fold = state.Arity3(do_list_fold)
 
 fn do_list_fold(list, state, func, meta, env, k) {
