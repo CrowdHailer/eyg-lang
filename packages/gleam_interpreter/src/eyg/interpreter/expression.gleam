@@ -64,6 +64,7 @@ fn builtins() {
   dict.new()
   |> dict.insert("equal", builtin.equal)
   // integer
+  |> dict.insert("int_compare", builtin.int_compare)
   |> dict.insert("int_add", builtin.add)
   |> dict.insert("int_subtract", builtin.subtract)
   |> dict.insert("int_multiply", builtin.multiply)

@@ -68,6 +68,93 @@
     }
   },
   {
+    "name": "integer comparison equal",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 1
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 1
+        },
+        "f": {
+          "0": "b",
+          "l": "int_compare"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Eq",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "integer comparison equal",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 1
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 10
+        },
+        "f": {
+          "0": "b",
+          "l": "int_compare"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Gt",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "integer comparison equal",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 2
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 1
+        },
+        "f": {
+          "0": "b",
+          "l": "int_compare"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Lt",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
     "name": "integer addition",
     "source": {
       "0": "a",
@@ -232,7 +319,12 @@
       }
     },
     "value": {
-      "tagged": {"label":"Ok","value":{"integer":4}}
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "integer": 4
+        }
+      }
     }
   },
   {
@@ -256,7 +348,12 @@
       }
     },
     "value": {
-      "tagged": {"label":"Ok","value":{"integer":2}}
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "integer": 2
+        }
+      }
     }
   },
   {
@@ -280,7 +377,12 @@
       }
     },
     "value": {
-      "tagged": {"label":"Error","value":{"record":{}}}
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
     }
   },
   {
@@ -348,7 +450,12 @@
       }
     },
     "value": {
-      "tagged": {"label":"Ok","value":{"integer":-10}}
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "integer": -10
+        }
+      }
     }
   },
   {
@@ -365,7 +472,12 @@
       }
     },
     "value": {
-      "tagged": {"label":"Error","value":{"record":{}}}
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
     }
   },
   {
@@ -382,7 +494,12 @@
       }
     },
     "value": {
-      "tagged": {"label":"Error","value":{"record":{}}}
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
     }
   },
   {

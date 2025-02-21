@@ -1,11 +1,5 @@
 import eyg/analysis/typ as t
 import eyg/interpreter/builtin
-import eyg/interpreter/cast
-import eyg/interpreter/state
-import eyg/interpreter/value as v
-import gleam/int
-import gleam/order.{Eq, Gt, Lt}
-import gleam/result
 
 pub fn compare() {
   let type_ =
@@ -22,18 +16,7 @@ pub fn compare() {
         )),
       ),
     )
-  #(type_, state.Arity2(do_compare))
-}
-
-fn do_compare(left, right, _meta, env, k) {
-  use left <- result.then(cast.as_integer(left))
-  use right <- result.then(cast.as_integer(right))
-  let return = case int.compare(left, right) {
-    Lt -> v.Tagged("Lt", v.unit())
-    Eq -> v.Tagged("Eq", v.unit())
-    Gt -> v.Tagged("Gt", v.unit())
-  }
-  Ok(#(state.V(return), env, k))
+  #(type_, builtin.int_compare)
 }
 
 pub fn add() {

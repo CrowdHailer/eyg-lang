@@ -2,6 +2,7 @@ import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import gleam/int
+import gleam/order
 import gleam/result.{try}
 import gleam/string
 
@@ -13,6 +14,19 @@ fn do_equal(left, right, _meta, env, k) {
     False -> v.false()
   }
   Ok(#(state.V(value), env, k))
+}
+
+pub const int_compare = state.Arity2(do_int_compare)
+
+fn do_int_compare(left, right, _meta, env, k) {
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
+  let return = case int.compare(left, right) {
+    order.Lt -> v.Tagged("Lt", v.unit())
+    order.Eq -> v.Tagged("Eq", v.unit())
+    order.Gt -> v.Tagged("Gt", v.unit())
+  }
+  Ok(#(state.V(return), env, k))
 }
 
 pub const add = state.Arity2(do_add)
