@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import lustre/effect
@@ -48,12 +49,16 @@ pub fn update(state, message) {
     FragmentFetched(cid, Ok(bytes)) ->
       case cache.install_fragment(cache, cid, bytes) {
         Ok(#(cache, required)) -> {
+          io.debug(cache)
           let state = Client(cache)
           #(state, RequireFragments(required))
         }
         Error(_) -> todo as "why did this fail"
       }
-    FragmentFetched(cid, Error(_)) -> todo
+    FragmentFetched(cid, Error(reason)) -> {
+      io.debug(reason)
+      todo
+    }
   }
 }
 

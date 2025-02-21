@@ -402,43 +402,4 @@ pub fn load(sync, dump) {
 
 pub fn package_index(sync) {
   todo as "remove"
-  // let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
-  // dict.to_list(registry)
-  // |> list.filter_map(fn(entry) {
-  //   let #(name, package_id) = entry
-  //   use package <- result.try(dict.get(packages, package_id))
-
-  //   case dict.size(package) {
-  //     x if x > 0 -> {
-  //       // We start on version 1
-  //       let latest = x
-  //       case dict.get(package, latest) {
-  //         Ok(supabase.Release(hash: hash_ref, ..)) ->
-  //           case dict.get(loaded, hash_ref) {
-  //             Ok(Computed(type_: type_, ..)) ->
-  //               Ok(#(name <> ":" <> int.to_string(latest), type_))
-  //             Error(Nil) -> {
-  //               console.warn(
-  //                 "failed to load package ref "
-  //                 <> name
-  //                 <> ":"
-  //                 <> int.to_string(latest),
-  //               )
-  //               Error(Nil)
-  //             }
-  //           }
-  //         Error(Nil) -> {
-  //           console.warn(
-  //             "failed get latest for package ref "
-  //             <> name
-  //             <> ":"
-  //             <> int.to_string(latest),
-  //           )
-  //           Error(Nil)
-  //         }
-  //       }
-  //     }
-  //     _ -> Error(Nil)
-  //   }
-  // })
 }

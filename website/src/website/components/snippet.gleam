@@ -910,7 +910,8 @@ fn insert_named_reference(state) {
 
   let index =
     cache.package_index(cache)
-    |> listx.value_map(render_poly)
+    // TODO show information but maybe no full type information
+    |> listx.value_map(fn(_) { "" })
 
   case action.insert_named_reference(proj) {
     Ok(#(filter, rebuild)) -> {
@@ -1133,9 +1134,9 @@ pub fn finish_editing(state) {
 // 
 // Error level action
 pub type TypeError {
-  ReleaseInvalid
+  ReleaseInvalid(package: String, release: Int)
   ReleaseCheckDoesntMatch(String)
-  ReleaseNotFetched(String)
+  ReleaseNotFetched(package: String, requested: Int, max: Int)
   ReleaseFragmentNotFetched(String)
   FragmentInvalid
   ReferenceNotFetched
@@ -1155,6 +1156,8 @@ pub fn type_errors(state) {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }
+  // io.debug("===========================================================")
+  // io.debug(cache.fragments)
   list.map(errors, fn(error) {
     let #(meta, error) = error
     let error = case error {
@@ -1166,14 +1169,18 @@ pub fn type_errors(state) {
                 case value {
                   Ok(_) ->
                     panic as "if the fragment was there it would be resolved"
-                  Error(#(reason, _, _, _)) -> ReleaseInvalid
+                  Error(#(reason, _, _, _)) -> ReleaseInvalid(p, r)
                   // error info needs to be better 
                 }
               Error(Nil) -> ReleaseFragmentNotFetched(p)
             }
           Ok(c) -> ReleaseCheckDoesntMatch(c)
           // TODO client is still loading
-          Error(Nil) -> ReleaseNotFetched(p)
+          Error(Nil) ->
+            case cache.max_release(cache, p) {
+              Error(Nil) -> ReleaseNotFetched(p, r, 0)
+              Ok(max) -> ReleaseNotFetched(p, r, max)
+            }
         }
       error.MissingReference(cid) ->
         case cache.fetch_fragment(cache, cid) {
@@ -1281,13 +1288,22 @@ fn render_structured_note_about_error(error) {
   let #(path, reason) = error
   // TODO color, don't border all errors
   let reason = case reason {
-    ReleaseInvalid -> "ReleaseInvalid"
+    ReleaseInvalid(p, r) ->
+      "The release @" <> p <> ":" <> int.to_string(r) <> " has errors."
     ReleaseCheckDoesntMatch(_) -> "ReleaseCheckDoesntMatch"
-    ReleaseNotFetched(_) -> "ReleaseNotFetched"
+    ReleaseNotFetched(package, _, 0) ->
+      "The package '" <> package <> "' has not been published"
+    ReleaseNotFetched(package, r, n) ->
+      "The release "
+      <> int.to_string(r)
+      <> " for '"
+      <> package
+      <> "' is not available. Latest publish is "
+      <> int.to_string(n)
     ReleaseFragmentNotFetched(_) -> "ReleaseFragmentNotFetched"
     FragmentInvalid -> "FragmentInvalid"
     ReferenceNotFetched -> "ReferenceNotFetched"
-    Todo -> "Todo"
+    Todo -> "The program is incomplete."
     MissingVariable(var) ->
       "The variable '" <> var <> "' is not available here."
     MissingBuiltin(identifier) ->

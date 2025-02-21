@@ -3,7 +3,9 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import gleam/int
 import gleam/io
+import gleam/result
 
 // import eyg/ir/cid
 import eyg/ir/dag_json
@@ -52,6 +54,24 @@ pub fn fetch_named_cid(cache, package, release) {
             Ok(release) -> Ok(release.hash)
             Error(Nil) -> Error(Nil)
           }
+        Error(Nil) -> Error(Nil)
+      }
+    Error(Nil) -> Error(Nil)
+  }
+}
+
+pub fn max_release(cache, package) {
+  let Cache(index: index, ..) = cache
+  case dict.get(index.registry, package) {
+    Ok(package_id) ->
+      case dict.get(index.packages, package_id) {
+        Ok(package) -> {
+          case dict.size(package) {
+            0 -> Error(Nil)
+            n -> Ok(n)
+          }
+        }
+
         Error(Nil) -> Error(Nil)
       }
     Error(Nil) -> Error(Nil)
@@ -194,5 +214,43 @@ pub fn resolve_references(fragments, remaining) {
 }
 
 pub fn package_index(cache) {
-  []
+  let Cache(index:, fragments:) = cache
+  dict.to_list(index.registry)
+  |> list.filter_map(fn(entry) {
+    let #(name, package_id) = entry
+    use package <- result.try(dict.get(index.packages, package_id))
+
+    case dict.size(package) {
+      x if x > 0 -> {
+        // We start on version 1
+        let latest = x
+        case dict.get(package, latest) {
+          Ok(Release(hash: hash_ref, ..)) ->
+            case dict.get(fragments, hash_ref) {
+              Ok(Fragment(value: Ok(_), ..)) ->
+                Ok(#(name <> ":" <> int.to_string(latest), Nil))
+              _ -> {
+                // console.warn(
+                //   "failed to load package ref "
+                //   <> name
+                //   <> ":"
+                //   <> int.to_string(latest),
+                // )
+                Error(Nil)
+              }
+            }
+          Error(Nil) -> {
+            // console.warn(
+            //   "failed get latest for package ref "
+            //   <> name
+            //   <> ":"
+            //   <> int.to_string(latest),
+            // )
+            Error(Nil)
+          }
+        }
+      }
+      _ -> Error(Nil)
+    }
+  })
 }
