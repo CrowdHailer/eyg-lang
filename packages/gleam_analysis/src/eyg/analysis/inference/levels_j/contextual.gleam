@@ -423,8 +423,8 @@ pub fn builtins() {
     //     t.Fun(t.String, t.Empty, t.Fun(yes, t.Empty, t.Fun(no, eff, return))),
     //   )
     // }),
-    // #("string_to_binary", pure1(t.String, t.Binary)),
-    // #("binary_to_string", pure1(t.Binary, t.result(t.String, t.unit))),
+    #("string_to_binary", pure1(t.String, t.Binary)),
+    #("string_from_binary", pure1(t.Binary, t.result(t.String, t.unit))),
     // This should be literals
     // #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
 

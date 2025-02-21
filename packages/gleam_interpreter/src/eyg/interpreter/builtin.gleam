@@ -1,6 +1,7 @@
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import gleam/bit_array
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -21,8 +22,8 @@ fn do_equal(left, right, _meta, env, k) {
 pub const int_compare = state.Arity2(do_int_compare)
 
 fn do_int_compare(left, right, _meta, env, k) {
-  use left <- result.then(cast.as_integer(left))
-  use right <- result.then(cast.as_integer(right))
+  use left <- try(cast.as_integer(left))
+  use right <- try(cast.as_integer(right))
   let return = case int.compare(left, right) {
     order.Lt -> v.Tagged("Lt", v.unit())
     order.Eq -> v.Tagged("Eq", v.unit())
@@ -58,8 +59,8 @@ fn do_multiply(left, right, _meta, env, k) {
 pub const divide = state.Arity2(do_divide)
 
 fn do_divide(left, right, _meta, env, k) {
-  use left <- result.then(cast.as_integer(left))
-  use right <- result.then(cast.as_integer(right))
+  use left <- try(cast.as_integer(left))
+  use right <- try(cast.as_integer(right))
   let value = case right {
     0 -> v.error(v.unit())
     _ -> v.ok(v.Integer(left / right))
@@ -70,14 +71,14 @@ fn do_divide(left, right, _meta, env, k) {
 pub const absolute = state.Arity1(do_absolute)
 
 fn do_absolute(x, _meta, env, k) {
-  use x <- result.then(cast.as_integer(x))
+  use x <- try(cast.as_integer(x))
   Ok(#(state.V(v.Integer(int.absolute_value(x))), env, k))
 }
 
 pub const int_parse = state.Arity1(do_int_parse)
 
 fn do_int_parse(raw, _meta, env, k) {
-  use raw <- result.then(cast.as_string(raw))
+  use raw <- try(cast.as_string(raw))
   let value = case int.parse(raw) {
     Ok(i) -> v.ok(v.Integer(i))
     Error(Nil) -> v.error(v.unit())
@@ -88,7 +89,7 @@ fn do_int_parse(raw, _meta, env, k) {
 pub const int_to_string = state.Arity1(do_int_to_string)
 
 fn do_int_to_string(x, _meta, env, k) {
-  use x <- result.then(cast.as_integer(x))
+  use x <- try(cast.as_integer(x))
   Ok(#(state.V(v.String(int.to_string(x))), env, k))
 }
 
@@ -103,8 +104,8 @@ fn do_string_append(left, right, _meta, env, k) {
 pub const string_split = state.Arity2(do_string_split)
 
 pub fn do_string_split(s, pattern, _meta, env, k) {
-  use s <- result.then(cast.as_string(s))
-  use pattern <- result.then(cast.as_string(pattern))
+  use s <- try(cast.as_string(s))
+  use pattern <- try(cast.as_string(pattern))
   let assert [first, ..parts] = string.split(s, pattern)
   let parts = v.LinkedList(list.map(parts, v.String))
 
@@ -116,8 +117,8 @@ pub fn do_string_split(s, pattern, _meta, env, k) {
 pub const string_split_once = state.Arity2(do_string_split_once)
 
 pub fn do_string_split_once(s, pattern, _meta, env, k) {
-  use s <- result.then(cast.as_string(s))
-  use pattern <- result.then(cast.as_string(pattern))
+  use s <- try(cast.as_string(s))
+  use pattern <- try(cast.as_string(pattern))
   let value = case string.split_once(s, pattern) {
     Ok(#(pre, post)) -> {
       let record =
@@ -134,9 +135,9 @@ pub fn do_string_split_once(s, pattern, _meta, env, k) {
 pub const string_replace = state.Arity3(do_string_replace)
 
 pub fn do_string_replace(in, from, to, _meta, env, k) {
-  use in <- result.then(cast.as_string(in))
-  use from <- result.then(cast.as_string(from))
-  use to <- result.then(cast.as_string(to))
+  use in <- try(cast.as_string(in))
+  use from <- try(cast.as_string(from))
+  use to <- try(cast.as_string(to))
 
   Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
 }
@@ -144,22 +145,22 @@ pub fn do_string_replace(in, from, to, _meta, env, k) {
 pub const string_uppercase = state.Arity1(do_string_uppercase)
 
 pub fn do_string_uppercase(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
+  use value <- try(cast.as_string(value))
   Ok(#(state.V(v.String(string.uppercase(value))), env, k))
 }
 
 pub const string_lowercase = state.Arity1(do_string_lowercase)
 
 pub fn do_string_lowercase(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
+  use value <- try(cast.as_string(value))
   Ok(#(state.V(v.String(string.lowercase(value))), env, k))
 }
 
 pub const string_starts_with = state.Arity2(do_string_starts_with)
 
 pub fn do_string_starts_with(value, t, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  use t <- result.then(cast.as_string(t))
+  use value <- try(cast.as_string(value))
+  use t <- try(cast.as_string(t))
 
   Ok(#(state.V(bool(string.starts_with(value, t))), env, k))
 }
@@ -167,8 +168,8 @@ pub fn do_string_starts_with(value, t, _meta, env, k) {
 pub const string_ends_with = state.Arity2(do_string_ends_with)
 
 pub fn do_string_ends_with(value, t, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  use t <- result.then(cast.as_string(t))
+  use value <- try(cast.as_string(value))
+  use t <- try(cast.as_string(t))
 
   Ok(#(state.V(bool(string.ends_with(value, t))), env, k))
 }
@@ -183,14 +184,33 @@ fn bool(value) {
 pub const string_length = state.Arity1(do_string_length)
 
 pub fn do_string_length(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
+  use value <- try(cast.as_string(value))
   Ok(#(state.V(v.Integer(string.length(value))), env, k))
+}
+
+pub const string_to_binary = state.Arity1(do_string_to_binary)
+
+pub fn do_string_to_binary(in, _meta, env, k) {
+  use in <- try(cast.as_string(in))
+
+  Ok(#(state.V(v.Binary(bit_array.from_string(in))), env, k))
+}
+
+pub const string_from_binary = state.Arity1(do_string_from_binary)
+
+pub fn do_string_from_binary(in, _meta, env, k) {
+  use in <- result.then(cast.as_binary(in))
+  let value = case bit_array.to_string(in) {
+    Ok(bytes) -> v.ok(v.String(bytes))
+    Error(Nil) -> v.error(v.unit())
+  }
+  Ok(#(state.V(value), env, k))
 }
 
 pub const list_fold = state.Arity3(do_list_fold)
 
 fn do_list_fold(list, state, func, meta, env, k) {
-  use elements <- result.then(cast.as_list(list))
+  use elements <- try(cast.as_list(list))
   case elements {
     [] -> Ok(#(state.V(state), env, k))
     [element, ..rest] -> {

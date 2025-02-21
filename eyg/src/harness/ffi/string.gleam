@@ -95,27 +95,12 @@ fn do_pop_grapheme(term, _meta, env, k) {
 
 pub fn to_binary() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Binary)
-  #(type_, state.Arity1(do_to_binary))
-}
-
-pub fn do_to_binary(in, _meta, env, k) {
-  use in <- result.then(cast.as_string(in))
-
-  Ok(#(state.V(v.Binary(bit_array.from_string(in))), env, k))
+  #(type_, builtin.string_to_binary)
 }
 
 pub fn from_binary() {
   let type_ = t.Fun(t.Binary, t.Open(0), t.result(t.Str, t.unit))
-  #(type_, state.Arity1(do_from_binary))
-}
-
-pub fn do_from_binary(in, _meta, env, k) {
-  use in <- result.then(cast.as_binary(in))
-  let value = case bit_array.to_string(in) {
-    Ok(bytes) -> v.ok(v.String(bytes))
-    Error(Nil) -> v.error(v.unit())
-  }
-  Ok(#(state.V(value), env, k))
+  #(type_, builtin.string_from_binary)
 }
 
 pub fn pop_prefix() {

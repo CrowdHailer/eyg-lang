@@ -469,7 +469,7 @@ let parse = (decoder, raw) -> {
  
 let parse_bytes = (decoder, bytes) -> {
   
-  match !binary_to_string(bytes) {
+  match !string_from_binary(bytes) {
     Ok(string) -> { match flat(tokenise(string)) {
       Ok(flattened) -> { match decoder(flattened) {
         Ok({value}) -> { Ok(value) }

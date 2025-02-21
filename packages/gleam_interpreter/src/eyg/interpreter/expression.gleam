@@ -82,6 +82,8 @@ fn builtins() {
   |> dict.insert("string_starts_with", builtin.string_starts_with)
   |> dict.insert("string_ends_with", builtin.string_ends_with)
   |> dict.insert("string_length", builtin.string_length)
+  |> dict.insert("string_to_binary", builtin.string_to_binary)
+  |> dict.insert("string_from_binary", builtin.string_from_binary)
   // List
   |> dict.insert("list_fold", builtin.list_fold)
 }
