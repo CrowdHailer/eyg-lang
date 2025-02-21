@@ -22,22 +22,7 @@ pub fn split() {
 pub fn split_once() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
-  #(type_, state.Arity2(do_split_once))
-}
-
-pub fn do_split_once(s, pattern, _meta, env, k) {
-  use s <- result.then(cast.as_string(s))
-  use pattern <- result.then(cast.as_string(pattern))
-  let value = case string.split_once(s, pattern) {
-    Ok(#(pre, post)) ->
-      v.ok(
-        v.Record(
-          dict.from_list([#("pre", v.String(pre)), #("post", v.String(post))]),
-        ),
-      )
-    Error(Nil) -> v.error(v.unit())
-  }
-  Ok(#(state.V(value), env, k))
+  #(type_, builtin.string_split_once)
 }
 
 pub fn uppercase() {

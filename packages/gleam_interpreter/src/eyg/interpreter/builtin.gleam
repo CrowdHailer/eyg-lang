@@ -108,13 +108,27 @@ pub fn do_string_split(s, pattern, _meta, env, k) {
   let assert [first, ..parts] = string.split(s, pattern)
   let parts = v.LinkedList(list.map(parts, v.String))
 
-  Ok(#(
-    state.V(
-      v.Record(dict.from_list([#("head", v.String(first)), #("tail", parts)])),
-    ),
-    env,
-    k,
-  ))
+  let value =
+    v.Record(dict.from_list([#("head", v.String(first)), #("tail", parts)]))
+  Ok(#(state.V(value), env, k))
+}
+
+pub const string_split_once = state.Arity2(do_string_split_once)
+
+pub fn do_string_split_once(s, pattern, _meta, env, k) {
+  use s <- result.then(cast.as_string(s))
+  use pattern <- result.then(cast.as_string(pattern))
+  let value = case string.split_once(s, pattern) {
+    Ok(#(pre, post)) -> {
+      let record =
+        v.Record(
+          dict.from_list([#("pre", v.String(pre)), #("post", v.String(post))]),
+        )
+      v.ok(record)
+    }
+    Error(Nil) -> v.error(v.unit())
+  }
+  Ok(#(state.V(value), env, k))
 }
 
 pub const list_fold = state.Arity3(do_list_fold)

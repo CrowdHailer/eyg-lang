@@ -397,10 +397,10 @@ pub fn builtins() {
       let return = t.record([#("head", t.String), #("tail", t.List(t.String))])
       pure2(t.String, t.String, return)
     }),
-    // #("string_split_once", {
-    //   let return = t.record([#("head", t.String), #("tail", t.String)])
-    //   pure2(t.String, t.String, t.result(return, t.unit))
-    // }),
+    #("string_split_once", {
+      let return = t.record([#("head", t.String), #("tail", t.String)])
+      pure2(t.String, t.String, t.result(return, t.unit))
+    }),
     // #("string_replace", pure3(t.String, t.String, t.String, t.String)),
     // #("string_uppercase", pure1(t.String, t.String)),
     // #("string_lowercase", pure1(t.String, t.String)),
