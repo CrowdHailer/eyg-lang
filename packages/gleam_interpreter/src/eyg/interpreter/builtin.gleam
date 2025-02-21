@@ -66,9 +66,20 @@ fn do_absolute(x, _meta, env, k) {
   Ok(#(state.V(v.Integer(int.absolute_value(x))), env, k))
 }
 
-pub const int_to_string = state.Arity1(do_to_string)
+pub const int_parse = state.Arity1(do_int_parse)
 
-fn do_to_string(x, _meta, env, k) {
+fn do_int_parse(raw, _meta, env, k) {
+  use raw <- result.then(cast.as_string(raw))
+  let value = case int.parse(raw) {
+    Ok(i) -> v.ok(v.Integer(i))
+    Error(Nil) -> v.error(v.unit())
+  }
+  Ok(#(state.V(value), env, k))
+}
+
+pub const int_to_string = state.Arity1(do_int_to_string)
+
+fn do_int_to_string(x, _meta, env, k) {
   use x <- result.then(cast.as_integer(x))
   Ok(#(state.V(v.String(int.to_string(x))), env, k))
 }

@@ -67,16 +67,7 @@ pub fn absolute() {
 
 pub fn parse() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Integer)
-  #(type_, state.Arity1(do_parse))
-}
-
-fn do_parse(raw, _meta, env, k) {
-  use raw <- result.then(cast.as_string(raw))
-  let value = case int.parse(raw) {
-    Ok(i) -> v.ok(v.Integer(i))
-    Error(Nil) -> v.error(v.unit())
-  }
-  Ok(#(state.V(value), env, k))
+  #(type_, builtin.int_parse)
 }
 
 pub fn to_string() {

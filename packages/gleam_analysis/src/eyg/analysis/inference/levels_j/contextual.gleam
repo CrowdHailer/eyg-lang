@@ -389,7 +389,7 @@ pub fn builtins() {
     // Removed as negate is subtract(0, x) or multiply(-1, x)
     // #("int_negate", pure1(t.Integer, t.Integer)),
 
-    // #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
+    #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
     #("int_to_string", pure1(t.Integer, t.String)),
     // string
     #("string_append", pure2(t.String, t.String, t.String)),

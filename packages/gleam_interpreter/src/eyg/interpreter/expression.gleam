@@ -69,6 +69,7 @@ fn builtins() {
   |> dict.insert("int_multiply", builtin.multiply)
   |> dict.insert("int_divide", builtin.divide)
   |> dict.insert("int_absolute", builtin.absolute)
+  |> dict.insert("int_parse", builtin.int_parse)
   |> dict.insert("int_to_string", builtin.int_to_string)
   // String
   |> dict.insert("string_append", builtin.append)
