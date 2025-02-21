@@ -4,6 +4,7 @@ import eyg/interpreter/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/order
 import gleam/result.{try}
@@ -17,6 +18,27 @@ fn do_equal(left, right, _meta, env, k) {
     False -> v.false()
   }
   Ok(#(state.V(value), env, k))
+}
+
+pub const fix = state.Arity1(do_fix)
+
+fn do_fix(builder, meta, env, k) {
+  state.call(builder, v.Partial(v.Builtin("fixed"), [builder]), meta, env, k)
+}
+
+// fixed is not a builtin that is valid in expressions
+// it is here so that a builder that only references it's self can be a value.
+// technically its an arity 1 or 2 function.
+pub const fixed = state.Arity2(do_fixed)
+
+pub fn do_fixed(builder, arg, meta, env, k) {
+  state.call(
+    builder,
+    v.Partial(v.Builtin("fixed"), [builder]),
+    meta,
+    env,
+    state.Stack(state.CallWith(arg, env), meta, k),
+  )
 }
 
 pub const int_compare = state.Arity2(do_int_compare)

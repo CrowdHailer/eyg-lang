@@ -356,8 +356,7 @@ pub fn builtins() {
 
     // TODO test
     // if the passed in constructor raises an effect then fix does too
-    // #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
-
+    #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
     // Eval is effectful and so should be an effect, does that mean that Serialize also needs to be an effect
     // #(
     //   "eval",

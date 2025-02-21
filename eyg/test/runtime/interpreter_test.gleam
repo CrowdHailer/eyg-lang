@@ -5,7 +5,6 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json as codec
 import eyg/ir/tree as ir
-import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/io
 import gleam/list
@@ -162,10 +161,6 @@ fn check_evaluated(name, got, expected) {
 }
 
 pub fn eval_fixtures_test() {
-  // bit_array.base64_url_encode(<<255>>, False)
-  // |> io.debug
-
-  // panic
   let fixtures =
     [
       "../ir/eval_fixtures.json", "../ir/builtin_fixtures.json",

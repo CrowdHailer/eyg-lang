@@ -63,6 +63,8 @@ pub fn new_env(scope) {
 fn builtins() {
   dict.new()
   |> dict.insert("equal", builtin.equal)
+  |> dict.insert("fix", builtin.fix)
+  |> dict.insert("fixed", builtin.fixed)
   // integer
   |> dict.insert("int_compare", builtin.int_compare)
   |> dict.insert("int_add", builtin.add)

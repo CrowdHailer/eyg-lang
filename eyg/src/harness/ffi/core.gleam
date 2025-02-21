@@ -34,7 +34,7 @@ pub fn debug() {
   #(type_, state.Arity1(do_debug))
 }
 
-fn do_debug(term, rev, env, k) {
+fn do_debug(term, _meta, env, k) {
   Ok(#(state.V(v.String(old_value.debug(term))), env, k))
 }
 
@@ -45,52 +45,11 @@ pub fn fix() {
       t.Open(-3),
       t.Unbound(-1),
     )
-  #(type_, state.Arity1(do_fix))
-}
-
-fn do_fix(builder, rev, env, k) {
-  state.call(builder, v.Partial(v.Builtin("fixed"), [builder]), rev, env, k)
+  #(type_, builtin.fix)
 }
 
 pub fn fixed() {
-  // I'm not sure a type ever means anything here
-  // fixed is not a function you can reference directly it's just a runtime
-  // value produced by the fix action
-  #(
-    t.Unbound(0),
-    state.Arity2(fn(builder, arg, meta, env, k) {
-      state.call(
-        builder,
-        // always pass a reference to itself
-        v.Partial(v.Builtin("fixed"), [builder]),
-        meta,
-        env,
-        // fn(partial) {
-        //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
-        //   state.K(c, rev, e, k)
-        // },
-        state.Stack(state.CallWith(arg, env), meta, k),
-      )
-    }),
-  )
-  //   #(
-  //   t.Unbound(0),
-  //   state.Arity1(fn(builder, rev, env, k) {
-  //     state.call(
-  //       builder,
-  //       // always pass a reference to itself
-  //       v.Partial(v.Builtin("fixed"), [builder]),
-  //       rev,
-  //       env,
-  //       // fn(partial) {
-  //       //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
-  //       //   state.K(c, rev, e, k)
-  //       // },
-  //       // Some(state.Stack(state.CallWith(arg, rev, env), k)),
-  //       k
-  //     )
-  //   }),
-  // )
+  #(t.Unbound(0), builtin.fixed)
 }
 
 pub fn eval() {
