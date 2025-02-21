@@ -229,7 +229,7 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
         Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Builtin(id))
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          let meta = #(Error(error.MissingVariable(id)), type_, t.Empty, env)
+          let meta = #(Error(error.MissingBuiltin(id)), type_, t.Empty, env)
           #(bindings, type_, eff, #(ir.Builtin(id), meta))
         }
       }
@@ -352,80 +352,98 @@ fn builtin(name) {
 pub fn builtins() {
   [
     #("equal", pure2(q(0), q(0), t.boolean)),
-    #("debug", pure1(q(0), t.String)),
+    // debug is an effect because the format is not fully specified
+    // #("debug", pure1(q(0), t.String)),
+
+    // TODO test
     // if the passed in constructor raises an effect then fix does too
-    #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
-    #(
-      "eval",
-      t.Fun(q(0), t.EffectExtend("Eval", #(t.unit, t.unit), t.Empty), q(1)),
-    ),
-    #("serialize", pure1(q(0), t.String)),
-    #("capture", pure1(q(0), t.ast())),
-    #("to_javascript", pure2(q(0), q(1), t.String)),
-    #("encode_uri", pure1(t.String, t.String)),
-    #("decode_uri_component", pure1(t.String, t.String)),
-    #("base64_encode", pure1(t.Binary, t.String)),
-    #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
-    #("int_compare", {
-      let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
-      pure2(t.Integer, t.Integer, return)
-    }),
+    // #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
+
+    // Eval is effectful and so should be an effect, does that mean that Serialize also needs to be an effect
+    // #(
+    //   "eval",
+    //   t.Fun(q(0), t.EffectExtend("Eval", #(t.unit, t.unit), t.Empty), q(1)),
+    // ),
+
+    // #("serialize", pure1(q(0), t.String)),
+    // TODO test lvl2
+    // #("capture", pure1(q(0), t.ast())),
+
+    // An effect or something that is built in EYG itself
+    // #("to_javascript", pure2(q(0), q(1), t.String)),
+
+    // These should be in EYG or effects if needed
+    // #("encode_uri", pure1(t.String, t.String)),
+    // #("decode_uri_component", pure1(t.String, t.String)),
+    // #("base64_encode", pure1(t.Binary, t.String)),
+
+    // #("int_compare", {
+    //   let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
+    //   pure2(t.Integer, t.Integer, return)
+    // }),
     #("int_add", pure2(t.Integer, t.Integer, t.Integer)),
     #("int_subtract", pure2(t.Integer, t.Integer, t.Integer)),
     #("int_multiply", pure2(t.Integer, t.Integer, t.Integer)),
-    // TODO Error or effect
-    #("int_divide", pure2(t.Integer, t.Integer, t.Integer)),
-    #("int_negate", pure1(t.Integer, t.Integer)),
-    #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
+    #("int_divide", pure2(t.Integer, t.Integer, t.result(t.Integer, t.unit))),
+    #("int_absolute", pure1(t.Integer, t.Integer)),
+    // Removed as negate is subtract(0, x) or multiply(-1, x)
+    // #("int_negate", pure1(t.Integer, t.Integer)),
+
+    // #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
     #("int_to_string", pure1(t.Integer, t.String)),
+    // string
     #("string_append", pure2(t.String, t.String, t.String)),
-    #("string_replace", pure3(t.String, t.String, t.String, t.String)),
-    #("string_split", {
-      let return = t.record([#("head", t.String), #("tail", t.List(t.String))])
-      pure2(t.String, t.String, return)
-    }),
-    #("string_split_once", {
-      let return = t.record([#("head", t.String), #("tail", t.String)])
-      pure2(t.String, t.String, t.result(return, t.unit))
-    }),
-    #("string_uppercase", pure1(t.String, t.String)),
-    #("string_lowercase", pure1(t.String, t.String)),
-    #("string_starts_with", pure2(t.String, t.String, t.boolean)),
-    #("string_ends_with", pure2(t.String, t.String, t.boolean)),
-    #("string_length", pure1(t.String, t.Integer)),
-    #("pop_grapheme", {
-      let return = t.record([#("head", t.String), #("tail", t.String)])
-      pure1(t.String, t.result(return, t.unit))
-    }),
-    #("string_to_binary", pure1(t.String, t.Binary)),
-    #("binary_to_string", pure1(t.Binary, t.result(t.String, t.unit))),
-    #("pop_prefix", {
-      let eff = q(0)
-      let return = q(1)
-      let yes = t.Fun(t.String, eff, return)
-      let no = t.Fun(t.unit, eff, return)
-      t.Fun(
-        t.String,
-        t.Empty,
-        t.Fun(t.String, t.Empty, t.Fun(yes, t.Empty, t.Fun(no, eff, return))),
-      )
-    }),
-    #("uncons", {
-      let el = q(0)
-      let eff = q(1)
-      let return = q(2)
-      let empty = t.Fun(t.unit, eff, return)
-      let nonempty = t.Fun(el, eff, t.Fun(t.List(el), eff, return))
-      t.Fun(
-        t.List(el),
-        t.Empty,
-        t.Fun(empty, t.Empty, t.Fun(nonempty, eff, return)),
-      )
-    }),
-    #("list_pop", {
-      let return = t.record([#("head", q(0)), #("tail", t.List(q(0)))])
-      pure1(t.List(q(0)), t.result(return, t.unit))
-    }),
+    // #("string_replace", pure3(t.String, t.String, t.String, t.String)),
+    // #("string_split", {
+    //   let return = t.record([#("head", t.String), #("tail", t.List(t.String))])
+    //   pure2(t.String, t.String, return)
+    // }),
+    // #("string_split_once", {
+    //   let return = t.record([#("head", t.String), #("tail", t.String)])
+    //   pure2(t.String, t.String, t.result(return, t.unit))
+    // }),
+    // #("string_uppercase", pure1(t.String, t.String)),
+    // #("string_lowercase", pure1(t.String, t.String)),
+    // #("string_starts_with", pure2(t.String, t.String, t.boolean)),
+    // #("string_ends_with", pure2(t.String, t.String, t.boolean)),
+    // #("string_length", pure1(t.String, t.Integer)),
+    // #("pop_grapheme", {
+    //   let return = t.record([#("head", t.String), #("tail", t.String)])
+    //   pure1(t.String, t.result(return, t.unit))
+    // }),
+    // #("pop_prefix", {
+    //   let eff = q(0)
+    //   let return = q(1)
+    //   let yes = t.Fun(t.String, eff, return)
+    //   let no = t.Fun(t.unit, eff, return)
+    //   t.Fun(
+    //     t.String,
+    //     t.Empty,
+    //     t.Fun(t.String, t.Empty, t.Fun(yes, t.Empty, t.Fun(no, eff, return))),
+    //   )
+    // }),
+    // #("string_to_binary", pure1(t.String, t.Binary)),
+    // #("binary_to_string", pure1(t.Binary, t.result(t.String, t.unit))),
+    // This should be literals
+    // #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
+
+    // Don't optimise for object creation
+    // #("uncons", {
+    //   let el = q(0)
+    //   let eff = q(1)
+    //   let return = q(2)
+    //   let empty = t.Fun(t.unit, eff, return)
+    //   let nonempty = t.Fun(el, eff, t.Fun(t.List(el), eff, return))
+    //   t.Fun(
+    //     t.List(el),
+    //     t.Empty,
+    //     t.Fun(empty, t.Empty, t.Fun(nonempty, eff, return)),
+    //   )
+    // }),
+    // #("list_pop", {
+    //   let return = t.record([#("head", q(0)), #("tail", t.List(q(0)))])
+    //   pure1(t.List(q(0)), t.result(return, t.unit))
+    // }),
     #("list_fold", {
       let el = q(0)
       let acc = q(1)

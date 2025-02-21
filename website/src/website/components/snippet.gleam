@@ -1141,6 +1141,7 @@ pub type TypeError {
   ReferenceNotFetched
   Todo
   MissingVariable(String)
+  MissingBuiltin(String)
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
   Recursive
@@ -1186,6 +1187,7 @@ pub fn type_errors(state) {
         }
       error.Todo -> Todo
       error.MissingVariable(var) -> MissingVariable(var)
+      error.MissingBuiltin(var) -> MissingBuiltin(var)
       error.TypeMismatch(a, b) -> TypeMismatch(a, b)
       error.MissingRow(l) -> MissingRow(l)
       error.Recursive -> Recursive
@@ -1279,25 +1281,28 @@ fn render_structured_note_about_error(error) {
   let #(path, reason) = error
   // TODO color, don't border all errors
   let reason = case reason {
-    ReleaseInvalid -> "pretty"
-    ReleaseCheckDoesntMatch(_) -> "pretty"
-    ReleaseNotFetched(_) -> "pretty"
-    ReleaseFragmentNotFetched(_) -> "pretty"
-    FragmentInvalid -> "pretty"
-    ReferenceNotFetched -> "pretty"
-    Todo -> "pretty"
-    MissingVariable(_) -> "pretty"
-    TypeMismatch(_t, _t) -> "pretty"
-    MissingRow(_) -> "pretty"
-    Recursive -> "pretty"
-    SameTail(_t, _t) -> "pretty"
+    ReleaseInvalid -> "ReleaseInvalid"
+    ReleaseCheckDoesntMatch(_) -> "ReleaseCheckDoesntMatch"
+    ReleaseNotFetched(_) -> "ReleaseNotFetched"
+    ReleaseFragmentNotFetched(_) -> "ReleaseFragmentNotFetched"
+    FragmentInvalid -> "FragmentInvalid"
+    ReferenceNotFetched -> "ReferenceNotFetched"
+    Todo -> "Todo"
+    MissingVariable(var) ->
+      "The variable '" <> var <> "' is not available here."
+    MissingBuiltin(identifier) ->
+      "The built-in function '!" <> identifier <> "' is not implemented."
+    TypeMismatch(_t, _t) -> "TypeMismatch"
+    MissingRow(_) -> "MissingRow"
+    Recursive -> "Recursive"
+    SameTail(_t, _t) -> "SameTail"
   }
   h.div([event.on_click(UserClickedPath(path))], [element.text(reason)])
   // radio shows just one of the errors open at a time
-  h.details([], [
-    h.summary([], [element.text(reason)]),
-    h.div([], [element.text("MOOOOARE")]),
-  ])
+  // h.details([], [
+  //   h.summary([], [element.text(reason)]),
+  //   h.div([], [element.text("MOOOOARE")]),
+  // ])
 }
 
 pub fn reason_to_html(r) {

@@ -4,6 +4,7 @@ import gleam/list
 pub type Reason {
   Todo
   MissingVariable(String)
+  MissingBuiltin(String)
   MissingReference(String)
   UndefinedRelease(package: String, release: Int, cid: String)
   TypeMismatch(binding.Mono, binding.Mono)

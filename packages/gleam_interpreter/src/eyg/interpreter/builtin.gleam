@@ -47,6 +47,18 @@ fn do_multiply(left, right, _meta, env, k) {
   Ok(#(state.V(v.Integer(left * right)), env, k))
 }
 
+pub const divide = state.Arity2(do_divide)
+
+fn do_divide(left, right, _meta, env, k) {
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
+  let value = case right {
+    0 -> v.error(v.unit())
+    _ -> v.ok(v.Integer(left / right))
+  }
+  Ok(#(state.V(value), env, k))
+}
+
 pub const absolute = state.Arity1(do_absolute)
 
 fn do_absolute(x, _meta, env, k) {

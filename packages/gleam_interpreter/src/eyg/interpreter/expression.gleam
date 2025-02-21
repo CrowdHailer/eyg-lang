@@ -63,11 +63,15 @@ pub fn new_env(scope) {
 fn builtins() {
   dict.new()
   |> dict.insert("equal", builtin.equal)
+  // integer
   |> dict.insert("int_add", builtin.add)
   |> dict.insert("int_subtract", builtin.subtract)
   |> dict.insert("int_multiply", builtin.multiply)
+  |> dict.insert("int_divide", builtin.divide)
   |> dict.insert("int_absolute", builtin.absolute)
   |> dict.insert("int_to_string", builtin.int_to_string)
+  // String
   |> dict.insert("string_append", builtin.append)
+  // List
   |> dict.insert("list_fold", builtin.list_fold)
 }

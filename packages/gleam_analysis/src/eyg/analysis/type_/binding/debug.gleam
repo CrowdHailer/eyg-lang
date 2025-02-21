@@ -67,6 +67,7 @@ pub fn render_reason(reason) {
   case reason {
     error.Todo -> "code incomplete"
     error.MissingVariable(label) -> "missing variable '" <> label <> "'"
+    error.MissingBuiltin(label) -> "missing variable '!" <> label <> "'"
     error.MissingReference(label) -> "missing reference #" <> label
     error.UndefinedRelease(package, release, _cid) ->
       "release undefined: @" <> package <> ":" <> int.to_string(release)

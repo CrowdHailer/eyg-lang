@@ -345,7 +345,7 @@ pub fn builtin_test() {
 
   "!not_a_thing"
   |> calc(t.Empty)
-  |> should.equal([#(Error(error.MissingVariable("not_a_thing")), "0", "")])
+  |> should.equal([#(Error(error.MissingBuiltin("not_a_thing")), "0", "")])
 }
 
 // (x) -<Log String {}, Alert String 0, ..1> List(x)
