@@ -439,10 +439,10 @@ pub fn builtins() {
     //     t.Fun(empty, t.Empty, t.Fun(nonempty, eff, return)),
     //   )
     // }),
-    // #("list_pop", {
-    //   let return = t.record([#("head", q(0)), #("tail", t.List(q(0)))])
-    //   pure1(t.List(q(0)), t.result(return, t.unit))
-    // }),
+    #("list_pop", {
+      let return = t.record([#("head", q(0)), #("tail", t.List(q(0)))])
+      pure1(t.List(q(0)), t.result(return, t.unit))
+    }),
     #("list_fold", {
       let el = q(0)
       let acc = q(1)

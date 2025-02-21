@@ -4,7 +4,6 @@ import eyg/interpreter/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/order
 import gleam/result.{try}
@@ -227,6 +226,22 @@ pub fn do_string_from_binary(in, _meta, env, k) {
     Error(Nil) -> v.error(v.unit())
   }
   Ok(#(state.V(value), env, k))
+}
+
+pub const list_pop = state.Arity1(do_list_pop)
+
+fn do_list_pop(term, _meta, env, k) {
+  use elements <- result.then(cast.as_list(term))
+  let return = case elements {
+    [] -> v.error(v.unit())
+    [head, ..tail] ->
+      v.ok(
+        v.Record(
+          dict.from_list([#("head", head), #("tail", v.LinkedList(tail))]),
+        ),
+      )
+  }
+  Ok(#(state.V(return), env, k))
 }
 
 pub const list_fold = state.Arity3(do_list_fold)

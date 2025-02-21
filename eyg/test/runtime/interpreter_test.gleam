@@ -79,6 +79,13 @@ fn value_decoder() {
                   use string <- decode.field("string", decode.string)
                   decode.success(v.String(string))
                 },
+                {
+                  use items <- decode.field(
+                    "list",
+                    decode.list(value_decoder()),
+                  )
+                  decode.success(v.LinkedList(items))
+                },
               ],
             ),
           )

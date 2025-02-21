@@ -87,5 +87,6 @@ fn builtins() {
   |> dict.insert("string_to_binary", builtin.string_to_binary)
   |> dict.insert("string_from_binary", builtin.string_from_binary)
   // List
+  |> dict.insert("list_pop", builtin.list_pop)
   |> dict.insert("list_fold", builtin.list_fold)
 }

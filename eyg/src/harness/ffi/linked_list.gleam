@@ -3,7 +3,6 @@ import eyg/interpreter/builtin
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
-import gleam/dict
 import gleam/result
 
 pub fn pop() {
@@ -15,21 +14,7 @@ pub fn pop() {
     ))
   let type_ =
     t.Fun(t.LinkedList(t.Unbound(0)), t.Open(1), t.result(parts, t.unit))
-  #(type_, state.Arity1(do_pop))
-}
-
-fn do_pop(term, meta, env, k) {
-  use elements <- result.then(cast.as_list(term))
-  let return = case elements {
-    [] -> v.error(v.unit())
-    [head, ..tail] ->
-      v.ok(
-        v.Record(
-          dict.from_list([#("head", head), #("tail", v.LinkedList(tail))]),
-        ),
-      )
-  }
-  Ok(#(state.V(return), env, k))
+  #(type_, builtin.list_pop)
 }
 
 pub fn fold() {
