@@ -402,8 +402,8 @@ pub fn builtins() {
       pure2(t.String, t.String, t.result(return, t.unit))
     }),
     // #("string_replace", pure3(t.String, t.String, t.String, t.String)),
-    // #("string_uppercase", pure1(t.String, t.String)),
-    // #("string_lowercase", pure1(t.String, t.String)),
+    #("string_uppercase", pure1(t.String, t.String)),
+    #("string_lowercase", pure1(t.String, t.String)),
     // #("string_starts_with", pure2(t.String, t.String, t.boolean)),
     // #("string_ends_with", pure2(t.String, t.String, t.boolean)),
     // #("string_length", pure1(t.String, t.Integer)),

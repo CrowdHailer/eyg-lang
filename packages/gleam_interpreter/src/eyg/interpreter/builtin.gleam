@@ -131,6 +131,20 @@ pub fn do_string_split_once(s, pattern, _meta, env, k) {
   Ok(#(state.V(value), env, k))
 }
 
+pub const string_uppercase = state.Arity1(do_string_uppercase)
+
+pub fn do_string_uppercase(value, _meta, env, k) {
+  use value <- result.then(cast.as_string(value))
+  Ok(#(state.V(v.String(string.uppercase(value))), env, k))
+}
+
+pub const string_lowercase = state.Arity1(do_string_lowercase)
+
+pub fn do_string_lowercase(value, _meta, env, k) {
+  use value <- result.then(cast.as_string(value))
+  Ok(#(state.V(v.String(string.lowercase(value))), env, k))
+}
+
 pub const list_fold = state.Arity3(do_list_fold)
 
 fn do_list_fold(list, state, func, meta, env, k) {

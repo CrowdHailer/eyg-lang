@@ -25,24 +25,32 @@ pub fn split_once() {
   #(type_, builtin.string_split_once)
 }
 
-pub fn uppercase() {
-  let type_ = t.Fun(t.Str, t.Open(0), t.Str)
-  #(type_, state.Arity1(do_uppercase))
+pub fn replace() {
+  let type_ =
+    t.Fun(
+      t.Str,
+      t.Open(0),
+      t.Fun(t.Str, t.Open(1), t.Fun(t.Str, t.Open(1), t.Str)),
+    )
+  #(type_, state.Arity3(do_replace))
 }
 
-pub fn do_uppercase(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.String(string.uppercase(value))), env, k))
+pub fn do_replace(in, from, to, _meta, env, k) {
+  use in <- result.then(cast.as_string(in))
+  use from <- result.then(cast.as_string(from))
+  use to <- result.then(cast.as_string(to))
+
+  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
+}
+
+pub fn uppercase() {
+  let type_ = t.Fun(t.Str, t.Open(0), t.Str)
+  #(type_, builtin.string_uppercase)
 }
 
 pub fn lowercase() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Str)
-  #(type_, state.Arity1(do_lowercase))
-}
-
-pub fn do_lowercase(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.String(string.lowercase(value))), env, k))
+  #(type_, builtin.string_lowercase)
 }
 
 pub fn starts_with() {
@@ -106,24 +114,6 @@ fn do_pop_grapheme(term, _meta, env, k) {
       )
   }
   Ok(#(state.V(return), env, k))
-}
-
-pub fn replace() {
-  let type_ =
-    t.Fun(
-      t.Str,
-      t.Open(0),
-      t.Fun(t.Str, t.Open(1), t.Fun(t.Str, t.Open(1), t.Str)),
-    )
-  #(type_, state.Arity3(do_replace))
-}
-
-pub fn do_replace(in, from, to, _meta, env, k) {
-  use in <- result.then(cast.as_string(in))
-  use from <- result.then(cast.as_string(from))
-  use to <- result.then(cast.as_string(to))
-
-  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
 }
 
 pub fn to_binary() {
