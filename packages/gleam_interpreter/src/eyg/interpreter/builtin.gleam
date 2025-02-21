@@ -131,6 +131,16 @@ pub fn do_string_split_once(s, pattern, _meta, env, k) {
   Ok(#(state.V(value), env, k))
 }
 
+pub const string_replace = state.Arity3(do_string_replace)
+
+pub fn do_string_replace(in, from, to, _meta, env, k) {
+  use in <- result.then(cast.as_string(in))
+  use from <- result.then(cast.as_string(from))
+  use to <- result.then(cast.as_string(to))
+
+  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
+}
+
 pub const string_uppercase = state.Arity1(do_string_uppercase)
 
 pub fn do_string_uppercase(value, _meta, env, k) {
@@ -168,6 +178,13 @@ fn bool(value) {
     True -> v.true()
     False -> v.false()
   }
+}
+
+pub const string_length = state.Arity1(do_string_length)
+
+pub fn do_string_length(value, _meta, env, k) {
+  use value <- result.then(cast.as_string(value))
+  Ok(#(state.V(v.Integer(string.length(value))), env, k))
 }
 
 pub const list_fold = state.Arity3(do_list_fold)

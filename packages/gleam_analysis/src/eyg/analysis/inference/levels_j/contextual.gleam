@@ -401,13 +401,13 @@ pub fn builtins() {
       let return = t.record([#("head", t.String), #("tail", t.String)])
       pure2(t.String, t.String, t.result(return, t.unit))
     }),
-    // #("string_replace", pure3(t.String, t.String, t.String, t.String)),
+    #("string_replace", pure3(t.String, t.String, t.String, t.String)),
     #("string_uppercase", pure1(t.String, t.String)),
     #("string_lowercase", pure1(t.String, t.String)),
     // pop prefix only works for start with. I'm not sure pop prefix is the format we want to stay with
     #("string_starts_with", pure2(t.String, t.String, t.boolean)),
     #("string_ends_with", pure2(t.String, t.String, t.boolean)),
-    // #("string_length", pure1(t.String, t.Integer)),
+    #("string_length", pure1(t.String, t.Integer)),
     // #("pop_grapheme", {
     //   let return = t.record([#("head", t.String), #("tail", t.String)])
     //   pure1(t.String, t.result(return, t.unit))

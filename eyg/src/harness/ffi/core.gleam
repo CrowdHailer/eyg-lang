@@ -135,6 +135,7 @@ pub fn lib() {
   |> extend("pop_grapheme", string.pop_grapheme())
   |> extend("string_to_binary", string.to_binary())
   |> extend("binary_to_string", string.from_binary())
+  // pop_prefix is the same as split once need some testing on speed
   |> extend("pop_prefix", string.pop_prefix())
   // list
   |> extend("uncons", linked_list.uncons())

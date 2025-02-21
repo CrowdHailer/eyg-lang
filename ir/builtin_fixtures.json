@@ -790,6 +790,68 @@
     }
   },
   {
+    "name": "string replace",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "aa"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "e"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Hey there"
+          },
+          "f": {
+            "0": "b",
+            "l": "string_replace"
+          }
+        }
+      }
+    },
+    "value": {
+      "string": "Haay thaaraa"
+    }
+  },
+  {
+    "name": "string replace blank",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "aa"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": ""
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Go"
+          },
+          "f": {
+            "0": "b",
+            "l": "string_replace"
+          }
+        }
+      }
+    },
+    "value": {
+      "string": "aaGaaoaa"
+    }
+  },
+  {
     "name": "string uppercase",
     "source": {
       "0": "a",
@@ -937,6 +999,40 @@
           "record": {}
         }
       }
+    }
+  },
+  {
+    "name": "string length",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "four"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_length"
+      }
+    },
+    "value": {
+      "integer": 4
+    }
+  },
+  {
+    "name": "string length grapheme",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "ß↑e̊"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_length"
+      }
+    },
+    "value": {
+      "integer": 3
     }
   },
   {

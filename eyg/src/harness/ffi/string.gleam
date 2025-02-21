@@ -32,15 +32,7 @@ pub fn replace() {
       t.Open(0),
       t.Fun(t.Str, t.Open(1), t.Fun(t.Str, t.Open(1), t.Str)),
     )
-  #(type_, state.Arity3(do_replace))
-}
-
-pub fn do_replace(in, from, to, _meta, env, k) {
-  use in <- result.then(cast.as_string(in))
-  use from <- result.then(cast.as_string(from))
-  use to <- result.then(cast.as_string(to))
-
-  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
+  #(type_, builtin.string_replace)
 }
 
 pub fn uppercase() {
@@ -77,12 +69,7 @@ pub fn ends_with() {
 
 pub fn length() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Integer)
-  #(type_, state.Arity1(do_length))
-}
-
-pub fn do_length(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Integer(string.length(value))), env, k))
+  #(type_, builtin.string_length)
 }
 
 pub fn pop_grapheme() {
