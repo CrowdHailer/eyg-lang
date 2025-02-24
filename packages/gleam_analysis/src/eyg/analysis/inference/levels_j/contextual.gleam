@@ -354,7 +354,6 @@ pub fn builtins() {
     // debug is an effect because the format is not fully specified
     // #("debug", pure1(q(0), t.String)),
 
-    // TODO test
     // if the passed in constructor raises an effect then fix does too
     #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
     // Eval is effectful and so should be an effect, does that mean that Serialize also needs to be an effect
