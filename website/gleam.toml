@@ -23,7 +23,7 @@ gleroglero = ">= 1.1.0 and < 2.0.0"
 simplifile = ">= 1.7.0 and < 2.0.0"
 gleam_time = ">= 0.0.0 and < 2.0.0"
 gleamx = {path= "../packages/gleamx"}
-eyg_ir = {path= "../packages/eyg_ir"}
+eyg_ir = {path= "../packages/gleam_ir"}
 eyg_interpreter = {path= "../packages/gleam_interpreter"}
 eyg_analysis = {path= "../packages/gleam_analysis"}
 morph = {path= "../packages/morph"}

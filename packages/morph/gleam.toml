@@ -15,7 +15,7 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-eyg_ir = {path = "../eyg_ir"}
+eyg_ir = {path = "../gleam_ir"}
 eyg_interpreter = {path = "../gleam_interpreter"}
 eyg_analysis = {path = "../gleam_analysis"}
 gleamx = {path = "../gleamx"}

@@ -32,7 +32,7 @@ supa = ">= 1.0.0 and < 2.0.0"
 mysig = {path = "../../mysig"}
 snag = ">= 1.1.0 and < 2.0.0"
 gleam_regexp = ">= 1.1.0 and < 2.0.0"
-eyg_ir = {path= "../packages/eyg_ir"}
+eyg_ir = {path= "../packages/gleam_ir"}
 eyg_interpreter = {path= "../packages/gleam_interpreter"}
 eyg_analysis = {path= "../packages/gleam_analysis"}
 gleamx = {path= "../packages/gleamx"}
