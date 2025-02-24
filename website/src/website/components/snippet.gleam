@@ -274,9 +274,7 @@ pub fn source(state) {
 
 pub fn set_references(state, cache) {
   // If evaluated changes then run should change in the same way
-  io.debug("mooooo")
   let evaluated = evaluate(source(state), state.scope, cache)
-  io.debug(evaluated)
   let run = case state.run {
     NotRunning -> state.run
     Running(return, effects) ->
@@ -586,7 +584,6 @@ fn run_handle_effect(state, task_id, value) {
         |> run_blocking(state.cache, state.effects, block.resume)
       let run = Running(return, effects)
       let state = Snippet(..state, task_counter: task_id, run: run)
-      io.debug("might conclude")
       #(state, Nothing)
     }
     _, _ -> #(state, Nothing)
@@ -1156,8 +1153,6 @@ pub fn type_errors(state) {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }
-  // io.debug("===========================================================")
-  // io.debug(cache.fragments)
   list.map(errors, fn(error) {
     let #(meta, error) = error
     let error = case error {

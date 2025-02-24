@@ -1,9 +1,7 @@
 import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/dict.{type Dict}
-import gleam/io
 import gleam/javascript/promisex
-import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
@@ -367,9 +365,7 @@ pub fn update(state: State, message) {
     }
     SyncMessage(message) -> {
       let State(cache: sync_client, ..) = state
-      io.debug(message)
       let #(sync_client, effect) = client.update(sync_client, message)
-      io.debug(sync_client)
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
           snippet.set_references(v, sync_client.cache)

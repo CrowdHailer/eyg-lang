@@ -3,11 +3,8 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/dynamic/decode
-import gleam/http
 import gleam/http/request
 import gleam/http/response
-import gleam/io
-import gleam/json
 import gleam/list
 import gleam/result
 import gleam/string
@@ -117,23 +114,6 @@ fn registration_decoder() {
   use name <- decode.field("name", decode.string)
   use package_id <- decode.field("package_id", decode.string)
   decode.success(Registration(id, created_at, name, package_id))
-}
-
-// invite needs admin
-pub fn invite(email_address) {
-  let request =
-    base()
-    |> request.set_method(http.Post)
-    |> request.set_path("/auth/v1/invite")
-    |> request.set_body(<<
-      json.to_string(json.object([#("email", json.string(email_address))])):utf8,
-    >>)
-  io.debug(request)
-  use response <- t.do(t.fetch(request))
-  io.debug(response)
-
-  use data <- t.try(decode(response, todo))
-  t.done(data)
 }
 
 pub fn fetch_index() {

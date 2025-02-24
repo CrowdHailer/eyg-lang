@@ -1,14 +1,10 @@
-import gleam/dict
 import gleam/http
-import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/option.{Some}
 import gleam/uri
 import midas/browser
-import midas/task as t
 import plinth/browser/window
-import website/sync/supabase
 import website/sync/sync
 
 pub fn get_origin() {
