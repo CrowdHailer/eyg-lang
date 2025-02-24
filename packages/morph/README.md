@@ -1,18 +1,7 @@
 # morph
 
-[![Package Version](https://img.shields.io/hexpm/v/morph)](https://hex.pm/packages/morph)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/morph/)
-
-```sh
-gleam add morph@1
-```
-```gleam
-import morph
-
-pub fn main() {
-  // TODO: An example of the project in use
-}
-```
+Morph abstracts structurally editing the EYG Intermediate Representations (EYG IR).
+This package is used by the structural editor on [eyg.run](https://eyg.run).
 
 Further documentation can be found at <https://hexdocs.pm/morph>.
 

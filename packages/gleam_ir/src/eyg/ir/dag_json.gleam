@@ -90,7 +90,7 @@ pub fn decode(json) {
 pub fn from_block(data) {
   case codec.decode(data) {
     Ok(json) -> decode(json)
-    Error(_) -> Error([])
+    Error(reason) -> Error([decode.DecodeError("valid dag-json", reason, [])])
   }
 }
 

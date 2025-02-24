@@ -1,15 +1,15 @@
-import eyg/parse
+import eyg/ir/dag_json
+import gleam/bit_array
 import gleam/option.{None}
-import gleam/pair
 import gleeunit/should
 import morph/editable as e
 import morph/projection as p
 
 pub fn from_string(source) {
   source
-  |> parse.from_string()
+  |> bit_array.from_string()
+  |> dag_json.from_block()
   |> should.be_ok()
-  |> pair.first()
   |> e.from_annotated()
 }
 
@@ -22,11 +22,7 @@ pub fn rebuild(scope) {
 
 pub fn let_test() {
   let source =
-    "let a = 1
-    let b =
-      let x = \"hello\"
-      x
-    b"
+    "{\"0\":\"l\",\"l\":\"a\",\"t\":{\"0\":\"l\",\"l\":\"b\",\"t\":{\"0\":\"v\",\"l\":\"b\"},\"v\":{\"0\":\"l\",\"l\":\"x\",\"t\":{\"0\":\"v\",\"l\":\"x\"},\"v\":{\"0\":\"s\",\"v\":\"hello\"}}},\"v\":{\"0\":\"i\",\"v\":1}}"
     |> from_string()
     |> e.open_all
 
@@ -45,12 +41,7 @@ pub fn let_test() {
 
 pub fn list_test() {
   let source =
-    "[
-      let x = []
-      x,
-      [1, 2],
-      [3,..y]
-    ]"
+    "{\"0\":\"a\",\"a\":{\"0\":\"a\",\"a\":{\"0\":\"a\",\"a\":{\"0\":\"ta\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"a\",\"a\":{\"0\":\"v\",\"l\":\"y\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"i\",\"v\":3},\"f\":{\"0\":\"c\"}}},\"f\":{\"0\":\"c\"}}},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"a\",\"a\":{\"0\":\"a\",\"a\":{\"0\":\"ta\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"i\",\"v\":2},\"f\":{\"0\":\"c\"}}},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"i\",\"v\":1},\"f\":{\"0\":\"c\"}}},\"f\":{\"0\":\"c\"}}},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"l\",\"l\":\"x\",\"t\":{\"0\":\"v\",\"l\":\"x\"},\"v\":{\"0\":\"ta\"}},\"f\":{\"0\":\"c\"}}}"
     |> from_string()
   let scope = p.focus_at(source, [1, 1])
   scope.0
@@ -67,10 +58,7 @@ pub fn list_test() {
 
 pub fn record_test() {
   let source =
-    "{
-      foo: {},
-      bar: 1
-    }"
+    "{\"0\":\"a\",\"a\":{\"0\":\"a\",\"a\":{\"0\":\"u\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"i\",\"v\":1},\"f\":{\"0\":\"e\",\"l\":\"bar\"}}},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"u\"},\"f\":{\"0\":\"e\",\"l\":\"foo\"}}}"
     |> from_string()
   let scope = p.focus_at(source, [1])
   scope.0
@@ -93,8 +81,7 @@ pub fn record_test() {
 
 pub fn let_pattern_test() {
   let source =
-    "let {x, y: a} = {}
-    a"
+    "{\"0\":\"l\",\"l\":\"$\",\"t\":{\"0\":\"l\",\"l\":\"x\",\"t\":{\"0\":\"l\",\"l\":\"a\",\"t\":{\"0\":\"v\",\"l\":\"a\"},\"v\":{\"0\":\"a\",\"a\":{\"0\":\"v\",\"l\":\"$\"},\"f\":{\"0\":\"g\",\"l\":\"y\"}}},\"v\":{\"0\":\"a\",\"a\":{\"0\":\"v\",\"l\":\"$\"},\"f\":{\"0\":\"g\",\"l\":\"x\"}}},\"v\":{\"0\":\"u\"}}"
     |> from_string()
 
   let scope = p.focus_at(source, [0, 1])
@@ -104,10 +91,7 @@ pub fn let_pattern_test() {
 
 pub fn case_test() {
   let source =
-    "match x {
-      Ok(y) -> { y }
-      | (_) -> { 2 }
-    }"
+    "{\"0\":\"a\",\"a\":{\"0\":\"v\",\"l\":\"x\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"f\",\"b\":{\"0\":\"i\",\"v\":2},\"l\":\"_\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"f\",\"b\":{\"0\":\"v\",\"l\":\"y\"},\"l\":\"y\"},\"f\":{\"0\":\"m\",\"l\":\"Ok\"}}}}"
     |> from_string()
   let scope = p.focus_at(source, [0])
   scope.0
