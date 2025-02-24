@@ -19,7 +19,7 @@ eyg_ir = {path = "../gleam_ir"}
 eyg_interpreter = {path = "../gleam_interpreter"}
 eyg_analysis = {path = "../gleam_analysis"}
 gleamx = {path = "../gleamx"}
-plinth = {path = "../../../../plinth"}
+plinth = ">= 0.5.8 and < 1.0.0"
 lustre = ">= 4.6.4 and < 5.0.0"
 
 [dev-dependencies]
