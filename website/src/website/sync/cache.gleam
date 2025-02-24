@@ -225,27 +225,9 @@ pub fn package_index(cache) {
         // We start on version 1
         let latest = x
         case dict.get(package, latest) {
-          Ok(Release(hash: hash_ref, ..)) ->
-            case dict.get(fragments, hash_ref) {
-              Ok(Fragment(value: Ok(_), ..)) ->
-                Ok(#(name <> ":" <> int.to_string(latest), Nil))
-              _ -> {
-                // console.warn(
-                //   "failed to load package ref "
-                //   <> name
-                //   <> ":"
-                //   <> int.to_string(latest),
-                // )
-                Error(Nil)
-              }
-            }
+          Ok(Release(hash: cid, ..)) -> Ok(#(name, x, cid))
           Error(Nil) -> {
-            // console.warn(
-            //   "failed get latest for package ref "
-            //   <> name
-            //   <> ":"
-            //   <> int.to_string(latest),
-            // )
+            io.println("There should be a release")
             Error(Nil)
           }
         }

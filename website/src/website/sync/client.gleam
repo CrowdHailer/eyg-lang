@@ -49,7 +49,6 @@ pub fn update(state, message) {
     FragmentFetched(cid, Ok(bytes)) ->
       case cache.install_fragment(cache, cid, bytes) {
         Ok(#(cache, required)) -> {
-          io.debug(cache)
           let state = Client(cache)
           #(state, RequireFragments(required))
         }
