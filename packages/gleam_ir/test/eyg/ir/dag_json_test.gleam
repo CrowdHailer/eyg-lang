@@ -12,7 +12,7 @@ type Fixture {
   Fixture(name: String, source: Dynamic, cid: String)
 }
 
-fn fixture_decoder() {
+fn suite_decoder() {
   decode.list({
     use name <- decode.field("name", decode.string)
 
@@ -25,16 +25,16 @@ fn fixture_decoder() {
   })
 }
 
-pub fn dag_json_test() {
-  let fixtures =
-    simplifile.read_bits("../../ir/ir_fixtures.json")
+pub fn ir_suite_test() {
+  let tests =
+    simplifile.read_bits("../../spec/ir_suite.json")
     |> should.be_ok
     |> dag_json.decode()
     |> should.be_ok
-    |> decode.run(fixture_decoder())
+    |> decode.run(suite_decoder())
     |> should.be_ok
 
-  list.map(fixtures, fn(fixture) {
+  list.map(tests, fn(fixture) {
     let Fixture(name, raw, cid) = fixture
     let source =
       codec.decode(raw)

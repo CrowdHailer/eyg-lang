@@ -44,10 +44,8 @@ pub fn await(ret) {
   }
 }
 
-// TODO remove old execute, should the interpreter make blocking and other execution methods available or are there too many options
-// TODO should it even accept scope?
 pub fn execute_next(exp, scope) {
-  execute(exp, new_env(scope), dict.new())
+  loop(state.step(state.E(exp), new_env(scope), state.Empty(dict.new())))
 }
 
 // f should have all the required env information

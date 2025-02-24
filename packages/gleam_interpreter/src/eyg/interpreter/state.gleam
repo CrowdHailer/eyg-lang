@@ -3,7 +3,6 @@ import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/int
 import gleam/list
 import gleam/result
 

@@ -4,12 +4,12 @@ import assert from "node:assert";
 import { readFileSync } from "fs";
 import { eval_, Tagged } from "./src/interpreter.mjs";
 
-const testPath = "../../ir/"
+const testPath = "../../spec/evaluation/"
 
 describe("specification tests", () => {
   [
-    "eval_fixtures.json",
-    "builtin_fixtures.json"
+    "core_suite.json",
+    "builtins_suite.json"
   ].forEach((testFile) => {
     let specs = JSON.parse(readFileSync(testPath + testFile, "utf8"))
     specs.forEach(({ name, source, effects, value, break: break_ }) => {

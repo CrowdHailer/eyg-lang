@@ -138,7 +138,7 @@ fn expectation_decoder() {
   )
 }
 
-fn fixture_decoder() {
+fn suite_decoder() {
   decode.list({
     use name <- decode.field("name", decode.string)
     use source <- decode.field("source", codec.decoder(Nil))
@@ -161,29 +161,27 @@ fn check_evaluated(name, got, expected) {
       panic as { name <> " failed because " <> string.inspect(reason) }
     }
     _, _ -> {
-      io.debug(got)
+      let _ = io.debug(got)
       panic as { name <> " failed" }
     }
   }
 }
 
-pub fn eval_fixtures_test() {
-  let fixtures =
-    [
-      "../ir/eval_fixtures.json", "../ir/builtin_fixtures.json",
-      "../ir/effect_fixtures.json",
-    ]
+pub fn evaluation_suite_test() {
+  let dir = "../../spec/evaluation/"
+  let tests =
+    ["core_suite.json", "builtins_suite.json", "effects_suite.json"]
     |> list.map(fn(file) {
-      simplifile.read_bits(file)
+      simplifile.read_bits(dir <> file)
       |> should.be_ok
       |> dag_json.decode()
       |> should.be_ok
-      |> decode.run(fixture_decoder())
+      |> decode.run(suite_decoder())
       |> should.be_ok
     })
     |> list.flatten
 
-  list.map(fixtures, fn(fixture) {
+  list.map(tests, fn(fixture) {
     let Fixture(name, source, effects, expected) = fixture
     let got = r.execute_next(source, [])
     let final =
@@ -202,4 +200,3 @@ pub fn eval_fixtures_test() {
     check_evaluated(name, final, expected)
   })
 }
-// capture_fixtures

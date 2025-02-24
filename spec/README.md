@@ -1,6 +1,15 @@
-# EYG Intermediate Representation(IR) in JSON
+# EYG Spec
 
-This document describes the JSON structure of an EYG program.
+Specification of the EYG language.
+Includes test suites for features to encourage valid alternative implementations.
+
+## Intermediate Representation(IR) in JSON
+
+This section describes the JSON structure of a stored EYG program.
+Tests for encoding, decoding and hashing are in [ir_suite.json](./ir_suite.json)
+
+**NOTE:** EYG does not have an official syntax, instead the AST is the front-end for the language tooling.
+
 All valid programs have a single root expression.
 
 The type of each node is identified by a value under the `"0"` key.
@@ -93,4 +102,3 @@ For example a program without `fix` is total an guaranteed to terminate.
 It is a non-goal of the eyg libraries to support all these usecases.
 However if you have a need for them please reach out.
 
-## Legacy 
