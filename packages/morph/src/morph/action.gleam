@@ -306,21 +306,12 @@ pub fn insert_named_reference(projection) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let current = case exp {
-        e.Release(package, release, _id) ->
-          package <> ":" <> int.to_string(release)
-        _ -> ""
+        e.Release(package, release, cid) -> Some(#(package, release, cid))
+        _ -> None
       }
       Ok(
-        #(current, fn(id) {
-          let #(package, release) = case string.split_once(id, ":") {
-            Ok(#(package, release)) ->
-              case int.parse(release) {
-                Ok(release) -> #(package, release)
-                Error(Nil) -> #(package, 1)
-              }
-            Error(Nil) -> #(id, 1)
-          }
-          #(p.Exp(e.Release(package, release, "TODO lookup")), zoom)
+        #(current, fn(package, release, cid) {
+          #(p.Exp(e.Release(package, release, cid)), zoom)
         }),
       )
     }

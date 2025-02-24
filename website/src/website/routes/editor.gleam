@@ -468,6 +468,7 @@ fn render_pallet(state: snippet.Snippet) {
           ]
           |> not_a_modal(picker.Dismissed)
           |> element.map(snippet.MessageFromPicker)
+        snippet.SelectRelease(_, _) -> todo as "why do we have both"
 
         snippet.EditText(value, _rebuild) ->
           render_text(value)

@@ -42,6 +42,7 @@ import plinth/browser/element as dom_element
 import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
+import website/components/autocomplete
 import website/components/output
 import website/components/simple_debug
 import website/components/snippet/menu
@@ -131,6 +132,10 @@ pub type Failure {
 pub type Mode {
   Command
   Pick(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
+  SelectRelease(
+    autocomplete: autocomplete.State(#(String, Int, String)),
+    rebuild: fn(String, Int, String) -> p.Projection,
+  )
   EditText(String, fn(String) -> p.Projection)
   EditInteger(Int, fn(Int) -> p.Projection)
 }
@@ -296,6 +301,7 @@ pub type Message {
   UserClickedCode(List(Int))
   MessageFromInput(input.Message)
   MessageFromPicker(picker.Message)
+  SelectReleaseMessage(autocomplete.Message)
   MessageFromMenu(menu.Message)
   RuntimeRepliedFromExternalEffect(#(Int, Value))
   ClipboardReadCompleted(Result(String, String))
@@ -462,7 +468,7 @@ pub fn update(state, message) {
         "j" -> insert_builtin(state)
         "k" -> toggle_open(state)
         "l" -> insert_list(state)
-        "@" -> insert_named_reference(state)
+        "@" -> insert_release(state)
         "#" -> insert_reference(state)
         "z" -> undo(state)
         "Z" -> redo(state)
@@ -533,6 +539,19 @@ pub fn update(state, message) {
     MessageFromPicker(picker.Dismissed), Editing(Pick(_, _rebuild)) ->
       return_to_buffer(state)
     MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
+    SelectReleaseMessage(message), Editing(SelectRelease(autocomplete, rebuild))
+    -> {
+      let #(autocomplete, event) = autocomplete.update(autocomplete, message)
+      case event {
+        autocomplete.Nothing ->
+          keep_editing(state, SelectRelease(autocomplete, rebuild))
+        autocomplete.ItemSelected(#(p, r, cid)) ->
+          update_source_from_pallet(rebuild(p, r, cid), state)
+        autocomplete.Dismiss -> return_to_buffer(state)
+      }
+    }
+    SelectReleaseMessage(_message), _ ->
+      panic as "shouldn;t have select release message in this state"
 
     MessageFromMenu(message), _ -> {
       let #(menu, action) = menu.update(state.menu, message)
@@ -902,20 +921,25 @@ fn insert_list(state) {
   }
 }
 
-fn insert_named_reference(state) {
+fn insert_release(state) {
   let Snippet(projection: proj, cache: cache, ..) = state
 
-  let index =
-    cache.package_index(cache)
-    // TODO show information but maybe no full type information
-    |> listx.value_map(fn(_) { "" })
+  let index = cache.package_index(cache)
 
   case action.insert_named_reference(proj) {
-    Ok(#(filter, rebuild)) -> {
-      change_mode(state, Pick(picker.new(filter, index), rebuild))
+    Ok(#(_filter, rebuild)) -> {
+      change_mode(
+        state,
+        SelectRelease(autocomplete.init(index, release_to_string), rebuild),
+      )
     }
     Error(Nil) -> action_failed(state, "insert reference")
   }
+}
+
+fn release_to_string(release) {
+  let #(package, release, _) = release
+  package <> ":" <> int.to_string(release)
 }
 
 fn insert_reference(state) {
@@ -1162,8 +1186,11 @@ pub fn type_errors(state) {
             case cache.fetch_fragment(cache, cid) {
               Ok(cache.Fragment(value:, ..)) ->
                 case value {
-                  Ok(_) ->
-                    panic as "if the fragment was there it would be resolved"
+                  Ok(_) -> {
+                    io.debug(#("should have resolved ", p, r))
+                    // panic as "if the fragment was there it would be resolved"
+                    ReleaseInvalid(p, r)
+                  }
                   Error(#(reason, _, _, _)) -> ReleaseInvalid(p, r)
                   // error info needs to be better 
                 }
@@ -1203,6 +1230,28 @@ pub fn render_embedded(state: Snippet, failure) {
   h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
+fn release_to_option(release) {
+  let #(package, release, _cid) = release
+
+  [
+    h.span([a.style([#("font-weight", "700")])], [
+      element.text(package <> ":" <> int.to_string(release)),
+    ]),
+    h.span([a.style([#("flex-grow", "1")])], [element.text(" ")]),
+    h.span(
+      [
+        a.style([
+          #("padding-left", ".5rem"),
+          #("overflow", "hidden"),
+          #("text-overflow", "ellipsis"),
+          #("white-space", "nowrap"),
+        ]),
+      ],
+      [element.text("")],
+    ),
+  ]
+}
+
 pub fn bare_render(state, failure) {
   let Snippet(
     status: status,
@@ -1230,6 +1279,14 @@ pub fn bare_render(state, failure) {
           actual_render_projection(proj, False, errors),
           picker.render(picker)
             |> element.map(MessageFromPicker),
+        ]
+
+        SelectRelease(autocomplete, _) -> [
+          actual_render_projection(proj, False, errors),
+          autocomplete.render(autocomplete, release_to_option)
+            |> element.map(SelectReleaseMessage),
+          // picker.render(picker)
+        //   |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
@@ -1332,6 +1389,9 @@ pub fn render_pallet(state) {
         Pick(picker, _rebuild) -> [
           picker.render(picker)
           |> element.map(MessageFromPicker),
+        ]
+        SelectRelease(_, _) -> [
+          element.text("TODO are we rendering this pallet"),
         ]
 
         EditText(value, _rebuild) -> [
