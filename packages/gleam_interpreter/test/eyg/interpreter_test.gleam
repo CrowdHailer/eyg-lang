@@ -62,10 +62,10 @@ fn value_decoder() {
             "value",
             decode.one_of(
               {
-                // // TODO recursive error can remove top level
+                // This should be a recursive call to value_decoder,
+                // however that crashes with a stack overflow.
                 use integer <- decode.field("integer", decode.int)
                 decode.success(v.Integer(integer))
-                // value_decoder()
               },
               [
                 {

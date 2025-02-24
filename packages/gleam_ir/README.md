@@ -16,6 +16,7 @@ This library defines:
 
 ```sh
 gleam add eyg_ir@1
+npm install --save @ipld/dag-json@10 multiformats@13
 ```
 ```gleam
 import eyg/ir/dag_json
