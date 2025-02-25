@@ -4,6 +4,7 @@ import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/io
 import gleam/list
 import gleam/set
 
@@ -232,27 +233,35 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
           #(bindings, type_, eff, #(ir.Builtin(id), meta))
         }
       }
-    ir.Reference(id) -> lookup_ref(refs, id, env, eff, level, bindings)
-    ir.Release(package, release, id) -> {
-      // TODO real  type checking
-      let #(type_, bindings) = binding.mono(level, bindings)
-      let meta = #(
-        Error(error.UndefinedRelease(package, release, id)),
-        type_,
-        t.Empty,
+    ir.Reference(cid) ->
+      lookup_ref(
+        refs,
+        error.MissingReference(cid),
+        cid,
         env,
+        eff,
+        level,
+        bindings,
       )
-      #(bindings, type_, eff, #(ir.Release(package, release, id), meta))
-    }
+    ir.Release(package, release, cid) ->
+      lookup_ref(
+        refs,
+        error.UndefinedRelease(package, release, cid),
+        cid,
+        env,
+        eff,
+        level,
+        bindings,
+      )
   }
 }
 
-fn lookup_ref(refs, id, env, eff, level, bindings) {
+fn lookup_ref(refs, reason, id, env, eff, level, bindings) {
   case dict.get(refs, id) {
     Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Reference(id))
     Error(Nil) -> {
       let #(type_, bindings) = binding.mono(level, bindings)
-      let meta = #(Error(error.MissingReference(id)), type_, t.Empty, env)
+      let meta = #(Error(reason), type_, t.Empty, env)
       #(bindings, type_, eff, #(ir.Reference(id), meta))
     }
   }

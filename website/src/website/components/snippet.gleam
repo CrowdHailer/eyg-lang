@@ -208,7 +208,7 @@ pub fn init(editable, scope, effects, cache) {
     scope: scope,
     effects: effects,
     cache: cache,
-    analysis: Some(do_analysis(editable, scope, effects)),
+    analysis: Some(do_analysis(editable, scope, cache, effects)),
     evaluated: evaluate(editable, scope, cache),
     task_counter: -1,
     run: NotRunning,
@@ -235,14 +235,26 @@ pub fn active(editable, scope, effects, cache) {
     scope: scope,
     effects: effects,
     cache: cache,
-    analysis: Some(do_analysis(editable, scope, effects)),
+    analysis: Some(do_analysis(editable, scope, cache, effects)),
     evaluated: evaluate(editable, scope, cache),
     task_counter: -1,
     run: NotRunning,
   )
 }
 
-fn do_analysis(editable, scope, effects) {
+fn do_analysis(editable, scope, cache: cache.Cache, effects) {
+  let refs =
+    cache.fragments
+    |> dict.to_list()
+    |> list.filter_map(fn(e) {
+      let #(k, fragment) = e
+      case fragment.type_ {
+        Ok(t) -> Ok(#(k, t))
+        Error(_) -> Error(Nil)
+      }
+    })
+    // |> io.debug
+    |> dict.from_list()
   let eff =
     effect_types(effects)
     |> list.fold(t.Empty, fn(acc, new) {
@@ -255,7 +267,7 @@ fn do_analysis(editable, scope, effects) {
       analysis.within_environment(
         scope,
         // TODO real ref
-        dict.new(),
+        refs,
         Nil,
       ),
       eff,
@@ -285,7 +297,8 @@ pub fn set_references(state, cache) {
     Running(return, effects) ->
       Running(cache.run(return, cache, block.resume), effects)
   }
-  let analysis = Some(do_analysis(state.editable, state.scope, state.effects))
+  let analysis =
+    Some(do_analysis(state.editable, state.scope, cache, state.effects))
   Snippet(..state, cache:, evaluated:, run:, analysis:)
 }
 
@@ -387,7 +400,8 @@ fn update_source(proj, state) {
   let history = History(undo: undo, redo: [])
   let status = Editing(Command)
 
-  let analysis = Some(do_analysis(editable, state.scope, state.effects))
+  let analysis =
+    Some(do_analysis(editable, state.scope, state.cache, state.effects))
   Snippet(
     ..state,
     status: status,
@@ -1050,7 +1064,8 @@ fn undo(state) {
     [] -> action_failed(state, "undo")
     [saved, ..rest] -> {
       let editable = p.rebuild(saved)
-      let analysis = Some(do_analysis(editable, state.scope, state.effects))
+      let analysis =
+        Some(do_analysis(editable, state.scope, state.cache, state.effects))
       let history = History(undo: rest, redo: [proj, ..history.redo])
       let status = Editing(Command)
       let state =
@@ -1075,7 +1090,8 @@ fn redo(state) {
     [] -> action_failed(state, "redo")
     [saved, ..rest] -> {
       let editable = p.rebuild(saved)
-      let analysis = Some(do_analysis(editable, state.scope, state.effects))
+      let analysis =
+        Some(do_analysis(editable, state.scope, state.cache, state.effects))
       let history = History(undo: [proj, ..history.undo], redo: rest)
       let status = Editing(Command)
       let state =
@@ -1158,7 +1174,7 @@ pub type TypeError {
   ReleaseInvalid(package: String, release: Int)
   ReleaseCheckDoesntMatch(String)
   ReleaseNotFetched(package: String, requested: Int, max: Int)
-  ReleaseFragmentNotFetched(String)
+  ReleaseFragmentNotFetched(package: String, requested: Int, cid: String)
   FragmentInvalid
   ReferenceNotFetched
   Todo
@@ -1194,7 +1210,7 @@ pub fn type_errors(state) {
                   Error(#(reason, _, _, _)) -> ReleaseInvalid(p, r)
                   // error info needs to be better 
                 }
-              Error(Nil) -> ReleaseFragmentNotFetched(p)
+              Error(Nil) -> ReleaseFragmentNotFetched(p, r, c)
             }
           Ok(c) -> ReleaseCheckDoesntMatch(c)
           // TODO client is still loading
@@ -1352,7 +1368,7 @@ fn render_structured_note_about_error(error) {
       <> package
       <> "' is not available. Latest publish is "
       <> int.to_string(n)
-    ReleaseFragmentNotFetched(_) -> "ReleaseFragmentNotFetched"
+    ReleaseFragmentNotFetched(_, _, _) -> "ReleaseFragmentNotFetched"
     FragmentInvalid -> "FragmentInvalid"
     ReferenceNotFetched -> "ReferenceNotFetched"
     Todo -> "The program is incomplete."

@@ -151,6 +151,26 @@ pub fn do_list(reversed, acc) {
   }
 }
 
+pub fn record(fields) {
+  do_record(list.reverse(fields), empty())
+}
+
+pub fn do_record(reversed, acc) {
+  case reversed {
+    [#(key, value), ..rest] ->
+      do_record(rest, apply(apply(extend(key), value), acc))
+    [] -> acc
+  }
+}
+
+pub fn add(a, b) {
+  apply(apply(builtin("int_add"), a), b)
+}
+
+pub fn multiply(a, b) {
+  apply(apply(builtin("int_multiply"), a), b)
+}
+
 pub fn get_annotation(in) {
   let acc = do_get_annotation(in, [])
   list.reverse(acc)

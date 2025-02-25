@@ -1,3 +1,5 @@
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -6,6 +8,8 @@ import eyg/interpreter/value as v
 import gleam/int
 import gleam/io
 import gleam/result
+import morph/analysis
+import website/sync/fragment
 
 // import eyg/ir/cid
 import eyg/ir/dag_json
@@ -120,7 +124,26 @@ pub fn run(return, cache, resume) {
 // -------------------------------------
 
 pub type Fragment {
-  Fragment(source: ir.Node(Nil), value: Return)
+  Fragment(
+    source: ir.Node(Nil),
+    value: Return,
+    type_: Result(binding.Poly, Nil),
+  )
+}
+
+// Fragment is a cache of the computed value
+pub fn create_fragment(source, return) {
+  // TODO should get moved to eyg_analysis
+  let type_ = case return {
+    Ok(v) -> {
+      let #(type_, _bindings) = analysis.value_to_type(v, dict.new(), Nil)
+      Ok(type_)
+    }
+    Error(_) -> Error(Nil)
+  }
+  // TODO fragment infer
+  // fragment.infer(source)
+  Fragment(source, return, type_)
 }
 
 pub type Release {
@@ -176,7 +199,7 @@ pub fn install_source(cache, cid, source) {
   let scope = []
   let return =
     run(expression.execute_next(source, scope), cache, expression.resume)
-  let fragment = Fragment(source, return)
+  let fragment = create_fragment(source, return)
   let fragments = dict.insert(cache.fragments, cid, fragment)
   let fragments = case return {
     Ok(value) -> resolve_references(fragments, [#(cid, value)])
@@ -193,11 +216,11 @@ pub fn resolve_references(fragments, remaining) {
         dict.fold(fragments, #(fragments, remaining), fn(acc, key, fragment) {
           let #(fragments, new) = acc
 
-          let Fragment(source, return) = fragment
+          let Fragment(source, return, _) = fragment
           case return {
             Error(#(break.UndefinedReference(c), _, env, k)) if c == cid -> {
               let return = expression.resume(value, env, k)
-              let fragment = Fragment(source, return)
+              let fragment = create_fragment(source, return)
               let fragments = dict.insert(fragments, key, fragment)
               let new = case return {
                 Ok(value) -> [#(key, value), ..new]

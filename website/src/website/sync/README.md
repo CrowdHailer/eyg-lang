@@ -33,6 +33,8 @@ A lookup from hash to source.
 Syncing is grouped by remote, this follows similar terminology as git.
 Remotes are specific API's where references can be queries.
 
+The runtime error remains a missin reference even if reference is known and release is still being looked up
+
 # Notes
 
 - Running code for the cache is pure so it doesn't need any understanding of an effectful runner.

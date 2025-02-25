@@ -50,7 +50,10 @@ pub fn update(state, message) {
       case cache.install_fragment(cache, cid, bytes) {
         Ok(#(cache, required)) -> {
           let state = Client(cache)
-          #(state, RequireFragments(required))
+          #(state, case required {
+            [] -> Nothing
+            _ -> RequireFragments(required)
+          })
         }
         Error(_) -> todo as "why did this fail"
       }
