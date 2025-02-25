@@ -242,19 +242,8 @@ pub fn active(editable, scope, effects, cache) {
   )
 }
 
-fn do_analysis(editable, scope, cache: cache.Cache, effects) {
-  let refs =
-    cache.fragments
-    |> dict.to_list()
-    |> list.filter_map(fn(e) {
-      let #(k, fragment) = e
-      case fragment.type_ {
-        Ok(t) -> Ok(#(k, t))
-        Error(_) -> Error(Nil)
-      }
-    })
-    // |> io.debug
-    |> dict.from_list()
+fn do_analysis(editable, scope, cache, effects) {
+  let refs = cache.type_map(cache)
   let eff =
     effect_types(effects)
     |> list.fold(t.Empty, fn(acc, new) {

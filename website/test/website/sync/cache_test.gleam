@@ -1,3 +1,4 @@
+import eyg/analysis/type_/binding/error
 import eyg/interpreter/value as v
 import eyg/ir/cid
 import eyg/ir/tree as ir
@@ -28,7 +29,7 @@ const vacant_bytes = <<"{\"0\":\"z\"}">>
 const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
 
 pub fn install_incorrect_cid_test() {
-  todo as "need browser validation check"
+  panic as "need browser validation check"
   let cid = "baguqeera22cbouedtv3bzhajvp66ib6ichytfrid6osjpskyzthoivta6yyq"
   let cache = cache.init()
   cache.install_fragment(cache, cid, vacant_bytes)
@@ -52,11 +53,6 @@ pub fn resolve_references_test() {
     |> cache.install_source("a", a)
     |> cache.install_source("b", b)
 
-  cache.fragments
-  |> dict.get("a")
-  |> should.be_ok
-  |> fn(f: cache.Fragment) { f.value }()
-
   let cache =
     cache
     |> cache.install_source("x", ir.integer(10))
@@ -68,6 +64,30 @@ pub fn resolve_references_test() {
   |> should_have_value("b", v.Integer(12))
   cache
   |> should_have_value("top", v.Integer(22))
+}
+
+pub fn resolve_type_only_errors_test() {
+  let top = ir.lambda("_", ir.reference("a"))
+  let a = ir.integer(1)
+
+  let cache =
+    cache.init()
+    |> cache.install_source("top", top)
+
+  cache.fragments
+  |> dict.get("top")
+  |> should.be_ok
+  |> fn(f: cache.Fragment) { f.errors }()
+  |> should.equal([#(Nil, error.MissingReference("a"))])
+
+  let cache =
+    cache
+    |> cache.install_source("a", a)
+  cache.fragments
+  |> dict.get("top")
+  |> should.be_ok
+  |> fn(f: cache.Fragment) { f.errors }()
+  |> should.equal([])
 }
 // pub fn resolve_release_test()  {
 //   let dep = ir.string("first published release")

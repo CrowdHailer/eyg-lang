@@ -226,20 +226,6 @@ pub fn do_resolve(pending, loaded) {
   }
 }
 
-// fn foo() {
-//   case todo {
-//     Lookup(Release) -> {
-//       // match release to index and find ref
-//       todo
-//     }
-//     Lookup(Reference) -> {
-//       // lookup reference
-//       todo
-//     }
-//   }
-//   todo
-// }
-
 fn compute(source, loaded) {
   let types =
     dict.map_values(loaded, fn(_ref, computed) {

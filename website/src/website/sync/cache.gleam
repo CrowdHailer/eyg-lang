@@ -1,31 +1,20 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/error
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
-import gleam/int
-import gleam/io
-import gleam/result
-import morph/analysis
-import website/sync/fragment
-
-// import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
+import gleam/int
+import gleam/io
 import gleam/list
-
-// I like the always ask aproach but that means returns answer state and tasks
-// message passing value ready Request(Nil, ref)
-
-// run relies on cache, cache relies on run
-
-// when sync message effects are to 
-
-// If message passing then each run would keep a cache
-// Solve with Sync API Yes/No/Pending
+import gleam/result
+import morph/analysis
+import website/sync/fragment
 
 pub type Meta =
   Nil
@@ -35,10 +24,6 @@ pub type Value =
 
 pub type Return =
   Result(Value, state.Debug(Nil))
-
-// pub type Run {
-//   Run(return: Return, effects: List(#(String, #(Value, Value))))
-// }
 
 pub fn start(exp, scope) {
   block.execute_next(exp, scope)
@@ -117,33 +102,28 @@ pub fn run(return, cache, resume) {
   }
 }
 
-// snippet has run id or page
-
-// can resolve ref and resolve eff be separate
-
-// -------------------------------------
-
 pub type Fragment {
   Fragment(
     source: ir.Node(Nil),
     value: Return,
-    type_: Result(binding.Poly, Nil),
+    type_: binding.Poly,
+    errors: List(#(Nil, error.Reason)),
   )
 }
 
 // Fragment is a cache of the computed value
-pub fn create_fragment(source, return) {
+fn create_fragment(source, return, types) {
   // TODO should get moved to eyg_analysis
-  let type_ = case return {
-    Ok(v) -> {
-      let #(type_, _bindings) = analysis.value_to_type(v, dict.new(), Nil)
-      Ok(type_)
-    }
-    Error(_) -> Error(Nil)
-  }
+  // let type_ = case return {
+  //   Ok(v) -> {
+  //     let #(type_, _bindings) = analysis.value_to_type(v, dict.new(), Nil)
+  //     Ok(type_)
+  //   }
+  //   Error(_) -> Error(Nil)
+  // }
   // TODO fragment infer
-  // fragment.infer(source)
-  Fragment(source, return, type_)
+  let #(type_, errors) = fragment.infer(source, types)
+  Fragment(source, return, type_, errors)
 }
 
 pub type Release {
@@ -199,7 +179,7 @@ pub fn install_source(cache, cid, source) {
   let scope = []
   let return =
     run(expression.execute_next(source, scope), cache, expression.resume)
-  let fragment = create_fragment(source, return)
+  let fragment = create_fragment(source, return, type_map(cache))
   let fragments = dict.insert(cache.fragments, cid, fragment)
   let fragments = case return {
     Ok(value) -> resolve_references(fragments, [#(cid, value)])
@@ -216,11 +196,12 @@ pub fn resolve_references(fragments, remaining) {
         dict.fold(fragments, #(fragments, remaining), fn(acc, key, fragment) {
           let #(fragments, new) = acc
 
-          let Fragment(source, return, _) = fragment
+          let Fragment(source, return, _, errors) = fragment
           case return {
             Error(#(break.UndefinedReference(c), _, env, k)) if c == cid -> {
               let return = expression.resume(value, env, k)
-              let fragment = create_fragment(source, return)
+              let fragment =
+                create_fragment(source, return, do_type_map(fragments))
               let fragments = dict.insert(fragments, key, fragment)
               let new = case return {
                 Ok(value) -> [#(key, value), ..new]
@@ -228,7 +209,20 @@ pub fn resolve_references(fragments, remaining) {
               }
               #(fragments, new)
             }
-            _ -> acc
+            _ ->
+              case errors {
+                [] -> acc
+                _ -> {
+                  let fragment =
+                    create_fragment(source, return, do_type_map(fragments))
+                  let fragments = dict.insert(fragments, key, fragment)
+                  let new = case fragment.errors {
+                    [] -> [#(key, value), ..new]
+                    _ -> new
+                  }
+                  #(fragments, new)
+                }
+              }
           }
         })
       resolve_references(fragments, remaining)
@@ -236,8 +230,26 @@ pub fn resolve_references(fragments, remaining) {
   }
 }
 
+pub fn type_map(cache) {
+  let Cache(fragments:, ..) = cache
+  do_type_map(fragments)
+}
+
+fn do_type_map(fragments) {
+  fragments
+  |> dict.to_list()
+  |> list.filter_map(fn(e: #(String, Fragment)) {
+    let #(k, fragment) = e
+    case fragment.errors {
+      [] -> Ok(#(k, fragment.type_))
+      _ -> Error(Nil)
+    }
+  })
+  |> dict.from_list()
+}
+
 pub fn package_index(cache) {
-  let Cache(index:, fragments:) = cache
+  let Cache(index:, ..) = cache
   dict.to_list(index.registry)
   |> list.filter_map(fn(entry) {
     let #(name, package_id) = entry

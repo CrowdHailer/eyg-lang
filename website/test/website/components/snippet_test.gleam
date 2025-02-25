@@ -1,17 +1,12 @@
 import eyg/ir/cid
 import eyg/ir/dag_json
-import gleam/dict
 import gleam/dictx
 import gleam/io
-import gleam/javascript/promise
 import gleeunit/should
-import midas/node
 import morph/editable as e
 import website/components/snippet
 import website/sync/cache
 import website/sync/client
-import website/sync/supabase
-import website/sync/sync
 
 // TODO test a fragment that doesn't work, i.e. it's effectful
 import eyg/ir/tree as ir
@@ -58,27 +53,6 @@ pub fn example_loads_index_and_fragment_test() {
   snippet.type_errors(state)
   |> should.equal([])
 }
-// pub fn a_new_snippet_requests_release_test() {
-
-//   use index <- promise.await(node.run(supabase.fetch_index(), ""))
-//   let _ = should.be_ok(index)
-
-//   use block <- promise.await(node.run(supabase.fetch_fragment(cid), ""))
-//   let _ = should.be_ok(block)
-//   let #(client, eff) = client.update(client, client.FragmentFetched(cid, block))
-//   should.equal(eff, client.RequireFragments([]))
-
-//   io.debug("===========!!!")
-//   io.debug(snippet.type_errors(state))
-//   // io.debug(state.evaluated)
-
-//   todo
-//   //   let state = init(e.Vacant)
-//   //   // snippet.update(state, snippet.ClipboardReadCompleted(Ok("")))
-//   //   // |> io.debug
-//   //   todo as "paste ref"
-// }
-
 // pub fn a_new_snippet_request_internal_reference() -> Nil {
 //   todo
 // }
