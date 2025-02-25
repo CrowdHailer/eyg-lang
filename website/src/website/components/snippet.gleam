@@ -253,12 +253,7 @@ fn do_analysis(editable, scope, cache, effects) {
   let analysis =
     analysis.do_analyse(
       editable,
-      analysis.within_environment(
-        scope,
-        // TODO real ref
-        refs,
-        Nil,
-      ),
+      analysis.within_environment(scope, refs, Nil),
       eff,
     )
   analysis
@@ -1193,7 +1188,6 @@ pub fn type_errors(state) {
                 case value {
                   Ok(_) -> {
                     io.debug(#("should have resolved ", p, r))
-                    // panic as "if the fragment was there it would be resolved"
                     ReleaseInvalid(p, r)
                   }
                   Error(#(reason, _, _, _)) -> ReleaseInvalid(p, r)
@@ -1235,7 +1229,7 @@ pub fn render_embedded(state: Snippet, failure) {
   h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
-fn release_to_option(release) {
+pub fn release_to_option(release) {
   let #(package, release, _cid) = release
 
   [

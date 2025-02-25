@@ -373,12 +373,7 @@ pub fn update(state: State, message) {
       // TODO I think effects of running tasks should happen here.
       // Would be one nice reason to not have them per snippet
       let state = State(..state, cache: sync_client, snippets: snippets)
-      let effect = case effect {
-        client.RequireFragments([_, ..] as cids) ->
-          client.fetch_fragments_effect(cids, SyncMessage)
-        _ -> effect.none()
-      }
-      #(state, effect)
+      #(state, client.do(effect, SyncMessage))
     }
   }
 }

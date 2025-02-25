@@ -1,7 +1,6 @@
 import eyg/ir/cid
 import eyg/ir/dag_json
 import gleam/dictx
-import gleam/io
 import gleeunit/should
 import morph/editable as e
 import website/components/snippet

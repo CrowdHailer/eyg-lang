@@ -24,14 +24,14 @@ import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
 import plinth/javascript/console
+import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
 import website/components/snippet
 import website/harness/browser as harness
 import website/routes/common
-import website/sync/cache
-import website/sync/sync
+import website/sync/client
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
@@ -108,7 +108,7 @@ pub type Shell {
 
 pub type State {
   State(
-    cache: cache.Cache,
+    cache: client.Client,
     source: snippet.Snippet,
     shell: Shell,
     display_help: Bool,
@@ -116,20 +116,13 @@ pub type State {
 }
 
 pub fn init(_) {
-  let cache = cache.init()
+  let client = client.init()
   let source = e.from_annotated(ir.vacant())
-  // snippet has no effects, they run in the shell
-  let snippet = snippet.init(source, [], [], cache)
   let shell =
-    Shell(None, [], {
-      let source = e.from_annotated(ir.vacant())
-      // TODO update hardness to spotless
-      snippet.init(source, [], harness.effects(), cache)
-    })
-  let state = State(cache, snippet, shell, False)
-  // #(state, effect.from(browser.do_load(SyncMessage)))
-  io.debug("load index")
-  #(state, effect.none())
+    Shell(None, [], snippet.init(source, [], harness.effects(), client.cache))
+  let snippet = snippet.init(source, [], [], client.cache)
+  let state = State(client, snippet, shell, False)
+  #(state, client.fetch_index_effect(SyncMessage))
 }
 
 pub type Message {
@@ -139,7 +132,7 @@ pub type Message {
   UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
   PreviouseMessage(readonly.Message, Int)
-  SyncMessage(sync.Message)
+  SyncMessage(client.Message)
 }
 
 fn dispatch_to_snippet(promise) {
@@ -252,7 +245,8 @@ pub fn update(state: State, message) {
     UserClickedPrevious(exp) -> {
       let shell = state.shell
       let scope = shell.source.scope
-      let current = snippet.active(exp, scope, harness.effects(), state.cache)
+      let current =
+        snippet.active(exp, scope, harness.effects(), state.cache.cache)
       let shell = Shell(..shell, source: current)
       let state = State(..state, shell: shell)
       #(state, effect.none())
@@ -295,7 +289,7 @@ pub fn update(state: State, message) {
                   readonly.source,
                   scope,
                   harness.effects(),
-                  state.cache,
+                  state.cache.cache,
                 )
               #(Shell(..shell, source: current), effect.none())
             }
@@ -316,16 +310,24 @@ pub fn update(state: State, message) {
             ..shell.previous
           ]
           let source =
-            snippet.active(e.Vacant, scope, harness.effects(), state.cache)
+            snippet.active(
+              e.Vacant,
+              scope,
+              harness.effects(),
+              state.cache.cache,
+            )
           let shell = Shell(..shell, source: source, previous: previous)
           #(shell, effect.none())
         }
       }
-      io.debug("Fetch the missing again")
-      // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       let state = State(..state, shell: shell)
-      #(state, effect.batch([snippet_effect]))
+      #(
+        state,
+        effect.batch([
+          snippet_effect,
+          client.fetch_list_missing([state.source, shell.source], SyncMessage),
+        ]),
+      )
     }
     PreviouseMessage(m, i) -> {
       let shell = state.shell
@@ -351,16 +353,18 @@ pub fn update(state: State, message) {
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
-      todo as "there shouldn't be any sync messages"
-      // let cache = sync.task_finish(state.cache, message)
-      // let #(cache, tasks) = sync.fetch_all_missing(cache)
-      // let snippet = snippet.set_references(state.source, cache)
-      // let shell_source = snippet.set_references(state.shell.source, cache)
-      // let shell = Shell(..state.shell, source: shell_source)
-      // #(
-      //   State(..state, source: snippet, shell: shell, cache: cache),
-      //   effect.from(browser.do_sync(tasks, SyncMessage)),
-      // )
+      let State(cache: sync_client, ..) = state
+      let #(sync_client, effect) = client.update(sync_client, message)
+      let snippet = snippet.set_references(state.source, sync_client.cache)
+      let shell =
+        Shell(
+          ..state.shell,
+          source: snippet.set_references(state.shell.source, sync_client.cache),
+        )
+      // TODO I think effects of running tasks should happen here.
+      // Would be one nice reason to not have them per snippet
+      let state = State(..state, cache: sync_client, source: snippet, shell:)
+      #(state, client.do(effect, SyncMessage))
     }
   }
 }
@@ -468,7 +472,11 @@ fn render_pallet(state: snippet.Snippet) {
           ]
           |> not_a_modal(picker.Dismissed)
           |> element.map(snippet.MessageFromPicker)
-        snippet.SelectRelease(_, _) -> todo as "why do we have both"
+        snippet.SelectRelease(state, _) ->
+          autocomplete.render(state, snippet.release_to_option)
+          |> list.wrap
+          |> not_a_modal(autocomplete.UserPressedEscape)
+          |> element.map(snippet.SelectReleaseMessage)
 
         snippet.EditText(value, _rebuild) ->
           render_text(value)
