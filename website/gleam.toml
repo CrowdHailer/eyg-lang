@@ -5,19 +5,16 @@ target = "javascript"
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
 plinth = ">= 0.5.6 and < 1.0.0"
-# plinth = {path = "../../../plinth"}
 gleam_javascript = ">= 1.0.0 and < 2.0.0"
 snag = ">= 1.1.0 and < 2.0.0"
 midas_node = ">= 1.2.2 and < 2.0.0"
 midas = ">= 1.4.1 and < 2.0.0"
-# eyg = {path = "../eyg"}
 gleam_json = ">= 2.1.0 and < 3.0.0"
 lustre = ">= 4.6.3 and < 5.0.0"
 supa = ">= 1.0.1 and < 2.0.0"
 jot = ">= 2.0.1 and < 3.0.0"
 midas_sdk = ">= 0.4.2 and < 1.0.0"
-# mysig = ">= 0.4.1 and < 1.0.0"
-mysig = {path = "../../mysig"}
+mysig = ">= 0.4.1 and < 1.0.0"
 gleam_http = ">= 3.7.2 and < 4.0.0"
 gleroglero = ">= 1.1.0 and < 2.0.0"
 simplifile = ">= 1.7.0 and < 2.0.0"
@@ -27,9 +24,6 @@ eyg_ir = {path= "../packages/gleam_ir"}
 eyg_interpreter = {path= "../packages/gleam_interpreter"}
 eyg_analysis = {path= "../packages/gleam_analysis"}
 morph = {path= "../packages/morph"}
-# TODO remove glen & conversation only needed for midas_node
-glen = {path = "../../../glen"}
-conversation = {path = "../../../conversation"}
 midas_browser = ">= 0.1.3 and < 1.0.0"
 gleam_fetch = ">= 1.1.1 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"

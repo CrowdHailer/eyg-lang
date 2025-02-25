@@ -19,17 +19,13 @@ midas_browser = ">= 0.1.3 and < 1.0.0"
 midas_sdk = ">= 0.2.0 and < 1.0.0"
 oas = ">= 1.0.1 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
-# glen_node = ">= 0.0.2 and < 1.0.0"
-glen_node = {path= "../../glen_node"}
-# glen = ">= 2.2.1 and < 3.0.0"
-glen = {path= "../../../glen"}
+glen_node = ">= 0.0.2 and < 1.0.0"
+glen = ">= 2.2.1 and < 3.0.0"
 filepath = ">= 1.1.0 and < 2.0.0"
-# midas_node = ">= 1.2.0 and < 2.0.0"
-midas_node = {path = "../../midas_node"}
+midas_node = ">= 1.2.0 and < 2.0.0"
 gleam_http = ">= 3.7.2 and < 4.0.0"
 supa = ">= 1.0.0 and < 2.0.0"
-# mysig = ">= 0.4.0 and < 1.0.0"
-mysig = {path = "../../mysig"}
+mysig = ">= 0.4.0 and < 1.0.0"
 snag = ">= 1.1.0 and < 2.0.0"
 gleam_regexp = ">= 1.1.0 and < 2.0.0"
 eyg_ir = {path= "../packages/gleam_ir"}
