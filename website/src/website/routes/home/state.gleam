@@ -20,9 +20,8 @@ import website/components/reload
 import website/components/snippet
 import website/harness/browser as harness
 import website/harness/spotless
-import website/sync/browser
 import website/sync/cache
-import website/sync/sync
+import website/sync/client
 
 pub type Meta =
   List(Int)
@@ -41,7 +40,7 @@ pub type Example {
 pub type State {
   State(
     auth: auth_panel.State,
-    cache: cache.Cache,
+    cache: client.Client,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
     example: Example,
@@ -110,30 +109,30 @@ fn all_references(snippets) {
 
 pub fn init(config) {
   let #(config, origin, storage) = config
-  let cache = cache.init()
+  let client = client.init()
   let snippets = [
     #(
       closure_serialization_key,
-      init_example(closure_serialization, cache, config),
+      init_example(closure_serialization, client.cache, config),
     ),
-    #(fetch_key, init_example(fetch_example, cache, config)),
-    #(twitter_key, init_example(twitter_example, cache, config)),
-    #(type_check_key, init_example(type_check_example, cache, config)),
+    #(fetch_key, init_example(fetch_example, client.cache, config)),
+    #(twitter_key, init_example(twitter_example, client.cache, config)),
+    #(type_check_key, init_example(type_check_example, client.cache, config)),
     #(
       predictable_effects_key,
-      init_example(predictable_effects_example, cache, config),
+      init_example(predictable_effects_example, client.cache, config),
     ),
-    #(hot_reload_key, init_reload_example(hot_reload_example, cache)),
+    #(hot_reload_key, init_reload_example(hot_reload_example, client.cache)),
   ]
   let example = Example(value.Integer(0), t.Integer)
   let #(auth, task) = auth_panel.init(Nil)
-  let state = State(auth, cache, Nothing, dict.from_list(snippets), example)
+  let state = State(auth, client, Nothing, dict.from_list(snippets), example)
 
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      // effect.from(browser.do_load(SyncMessage)),
+      client.fetch_index_effect(SyncMessage),
     ]),
   )
 }
@@ -151,7 +150,7 @@ pub fn set_snippet(state: State, id, snippet) {
 pub type Message {
   AuthMessage(auth_panel.Message)
   SnippetMessage(String, snippet.Message)
-  SyncMessage(sync.Message)
+  SyncMessage(client.Message)
   ClickExample
 }
 
@@ -224,25 +223,27 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect]))
     }
     SyncMessage(message) -> {
-      todo as "no sync messages"
-      // let cache = sync.task_finish(state.cache, message)
-      // let #(cache, tasks) = sync.fetch_all_missing(cache)
-      // let snippets =
-      //   dict.map_values(state.snippets, fn(_, v) {
-      //     snippet.set_references(v, cache)
-      //   })
-      // #(
-      //   State(..state, snippets: snippets, cache: cache),
-      //   effect.from(browser.do_sync(tasks, SyncMessage)),
-      // )
+      let State(cache: sync_client, ..) = state
+      let #(sync_client, effect) = client.update(sync_client, message)
+      // The example is one of the snippets
+      let snippets =
+        dict.map_values(state.snippets, fn(_, v) {
+          snippet.set_references(v, sync_client.cache)
+        })
+      let state = State(..state, cache: sync_client, snippets: snippets)
+      #(state, client.do(effect, SyncMessage))
     }
     ClickExample -> {
       let Example(value, type_) = state.example
       let s = get_snippet(state, hot_reload_key)
       let source = snippet.source(s)
 
-      // TODO real refs
-      let check = reload.check_against_state(source, type_, dict.new())
+      let check =
+        reload.check_against_state(
+          source,
+          type_,
+          cache.type_map(state.cache.cache),
+        )
 
       case check {
         Ok(#(_, False)) -> {
@@ -289,29 +290,25 @@ pub fn render(state: State) {
   let s = get_snippet(state, hot_reload_key)
   let source = snippet.source(s)
 
-  todo as "need the types"
-  // let check = reload.check_against_state(source, type_, sync.types(state.cache))
+  let check =
+    reload.check_against_state(source, type_, cache.type_map(state.cache.cache))
 
-  // case check {
-  //   Ok(#(_, False)) -> {
-  //     // TODO pass in a better env
-  //     let env = istate.Env([], dict.new(), dict.new())
-  //     let h = dict.new()
+  case check {
+    Ok(#(_, False)) -> {
+      let assert Ok(source) =
+        runner.execute_next(source |> e.to_annotated([]), [])
+      let source = #(source, [])
 
-  //     let assert Ok(source) =
-  //       runner.execute(source |> e.to_annotated([]), env, h)
-  //     let source = #(source, [])
-
-  //     let select = value.Partial(value.Select("render"), [])
-  //     let args = [source, #(value, [])]
-  //     let page = case runner.call(select, args, env, h) {
-  //       Ok(value.String(page)) -> page
-  //       // TODO print actual value
-  //       other -> "something went wrong: " <> string.inspect(other)
-  //     }
-  //     Ok(#(page, False))
-  //   }
-  //   Ok(#(_, True)) -> Ok(#("", True))
-  //   Error(reason) -> Error(reason)
-  // }
+      let select = value.Partial(value.Select("render"), [])
+      let args = [source, #(value, [])]
+      let page = case runner.call_next(select, args) {
+        Ok(value.String(page)) -> page
+        // TODO print actual value
+        other -> "something went wrong: " <> string.inspect(other)
+      }
+      Ok(#(page, False))
+    }
+    Ok(#(_, True)) -> Ok(#("", True))
+    Error(reason) -> Error(reason)
+  }
 }

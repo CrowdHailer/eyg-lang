@@ -1156,9 +1156,14 @@ pub fn finish_editing(state) {
 // Error level action
 pub type TypeError {
   ReleaseInvalid(package: String, release: Int)
-  ReleaseCheckDoesntMatch(String)
+  ReleaseCheckDoesntMatch(
+    package: String,
+    release: Int,
+    published: String,
+    used: String,
+  )
   ReleaseNotFetched(package: String, requested: Int, max: Int)
-  ReleaseFragmentNotFetched(package: String, requested: Int, cid: String)
+  ReleaseFragmentNotFetched(package: String, release: Int, cid: String)
   FragmentInvalid
   ReferenceNotFetched
   Todo
@@ -1195,7 +1200,13 @@ pub fn type_errors(state) {
                 }
               Error(Nil) -> ReleaseFragmentNotFetched(p, r, c)
             }
-          Ok(c) -> ReleaseCheckDoesntMatch(c)
+          Ok(c) ->
+            ReleaseCheckDoesntMatch(
+              package: p,
+              release: r,
+              published: c,
+              used: cid,
+            )
           // TODO client is still loading
           Error(Nil) ->
             case cache.max_release(cache, p) {
@@ -1341,7 +1352,12 @@ fn render_structured_note_about_error(error) {
   let reason = case reason {
     ReleaseInvalid(p, r) ->
       "The release @" <> p <> ":" <> int.to_string(r) <> " has errors."
-    ReleaseCheckDoesntMatch(_) -> "ReleaseCheckDoesntMatch"
+    ReleaseCheckDoesntMatch(package:, release:, ..) ->
+      "The release @"
+      <> package
+      <> ":"
+      <> int.to_string(release)
+      <> " does not use the published checksum."
     ReleaseNotFetched(package, _, 0) ->
       "The package '" <> package <> "' has not been published"
     ReleaseNotFetched(package, r, n) ->
@@ -1351,7 +1367,12 @@ fn render_structured_note_about_error(error) {
       <> package
       <> "' is not available. Latest publish is "
       <> int.to_string(n)
-    ReleaseFragmentNotFetched(_, _, _) -> "ReleaseFragmentNotFetched"
+    ReleaseFragmentNotFetched(package:, release:, ..) ->
+      "The release @"
+      <> package
+      <> ":"
+      <> int.to_string(release)
+      <> " is still loading."
     FragmentInvalid -> "FragmentInvalid"
     ReferenceNotFetched -> "ReferenceNotFetched"
     Todo -> "The program is incomplete."
