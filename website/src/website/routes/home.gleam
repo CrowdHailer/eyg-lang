@@ -1,11 +1,10 @@
 import gleam/http
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import lustre/event
 import mysig/asset
 import mysig/asset/client
 import mysig/html

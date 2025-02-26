@@ -95,22 +95,8 @@ pub type Message(meta) {
 pub fn update(state, message) {
   let State(sync:, source:, value:, ..) = state
   case message {
-    ParentUpdatedSource(source) -> {
-      let state = State(..state, source:)
-      case type_check(sync, source, value) {
-        Ok(#(t, migrate)) ->
-          State(..state, type_errors: [], ready_to_migrate: migrate)
-        Error(type_errors) -> State(..state, type_errors:)
-      }
-    }
-    ParentUpdatedCache(cache) -> {
-      let state = State(..state, sync: cache)
-      case type_check(sync, source, value) {
-        Ok(#(t, migrate)) ->
-          State(..state, type_errors: [], ready_to_migrate: migrate)
-        Error(type_errors) -> State(..state, type_errors:)
-      }
-    }
+    ParentUpdatedSource(source) -> update_source(state, source)
+    ParentUpdatedCache(cache) -> update_cache(state, cache)
     UserClickedUpgrade -> todo
     UserClickedApp ->
       case value {
@@ -129,6 +115,28 @@ pub fn update(state, message) {
   }
 }
 
+pub fn update_source(state, source) {
+  let State(sync:, value:, ..) = state
+
+  let state = State(..state, source:)
+  case type_check(sync, source, value) {
+    Ok(#(t, migrate)) ->
+      State(..state, type_errors: [], ready_to_migrate: migrate)
+    Error(type_errors) -> State(..state, type_errors:)
+  }
+}
+
+pub fn update_cache(state, sync) {
+  let State(source:, value:, ..) = state
+
+  let state = State(..state, sync: sync)
+  case type_check(sync, source, value) {
+    Ok(#(_t, migrate)) ->
+      State(..state, type_errors: [], ready_to_migrate: migrate)
+    Error(type_errors) -> State(..state, type_errors:)
+  }
+}
+
 pub fn render(state) {
   let State(value:, ready_to_migrate:, type_errors:, ..) = state
   h.div([], [
@@ -141,13 +149,22 @@ pub fn render(state) {
     ]),
     h.p([], [element.text("Rendered app, click to send message")]),
     h.div([a.class("border-2 p-2")], [
-      case ready_to_migrate {
-        True ->
+      case type_errors, ready_to_migrate {
+        [], True ->
           h.div([event.on_click(UserClickedUpgrade)], [
             element.text("click to upgrade"),
           ])
-        False ->
-          // snippet shows these
+        [], False -> {
+          let assert Some(value) = value
+          let args = [#(value, Nil)]
+          case run_field(state.sync, state.source, "render", args) {
+            Ok(v.String(page)) -> render_app(page)
+            _ -> todo as "Somenon string value"
+            Error(_) -> todo as "handle was not ready"
+          }
+        }
+        // snippet shows these
+        _, _ ->
           h.div(
             [a.class("border-2 border-orange-3 px-2")],
             list.map(type_errors, fn(error) {
@@ -178,7 +195,6 @@ pub fn render_app(page) {
     ],
     [],
   )
-  todo
 }
 
 // helpers
