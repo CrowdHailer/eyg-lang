@@ -372,7 +372,6 @@ pub fn builtins() {
     // ),
 
     // #("serialize", pure1(q(0), t.String)),
-    // TODO test lvl2
     // #("capture", pure1(q(0), t.ast())),
 
     // An effect or something that is built in EYG itself

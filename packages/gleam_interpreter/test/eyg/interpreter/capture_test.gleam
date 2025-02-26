@@ -1,17 +1,15 @@
 import eyg/interpreter/break
+import eyg/interpreter/capture
 import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/capture
 import gleam/dict
 import gleam/list
 import gleeunit/should
-import harness/ffi/env
-import harness/stdlib
 
 fn round_trip(term) {
   capture.capture(term, Nil)
-  |> r.execute(env.empty(), dict.new())
+  |> r.execute_next([])
 }
 
 fn check_term(term) {
@@ -36,11 +34,11 @@ pub fn literal_test() {
   check_term(v.Tagged("Outer", v.Tagged("Inner", v.Integer(0))))
 }
 
-fn run(source, env, args, extrinsic) {
+fn run(source, args) {
   let args = list.map(args, fn(v) { #(v, Nil) })
-  case r.execute(source, env, extrinsic) {
+  case r.execute_next(source, []) {
     // env not needed in resume but it is in the original execute call, for builtins
-    Ok(f) -> r.call(f, args, env, extrinsic)
+    Ok(f) -> r.call_next(f, args)
     Error(reason) -> Error(reason)
   }
 }
@@ -48,9 +46,9 @@ fn run(source, env, args, extrinsic) {
 pub fn simple_fn_test() {
   let exp = ir.lambda("_", ir.string("hello"))
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit()], dict.new())
+  |> run([v.unit()])
   |> should.equal(Ok(v.String("hello")))
 }
 
@@ -67,11 +65,10 @@ pub fn nested_fn_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   let captured = capture.capture(term, Nil)
 
-  let e = env.empty()
-  run(captured, e, [v.String("A"), v.String("B")], dict.new())
+  run(captured, [v.String("A"), v.String("B")])
   |> should.equal(Ok(v.LinkedList([v.String("A"), v.String("B")])))
 }
 
@@ -79,9 +76,9 @@ pub fn single_let_capture_test() {
   let exp =
     ir.let_("a", ir.string("external"), ir.lambda("_", ir.variable("a")))
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit()], dict.new())
+  |> run([v.unit()])
   |> should.equal(Ok(v.String("external")))
 }
 
@@ -91,7 +88,7 @@ pub fn duplicate_capture_test() {
     ir.lambda("_", ir.let_("_", ir.variable("std"), ir.variable("std")))
   let exp = ir.let_("std", ir.string("Standard"), func)
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
   |> should.equal(exp)
 }
@@ -108,7 +105,7 @@ pub fn ordered_capture_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
   |> should.equal(exp)
 }
@@ -125,7 +122,7 @@ pub fn ordered_fn_capture_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
   |> should.equal(exp)
 }
@@ -138,9 +135,9 @@ pub fn capture_shadowed_variable_test() {
       ir.let_("a", ir.string("second"), ir.lambda("_", ir.variable("a"))),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit()], dict.new())
+  |> run([v.unit()])
   |> should.equal(Ok(v.String("second")))
 }
 
@@ -156,7 +153,7 @@ pub fn only_needed_values_captured_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
   |> should.equal(ir.let_(
     "c",
@@ -185,7 +182,7 @@ pub fn double_catch_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
   |> should.equal(ir.let_(
     "std",
@@ -215,20 +212,19 @@ pub fn fn_in_env_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit()], dict.new())
+  |> run([v.unit()])
   |> should.equal(Ok(v.String("value")))
 }
 
 pub fn tagged_test() {
   let exp = ir.tag("Ok")
-  let env = env.empty()
-  let assert Ok(term) = run(exp, env, [], dict.new())
+  let assert Ok(term) = run(exp, [])
 
   let arg = v.String("later")
   capture.capture(term, Nil)
-  |> run(env.empty(), [arg], dict.new())
+  |> run([arg])
   |> should.equal(Ok(v.Tagged("Ok", arg)))
 }
 
@@ -242,41 +238,40 @@ pub fn case_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   let next = capture.capture(term, Nil)
 
   let arg = v.Tagged("Ok", v.unit())
   next
-  |> run(env.empty(), [arg], dict.new())
+  |> run([arg])
   |> should.equal(Ok(v.String("good")))
 
   let arg = v.Tagged("Error", v.unit())
   next
-  |> run(env.empty(), [arg], dict.new())
+  |> run([arg])
   |> should.equal(Ok(v.String("bad")))
 }
 
 pub fn partial_case_test() {
   let exp = ir.apply(ir.case_("Ok"), ir.lambda("_", ir.string("good")))
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   let rest =
     ir.apply(
       ir.apply(ir.case_("Error"), ir.lambda("_", ir.string("bad"))),
       ir.nocases(),
     )
 
-  let assert Ok(rest) = run(rest, env.empty(), [], dict.new())
+  let assert Ok(rest) = run(rest, [])
 
   let next = capture.capture(term, Nil)
 
   let arg = v.Tagged("Ok", v.unit())
-  let e = env.empty()
-  run(next, e, [rest, arg], dict.new())
+  run(next, [rest, arg])
   |> should.equal(Ok(v.String("good")))
 
   let arg = v.Tagged("Error", v.unit())
-  run(next, e, [rest, arg], dict.new())
+  run(next, [rest, arg])
   |> should.equal(Ok(v.String("bad")))
 }
 
@@ -290,23 +285,23 @@ pub fn handler_test() {
       ),
     )
 
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let assert Ok(term) = run(exp, [])
   let next = capture.capture(term, Nil)
 
   let exec = ir.lambda("_", ir.apply(ir.tag("Ok"), ir.string("some string")))
 
-  let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
+  let assert Ok(exec) = run(exec, [])
 
   next
-  |> run(env.empty(), [exec], dict.new())
+  |> run([exec])
   |> should.equal(Ok(v.Tagged("Ok", v.String("some string"))))
 
   let exec = ir.lambda("_", ir.apply(ir.perform("Abort"), ir.string("failure")))
 
-  let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
+  let assert Ok(exec) = run(exec, [])
 
   next
-  |> run(env.empty(), [exec], dict.new())
+  |> run([exec])
   |> should.equal(Ok(v.Tagged("Error", v.String("failure"))))
 }
 
@@ -328,7 +323,7 @@ pub fn handler_test() {
 //       ),
 //     )
 //   let exp = ir.apply(ir.apply(ir.handle("Log"), handler), exec)
-//   let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+//   let assert Ok(term) = r.execute(exp, dict.new())
 //   let next = capture.capture(term,Nil)
 
 //   next
@@ -337,9 +332,8 @@ pub fn handler_test() {
 // }
 
 pub fn builtin_arity1_test() {
-  let env = stdlib.env()
   let exp = ir.builtin("list_pop")
-  let assert Ok(term) = run(exp, env, [], dict.new())
+  let assert Ok(term) = run(exp, [])
   let next = capture.capture(term, Nil)
 
   let split =
@@ -353,7 +347,7 @@ pub fn builtin_arity1_test() {
       ),
     )
   next
-  |> run(env, [v.LinkedList([v.Integer(1), v.Integer(2)])], dict.new())
+  |> run([v.LinkedList([v.Integer(1), v.Integer(2)])])
   |> should.equal(Ok(split))
 
   // same as complete eval
@@ -366,12 +360,11 @@ pub fn builtin_arity1_test() {
       ),
     )
 
-  run(exp, stdlib.env(), [], dict.new())
+  run(exp, [])
   |> should.equal(Ok(split))
 }
 
 pub fn builtin_arity3_test() {
-  let env = stdlib.env()
   let list =
     ir.apply(
       ir.apply(ir.cons(), ir.integer(1)),
@@ -379,22 +372,22 @@ pub fn builtin_arity3_test() {
     )
   let exp = ir.apply(ir.apply(ir.builtin("list_fold"), list), ir.integer(0))
 
-  let assert Ok(term) = run(exp, env, [], dict.new())
+  let assert Ok(term) = run(exp, [])
   let next = capture.capture(term, Nil)
 
-  let ret = run(next, env, [v.String("not a function")], dict.new())
+  let ret = run(next, [v.String("not a function")])
   let assert Error(#(break.NotAFunction(v.String("not a function")), Nil, _, _)) =
     ret
 
   let reduce_exp = ir.lambda("el", ir.lambda("acc", ir.variable("el")))
-  let assert Ok(reduce) = run(reduce_exp, env, [], dict.new())
+  let assert Ok(reduce) = run(reduce_exp, [])
   next
-  |> run(env, [reduce], dict.new())
+  |> run([reduce])
   |> should.equal(Ok(v.Integer(2)))
 
   // same as complete eval
   let exp = ir.apply(exp, reduce_exp)
 
-  run(exp, env, [], dict.new())
+  run(exp, [])
   |> should.equal(Ok(v.Integer(2)))
 }
