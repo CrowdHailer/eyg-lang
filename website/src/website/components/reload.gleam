@@ -1,6 +1,7 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/expression as r
@@ -16,7 +17,6 @@ import lustre/element
 import lustre/element/html as h
 import lustre/event
 import morph/analysis
-import morph/editable
 import website/components/simple_debug
 import website/sync/cache
 
@@ -24,25 +24,17 @@ pub type State(meta) {
   State(
     sync: cache.Cache,
     source: ir.Node(meta),
-    // Value indicates if the app has ever run, 
-    // a value of None means that initial editor was set up with empty program.
-    // Values are parameterised to Nil because the fragments in the cache have nil metadata
+    // A value indicates if the app has ever run, 
+    // No value only occurs when the editor was set up with an invalid empty program.
+    // Values are parameterised to Nil because the fragments in the cache have Nil metadata
+    // 
+    // Init is not automatically called if the starting value is Nil because users might edit via a valid program
     value: Option(Value(Nil)),
-    // TODO make string an actual error
-    type_errors: List(#(meta, String)),
+    type_errors: List(#(meta, error.Reason)),
     // update and render if we want to keep everything running
     ready_to_migrate: Bool,
   )
 }
-
-// Might should init when loading reference
-// when writing you want to commit to the first state i.e. editing a number then record shouldn't require update function
-
-// There are no events but there would be for a deploy example
-// deploy example needs to push to netlify something to reload the page from state in local storage.
-// upgrade logic for cookies
-
-// print my own errors if the type ones don't work
 
 // Stop rendering the app if type error
 // if we need a set code function why not use it at the beginning
@@ -52,13 +44,9 @@ pub type State(meta) {
 
 // Type safe server is easier because app needs a framework
 
-// How do the calculators play out.
-
-// JUST FIX THE RELOAD AS IS
-
 pub fn init(sync, source) {
   let #(value, type_errors) = case type_check(sync, source, None) {
-    Ok(#(_t, _upgrade)) -> {
+    Ok(_) -> {
       case run_init(sync, source) {
         Ok(value) -> #(Some(value), [])
         Error(_) -> {
@@ -120,8 +108,7 @@ pub fn update_source(state, source) {
 
   let state = State(..state, source:)
   case type_check(sync, source, value) {
-    Ok(#(t, migrate)) ->
-      State(..state, type_errors: [], ready_to_migrate: migrate)
+    Ok(migrate) -> State(..state, type_errors: [], ready_to_migrate: migrate)
     Error(type_errors) -> State(..state, type_errors:)
   }
 }
@@ -131,8 +118,7 @@ pub fn update_cache(state, sync) {
 
   let state = State(..state, sync: sync)
   case type_check(sync, source, value) {
-    Ok(#(_t, migrate)) ->
-      State(..state, type_errors: [], ready_to_migrate: migrate)
+    Ok(migrate) -> State(..state, type_errors: [], ready_to_migrate: migrate)
     Error(type_errors) -> State(..state, type_errors:)
   }
 }
@@ -185,7 +171,7 @@ pub fn render(state) {
                 //   snippet.UserClickedPath(path),
                 // )),
                 ],
-                [element.text(reason)],
+                [element.text(debug.reason(reason))],
               )
             }),
           )
@@ -237,29 +223,9 @@ fn render_t(state) {
   t.Fun(state, t.Empty, t.String)
 }
 
-// TODO make private
-pub fn check_against_state(editable, old_state, refs) {
-  let b = infer.new_state()
-  let #(old_state, b) = binding.instantiate(old_state, 1, b)
-  let source = editable.to_annotated(editable, [])
-  do_check_against_state(b, refs, source, old_state)
-}
-
-fn do_check_against_state(b, refs, source, old_state) {
+fn do_check_against_state(b, refs, source, old) {
   let level = 1
-  // do infer allows returning top got value, which i don't need?
-  let #(tree, b) =
-    infer.infer(
-      // source
-      source,
-      // env
-      // [],
-      // eff
-      t.Empty,
-      refs,
-      level,
-      b,
-    )
+  let #(tree, b) = infer.infer(source, t.Empty, refs, level, b)
 
   let paths = ir.get_annotation(source)
   let info = ir.get_annotation(tree)
@@ -269,64 +235,59 @@ fn do_check_against_state(b, refs, source, old_state) {
       let #(path, #(r, _, _, _)) = info
       case r {
         Ok(_) -> Error(Nil)
-        Error(reason) -> Ok(#(path, debug.reason(reason)))
+        Error(reason) -> Ok(#(path, reason))
       }
     })
-  case type_errors {
-    [] -> {
-      let #(_, meta) = tree
-      let #(_, program, _, _) = meta
 
-      let #(rest, b) = binding.mono(level, b)
-      let #(new_state, b) = binding.mono(level, b)
+  let #(_, meta) = tree
+  let #(_, program, _, _) = meta
 
-      // Needs to be open for handle etc
-      let init_field = t.Record(t.do_rows([#("init", new_state)], rest))
+  let #(rest, b) = binding.mono(level, b)
+  let #(new, b) = binding.mono(level, b)
 
-      case unify.unify(init_field, program, level, b) {
-        Ok(b) -> {
-          // if has init check if init is old or new state type
-          let #(migrate_field, upgrade, b) = case
-            unify.unify(old_state, new_state, level, b)
-          {
-            Ok(b) -> {
-              #([], False, b)
-            }
-            Error(_reason) -> {
-              let migrate_field = #(
-                "migrate",
-                t.Fun(old_state, t.Empty, new_state),
-              )
-              #([migrate_field], True, b)
-            }
-          }
-          let #(new_message, b) = binding.mono(level, b)
-          let handle_field = #("handle", handle_t(new_state, new_message))
-          let render_field = #("render", render_t(new_state))
-          let #(remainder, b) = binding.mono(level, b)
+  // Needs to be open for handle etc
+  let init_field = t.Record(t.do_rows([#("init", new)], rest))
 
-          let expect =
-            t.do_rows([handle_field, render_field, ..migrate_field], remainder)
-          case unify.unify(expect, rest, level, b) {
-            Ok(b) -> {
-              let state = binding.resolve(new_state, b)
-              let state = binding.gen(state, 1, b)
-              case all_general(state) {
-                True -> Ok(#(state, upgrade))
-                False -> Error([#([], "Not all generalisable")])
-              }
-            }
-            Error(reason) -> {
-              Error([#([], debug.reason(reason))])
-            }
+  case unify.unify(init_field, program, level, b) {
+    Ok(b) -> {
+      // if has init check if init is old or new state type
+      let #(migrate_field, upgrade, b) = case unify.unify(old, new, level, b) {
+        Ok(b) -> #([], False, b)
+        Error(_reason) -> {
+          let migrate_field = #("migrate", t.Fun(old, t.Empty, new))
+          #([migrate_field], True, b)
+        }
+      }
+      let #(new_message, b) = binding.mono(level, b)
+      let handle_field = #("handle", handle_t(new, new_message))
+      let render_field = #("render", render_t(new))
+      let #(remainder, b) = binding.mono(level, b)
+
+      let expect =
+        t.do_rows([handle_field, render_field, ..migrate_field], remainder)
+      case unify.unify(expect, rest, level, b) {
+        Ok(_b) -> {
+          // let state = binding.resolve(new, b)
+          // let state = binding.gen(state, 1, b)
+          // case all_general(state) {
+          //   True -> Ok(upgrade)
+          //   False ->
+          // I think they should all generalise but I don't yet know enough what that means when compined with partially complete programs
+          //     Error([#([], todo as "Not all generalisable"), ..type_errors])
+          // }
+          case type_errors {
+            [] -> Ok(upgrade)
+            _ -> Error(type_errors)
           }
         }
         Error(reason) -> {
-          Error([#([], debug.reason(reason))])
+          Error([#([], reason), ..type_errors])
         }
       }
     }
-    _ -> Error(type_errors)
+    Error(reason) -> {
+      Error([#([], reason), ..type_errors])
+    }
   }
 }
 
