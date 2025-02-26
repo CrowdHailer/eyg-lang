@@ -97,7 +97,7 @@ pub fn update(state, message) {
   case message {
     ParentUpdatedSource(source) -> update_source(state, source)
     ParentUpdatedCache(cache) -> update_cache(state, cache)
-    UserClickedUpgrade -> todo
+    UserClickedUpgrade -> update_app(state)
     UserClickedApp ->
       case value {
         Some(value) -> {
@@ -134,6 +134,15 @@ pub fn update_cache(state, sync) {
     Ok(#(_t, migrate)) ->
       State(..state, type_errors: [], ready_to_migrate: migrate)
     Error(type_errors) -> State(..state, type_errors:)
+  }
+}
+
+pub fn update_app(state) {
+  let State(sync:, source:, value:, ..) = state
+  let assert Some(value) = value
+  case run_field(sync, source, "migrate", [#(value, Nil)]) {
+    Ok(value) -> State(..state, value: Some(value), ready_to_migrate: False)
+    Error(_) -> todo as "migrate was not ready"
   }
 }
 
