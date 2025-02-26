@@ -4,6 +4,7 @@ import eyg/ir/dag_json as codec
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/io
+import gleam/javascript/promise
 import gleam/list
 import gleeunit/should
 import simplifile
@@ -35,11 +36,12 @@ pub fn ir_suite_test() {
     |> should.be_ok
 
   list.map(tests, fn(fixture) {
-    let Fixture(name, raw, cid) = fixture
+    let Fixture(name, raw, expected) = fixture
     let source =
       codec.decode(raw)
       |> should.be_ok
-    case cid.from_tree(source) == cid {
+    use calculated <- promise.map(cid.from_tree(source))
+    case calculated == expected {
       True -> Nil
       False -> {
         cid.from_tree(source) |> io.debug
@@ -47,4 +49,5 @@ pub fn ir_suite_test() {
       }
     }
   })
+  |> promise.await_list
 }

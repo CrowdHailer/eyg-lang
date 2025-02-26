@@ -36,14 +36,6 @@ pub type State(meta) {
   )
 }
 
-// Stop rendering the app if type error
-// if we need a set code function why not use it at the beginning
-// the same could be true for sync
-// pass in source with meta
-// We don't trigger looking for refs from a run that is done by the snippet. A lot more runtimes than editors will exist
-
-// Type safe server is easier because app needs a framework
-
 pub fn init(sync, source) {
   let #(value, type_errors) = case type_check(sync, source, None) {
     Ok(_) -> {
@@ -290,12 +282,11 @@ fn do_check_against_state(b, refs, source, old) {
     }
   }
 }
-
-fn all_general(type_) {
-  infer.ftv(type_)
-  |> set.filter(fn(t) {
-    let #(g, _) = t
-    !g
-  })
-  |> set.is_empty
-}
+// fn all_general(type_) {
+//   infer.ftv(type_)
+//   |> set.filter(fn(t) {
+//     let #(g, _) = t
+//     !g
+//   })
+//   |> set.is_empty
+// }

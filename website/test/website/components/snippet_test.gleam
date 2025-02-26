@@ -16,6 +16,7 @@ fn foo_src() {
 
 fn foo_cid() {
   cid.from_tree(foo_src())
+  "TODO"
 }
 
 fn index() {

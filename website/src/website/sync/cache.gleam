@@ -6,6 +6,7 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
@@ -155,7 +156,7 @@ pub fn set_index(cache, index) {
 }
 
 pub fn install_fragment(cache, cid, bytes) {
-  // cid.from_block(bytes)
+  cid.from_block(bytes) |> io.debug
   case cid {
     c if c == cid -> {
       case dag_json.from_block(bytes) {
