@@ -2,6 +2,7 @@ import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/javascript/promise
 import gleam/list
@@ -44,7 +45,7 @@ pub fn await(ret) {
   }
 }
 
-pub fn execute_next(exp, scope) {
+pub fn execute_next(exp: ir.Node(meta), scope) {
   loop(state.step(state.E(exp), new_env(scope), state.Empty(dict.new())))
 }
 

@@ -11,7 +11,6 @@ import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/string
 import lustre/effect
 import morph/analysis
 import morph/editable as e
@@ -29,21 +28,13 @@ pub type Meta =
 pub type Value =
   value.Value(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
 
-pub type Example {
-  Example(
-    value: Value,
-    // Need to be all generalised
-    state_type: binding.Poly,
-  )
-}
-
 pub type State {
   State(
     auth: auth_panel.State,
     cache: client.Client,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
-    example: Example,
+    reload: reload.State(List(Int)),
   )
 }
 
@@ -110,6 +101,7 @@ fn all_references(snippets) {
 pub fn init(config) {
   let #(config, origin, storage) = config
   let client = client.init()
+  let reload_snippet = init_reload_example(hot_reload_example, client.cache)
   let snippets = [
     #(
       closure_serialization_key,
@@ -122,11 +114,12 @@ pub fn init(config) {
       predictable_effects_key,
       init_example(predictable_effects_example, client.cache, config),
     ),
-    #(hot_reload_key, init_reload_example(hot_reload_example, client.cache)),
+    #(hot_reload_key, reload_snippet),
   ]
-  let example = Example(value.Integer(0), t.Integer)
+  let reload =
+    reload.init(client.cache, reload_snippet.editable |> e.to_annotated([]))
   let #(auth, task) = auth_panel.init(Nil)
-  let state = State(auth, client, Nothing, dict.from_list(snippets), example)
+  let state = State(auth, client, Nothing, dict.from_list(snippets), reload)
 
   #(
     state,
@@ -151,7 +144,7 @@ pub type Message {
   AuthMessage(auth_panel.Message)
   SnippetMessage(String, snippet.Message)
   SyncMessage(client.Message)
-  ClickExample
+  ReloadMessage(reload.Message(List(Int)))
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -233,82 +226,73 @@ pub fn update(state: State, message) {
       let state = State(..state, cache: sync_client, snippets: snippets)
       #(state, client.do(effect, SyncMessage))
     }
-    ClickExample -> {
-      let Example(value, type_) = state.example
-      let s = get_snippet(state, hot_reload_key)
-      let source = snippet.source(s)
+    ReloadMessage(message) -> {
+      let reload = reload.update(state.reload, message)
+      // TODO pull errors from nor snippet
+      let state = State(..state, reload:)
+      #(state, effect.none())
+      // let Example(value, type_) = state.example
+      // let s = get_snippet(state, hot_reload_key)
+      // let source = snippet.source(s)
 
-      let check =
-        reload.check_against_state(
-          source,
-          type_,
-          cache.type_map(state.cache.cache),
-        )
+      // let check =
+      //   reload.check_against_state(
+      //     source,
+      //     type_,
+      //     cache.type_map(state.cache.cache),
+      //   )
 
-      case check {
-        Ok(#(_, False)) -> {
-          let assert Ok(source) =
-            runner.execute_next(source |> e.to_annotated([]), [])
-          let source = #(source, [])
+      // case check {
+      //   Ok(#(_, False)) -> {
+      //     todo as "part of reload"
+      //   }
+      //   Ok(#(_, True)) -> {
+      //     let assert Ok(source) =
+      //       runner.execute_next(source |> e.to_annotated([]), [])
+      //     let source = #(source, [])
 
-          // TODO remove by fixing everything to be paths
-          let value = dynamicx.unsafe_coerce(dynamic.from(value))
+      //     // TODO remove by fixing everything to be paths
+      //     let value = dynamicx.unsafe_coerce(dynamic.from(value))
 
-          let select = value.Partial(value.Select("handle"), [])
-          let args = [source, #(value, []), #(value.unit(), [])]
-          let assert Ok(new_value) = runner.call_next(select, args)
-          let example = Example(new_value, type_)
-          let state = State(..state, example: example)
-          #(state, effect.none())
-        }
-        Ok(#(_, True)) -> {
-          let assert Ok(source) =
-            runner.execute_next(source |> e.to_annotated([]), [])
-          let source = #(source, [])
-
-          // TODO remove by fixing everything to be paths
-          let value = dynamicx.unsafe_coerce(dynamic.from(value))
-
-          let select = value.Partial(value.Select("migrate"), [])
-          let args = [source, #(value, [])]
-          let assert Ok(new_value) = runner.call_next(select, args)
-          let #(new_type, _b) =
-            analysis.value_to_type(new_value, dict.new(), [])
-          let example = Example(new_value, new_type)
-          let state = State(..state, example: example)
-          #(state, effect.none())
-        }
-        Error(_) -> #(state, effect.none())
-      }
+      //     let select = value.Partial(value.Select("migrate"), [])
+      //     let args = [source, #(value, [])]
+      //     let assert Ok(new_value) = runner.call_next(select, args)
+      //     let #(new_type, _b) =
+      //       analysis.value_to_type(new_value, dict.new(), [])
+      //     let example = Example(new_value, new_type)
+      //     let state = State(..state, example: example)
+      //     #(state, effect.none())
+      //   }
+      //   Error(_) -> #(state, effect.none())
+      // }
     }
   }
 }
+// // run code in reload example to render page
+// pub fn render(state: State) {
+//   let Example(value, type_) = state.example
+//   let s = get_snippet(state, hot_reload_key)
+//   let source = snippet.source(s)
 
-// run code in reload example to render page
-pub fn render(state: State) {
-  let Example(value, type_) = state.example
-  let s = get_snippet(state, hot_reload_key)
-  let source = snippet.source(s)
+//   let check =
+//     reload.check_against_state(source, type_, cache.type_map(state.cache.cache))
 
-  let check =
-    reload.check_against_state(source, type_, cache.type_map(state.cache.cache))
+//   case check {
+//     Ok(#(_, False)) -> {
+//       let assert Ok(source) =
+//         runner.execute_next(source |> e.to_annotated([]), [])
+//       let source = #(source, [])
 
-  case check {
-    Ok(#(_, False)) -> {
-      let assert Ok(source) =
-        runner.execute_next(source |> e.to_annotated([]), [])
-      let source = #(source, [])
-
-      let select = value.Partial(value.Select("render"), [])
-      let args = [source, #(value, [])]
-      let page = case runner.call_next(select, args) {
-        Ok(value.String(page)) -> page
-        // TODO print actual value
-        other -> "something went wrong: " <> string.inspect(other)
-      }
-      Ok(#(page, False))
-    }
-    Ok(#(_, True)) -> Ok(#("", True))
-    Error(reason) -> Error(reason)
-  }
-}
+//       let select = value.Partial(value.Select("render"), [])
+//       let args = [source, #(value, [])]
+//       let page = case runner.call_next(select, args) {
+//         Ok(value.String(page)) -> page
+//         // TODO print actual value
+//         other -> "something went wrong: " <> string.inspect(other)
+//       }
+//       Ok(#(page, False))
+//     }
+//     Ok(#(_, True)) -> Ok(#("", True))
+//     Error(reason) -> Error(reason)
+//   }
+// }

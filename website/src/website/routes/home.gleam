@@ -1,6 +1,6 @@
 import gleam/http
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import lustre
 import lustre/attribute as a
 import lustre/element
@@ -11,7 +11,7 @@ import mysig/asset/client
 import mysig/html
 import website/components
 import website/components/auth_panel
-import website/components/simple_debug
+import website/components/reload
 import website/components/snippet
 import website/config
 import website/harness/spotless.{Config}
@@ -375,45 +375,7 @@ fn view() {
           [
             snippet.render_embedded(snippet, None)
               |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
-            h.p([], [element.text("App state")]),
-            h.div([a.class("border-2 p-2")], [
-              element.text(simple_debug.value_to_string(s.example.value)),
-            ]),
-            h.p([], [element.text("Rendered app, click to send message")]),
-            h.div([a.class("border-2 p-2")], [
-              case state.render(s) {
-                Ok(#(page, False)) ->
-                  h.div(
-                    [
-                      a.attribute("dangerous-unescaped-html", page),
-                      event.on_click(state.ClickExample),
-                    ],
-                    [],
-                  )
-                Ok(#(_, True)) ->
-                  h.div([event.on_click(state.ClickExample)], [
-                    element.text("click to upgrade"),
-                  ])
-                Error(errors) ->
-                  // snippet shows these
-                  h.div(
-                    [a.class("border-2 border-orange-3 px-2")],
-                    list.map(errors, fn(error) {
-                      let #(path, reason) = error
-                      h.div(
-                        [
-                          event.on_click(state.SnippetMessage(
-                            state.hot_reload_key,
-                            snippet.UserClickedPath(path),
-                          )),
-                        ],
-                        [element.text(reason)],
-                      )
-                    }),
-                  )
-                // element.none()
-              },
-            ]),
+            reload.render(s.reload) |> element.map(state.ReloadMessage),
           ]
         },
         True,
