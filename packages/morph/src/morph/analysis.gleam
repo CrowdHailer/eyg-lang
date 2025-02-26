@@ -2,15 +2,12 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/capture
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-
-// import eyg/interpreter/capture
 import gleam/dict.{type Dict}
 import gleam/io
 import gleam/list
-
-// import gleam/string
 import morph/editable as e
 import morph/projection
 
@@ -55,9 +52,9 @@ pub fn with_references(refs) {
 pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
-      let #(#(_, #(_, type_, _, _)), bindings) = todo as "capture"
-      // capture.capture(value, meta)
-      // |> infer.infer(t.Empty, dict.new(), 0, bindings)
+      let #(#(_, #(_, type_, _, _)), bindings) =
+        capture.capture(value, meta)
+        |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Binary(_) -> #(t.Binary, bindings)

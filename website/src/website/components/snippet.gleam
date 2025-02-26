@@ -342,6 +342,9 @@ pub fn focus_on_buffer() {
   Nil
 }
 
+@external(javascript, "../../website_ffi.mjs", "selectAllInput")
+fn select_all_input(element: dom_element.Element) -> Nil
+
 pub fn focus_on_input() {
   window.request_animation_frame(fn(_) {
     case document.query_selector("[autofocus]") {
@@ -349,7 +352,8 @@ pub fn focus_on_input() {
         dom_element.focus(el)
         // This can only be done when we move to a new focus
         // error is something specifically to do with numbers
-        dom_element.set_selection_range(el, 0, -1)
+        // dom_element.set_selection_range(el, 0, -1)
+        select_all_input(el)
       }
       Error(Nil) -> Nil
     }

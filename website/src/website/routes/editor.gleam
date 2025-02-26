@@ -603,20 +603,25 @@ pub fn render(state: State) {
                     [outline.arrow_path()],
                   ),
                 ]),
-                h.div([a.class("text-blue-700")], [
-                  h.span([a.class("font-bold")], [element.text("effects ")]),
-                  ..list.map(effects, fn(eff) {
-                    h.span([], [element.text(eff.label), element.text(" ")])
-                    // h.div([a.class("flex gap-1")], [
-                    //   output.render(eff.1.0),
-                    //   output.render(eff.1.1),
-                    // ])
-                  })
-                ]),
+                case effects {
+                  [] -> element.none()
+                  _ ->
+                    h.div([a.class("text-blue-700")], [
+                      h.span([a.class("font-bold")], [element.text("effects ")]),
+                      ..list.map(effects, fn(eff) {
+                        h.span([], [element.text(eff.label), element.text(" ")])
+                        // h.div([a.class("flex gap-1")], [
+                        //   output.render(eff.1.0),
+                        //   output.render(eff.1.1),
+                        // ])
+                      })
+                    ])
+                },
                 case value {
                   Some(value) ->
                     h.div([a.class(" max-h-60 overflow-auto")], [
-                      h.span([a.class("font-bold")], [element.text("> ")]),
+                      // would need to be flex to show inline
+                      // h.span([a.class("font-bold")], [element.text("> ")]),
                       output.render(value),
                     ])
                   None -> element.none()

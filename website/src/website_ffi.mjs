@@ -18,3 +18,10 @@ export function downloadFile(file) {
   }, 0);
 }
 
+// https://stackoverflow.com/questions/33406169/failed-to-execute-setselectionrange-on-htmlinputelement-the-input-elements
+export function selectAllInput(input) {
+  let type = input.type;
+  input.type = 'text';
+  input.setSelectionRange(0, input.value.length);
+  input.type = type;
+}
