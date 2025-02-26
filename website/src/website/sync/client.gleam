@@ -81,10 +81,7 @@ pub fn fetch_missing(snippets, wrapper) {
       |> list.append(acc)
       |> list.unique
     })
-  effect.from(fn(d) {
-    list.map(cids, fn(cid) { fetch_fragment(cid, fn(m) { d(wrapper(m)) }) })
-    Nil
-  })
+  fetch_fragments_effect(cids, wrapper)
 }
 
 pub fn fetch_list_missing(snippets, wrapper) {
@@ -94,10 +91,7 @@ pub fn fetch_list_missing(snippets, wrapper) {
       |> list.append(acc)
       |> list.unique
     })
-  effect.from(fn(d) {
-    list.map(cids, fn(cid) { fetch_fragment(cid, fn(m) { d(wrapper(m)) }) })
-    Nil
-  })
+  fetch_fragments_effect(cids, wrapper)
 }
 
 pub fn fetch_fragments_effect(cids, wrapper) {

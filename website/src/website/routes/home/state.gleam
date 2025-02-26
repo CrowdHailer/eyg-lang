@@ -68,10 +68,7 @@ fn decode_source(json) {
 }
 
 fn init_example(json, cache, config) {
-  let assert Ok(source) = dag_json.from_block(<<json:utf8>>)
-  let source =
-    e.from_annotated(source)
-    |> e.open_all
+  let source = decode_source(json)
   snippet.init(source, [], effects(config), cache)
 }
 
@@ -84,41 +81,37 @@ fn init_reload_example(json, cache) {
   snippet.init(source, [], [], cache)
 }
 
-fn all_references(snippets) {
-  list.flat_map(snippets, fn(snippet) {
-    let #(_, snippet) = snippet
-    snippet.references(snippet)
-  })
-}
-
 pub fn init(config) {
   let #(config, _origin, storage) = config
   let client = client.init()
   let reload_snippet = init_reload_example(hot_reload_example, client.cache)
-  let snippets = [
-    #(
-      closure_serialization_key,
-      init_example(closure_serialization, client.cache, config),
-    ),
-    #(fetch_key, init_example(fetch_example, client.cache, config)),
-    #(twitter_key, init_example(twitter_example, client.cache, config)),
-    #(type_check_key, init_example(type_check_example, client.cache, config)),
-    #(
-      predictable_effects_key,
-      init_example(predictable_effects_example, client.cache, config),
-    ),
-    #(hot_reload_key, reload_snippet),
-  ]
+  let snippets =
+    [
+      #(
+        closure_serialization_key,
+        init_example(closure_serialization, client.cache, config),
+      ),
+      #(fetch_key, init_example(fetch_example, client.cache, config)),
+      #(twitter_key, init_example(twitter_example, client.cache, config)),
+      #(type_check_key, init_example(type_check_example, client.cache, config)),
+      #(
+        predictable_effects_key,
+        init_example(predictable_effects_example, client.cache, config),
+      ),
+      #(hot_reload_key, reload_snippet),
+    ]
+    |> dict.from_list
   let reload =
     reload.init(client.cache, reload_snippet.editable |> e.to_annotated([]))
   let #(auth, task) = auth_panel.init(Nil)
-  let state = State(auth, client, Nothing, dict.from_list(snippets), reload)
+  let state = State(auth, client, Nothing, snippets, reload)
 
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
       client.fetch_index_effect(SyncMessage),
+      client.fetch_missing(snippets, SyncMessage),
     ]),
   )
 }
@@ -200,8 +193,7 @@ pub fn update(state: State, message) {
         snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_snippet(state, id, snippet)
-      let references = all_references(state.snippets |> dict.to_list)
-      // let #(cache, tasks) = sync.fetch_missing(state.cache, references)
+      let references = snippet.references(snippet)
 
       let reload = case id == hot_reload_key {
         True -> {
@@ -211,14 +203,17 @@ pub fn update(state: State, message) {
         False -> state.reload
       }
       let state = State(..state, reload:, active: Editing(id, failure))
-      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      io.debug("the cache fetching")
-      #(state, effect.batch([snippet_effect]))
+      #(
+        state,
+        effect.batch([
+          snippet_effect,
+          client.fetch_fragments_effect(references, SyncMessage),
+        ]),
+      )
     }
     SyncMessage(message) -> {
       let State(cache: sync_client, ..) = state
       let #(sync_client, effect) = client.update(sync_client, message)
-      // The example is one of the snippets
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
           snippet.set_references(v, sync_client.cache)
@@ -229,7 +224,6 @@ pub fn update(state: State, message) {
     }
     ReloadMessage(message) -> {
       let reload = reload.update(state.reload, message)
-      // TODO pull errors from nor snippet
       let state = State(..state, reload:)
       #(state, effect.none())
     }
