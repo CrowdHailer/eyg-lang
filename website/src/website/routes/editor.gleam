@@ -357,8 +357,6 @@ pub fn update(state: State, message) {
           ..state.shell,
           source: snippet.set_references(state.shell.source, sync_client.cache),
         )
-      // TODO I think effects of running tasks should happen here.
-      // Would be one nice reason to not have them per snippet
       let state = State(..state, sync: sync_client, source: snippet, shell:)
       #(state, client.lustre_run(effect, SyncMessage))
     }
