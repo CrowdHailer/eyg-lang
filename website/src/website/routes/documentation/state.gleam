@@ -2,6 +2,7 @@ import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/javascript/promisex
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
@@ -235,7 +236,7 @@ fn init_example(json, cache) {
 }
 
 pub fn init(_) {
-  let sync = client.init()
+  let sync = client.default()
   let snippets = [
     #(int_key, snippet.init(int_example, [], harness.effects(), sync.cache)),
     #(text_key, snippet.init(text_example, [], harness.effects(), sync.cache)),
@@ -275,14 +276,24 @@ pub fn init(_) {
   let #(auth, task) = auth_panel.init(Nil)
   let state = State(auth, sync, Nothing, dict.from_list(snippets))
   let assert Ok(storage) = auth_panel.local_storage("session")
+  let missing_cids = missing_refs(state.snippets)
+  let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
       client.fetch_index_effect(SyncMessage),
-      client.fetch_missing(state.snippets, SyncMessage),
+      client.lustre_run(sync_task, SyncMessage),
     ]),
   )
+}
+
+fn missing_refs(snippets) {
+  dict.fold(snippets, [], fn(acc, _key, snippet) {
+    snippet.references(snippet)
+    |> list.append(acc)
+    |> list.unique
+  })
 }
 
 pub type RunMessage {
@@ -373,7 +384,7 @@ pub fn update(state: State, message) {
       // TODO I think effects of running tasks should happen here.
       // Would be one nice reason to not have them per snippet
       let state = State(..state, cache: sync_client, snippets: snippets)
-      #(state, client.do(effect, SyncMessage))
+      #(state, client.lustre_run(effect, SyncMessage))
     }
   }
 }

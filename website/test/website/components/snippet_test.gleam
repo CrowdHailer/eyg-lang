@@ -30,7 +30,7 @@ fn index() {
 
 pub fn example_loads_index_and_fragment_test() {
   let source = ir.release("foo", 1, foo_cid())
-  let client = client.init()
+  let client = client.default()
   let state = snippet.init(e.from_annotated(source), [], [], client.cache)
   snippet.type_errors(state)
   |> should.equal([#([], snippet.ReleaseNotFetched("foo", 1, 0))])

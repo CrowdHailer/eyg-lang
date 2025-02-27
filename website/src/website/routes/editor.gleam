@@ -108,7 +108,7 @@ pub type Shell {
 
 pub type State {
   State(
-    cache: client.Client,
+    sync: client.Client,
     source: snippet.Snippet,
     shell: Shell,
     display_help: Bool,
@@ -116,7 +116,7 @@ pub type State {
 }
 
 pub fn init(_) {
-  let client = client.init()
+  let client = client.default()
   let source = e.from_annotated(ir.vacant())
   let shell =
     Shell(None, [], snippet.init(source, [], harness.effects(), client.cache))
@@ -246,7 +246,7 @@ pub fn update(state: State, message) {
       let shell = state.shell
       let scope = shell.source.scope
       let current =
-        snippet.active(exp, scope, harness.effects(), state.cache.cache)
+        snippet.active(exp, scope, harness.effects(), state.sync.cache)
       let shell = Shell(..shell, source: current)
       let state = State(..state, shell: shell)
       #(state, effect.none())
@@ -289,7 +289,7 @@ pub fn update(state: State, message) {
                   readonly.source,
                   scope,
                   harness.effects(),
-                  state.cache.cache,
+                  state.sync.cache,
                 )
               #(Shell(..shell, source: current), effect.none())
             }
@@ -310,23 +310,19 @@ pub fn update(state: State, message) {
             ..shell.previous
           ]
           let source =
-            snippet.active(
-              e.Vacant,
-              scope,
-              harness.effects(),
-              state.cache.cache,
-            )
+            snippet.active(e.Vacant, scope, harness.effects(), state.sync.cache)
           let shell = Shell(..shell, source: source, previous: previous)
           #(shell, effect.none())
         }
       }
-      let state = State(..state, shell: shell)
+      let references =
+        snippet.references(state.source)
+        |> list.append(snippet.references(shell.source))
+      let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
+      let state = State(..state, sync:, shell:)
       #(
         state,
-        effect.batch([
-          snippet_effect,
-          client.fetch_list_missing([state.source, shell.source], SyncMessage),
-        ]),
+        effect.batch([snippet_effect, client.lustre_run(sync_task, SyncMessage)]),
       )
     }
     PreviouseMessage(m, i) -> {
@@ -353,7 +349,7 @@ pub fn update(state: State, message) {
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
-      let State(cache: sync_client, ..) = state
+      let State(sync: sync_client, ..) = state
       let #(sync_client, effect) = client.update(sync_client, message)
       let snippet = snippet.set_references(state.source, sync_client.cache)
       let shell =
@@ -363,8 +359,8 @@ pub fn update(state: State, message) {
         )
       // TODO I think effects of running tasks should happen here.
       // Would be one nice reason to not have them per snippet
-      let state = State(..state, cache: sync_client, source: snippet, shell:)
-      #(state, client.do(effect, SyncMessage))
+      let state = State(..state, sync: sync_client, source: snippet, shell:)
+      #(state, client.lustre_run(effect, SyncMessage))
     }
   }
 }

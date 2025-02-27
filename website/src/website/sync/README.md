@@ -6,7 +6,11 @@ Is archive a better name, or dependency or package. sync message is a good name
 ## Client is a browser client
 
 It contains retry logic for the cache
-This is the centerpoint for all coordination to pull down fragments. messages should go here
+This is the centerpoint for all coordination to pull down fragments.
+Messages from users of the cache should be sent here.
+
+As it coordinates with the outside world it should talk in terms of effects.
+These can be midas effects, but we don't have a library for cid checking that works on midas.
 
 ## Cache
 This is a local store for the package index and fragment store.

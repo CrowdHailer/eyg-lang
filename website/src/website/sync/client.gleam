@@ -1,47 +1,91 @@
-import gleam/dict
+import eyg/ir/cid
 import gleam/io
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
 import gleam/list
+import gleam/result
 import lustre/effect
 import midas/browser
 import snag
-import website/components/snippet
 import website/sync/cache
 import website/sync/supabase
 
+pub type Failure {
+  CommunicationFailure
+  PayloadInvalid
+  DigestIncorrect
+}
+
+pub type Remote {
+  Remote(
+    fetch_index: fn() -> Promise(Result(cache.Index, Failure)),
+    fetch_fragment: fn(String) -> Promise(Result(BitArray, Failure)),
+  )
+}
+
 pub type Client {
-  Client(cache: cache.Cache)
+  Client(remote: Remote, cache: cache.Cache)
+}
+
+pub fn init(remote) {
+  #(Client(remote, cache.init()), Nothing)
+}
+
+pub fn default() {
+  init(
+    Remote(fn() { todo }, fn(cid) {
+      browser.run(supabase.fetch_fragment(cid))
+      |> promise.map(result.replace_error(_, CommunicationFailure))
+    }),
+  ).0
+}
+
+// The client trivially always starts a new request
+pub fn fetch_fragments(client, cids) {
+  let Client(remote:, ..) = client
+  #(client, RequireFragments(remote, cids))
 }
 
 pub type Effect {
   Nothing
-  RequireFragments(cids: List(String))
+  RequireFragments(remote: Remote, cids: List(String))
 }
 
-pub fn init() {
-  Client(cache.init())
+pub fn run(effect) {
+  case effect {
+    Nothing -> []
+    RequireFragments(remote, cids) ->
+      list.map(cids, fn(asked) {
+        use result <- promise.await(remote.fetch_fragment(asked))
+
+        case result {
+          Ok(bytes) -> {
+            use got <- promise.map(cid.from_block(bytes))
+            case asked == got {
+              True -> FragmentFetched(asked, Ok(bytes))
+              False -> FragmentFetched(asked, Error(DigestIncorrect))
+            }
+          }
+          _ -> todo as "handle this error"
+        }
+      })
+  }
 }
 
-pub fn fetch_index(then) {
+fn do_fetch_index(then) {
   use index <- promise.map(browser.run(supabase.fetch_index()))
   then(IndexFetched(index))
 }
 
-pub fn fetch_fragment(cid, then) {
-  use result <- promise.map(browser.run(supabase.fetch_fragment(cid)))
-  then(FragmentFetched(cid, result))
-}
-
 pub type Message {
   IndexFetched(Result(cache.Index, snag.Snag))
-  FragmentFetched(cid: String, result: Result(BitArray, snag.Snag))
+  FragmentFetched(cid: String, result: Result(BitArray, Failure))
 }
 
 pub fn update(state, message) {
-  let Client(cache) = state
+  let Client(remote:, cache:) = state
   case message {
     IndexFetched(Ok(index)) -> {
-      let state = Client(cache.set_index(cache, index))
+      let state = Client(..state, cache: cache.set_index(cache, index))
       #(state, Nothing)
     }
     IndexFetched(Error(_)) ->
@@ -49,17 +93,18 @@ pub fn update(state, message) {
     FragmentFetched(cid, Ok(bytes)) ->
       case cache.install_fragment(cache, cid, bytes) {
         Ok(#(cache, required)) -> {
-          let state = Client(cache)
+          let state = Client(..state, cache:)
           #(state, case required {
             [] -> Nothing
-            _ -> RequireFragments(required)
+            _ -> RequireFragments(remote, required)
           })
         }
         Error(_) -> todo as "why did this fail"
       }
-    FragmentFetched(cid, Error(reason)) -> {
+    FragmentFetched(_cid, Error(reason)) -> {
+      // It's possible to try again later
       io.debug(reason)
-      todo
+      #(state, Nothing)
     }
   }
 }
@@ -69,41 +114,14 @@ pub fn update(state, message) {
 
 pub fn fetch_index_effect(wrapper) {
   effect.from(fn(d) {
-    fetch_index(fn(m) { d(wrapper(m)) })
+    do_fetch_index(fn(m) { d(wrapper(m)) })
     Nil
   })
 }
 
-pub fn fetch_missing(snippets, wrapper) {
-  let cids =
-    dict.fold(snippets, [], fn(acc, _key, snippet) {
-      snippet.references(snippet)
-      |> list.append(acc)
-      |> list.unique
-    })
-  fetch_fragments_effect(cids, wrapper)
-}
-
-pub fn fetch_list_missing(snippets, wrapper) {
-  let cids =
-    list.fold(snippets, [], fn(acc, snippet) {
-      snippet.references(snippet)
-      |> list.append(acc)
-      |> list.unique
-    })
-  fetch_fragments_effect(cids, wrapper)
-}
-
-pub fn fetch_fragments_effect(cids, wrapper) {
+pub fn lustre_run(task, wrapper) {
   effect.from(fn(d) {
-    list.map(cids, fn(cid) { fetch_fragment(cid, fn(m) { d(wrapper(m)) }) })
+    list.map(run(task), fn(p) { promise.map(p, fn(r) { d(wrapper(r)) }) })
     Nil
   })
-}
-
-pub fn do(effect, wrapper) {
-  case effect {
-    RequireFragments([_, ..] as cids) -> fetch_fragments_effect(cids, wrapper)
-    _ -> effect.none()
-  }
 }

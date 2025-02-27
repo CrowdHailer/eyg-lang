@@ -3,6 +3,7 @@ import eyg/interpreter/value
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
 import gleam/io
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -24,7 +25,7 @@ pub type Value =
 pub type State {
   State(
     auth: auth_panel.State,
-    cache: client.Client,
+    sync: client.Client,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
     reload: reload.State(List(Int)),
@@ -83,7 +84,7 @@ fn init_reload_example(json, cache) {
 
 pub fn init(config) {
   let #(config, _origin, storage) = config
-  let client = client.init()
+  let client = client.default()
   let reload_snippet = init_reload_example(hot_reload_example, client.cache)
   let snippets =
     [
@@ -104,6 +105,8 @@ pub fn init(config) {
   let reload =
     reload.init(client.cache, reload_snippet.editable |> e.to_annotated([]))
   let #(auth, task) = auth_panel.init(Nil)
+  let missing_cids = missing_refs(snippets)
+  let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
   let state = State(auth, client, Nothing, snippets, reload)
 
   #(
@@ -111,9 +114,17 @@ pub fn init(config) {
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
       client.fetch_index_effect(SyncMessage),
-      client.fetch_missing(snippets, SyncMessage),
+      client.lustre_run(sync_task, SyncMessage),
     ]),
   )
+}
+
+fn missing_refs(snippets) {
+  dict.fold(snippets, [], fn(acc, _key, snippet) {
+    snippet.references(snippet)
+    |> list.append(acc)
+    |> list.unique
+  })
 }
 
 // Dont abstact as is useful because it uses the specific page State
@@ -194,6 +205,7 @@ pub fn update(state: State, message) {
       }
       let state = set_snippet(state, id, snippet)
       let references = snippet.references(snippet)
+      let #(client, task) = client.fetch_fragments(state.sync, references)
 
       let reload = case id == hot_reload_key {
         True -> {
@@ -207,20 +219,25 @@ pub fn update(state: State, message) {
         state,
         effect.batch([
           snippet_effect,
-          client.fetch_fragments_effect(references, SyncMessage),
+          effect.from(fn(d) {
+            list.map(client.run(task), fn(p) {
+              promise.map(p, fn(r) { d(SyncMessage(r)) })
+            })
+            Nil
+          }),
         ]),
       )
     }
     SyncMessage(message) -> {
-      let State(cache: sync_client, ..) = state
+      let State(sync: sync_client, ..) = state
       let #(sync_client, effect) = client.update(sync_client, message)
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
           snippet.set_references(v, sync_client.cache)
         })
       let reload = reload.update_cache(state.reload, sync_client.cache)
-      let state = State(..state, reload:, cache: sync_client, snippets:)
-      #(state, client.do(effect, SyncMessage))
+      let state = State(..state, reload:, sync: sync_client, snippets:)
+      #(state, client.lustre_run(effect, SyncMessage))
     }
     ReloadMessage(message) -> {
       let reload = reload.update(state.reload, message)

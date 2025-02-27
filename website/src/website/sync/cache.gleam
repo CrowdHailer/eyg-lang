@@ -6,7 +6,6 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
-import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
@@ -122,7 +121,6 @@ fn create_fragment(source, return, types) {
   //   }
   //   Error(_) -> Error(Nil)
   // }
-  // TODO fragment infer
   let #(type_, errors) = fragment.infer(source, types)
   Fragment(source, return, type_, errors)
 }
@@ -156,26 +154,20 @@ pub fn set_index(cache, index) {
 }
 
 pub fn install_fragment(cache, cid, bytes) {
-  cid.from_block(bytes) |> io.debug
-  case cid {
-    c if c == cid -> {
-      case dag_json.from_block(bytes) {
-        // install source
-        Ok(source) -> {
-          let cache = install_source(cache, cid, source)
-          let references = ir.list_references(source)
-          let required =
-            list.filter(references, dict.has_key(cache.fragments, _))
-          // This is required references to find, it would be different to keep new resolved references
-          Ok(#(cache, required))
-        }
-        Error(_) -> Error(Nil)
-      }
+  case dag_json.from_block(bytes) {
+    // install source
+    Ok(source) -> {
+      let cache = install_source(cache, cid, source)
+      let references = ir.list_references(source)
+      let required = list.filter(references, dict.has_key(cache.fragments, _))
+      // This is required references to find, it would be different to keep new resolved references
+      Ok(#(cache, required))
     }
-    _ -> Error(Nil)
+    Error(_) -> Error(Nil)
   }
 }
 
+// This assumes the cid is valid, this module could be internal or a block as an opaque type used for a safer API
 pub fn install_source(cache, cid, source) {
   let scope = []
   let return =
