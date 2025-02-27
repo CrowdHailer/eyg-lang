@@ -1,4 +1,3 @@
-import eyg/ir/cid
 import eyg/ir/dag_json
 import gleam/dictx
 import gleeunit/should
@@ -15,8 +14,7 @@ fn foo_src() {
 }
 
 fn foo_cid() {
-  cid.from_tree(foo_src())
-  "TODO"
+  "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
 }
 
 fn index() {
@@ -30,13 +28,13 @@ fn index() {
 
 pub fn example_loads_index_and_fragment_test() {
   let source = ir.release("foo", 1, foo_cid())
-  let client = client.default()
+  let #(client, _) = client.default()
   let state = snippet.init(e.from_annotated(source), [], [], client.cache)
   snippet.type_errors(state)
   |> should.equal([#([], snippet.ReleaseNotFetched("foo", 1, 0))])
 
   let #(client, eff) = client.update(client, client.IndexFetched(Ok(index())))
-  should.equal(eff, client.Nothing)
+  should.equal(eff, [])
   let state = snippet.set_references(state, client.cache)
 
   snippet.type_errors(state)
@@ -47,7 +45,7 @@ pub fn example_loads_index_and_fragment_test() {
   let message =
     client.FragmentFetched(foo_cid(), Ok(dag_json.to_block(foo_src())))
   let #(client, eff) = client.update(client, message)
-  should.equal(eff, client.Nothing)
+  should.equal(eff, [])
 
   let state = snippet.set_references(state, client.cache)
   snippet.type_errors(state)

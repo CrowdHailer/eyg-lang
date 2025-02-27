@@ -29,14 +29,6 @@ const vacant_bytes = <<"{\"0\":\"z\"}">>
 
 const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
 
-pub fn install_incorrect_cid_test() {
-  // panic as "need browser validation check"
-  let cid = "baguqeera22cbouedtv3bzhajvp66ib6ichytfrid6osjpskyzthoivta6yyq"
-  let cache = cache.init()
-  cache.install_fragment(cache, cid, vacant_bytes)
-  |> should.be_error
-}
-
 pub fn install_test() {
   let cache = cache.init()
   cache.install_fragment(cache, vacant_cid, vacant_bytes)

@@ -153,6 +153,7 @@ pub fn set_index(cache, index) {
   Cache(..cache, index:)
 }
 
+// decide whether to remove this or not when the error messages for still loading refs is decided
 pub fn install_fragment(cache, cid, bytes) {
   case dag_json.from_block(bytes) {
     // install source

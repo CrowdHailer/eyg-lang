@@ -5,7 +5,6 @@ import gleam/list
 import gleam/result
 import lustre/effect
 import midas/browser
-import snag
 import website/sync/cache
 import website/sync/supabase
 
@@ -27,57 +26,66 @@ pub type Client {
 }
 
 pub fn init(remote) {
-  #(Client(remote, cache.init()), Nothing)
+  #(Client(remote, cache.init()), [RequireIndex(remote)])
 }
 
 pub fn default() {
   init(
-    Remote(fn() { todo }, fn(cid) {
-      browser.run(supabase.fetch_fragment(cid))
-      |> promise.map(result.replace_error(_, CommunicationFailure))
-    }),
-  ).0
+    Remote(
+      fn() {
+        browser.run(supabase.fetch_index())
+        |> promise.map(result.replace_error(_, CommunicationFailure))
+      },
+      fn(cid) {
+        browser.run(supabase.fetch_fragment(cid))
+        |> promise.map(result.replace_error(_, CommunicationFailure))
+      },
+    ),
+  )
 }
 
 // The client trivially always starts a new request
 pub fn fetch_fragments(client, cids) {
   let Client(remote:, ..) = client
-  #(client, RequireFragments(remote, cids))
+  #(client, [RequireFragments(remote, cids)])
 }
 
 pub type Effect {
-  Nothing
+  RequireIndex(remote: Remote)
   RequireFragments(remote: Remote, cids: List(String))
 }
 
-pub fn run(effect) {
-  case effect {
-    Nothing -> []
-    RequireFragments(remote, cids) ->
-      list.map(cids, fn(asked) {
-        use result <- promise.await(remote.fetch_fragment(asked))
+pub fn run(effects) {
+  list.flat_map(effects, fn(e) {
+    case e {
+      RequireIndex(remote) -> [
+        {
+          use index <- promise.map(remote.fetch_index())
+          IndexFetched(index)
+        },
+      ]
+      RequireFragments(remote, cids) ->
+        list.map(cids, fn(asked) {
+          use result <- promise.await(remote.fetch_fragment(asked))
 
-        case result {
-          Ok(bytes) -> {
-            use got <- promise.map(cid.from_block(bytes))
-            case asked == got {
-              True -> FragmentFetched(asked, Ok(bytes))
-              False -> FragmentFetched(asked, Error(DigestIncorrect))
+          case result {
+            Ok(bytes) -> {
+              use got <- promise.map(cid.from_block(bytes))
+              case asked == got {
+                True -> FragmentFetched(asked, Ok(bytes))
+                False -> FragmentFetched(asked, Error(DigestIncorrect))
+              }
             }
+            Error(reason) ->
+              promise.resolve(FragmentFetched(asked, Error(reason)))
           }
-          _ -> todo as "handle this error"
-        }
-      })
-  }
-}
-
-fn do_fetch_index(then) {
-  use index <- promise.map(browser.run(supabase.fetch_index()))
-  then(IndexFetched(index))
+        })
+    }
+  })
 }
 
 pub type Message {
-  IndexFetched(Result(cache.Index, snag.Snag))
+  IndexFetched(Result(cache.Index, Failure))
   FragmentFetched(cid: String, result: Result(BitArray, Failure))
 }
 
@@ -86,25 +94,31 @@ pub fn update(state, message) {
   case message {
     IndexFetched(Ok(index)) -> {
       let state = Client(..state, cache: cache.set_index(cache, index))
-      #(state, Nothing)
+      #(state, [])
     }
-    IndexFetched(Error(_)) ->
-      todo as "show error. To the side or in state, probably to the side"
+    IndexFetched(Error(reason)) -> {
+      // It's possible to try again later
+      io.debug(reason)
+      #(state, [])
+    }
     FragmentFetched(cid, Ok(bytes)) ->
       case cache.install_fragment(cache, cid, bytes) {
         Ok(#(cache, required)) -> {
           let state = Client(..state, cache:)
           #(state, case required {
-            [] -> Nothing
-            _ -> RequireFragments(remote, required)
+            [] -> []
+            _ -> [RequireFragments(remote, required)]
           })
         }
-        Error(_) -> todo as "why did this fail"
+        Error(_) -> {
+          io.println("failed to install cid: " <> cid)
+          #(state, [])
+        }
       }
     FragmentFetched(_cid, Error(reason)) -> {
       // It's possible to try again later
       io.debug(reason)
-      #(state, Nothing)
+      #(state, [])
     }
   }
 }
@@ -112,16 +126,9 @@ pub fn update(state, message) {
 // -------------------
 // lustre code below
 
-pub fn fetch_index_effect(wrapper) {
+pub fn lustre_run(tasks, wrapper) {
   effect.from(fn(d) {
-    do_fetch_index(fn(m) { d(wrapper(m)) })
-    Nil
-  })
-}
-
-pub fn lustre_run(task, wrapper) {
-  effect.from(fn(d) {
-    list.map(run(task), fn(p) { promise.map(p, fn(r) { d(wrapper(r)) }) })
+    list.map(run(tasks), fn(p) { promise.map(p, fn(r) { d(wrapper(r)) }) })
     Nil
   })
 }

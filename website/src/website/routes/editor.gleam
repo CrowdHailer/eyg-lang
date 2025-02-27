@@ -116,13 +116,13 @@ pub type State {
 }
 
 pub fn init(_) {
-  let client = client.default()
+  let #(client, sync_task) = client.default()
   let source = e.from_annotated(ir.vacant())
   let shell =
     Shell(None, [], snippet.init(source, [], harness.effects(), client.cache))
   let snippet = snippet.init(source, [], [], client.cache)
   let state = State(client, snippet, shell, False)
-  #(state, client.fetch_index_effect(SyncMessage))
+  #(state, client.lustre_run(sync_task, SyncMessage))
 }
 
 pub type Message {

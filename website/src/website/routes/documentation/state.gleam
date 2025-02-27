@@ -236,7 +236,7 @@ fn init_example(json, cache) {
 }
 
 pub fn init(_) {
-  let sync = client.default()
+  let #(sync, init_task) = client.default()
   let snippets = [
     #(int_key, snippet.init(int_example, [], harness.effects(), sync.cache)),
     #(text_key, snippet.init(text_example, [], harness.effects(), sync.cache)),
@@ -274,16 +274,16 @@ pub fn init(_) {
     #(capture_key, init_example(capture_example, sync.cache)),
   ]
   let #(auth, task) = auth_panel.init(Nil)
-  let state = State(auth, sync, Nothing, dict.from_list(snippets))
   let assert Ok(storage) = auth_panel.local_storage("session")
-  let missing_cids = missing_refs(state.snippets)
+  let snippets = dict.from_list(snippets)
+  let missing_cids = missing_refs(snippets)
   let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
+  let state = State(auth, sync, Nothing, snippets)
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      client.fetch_index_effect(SyncMessage),
-      client.lustre_run(sync_task, SyncMessage),
+      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
 }

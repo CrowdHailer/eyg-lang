@@ -84,7 +84,7 @@ fn init_reload_example(json, cache) {
 
 pub fn init(config) {
   let #(config, _origin, storage) = config
-  let client = client.default()
+  let #(client, init_task) = client.default()
   let reload_snippet = init_reload_example(hot_reload_example, client.cache)
   let snippets =
     [
@@ -113,8 +113,7 @@ pub fn init(config) {
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      client.fetch_index_effect(SyncMessage),
-      client.lustre_run(sync_task, SyncMessage),
+      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
 }
