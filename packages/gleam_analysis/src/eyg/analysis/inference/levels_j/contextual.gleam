@@ -4,7 +4,6 @@ import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/dict
-import gleam/io
 import gleam/list
 import gleam/set
 
