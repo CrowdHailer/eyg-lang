@@ -1,4 +1,3 @@
-import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/interpreter/block
@@ -9,11 +8,9 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/int
 import gleam/io
 import gleam/list
 import gleam/result
-import morph/analysis
 import website/sync/fragment
 
 pub type Meta =
@@ -113,14 +110,6 @@ pub type Fragment {
 
 // Fragment is a cache of the computed value
 fn create_fragment(source, return, types) {
-  // TODO should get moved to eyg_analysis
-  // let type_ = case return {
-  //   Ok(v) -> {
-  //     let #(type_, _bindings) = analysis.value_to_type(v, dict.new(), Nil)
-  //     Ok(type_)
-  //   }
-  //   Error(_) -> Error(Nil)
-  // }
   let #(type_, errors) = fragment.infer(source, types)
   Fragment(source, return, type_, errors)
 }

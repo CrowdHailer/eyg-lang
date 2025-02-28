@@ -150,6 +150,7 @@ pub fn render(state: State(_), item_render) {
         a.attribute("autofocus", "true"),
         a.required(True),
         event.on("keydown", fn(event) {
+          // waiting for lustre 5.0 that uses the decode API
           use key <- result.try(dynamic.field("key", dynamic.string)(event))
           case key {
             "ArrowDown" -> Ok(UserPressedDown)

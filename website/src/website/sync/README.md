@@ -1,16 +1,20 @@
-# Package management
+# Package management (Sync)
 
-This directory may include publishing.
+Fetch and publish fragments and packages.
+
 Is archive a better name, or dependency or package. sync message is a good name
 
-## Client is a browser client
+# Fragment vs Package
 
-It contains retry logic for the cache
-This is the centerpoint for all coordination to pull down fragments.
-Messages from users of the cache should be sent here.
+A fragment is an EYG expression that is identified by it's hash.
+A package consists of an ordered set of releases where each release points at a valid, pure fragment.
 
-As it coordinates with the outside world it should talk in terms of effects.
-These can be midas effects, but we don't have a library for cid checking that works on midas.
+Pure means that the expression is side-effect free (it can contain functions with side effects), valid means that there are no type errors.
+
+I want a term for valid fragments.
+Calling invalid fragments blobs seems acceptable but I think for most people blob means binary.
+
+
 
 ## Cache
 This is a local store for the package index and fragment store.
@@ -30,10 +34,16 @@ There is no point that when there is already a cache.
 ### Index
 The index contains all publish packages releases and all name registrations.
 
-### Fragments
-A lookup from hash to source.
+## Client is a browser client
 
-## Sync
+It contains retry logic for the cache
+This is the centerpoint for all coordination to pull down fragments.
+Messages from users of the cache should be sent here.
+
+As it coordinates with the outside world it should talk in terms of effects.
+These can be midas effects, but we don't have a library for cid checking that works on midas.
+
+## Remotes
 Syncing is grouped by remote, this follows similar terminology as git.
 Remotes are specific API's where references can be queries.
 

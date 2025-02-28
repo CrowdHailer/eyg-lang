@@ -2,7 +2,6 @@ import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
-import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
@@ -83,7 +82,7 @@ fn init_reload_example(json, cache) {
 }
 
 pub fn init(config) {
-  let #(config, _origin, storage) = config
+  let #(config, storage) = config
   let #(client, init_task) = client.default()
   let reload_snippet = init_reload_example(hot_reload_example, client.cache)
   let snippets =

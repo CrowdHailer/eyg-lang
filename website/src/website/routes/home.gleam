@@ -1,4 +1,3 @@
-import gleam/http
 import gleam/list
 import gleam/option.{None}
 import lustre
@@ -17,8 +16,6 @@ import website/harness/spotless.{Config}
 import website/harness/spotless/netlify
 import website/routes/common
 import website/routes/home/state
-import website/sync/browser
-import website/sync/sync
 
 // TODO this can return just some code id needs to match in client and empty_lustre
 // without layout it can move to common
@@ -27,12 +24,7 @@ pub fn app(module, func) {
   use ssr <- asset.do(view())
   let config =
     Config(dnsimple_local: True, netlify: netlify.local, twitter_local: True)
-  let #(state, _eff) =
-    state.init(#(
-      config,
-      sync.Origin(http.Https, "eyg.test", None),
-      auth_panel.in_memory_store(),
-    ))
+  let #(state, _eff) = state.init(#(config, auth_panel.in_memory_store()))
 
   layout([
     h.div([a.id("app")], [ssr(state)]),
@@ -73,11 +65,7 @@ pub fn client() {
   let assert Ok(render) = client.load_manifest(view())
   let app = lustre.application(state.init, state.update, render)
   let assert Ok(_) =
-    lustre.start(app, "#app", #(
-      config.load(),
-      browser.get_origin(),
-      auth_panel.in_memory_store(),
-    ))
+    lustre.start(app, "#app", #(config.load(), auth_panel.in_memory_store()))
   Nil
 }
 
