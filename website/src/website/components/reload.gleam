@@ -11,7 +11,6 @@ import eyg/ir/tree as ir
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/set
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
@@ -68,7 +67,7 @@ fn type_check(sync, source: ir.Node(List(Int)), value: Option(Value(Nil))) {
 pub type Message(meta) {
   ParentUpdatedSource(source: ir.Node(meta))
   ParentUpdatedCache(cache: cache.Cache)
-  UserClickedUpgrade
+  UserClickedMigrate
   UserClickedApp
 }
 
@@ -77,14 +76,17 @@ pub fn update(state, message) {
   case message {
     ParentUpdatedSource(source) -> update_source(state, source)
     ParentUpdatedCache(cache) -> update_cache(state, cache)
-    UserClickedUpgrade -> update_app(state)
+    UserClickedMigrate -> update_app(state)
     UserClickedApp ->
       case value {
         Some(value) -> {
           let args = [#(value, Nil), #(v.unit(), Nil)]
           case run_field(sync, source, "handle", args) {
             Ok(value) -> State(..state, value: Some(value))
-            Error(_) -> todo as "handle was not ready"
+            Error(_) -> {
+              io.println("user clicked app but the handle function failed")
+              state
+            }
           }
         }
         None -> {
@@ -117,10 +119,16 @@ pub fn update_cache(state, sync) {
 
 pub fn update_app(state) {
   let State(sync:, source:, value:, ..) = state
-  let assert Some(value) = value
-  case run_field(sync, source, "migrate", [#(value, Nil)]) {
+  let result = case value {
+    Some(value) -> run_field(sync, source, "migrate", [#(value, Nil)])
+    None -> run_init(sync, source)
+  }
+  case result {
     Ok(value) -> State(..state, value: Some(value), ready_to_migrate: False)
-    Error(_) -> todo as "migrate was not ready"
+    Error(_) -> {
+      io.println("user clicked migrate which failed")
+      state
+    }
   }
 }
 
@@ -138,7 +146,7 @@ pub fn render(state) {
     h.div([a.class("border-2 p-2")], [
       case type_errors, ready_to_migrate {
         [], True ->
-          h.div([event.on_click(UserClickedUpgrade)], [
+          h.div([event.on_click(UserClickedMigrate)], [
             element.text("click to upgrade"),
           ])
         [], False -> {
@@ -146,8 +154,9 @@ pub fn render(state) {
           let args = [#(value, Nil)]
           case run_field(state.sync, state.source, "render", args) {
             Ok(v.String(page)) -> render_app(page)
-            _ -> todo as "Somenon string value"
-            Error(_) -> todo as "handle was not ready"
+            Ok(_) -> element.text("app render did not return a string")
+            Error(_) ->
+              element.text("app render failed, this should not happen")
           }
         }
         // snippet shows these
@@ -155,7 +164,7 @@ pub fn render(state) {
           h.div(
             [a.class("border-2 border-orange-3 px-2")],
             list.map(type_errors, fn(error) {
-              let #(path, reason) = error
+              let #(_path, reason) = error
               h.div(
                 [
                   // event.on_click(state.SnippetMessage(

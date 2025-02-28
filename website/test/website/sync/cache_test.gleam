@@ -82,9 +82,3 @@ pub fn resolve_type_only_errors_test() {
   |> fn(f: cache.Fragment) { f.errors }()
   |> should.equal([])
 }
-// pub fn resolve_release_test()  {
-//   let dep = ir.string("first published release")
-
-//   todo
-// }
-// resolve releases

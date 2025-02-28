@@ -1,10 +1,8 @@
 import eyg/analysis/type_/binding/error
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
-import eyg/ir/tree as ir
 import gleam/bit_array
-import gleam/io
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleeunit/should
 import morph/editable as e
 import website/components/reload
@@ -16,6 +14,10 @@ fn new(source) {
 
 fn click_app(state) {
   reload.update(state, reload.UserClickedApp)
+}
+
+fn click_migrate(state) {
+  reload.update(state, reload.UserClickedMigrate)
 }
 
 fn set_source(state, source) {
@@ -41,10 +43,25 @@ pub fn add_app_after_init_test() {
   state.value
   |> should.be_none()
   let state = set_source(state, counter_app())
-  todo as "tes"
+  state.type_errors
+  |> should.equal([])
+
+  state.value
+  |> should.be_none()
+  let state = click_migrate(state)
+  state.value
+  |> should.be_some()
+  |> should.equal(v.Integer(10))
 }
 
 // updating with source doesnt tigger immediatly
+
+pub fn incomplete_source_shows_error_test() {
+  let source = e.Vacant
+  let state = new(source |> e.to_annotated([]))
+  state.type_errors
+  |> should.equal([#([], error.Todo)])
+}
 
 pub fn valid_source_without_init_fails_test() {
   let source = e.Record([#("foo", e.Integer(10))], None)
@@ -53,34 +70,27 @@ pub fn valid_source_without_init_fails_test() {
   |> should.equal([#([], error.MissingRow("init"))])
 }
 
-// pub fn incomplete_source_shows_error_test() {
-//   let source = e.Vacant
-//   let current_state = t.Integer
-//   let refs = dict.new()
-//   reload.check_against_state(source, current_state, refs)
-//   |> should.be_error()
-//   |> should.equal([#([], error.Todo)])
-// }
+pub fn source_with_same_init_needs_handle_render_test() {
+  let source = e.Record([#("init", e.Integer(10))], None)
+  let state = new(source |> e.to_annotated([]))
+  state.type_errors
+  |> should.equal([#([], error.MissingRow("handle"))])
+}
 
-// pub fn program_with_inconsistent_types_test() {
-//   let source = e.Call(e.Integer(99), [e.Record([], None)])
-//   let current_state = t.Integer
-//   let refs = dict.new()
-//   reload.check_against_state(source, current_state, refs)
-//   |> should.be_error()
-//   |> should.equal([
-//     #([], "type missmatch given: Integer expected: ({} <..1>) -> 0"),
-//   ])
-// }
+pub fn program_with_inconsistent_types_test() {
+  let source = e.Record([#("init", e.String("hi"))], None)
+  let state = new(source |> e.to_annotated([]))
 
-// pub fn source_with_same_init_needs_handle_render_test() {
-//   let source = e.Record([#("init", e.Integer(10))], None)
-//   let current_state = t.Integer
-//   let refs = dict.new()
-//   reload.check_against_state(source, current_state, refs)
-//   |> should.be_error()
-//   |> should.equal([#([], "missing row 'handle'")])
-// }
+  // Force state to have evaluated
+  let state = reload.State(..state, value: Some(v.String("hi")))
+  state.value
+  |> should.be_some()
+  |> should.equal(v.String("hi"))
+
+  let state = set_source(state, counter_app())
+  state.type_errors
+  |> should.equal([#([], error.MissingRow("migrate"))])
+}
 
 // examples
 
