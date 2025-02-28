@@ -3,7 +3,7 @@ import eyg/analysis/jm/type_ as t
 import eyg/editor/v1/app.{SelectNode}
 import eyg/editor/v1/view/type_
 import eyg/ir/tree as ir
-import eyg/runtime/value
+import eyg/runtime/value as old_value
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -413,7 +413,7 @@ fn error(loc: Location, inferred) {
 fn binary(value, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
-  let content = value.print_bit_string(value)
+  let content = old_value.print_bit_string(value)
   [click(loc), classes([#("text-green-500", True), ..highlight(target, alert)])]
   |> span([text(content)])
 }

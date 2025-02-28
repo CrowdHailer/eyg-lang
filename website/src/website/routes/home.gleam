@@ -1,23 +1,19 @@
-import eyg/runtime/value as v
-import eyg/sync/browser
-import eyg/sync/sync
-import gleam/http
 import gleam/list
 import gleam/option.{None}
-import harness/impl/spotless.{Config}
-import harness/impl/spotless/netlify
 import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import lustre/event
 import mysig/asset
 import mysig/asset/client
 import mysig/html
 import website/components
 import website/components/auth_panel
+import website/components/reload
 import website/components/snippet
 import website/config
+import website/harness/spotless.{Config}
+import website/harness/spotless/netlify
 import website/routes/common
 import website/routes/home/state
 
@@ -28,12 +24,7 @@ pub fn app(module, func) {
   use ssr <- asset.do(view())
   let config =
     Config(dnsimple_local: True, netlify: netlify.local, twitter_local: True)
-  let #(state, _eff) =
-    state.init(#(
-      config,
-      sync.Origin(http.Https, "eyg.test", None),
-      auth_panel.in_memory_store(),
-    ))
+  let #(state, _eff) = state.init(#(config, auth_panel.in_memory_store()))
 
   layout([
     h.div([a.id("app")], [ssr(state)]),
@@ -74,11 +65,7 @@ pub fn client() {
   let assert Ok(render) = client.load_manifest(view())
   let app = lustre.application(state.init, state.update, render)
   let assert Ok(_) =
-    lustre.start(app, "#app", #(
-      config.load(),
-      browser.get_origin(),
-      auth_panel.in_memory_store(),
-    ))
+    lustre.start(app, "#app", #(config.load(), auth_panel.in_memory_store()))
   Nil
 }
 
@@ -349,12 +336,10 @@ fn view() {
           "Build client and server as a single strongly typed program. Even extend type guarantees over your build scripts.",
           "Other languages have the possiblity of closure serialisation, but EYG's runtime is designed to make them efficient.",
         ],
-        action(
-          "Read the reference documentation.",
-          "/documentation#closure-serialization",
-          Useful,
-        ),
-        [snippet(s, state.closure_serialization_key)],
+        action("Read the documentation.", "/documentation", Useful),
+        [
+          // snippet(s, state.closure_serialization_key)
+        ],
         False,
       ),
       feature(
@@ -375,45 +360,7 @@ fn view() {
           [
             snippet.render_embedded(snippet, None)
               |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
-            h.p([], [element.text("App state")]),
-            h.div([a.class("border-2 p-2")], [
-              element.text(v.debug(s.example.value)),
-            ]),
-            h.p([], [element.text("Rendered app, click to send message")]),
-            h.div([a.class("border-2 p-2")], [
-              case state.render(s) {
-                Ok(#(page, False)) ->
-                  h.div(
-                    [
-                      a.attribute("dangerous-unescaped-html", page),
-                      event.on_click(state.ClickExample),
-                    ],
-                    [],
-                  )
-                Ok(#(_, True)) ->
-                  h.div([event.on_click(state.ClickExample)], [
-                    element.text("click to upgrade"),
-                  ])
-                Error(errors) ->
-                  // snippet shows these
-                  h.div(
-                    [a.class("border-2 border-orange-3 px-2")],
-                    list.map(errors, fn(error) {
-                      let #(path, reason) = error
-                      h.div(
-                        [
-                          event.on_click(state.SnippetMessage(
-                            state.hot_reload_key,
-                            snippet.UserClickedPath(path),
-                          )),
-                        ],
-                        [element.text(reason)],
-                      )
-                    }),
-                  )
-                // element.none()
-              },
-            ]),
+            reload.render(s.reload) |> element.map(state.ReloadMessage),
           ]
         },
         True,

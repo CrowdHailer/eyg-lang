@@ -1,27 +1,19 @@
-import eyg/analysis/type_/binding
-import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/state as istate
+import eyg/interpreter/value
 import eyg/ir/dag_json
-import eyg/runtime/interpreter/runner
-import eyg/runtime/interpreter/state as istate
-import eyg/runtime/value
-import eyg/sync/browser
-import eyg/sync/sync
-import eyg/website/reload
 import gleam/dict.{type Dict}
-import gleam/dynamic
-import gleam/dynamicx
-import gleam/io
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import harness/impl/browser as harness
-import harness/impl/spotless
-import harness/stdlib
 import lustre/effect
-import morph/analysis
 import morph/editable as e
 import website/components/auth_panel
+import website/components/reload
 import website/components/snippet
+import website/harness/browser as harness
+import website/harness/spotless
+import website/sync/client
 
 pub type Meta =
   List(Int)
@@ -29,21 +21,13 @@ pub type Meta =
 pub type Value =
   value.Value(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
 
-pub type Example {
-  Example(
-    value: Value,
-    // Need to be all generalised
-    state_type: binding.Poly,
-  )
-}
-
 pub type State {
   State(
     auth: auth_panel.State,
-    cache: sync.Sync,
+    sync: client.Client,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
-    example: Example,
+    reload: reload.State(List(Int)),
   )
 }
 
@@ -59,7 +43,7 @@ const closure_serialization = "{\"0\":\"l\",\"l\":\"script\",\"v\":{\"0\":\"f\",
 
 pub const fetch_key = "fetch"
 
-const fetch_example = "{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeralt3s7yi53wf6hhlbtppwo4ebzgshdd7nr2onw7jlr3e2zkl4bxda\"},\"p\":\"std\",\"r\":1},\"t\":{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"http\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"l\",\"l\":\"request\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"get\"},\"a\":{\"0\":\"v\",\"l\":\"http\"}},\"a\":{\"0\":\"s\",\"v\":\"catfact.ninja\"}},\"a\":{\"0\":\"s\",\"v\":\"/fact\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"$\",\"b\":{\"0\":\"l\",\"l\":\"body\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"body\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"binary_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"body\"}}}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"Error\"},\"a\":{\"0\":\"u\"}}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Fetch\"},\"a\":{\"0\":\"v\",\"l\":\"request\"}}}}}}"
+const fetch_example = "{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeragtrji4oxi2ro6bpuo6bqiogjrwhvnmung3d7z5uf4hriebz5ujua\"},\"p\":\"standard\",\"r\":1},\"t\":{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"http\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"l\",\"l\":\"request\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"get\"},\"a\":{\"0\":\"v\",\"l\":\"http\"}},\"a\":{\"0\":\"s\",\"v\":\"catfact.ninja\"}},\"a\":{\"0\":\"s\",\"v\":\"/fact\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"$\",\"b\":{\"0\":\"l\",\"l\":\"body\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"body\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_from_binary\"},\"a\":{\"0\":\"v\",\"l\":\"body\"}}}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"Error\"},\"a\":{\"0\":\"u\"}}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Fetch\"},\"a\":{\"0\":\"v\",\"l\":\"request\"}}}}}}"
 
 pub const predictable_effects_key = "predictable_effects"
 
@@ -84,10 +68,7 @@ fn decode_source(json) {
 }
 
 fn init_example(json, cache, config) {
-  let assert Ok(source) = dag_json.from_block(<<json:utf8>>)
-  let source =
-    e.from_annotated(source)
-    |> e.open_all
+  let source = decode_source(json)
   snippet.init(source, [], effects(config), cache)
 }
 
@@ -100,41 +81,48 @@ fn init_reload_example(json, cache) {
   snippet.init(source, [], [], cache)
 }
 
-fn all_references(snippets) {
-  list.flat_map(snippets, fn(snippet) {
-    let #(_, snippet) = snippet
-    snippet.references(snippet)
-  })
-}
-
 pub fn init(config) {
-  let #(config, origin, storage) = config
-  let cache = sync.init(origin)
-  let snippets = [
-    #(
-      closure_serialization_key,
-      init_example(closure_serialization, cache, config),
-    ),
-    #(fetch_key, init_example(fetch_example, cache, config)),
-    #(twitter_key, init_example(twitter_example, cache, config)),
-    #(type_check_key, init_example(type_check_example, cache, config)),
-    #(
-      predictable_effects_key,
-      init_example(predictable_effects_example, cache, config),
-    ),
-    #(hot_reload_key, init_reload_example(hot_reload_example, cache)),
-  ]
-  let example = Example(value.Integer(0), t.Integer)
+  let #(config, storage) = config
+  let #(client, init_task) = client.default()
+  let reload_snippet = init_reload_example(hot_reload_example, client.cache)
+  let snippets =
+    [
+      #(
+        closure_serialization_key,
+        init_example(closure_serialization, client.cache, config),
+      ),
+      #(fetch_key, init_example(fetch_example, client.cache, config)),
+      #(twitter_key, init_example(twitter_example, client.cache, config)),
+      #(type_check_key, init_example(type_check_example, client.cache, config)),
+      #(
+        predictable_effects_key,
+        init_example(predictable_effects_example, client.cache, config),
+      ),
+      #(hot_reload_key, reload_snippet),
+    ]
+    |> dict.from_list
+  let reload =
+    reload.init(client.cache, reload_snippet.editable |> e.to_annotated([]))
   let #(auth, task) = auth_panel.init(Nil)
-  let state = State(auth, cache, Nothing, dict.from_list(snippets), example)
+  let missing_cids = missing_refs(snippets)
+  let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
+  let state = State(auth, client, Nothing, snippets, reload)
 
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      effect.from(browser.do_load(SyncMessage)),
+      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
+}
+
+fn missing_refs(snippets) {
+  dict.fold(snippets, [], fn(acc, _key, snippet) {
+    snippet.references(snippet)
+    |> list.append(acc)
+    |> list.unique
+  })
 }
 
 // Dont abstact as is useful because it uses the specific page State
@@ -150,8 +138,8 @@ pub fn set_snippet(state: State, id, snippet) {
 pub type Message {
   AuthMessage(auth_panel.Message)
   SnippetMessage(String, snippet.Message)
-  SyncMessage(sync.Message)
-  ClickExample
+  SyncMessage(client.Message)
+  ReloadMessage(reload.Message(List(Int)))
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -188,7 +176,7 @@ pub fn update(state: State, message) {
       let #(failure, snippet_effect) = case eff {
         snippet.Nothing -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           None,
           dispatch_to_snippet(id, snippet.await_running_effect(p)),
         )
@@ -214,101 +202,45 @@ pub fn update(state: State, message) {
         snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_snippet(state, id, snippet)
-      let references = all_references(state.snippets |> dict.to_list)
-      let #(cache, tasks) = sync.fetch_missing(state.cache, references)
+      let references = snippet.references(snippet)
+      let #(client, task) = client.fetch_fragments(state.sync, references)
 
-      let state = State(..state, active: Editing(id, failure), cache: cache)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      #(state, effect.batch([snippet_effect, sync_effect]))
-    }
-    SyncMessage(message) -> {
-      let cache = sync.task_finish(state.cache, message)
-      let #(cache, tasks) = sync.fetch_all_missing(cache)
-      let snippets =
-        dict.map_values(state.snippets, fn(_, v) {
-          snippet.set_references(v, cache)
-        })
+      let reload = case id == hot_reload_key {
+        True -> {
+          let source = snippet.editable |> e.to_annotated([])
+          reload.update_source(state.reload, source)
+        }
+        False -> state.reload
+      }
+      let state = State(..state, reload:, active: Editing(id, failure))
       #(
-        State(..state, snippets: snippets, cache: cache),
-        effect.from(browser.do_sync(tasks, SyncMessage)),
+        state,
+        effect.batch([
+          snippet_effect,
+          effect.from(fn(d) {
+            list.map(client.run(task), fn(p) {
+              promise.map(p, fn(r) { d(SyncMessage(r)) })
+            })
+            Nil
+          }),
+        ]),
       )
     }
-    ClickExample -> {
-      let Example(value, type_) = state.example
-      let s = get_snippet(state, hot_reload_key)
-      let source = snippet.source(s)
-
-      // TODO real refs
-      let check = reload.check_against_state(source, type_, dict.new())
-
-      case check {
-        Ok(#(_, False)) -> {
-          let env = stdlib.new_env([], dict.new())
-          let h = dict.new()
-
-          let assert Ok(source) =
-            runner.execute(source |> e.to_annotated([]), env, h)
-          let source = #(source, [])
-
-          // TODO remove by fixing everything to be paths
-          let value = dynamicx.unsafe_coerce(dynamic.from(value))
-
-          let select = value.Partial(value.Select("handle"), [])
-          let args = [source, #(value, []), #(value.unit(), [])]
-          let assert Ok(new_value) = runner.call(select, args, env, h)
-          let example = Example(new_value, type_)
-          let state = State(..state, example: example)
-          #(state, effect.none())
-        }
-        Ok(#(_, True)) -> {
-          let env = stdlib.new_env([], dict.new())
-          let h = dict.new()
-
-          let assert Ok(source) =
-            runner.execute(source |> e.to_annotated([]), env, h)
-          let source = #(source, [])
-
-          // TODO remove by fixing everything to be paths
-          let value = dynamicx.unsafe_coerce(dynamic.from(value))
-
-          let select = value.Partial(value.Select("migrate"), [])
-          let args = [source, #(value, [])]
-          let assert Ok(new_value) = runner.call(select, args, env, h)
-          let #(new_type, _b) =
-            analysis.value_to_type(new_value, dict.new(), [])
-          let example = Example(new_value, new_type)
-          let state = State(..state, example: example)
-          #(state, effect.none())
-        }
-        Error(_) -> #(state, effect.none())
-      }
+    SyncMessage(message) -> {
+      let State(sync: sync_client, ..) = state
+      let #(sync_client, effect) = client.update(sync_client, message)
+      let snippets =
+        dict.map_values(state.snippets, fn(_, v) {
+          snippet.set_references(v, sync_client.cache)
+        })
+      let reload = reload.update_cache(state.reload, sync_client.cache)
+      let state = State(..state, reload:, sync: sync_client, snippets:)
+      #(state, client.lustre_run(effect, SyncMessage))
     }
-  }
-}
-
-// run code in reload example to render page
-pub fn render(state: State) {
-  let Example(value, type_) = state.example
-  let s = get_snippet(state, hot_reload_key)
-  let source = snippet.source(s)
-
-  let check = reload.check_against_state(source, type_, sync.types(state.cache))
-
-  case check {
-    Ok(#(_, False)) -> {
-      let env = stdlib.new_env([], dict.new())
-      let h = dict.new()
-
-      let assert Ok(source) =
-        runner.execute(source |> e.to_annotated([]), env, h)
-      let source = #(source, [])
-
-      let select = value.Partial(value.Select("render"), [])
-      let args = [source, #(value, [])]
-      let assert Ok(value.String(page)) = runner.call(select, args, env, h)
-      Ok(#(page, False))
+    ReloadMessage(message) -> {
+      let reload = reload.update(state.reload, message)
+      let state = State(..state, reload:)
+      #(state, effect.none())
     }
-    Ok(#(_, True)) -> Ok(#("", True))
-    Error(reason) -> Error(reason)
   }
 }

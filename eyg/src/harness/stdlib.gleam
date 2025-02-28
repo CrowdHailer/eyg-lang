@@ -1,5 +1,5 @@
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx

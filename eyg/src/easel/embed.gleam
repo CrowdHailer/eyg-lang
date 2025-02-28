@@ -6,12 +6,14 @@ import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/type_/isomorphic as tj
 import eyg/editor/v1/view/type_
+import eyg/interpreter/break
+import eyg/interpreter/expression as r
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/break
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/runtime/break as old_break
+import eyg/runtime/value as old_value
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
@@ -366,8 +368,7 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let assert Ok(v.Closure(_, source, _e2)) =
-        execute(source, stdlib.env(), dict.new())
+      let assert Ok(v.Closure(_, source, _e2)) = r.execute(source, [])
       let assert Ok(tenv) = dict.get(envs, [])
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
@@ -379,7 +380,7 @@ pub fn snippet(root) {
         Embed(
           mode: Command(""),
           yanked: None,
-          env: #(todo("env not needed"), sub, next, tenv),
+          env: #(todo as "env not needed", sub, next, tenv),
           source: source,
           history: #([], []),
           auto_infer: True,
@@ -399,10 +400,6 @@ pub fn snippet(root) {
   }
 }
 
-fn execute(source, env, handlers) {
-  r.execute(source, env, handlers)
-}
-
 // remove once we use snippet everywhere
 pub fn init(json) {
   io.debug("init easil")
@@ -410,10 +407,8 @@ pub fn init(json) {
   let env = stdlib.env()
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
-  let #(env, source, sub, next, tenv) = case
-    execute(source, stdlib.env(), dict.new())
-  {
-    Ok(v.Closure(_, source, env)) -> {
+  let #(env, source, sub, next, tenv) = case r.execute(source, []) {
+    Ok(v.Closure(_, source, _env)) -> {
       let tenv = case dict.get(envs, []) {
         Ok(tenv) -> tenv
         Error(Nil) -> {
@@ -899,7 +894,6 @@ fn run(state: Embed) {
   let #(_lift, _resume, handler) = effect.window_alert()
 
   let source = state.source
-  let #(env, _sub, _next, _tenv) = state.env
   let handlers =
     dict.new()
     |> dict.insert("Alert", handler)
@@ -907,7 +901,9 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret = execute(source, env, handlers)
+  io.debug("needs to handle handlers handlers")
+
+  let ret = r.execute(source, [])
   case ret {
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
@@ -933,11 +929,11 @@ fn run(state: Embed) {
 }
 
 fn reason_to_string(reason) {
-  break.reason_to_string(reason)
+  old_break.reason_to_string(reason)
 }
 
 fn term_to_string(term) {
-  v.debug(term)
+  old_value.debug(term)
 }
 
 pub fn undo(state: Embed, start) {
@@ -1060,7 +1056,7 @@ fn copy(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
 
   case zipper.at(state.source, path) {
-    Error(Nil) -> panic("how did this happen need path back")
+    Error(Nil) -> panic as "how did this happen need path back"
     Ok(#(target, _rezip)) -> {
       #(Embed(..state, yanked: Some(target)), start, [])
     }
@@ -1399,7 +1395,7 @@ fn single_focus(state: Embed, start, end, cb) {
 fn update_at(state: Embed, path, cb) {
   let source = state.source
   case zipper.at(source, path) {
-    Error(Nil) -> panic("how did this happen need path back")
+    Error(Nil) -> panic as "how did this happen need path back"
     Ok(#(target, rezip)) -> {
       let #(updated, mode, sub_path) = cb(target)
       let new = rezip(updated)

@@ -1,4 +1,4 @@
-import eyg/sync/supabase
+// import website/sync/supabase
 import gleam/javascript/promise.{type Promise}
 import gleam/json
 import gleam/option.{type Option, None, Some}
@@ -64,20 +64,20 @@ pub fn dispatch(cmd, wrapper, store: Store) {
     Some(cmd) -> {
       let work = case cmd {
         LoadSession -> promise.map(store.load(), TaskToLoadSessionCompleted)
-        SendCode(email_address) ->
-          promise.map(
-            browser.run(auth.sign_in_with_otp(
-              supabase.client,
-              email_address,
-              True,
-            )),
-            fn(result) { TaskToSendCodeCompleted(result) },
-          )
-        VerifyCode(email_address, code) ->
-          promise.map(
-            browser.run(auth.verify_otp(supabase.client, email_address, code)),
-            fn(result) { TaskToVerifyCodeCompleted(result) },
-          )
+        SendCode(email_address) -> todo as "needed from sync"
+        // promise.map(
+        //   browser.run(auth.sign_in_with_otp(
+        //     supabase.client,
+        //     email_address,
+        //     True,
+        //   )),
+        //   fn(result) { TaskToSendCodeCompleted(result) },
+        // )
+        VerifyCode(email_address, code) -> todo as "needed from syn"
+        // promise.map(
+        //   browser.run(auth.verify_otp(supabase.client, email_address, code)),
+        //   fn(result) { TaskToVerifyCodeCompleted(result) },
+        // )
         SaveSession(a, b) ->
           promise.map(store.save(a, b), TaskToSaveSessionCompleted)
         DeleteSession ->

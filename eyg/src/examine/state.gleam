@@ -2,11 +2,11 @@ import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic as t
 import eyg/compile
+import eyg/interpreter/cast
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parse
-import eyg/runtime/cast
 import eyg/runtime/interpreter/live
-import eyg/runtime/value as v
 import eyg/text/text
 import gleam/dict
 import gleam/io

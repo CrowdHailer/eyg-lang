@@ -1,6 +1,4 @@
 import eyg/ir/dag_json
-import eyg/sync/browser as remote
-import eyg/sync/sync
 import gleam/bit_array
 import gleam/int
 import gleam/io
@@ -10,11 +8,6 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import harness/impl/browser as harness
-import harness/impl/spotless/netlify
-import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
-import harness/impl/spotless/twitter
-import harness/impl/spotless/twitter/tweet
 import lustre
 import lustre/effect
 import midas/browser
@@ -23,13 +16,21 @@ import plinth/browser/document
 import plinth/browser/element
 import plinth/javascript/console
 import website/components/snippet
+import website/harness/browser as harness
+import website/harness/spotless/netlify
+import website/harness/spotless/netlify/deploy_site as netlify_deploy_site
+import website/harness/spotless/twitter
+import website/harness/spotless/twitter/tweet
+import website/sync/cache
 
 pub fn run() {
   let scripts = document.query_selector_all("[type='application/json+eyg']")
-  let cache = sync.init(sync.test_origin)
-  use result <- promise.map(browser.run(remote.load_task()))
-  let assert Ok(dump) = result
-  let cache = sync.load(cache, dump)
+  // let cache = sync.init(sync.test_origin)
+  // use result <- promise.map(browser.run(remote.load_task()))
+  // let assert Ok(dump) = result
+  // let cache = sync.load(cache, dump)
+  io.debug("load the original")
+  let cache = cache.init()
 
   list.index_map(array.to_list(scripts), fn(script, i) {
     console.log(script)
@@ -75,7 +76,7 @@ fn update(snippet, message) {
   let #(failure, snippet_effect) = case eff {
     snippet.Nothing -> #(None, effect.none())
     snippet.Failed(failure) -> #(Some(failure), effect.none())
-    snippet.AwaitRunningEffect(p) -> #(
+    snippet.RunEffect(p) -> #(
       None,
       dispatch_to_snippet(snippet.await_running_effect(p)),
     )

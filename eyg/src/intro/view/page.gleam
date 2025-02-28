@@ -3,8 +3,8 @@
 // import eyg/document/section
 // import eyg/package
 // import eyg/parse/lexer
-// import eyg/runtime/value as v
-// import eyg/sync/sync
+// import eyg/interpreter/value as v
+// import website/sync/sync
 // import eyg/text/highlight
 // import eyg/text/text
 // import gleam/dict

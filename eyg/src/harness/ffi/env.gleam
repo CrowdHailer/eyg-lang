@@ -1,4 +1,4 @@
-import eyg/runtime/interpreter/state
+import eyg/interpreter/state
 import gleam/dict
 
 pub fn empty() {

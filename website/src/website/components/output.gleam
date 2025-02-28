@@ -1,10 +1,11 @@
 // This could move closer to morph and other views but only if it stays generic enough
-import eyg/runtime/value as v
+import eyg/interpreter/value as v
 import gleam/dict
 import gleam/list
 import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
+import website/components/simple_debug
 
 pub fn render(value) {
   case value {
@@ -28,7 +29,7 @@ pub fn render(value) {
 }
 
 fn render_value(value) {
-  text(v.debug(value))
+  text(simple_debug.value_to_string(value))
 }
 
 pub fn table(headings, values) {
@@ -71,7 +72,7 @@ fn row_content(headers, value) {
     v.Record(fields) -> {
       list.map(headers, fn(header) {
         case dict.get(fields, header) {
-          Ok(value) -> v.debug(value)
+          Ok(value) -> simple_debug.value_to_string(value)
           Error(Nil) -> "-"
         }
       })

@@ -2,15 +2,15 @@
 // import eyg/analysis/type_/isomorphic
 // import eyg/document/section
 // import eyg/package
-// import eyg/runtime/break
-// import eyg/runtime/cast
-// import eyg/runtime/interpreter/runner as r
-// import eyg/runtime/interpreter/state.{type Env, type Stack} as istate
-// import eyg/runtime/value as v
-// import eyg/sync/browser
-// import eyg/sync/fragment
-// import eyg/sync/packages
-// import eyg/sync/sync
+// import eyg/interpreter/break
+// import eyg/interpreter/cast
+// import eyg/interpreter/expression as r
+// import eyg/interpreter/state.{type Env, type Stack} as istate
+// import eyg/interpreter/value as v
+// import website/sync/browser
+// import website/sync/fragment
+// import website/sync/packages
+// import website/sync/sync
 // import eygir/encode
 // import gleam/dict
 // import gleam/http/request.{type Request}
@@ -23,9 +23,9 @@
 // import gleam/uri
 // import harness/fetch
 // import harness/http
-// import harness/impl/browser/geolocation
-// import harness/impl/browser/now
-// import harness/impl/browser/visit
+// import website/harness/browser/geolocation
+// import website/harness/browser/now
+// import website/harness/browser/visit
 // import intro/content
 // import lustre/effect
 // import midas/browser as m_browser
@@ -611,7 +611,7 @@
 //             "Now" ->
 //               case now.impl(lift) {
 //                 Ok(reply) -> {
-//                   let effects = [Log("Now: " <> v.debug(reply)), ..effects]
+//                   let effects = [Log("Now: " <> old_value.debug(reply)), ..effects]
 //                   r.loop(istate.step(istate.V(reply), env, k))
 //                   |> do_handle_next(effects)
 //                 }
@@ -620,7 +620,7 @@
 //             "Open" ->
 //               case visit.impl(lift) {
 //                 Ok(reply) -> {
-//                   let effects = [Log("Open: " <> v.debug(reply)), ..effects]
+//                   let effects = [Log("Open: " <> old_value.debug(reply)), ..effects]
 //                   r.loop(istate.step(istate.V(reply), env, k))
 //                   |> do_handle_next(effects)
 //                 }

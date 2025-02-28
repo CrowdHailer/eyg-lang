@@ -1,8 +1,9 @@
 import eyg/analysis/typ as t
+import eyg/interpreter/break
+import eyg/interpreter/cast
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
-import eyg/runtime/break
-import eyg/runtime/cast
-import eyg/runtime/value as v
+import eyg/runtime/value as old_value
 import gleam/dict
 import gleam/dynamic
 import gleam/int
@@ -29,7 +30,7 @@ pub fn extend(state, label, parts) {
 
 pub fn debug_logger() {
   #(t.Str, t.unit, fn(message) {
-    io.print(v.debug(message))
+    io.print(old_value.debug(message))
     io.print("\n")
     Ok(v.unit())
   })

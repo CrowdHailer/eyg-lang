@@ -1,16 +1,13 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
-import eyg/shell/examples
-import eyg/sync/browser
-import eyg/sync/sync
 import gleam/int
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleroglero/outline
-import harness/impl/browser as harness
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -27,10 +24,14 @@ import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
 import plinth/javascript/console
+import website/components/autocomplete
+import website/components/examples
 import website/components/output
 import website/components/readonly
 import website/components/snippet
+import website/harness/browser as harness
 import website/routes/common
+import website/sync/client
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
@@ -81,7 +82,7 @@ pub fn client() {
 pub type ShellEntry {
   Executed(
     Option(snippet.Value),
-    List(#(String, #(snippet.Value, snippet.Value))),
+    List(snippet.RuntimeEffect),
     readonly.Readonly,
   )
 }
@@ -107,7 +108,7 @@ pub type Shell {
 
 pub type State {
   State(
-    cache: sync.Sync,
+    sync: client.Client,
     source: snippet.Snippet,
     shell: Shell,
     display_help: Bool,
@@ -115,18 +116,13 @@ pub type State {
 }
 
 pub fn init(_) {
-  let cache = sync.init(browser.get_origin())
+  let #(client, sync_task) = client.default()
   let source = e.from_annotated(ir.vacant())
-  // snippet has no effects, they run in the shell
-  let snippet = snippet.init(source, [], [], cache)
   let shell =
-    Shell(None, [], {
-      let source = e.from_annotated(ir.vacant())
-      // TODO update hardness to spotless
-      snippet.init(source, [], harness.effects(), cache)
-    })
-  let state = State(cache, snippet, shell, False)
-  #(state, effect.from(browser.do_load(SyncMessage)))
+    Shell(None, [], snippet.init(source, [], harness.effects(), client.cache))
+  let snippet = snippet.init(source, [], [], client.cache)
+  let state = State(client, snippet, shell, False)
+  #(state, client.lustre_run(sync_task, SyncMessage))
 }
 
 pub type Message {
@@ -136,7 +132,7 @@ pub type Message {
   UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
   PreviouseMessage(readonly.Message, Int)
-  SyncMessage(sync.Message)
+  SyncMessage(client.Message)
 }
 
 fn dispatch_to_snippet(promise) {
@@ -207,7 +203,7 @@ pub fn update(state: State, message) {
         snippet.Failed(_failure) -> {
           panic as "put on some state"
         }
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           display_help,
           dispatch_to_snippet(snippet.await_running_effect(p)),
         )
@@ -234,21 +230,23 @@ pub fn update(state: State, message) {
           #(display_help, effect.none())
         }
       }
-      let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
+      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      io.debug("We need the sync effect")
       let state =
         State(
           ..state,
           source: snippet,
-          cache: cache,
+          // cache: cache,
           display_help: display_help,
         )
-      #(state, effect.batch([snippet_effect, sync_effect]))
+      #(state, effect.batch([snippet_effect]))
     }
     UserClickedPrevious(exp) -> {
       let shell = state.shell
       let scope = shell.source.scope
-      let current = snippet.active(exp, scope, harness.effects(), state.cache)
+      let current =
+        snippet.active(exp, scope, harness.effects(), state.sync.cache)
       let shell = Shell(..shell, source: current)
       let state = State(..state, shell: shell)
       #(state, effect.none())
@@ -268,7 +266,7 @@ pub fn update(state: State, message) {
           effect.none(),
         )
 
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           Shell(..shell, source: source),
           dispatch_to_shell(snippet.await_running_effect(p)),
         )
@@ -291,7 +289,7 @@ pub fn update(state: State, message) {
                   readonly.source,
                   scope,
                   harness.effects(),
-                  state.cache,
+                  state.sync.cache,
                 )
               #(Shell(..shell, source: current), effect.none())
             }
@@ -312,15 +310,20 @@ pub fn update(state: State, message) {
             ..shell.previous
           ]
           let source =
-            snippet.active(e.Vacant, scope, harness.effects(), state.cache)
+            snippet.active(e.Vacant, scope, harness.effects(), state.sync.cache)
           let shell = Shell(..shell, source: source, previous: previous)
           #(shell, effect.none())
         }
       }
-      let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      let state = State(..state, shell: shell, cache: cache)
-      #(state, effect.batch([snippet_effect, sync_effect]))
+      let references =
+        snippet.references(state.source)
+        |> list.append(snippet.references(shell.source))
+      let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
+      let state = State(..state, sync:, shell:)
+      #(
+        state,
+        effect.batch([snippet_effect, client.lustre_run(sync_task, SyncMessage)]),
+      )
     }
     PreviouseMessage(m, i) -> {
       let shell = state.shell
@@ -346,15 +349,16 @@ pub fn update(state: State, message) {
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
-      let cache = sync.task_finish(state.cache, message)
-      let #(cache, tasks) = sync.fetch_all_missing(cache)
-      let snippet = snippet.set_references(state.source, cache)
-      let shell_source = snippet.set_references(state.shell.source, cache)
-      let shell = Shell(..state.shell, source: shell_source)
-      #(
-        State(..state, source: snippet, shell: shell, cache: cache),
-        effect.from(browser.do_sync(tasks, SyncMessage)),
-      )
+      let State(sync: sync_client, ..) = state
+      let #(sync_client, effect) = client.update(sync_client, message)
+      let snippet = snippet.set_references(state.source, sync_client.cache)
+      let shell =
+        Shell(
+          ..state.shell,
+          source: snippet.set_references(state.shell.source, sync_client.cache),
+        )
+      let state = State(..state, sync: sync_client, source: snippet, shell:)
+      #(state, client.lustre_run(effect, SyncMessage))
     }
   }
 }
@@ -462,6 +466,11 @@ fn render_pallet(state: snippet.Snippet) {
           ]
           |> not_a_modal(picker.Dismissed)
           |> element.map(snippet.MessageFromPicker)
+        snippet.SelectRelease(state, _) ->
+          autocomplete.render(state, snippet.release_to_option)
+          |> list.wrap
+          |> not_a_modal(autocomplete.UserPressedEscape)
+          |> element.map(snippet.SelectReleaseMessage)
 
         snippet.EditText(value, _rebuild) ->
           render_text(value)
@@ -588,20 +597,25 @@ pub fn render(state: State) {
                     [outline.arrow_path()],
                   ),
                 ]),
-                h.div([a.class("text-blue-700")], [
-                  h.span([a.class("font-bold")], [element.text("effects ")]),
-                  ..list.map(effects, fn(eff) {
-                    h.span([], [element.text(eff.0), element.text(" ")])
-                    // h.div([a.class("flex gap-1")], [
-                    //   output.render(eff.1.0),
-                    //   output.render(eff.1.1),
-                    // ])
-                  })
-                ]),
+                case effects {
+                  [] -> element.none()
+                  _ ->
+                    h.div([a.class("text-blue-700")], [
+                      h.span([a.class("font-bold")], [element.text("effects ")]),
+                      ..list.map(effects, fn(eff) {
+                        h.span([], [element.text(eff.label), element.text(" ")])
+                        // h.div([a.class("flex gap-1")], [
+                        //   output.render(eff.1.0),
+                        //   output.render(eff.1.1),
+                        // ])
+                      })
+                    ])
+                },
                 case value {
                   Some(value) ->
                     h.div([a.class(" max-h-60 overflow-auto")], [
-                      h.span([a.class("font-bold")], [element.text("> ")]),
+                      // would need to be flex to show inline
+                      // h.span([a.class("font-bold")], [element.text("> ")]),
                       output.render(value),
                     ])
                   None -> element.none()
@@ -645,8 +659,6 @@ pub fn render(state: State) {
 }
 
 pub fn render_menu(status, projection, submenu, display_help) {
-  let #(projection, _, _) = projection
-
   let #(top, subcontent) = snippet.menu_content(status, projection, submenu)
   case subcontent {
     None -> one_col_menu(display_help, top)
@@ -657,9 +669,9 @@ pub fn render_menu(status, projection, submenu, display_help) {
 // The submenu is probably not part of the editor... yet
 fn render_menu_from_state(state: State) {
   let State(shell: shell, ..) = state
-  let snippet.Snippet(status: status, source: source, menu: menu, ..) =
+  let snippet.Snippet(status: status, projection: projection, menu: menu, ..) =
     shell.source
-  render_menu(status, source, menu, state.display_help)
+  render_menu(status, projection, menu, state.display_help)
 }
 
 fn help_menu_button(state: State) {
@@ -746,8 +758,7 @@ fn two_col_menu(display_help, top, active, sub) {
 }
 
 fn render_errors(failure, snippet: snippet.Snippet) {
-  let #(_proj, _, analysis) = snippet.source
-  let errors = case analysis {
+  let errors = case snippet.analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }

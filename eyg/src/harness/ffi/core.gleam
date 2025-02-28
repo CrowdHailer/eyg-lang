@@ -1,13 +1,14 @@
 import eyg/analysis/typ as t
 import eyg/compile
+import eyg/interpreter/builtin
+import eyg/interpreter/capture
+import eyg/interpreter/cast
+import eyg/interpreter/expression as r
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/builtin
-import eyg/runtime/capture
-import eyg/runtime/cast
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/runtime/value as old_value
 import gleam/bit_array
 import gleam/dict
 import gleam/io
@@ -33,8 +34,8 @@ pub fn debug() {
   #(type_, state.Arity1(do_debug))
 }
 
-fn do_debug(term, rev, env, k) {
-  Ok(#(state.V(v.String(v.debug(term))), env, k))
+fn do_debug(term, _meta, env, k) {
+  Ok(#(state.V(v.String(old_value.debug(term))), env, k))
 }
 
 pub fn fix() {
@@ -44,52 +45,11 @@ pub fn fix() {
       t.Open(-3),
       t.Unbound(-1),
     )
-  #(type_, state.Arity1(do_fix))
-}
-
-fn do_fix(builder, rev, env, k) {
-  state.call(builder, v.Partial(v.Builtin("fixed"), [builder]), rev, env, k)
+  #(type_, builtin.fix)
 }
 
 pub fn fixed() {
-  // I'm not sure a type ever means anything here
-  // fixed is not a function you can reference directly it's just a runtime
-  // value produced by the fix action
-  #(
-    t.Unbound(0),
-    state.Arity2(fn(builder, arg, meta, env, k) {
-      state.call(
-        builder,
-        // always pass a reference to itself
-        v.Partial(v.Builtin("fixed"), [builder]),
-        meta,
-        env,
-        // fn(partial) {
-        //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
-        //   state.K(c, rev, e, k)
-        // },
-        state.Stack(state.CallWith(arg, env), meta, k),
-      )
-    }),
-  )
-  //   #(
-  //   t.Unbound(0),
-  //   state.Arity1(fn(builder, rev, env, k) {
-  //     state.call(
-  //       builder,
-  //       // always pass a reference to itself
-  //       v.Partial(v.Builtin("fixed"), [builder]),
-  //       rev,
-  //       env,
-  //       // fn(partial) {
-  //       //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
-  //       //   state.K(c, rev, e, k)
-  //       // },
-  //       // Some(state.Stack(state.CallWith(arg, rev, env), k)),
-  //       k
-  //     )
-  //   }),
-  // )
+  #(t.Unbound(0), builtin.fixed)
 }
 
 pub fn eval() {
@@ -110,6 +70,7 @@ pub fn lib() {
   |> extend("encode_uri", encode_uri())
   |> extend("decode_uri_component", decode_uri_component())
   |> extend("base64_encode", base64_encode())
+  |> extend("eval", eval())
   // binary
   |> extend("binary_from_integers", binary_from_integers())
   // integer
@@ -132,22 +93,21 @@ pub fn lib() {
   |> extend("string_length", string.length())
   |> extend("pop_grapheme", string.pop_grapheme())
   |> extend("string_to_binary", string.to_binary())
-  |> extend("binary_to_string", string.from_binary())
+  |> extend("string_from_binary", string.from_binary())
+  // pop_prefix is the same as split once need some testing on speed
   |> extend("pop_prefix", string.pop_prefix())
   // list
   |> extend("uncons", linked_list.uncons())
   |> extend("list_pop", linked_list.pop())
   |> extend("list_fold", linked_list.fold())
-  |> extend("eval", eval())
 }
 
-pub fn do_eval(source, rev, env, k) {
+pub fn do_eval(source, _meta, env, k) {
   use source <- result.then(cast.as_list(source))
   case language_to_expression(source) {
     Ok(expression) -> {
       // must be value otherwise/effect continuations need sorting
-      let result =
-        r.execute(expression, state.Env([], dict.new(), lib().1), dict.new())
+      let result = r.execute(expression, [])
       let value = case result {
         Ok(value) -> v.ok(value)
         _ -> {
@@ -419,7 +379,7 @@ fn step(node, stack) {
     remaining -> {
       io.debug(#("remaining values", remaining, stack))
       // Error("error debuggin expressions")
-      panic("bad decodeding")
+      panic as "bad decodeding"
     }
   }
 }
@@ -479,7 +439,7 @@ pub fn decode_uri_component() {
   #(type_, state.Arity1(do_decode_uri_component))
 }
 
-pub fn do_decode_uri_component(term, rev, env, k) {
+pub fn do_decode_uri_component(term, _meta, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   Ok(#(state.V(v.String(global.decode_uri_component(unencoded))), env, k))
 }
@@ -489,7 +449,7 @@ pub fn encode_uri() {
   #(type_, state.Arity1(do_encode_uri))
 }
 
-pub fn do_encode_uri(term, rev, env, k) {
+pub fn do_encode_uri(term, _meta, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   Ok(#(state.V(v.String(global.encode_uri(unencoded))), env, k))
 }
@@ -499,7 +459,7 @@ pub fn base64_encode() {
   #(type_, state.Arity1(do_base64_encode))
 }
 
-pub fn do_base64_encode(term, rev, env, k) {
+pub fn do_base64_encode(term, _meta, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   let value =
     v.String(gleam_string.replace(
@@ -515,7 +475,7 @@ pub fn binary_from_integers() {
   #(type_, state.Arity1(do_binary_from_integers))
 }
 
-pub fn do_binary_from_integers(term, rev, env, k) {
+pub fn do_binary_from_integers(term, _meta, env, k) {
   use parts <- result.then(cast.as_list(term))
   let content =
     list.fold(list.reverse(parts), <<>>, fn(acc, el) {

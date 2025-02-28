@@ -1,5 +1,5 @@
-import eyg/runtime/interpreter/state as s
-import eyg/runtime/value as v
+import eyg/interpreter/state as s
+import eyg/interpreter/value as v
 import gleam/dynamic
 import gleam/dynamicx
 import gleam/list

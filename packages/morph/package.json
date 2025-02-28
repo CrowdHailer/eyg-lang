@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@ipld/dag-json": "^10.2.3",
+    "multiformats": "^13.3.2"
+  }
+}

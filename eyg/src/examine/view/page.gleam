@@ -2,17 +2,15 @@ import examine/state.{
   Compilation, Highlight, Inference, Input, Interpret, Switch,
 }
 import eyg/analysis/type_/binding/debug
-import eyg/ir/tree as ir
-import eyg/runtime/break
-import eyg/runtime/value as v
+import eyg/interpreter/value as v
+import eyg/runtime/break as old_break
+import eyg/runtime/value as old_value
 import eygir/tree
-import gleam/dynamic
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/attribute.{class, classes, id, value}
+import lustre/attribute.{class, classes, id}
 import lustre/element.{text}
 import lustre/element/html.{div, p, pre, span, textarea}
 import lustre/event.{on_click, on_input}
@@ -198,9 +196,12 @@ fn render_interpretation(s) {
                         case k, value {
                           "$", _ -> Error(Nil)
                           _, v.Closure(_, _, _) -> Error(Nil)
-                          _, _ -> Ok(string.concat([k, " = ", v.debug(value)]))
+                          _, _ ->
+                            Ok(
+                              string.concat([k, " = ", old_value.debug(value)]),
+                            )
                         }
-                      Error(reason) -> Ok(break.reason_to_string(reason))
+                      Error(reason) -> Ok(old_break.reason_to_string(reason))
                     }
                   })
                   |> list.intersperse(", ")

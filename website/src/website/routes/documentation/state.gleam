@@ -1,16 +1,15 @@
 import eyg/ir/dag_json
-import eyg/sync/browser
-import eyg/sync/sync
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import harness/impl/browser as harness
 import lustre/effect
 import morph/editable as e
 import website/components/auth_panel
 import website/components/snippet
+import website/harness/browser as harness
+import website/sync/client
 
 pub const int_key = "int"
 
@@ -178,7 +177,7 @@ const builtins_example = "{\"0\":\"l\",\"l\":\"total\",\"v\":{\"0\":\"a\",\"f\":
 
 pub const references_key = "references"
 
-const references_example = "{\"0\":\"l\",\"l\":\"std\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeralt3s7yi53wf6hhlbtppwo4ebzgshdd7nr2onw7jlr3e2zkl4bxda\"},\"p\":\"std\",\"r\":1},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"contains\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"list\"},\"a\":{\"0\":\"v\",\"l\":\"std\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"i\",\"v\":1}},\"a\":{\"0\":\"ta\"}}},\"a\":{\"0\":\"i\",\"v\":0}}}"
+const references_example = "{\"0\":\"l\",\"l\":\"std\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeragtrji4oxi2ro6bpuo6bqiogjrwhvnmung3d7z5uf4hriebz5ujua\"},\"p\":\"standard\",\"r\":1},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"contains\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"list\"},\"a\":{\"0\":\"v\",\"l\":\"std\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"i\",\"v\":1}},\"a\":{\"0\":\"ta\"}}},\"a\":{\"0\":\"i\",\"v\":0}}}"
 
 pub const externals_key = "externals"
 
@@ -198,7 +197,7 @@ pub const handle_example = "{\"0\":\"l\",\"l\":\"capture\",\"v\":{\"0\":\"f\",\"
 
 pub const multiple_resume_key = "multiple_resume"
 
-pub const multiple_resume_example = "{\"0\":\"l\",\"l\":\"std\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeralt3s7yi53wf6hhlbtppwo4ebzgshdd7nr2onw7jlr3e2zkl4bxda\"},\"p\":\"std\",\"r\":1},\"t\":{\"0\":\"l\",\"l\":\"capture\",\"v\":{\"0\":\"f\",\"l\":\"exec\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"h\",\"l\":\"Flip\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"f\",\"l\":\"resume\",\"b\":{\"0\":\"l\",\"l\":\"truthy\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"resume\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"True\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"l\",\"l\":\"falsy\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"resume\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"False\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"flatten\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"list\"},\"a\":{\"0\":\"v\",\"l\":\"std\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"v\",\"l\":\"truthy\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"v\",\"l\":\"falsy\"}},\"a\":{\"0\":\"ta\"}}}}}}}}},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"exec\"},\"a\":{\"0\":\"u\"}}},\"a\":{\"0\":\"ta\"}}}}},\"t\":{\"0\":\"l\",\"l\":\"run\",\"v\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"l\",\"l\":\"first\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Flip\"},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"l\",\"l\":\"second\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Flip\"},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"second\"},\"a\":{\"0\":\"v\",\"l\":\"second\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"first\"},\"a\":{\"0\":\"v\",\"l\":\"first\"}},\"a\":{\"0\":\"u\"}}}}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"capture\"},\"a\":{\"0\":\"v\",\"l\":\"run\"}}}}}"
+pub const multiple_resume_example = "{\"0\":\"l\",\"l\":\"std\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeragtrji4oxi2ro6bpuo6bqiogjrwhvnmung3d7z5uf4hriebz5ujua\"},\"p\":\"standard\",\"r\":1},\"t\":{\"0\":\"l\",\"l\":\"capture\",\"v\":{\"0\":\"f\",\"l\":\"exec\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"h\",\"l\":\"Flip\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"f\",\"l\":\"resume\",\"b\":{\"0\":\"l\",\"l\":\"truthy\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"resume\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"True\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"l\",\"l\":\"falsy\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"resume\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"False\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"flatten\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"list\"},\"a\":{\"0\":\"v\",\"l\":\"std\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"v\",\"l\":\"truthy\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"v\",\"l\":\"falsy\"}},\"a\":{\"0\":\"ta\"}}}}}}}}},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"exec\"},\"a\":{\"0\":\"u\"}}},\"a\":{\"0\":\"ta\"}}}}},\"t\":{\"0\":\"l\",\"l\":\"run\",\"v\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"l\",\"l\":\"first\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Flip\"},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"l\",\"l\":\"second\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Flip\"},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"second\"},\"a\":{\"0\":\"v\",\"l\":\"second\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"first\"},\"a\":{\"0\":\"v\",\"l\":\"first\"}},\"a\":{\"0\":\"u\"}}}}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"capture\"},\"a\":{\"0\":\"v\",\"l\":\"run\"}}}}}"
 
 pub const capture_key = "capture"
 
@@ -207,7 +206,7 @@ const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\
 pub type State {
   State(
     auth: auth_panel.State,
-    cache: sync.Sync,
+    cache: client.Client,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
   )
@@ -237,65 +236,74 @@ fn init_example(json, cache) {
 }
 
 pub fn init(_) {
-  let cache = sync.init(browser.get_origin())
+  let #(sync, init_task) = client.default()
   let snippets = [
-    #(int_key, snippet.init(int_example, [], harness.effects(), cache)),
-    #(text_key, snippet.init(text_example, [], harness.effects(), cache)),
-    #(lists_key, snippet.init(lists_example, [], harness.effects(), cache)),
-    #(records_key, snippet.init(records_example, [], harness.effects(), cache)),
+    #(int_key, snippet.init(int_example, [], harness.effects(), sync.cache)),
+    #(text_key, snippet.init(text_example, [], harness.effects(), sync.cache)),
+    #(lists_key, snippet.init(lists_example, [], harness.effects(), sync.cache)),
+    #(
+      records_key,
+      snippet.init(records_example, [], harness.effects(), sync.cache),
+    ),
     #(
       overwrite_key,
-      snippet.init(overwrite_example, [], harness.effects(), cache),
+      snippet.init(overwrite_example, [], harness.effects(), sync.cache),
     ),
-    #(unions_key, snippet.init(unions_example, [], harness.effects(), cache)),
+    #(
+      unions_key,
+      snippet.init(unions_example, [], harness.effects(), sync.cache),
+    ),
     #(
       open_case_key,
-      snippet.init(open_case_example, [], harness.effects(), cache),
+      snippet.init(open_case_example, [], harness.effects(), sync.cache),
     ),
     #(
       externals_key,
-      snippet.init(externals_example, [], harness.effects(), cache),
+      snippet.init(externals_example, [], harness.effects(), sync.cache),
     ),
     #(
       functions_key,
-      snippet.init(functions_example, [], harness.effects(), cache),
+      snippet.init(functions_example, [], harness.effects(), sync.cache),
     ),
-    #(fix_key, snippet.init(fix_example, [], harness.effects(), cache)),
-    #(builtins_key, init_example(builtins_example, cache)),
-    #(references_key, init_example(references_example, cache)),
-    #(perform_key, init_example(perform_example, cache)),
-    #(handle_key, init_example(handle_example, cache)),
-    #(multiple_resume_key, init_example(multiple_resume_example, cache)),
-    #(capture_key, init_example(capture_example, cache)),
+    #(fix_key, snippet.init(fix_example, [], harness.effects(), sync.cache)),
+    #(builtins_key, init_example(builtins_example, sync.cache)),
+    #(references_key, init_example(references_example, sync.cache)),
+    #(perform_key, init_example(perform_example, sync.cache)),
+    #(handle_key, init_example(handle_example, sync.cache)),
+    #(multiple_resume_key, init_example(multiple_resume_example, sync.cache)),
+    #(capture_key, init_example(capture_example, sync.cache)),
   ]
   let #(auth, task) = auth_panel.init(Nil)
-  let state = State(auth, cache, Nothing, dict.from_list(snippets))
   let assert Ok(storage) = auth_panel.local_storage("session")
+  let snippets = dict.from_list(snippets)
+  let missing_cids = missing_refs(snippets)
+  let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
+  let state = State(auth, sync, Nothing, snippets)
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      effect.from(browser.do_load(SyncMessage)),
+      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
 }
 
-fn fetch_missing(state) {
-  let State(snippets: snippets, ..) = state
-  let refs =
-    dict.fold(snippets, [], fn(acc, _key, snippet) {
-      snippet.references(snippet)
-      |> list.append(acc)
-      |> list.unique
-    })
-  let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
-  let state = State(..state, cache: cache)
-  #(state, tasks)
+fn missing_refs(snippets) {
+  dict.fold(snippets, [], fn(acc, _key, snippet) {
+    snippet.references(snippet)
+    |> list.append(acc)
+    |> list.unique
+  })
+}
+
+pub type RunMessage {
+  Start
 }
 
 pub type Message {
   SnippetMessage(String, snippet.Message)
-  SyncMessage(sync.Message)
+  RunMessage(String, RunMessage)
+  SyncMessage(client.Message)
   AuthMessage(auth_panel.Message)
 }
 
@@ -333,7 +341,7 @@ pub fn update(state: State, message) {
         snippet.Nothing -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
 
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           None,
           dispatch_to_snippet(identifier, snippet.await_running_effect(p)),
         )
@@ -360,21 +368,21 @@ pub fn update(state: State, message) {
       }
       let state = set_example(state, identifier, snippet)
       let state = State(..state, active: Editing(identifier, failure))
-      let #(state, tasks) = fetch_missing(state)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      #(state, effect.batch([snippet_effect, sync_effect]))
+      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      #(state, effect.batch([snippet_effect]))
+    }
+    RunMessage(identifier, message) -> {
+      todo
     }
     SyncMessage(message) -> {
-      let State(cache: cache, ..) = state
-      let cache = sync.task_finish(cache, message)
+      let State(cache: sync_client, ..) = state
+      let #(sync_client, effect) = client.update(sync_client, message)
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
-          snippet.set_references(v, cache)
+          snippet.set_references(v, sync_client.cache)
         })
-      let state = State(..state, cache: cache, snippets: snippets)
-      let #(state, tasks) = fetch_missing(state)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      #(state, sync_effect)
+      let state = State(..state, cache: sync_client, snippets: snippets)
+      #(state, client.lustre_run(effect, SyncMessage))
     }
   }
 }

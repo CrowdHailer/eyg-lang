@@ -1,10 +1,10 @@
 import easel/embed
 import eyg/analysis/jm/type_ as t
+import eyg/interpreter/cast
+import eyg/interpreter/expression as r
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
-import eyg/runtime/cast
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
@@ -56,10 +56,11 @@ fn applet(root) {
           )),
         )
       {
+        // Env is returned but probably not needed
         let env = stdlib.env()
         let rev = []
         let k = dict.new()
-        let assert Ok(term) = r.execute(source, env, k)
+        let assert Ok(term) = r.execute(source, [])
         use func <- result.then(cast.field("func", cast.any, term))
         use arg <- result.then(cast.field("arg", cast.any, term))
         // run func arg can be a thing
@@ -79,7 +80,9 @@ fn applet(root) {
         let state = ref.new(arg)
         let render = fn() {
           let current = ref.get(state)
-          let result = r.call(func, [#(current, Nil)], env, handlers)
+          io.debug("needs to handle handlers")
+
+          let result = r.call(func, [#(current, Nil)])
           let _ = case result {
             Ok(v.String(page)) -> element.set_inner_html(root, page)
             _ -> {
@@ -97,8 +100,8 @@ fn applet(root) {
                   // handle effects
                   let current = ref.get(state)
                   // io.debug(ref.get(actions))
-                  let assert Ok(next) =
-                    r.call(code, [#(current, Nil)], env, dict.new())
+                  io.debug("This one is supposed to be pure")
+                  let assert Ok(next) = r.call(code, [#(current, Nil)])
                   ref.set(state, next)
                   ref.set(actions, [])
                   render()

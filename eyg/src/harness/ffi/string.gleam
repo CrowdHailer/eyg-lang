@@ -1,121 +1,75 @@
 import eyg/analysis/typ as t
-import eyg/runtime/builtin
-import eyg/runtime/cast
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/interpreter/builtin
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import gleam/bit_array
 import gleam/dict
-import gleam/list
 import gleam/result
 import gleam/string
 
 pub fn append() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.Str))
-  #(type_, builtin.append)
+  #(type_, builtin.string_append)
 }
 
 pub fn split() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
-  #(type_, state.Arity2(do_split))
-}
-
-pub fn do_split(s, pattern, _meta, env, k) {
-  use s <- result.then(cast.as_string(s))
-  use pattern <- result.then(cast.as_string(pattern))
-  let assert [first, ..parts] = string.split(s, pattern)
-  let parts = v.LinkedList(list.map(parts, v.String))
-
-  Ok(#(
-    state.V(
-      v.Record(dict.from_list([#("head", v.String(first)), #("tail", parts)])),
-    ),
-    env,
-    k,
-  ))
+  #(type_, builtin.string_split)
 }
 
 pub fn split_once() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
-  #(type_, state.Arity2(do_split_once))
+  #(type_, builtin.string_split_once)
 }
 
-pub fn do_split_once(s, pattern, _meta, env, k) {
-  use s <- result.then(cast.as_string(s))
-  use pattern <- result.then(cast.as_string(pattern))
-  let value = case string.split_once(s, pattern) {
-    Ok(#(pre, post)) ->
-      v.ok(
-        v.Record(
-          dict.from_list([#("pre", v.String(pre)), #("post", v.String(post))]),
-        ),
-      )
-    Error(Nil) -> v.error(v.unit())
-  }
-  Ok(#(state.V(value), env, k))
+pub fn replace() {
+  let type_ =
+    t.Fun(
+      t.Str,
+      t.Open(0),
+      t.Fun(t.Str, t.Open(1), t.Fun(t.Str, t.Open(1), t.Str)),
+    )
+  #(type_, builtin.string_replace)
 }
 
 pub fn uppercase() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Str)
-  #(type_, state.Arity1(do_uppercase))
-}
-
-pub fn do_uppercase(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.String(string.uppercase(value))), env, k))
+  #(type_, builtin.string_uppercase)
 }
 
 pub fn lowercase() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Str)
-  #(type_, state.Arity1(do_lowercase))
-}
-
-pub fn do_lowercase(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.String(string.lowercase(value))), env, k))
+  #(type_, builtin.string_lowercase)
 }
 
 pub fn starts_with() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
-  #(type_, state.Arity2(do_starts_with))
-}
-
-pub fn do_starts_with(value, prefix, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  use prefix <- result.then(cast.as_string(prefix))
-  let ret = case string.split_once(value, prefix) {
-    Ok(#("", post)) -> v.ok(v.String(post))
-    _ -> v.error(v.unit())
-  }
-  Ok(#(state.V(ret), env, k))
+  #(
+    type_,
+    state.Arity1(fn(_, _, _, _) {
+      panic as "implementation doesn't return result use pop prefix"
+    }),
+  )
 }
 
 pub fn ends_with() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
-  #(type_, state.Arity2(do_ends_with))
-}
-
-pub fn do_ends_with(value, suffix, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  use suffix <- result.then(cast.as_string(suffix))
-  let ret = case string.split_once(value, suffix) {
-    Ok(#(pre, "")) -> v.ok(v.String(pre))
-    _ -> v.error(v.unit())
-  }
-  Ok(#(state.V(ret), env, k))
+  #(
+    type_,
+    state.Arity1(fn(_, _, _, _) {
+      panic as "implementation doesn't return result"
+    }),
+  )
 }
 
 pub fn length() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Integer)
-  #(type_, state.Arity1(do_length))
-}
-
-pub fn do_length(value, _meta, env, k) {
-  use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Integer(string.length(value))), env, k))
+  #(type_, builtin.string_length)
 }
 
 pub fn pop_grapheme() {
@@ -139,47 +93,14 @@ fn do_pop_grapheme(term, _meta, env, k) {
   Ok(#(state.V(return), env, k))
 }
 
-pub fn replace() {
-  let type_ =
-    t.Fun(
-      t.Str,
-      t.Open(0),
-      t.Fun(t.Str, t.Open(1), t.Fun(t.Str, t.Open(1), t.Str)),
-    )
-  #(type_, state.Arity3(do_replace))
-}
-
-pub fn do_replace(in, from, to, _meta, env, k) {
-  use in <- result.then(cast.as_string(in))
-  use from <- result.then(cast.as_string(from))
-  use to <- result.then(cast.as_string(to))
-
-  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
-}
-
 pub fn to_binary() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Binary)
-  #(type_, state.Arity1(do_to_binary))
-}
-
-pub fn do_to_binary(in, _meta, env, k) {
-  use in <- result.then(cast.as_string(in))
-
-  Ok(#(state.V(v.Binary(bit_array.from_string(in))), env, k))
+  #(type_, builtin.string_to_binary)
 }
 
 pub fn from_binary() {
   let type_ = t.Fun(t.Binary, t.Open(0), t.result(t.Str, t.unit))
-  #(type_, state.Arity1(do_from_binary))
-}
-
-pub fn do_from_binary(in, _meta, env, k) {
-  use in <- result.then(cast.as_binary(in))
-  let value = case bit_array.to_string(in) {
-    Ok(bytes) -> v.ok(v.String(bytes))
-    Error(Nil) -> v.error(v.unit())
-  }
-  Ok(#(state.V(value), env, k))
+  #(type_, builtin.string_from_binary)
 }
 
 pub fn pop_prefix() {
