@@ -19,7 +19,6 @@ import gleam/string
 import harness/effect
 import harness/ffi/core
 import harness/impl/http
-import harness/stdlib
 import plinth/javascript/console
 import plinth/node/readlines
 
@@ -40,16 +39,15 @@ fn handlers() {
 }
 
 pub fn run(source) {
-  let env =
-    state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
-  let assert Ok(parser) = r.execute(source, env, handlers().1)
+  io.debug("needs to handle handlers extrinsic")
+
+  let assert Ok(parser) = r.execute(source, [])
   let assert Ok(lisp) = cast.field("lisp", cast.any, parser)
   let assert Ok(parser) = cast.field("prompt", cast.any, lisp)
   let parser = fn(prompt) {
     fn(raw) {
-      let k = dict.new()
       let args = [#(v.String(prompt), Nil), #(v.String(raw), Nil)]
-      let assert Ok(v.Tagged(tag, value)) = r.call(parser, args, env, k)
+      let assert Ok(v.Tagged(tag, value)) = r.call(parser, args)
       case tag {
         "Ok" ->
           result.replace_error(
@@ -64,10 +62,14 @@ pub fn run(source) {
     }
   }
 
-  let assert Ok(prog) = r.execute(source, env, handlers().1)
+  io.debug("needs to handle handlers handlers")
+
+  let assert Ok(prog) = r.execute(source, [])
   let assert Ok(exec) = cast.field("exec", cast.any, prog)
+  io.debug("needs to handle handlers handlers")
+
   let assert Error(#(break.UnhandledEffect("Prompt", prompt), _rev, env, k)) =
-    r.call(exec, [#(v.unit(), Nil)], env, handlers().1)
+    r.call(exec, [#(v.unit(), Nil)])
 
   let assert v.String(prompt) = prompt
 
@@ -89,7 +91,7 @@ pub fn run(source) {
   promise.resolve(status)
 }
 
-fn read(rl, parser, env, k, prompt) {
+fn read(rl, parser, env: state.Env(_), k, prompt) {
   use answer <- promise.await(readlines.question(rl, prompt))
   case parser(prompt)(answer) {
     Ok(term) -> {
@@ -98,7 +100,9 @@ fn read(rl, parser, env, k, prompt) {
       case code == ir.empty() {
         True -> promise.resolve(0)
         False -> {
-          use ret <- promise.await(r.await(r.execute(code, env, handlers().1)))
+          io.debug("needs to handle handlers")
+
+          use ret <- promise.await(r.await(r.execute(code, env.scope)))
           let #(env, prompt) = case ret {
             Ok(value) -> {
               print(value)

@@ -40,8 +40,10 @@ pub fn inject(exp, acc) {
   }
 }
 
-pub fn execute(exp, env, h) {
+pub fn execute(exp, scope) {
   let exp = inject(exp, [])
+  let env = expression.new_env(scope)
+  let h = dict.new()
   loop(state.step(state.E(exp), env, state.Empty(h)), env.scope)
 }
 
@@ -56,9 +58,4 @@ pub fn call(f, args, env, h) {
 
 pub fn resume(value, env, k) {
   loop(state.step(state.V(value), env, k), env.scope)
-}
-
-// This definetly does need scope
-pub fn execute_next(exp, scope) {
-  execute(exp, expression.new_env(scope), dict.new())
 }

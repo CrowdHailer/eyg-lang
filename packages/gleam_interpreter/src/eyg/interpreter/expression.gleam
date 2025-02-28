@@ -6,23 +6,8 @@ import gleam/dict
 import gleam/javascript/promise
 import gleam/list
 
-// loop and eval go to runner as you'd build a new one
-@deprecated("callers should not pass in their own env or effects")
-pub fn execute(exp, env, h) {
-  loop(state.step(state.E(exp), env, state.Empty(h)))
-}
-
 pub fn resume(value, env, k) {
   loop(state.step(state.V(value), env, k))
-}
-
-pub fn call(f, args, env, h) {
-  let k =
-    list.fold_right(args, state.Empty(h), fn(k, arg) {
-      let #(value, meta) = arg
-      state.Stack(state.CallWith(value, env), meta, k)
-    })
-  loop(state.step(state.V(f), env, k))
 }
 
 pub fn loop(next) {
@@ -44,13 +29,20 @@ pub fn await(ret) {
   }
 }
 
-pub fn execute_next(exp, scope) {
+pub fn execute(exp, scope) {
   loop(state.step(state.E(exp), new_env(scope), state.Empty(dict.new())))
 }
 
 // f should have all the required env information
-pub fn call_next(f, args) {
-  call(f, args, new_env([]), dict.new())
+pub fn call(f, args) {
+  let env = new_env([])
+  let h = dict.new()
+  let k =
+    list.fold_right(args, state.Empty(h), fn(k, arg) {
+      let #(value, meta) = arg
+      state.Stack(state.CallWith(value, env), meta, k)
+    })
+  loop(state.step(state.V(f), env, k))
 }
 
 // This assumes only scope needs passing around

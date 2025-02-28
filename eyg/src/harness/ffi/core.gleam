@@ -102,13 +102,12 @@ pub fn lib() {
   |> extend("list_fold", linked_list.fold())
 }
 
-pub fn do_eval(source, rev, env, k) {
+pub fn do_eval(source, _meta, env, k) {
   use source <- result.then(cast.as_list(source))
   case language_to_expression(source) {
     Ok(expression) -> {
       // must be value otherwise/effect continuations need sorting
-      let result =
-        r.execute(expression, state.Env([], dict.new(), lib().1), dict.new())
+      let result = r.execute(expression, [])
       let value = case result {
         Ok(value) -> v.ok(value)
         _ -> {
@@ -380,7 +379,7 @@ fn step(node, stack) {
     remaining -> {
       io.debug(#("remaining values", remaining, stack))
       // Error("error debuggin expressions")
-      panic("bad decodeding")
+      panic as "bad decodeding"
     }
   }
 }
@@ -440,7 +439,7 @@ pub fn decode_uri_component() {
   #(type_, state.Arity1(do_decode_uri_component))
 }
 
-pub fn do_decode_uri_component(term, rev, env, k) {
+pub fn do_decode_uri_component(term, _meta, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   Ok(#(state.V(v.String(global.decode_uri_component(unencoded))), env, k))
 }
@@ -450,7 +449,7 @@ pub fn encode_uri() {
   #(type_, state.Arity1(do_encode_uri))
 }
 
-pub fn do_encode_uri(term, rev, env, k) {
+pub fn do_encode_uri(term, _meta, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   Ok(#(state.V(v.String(global.encode_uri(unencoded))), env, k))
 }
@@ -460,7 +459,7 @@ pub fn base64_encode() {
   #(type_, state.Arity1(do_base64_encode))
 }
 
-pub fn do_base64_encode(term, rev, env, k) {
+pub fn do_base64_encode(term, _meta, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   let value =
     v.String(gleam_string.replace(
@@ -476,7 +475,7 @@ pub fn binary_from_integers() {
   #(type_, state.Arity1(do_binary_from_integers))
 }
 
-pub fn do_binary_from_integers(term, rev, env, k) {
+pub fn do_binary_from_integers(term, _meta, env, k) {
   use parts <- result.then(cast.as_list(term))
   let content =
     list.fold(list.reverse(parts), <<>>, fn(acc, el) {

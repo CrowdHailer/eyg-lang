@@ -3,15 +3,11 @@ import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import gleam/bit_array
-import gleam/dict
 import gleam/dynamicx
 import gleam/javascript/array
-
-// import gleam/javascript/map
 import gleam/list
 import gleam/result
 import gleam/string
-import harness/stdlib
 import javascript/mutable_reference as ref
 import plinth/browser/document
 import plinth/browser/element
@@ -27,7 +23,7 @@ fn handle_click(event, states) {
   use key <- result.then(element.get_attribute(target, "on:click"))
   use #(action, env) <- result.then(todo as "map.get(states, container)")
   // TODO get attribute and multiple sources
-  let answer = r.call(action, [#(v.String(key), Nil)], env, dict.new())
+  let answer = r.call(action, [#(v.String(key), Nil)])
   // console.log(answer)
   let assert Ok(term) = answer
   // console.log(old_value.debug(term))
@@ -64,10 +60,9 @@ pub fn run() {
         )
         |> result.map_error(fn(_) { Nil }),
       )
-      let env = stdlib.env()
-      let assert Ok(action) = r.execute(source, env, dict.new())
+      let assert Ok(action) = r.execute(source, [])
       // TODO remove env, it doesn't matter call to call
-      Ok(#(container, #(action, env)))
+      Ok(#(container, #(action, todo as "env not needed")))
     })
     |> list.fold(todo as "map.new()", fn(map, item) {
       let #(key, value) = item

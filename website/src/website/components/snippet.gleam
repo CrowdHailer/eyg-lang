@@ -218,7 +218,7 @@ pub fn init(editable, scope, effects, cache) {
 fn evaluate(editable, scope, cache) {
   e.to_annotated(editable, [])
   |> ir.clear_annotation
-  |> block.execute_next(scope)
+  |> block.execute(scope)
   |> cache.run(cache, block.resume)
 }
 

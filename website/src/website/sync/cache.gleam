@@ -23,7 +23,7 @@ pub type Return =
   Result(Value, state.Debug(Nil))
 
 pub fn start(exp, scope) {
-  block.execute_next(exp, scope)
+  block.execute(exp, scope)
 }
 
 // snippets are not installed in the cache
@@ -160,8 +160,7 @@ pub fn install_fragment(cache, cid, bytes) {
 // This assumes the cid is valid, this module could be internal or a block as an opaque type used for a safer API
 pub fn install_source(cache, cid, source) {
   let scope = []
-  let return =
-    run(expression.execute_next(source, scope), cache, expression.resume)
+  let return = run(expression.execute(source, scope), cache, expression.resume)
   let fragment = create_fragment(source, return, type_map(cache))
   let fragments = dict.insert(cache.fragments, cid, fragment)
   let fragments = case return {

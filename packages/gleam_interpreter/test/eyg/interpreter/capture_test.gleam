@@ -9,7 +9,7 @@ import gleeunit/should
 
 fn round_trip(term) {
   capture.capture(term, Nil)
-  |> r.execute_next([])
+  |> r.execute([])
 }
 
 fn check_term(term) {
@@ -36,9 +36,9 @@ pub fn literal_test() {
 
 fn run(source, args) {
   let args = list.map(args, fn(v) { #(v, Nil) })
-  case r.execute_next(source, []) {
+  case r.execute(source, []) {
     // env not needed in resume but it is in the original execute call, for builtins
-    Ok(f) -> r.call_next(f, args)
+    Ok(f) -> r.call(f, args)
     Error(reason) -> Error(reason)
   }
 }

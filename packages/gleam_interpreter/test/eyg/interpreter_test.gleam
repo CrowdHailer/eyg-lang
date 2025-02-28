@@ -183,7 +183,7 @@ pub fn evaluation_suite_test() {
 
   list.map(tests, fn(fixture) {
     let Fixture(name, source, effects, expected) = fixture
-    let got = r.execute_next(source, [])
+    let got = r.execute(source, [])
     let final =
       list.fold(effects, got, fn(return, expected) {
         let Effect(label, value, reply) = expected

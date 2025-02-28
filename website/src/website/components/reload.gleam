@@ -195,10 +195,10 @@ fn run_init(sync, source) {
 }
 
 fn run_field(sync, source: ir.Node(List(_)), field, args) {
-  case cache_run(sync, r.execute_next(source |> ir.clear_annotation, [])) {
+  case cache_run(sync, r.execute(source |> ir.clear_annotation, [])) {
     Ok(value) -> {
       let select = v.Partial(v.Select(field), [])
-      case r.call_next(select, [#(value, Nil), ..args]) {
+      case r.call(select, [#(value, Nil), ..args]) {
         Ok(initial) -> Ok(initial)
         _ -> panic as "we should put the error for this somewhere: init"
       }

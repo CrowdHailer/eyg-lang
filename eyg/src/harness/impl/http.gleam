@@ -5,6 +5,7 @@ import eyg/interpreter/value as v
 import eyg/runtime/break as old_break
 import gleam/http/request
 import gleam/http/response
+import gleam/io
 import gleam/javascript/promise
 import gleam/result
 import glen
@@ -16,7 +17,6 @@ import plinth/javascript/console
 
 pub fn serve() {
   #(t.Str, t.unit, fn(lift) {
-    let env = stdlib.env()
     use port <- result.then(cast.field("port", cast.as_integer, lift))
     use handler <- result.then(cast.field("handler", cast.any, lift))
     let result =
@@ -38,9 +38,9 @@ pub fn serve() {
                 |> effect.extend("LoadDB", effect.load_db())
                 |> effect.extend("QueryDB", effect.query_db())
               }.1
-            use response <- promise.map(
-              r.await(r.call(handler, [#(req, Nil)], env, extrinsic)),
-            )
+            io.debug("needs to handle handlers extrinsic")
+
+            use response <- promise.map(r.await(r.call(handler, [#(req, Nil)])))
             case response {
               Ok(response) ->
                 case http.response_to_gleam(response) {

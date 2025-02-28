@@ -1,12 +1,10 @@
 import eyg/analysis/typ as t
 import eyg/interpreter/cast
 import eyg/interpreter/expression as r
-import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/runtime/break as old_break
 import gleam/bit_array
-import gleam/dict
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -48,13 +46,9 @@ fn handlers() {
 pub fn do_run(raw) -> Nil {
   case dag_json.from_block(bit_array.from_string(global.decode_uri(raw))) {
     Ok(continuation) -> {
-      let env =
-        state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
-      let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
-      promise.map(
-        r.await(r.call(continuation, [#(v.unit(), Nil)], env, handlers().1)),
-        io.debug,
-      )
+      io.debug("needs to handle handlers handlers().1")
+      let assert Ok(continuation) = r.execute(continuation, [])
+      promise.map(r.await(r.call(continuation, [#(v.unit(), Nil)])), io.debug)
       // todo as "real"
       Nil
     }
@@ -85,9 +79,10 @@ fn old_run() {
         )
       {
         Ok(f) -> {
-          let env = stdlib.env()
-          let assert Ok(f) = r.execute(f, env, handlers().1)
-          let ret = r.call(f, [#(v.unit(), Nil)], env, handlers().1)
+          io.debug("needs to handle handlers handlers().1")
+
+          let assert Ok(f) = r.execute(f, [])
+          let ret = r.call(f, [#(v.unit(), Nil)])
           case ret {
             Ok(_) -> Nil
             err -> {
@@ -146,16 +141,15 @@ fn render() {
 
 pub fn async() {
   #(t.unit, t.unit, fn(exec) {
-    let env = stdlib.env()
     let #(_, extrinsic) =
       handlers()
       |> effect.extend("Await", effect.await())
     // always needs to be executed later so make wrapped as promise from the start
+    io.debug("needs to handle handlers handlers().1")
+
     let promise =
       promise.wait(0)
-      |> promise.await(fn(_: Nil) {
-        r.await(r.call(exec, [#(v.unit(), Nil)], env, extrinsic))
-      })
+      |> promise.await(fn(_: Nil) { r.await(r.call(exec, [#(v.unit(), Nil)])) })
       |> promise.map(fn(result) {
         case result {
           Ok(term) -> term
@@ -183,11 +177,12 @@ fn listen() {
     use event <- result.then(cast.field("event", cast.as_string, sub))
     use handle <- result.then(cast.field("handler", cast.any, sub))
 
-    let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
     window.add_event_listener(event, fn(_) {
-      let ret = r.call(handle, [#(v.unit(), Nil)], env, extrinsic)
+      io.debug("needs to handle handlers extrinsic")
+
+      let ret = r.call(handle, [#(v.unit(), Nil)])
       io.debug(ret)
       Nil
     })
@@ -224,11 +219,12 @@ fn on_click() {
 
 fn on_keydown() {
   #(t.unit, t.unit, fn(handle) {
-    let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
+    io.debug("needs to handle handlers extrinsic")
+
     old_document.on_keydown(fn(k) {
-      let _ = r.call(handle, [#(v.String(k), Nil)], env, extrinsic)
+      let _ = r.call(handle, [#(v.String(k), Nil)])
       Nil
     })
     Ok(v.unit())
@@ -237,11 +233,12 @@ fn on_keydown() {
 
 fn on_change() {
   #(t.unit, t.unit, fn(handle) {
-    let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
+    io.debug("needs to handle handlers extrinsic")
+
     old_document.on_change(fn(k) {
-      let _ = r.call(handle, [#(v.String(k), Nil)], env, extrinsic)
+      let _ = r.call(handle, [#(v.String(k), Nil)])
       Nil
     })
     Ok(v.unit())
@@ -249,9 +246,11 @@ fn on_change() {
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert Ok(arg) = r.execute(arg, stdlib.env(), dict.new())
+  io.debug("needs to handle handlers extrinsic")
+
+  let assert Ok(arg) = r.execute(arg, [])
   // pass as general term to program arg or fn
-  let ret = r.call(handle, [#(arg, Nil)], builtins, extrinsic)
+  let ret = r.call(handle, [#(arg, Nil)])
   case ret {
     Ok(_) -> Nil
     _ -> {
