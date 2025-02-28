@@ -336,12 +336,10 @@ fn view() {
           "Build client and server as a single strongly typed program. Even extend type guarantees over your build scripts.",
           "Other languages have the possiblity of closure serialisation, but EYG's runtime is designed to make them efficient.",
         ],
-        action(
-          "Read the reference documentation.",
-          "/documentation#closure-serialization",
-          Useful,
-        ),
-        [snippet(s, state.closure_serialization_key)],
+        action("Read the documentation.", "/documentation", Useful),
+        [
+          // snippet(s, state.closure_serialization_key)
+        ],
         False,
       ),
       feature(

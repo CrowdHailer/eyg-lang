@@ -443,25 +443,25 @@ fn render(state) {
         ),
         // Abort and flow control
         // chapter("External", [example(state, state.Externals)], None),
-        chapter(
-          "11",
-          "Closure serialization",
-          [
-            example(state, state.capture_key),
-            p(
-              "In EYG any value can be captured, and transformed to EYG source code.
-              This includes functions and their environments and effect handlers applicable at that time.",
-            ),
-            p(
-              "Note, only the required environment is captured. In this example the variable ignore is not part of the bundle.",
-            ),
-            p(
-              "Closure capture and serialization allows EYG programs to extend over multiple machines.
-              Source code can be sent to another interpreter or transpiled using the builtin to_javascript.",
-            ),
-          ],
-          None,
-        ),
+        // chapter(
+        //   "11",
+        //   "Closure serialization",
+        //   [
+        //     example(state, state.capture_key),
+        //     p(
+        //       "In EYG any value can be captured, and transformed to EYG source code.
+        //       This includes functions and their environments and effect handlers applicable at that time.",
+        //     ),
+        //     p(
+        //       "Note, only the required environment is captured. In this example the variable ignore is not part of the bundle.",
+        //     ),
+        //     p(
+        //       "Closure capture and serialization allows EYG programs to extend over multiple machines.
+        //       Source code can be sent to another interpreter or transpiled.",
+        //     ),
+        //   ],
+        //   None,
+        // ),
         chapter(
           "12",
           "Copy paste",

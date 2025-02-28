@@ -58,8 +58,8 @@ fn fibonacci_numbers() {
 pub fn examples() {
   [
     fibonacci_numbers(),
-    catfact_fetch(),
-    // wordcount(),
+    // catfact_fetch(),
+  // wordcount(),
   // deploy(),
   // sunrise(),
   ]
