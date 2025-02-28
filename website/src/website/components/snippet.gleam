@@ -46,6 +46,7 @@ import website/components/autocomplete
 import website/components/output
 import website/components/simple_debug
 import website/components/snippet/menu
+import website/harness/eval
 import website/sync/cache
 
 const neo_blue_3 = "#87ceeb"
@@ -643,7 +644,14 @@ fn run_handle_effect(state, task_id, value) {
 // might belong on a run 
 fn run_blocking(return, cache, extrinsic, resume) {
   let return = cache.run(return, cache, resume)
+  io.debug("runblocking")
   case return {
+    Error(#(break.UnhandledEffect("Eval", lift), meta, env, k)) -> {
+      case eval.blocking(lift, k) {
+        Ok(p) -> #(return, Some(p))
+        Error(reason) -> #(Error(#(reason, meta, env, k)), None)
+      }
+    }
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case list.key_find(extrinsic, label) {
         Ok(#(_lift, _reply, blocking)) ->
@@ -1129,6 +1137,7 @@ pub fn copy_escaped(state) {
 }
 
 fn confirm(state) {
+  io.debug("confirm")
   let Snippet(run: run, evaluated: evaluated, ..) = state
   case run, evaluated {
     NotRunning, Ok(#(value, scope)) -> #(state, Conclude(value, [], scope))

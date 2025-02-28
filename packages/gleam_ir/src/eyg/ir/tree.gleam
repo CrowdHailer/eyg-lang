@@ -133,11 +133,11 @@ pub fn unit() {
 }
 
 pub fn true() {
-  apply(tag("True"), unit())
+  tagged("True", unit())
 }
 
 pub fn false() {
-  apply(tag("False"), unit())
+  tagged("False", unit())
 }
 
 pub fn list(items) {
@@ -161,6 +161,10 @@ pub fn do_record(reversed, acc) {
       do_record(rest, apply(apply(extend(key), value), acc))
     [] -> acc
   }
+}
+
+pub fn tagged(label, inner) {
+  apply(tag(label), inner)
 }
 
 pub fn add(a, b) {
