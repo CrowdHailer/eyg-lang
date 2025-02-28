@@ -1,9 +1,7 @@
-import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import gleam/result.{try}
-import gleam/string
 import morph/analysis
 import morph/editable as e
 import morph/projection as p

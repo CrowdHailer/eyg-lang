@@ -62,7 +62,7 @@ pub fn join(a, b) {
       let inner = list.flatten([inner_a, [middle], inner_b])
       Multiline(pre, inner, post)
     }
-    _, _ -> todo as "shouldn't join statements"
+    _, _ -> panic as "joining statements should not occur"
   }
 }
 

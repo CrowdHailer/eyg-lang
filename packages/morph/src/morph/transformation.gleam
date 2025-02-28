@@ -440,7 +440,7 @@ pub fn overwrite(zip) {
         ])
       })
     p.Exp(e.Record(fields, None)) ->
-      Ok(fn(new) {
+      Ok(fn(_new) {
         #(p.Exp(e.Vacant), [p.OverwriteTail(list.reverse(fields)), ..zoom])
       })
     p.Exp(item) ->

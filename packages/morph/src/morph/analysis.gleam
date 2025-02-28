@@ -91,27 +91,10 @@ pub fn value_to_type(value, bindings, meta: t) {
 
       #(t.Union(t.RowExtend(label, type_, var)), bindings)
     }
-    v.Partial(v.Cons, args) -> panic as "type partial"
-    v.Partial(v.Match(_), [_, _]) -> {
-      // let #(var, bindings) = binding.poly(level, bindings)
-      // let #(var, bindings) = binding.poly(level, bindings)
-      let #(#(_, #(_, type_, _, _)), bindings) = todo as "capture"
-
-      // capture.capture(value, meta)
-      // |> infer.infer(t.Empty, dict.new(), 0, bindings)
-      #(binding.gen(type_, -1, bindings), bindings)
-    }
-    v.Promise(_) -> panic as "do promises need to be specific type"
-    _ -> {
-      // console.log(value)
-      let level = 0
-      let #(var, bindings) = binding.poly(level, bindings)
-    }
+    v.Partial(_node, _args) | v.Promise(_) ->
+      panic as "These value cannot be cast to a type, they should not occur in the standard editable programs"
   }
 }
-
-// TODO add a small initial script BUT i want std lib etc
-// Vars together for environment
 
 fn env_to_tenv(scope, meta) {
   let bindings = infer.new_state()
