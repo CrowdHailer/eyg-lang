@@ -216,7 +216,6 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect]))
     }
     UserClickedPrevious(exp) -> {
-<<<<<<< HEAD
       let state =
         State(..state, shell: shell.user_clicked_previous(state.shell, exp))
       #(state, effect.none())
@@ -224,83 +223,6 @@ pub fn update(state: State, message) {
     ShellMessage(message) -> {
       let #(shell, snippet_effect) =
         shell.shell_snippet_message(state.shell, message)
-=======
-      let shell = state.shell
-      let scope = shell.source.scope
-      let current = snippet.active(exp, scope, effects(), state.sync.cache)
-      let shell = Shell(..shell, source: current)
-      let state = State(..state, shell: shell)
-      #(state, effect.none())
-    }
-    ShellMessage(message) -> {
-      let state = close_all_previous(state)
-      let shell = state.shell
-      case snippet.user_message(message) {
-        True -> Shell(..shell, failure: None)
-        False -> shell
-      }
-      let #(source, eff) = snippet.update(shell.source, message)
-      let #(shell, snippet_effect) = case eff {
-        snippet.Nothing -> #(Shell(..shell, source: source), effect.none())
-        snippet.Failed(failure) -> #(
-          Shell(..shell, failure: Some(SnippetFailure(failure))),
-          effect.none(),
-        )
-
-        snippet.RunEffect(p) -> #(
-          Shell(..shell, source: source),
-          dispatch_to_shell(snippet.await_running_effect(p)),
-        )
-        snippet.FocusOnCode -> #(
-          Shell(..shell, source: source),
-          dispatch_nothing(snippet.focus_on_buffer()),
-        )
-        snippet.FocusOnInput -> #(
-          Shell(..shell, source: source),
-          dispatch_nothing(snippet.focus_on_input()),
-        )
-        snippet.ToggleHelp -> #(Shell(..shell, source: source), effect.none())
-        snippet.MoveAbove -> {
-          case shell.previous {
-            [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), effect.none())
-            [Executed(_value, _effects, readonly), ..] -> {
-              let scope = shell.source.scope
-              let current =
-                snippet.active(
-                  readonly.source,
-                  scope,
-                  effects(),
-                  state.sync.cache,
-                )
-              #(Shell(..shell, source: current), effect.none())
-            }
-          }
-        }
-        snippet.MoveBelow -> #(Shell(..shell, source: source), effect.none())
-        snippet.ReadFromClipboard -> #(
-          Shell(..shell, source: source),
-          dispatch_to_shell(snippet.read_from_clipboard()),
-        )
-        snippet.WriteToClipboard(text) -> #(
-          Shell(..shell, source: source),
-          dispatch_to_shell(snippet.write_to_clipboard(text)),
-        )
-        snippet.Conclude(value, effect_history, scope) -> {
-          let previous = [
-            Executed(
-              value,
-              effect_history,
-              readonly.new(snippet.source(shell.source)),
-            ),
-            ..shell.previous
-          ]
-          let source =
-            snippet.active(e.Vacant, scope, effects(), state.sync.cache)
-          let shell = Shell(..shell, source: source, previous: previous)
-          #(shell, effect.none())
-        }
-      }
->>>>>>> aa36b28c (value for json)
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
