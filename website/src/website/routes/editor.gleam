@@ -6,7 +6,7 @@ import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleroglero/outline
 import lustre
 import lustre/attribute as a
@@ -28,6 +28,7 @@ import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
+import website/components/shell
 import website/components/snippet
 import website/harness/browser as harness
 import website/routes/common
@@ -79,38 +80,11 @@ pub fn client() {
   Nil
 }
 
-pub type ShellEntry {
-  Executed(
-    Option(snippet.Value),
-    List(snippet.RuntimeEffect),
-    readonly.Readonly,
-  )
-}
-
-pub type ShellFailure {
-  SnippetFailure(snippet.Failure)
-  NoMoreHistory
-}
-
-pub type Shell {
-  Shell(
-    // config: spotless.Config,
-    // situation: Situation,
-    // cache: sync.Sync,
-    failure: Option(ShellFailure),
-    previous: List(ShellEntry),
-    // display_help: Bool,
-    // scope is on snippet
-    // scope: snippet.Scope,
-    source: snippet.Snippet,
-  )
-}
-
 pub type State {
   State(
     sync: client.Client,
     source: snippet.Snippet,
-    shell: Shell,
+    shell: shell.Shell,
     display_help: Bool,
   )
 }
@@ -118,8 +92,7 @@ pub type State {
 pub fn init(_) {
   let #(client, sync_task) = client.default()
   let source = e.from_annotated(ir.vacant())
-  let shell =
-    Shell(None, [], snippet.init(source, [], harness.effects(), client.cache))
+  let shell = shell.init(harness.effects(), client.cache)
   let snippet = snippet.init(source, [], [], client.cache)
   let state = State(client, snippet, shell, False)
   #(state, client.lustre_run(sync_task, SyncMessage))
@@ -129,9 +102,11 @@ pub type Message {
   ToggleHelp
   ToggleFullscreen
   SnippetMessage(snippet.Message)
+  // --- these are all shell messages
   UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
-  PreviouseMessage(readonly.Message, Int)
+  PreviousMessage(readonly.Message, Int)
+  // --- end
   SyncMessage(client.Message)
 }
 
@@ -143,7 +118,7 @@ fn dispatch_to_snippet(promise) {
 
 fn dispatch_to_previous(promise, i) {
   effect.from(fn(d) {
-    promisex.aside(promise, fn(message) { d(PreviouseMessage(message, i)) })
+    promisex.aside(promise, fn(message) { d(PreviousMessage(message, i)) })
   })
 }
 
@@ -155,22 +130,6 @@ fn dispatch_to_shell(promise) {
 
 fn dispatch_nothing(_promise) {
   effect.none()
-}
-
-fn close_many_previous(shell_entries) {
-  list.map(shell_entries, fn(e) {
-    let Executed(a, b, r) = e
-    let r = readonly.Readonly(..r, status: readonly.Idle)
-    Executed(a, b, r)
-  })
-}
-
-fn close_all_previous(state: State) {
-  let shell = state.shell
-  let previous = close_many_previous(shell.previous)
-
-  let shell = Shell(..shell, previous: previous)
-  State(..state, shell: shell)
 }
 
 pub fn update(state: State, message) {
@@ -243,109 +202,34 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect]))
     }
     UserClickedPrevious(exp) -> {
-      let shell = state.shell
-      let scope = shell.source.scope
-      let current =
-        snippet.active(exp, scope, harness.effects(), state.sync.cache)
-      let shell = Shell(..shell, source: current)
-      let state = State(..state, shell: shell)
+      let state =
+        State(..state, shell: shell.user_clicked_previous(state.shell, exp))
       #(state, effect.none())
     }
     ShellMessage(message) -> {
-      let state = close_all_previous(state)
-      let shell = state.shell
-      case snippet.user_message(message) {
-        True -> Shell(..shell, failure: None)
-        False -> shell
-      }
-      let #(source, eff) = snippet.update(shell.source, message)
-      let #(shell, snippet_effect) = case eff {
-        snippet.Nothing -> #(Shell(..shell, source: source), effect.none())
-        snippet.Failed(failure) -> #(
-          Shell(..shell, failure: Some(SnippetFailure(failure))),
-          effect.none(),
-        )
-
-        snippet.RunEffect(p) -> #(
-          Shell(..shell, source: source),
-          dispatch_to_shell(snippet.await_running_effect(p)),
-        )
-        snippet.FocusOnCode -> #(
-          Shell(..shell, source: source),
-          dispatch_nothing(snippet.focus_on_buffer()),
-        )
-        snippet.FocusOnInput -> #(
-          Shell(..shell, source: source),
-          dispatch_nothing(snippet.focus_on_input()),
-        )
-        snippet.ToggleHelp -> #(Shell(..shell, source: source), effect.none())
-        snippet.MoveAbove -> {
-          case shell.previous {
-            [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), effect.none())
-            [Executed(_value, _effects, readonly), ..] -> {
-              let scope = shell.source.scope
-              let current =
-                snippet.active(
-                  readonly.source,
-                  scope,
-                  harness.effects(),
-                  state.sync.cache,
-                )
-              #(Shell(..shell, source: current), effect.none())
-            }
-          }
-        }
-        snippet.MoveBelow -> #(Shell(..shell, source: source), effect.none())
-        snippet.ReadFromClipboard -> #(
-          Shell(..shell, source: source),
-          dispatch_to_shell(snippet.read_from_clipboard()),
-        )
-        snippet.WriteToClipboard(text) -> #(
-          Shell(..shell, source: source),
-          dispatch_to_shell(snippet.write_to_clipboard(text)),
-        )
-        snippet.Conclude(value, effects, scope) -> {
-          let previous = [
-            Executed(value, effects, readonly.new(snippet.source(shell.source))),
-            ..shell.previous
-          ]
-          let source =
-            snippet.active(e.Vacant, scope, harness.effects(), state.sync.cache)
-          let shell = Shell(..shell, source: source, previous: previous)
-          #(shell, effect.none())
-        }
-      }
+      let #(shell, snippet_effect) =
+        shell.shell_snippet_message(state.shell, message)
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
       let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
       let state = State(..state, sync:, shell:)
+      let snippet_effect = case snippet_effect {
+        None -> effect.none()
+        Some(a) -> dispatch_to_shell(a)
+      }
       #(
         state,
         effect.batch([snippet_effect, client.lustre_run(sync_task, SyncMessage)]),
       )
     }
-    PreviouseMessage(m, i) -> {
+    PreviousMessage(m, i) -> {
       let shell = state.shell
-      let assert Ok(#(pre, executed, post)) =
-        listx.split_around(shell.previous, i)
-      let pre = close_many_previous(pre)
-      let post = close_many_previous(post)
-      let Executed(a, b, r) = executed
-      let #(r, action) = readonly.update(r, m)
-      let previous = listx.gather_around(pre, Executed(a, b, r), post)
+      let #(shell, action) = shell.message_from_previous_code(shell, m, i)
       let effect = case action {
-        readonly.Nothing -> effect.none()
-        readonly.Fail(message) -> {
-          console.warn(message)
-          effect.none()
-        }
-        readonly.MoveAbove -> effect.none()
-        readonly.MoveBelow -> effect.none()
-        readonly.WriteToClipboard(text) ->
-          dispatch_to_previous(readonly.write_to_clipboard(text), i)
+        None -> effect.none()
+        Some(a) -> dispatch_to_previous(a, i)
       }
-      let shell = Shell(..shell, previous: previous)
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
@@ -353,7 +237,7 @@ pub fn update(state: State, message) {
       let #(sync_client, effect) = client.update(sync_client, message)
       let snippet = snippet.set_references(state.source, sync_client.cache)
       let shell =
-        Shell(
+        shell.Shell(
           ..state.shell,
           source: snippet.set_references(state.shell.source, sync_client.cache),
         )
@@ -582,12 +466,12 @@ pub fn render(state: State) {
         list.index_map(list.reverse(state.shell.previous), fn(p, i) {
           let i = count - i
           case p {
-            Executed(value, effects, readonly) ->
+            shell.Executed(value, effects, readonly) ->
               h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
                 h.div([a.class("relative pr-8")], [
                   h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
                     readonly.render(readonly)
-                    |> element.map(PreviouseMessage(_, i)),
+                    |> element.map(PreviousMessage(_, i)),
                   ]),
                   h.button(
                     [
@@ -765,7 +649,7 @@ fn render_errors(failure, snippet: snippet.Snippet) {
 
   case failure, errors {
     None, [] -> element.none()
-    Some(SnippetFailure(failure)), _ ->
+    Some(shell.SnippetFailure(failure)), _ ->
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
@@ -773,7 +657,7 @@ fn render_errors(failure, snippet: snippet.Snippet) {
         ],
         [element.text(snippet.fail_message(failure))],
       )
-    Some(NoMoreHistory), _ ->
+    Some(shell.NoMoreHistory), _ ->
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
