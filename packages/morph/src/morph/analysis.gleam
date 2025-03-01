@@ -1,6 +1,7 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/capture
 import eyg/interpreter/value as v
@@ -8,6 +9,7 @@ import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/io
 import gleam/list
+import gleam/string
 import morph/editable as e
 import morph/projection
 
@@ -91,8 +93,42 @@ pub fn value_to_type(value, bindings, meta: t) {
 
       #(t.Union(t.RowExtend(label, type_, var)), bindings)
     }
-    v.Partial(_node, _args) | v.Promise(_) ->
+    v.Partial(v.Builtin(id), args) -> {
+      case list.key_find(infer.builtins(), id) {
+        Ok(func) -> {
+          let #(func, bindings) = binding.instantiate(func, 1, bindings)
+          let #(func, bindings) =
+            list.fold(args, #(func, bindings), fn(acc, arg) {
+              let level = 1
+              let #(func, bindings) = acc
+              let #(t_arg, bindings) = value_to_type(arg, bindings, meta)
+              let #(t_arg, bindings) = binding.instantiate(t_arg, 1, bindings)
+
+              let #(ty_ret, bindings) = binding.mono(level, bindings)
+              let #(test_eff, bindings) = binding.mono(level, bindings)
+
+              let bindings = case
+                unify.unify(
+                  t.Fun(t_arg, test_eff, ty_ret),
+                  func,
+                  level,
+                  bindings,
+                )
+              {
+                Ok(bindings) -> bindings
+                Error(_reason) -> bindings
+              }
+              #(ty_ret, bindings)
+            })
+          #(binding.gen(func, 1, bindings), bindings)
+        }
+        Error(Nil) -> panic as "where did this builtin come from"
+      }
+    }
+    v.Partial(_node, _args) | v.Promise(_) -> {
+      io.println(string.inspect(value))
       panic as "These value cannot be cast to a type, they should not occur in the standard editable programs"
+    }
   }
 }
 
