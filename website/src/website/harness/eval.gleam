@@ -17,6 +17,20 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 
+pub const l = "Eval"
+
+pub fn lift() {
+  t.ast()
+}
+
+pub fn reply() {
+  t.result(t.Var(0), t.unit)
+}
+
+pub fn type_() {
+  #(l, #(lift(), reply()))
+}
+
 pub fn k_to_func(stack) {
   do_k_to_func(stack, ir.variable("magic"))
 }
@@ -41,6 +55,7 @@ fn do_k_to_func(stack, acc) {
   }
 }
 
+// TODO test with env needed
 fn to_func(source) {
   let assert Error(#(reason, _meta, env, k)) = r.execute(source, [])
   let assert break.Vacant = reason
@@ -79,7 +94,7 @@ fn do(lift, k) {
           let t = tree.1.1
           binding.resolve(t, bindings)
           io.debug(t)
-          Ok(v.ok(value))
+          Ok(value)
         }
         Error(_) -> panic as "Why this error"
       }

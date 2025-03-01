@@ -45,6 +45,13 @@ pub fn false() {
   Tagged("False", unit())
 }
 
+pub fn bool(in) {
+  case in {
+    True -> true()
+    False -> false()
+  }
+}
+
 pub fn ok(value) {
   Tagged("Ok", value)
 }
