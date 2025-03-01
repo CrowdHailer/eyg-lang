@@ -605,7 +605,11 @@ fn run_handle_effect(state, task_id, value) {
         |> run_blocking(state.cache, state.effects, block.resume)
       let run = Running(return, effects)
       let state = Snippet(..state, task_counter: task_id, run: run)
-      #(state, Nothing)
+      let ef = case return {
+        Ok(#(value, scope)) -> Conclude(value, effects, scope)
+        _ -> Nothing
+      }
+      #(state, ef)
     }
     _, _ -> #(state, Nothing)
   }

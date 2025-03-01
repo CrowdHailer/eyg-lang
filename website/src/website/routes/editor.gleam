@@ -7,6 +7,7 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
+import gleam/string
 import gleroglero/outline
 import lustre
 import lustre/attribute as a
@@ -525,15 +526,27 @@ pub fn render(state: State) {
             [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
             [snippet.render_just_projection(state.shell.source, True)],
           ),
-          h.button(
-            [
-              a.class(
-                "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-              ),
-              event.on_click(snippet.UserPressedCommandKey("Enter")),
-            ],
-            [outline.play_circle()],
-          ),
+          case state.shell.source.run {
+            snippet.NotRunning ->
+              h.button(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                  ),
+                  event.on_click(snippet.UserPressedCommandKey("Enter")),
+                ],
+                [outline.play_circle()],
+              )
+            snippet.Running(_, _) ->
+              h.span(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+                  ),
+                ],
+                [outline.arrow_path()],
+              )
+          },
         ],
       )
         |> element.map(ShellMessage),
