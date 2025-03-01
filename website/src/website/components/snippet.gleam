@@ -607,7 +607,14 @@ fn run_handle_effect(state, task_id, value) {
       let state = Snippet(..state, task_counter: task_id, run: run)
       let ef = case return {
         Ok(#(value, scope)) -> Conclude(value, effects, scope)
-        _ -> Nothing
+        _ ->
+          case task {
+            Some(task) -> {
+              let p = promise.map(task, fn(v) { #(task_id, v) })
+              RunEffect(p)
+            }
+            None -> Nothing
+          }
       }
       #(state, ef)
     }
