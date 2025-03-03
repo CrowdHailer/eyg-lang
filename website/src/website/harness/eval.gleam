@@ -1,7 +1,6 @@
-import website/components/simple_debug
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
@@ -52,8 +51,7 @@ pub fn result_to_eyg(result) {
 // TODO test that effects are open
 // This is the value to value
 fn do(lift, meta, env: state.Env(t), k) {
-  let src = language_to_expression(lift)
-  case src {
+  case language_to_expression(lift) {
     Ok(src) ->
       case r.execute(src, []) {
         Ok(value) -> {
