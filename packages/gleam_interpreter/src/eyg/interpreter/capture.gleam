@@ -140,6 +140,8 @@ fn capture_defunc(switch, args, env, meta) {
           #(ir.Let(var, #(ir.Variable(scoped_var), meta), exp), meta)
         })
       io.debug(env)
+      io.debug(wrapped)
+
       io.debug(exp)
       exp.0
     }
@@ -152,6 +154,22 @@ fn capture_defunc(switch, args, env, meta) {
     let exp = #(ir.Apply(exp, arg), meta)
     #(exp, env)
   })
+}
+
+pub fn stack_and_env_to_func(stack, captured: state.Env(_)) -> ir.Node(_) {
+  let env = []
+  let meta = Nil
+  let f = do_stack_to_func(stack, ir.variable("magic"))
+  let f = stack_to_func(stack)
+  let #(env, wrapped) =
+    extract_used_env(vars_used(f, []), env, meta, captured.scope)
+  io.debug(wrapped)
+  io.debug(env)
+  let exp =
+    list.fold(wrapped, f, fn(exp, pair) {
+      let #(scoped_var, var) = pair
+      #(ir.Let(var, #(ir.Variable(scoped_var), meta), exp), meta)
+    })
 }
 
 pub fn stack_to_func(stack) -> ir.Node(_) {

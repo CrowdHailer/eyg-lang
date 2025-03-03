@@ -1,6 +1,7 @@
 import eyg/interpreter/break
 import eyg/interpreter/capture
 import eyg/interpreter/expression as r
+import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
@@ -367,6 +368,14 @@ pub fn capture_keeps_environment_test() {
   let assert Ok(term) = run(next, [v.Integer(2)])
   term
   |> should.equal(v.Integer(7))
+}
+
+pub fn direct_capture_test() {
+  let exp = ir.let_("x", ir.integer(1), ir.add(ir.vacant(), ir.variable("x")))
+  let #(debug, meta, env, k) =
+    run(exp, [])
+    |> should.be_error
+  io.debug(capture.stack_and_env_to_func(k, env))
 }
 
 pub fn builtin_arity1_test() {
