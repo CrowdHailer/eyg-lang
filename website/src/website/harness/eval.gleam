@@ -31,35 +31,11 @@ pub fn type_() {
   #(l, #(lift(), reply()))
 }
 
-pub fn k_to_func(stack) {
-  do_k_to_func(stack, ir.variable("magic"))
-}
-
-fn do_k_to_func(stack, acc) {
-  case stack {
-    state.Empty(_) -> ir.lambda("magic", acc)
-    state.Stack(frame, meta, stack) -> {
-      let acc = case frame {
-        state.Assign(label, next, _env) -> ir.let_(label, acc, next)
-        state.Arg(arg, _env) -> ir.apply(acc, arg)
-        state.Apply(func, _env) -> ir.apply(capture.capture(func, Nil), acc)
-        // TODO not tested this one
-        state.CallWith(arg, _env) -> ir.apply(acc, capture.capture(arg, Nil))
-        _ -> {
-          io.debug(frame)
-          todo as "I haven't the answer to this yet"
-        }
-      }
-      do_k_to_func(stack, acc)
-    }
-  }
-}
-
 // TODO test with env needed
 fn to_func(source) {
   let assert Error(#(reason, _meta, env, k)) = r.execute(source, [])
   let assert break.Vacant = reason
-  k_to_func(k)
+  capture.k_to_func(k)
 }
 
 pub fn blocking(lift, k) {
@@ -85,7 +61,7 @@ fn do(lift, k) {
     Ok(src) ->
       case r.execute(src, []) {
         Ok(value) -> {
-          let rest = k_to_func(k)
+          let rest = capture.k_to_func(k)
           let bindings = infer.new_state()
           let #(open_effect, bindings) = binding.mono(1, bindings)
           // TODO real refs

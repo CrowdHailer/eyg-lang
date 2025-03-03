@@ -223,7 +223,7 @@ fn call_builtin(key, applied, meta, env: Env(m), kont) {
 
 // In interpreter because circular dependencies interpreter -> spec -> stdlib/linked list
 
-fn move(delimited, acc) {
+pub fn move(delimited, acc) {
   case delimited {
     [] -> acc
     [#(step, meta), ..rest] -> move(rest, Stack(step, meta, acc))

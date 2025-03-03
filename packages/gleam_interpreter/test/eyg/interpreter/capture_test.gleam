@@ -4,6 +4,7 @@ import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/io
 import gleam/list
 import gleeunit/should
 
@@ -305,31 +306,68 @@ pub fn handler_test() {
   |> should.equal(Ok(v.Tagged("Error", v.String("failure"))))
 }
 
-// pub fn capture_resume_test() {
-//   let handler =
-//     ir.lambda(
-//       "message",
-//       // ir.lambda("k", ir.apply(ir.tag("Stopped"), ir.variable("k"))),
-//       ir.lambda("k", ir.variable("k")),
-//     )
+pub fn capture_resume_with_stack_test() {
+  let exp =
+    ir.call(ir.handle("Foo"), [
+      ir.func(["m", "k"], ir.variable("k")),
+      ir.lambda("_", ir.tagged("Done", ir.apply(ir.perform("Foo"), ir.unit()))),
+    ])
+  let assert Ok(term) = run(exp, [])
+  let next = capture.capture(term, Nil)
+  run(next, [v.String("reply")])
+  |> should.be_ok
+  |> should.equal(v.Tagged("Done", v.String("reply")))
+}
 
-//   let exec =
-//     ir.lambda(
-//       "_",
-//       ir.let_(
-//         "_",
-//         ir.apply(ir.perform("Log"), ir.string("first")),
-//         ir.let_("_", ir.apply(ir.perform("Log"), ir.string("second")), ir.integer(0)),
-//       ),
-//     )
-//   let exp = ir.apply(ir.apply(ir.handle("Log"), handler), exec)
-//   let assert Ok(term) = r.execute(exp, dict.new())
-//   let next = capture.capture(term,Nil)
+pub fn capture_keeps_handler_test() {
+  let exp =
+    ir.call(ir.handle("Foo"), [
+      ir.func(["m", "k"], ir.variable("k")),
+      ir.lambda(
+        "_",
+        ir.subtract(
+          ir.apply(ir.perform("Foo"), ir.unit()),
+          ir.apply(ir.perform("Foo"), ir.unit()),
+        ),
+      ),
+    ])
+  let assert Ok(term) = run(exp, [])
+  let next = capture.capture(term, Nil)
+  let assert Ok(term) = run(next, [v.Integer(9)])
 
-//   next
-//   |> r.execute(env.empty(), r.eval_call(_, v.String("fooo"), [], env.empty(), dict.new()))
-//   // This should return a effect of subsequent logs, I don't know how to do this
-// }
+  let next = capture.capture(term, Nil)
+  let assert Ok(term) = run(next, [v.Integer(2)])
+  term
+  |> should.equal(v.Integer(7))
+}
+
+pub fn capture_keeps_environment_test() {
+  let exp =
+    ir.let_(
+      "outer",
+      ir.integer(10),
+      ir.call(ir.handle("Foo"), [
+        ir.func(["m", "k"], ir.variable("k")),
+        ir.lambda(
+          "_",
+          ir.subtract(
+            ir.apply(ir.perform("Foo"), ir.unit()),
+            ir.variable("outer"),
+          ),
+        ),
+      ]),
+    )
+  let assert Ok(term) = run(exp, [])
+  let next = capture.capture(term, Nil)
+  let assert Ok(term) =
+    run(next, [v.Integer(9)])
+    |> io.debug
+  todo as "test"
+  let next = capture.capture(term, Nil)
+  let assert Ok(term) = run(next, [v.Integer(2)])
+  term
+  |> should.equal(v.Integer(7))
+}
 
 pub fn builtin_arity1_test() {
   let exp = ir.builtin("list_pop")

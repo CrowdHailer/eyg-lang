@@ -128,6 +128,14 @@ pub fn release(package, release, identifier) {
   #(Release(package, release, identifier), Nil)
 }
 
+pub fn func(params, body) {
+  list.fold_right(params, body, fn(acc, param) { lambda(param, acc) })
+}
+
+pub fn call(f, args) {
+  list.fold(args, f, fn(acc, arg) { apply(acc, arg) })
+}
+
 pub fn unit() {
   empty()
 }
@@ -169,6 +177,10 @@ pub fn tagged(label, inner) {
 
 pub fn add(a, b) {
   apply(apply(builtin("int_add"), a), b)
+}
+
+pub fn subtract(a, b) {
+  apply(apply(builtin("int_subtract"), a), b)
 }
 
 pub fn multiply(a, b) {

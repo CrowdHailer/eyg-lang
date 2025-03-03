@@ -1,7 +1,9 @@
+import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
@@ -55,49 +57,8 @@ fn do_capture(term, env, meta) {
     // shake code
     // https://github.com/midas-framework/project_wisdom/pull/57/files#diff-d576d15df2bd35cb961bc2edd513c97027ef52ce19daf5d303f45bd11b327604
     v.Closure(arg, body, captured) -> {
-      // Note captured list has variables multiple times and we need to find first only
-      let captured =
-        list.filter_map(vars_used(body, [arg]), fn(var) {
-          use term <- result.then(list.key_find(captured, var))
-          Ok(#(var, term))
-        })
       let #(env, wrapped) =
-        list.fold(captured, #(env, []), fn(state, new) {
-          let #(env, wrapped) = state
-          let #(var, term) = new
-          // This should also not capture the reused terms inside the env
-          // could special rule std by passing in as an argument
-          //
-          let #(exp, env) = case var {
-            // "std" -> #(ir.String("I AM STD"), env)
-            _ -> do_capture(term, env, meta)
-          }
-          case list.key_find(env, var) {
-            Ok(old) if old == exp -> #(env, wrapped)
-            // look for anything else matching the variable because then it might have already the expression
-            Ok(_other) -> {
-              let pre =
-                list.filter(env, fn(e: #(String, _)) {
-                  string.starts_with(e.0, string.append(var, "#")) && e.1 == exp
-                })
-              case pre {
-                [] -> {
-                  let scoped_var =
-                    string.concat([var, "#", int.to_string(list.length(env))])
-                  let assert Error(Nil) = list.key_find(env, scoped_var)
-                  let wrapped = [#(scoped_var, var), ..wrapped]
-                  let env = [#(scoped_var, exp), ..env]
-                  #(env, wrapped)
-                }
-                [#(scoped_var, _)] -> #(env, [#(scoped_var, var), ..wrapped])
-                _ -> panic as "assume only one existing"
-              }
-            }
-
-            Error(Nil) -> #([#(var, exp), ..env], wrapped)
-          }
-        })
-
+        extract_used_env(vars_used(body, [arg]), env, meta, captured)
       let exp = #(ir.Lambda(arg, body), meta)
       let exp =
         list.fold(wrapped, exp, fn(exp, pair) {
@@ -112,6 +73,51 @@ fn do_capture(term, env, meta) {
   }
 }
 
+fn extract_used_env(used, env, meta, captured) {
+  // Note captured list has variables multiple times and we need to find first only
+  let captured =
+    list.filter_map(used, fn(var) {
+      use term <- result.then(list.key_find(captured, var))
+      Ok(#(var, term))
+    })
+
+  list.fold(captured, #(env, []), fn(state, new) {
+    let #(env, wrapped) = state
+    let #(var, term) = new
+    // This should also not capture the reused terms inside the env
+    // could special rule std by passing in as an argument
+    //
+    let #(exp, env) = case var {
+      // "std" -> #(ir.String("I AM STD"), env)
+      _ -> do_capture(term, env, meta)
+    }
+    case list.key_find(env, var) {
+      Ok(old) if old == exp -> #(env, wrapped)
+      // look for anything else matching the variable because then it might have already the expression
+      Ok(_other) -> {
+        let pre =
+          list.filter(env, fn(e: #(String, _)) {
+            string.starts_with(e.0, string.append(var, "#")) && e.1 == exp
+          })
+        case pre {
+          [] -> {
+            let scoped_var =
+              string.concat([var, "#", int.to_string(list.length(env))])
+            let assert Error(Nil) = list.key_find(env, scoped_var)
+            let wrapped = [#(scoped_var, var), ..wrapped]
+            let env = [#(scoped_var, exp), ..env]
+            #(env, wrapped)
+          }
+          [#(scoped_var, _)] -> #(env, [#(scoped_var, var), ..wrapped])
+          _ -> panic as "assume only one existing"
+        }
+      }
+
+      Error(Nil) -> #([#(var, exp), ..env], wrapped)
+    }
+  })
+}
+
 fn capture_defunc(switch, args, env, meta) {
   let exp = case switch {
     v.Cons -> ir.Cons
@@ -123,8 +129,19 @@ fn capture_defunc(switch, args, env, meta) {
     v.NoCases -> ir.NoCases
     v.Perform(label) -> ir.Perform(label)
     v.Handle(label) -> ir.Handle(label)
-    v.Resume(_) -> {
-      panic as "not idea how to capture the func here, is it even possible"
+    v.Resume(#(popped, captured)) -> {
+      let stack = state.move(popped, state.Empty(dict.new()))
+      let f = stack_to_func(stack)
+      let #(env, wrapped) =
+        extract_used_env(vars_used(f, []), env, meta, captured.scope)
+      let exp =
+        list.fold(wrapped, f, fn(exp, pair) {
+          let #(scoped_var, var) = pair
+          #(ir.Let(var, #(ir.Variable(scoped_var), meta), exp), meta)
+        })
+      io.debug(env)
+      io.debug(exp)
+      exp.0
     }
     v.Builtin(identifier) -> ir.Builtin(identifier)
   }
@@ -135,6 +152,32 @@ fn capture_defunc(switch, args, env, meta) {
     let exp = #(ir.Apply(exp, arg), meta)
     #(exp, env)
   })
+}
+
+pub fn stack_to_func(stack) -> ir.Node(_) {
+  do_stack_to_func(stack, ir.variable("magic"))
+}
+
+fn do_stack_to_func(stack, acc) {
+  case stack {
+    state.Empty(_) -> ir.lambda("magic", acc)
+    state.Stack(frame, meta, stack) -> {
+      let acc = case frame {
+        state.Assign(label, next, _env) -> ir.let_(label, acc, next)
+        state.Arg(arg, _env) -> ir.apply(acc, arg)
+        state.Apply(func, _env) -> ir.apply(capture(func, meta), acc)
+        state.CallWith(arg, _env) -> ir.apply(acc, capture(arg, meta))
+        state.Delimit(label, handler, _env, shallow) -> {
+          let assert False = shallow
+          ir.call(ir.handle(label), [
+            capture(handler, meta),
+            ir.lambda("_", acc),
+          ])
+        }
+      }
+      do_stack_to_func(stack, acc)
+    }
+  }
 }
 
 fn vars_used(exp, env) {
