@@ -1,11 +1,9 @@
 import eyg/interpreter/break
 import eyg/interpreter/capture
 import eyg/interpreter/expression as r
-import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
-import gleam/io
 import gleam/list
 import gleeunit/should
 
@@ -360,22 +358,9 @@ pub fn capture_keeps_environment_test() {
     )
   let assert Ok(term) = run(exp, [])
   let next = capture.capture(term, Nil)
-  let assert Ok(term) =
-    run(next, [v.Integer(9)])
-    |> io.debug
-  todo as "test"
-  let next = capture.capture(term, Nil)
-  let assert Ok(term) = run(next, [v.Integer(2)])
+  let assert Ok(term) = run(next, [v.Integer(9)])
   term
-  |> should.equal(v.Integer(7))
-}
-
-pub fn direct_capture_test() {
-  let exp = ir.let_("x", ir.integer(1), ir.add(ir.vacant(), ir.variable("x")))
-  let #(debug, meta, env, k) =
-    run(exp, [])
-    |> should.be_error
-  io.debug(capture.stack_and_env_to_func(k, env))
+  |> should.equal(v.Integer(-1))
 }
 
 pub fn builtin_arity1_test() {

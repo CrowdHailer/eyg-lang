@@ -55,7 +55,7 @@ pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
       let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value, meta)
+        capture.capture(value, Nil)
         |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }

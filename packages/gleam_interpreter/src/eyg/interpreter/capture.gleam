@@ -3,7 +3,6 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
@@ -119,35 +118,22 @@ fn extract_used_env(used, env, meta, captured) {
 }
 
 fn capture_defunc(switch, args, env, meta) {
-  let exp = case switch {
-    v.Cons -> ir.Cons
-    v.Extend(label) -> ir.Extend(label)
-    v.Overwrite(label) -> ir.Overwrite(label)
-    v.Select(label) -> ir.Select(label)
-    v.Tag(label) -> ir.Tag(label)
-    v.Match(label) -> ir.Case(label)
-    v.NoCases -> ir.NoCases
-    v.Perform(label) -> ir.Perform(label)
-    v.Handle(label) -> ir.Handle(label)
+  let #(exp, env) = case switch {
+    v.Cons -> #(#(ir.Cons, meta), env)
+    v.Extend(label) -> #(#(ir.Extend(label), meta), env)
+    v.Overwrite(label) -> #(#(ir.Overwrite(label), meta), env)
+    v.Select(label) -> #(#(ir.Select(label), meta), env)
+    v.Tag(label) -> #(#(ir.Tag(label), meta), env)
+    v.Match(label) -> #(#(ir.Case(label), meta), env)
+    v.NoCases -> #(#(ir.NoCases, meta), env)
+    v.Perform(label) -> #(#(ir.Perform(label), meta), env)
+    v.Handle(label) -> #(#(ir.Handle(label), meta), env)
     v.Resume(#(popped, captured)) -> {
       let stack = state.move(popped, state.Empty(dict.new()))
-      let f = stack_to_func(stack)
-      let #(env, wrapped) =
-        extract_used_env(vars_used(f, []), env, meta, captured.scope)
-      let exp =
-        list.fold(wrapped, f, fn(exp, pair) {
-          let #(scoped_var, var) = pair
-          #(ir.Let(var, #(ir.Variable(scoped_var), meta), exp), meta)
-        })
-      io.debug(env)
-      io.debug(wrapped)
-
-      io.debug(exp)
-      exp.0
+      do_capture_stack(stack, captured.scope, env, meta)
     }
-    v.Builtin(identifier) -> ir.Builtin(identifier)
+    v.Builtin(identifier) -> #(#(ir.Builtin(identifier), meta), env)
   }
-  let exp = #(exp, meta)
   list.fold(args, #(exp, env), fn(state, arg) {
     let #(exp, env) = state
     let #(arg, env) = do_capture(arg, env, meta)
@@ -156,44 +142,67 @@ fn capture_defunc(switch, args, env, meta) {
   })
 }
 
-pub fn stack_and_env_to_func(stack, captured: state.Env(_)) -> ir.Node(_) {
-  let env = []
-  let meta = Nil
-  let f = do_stack_to_func(stack, ir.variable("magic"))
-  let f = stack_to_func(stack)
-  let #(env, wrapped) =
-    extract_used_env(vars_used(f, []), env, meta, captured.scope)
-  io.debug(wrapped)
-  io.debug(env)
+// pub type Value(t) =
+//   v.Value(t, #(List(#(istate.Kontinue(t), t)), istate.Env(t)))
+
+// type Scope =
+//   List(#(String, Value))
+
+pub fn capture_stack(stack: state.Stack(t), captured: state.Env(t), meta: t) {
+  // env is reversed with first needed deepest
+  let #(exp, env) = do_capture_stack(stack, captured.scope, [], meta)
+  list.fold(env, exp, fn(then, definition) {
+    let #(var, value) = definition
+    #(ir.Let(var, value, then), meta)
+  })
+}
+
+fn do_capture_stack(
+  stack: state.Stack(t),
+  captured: List(_),
+  env,
+  meta: t,
+) -> #(ir.Node(t), List(#(String, ir.Node(t)))) {
+  let f = stack_to_func(stack, meta)
+  let #(env, wrapped) = extract_used_env(vars_used(f, []), env, meta, captured)
   let exp =
     list.fold(wrapped, f, fn(exp, pair) {
       let #(scoped_var, var) = pair
       #(ir.Let(var, #(ir.Variable(scoped_var), meta), exp), meta)
     })
+  #(exp, env)
 }
 
-pub fn stack_to_func(stack) -> ir.Node(_) {
-  do_stack_to_func(stack, ir.variable("magic"))
+pub fn stack_to_func(stack: state.Stack(t), meta: t) -> ir.Node(t) {
+  do_stack_to_func(stack, meta, #(ir.Variable("magic"), meta))
 }
 
-fn do_stack_to_func(stack, acc) {
+fn do_stack_to_func(stack, meta: t, acc: ir.Node(t)) -> ir.Node(t) {
   case stack {
-    state.Empty(_) -> ir.lambda("magic", acc)
+    state.Empty(_) -> #(ir.Lambda("magic", acc), meta)
     state.Stack(frame, meta, stack) -> {
       let acc = case frame {
-        state.Assign(label, next, _env) -> ir.let_(label, acc, next)
-        state.Arg(arg, _env) -> ir.apply(acc, arg)
-        state.Apply(func, _env) -> ir.apply(capture(func, meta), acc)
-        state.CallWith(arg, _env) -> ir.apply(acc, capture(arg, meta))
+        state.Assign(label, next, _env) -> #(ir.Let(label, acc, next), meta)
+        state.Arg(arg, _env) -> #(ir.Apply(acc, arg), meta)
+        state.Apply(func, _env) -> #(ir.Apply(capture(func, meta), acc), meta)
+        state.CallWith(arg, _env) -> #(ir.Apply(acc, capture(arg, meta)), meta)
         state.Delimit(label, handler, _env, shallow) -> {
           let assert False = shallow
-          ir.call(ir.handle(label), [
-            capture(handler, meta),
-            ir.lambda("_", acc),
-          ])
+          #(
+            ir.Apply(
+              #(
+                ir.Apply(#(ir.Handle(label), meta), capture(handler, meta)),
+                meta,
+              ),
+              #(ir.Lambda("_", acc), meta),
+            ),
+            meta,
+          )
+          //  [
+          // ])
         }
       }
-      do_stack_to_func(stack, acc)
+      do_stack_to_func(stack, meta, acc)
     }
   }
 }

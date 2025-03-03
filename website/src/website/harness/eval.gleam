@@ -1,5 +1,8 @@
+import website/components/simple_debug
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/capture
@@ -16,6 +19,7 @@ import gleam/javascript/promise
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import morph/analysis
 
 pub const l = "Eval"
 
@@ -24,24 +28,17 @@ pub fn lift() {
 }
 
 pub fn reply() {
-  t.result(t.Var(0), t.unit)
+  t.result(t.Var(0), t.String)
 }
 
 pub fn type_() {
   #(l, #(lift(), reply()))
 }
 
-// TODO test with env needed
-fn to_func(source) {
-  let assert Error(#(reason, _meta, env, k)) = r.execute(source, [])
-  let assert break.Vacant = reason
-  capture.k_to_func(k)
-}
-
-pub fn blocking(lift, k) {
+pub fn blocking(lift: state.Value(t), meta, env: state.Env(t), k) {
   io.debug("evalling")
   use source <- result.map(cast.as_list(lift))
-  promise.resolve(result_to_eyg(do(source, k)))
+  promise.resolve(result_to_eyg(do(source, meta, env, k)))
 }
 
 // TODO test error message works for eval
@@ -54,23 +51,41 @@ pub fn result_to_eyg(result) {
 
 // TODO test that effects are open
 // This is the value to value
-fn do(lift, k) {
+fn do(lift, meta, env: state.Env(t), k) {
   let src = language_to_expression(lift)
-  io.debug(src)
   case src {
     Ok(src) ->
       case r.execute(src, []) {
         Ok(value) -> {
-          let rest = capture.k_to_func(k)
+          let rest = capture.capture_stack(k, env, meta)
           let bindings = infer.new_state()
           let #(open_effect, bindings) = binding.mono(1, bindings)
           // TODO real refs
           let #(tree, bindings) =
             infer.infer(rest, open_effect, dict.new(), 0, bindings)
+          // This is the function type
           let t = tree.1.1
           binding.resolve(t, bindings)
           io.debug(t)
-          Ok(value)
+          let #(got, bindings) = analysis.value_to_type(value, bindings, meta)
+          let #(got, bindings) = binding.instantiate(got, 1, bindings)
+
+          let #(ty_ret, bindings) = binding.mono(1, bindings)
+          let #(test_eff, bindings) = binding.mono(1, bindings)
+
+          case
+            unify.unify(
+              t.Fun(t.result(got, t.String), test_eff, ty_ret),
+              t,
+              1,
+              bindings,
+            )
+          {
+            Ok(_) -> Ok(value)
+            Error(reason) -> {
+              Error(debug.render_reason(reason))
+            }
+          }
         }
         Error(_) -> panic as "Why this error"
       }

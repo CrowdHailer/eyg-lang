@@ -40,9 +40,9 @@ pub fn let_expression_test() {
 
   k_to_func(k)
   |> io.debug
-  v.Partial(v.Resume(k), [])
-  |> capture.capture(Nil)
-  |> io.debug
+  // v.Partial(v.Resume(k), [])
+  // |> capture.capture(Nil)
+  // |> io.debug
   todo
 }
 

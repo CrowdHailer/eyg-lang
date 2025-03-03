@@ -647,7 +647,7 @@ fn run_blocking(return, cache, extrinsic, resume) {
   io.debug("runblocking")
   case return {
     Error(#(break.UnhandledEffect("Eval", lift), meta, env, k)) -> {
-      case eval.blocking(lift, k) {
+      case eval.blocking(lift, meta, env, k) {
         Ok(p) -> #(return, Some(p))
         Error(reason) -> #(Error(#(reason, meta, env, k)), None)
       }
