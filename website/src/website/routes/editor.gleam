@@ -32,6 +32,7 @@ import website/components/readonly
 import website/components/shell
 import website/components/snippet
 import website/harness/browser as harness
+import website/harness/spotless/netlify
 import website/routes/common
 import website/sync/client
 
@@ -90,10 +91,17 @@ pub type State {
   )
 }
 
+fn effects() {
+  [
+    #(netlify.l, #(netlify.lift(), netlify.reply(), netlify.blocking)),
+    ..harness.effects()
+  ]
+}
+
 pub fn init(_) {
   let #(client, sync_task) = client.default()
   let source = e.from_annotated(ir.vacant())
-  let shell = shell.init(harness.effects(), client.cache)
+  let shell = shell.init(effects(), client.cache)
   let snippet = snippet.init(source, [], [], client.cache)
   let state = State(client, snippet, shell, False)
   #(state, client.lustre_run(sync_task, SyncMessage))
