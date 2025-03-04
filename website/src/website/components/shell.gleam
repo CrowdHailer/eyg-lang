@@ -59,7 +59,7 @@ pub fn user_clicked_previous(shell: Shell, exp) {
 
 pub fn shell_snippet_message(shell, message) {
   let shell = close_all_previous(shell)
-  case snippet.user_message(message) {
+  let shell = case snippet.user_message(message) {
     True -> Shell(..shell, failure: None)
     False -> shell
   }

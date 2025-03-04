@@ -537,6 +537,16 @@ pub fn render(state: State) {
                 ],
                 [outline.play_circle()],
               )
+            snippet.Running(Error(_), _) ->
+              h.span(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+                  ),
+                ],
+                [outline.exclamation_circle()],
+              )
+
             snippet.Running(_, _) ->
               h.span(
                 [
