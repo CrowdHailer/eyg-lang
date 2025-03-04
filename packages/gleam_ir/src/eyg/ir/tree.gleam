@@ -136,16 +136,11 @@ pub fn call(f, args) {
   list.fold(args, f, fn(acc, arg) { apply(acc, arg) })
 }
 
-pub fn unit() {
-  empty()
-}
-
-pub fn true() {
-  tagged("True", unit())
-}
-
-pub fn false() {
-  tagged("False", unit())
+pub fn block(assignments, then) {
+  list.fold_right(assignments, then, fn(acc, assignment) {
+    let #(label, value) = assignment
+    let_(label, value, acc)
+  })
 }
 
 pub fn list(items) {
@@ -171,8 +166,33 @@ pub fn do_record(reversed, acc) {
   }
 }
 
+pub fn unit() {
+  empty()
+}
+
+pub fn get(value, label) {
+  apply(select(label), value)
+}
+
 pub fn tagged(label, inner) {
   apply(tag(label), inner)
+}
+
+pub fn true() {
+  tagged("True", unit())
+}
+
+pub fn false() {
+  tagged("False", unit())
+}
+
+pub fn match(value, matches) {
+  let m =
+    list.fold_right(matches, nocases(), fn(acc, match) {
+      let #(label, branch) = match
+      call(case_(label), [branch, acc])
+    })
+  apply(m, value)
 }
 
 pub fn add(a, b) {
