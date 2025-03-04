@@ -1,5 +1,40 @@
 # Eat Your Greens (EYG)
 
+EYG is an interactive programming system that can catch any error
+No impedance mismatch
+
+EYG is a new kind of programming language to improve programming 
+EYG is a new kind of programming language that ends a single program over time and space
+AS we point out the structural editor is not part of this but it uses the types
+
+extend types -> then use them
+
+EYG is a sound, malleable and universal language
+
+Catch all type errors ahead of time with the sound typesystem.
+The EYG system is; sound your program never crashes; structural no need to define custom data types and inferred you never need to annotate a type.
+Modify running programs without losing type guarantees.
+Code frontend and backend in a single program.
+
+Unteathered
+Portable universal
+
+Time and space 
+
+
+```
+let {html: html} = @peter:1
+(build, request, dom) -> {
+  
+  perform SetBody(html.h("ul",[],[
+    
+  ]))
+}
+```
+
+What is it vs Why is it
+
+
 **Experiments in building "better" languages and tools; for some measure of better.**
 
 ## Philosophy

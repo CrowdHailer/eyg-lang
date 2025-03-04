@@ -3,15 +3,12 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
-import eyg/interpreter/break
 import eyg/interpreter/capture
 import eyg/interpreter/cast
 import eyg/interpreter/expression as r
 import eyg/interpreter/state
 import eyg/interpreter/value as v
-import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/bit_array
 import gleam/dict
 import gleam/io
 import gleam/javascript/promise
