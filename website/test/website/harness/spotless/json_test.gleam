@@ -61,6 +61,13 @@ pub fn json_test() {
     #("\"he", [v.Tagged("UnexpectedEnd", v.unit())]),
     // https://stackoverflow.com/questions/19176024/how-to-escape-special-characters-in-building-a-json-string
     #("\"\\\\\"", [v.Tagged("String", v.String("\\"))]),
+    #("\"\\\"\"", [v.Tagged("String", v.String("\""))]),
+    #("\"\\r\"", [v.Tagged("String", v.String("\r"))]),
+    #("\"\\n\"", [v.Tagged("String", v.String("\n"))]),
+    #("\"\\t\"", [v.Tagged("String", v.String("\t"))]),
+    #("\"\\a", [v.Tagged("UnexpectedEscape", v.String("a"))]),
+    // number
+
     // list
     #("[]", [
       v.Tagged("LeftBracket", v.unit()),
