@@ -12,6 +12,7 @@ import oas
 import simplifile
 
 pub fn netlify_test() {
+  panic as "not supporting this test"
   let assert Ok(spec) =
     simplifile.read("../../midas_sdk/priv/netlify.openapi.json")
   let assert Ok(spec) = json.decode(spec, oas.decoder)
@@ -98,9 +99,15 @@ fn build_operation(op, path, path_item) {
                     #("status", ir.get(ir.variable("$"), "status")),
                     #("body", ir.get(ir.variable("$"), "body")),
                   ],
-                  ir.variable("body"),
+                  ir.call(ir.builtin("string_from_binary"), [
+                    ir.variable("body"),
+                  ]),
                 ),
               ),
+            ),
+            #(
+              "Error",
+              ir.lambda("reason", ir.tagged("Error", ir.variable("reason"))),
             ),
           ]),
         )
