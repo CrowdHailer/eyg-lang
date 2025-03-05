@@ -6,6 +6,7 @@ import gleam/dict
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
+import gleam/option.{None}
 import gleam/string
 import gleeunit/should
 import plinth/javascript/console
@@ -18,15 +19,6 @@ pub fn json_test() {
   let assert Ok(bytes) =
     simplifile.read_bits("./test/website/harness/spotless/tmp.json")
   let assert Ok(source) = dag_json.from_block(bytes)
-
-  let source = fn(input) {
-    ir.get(source, "tokenise")
-    |> ir.call([
-      string.split(input, "")
-      |> list.map(ir.string)
-      |> ir.list,
-    ])
-  }
 
   let #(client, init_tasks) = client.default()
   // let #(client, fetch_tasks) =
@@ -84,6 +76,78 @@ pub fn json_test() {
     #(" \r\n\n\r\ttrue", [v.Tagged("True", v.unit())]),
   ]
   |> list.map(fn(spec) {
+    let source = fn(input) {
+      ir.get(source, "tokenise")
+      |> ir.call([
+        string.split(input, "")
+        |> list.map(ir.string)
+        |> ir.list,
+      ])
+    }
+
+    let #(json, expect) = spec
+    let r = cache.run(r.execute(source(json), []), client.cache, r.resume)
+    case r {
+      Ok(value) ->
+        // simple_debug.value_to_string(value)
+        // |> io.println
+        value
+        |> should.equal(v.LinkedList(expect))
+      Error(reason) -> console.log(reason)
+    }
+  })
+
+  let node = fn(depth, value) {
+    v.Record(dict.from_list([#("depth", v.Integer(depth)), #("term", value)]))
+  }
+  [
+    // literals
+    #("true", [node(0, v.Tagged("True", v.unit()))]),
+    #("false", [node(0, v.Tagged("False", v.unit()))]),
+    #("null", [node(0, v.Tagged("Null", v.unit()))]),
+    // // unexpected end
+    // #("tr", [v.Tagged("UnexpectedEnd", v.unit())]),
+    // // incorrect charachter
+    // #("j", [v.Tagged("Unexpected", v.String("j"))]),
+    // #("trup", [v.Tagged("Unexpected", v.String("p"))]),
+    // // string
+    // #("\"\"", [v.Tagged("String", v.String(""))]),
+    // #("\"hej\"", [v.Tagged("String", v.String("hej"))]),
+    // #("\"he", [v.Tagged("UnexpectedEnd", v.unit())]),
+    // // https://stackoverflow.com/questions/19176024/how-to-escape-special-characters-in-building-a-json-string
+    // #("\"\\\\\"", [v.Tagged("String", v.String("\\"))]),
+    // #("\"\\\"\"", [v.Tagged("String", v.String("\""))]),
+    // #("\"\\r\"", [v.Tagged("String", v.String("\r"))]),
+    // #("\"\\n\"", [v.Tagged("String", v.String("\n"))]),
+    // #("\"\\t\"", [v.Tagged("String", v.String("\t"))]),
+    // #("\"\\a", [v.Tagged("UnexpectedEscape", v.String("a"))]),
+    // // number
+
+    // // list
+    // #("[]", [
+    //   v.Tagged("LeftBracket", v.unit()),
+    //   v.Tagged("RightBracket", v.unit()),
+    // ]),
+    #("[ true  , false ]", [
+      v.Tagged("LeftBracket", v.unit()),
+      v.Tagged("True", v.unit()),
+      v.Tagged("Comma", v.unit()),
+      v.Tagged("False", v.unit()),
+      v.Tagged("RightBracket", v.unit()),
+    ]),
+    // // ignore whitespace
+  // #(" \r\n\n\r\ttrue", [v.Tagged("True", v.unit())]),
+  ]
+  |> list.map(fn(spec) {
+    let source = fn(input) {
+      ir.get(source, "flat")
+      |> ir.call([
+        string.split(input, "")
+        |> list.map(ir.string)
+        |> ir.list,
+      ])
+    }
+
     let #(json, expect) = spec
     let r = cache.run(r.execute(source(json), []), client.cache, r.resume)
     case r {
