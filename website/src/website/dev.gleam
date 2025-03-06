@@ -1,4 +1,5 @@
 import gleam/bit_array
+import gleam/dict
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -9,6 +10,8 @@ import lustre/element
 import midas/node
 import midas/sdk/netlify
 import midas/task as t
+import mysig/asset
+import mysig/asset/server
 import mysig/build
 import mysig/dev
 import mysig/route.{Route}
@@ -98,19 +101,36 @@ fn routes() {
 const replace_string = "!CONTENT!"
 
 fn email() {
+  let assert [latest, ..] = archive.published()
+  let asset_task = {
+    use elements <- asset.do(edition.render(
+      latest,
+      list.length(archive.published()),
+      "https://eyg.run/pea.webp",
+    ))
+    element.to_string(elements)
+    |> asset.done
+  }
+
+  use #(content, assets) <- promise.try_await(server.build_manifest(
+    asset_task,
+    dict.new(),
+  ))
+  io.debug(assets)
+  // validate deployed
+  todo as "nooble"
   let task = {
     use template <- t.do(t.read("src/website/routes/news/edition/email.html"))
     use template <- t.try(
       bit_array.to_string(template)
       |> result.replace_error(snag.new("not a utf8 string")),
     )
-    let assert [latest, ..] = archive.published
-    let content =
-      element.to_string(edition.render(
-        latest,
-        list.length(archive.published),
-        "https://eyg.run/pea.webp",
-      ))
+    // let content =
+    //   element.to_string(edition.render(
+    //     latest,
+    //     list.length(archive.published),
+    //     "https://eyg.run/pea.webp",
+    //   ))
     let output = string.replace(template, replace_string, content)
     t.write("email.html", <<output:utf8>>)
   }

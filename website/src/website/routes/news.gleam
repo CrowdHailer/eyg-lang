@@ -11,7 +11,7 @@ import website/routes/news/archive
 import website/routes/news/edition.{Edition}
 
 pub fn route() {
-  let items = web_editions(archive.published)
+  let items = web_editions(archive.published())
   route.Route(index: route.Page(asset.done("no page here")), items: [
     #(
       "editions",
@@ -28,7 +28,7 @@ fn web_editions(editions) {
     let page = {
       use pea <- asset.do(asset.load("src/website/images/pea.webp"))
       use layout <- asset.do(asset.load("src/website/routes/layout.css"))
-      let edition = edition.render(edition, index, asset.src(pea))
+      use edition <- asset.do(edition.render(edition, index, asset.src(pea)))
 
       let page =
         html.doc(

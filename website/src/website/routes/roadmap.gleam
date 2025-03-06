@@ -27,9 +27,9 @@ fn layout(body) {
         html.plausible("eyg.run"),
       ],
       common.page_meta(
-        "/",
-        "EYG",
-        "EYG is a programming language for predictable, useful and most of all confident development.",
+        "/roadmap",
+        "Development roadmap for EYG language",
+        "A list of the major enchancements being added to the EYG programming language.",
       ),
     ]),
     body,
@@ -257,8 +257,8 @@ fn content() {
       Pending,
     ),
     Feature(
-      "oss-license-descision",
-      "Open source license descision",
+      "oss-license-decision",
+      "Open source license decision",
       [
         [
           t.text(

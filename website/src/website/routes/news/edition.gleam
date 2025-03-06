@@ -5,6 +5,7 @@ import jot
 import lustre/attribute as a
 import lustre/element as e
 import lustre/element/html as h
+import mysig/asset
 
 pub const white = "#fefefc"
 
@@ -17,7 +18,7 @@ pub const charcoal = "#2f2f2f"
 const blacker = "#151515"
 
 pub type Edition {
-  Edition(date: String, title: String, content: String)
+  Edition(date: String, title: String, content: asset.Effect(String))
 }
 
 fn main(sections) {
@@ -129,6 +130,7 @@ fn footer(edition_url) {
 
 pub fn render(post, index, pea_src) {
   let Edition(_date, title, raw) = post
+  use raw <- asset.do(raw)
   let document = jot.parse(raw)
   let jot.Document(content, _references, _footnotes) = document
   let sections =
@@ -148,6 +150,7 @@ pub fn render(post, index, pea_src) {
     ],
     [header(edition_url, index, pea_src), main(sections), footer(edition_url)],
   )
+  |> asset.done
 }
 
 fn p(children) {

@@ -1,10 +1,57 @@
+import mysig/asset
 import website/routes/news/edition.{Edition}
 
-pub const published = [
-  Edition(
-    "2025-02-13",
-    "A roadmap, explaining effects and language design philosophy",
-    "
+pub fn published() {
+  [
+    Edition(
+      "2025-03-06",
+      "A stable AST format and type safe eval",
+      "
+  EYG now has a stable AST, the [spec]() is available on github.
+  The content addressing of expressions is built on the existing dag-json standard.
+  This completes two key tasks on the [roadmap]().
+
+  A stable format allows many things to be built on it.
+  If you want to try building a parser or have a language with you specific choice of syntax you can parse it to the EYG AST and run it using any EYG runtime.
+  Alternativly you can skip writing a parser and try you had at writing a runtime or compiler and use the EYG editor to write programs to run on it.
+
+  To encourage an ecosystem of runtimes there is a language agnostic specification for runtime behaviour.
+  
+  ## An Experiment in type safe eval
+
+  The 1.0 list of builtin functions removes `eval` which as existed for a long time in the EYG language.
+  Every EYG runtime needs to include the same builtins with the same behaviour.
+  Runtimes that are compiled or targeting low power devices will find it challenging to implement `eval`.
+
+  Effects are the extension mechanism for EYG programs and so the obvious choice is to implement an `Eval` effect.
+  There are several benefits to using an effect. First we can infer if any program requires the ability to eval code.
+
+  More impressivly we can implement a type safe `Eval` effect.
+  To briefly explaina the implementation of eval as an effect has explicit reference to a continuation that represents the rest of the program.
+  By inferring the type of the code to be eval'd and inferring the type of the continuation we can check that they are consistent.
+
+  This quick video goes through a minimal example of using the `Eval` effect.
+
+  ## Other str
+
+  This years Principles of Programming Languages (POPL 2025) had a few videos that caught my eye in their section on syntax and editing.
+  In this case they are talking about structural editing the same approach that the EYG editor uses.
+
+  The first was a talk about Pantograph and editor that allows highlighting expressions while leaving an inner expression unhighlighted.
+  Watch this short talk to see a much more visual explination of why this is valid.
+
+  The second covered Grove, an algebra for collaborative editing of AST's.
+  This one dealt with theory but outlines a way where you could have collaborative editing in the EYG editor.
+  It would also help with version control and the issue of merging concurrent changes in a PR.
+
+  It's great to see this work as it provide robust foundations for developing the EYG editor further.
+  "
+        |> asset.done(),
+    ),
+    Edition(
+      "2025-02-13",
+      "A roadmap, explaining effects and language design philosophy",
+      "
   This update introduces the EYG roadmap, a blog post to explain effects and a talk discussing predictability and usability of language features.
 
   ## Writing a [roadmap](https://eyg.run/roadmap/)
@@ -42,12 +89,13 @@ pub const published = [
   Then I dive into specific EYG features; effects, closure serialisation and a statically typed REPL.
 
   The [slides](https://crowdhailer.me/2025-01-24/eat-your-greens-a-philosophy-for-language-design/slides.html) and [video](https://www.youtube.com/watch?v=bzUXK5VBbXc) are available.
-  ",
-  ),
-  Edition(
-    "2025-01-06",
-    "Code reloading, structured editor and some reflections",
-    "
+  "
+        |> asset.done(),
+    ),
+    Edition(
+      "2025-01-06",
+      "Code reloading, structured editor and some reflections",
+      "
   A hearty welcome to 2025.
 
   With the new year, it's time for some updates and some reflection.
@@ -106,12 +154,13 @@ pub const published = [
   In a future edition I will apply this mission statement to a more concrete roadmap for EYG.
 
   That's all to kick off the year. Please do let me know what you make of the [new editor](https://eyg.run/editor/).
-  ",
-  ),
-  Edition(
-    "2024-11-03",
-    "New website and first EYG talks",
-    "
+  "
+        |> asset.done(),
+    ),
+    Edition(
+      "2024-11-03",
+      "New website and first EYG talks",
+      "
   This last month I gave my first public presentations of EYG.
   Talking to people at these events has given me lots of useful feedback to work with.
   The main response has been that I need to better explain why EYG exists and how to get started.
@@ -155,12 +204,13 @@ pub const published = [
   If you want a very concise rundown of effects and structural editors then this is the talk for you.
 
   Questions are later in the stream at the end of the block of speakers.
-",
-  ),
-  Edition(
-    "2024-08-24",
-    "JavaScript interpreter available on npm",
-    "
+"
+        |> asset.done(),
+    ),
+    Edition(
+      "2024-08-24",
+      "JavaScript interpreter available on npm",
+      "
 EYG is an intermediate representation for programs that never crash and can run in all kinds of environments.
 Running EYG programs in JavaScript environments is now possible using the `eyg-run` package published to [npm](https://www.npmjs.com/package/eyg-run).
 This interpreter can be used on [node.js](https://nodejs.org) and in the browser.
@@ -206,6 +256,8 @@ run()
 
 Documentation describing the JSON format for EYG programs is now available on github.
 
-[https://github.com/CrowdHailer/eyg-lang/tree/main/ir](https://github.com/CrowdHailer/eyg-lang/tree/main/ir)",
-  ),
-]
+[https://github.com/CrowdHailer/eyg-lang/tree/main/ir](https://github.com/CrowdHailer/eyg-lang/tree/main/ir)"
+        |> asset.done(),
+    ),
+  ]
+}
