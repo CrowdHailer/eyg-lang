@@ -16,7 +16,7 @@ import website/components/simple_debug
 import website/sync/cache
 import website/sync/client
 
-pub fn json_test() {
+fn setup() {
   let assert Ok(bytes) =
     simplifile.read_bits("./test/website/harness/spotless/tmp.json")
   let assert Ok(source) = dag_json.from_block(bytes)
@@ -37,7 +37,11 @@ pub fn json_test() {
       other |> should.equal([])
       client
     })
+  #(source, client)
+}
 
+pub fn json_test() {
+  let #(source, client) = setup()
   [
     // literals
     #("true", [v.Tagged("True", v.unit())]),
@@ -111,26 +115,17 @@ pub fn json_test() {
       "null null",
       Error(v.Tagged("UnexpectedChar", v.Tagged("Null", v.unit()))),
     ),
-    // // unexpected end
-    // #("tr", [v.Tagged("UnexpectedEnd", v.unit())]),
-    // // incorrect charachter
-    // #("j", [v.Tagged("Unexpected", v.String("j"))]),
-    // #("trup", [v.Tagged("Unexpected", v.String("p"))]),
-    // // string
-    // #("\"\"", [v.Tagged("String", v.String(""))]),
-    // #("\"hej\"", [v.Tagged("String", v.String("hej"))]),
-    // #("\"he", [v.Tagged("UnexpectedEnd", v.unit())]),
-    // // https://stackoverflow.com/questions/19176024/how-to-escape-special-characters-in-building-a-json-string
-    // #("\"\\\\\"", [v.Tagged("String", v.String("\\"))]),
-    // #("\"\\\"\"", [v.Tagged("String", v.String("\""))]),
-    // #("\"\\r\"", [v.Tagged("String", v.String("\r"))]),
-    // #("\"\\n\"", [v.Tagged("String", v.String("\n"))]),
-    // #("\"\\t\"", [v.Tagged("String", v.String("\t"))]),
-    // #("\"\\a", [v.Tagged("UnexpectedEscape", v.String("a"))]),
     // // number
 
     // list
     #("[]", Ok([node(0, v.Tagged("Array", v.unit()))])),
+    #(
+      "[\"a\"]",
+      Ok([
+        node(0, v.Tagged("Array", v.unit())),
+        node(1, v.Tagged("String", v.String("a"))),
+      ]),
+    ),
     #(
       "[ [true]  , false ]",
       Ok([
@@ -212,6 +207,69 @@ pub fn json_test() {
     }
   })
 }
+
+// {"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"ta"},"f":{"0":"a","a":{"0":"s","v":"]"},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"\""},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"d"},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"\""},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"["},"f":{"0":"c"}}},"f":{"0":"v","l":"flat"}},"f":{"0":"a","a":{"0":"v","l":"string"},"f":{"0":"v","l":"array"}}}
+// pub fn decode_test() {
+//   let #(source, client) = setup()
+
+//   [
+//     #(
+//       "[\"a\",\"b\"]",
+
+//       Ok([
+//         // node(0, v.Tagged("Object", v.unit())),
+//       // node(1, v.Tagged("Field", v.String("foo"))),
+//       // node(1, v.Tagged("Null", v.unit())),
+//       // node(1, v.Tagged("Field", v.String("bar"))),
+//       // node(1, v.Tagged("String", v.String("x"))),
+//       ]),
+//     ),
+//   ]
+//   |> list.map(fn(spec) {
+//     let source = fn(input) {
+//       ir.get(source, "flat")
+//       |> ir.call([
+//         string.split(input, "")
+//         |> list.map(ir.string)
+//         |> ir.list,
+//       ])
+//     }
+
+//     let #(json, decode, expect) = spec
+//     let return = r.execute(source(json), [])
+
+//     let r = cache.run(return, client.cache, r.resume)
+//     case expect {
+//       Ok(expect) -> {
+//         let v = case r {
+//           Ok(v) -> {
+//             io.debug(v)
+//             todo as "flat"
+//           }
+//           Error(#(reason, _, _, _)) -> {
+//             simple_debug.reason_to_string(reason)
+//             |> io.println
+//             io.println(json)
+//             panic as "wasnt ok as expected"
+//           }
+//         }
+//         v |> should.equal(v.LinkedList(expect))
+//       }
+//       Error(expect) -> {
+//         let #(reason, meta, env, k) =
+//           r
+//           |> should.be_error
+//         case reason {
+//           break.UnhandledEffect("Break", lift) -> lift |> should.equal(expect)
+//           _ -> {
+//             io.debug(reason)
+//             panic as "not break effect"
+//           }
+//         }
+//       }
+//     }
+//   })
+// }
 
 fn messages() {
   [
