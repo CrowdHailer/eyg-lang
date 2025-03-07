@@ -190,16 +190,14 @@ pub fn json_test() {
             panic as "wasnt ok as expected"
           }
         }
-        v |> should.equal(v.LinkedList(expect))
+        v |> should.equal(v.Tagged("Ok", v.LinkedList(expect)))
       }
       Error(expect) -> {
-        let #(reason, meta, env, k) =
-          r
-          |> should.be_error
-        case reason {
-          break.UnhandledEffect("Break", lift) -> lift |> should.equal(expect)
+        case r {
+          Ok(error) -> error |> should.equal(v.Tagged("Error", expect))
+          // break.UnhandledEffect("Break", lift) -> lift |> should.equal(expect)
           _ -> {
-            io.debug(reason)
+            // io.debug(reason)
             panic as "not break effect"
           }
         }

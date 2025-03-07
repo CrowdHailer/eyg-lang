@@ -61,7 +61,9 @@ fn do_unify(ts, level, bindings) -> Result(dict.Dict(Int, binding.Binding), _) {
           do_unify([#(rows1, rows2), ..ts], level, bindings)
         t.RowExtend(l1, field1, rest1), _, other, _
         | other, _, t.RowExtend(l1, field1, rest1), _
-        ->
+        -> {
+          // io.debug(t1)
+          // io.debug(t2)
           case rewrite_row(l1, other, level, bindings, rest1) {
             Ok(#(field2, rest2, bindings)) -> {
               let ts = [#(field1, field2), #(rest1, rest2), ..ts]
@@ -69,6 +71,7 @@ fn do_unify(ts, level, bindings) -> Result(dict.Dict(Int, binding.Binding), _) {
             }
             Error(reason) -> Error(reason)
           }
+        }
         t.EffectExtend(l1, #(lift1, reply1), r1), _, other, _
         | other, _, t.EffectExtend(l1, #(lift1, reply1), r1), _
         -> {
@@ -203,7 +206,7 @@ fn rewrite_effect(required, type_, level, bindings, check: t.Type(_)) {
           case check {
             // catch infinite loop
             t.Var(j) if i == j -> {
-              io.debug("same tails")
+              io.debug("same effect tails")
               Error(error.TypeMismatch(t.Var(i), t.Var(j)))
             }
             _ -> {
