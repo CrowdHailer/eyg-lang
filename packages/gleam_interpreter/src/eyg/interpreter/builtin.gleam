@@ -272,3 +272,33 @@ fn do_list_fold(list, state, func, meta, env, k) {
     }
   }
 }
+
+pub const binary_fold = state.Arity3(do_binary_fold)
+
+fn do_binary_fold(bytes, state, func, meta, env, k) {
+  use bytes <- try(cast.as_binary(bytes))
+  case bytes {
+    <<>> -> Ok(#(state.V(state), env, k))
+    <<byte, rest:bytes>> -> {
+      state.call(
+        func,
+        v.Integer(byte),
+        meta,
+        env,
+        state.Stack(
+          state.CallWith(state, env),
+          meta,
+          state.Stack(
+            state.Apply(
+              v.Partial(v.Builtin("binary_fold"), [v.Binary(rest)]),
+              env,
+            ),
+            meta,
+            state.Stack(state.CallWith(func, env), meta, k),
+          ),
+        ),
+      )
+    }
+    _ -> panic as "assume full bytes"
+  }
+}
