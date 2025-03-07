@@ -1,3 +1,4 @@
+import eyg/interpreter/break
 import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
@@ -102,9 +103,14 @@ pub fn json_test() {
   }
   [
     // literals
-    #("true", [node(0, v.Tagged("True", v.unit()))]),
-    #("false", [node(0, v.Tagged("False", v.unit()))]),
-    #("null", [node(0, v.Tagged("Null", v.unit()))]),
+    #("true", Ok([node(0, v.Tagged("True", v.unit()))])),
+    #("false", Ok([node(0, v.Tagged("False", v.unit()))])),
+    #("null", Ok([node(0, v.Tagged("Null", v.unit()))])),
+    // too many literals
+    #(
+      "null null",
+      Error(v.Tagged("UnexpectedChar", v.Tagged("Null", v.unit()))),
+    ),
     // // unexpected end
     // #("tr", [v.Tagged("UnexpectedEnd", v.unit())]),
     // // incorrect charachter
@@ -124,18 +130,25 @@ pub fn json_test() {
     // // number
 
     // // list
-    // #("[]", [
-    //   v.Tagged("LeftBracket", v.unit()),
-    //   v.Tagged("RightBracket", v.unit()),
-    // ]),
-    #("[ true  , false ]", [
-      v.Tagged("LeftBracket", v.unit()),
-      v.Tagged("True", v.unit()),
-      v.Tagged("Comma", v.unit()),
-      v.Tagged("False", v.unit()),
-      v.Tagged("RightBracket", v.unit()),
-    ]),
-    // // ignore whitespace
+    #("[]", Ok([node(0, v.Tagged("Array", v.unit()))])),
+    #(
+      "[ [true]  , false ]",
+      Ok([
+        node(0, v.Tagged("Array", v.unit())),
+        node(1, v.Tagged("Array", v.unit())),
+        node(2, v.Tagged("True", v.unit())),
+        node(1, v.Tagged("False", v.unit())),
+      ]),
+    ),
+    #(
+      "]",
+      Error(v.Tagged("UnexpectedChar", v.Tagged("RightBracket", v.unit()))),
+    ),
+    #(
+      "[true,]",
+      Error(v.Tagged("UnexpectedChar", v.Tagged("RightBracket", v.unit()))),
+    ),
+    // ignore whitespace
   // #(" \r\n\n\r\ttrue", [v.Tagged("True", v.unit())]),
   ]
   |> list.map(fn(spec) {
@@ -149,14 +162,28 @@ pub fn json_test() {
     }
 
     let #(json, expect) = spec
-    let r = cache.run(r.execute(source(json), []), client.cache, r.resume)
-    case r {
-      Ok(value) ->
+    let return = r.execute(source(json), [])
+
+    let r = cache.run(return, client.cache, r.resume)
+    case expect {
+      Ok(expect) ->
+        r
+        |> should.be_ok
         // simple_debug.value_to_string(value)
         // |> io.println
-        value
         |> should.equal(v.LinkedList(expect))
-      Error(reason) -> console.log(reason)
+      Error(expect) -> {
+        let #(reason, meta, env, k) =
+          r
+          |> should.be_error
+        case reason {
+          break.UnhandledEffect("Break", lift) -> lift |> should.equal(expect)
+          _ -> {
+            io.debug(reason)
+            panic as "not break effect"
+          }
+        }
+      }
     }
   })
 }
