@@ -38,8 +38,6 @@ J impl https://github.com/quasarbright/AlgorithmJ/blob/master/src/Static/Context
 J fast imple with levels https://github.com/jfecher/algorithm-j/blob/master/j.ml
  Best J explaination https://www.cl.cam.ac.uk/teaching/1415/L28/type-inference.pdf
 
-Worth a read = https://okmij.org/ftp/ML/generalization.html#history
-
 hm in go https://github.com/chewxy/hm Lazy copy all version of env
 
 ### Type vs Kind
