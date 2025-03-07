@@ -129,7 +129,7 @@ pub fn json_test() {
     // #("\"\\a", [v.Tagged("UnexpectedEscape", v.String("a"))]),
     // // number
 
-    // // list
+    // list
     #("[]", Ok([node(0, v.Tagged("Array", v.unit()))])),
     #(
       "[ [true]  , false ]",
@@ -148,8 +148,27 @@ pub fn json_test() {
       "[true,]",
       Error(v.Tagged("UnexpectedChar", v.Tagged("RightBracket", v.unit()))),
     ),
-    // ignore whitespace
-  // #(" \r\n\n\r\ttrue", [v.Tagged("True", v.unit())]),
+    #("[,]", Error(v.Tagged("UnexpectedChar", v.Tagged("Comma", v.unit())))),
+    // object
+    #("{}", Ok([node(0, v.Tagged("Object", v.unit()))])),
+    #(
+      "{\"a\":{}}",
+      Ok([
+        node(0, v.Tagged("Object", v.unit())),
+        node(1, v.Tagged("Field", v.String("a"))),
+        node(1, v.Tagged("Object", v.unit())),
+      ]),
+    ),
+    #(
+      "{\"foo\":null,\"bar\":\"x\"}",
+      Ok([
+        node(0, v.Tagged("Object", v.unit())),
+        node(1, v.Tagged("Field", v.String("foo"))),
+        node(1, v.Tagged("Null", v.unit())),
+        node(1, v.Tagged("Field", v.String("bar"))),
+        node(1, v.Tagged("String", v.String("x"))),
+      ]),
+    ),
   ]
   |> list.map(fn(spec) {
     let source = fn(input) {
@@ -166,12 +185,18 @@ pub fn json_test() {
 
     let r = cache.run(return, client.cache, r.resume)
     case expect {
-      Ok(expect) ->
-        r
-        |> should.be_ok
-        // simple_debug.value_to_string(value)
-        // |> io.println
-        |> should.equal(v.LinkedList(expect))
+      Ok(expect) -> {
+        let v = case r {
+          Ok(v) -> v
+          Error(#(reason, _, _, _)) -> {
+            simple_debug.reason_to_string(reason)
+            |> io.println
+            io.println(json)
+            panic as "wasnt ok as expected"
+          }
+        }
+        v |> should.equal(v.LinkedList(expect))
+      }
       Error(expect) -> {
         let #(reason, meta, env, k) =
           r
