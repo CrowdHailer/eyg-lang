@@ -1,7 +1,8 @@
 # eyg_analysis
 
 Type inference for EYG.
-Uses algorithm J with levels https://okmij.org/ftp/ML/generalization.html
+Uses algorithm J with levels https://okmij.org/ftp/ML/generalization.html as a basis.
+Records, Unions and Effects are all implemented as row types.
 
 [![Package Version](https://img.shields.io/hexpm/v/eyg_analysis)](https://hex.pm/packages/eyg_analysis)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/eyg_analysis/)
