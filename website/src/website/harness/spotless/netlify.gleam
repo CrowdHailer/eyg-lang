@@ -5,12 +5,14 @@ import gleam/http
 import gleam/http/request
 import gleam/io
 import gleam/javascript/promise
+import gleam/option.{None}
 import gleam/result.{try}
 import midas/browser
 import midas/sdk/netlify
 import midas/task
 import snag
 import website/harness/http as harness_http
+import website/harness/spotless/proxy
 
 pub const l = "Netlify"
 
@@ -90,6 +92,7 @@ pub fn do(app, method, path, query, headers, body) {
     use response <- task.do(task.fetch(request))
     task.done(response)
   }
+  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
   browser.run(task)
 }
 
