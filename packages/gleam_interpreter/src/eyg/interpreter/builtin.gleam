@@ -273,6 +273,18 @@ fn do_list_fold(list, state, func, meta, env, k) {
   }
 }
 
+pub const binary_from_integers = state.Arity1(do_binary_from_integers)
+
+pub fn do_binary_from_integers(term, _meta, env, k) {
+  use parts <- result.then(cast.as_list(term))
+  let content =
+    list.fold(list.reverse(parts), <<>>, fn(acc, el) {
+      let assert v.Integer(i) = el
+      <<i, acc:bits>>
+    })
+  Ok(#(state.V(v.Binary(content)), env, k))
+}
+
 pub const binary_fold = state.Arity3(do_binary_fold)
 
 fn do_binary_fold(bytes, state, func, meta, env, k) {
