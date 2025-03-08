@@ -12,7 +12,6 @@ import oas
 import simplifile
 
 pub fn netlify_test() {
-  panic as "not supporting this test"
   let assert Ok(spec) =
     simplifile.read("../../midas_sdk/priv/netlify.openapi.json")
   let assert Ok(spec) = json.decode(spec, oas.decoder)
