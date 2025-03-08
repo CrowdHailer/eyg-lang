@@ -472,15 +472,5 @@ pub fn do_base64_encode(term, _meta, env, k) {
 
 pub fn binary_from_integers() {
   let type_ = t.Fun(t.LinkedList(t.Integer), t.Open(-1), t.Binary)
-  #(type_, state.Arity1(do_binary_from_integers))
-}
-
-pub fn do_binary_from_integers(term, _meta, env, k) {
-  use parts <- result.then(cast.as_list(term))
-  let content =
-    list.fold(list.reverse(parts), <<>>, fn(acc, el) {
-      let assert v.Integer(i) = el
-      <<i, acc:bits>>
-    })
-  Ok(#(state.V(v.Binary(content)), env, k))
+  #(type_, builtin.binary_from_integers)
 }

@@ -1,14 +1,11 @@
-import eyg/interpreter/break
 import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/dict
 import gleam/io
-import gleam/javascript/promise
 import gleam/list
-import gleam/option.{None}
-import gleam/string
 import gleeunit/should
 import plinth/javascript/console
 import simplifile
@@ -50,8 +47,8 @@ pub fn json_test() {
     // unexpected end
     #("tr", [v.Tagged("UnexpectedEnd", v.unit())]),
     // incorrect charachter
-    #("j", [v.Tagged("Unexpected", v.String("j"))]),
-    #("trup", [v.Tagged("Unexpected", v.String("p"))]),
+    #("j", [v.Tagged("Unexpected", v.Integer(106))]),
+    #("trup", [v.Tagged("Unexpected", v.Integer(112))]),
     // string
     #("\"\"", [v.Tagged("String", v.String(""))]),
     #("\"hej\"", [v.Tagged("String", v.String("hej"))]),
@@ -62,7 +59,7 @@ pub fn json_test() {
     #("\"\\r\"", [v.Tagged("String", v.String("\r"))]),
     #("\"\\n\"", [v.Tagged("String", v.String("\n"))]),
     #("\"\\t\"", [v.Tagged("String", v.String("\t"))]),
-    #("\"\\a", [v.Tagged("UnexpectedEscape", v.String("a"))]),
+    #("\"\\a", [v.Tagged("UnexpectedEscape", v.Integer(97))]),
     // number
 
     // list
@@ -83,11 +80,7 @@ pub fn json_test() {
   |> list.map(fn(spec) {
     let source = fn(input) {
       ir.get(source, "tokenise")
-      |> ir.call([
-        string.split(input, "")
-        |> list.map(ir.string)
-        |> ir.list,
-      ])
+      |> ir.call([ir.binary(bit_array.from_string(input))])
     }
 
     let #(json, expect) = spec
@@ -168,11 +161,7 @@ pub fn json_test() {
   |> list.map(fn(spec) {
     let source = fn(input) {
       ir.get(source, "flat")
-      |> ir.call([
-        string.split(input, "")
-        |> list.map(ir.string)
-        |> ir.list,
-      ])
+      |> ir.call([ir.binary(bit_array.from_string(input))])
     }
 
     let #(json, expect) = spec
