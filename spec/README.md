@@ -3,6 +3,17 @@
 Specification of the EYG language.
 Includes test suites for features to encourage valid alternative implementations.
 
+## Why "no syntax"
+
+The intermediate representaion of EYG is the stable interface for the language.
+There is "no syntax" for the EYG language. This differs from most languages where the surface syntax is the public interface and IR/AST is an implementation detail that is not guaranteed to be stable.
+
+Tools that build on EYG do not have to reimplement parsing before they can work with programs as a structural level.
+
+- Want your own syntax? Build a parser to target the IR and use the rest of the EYG tooling to run it. 
+- Need a new runtime? Use the EYG editor and build your own interpreter or compiler.
+- Fancy your own type system? Write your own and keep the editor and runtimes.
+
 ## Intermediate Representation(IR) in JSON
 
 This section describes the JSON structure of a stored EYG program.
