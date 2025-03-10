@@ -3,6 +3,7 @@ import website/harness/browser/alert
 import website/harness/browser/copy
 import website/harness/browser/download
 import website/harness/browser/fetch
+import website/harness/browser/file/read as fs_read
 import website/harness/browser/flip
 import website/harness/browser/geolocation as geo
 import website/harness/browser/now
@@ -20,7 +21,7 @@ pub fn effects() {
     #(flip.l, #(flip.lift, flip.reply(), flip.blocking)),
     #(fetch.l, #(fetch.lift(), fetch.lower(), fetch.blocking)),
     // #(fs_list.l, #(fs_list.lift, fs_list.lower(), fs_list.blocking)),
-    // #(fs_read.l, #(fs_read.lift, fs_read.lower(), fs_read.blocking)),
+    #(fs_read.l, #(fs_read.lift, fs_read.lower(), fs_read.blocking)),
     #(geo.l, #(geo.lift, geo.lower(), geo.blocking)),
     #(now.l, #(now.lift, now.reply, now.blocking)),
     #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),

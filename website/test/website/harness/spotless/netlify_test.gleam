@@ -12,7 +12,7 @@ import oas
 import simplifile
 
 pub fn netlify_test() {
-  todo as "unsupported"
+  // todo as "unsupported"
   let assert Ok(spec) =
     simplifile.read("../../midas_sdk/priv/netlify.openapi.json")
   let assert Ok(spec) = json.decode(spec, oas.decoder)
@@ -60,7 +60,7 @@ fn build_operation(op, path, path_item) {
   case id {
     "listSites" -> {
       let request = case method, op.request_body {
-        http.Get, None -> get(path, [])
+        http.Get, None -> get("/api/v1" <> path, [])
         _, _ -> todo
       }
 
