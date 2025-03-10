@@ -1,3 +1,4 @@
+import eyg/interpreter/cast
 import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
@@ -196,67 +197,25 @@ pub fn json_test() {
 }
 
 // {"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"ta"},"f":{"0":"a","a":{"0":"s","v":"]"},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"\""},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"d"},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"\""},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"["},"f":{"0":"c"}}},"f":{"0":"v","l":"flat"}},"f":{"0":"a","a":{"0":"v","l":"string"},"f":{"0":"v","l":"array"}}}
-// pub fn decode_test() {
-//   let #(source, client) = setup()
+pub fn decode_test() {
+  let #(source, client) = setup()
+  let assert Ok(bytes) = simplifile.read_bits("../stdjs.json")
+  let source = fn(input) {
+    ir.get(source, "flat")
+    |> ir.call([ir.binary(input)])
+  }
+  let return = r.execute(source(bytes), [])
 
-//   [
-//     #(
-//       "[\"a\",\"b\"]",
-
-//       Ok([
-//         // node(0, v.Tagged("Object", v.unit())),
-//       // node(1, v.Tagged("Field", v.String("foo"))),
-//       // node(1, v.Tagged("Null", v.unit())),
-//       // node(1, v.Tagged("Field", v.String("bar"))),
-//       // node(1, v.Tagged("String", v.String("x"))),
-//       ]),
-//     ),
-//   ]
-//   |> list.map(fn(spec) {
-//     let source = fn(input) {
-//       ir.get(source, "flat")
-//       |> ir.call([
-//         string.split(input, "")
-//         |> list.map(ir.string)
-//         |> ir.list,
-//       ])
-//     }
-
-//     let #(json, decode, expect) = spec
-//     let return = r.execute(source(json), [])
-
-//     let r = cache.run(return, client.cache, r.resume)
-//     case expect {
-//       Ok(expect) -> {
-//         let v = case r {
-//           Ok(v) -> {
-//             io.debug(v)
-//             todo as "flat"
-//           }
-//           Error(#(reason, _, _, _)) -> {
-//             simple_debug.reason_to_string(reason)
-//             |> io.println
-//             io.println(json)
-//             panic as "wasnt ok as expected"
-//           }
-//         }
-//         v |> should.equal(v.LinkedList(expect))
-//       }
-//       Error(expect) -> {
-//         let #(reason, meta, env, k) =
-//           r
-//           |> should.be_error
-//         case reason {
-//           break.UnhandledEffect("Break", lift) -> lift |> should.equal(expect)
-//           _ -> {
-//             io.debug(reason)
-//             panic as "not break effect"
-//           }
-//         }
-//       }
-//     }
-//   })
-// }
+  let r = cache.run(return, client.cache, r.resume)
+  case r {
+    Ok(v) -> {
+      io.debug(v)
+      let assert Ok(#(t, v)) = cast.as_tagged(v)
+      io.debug(t)
+    }
+    _ -> panic as "fail to run"
+  }
+}
 
 fn messages() {
   [
