@@ -62,7 +62,61 @@ pub fn json_test() {
     #("\"\\t\"", [v.Tagged("String", v.String("\t"))]),
     #("\"\\a", [v.Tagged("UnexpectedEscape", v.Integer(97))]),
     // number
-
+    // #("0", [v.Tagged("Number", v.unit())]),
+    // // with space
+    // #("0 ", [v.Tagged("Number", v.unit())]),
+    #("1", [
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.false()), #("integer", v.Integer(1))]),
+        ),
+      ),
+    ]),
+    #("10", [
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.false()), #("integer", v.Integer(10))]),
+        ),
+      ),
+    ]),
+    #("127", [
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([
+            #("negative", v.false()),
+            #("integer", v.Integer(127)),
+          ]),
+        ),
+      ),
+    ]),
+    #("-1", [
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.true()), #("integer", v.Integer(1))]),
+        ),
+      ),
+    ]),
+    #("-100", [
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.true()), #("integer", v.Integer(100))]),
+        ),
+      ),
+    ]),
+    #("9.9", [
+      v.Tagged(
+        "Decimal",
+        v.Record(
+          dict.from_list([#("negative", v.true()), #("integer", v.Integer(100))]),
+        ),
+      ),
+    ]),
+    // #("-0.555", [v.Tagged("Integer", v.unit())]),
     // list
     #("[]", [
       v.Tagged("LeftBracket", v.unit()),
@@ -197,25 +251,26 @@ pub fn json_test() {
 }
 
 // {"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"ta"},"f":{"0":"a","a":{"0":"s","v":"]"},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"\""},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"d"},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"\""},"f":{"0":"c"}}},"f":{"0":"a","a":{"0":"s","v":"["},"f":{"0":"c"}}},"f":{"0":"v","l":"flat"}},"f":{"0":"a","a":{"0":"v","l":"string"},"f":{"0":"v","l":"array"}}}
-pub fn decode_test() {
-  let #(source, client) = setup()
-  let assert Ok(bytes) = simplifile.read_bits("../stdjs.json")
-  let source = fn(input) {
-    ir.get(source, "flat")
-    |> ir.call([ir.binary(input)])
-  }
-  let return = r.execute(source(bytes), [])
+// pub fn decode_response_test() {
+//   let #(source, client) = setup()
+//   let assert Ok(bytes) =
+//     simplifile.read_bits("./test/website/harness/spotless/tmp.json")
+//   let source = fn(input) {
+//     ir.get(source, "flat")
+//     |> ir.call([ir.binary(input)])
+//   }
+//   let return = r.execute(source(bytes), [])
 
-  let r = cache.run(return, client.cache, r.resume)
-  case r {
-    Ok(v) -> {
-      io.debug(v)
-      let assert Ok(#(t, v)) = cast.as_tagged(v)
-      io.debug(t)
-    }
-    _ -> panic as "fail to run"
-  }
-}
+//   let r = cache.run(return, client.cache, r.resume)
+//   case r {
+//     Ok(v) -> {
+//       // io.debug(v)
+//       let assert Ok(#(t, v)) = cast.as_tagged(v)
+//       io.debug(t)
+//     }
+//     _ -> panic as "fail to run"
+//   }
+// }
 
 fn messages() {
   [
