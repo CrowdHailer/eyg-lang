@@ -5,44 +5,51 @@ pub fn published() {
   [
     Edition(
       "2025-03-06",
-      "A stable AST format and type safe eval",
+      "1.0 release of EYG IR and type safe eval.",
       "
-  EYG now has a stable AST, the [spec]() is available on github.
-  The content addressing of expressions is built on the existing dag-json standard.
-  This completes two key tasks on the [roadmap]().
+  EYG's Intermediate Representation (IR) is now stable.
+  The spec for the IR format is available on [github](https://github.com/CrowdHailer/eyg-lang/tree/main/spec).
 
-  A stable format allows many things to be built on it.
-  If you want to try building a parser or have a language with you specific choice of syntax you can parse it to the EYG AST and run it using any EYG runtime.
-  Alternativly you can skip writing a parser and try you had at writing a runtime or compiler and use the EYG editor to write programs to run on it.
+  The IR is built on [dag-json](https://ipld.io/docs/codecs/known/dag-json/) and so the hash references of expressions is also stable.
+  This completes two key tasks on the [roadmap](https://eyg.run/roadmap/).
 
-  To encourage an ecosystem of runtimes there is a language agnostic specification for runtime behaviour.
+  Having a stable IR allows many things to be built on EYG.
+  Want your own syntax? build a parser to target the IR and use the rest of the EYG tooling to run in.
+  Need a new runtime, use the EYG editor and build your own interpreter or compiler.
+  Fancy your own type system, write your own and keep the editor and runtimes.
+
+  This flexibility separates EYG from most other languages where the surface syntax is the public API and IR/AST is an implementation detail that you can't rely on.
   
-  ## An Experiment in type safe eval
+  A stable IR was always the goal of EYG as it saves tools from reimplementing parsing to build on the language.
+  I can't wait to see what interesting things people build on it.
 
-  The 1.0 list of builtin functions removes `eval` which as existed for a long time in the EYG language.
-  Every EYG runtime needs to include the same builtins with the same behaviour.
-  Runtimes that are compiled or targeting low power devices will find it challenging to implement `eval`.
+  ## Safe code evaluation
 
-  Effects are the extension mechanism for EYG programs and so the obvious choice is to implement an `Eval` effect.
-  There are several benefits to using an effect. First we can infer if any program requires the ability to eval code.
+  Allowing aritrary code evaluation would break type guarantess and be a security vulnerability for most languages.
+  Implementing evaluation as an effect for EYG solves both problems.
 
-  More impressivly we can implement a type safe `Eval` effect.
-  To briefly explaina the implementation of eval as an effect has explicit reference to a continuation that represents the rest of the program.
-  By inferring the type of the code to be eval'd and inferring the type of the continuation we can check that they are consistent.
+  In this quick video I walk through using the `Eval` effect and discuss it's implementation.
 
-  This quick video goes through a minimal example of using the `Eval` effect.
+  [![Screen share of using the EYG editor](https://i.vimeocdn.com/filter/overlay?src0=https%3A%2F%2Fi.vimeocdn.com%2Fvideo%2F1989010979-0d6a1dbbff54ed561b2aafad478236f4a7f9e96426a911bf27f4548b8dbd5c40-d_295x166&src1=http%3A%2F%2Ff.vimeocdn.com%2Fp%2Fimages%2Fcrawler_play.png)]()
 
-  ## Other str
+  The brief explaination is as follows.
+  An effect has explicit reference to a continuation that represents the rest of the program.
+  By inferring the type of the code to be evaluated we can observe any side effects it might have before it is run.
+  Inferring the type of the continuation can be used to check it is consistent with the evaluated value.
+
+  _This effect is not part of the web runtime yet._
+
+  ## Other structural editors
 
   This years Principles of Programming Languages (POPL 2025) had a few videos that caught my eye in their section on syntax and editing.
   In this case they are talking about structural editing the same approach that the EYG editor uses.
 
-  The first was a talk about Pantograph and editor that allows highlighting expressions while leaving an inner expression unhighlighted.
-  Watch this short talk to see a much more visual explination of why this is valid.
+  The first was a talk about Pantograph an editor that can highlight expressions while leaving an inner expression unhighlighted.
+  Watch this short talk to see a much more visual explination of why this is valuable.
 
-  The second covered Grove, an algebra for collaborative editing of AST's.
-  This one dealt with theory but outlines a way where you could have collaborative editing in the EYG editor.
-  It would also help with version control and the issue of merging concurrent changes in a PR.
+  The second talk covered Grove, an algebra for collaborative editing of AST's.
+  This one dealt with theory but outlines a path to add collaborative editing in the EYG editor.
+  It would also help with version control and the issue of merging concurrent changes.
 
   It's great to see this work as it provide robust foundations for developing the EYG editor further.
   "

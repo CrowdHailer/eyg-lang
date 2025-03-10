@@ -70,7 +70,6 @@ fn body() {
         ]),
       ],
     ),
-    // h.div([], [element.text("editor packages AST Runtime")]),
     h.main(
       [],
       list.map(content(), fn(item) {
@@ -224,13 +223,12 @@ fn content() {
       ),
     ),
     Feature(
-      "stable-ast-format",
-      "Stable AST format",
+      "stable-ir-format",
+      "Stable IR format",
       [
         [
           t.text(
-            // TODO link to current AST
-            "The Abstract Syntax Tree (AST) has been effectively stable for a long time, only small changes to the set of builtin functions have happened.",
+            "The Intermediate Representation (IR) of EYG has been effectively stable for a long time, only small changes to the set of builtin functions have happened.",
           ),
         ],
         [
@@ -238,18 +236,18 @@ fn content() {
             "A goal of EYG is that any program will continue to work indefinitely.",
           ),
           t.text(
-            "This promise requires that all changes to the AST are conducted in a backwards compatible way.",
+            "This promise requires that all changes to the IR are conducted in a backwards compatible way.",
           ),
         ],
         [
           t.text(
-            "The shallow effect handler will be removed to have only a single kind of effect handler in the AST.",
+            "The shallow effect handler will be removed to have only a single kind of effect handler in the IR.",
           ),
           t.text(
             "Currently deep and shallow handlers are supported only because of previous exploratory work.",
           ),
           t.text(
-            "A stable encoding of the AST is required to give stable hash references",
+            "A stable encoding of the IR is required to give stable hash references",
           ),
         ],
       ],
@@ -309,7 +307,7 @@ fn content() {
         [
           t.text("Use "),
           t.link("DAG-JSON", "https://ipld.io/docs/codecs/known/dag-json/"),
-          t.text(" as the storage and hashing format for the AST."),
+          t.text(" as the storage and hashing format for the IR."),
         ],
         [
           t.text("This format enables storing EYG code on "),

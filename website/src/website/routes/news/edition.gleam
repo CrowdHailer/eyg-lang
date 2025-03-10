@@ -253,6 +253,7 @@ pub fn inline(content) {
           ],
           inline(content),
         )
+      // Maybe this is where we should pull the resources from I could have vimeo video lookup
       jot.Image(_content, destination) ->
         h.img([
           {
