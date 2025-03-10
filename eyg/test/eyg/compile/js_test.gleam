@@ -1,12 +1,15 @@
 import eyg/compile
+import eyg/ir/dag_json
 import eyg/parse
 import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx
+import gleam/io
 import gleam/json
 import gleam/pair
 import gleeunit/should
 import plinth/browser/window
+import simplifile
 
 fn test_compilation(source, js, evaled) {
   let generated =
@@ -34,6 +37,15 @@ fn test_eval(source, evaled) {
   |> window.eval()
   |> should.be_ok()
   |> should.equal(dynamic.from(evaled))
+}
+
+pub fn compile_test() {
+  let assert Ok(bytes) =
+    simplifile.read_bits("../website/test/website/harness/spotless/tmp.json")
+  let assert Ok(source) = dag_json.from_block(bytes)
+  compile.to_js(source, dict.new())
+  // |> should.be_ok
+  |> simplifile.write("new.js", _)
 }
 
 pub fn literal_test() {

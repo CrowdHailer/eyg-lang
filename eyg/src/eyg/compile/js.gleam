@@ -122,7 +122,8 @@ fn do_render(source) {
     ir.Vacant -> "throw TODO"
     _ -> {
       io.debug(exp)
-      panic as "unsupported compilation expression"
+      // panic as "unsupported compilation expression"
+      "TODO"
     }
   }
 }
