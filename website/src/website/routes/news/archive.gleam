@@ -28,9 +28,7 @@ pub fn published() {
   Allowing aritrary code evaluation would break type guarantess and be a security vulnerability for most languages.
   Implementing evaluation as an effect for EYG solves both problems.
 
-  In this quick video I walk through using the `Eval` effect and discuss it's implementation.
-
-  [![Screen share of using the EYG editor](https://i.vimeocdn.com/filter/overlay?src0=https%3A%2F%2Fi.vimeocdn.com%2Fvideo%2F1989010979-0d6a1dbbff54ed561b2aafad478236f4a7f9e96426a911bf27f4548b8dbd5c40-d_295x166&src1=http%3A%2F%2Ff.vimeocdn.com%2Fp%2Fimages%2Fcrawler_play.png)]()
+  In [this quick video](https://vimeo.com/1062143358) I walk through using the `Eval` effect and discuss it's implementation.
 
   The brief explaination is as follows.
   An effect has explicit reference to a continuation that represents the rest of the program.
@@ -41,13 +39,13 @@ pub fn published() {
 
   ## Other structural editors
 
-  This years Principles of Programming Languages (POPL 2025) had a few videos that caught my eye in their section on syntax and editing.
+  This years Principles of Programming Languages ([POPL 2025](https://conf.researchr.org/home/POPL-2025)) had a few videos that caught my eye in their section on syntax and editing.
   In this case they are talking about structural editing the same approach that the EYG editor uses.
 
-  The first was a talk about Pantograph an editor that can highlight expressions while leaving an inner expression unhighlighted.
-  Watch this short talk to see a much more visual explination of why this is valuable.
+  The first was a [talk about Pantograph](https://www.youtube.com/live/Jff0pIbj8PM?si=KGR6lsWNASU522PJ&t=6081) an editor that can highlight expressions while leaving an inner expression unhighlighted.
+  Their talk gives a much more visual explination of why this is valuable.
 
-  The second talk covered Grove, an algebra for collaborative editing of AST's.
+  The second [talk covered Grove](https://www.youtube.com/live/Jff0pIbj8PM?si=CNGQZHxSq2s4ySBn&t=7267), an algebra for collaborative editing of AST's.
   This one dealt with theory but outlines a path to add collaborative editing in the EYG editor.
   It would also help with version control and the issue of merging concurrent changes.
 
