@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/time/calendar.{Date}
 import gleroglero/outline
@@ -7,6 +7,7 @@ import jot
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/element/svg
 import mysig/asset
 import mysig/html
 import website/components
@@ -27,9 +28,9 @@ fn layout(body) {
         html.plausible("eyg.run"),
       ],
       common.page_meta(
-        "/",
-        "EYG",
-        "EYG is a programming language for predictable, useful and most of all confident development.",
+        "/roadmap",
+        "Development roadmap for EYG language",
+        "A list of the major enchancements being added to the EYG programming language.",
       ),
     ]),
     body,
@@ -70,7 +71,6 @@ fn body() {
         ]),
       ],
     ),
-    // h.div([], [element.text("editor packages AST Runtime")]),
     h.main(
       [],
       list.map(content(), fn(item) {
@@ -118,9 +118,27 @@ fn badge(class, message) {
   ])
 }
 
-fn project_commit_link(hash, content) {
+fn project_commit_link(hash) {
+  // https://simpleicons.org/?q=github
+  let content =
+    svg.svg(
+      [
+        a.class("inline-block w-5"),
+        a.role("img"),
+        a.attribute("viewbox", "0 0 24 24"),
+      ],
+      [
+        svg.title([], [element.text("Github")]),
+        svg.path([
+          a.attribute(
+            "d",
+            "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12",
+          ),
+        ]),
+      ],
+    )
   let url = "https://github.com/CrowdHailer/eyg-lang/commit/" <> hash
-  h.a([a.href(url), a.target("_blank")], content)
+  h.a([a.href(url), a.target("_blank")], [content])
 }
 
 fn vimeo_text_link(text, id) {
@@ -136,8 +154,12 @@ fn status_badge(status) {
     Pending -> badge("bg-blue-700 text-blue-200", "Pending")
     InProgress -> badge("bg-gray-700 text-gray-100", "In progress")
     Delivered(date, commit) ->
-      project_commit_link(commit, [
+      h.span([a.class("flex gap-2")], [
         badge("bg-green-3", "Delivered " <> clock.date_to_string(date)),
+        case commit {
+          Some(commit) -> project_commit_link(commit)
+          None -> element.none()
+        },
       ])
   }
 }
@@ -150,7 +172,7 @@ pub type Status {
   InProgress
   // Closed(note: Inline) in favour of others
   // date could be pulled from the commit 
-  Delivered(date: calendar.Date, commit: String)
+  Delivered(date: calendar.Date, commit: Option(String))
 }
 
 pub type Item {
@@ -199,7 +221,7 @@ fn content() {
       "an interactive snippet can be embedded in any HTML using a script tag.",
       Delivered(
         Date(2025, calendar.January, 23),
-        "a6c2eef5972bf27c0f51587767e573b2ca2450bd",
+        Some("a6c2eef5972bf27c0f51587767e573b2ca2450bd"),
       ),
     ),
     Feature(
@@ -220,17 +242,21 @@ fn content() {
       "when a selection of code examples are presented in the empty shell.",
       Delivered(
         Date(2025, calendar.January, 14),
-        "c1fcb6736de419898040c2d6da5890245b713267",
+        Some("c1fcb6736de419898040c2d6da5890245b713267"),
       ),
     ),
     Feature(
-      "stable-ast-format",
-      "Stable AST format",
+      "stable-ir-format",
+      "Stable IR format",
       [
         [
+          t.text("The "),
+          t.link(
+            "Intermediate Representation (IR)",
+            "https://github.com/CrowdHailer/eyg-lang/tree/main/spec",
+          ),
           t.text(
-            // TODO link to current AST
-            "The Abstract Syntax Tree (AST) has been effectively stable for a long time, only small changes to the set of builtin functions have happened.",
+            " of EYG has been effectively stable for a long time, only small changes to the set of builtin functions have happened.",
           ),
         ],
         [
@@ -238,27 +264,27 @@ fn content() {
             "A goal of EYG is that any program will continue to work indefinitely.",
           ),
           t.text(
-            "This promise requires that all changes to the AST are conducted in a backwards compatible way.",
+            "This promise requires that all changes to the IR are conducted in a backwards compatible way.",
           ),
         ],
         [
           t.text(
-            "The shallow effect handler will be removed to have only a single kind of effect handler in the AST.",
+            "The shallow effect handler will be removed to have only a single kind of effect handler in the IR.",
           ),
           t.text(
             "Currently deep and shallow handlers are supported only because of previous exploratory work.",
           ),
           t.text(
-            "A stable encoding of the AST is required to give stable hash references",
+            "A stable encoding of the IR is required to give stable hash references",
           ),
         ],
       ],
-      "all programs are saved with a version identifier for the format.",
-      Pending,
+      "all saved programs load in later versions of the web editor.",
+      Delivered(Date(2025, calendar.March, 10), None),
     ),
     Feature(
-      "oss-license-descision",
-      "Open source license descision",
+      "oss-license-decision",
+      "Open source license decision",
       [
         [
           t.text(
@@ -309,7 +335,7 @@ fn content() {
         [
           t.text("Use "),
           t.link("DAG-JSON", "https://ipld.io/docs/codecs/known/dag-json/"),
-          t.text(" as the storage and hashing format for the AST."),
+          t.text(" as the storage and hashing format for the IR."),
         ],
         [
           t.text("This format enables storing EYG code on "),
@@ -320,7 +346,7 @@ fn content() {
         ],
       ],
       "hashing is deterministic for a given expression.",
-      Pending,
+      Delivered(Date(2025, calendar.March, 10), None),
     ),
     Feature(
       "editor-for-large-programs",

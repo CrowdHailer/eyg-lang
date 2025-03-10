@@ -8,7 +8,7 @@ Includes test suites for features to encourage valid alternative implementations
 This section describes the JSON structure of a stored EYG program.
 Tests for encoding, decoding and hashing are in [ir_suite.json](./ir_suite.json)
 
-**NOTE:** EYG does not have an official syntax, instead the AST is the front-end for the language tooling.
+**NOTE:** EYG does not have an official syntax, instead the IR is the front-end for the language tooling.
 
 All valid programs have a single root expression.
 
