@@ -609,6 +609,13 @@ fn fullscreen_menu_button(state: State) {
   )
 }
 
+// fn file_menu_button(state: State) {
+//   h.button(
+//     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
+//     [snippet.icon(outline.tv(), "fullscreen", state.display_help)],
+//   )
+// }
+
 fn one_col_menu(display_help, options) {
   [
     // help_menu_button(state),

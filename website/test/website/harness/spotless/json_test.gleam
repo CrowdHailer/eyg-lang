@@ -193,6 +193,43 @@ pub fn json_test() {
       ]),
     ),
     #(
+      "[11]",
+      Ok([
+        node(0, v.Tagged("Array", v.unit())),
+        node(
+          1,
+          v.Tagged(
+            "Integer",
+            v.Record(
+              dict.from_list([
+                #("negative", v.false()),
+                #("integer", v.Integer(11)),
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    ),
+    #(
+      "[0.56]",
+      Ok([
+        node(0, v.Tagged("Array", v.unit())),
+        node(
+          1,
+          v.Tagged(
+            "Decimal",
+            v.Record(
+              dict.from_list([
+                #("negative", v.false()),
+                #("integer", v.Integer(0)),
+                #("decimals", v.LinkedList([v.Integer(53), v.Integer(54)])),
+              ]),
+            ),
+          ),
+        ),
+      ]),
+    ),
+    #(
       "[ [true]  , false ]",
       Ok([
         node(0, v.Tagged("Array", v.unit())),

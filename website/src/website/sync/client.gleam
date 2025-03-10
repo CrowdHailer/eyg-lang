@@ -5,6 +5,7 @@ import gleam/list
 import gleam/result
 import lustre/effect
 import midas/browser
+import plinth/browser/file_system
 import website/sync/cache
 import website/sync/supabase
 
@@ -21,6 +22,17 @@ pub type Remote {
   )
 }
 
+pub fn fs_remote() {
+  use result <- promise.map(file_system.show_directory_picker())
+  case result {
+    Ok(dir) -> io.debug(dir)
+    Error(reason) -> {
+      io.debug(reason)
+      todo as "early"
+    }
+  }
+}
+
 pub type Client {
   Client(remote: Remote, cache: cache.Cache)
 }
@@ -30,6 +42,8 @@ pub fn init(remote) {
 }
 
 pub fn default() {
+  io.debug("startng fs remote")
+  // fs_remote()
   init(
     Remote(
       fn() {
