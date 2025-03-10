@@ -112,11 +112,29 @@ pub fn json_test() {
       v.Tagged(
         "Decimal",
         v.Record(
-          dict.from_list([#("negative", v.true()), #("integer", v.Integer(100))]),
+          dict.from_list([
+            #("negative", v.false()),
+            #("integer", v.Integer(9)),
+            #("decimals", v.LinkedList([v.Integer(57)])),
+          ]),
         ),
       ),
     ]),
-    // #("-0.555", [v.Tagged("Integer", v.unit())]),
+    #("-0.567", [
+      v.Tagged(
+        "Decimal",
+        v.Record(
+          dict.from_list([
+            #("negative", v.true()),
+            #("integer", v.Integer(0)),
+            #(
+              "decimals",
+              v.LinkedList([v.Integer(53), v.Integer(54), v.Integer(55)]),
+            ),
+          ]),
+        ),
+      ),
+    ]),
     // list
     #("[]", [
       v.Tagged("LeftBracket", v.unit()),
