@@ -10,13 +10,13 @@ pub fn published() {
   EYG's Intermediate Representation (IR) is now stable.
   The spec for the IR format is available on [github](https://github.com/CrowdHailer/eyg-lang/tree/main/spec).
 
-  The IR is built on [dag-json](https://ipld.io/docs/codecs/known/dag-json/) and so the hash references of expressions is also stable.
+  The IR is built on [dag-json](https://ipld.io/docs/codecs/known/dag-json/) and so the hash references of expressions are also stable.
   This completes two key tasks on the [roadmap](https://eyg.run/roadmap/).
 
   Having a stable IR allows many things to be built on EYG.
-  Want your own syntax? build a parser to target the IR and use the rest of the EYG tooling to run in.
-  Need a new runtime, use the EYG editor and build your own interpreter or compiler.
-  Fancy your own type system, write your own and keep the editor and runtimes.
+  Want your own syntax? Build a parser to target the IR and use the rest of the EYG tooling to run it.
+  Need a new runtime? Use the EYG editor and build your own interpreter or compiler.
+  Fancy your own type system? Write your own and keep the editor and runtimes.
 
   This flexibility separates EYG from most other languages where the surface syntax is the public API and IR/AST is an implementation detail that you can't rely on.
   
@@ -25,12 +25,12 @@ pub fn published() {
 
   ## Safe code evaluation
 
-  Allowing aritrary code evaluation would break type guarantess and be a security vulnerability for most languages.
+  Allowing arbitrary code evaluation would break type guarantees and be a security vulnerability for most languages.
   Implementing evaluation as an effect for EYG solves both problems.
 
   In [this quick video](https://vimeo.com/1062143358) I walk through using the `Eval` effect and discuss it's implementation.
 
-  The brief explaination is as follows.
+  Here's the summary:
   An effect has explicit reference to a continuation that represents the rest of the program.
   By inferring the type of the code to be evaluated we can observe any side effects it might have before it is run.
   Inferring the type of the continuation can be used to check it is consistent with the evaluated value.
@@ -40,16 +40,16 @@ pub fn published() {
   ## Other structural editors
 
   This years Principles of Programming Languages ([POPL 2025](https://conf.researchr.org/home/POPL-2025)) had a few videos that caught my eye in their section on syntax and editing.
-  In this case they are talking about structural editing the same approach that the EYG editor uses.
+  In this case they are talking about structural editing - the same approach that the EYG editor uses.
 
   The first was a [talk about Pantograph](https://www.youtube.com/live/Jff0pIbj8PM?si=KGR6lsWNASU522PJ&t=6081) an editor that can highlight expressions while leaving an inner expression unhighlighted.
-  Their talk gives a much more visual explination of why this is valuable.
+  Their talk gives a much more visual explanation of why this is valuable.
 
   The second [talk covered Grove](https://www.youtube.com/live/Jff0pIbj8PM?si=CNGQZHxSq2s4ySBn&t=7267), an algebra for collaborative editing of AST's.
   This one dealt with theory but outlines a path to add collaborative editing in the EYG editor.
   It would also help with version control and the issue of merging concurrent changes.
 
-  It's great to see this work as it provide robust foundations for developing the EYG editor further.
+  It's great to see this work as it provides robust foundations for developing the EYG editor further.
   "
         |> asset.done(),
     ),
