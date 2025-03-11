@@ -6,6 +6,7 @@
     },
     "type": "module",
     "dependencies": {
+        "@ipld/dag-json": "^10.2.3",
         "immutable": "^4.3.7"
     },
     "version": "0.2.0"
