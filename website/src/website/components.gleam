@@ -46,6 +46,7 @@ pub fn header(authenticate, session) {
           header_link("/editor", "Editor"),
           header_link("/documentation", "Documentation"),
           header_link("/roadmap", "Roadmap"),
+          header_link("/news", "News"),
         ]),
         // TODO reinstate hen something worthwhile happens
       // case session {
@@ -76,25 +77,27 @@ pub fn header(authenticate, session) {
 pub const signup = "mailing-signup"
 
 pub fn footer() {
-  h.div([a.class("bg-green-100")], [
-    h.div([a.class("max-w-3xl mx-auto hstack px-1 md:gap-6")], [
-      h.div([a.class("font-bold")], [
-        element.text("Want to stay up to date?"),
-        h.br([]),
-        element.text("Join our mailing list."),
-      ]),
-      h.script(
-        [
-          a.id(signup),
-          a.attribute("data-form", "b3a478b8-39e2-11ef-97b9-955caf3f5f36"),
-          a.src(
-            "https://eocampaign1.com/form/b3a478b8-39e2-11ef-97b9-955caf3f5f36.js",
-          ),
-          a.attribute("async", ""),
-        ],
-        "",
-      ),
+  h.div([a.class("bg-green-100")], [signup_inline()])
+}
+
+pub fn signup_inline() {
+  h.div([a.class("max-w-3xl mx-auto hstack px-1 md:gap-6")], [
+    h.div([a.class("font-bold")], [
+      element.text("Want to stay up to date?"),
+      h.br([]),
+      element.text("Join our mailing list."),
     ]),
+    h.script(
+      [
+        a.id(signup),
+        a.attribute("data-form", "b3a478b8-39e2-11ef-97b9-955caf3f5f36"),
+        a.src(
+          "https://eocampaign1.com/form/b3a478b8-39e2-11ef-97b9-955caf3f5f36.js",
+        ),
+        a.attribute("async", ""),
+      ],
+      "",
+    ),
   ])
 }
 
