@@ -26,6 +26,7 @@ packages = [
   { name = "glen", version = "2.2.2", build_tools = ["gleam"], requirements = ["conversation", "filepath", "gleam_community_ansi", "gleam_http", "gleam_javascript", "gleam_stdlib", "marceau"], otp_app = "glen", source = "hex", outer_checksum = "62DF8F8305650237B58B7F29C01016383950479D35FCD8393800CAB94675B0DE" },
   { name = "glen_node", version = "0.0.3", build_tools = ["gleam"], requirements = ["gleam_javascript", "glen"], otp_app = "glen_node", source = "hex", outer_checksum = "0A81302C16B9719FC47FB022A127A51EA668D4F78CE6DCCCF430A3C098395511" },
   { name = "gleroglero", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "lustre"], otp_app = "gleroglero", source = "hex", outer_checksum = "D265C3629521E2E8B994BE2FD6EE9CCB287DF0D301D0E72AC3EF2F6EB9DEBD89" },
+  { name = "gzlib", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gzlib", source = "hex", outer_checksum = "5E71EF6C973CB61CDF25D1C5CDBD129C481CE432D6FD089FBB4E30B95CCCE935" },
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
   { name = "jot", version = "2.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "jot", source = "hex", outer_checksum = "8DF4F3958EE75975EBA6C1BBAA4D0A947A1704A0928EDE49AD7A5BD268D99B6F" },
   { name = "justin", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "justin", source = "hex", outer_checksum = "7FA0C6DB78640C6DC5FBFD59BF3456009F3F8B485BF6825E97E1EB44E9A1E2CD" },
@@ -59,6 +60,7 @@ gleam_time = { version = ">= 0.0.0 and < 2.0.0" }
 gleamx = { path = "../packages/gleamx" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 gleroglero = { version = ">= 1.1.0 and < 2.0.0" }
+gzlib = { version = ">= 1.0.1 and < 2.0.0" }
 jot = { version = ">= 2.0.1 and < 3.0.0" }
 justin = { version = ">= 1.0.1 and < 2.0.0" }
 lustre = { version = ">= 4.6.3 and < 5.0.0" }
