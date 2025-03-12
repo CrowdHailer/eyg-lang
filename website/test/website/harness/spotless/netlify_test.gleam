@@ -17,19 +17,29 @@ pub fn netlify_test() {
     simplifile.read("../../midas_sdk/priv/netlify.openapi.json")
   let assert Ok(spec) = json.decode(spec, oas.decoder)
   let oas.Document(paths: paths, components: components, ..) = spec
-  dict.fold(paths, [], fn(acc, path, item) {
-    let oas.PathItem(operations:, ..) = item
-    list.fold(operations, acc, fn(acc, op) {
-      case build_operation(op, path, item) {
-        Ok(r) -> [r, ..acc]
-        Error(_) -> acc
-      }
+  let ops =
+    dict.fold(paths, [], fn(acc, path, item) {
+      let oas.PathItem(operations:, ..) = item
+      list.fold(operations, acc, fn(acc, op) {
+        case build_operation(op, path, item) {
+          Ok(r) -> [r, ..acc]
+          Error(_) -> acc
+        }
+      })
     })
-  })
-  |> list.fold(ir.empty(), fn(acc, field) {
-    let #(label, value) = field
-    ir.call(ir.extend(label), [value, acc])
-  })
+    |> list.fold(ir.empty(), fn(acc, field) {
+      let #(label, value) = field
+      ir.call(ir.extend(label), [value, acc])
+    })
+  io.debug("ssssss")
+
+  let assert Ok(jcode) =
+    simplifile.read_bits("./test/website/harness/spotless/tmp.json")
+  io.debug("ssssss")
+
+  let assert Ok(jcode) = dag_json.from_block(jcode)
+  io.debug("ssssss")
+  ir.let_("json", jcode, ir.let_("netlify", ops, ir.vacant()))
   |> dag_json.to_block
   |> bit_array.to_string
   |> should.be_ok
@@ -58,7 +68,7 @@ fn build_operation(op, path, path_item) {
   let oas.Operation(operation_id: id, ..) = op
   // use tags instead
   case id {
-    "listSites" -> {
+    "listSites" | "getCurrentUser" -> {
       let request = case method, op.request_body {
         http.Get, None -> get("/api/v1" <> path, [])
         _, _ -> todo
