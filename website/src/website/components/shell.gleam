@@ -2,6 +2,7 @@ import eyg/ir/tree as ir
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
+import morph/analysis
 import morph/editable as e
 import plinth/javascript/console
 import website/components/readonly
@@ -10,7 +11,7 @@ import website/mount/interactive
 
 pub type ShellEntry {
   Executed(
-    Option(interactive.Value),
+    Option(analysis.Value),
     List(interactive.RuntimeEffect),
     readonly.Readonly,
   )

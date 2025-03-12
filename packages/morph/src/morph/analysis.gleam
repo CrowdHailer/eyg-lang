@@ -4,11 +4,14 @@ import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/capture
+import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/io
+import gleam/javascript/promise
 import gleam/list
+import gleam/listx
 import gleam/string
 import morph/editable as e
 import morph/projection
@@ -21,7 +24,6 @@ pub type Context {
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
     references: References,
-    builtins: List(#(String, binding.Poly)),
   )
 }
 
@@ -45,11 +47,11 @@ pub type Analysis {
 
 pub fn within_environment(runtime_env, refs, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
-  Context(bindings, scope, refs, infer.builtins())
+  Context(bindings, scope, refs)
 }
 
 pub fn with_references(refs) {
-  Context(dict.new(), [], refs, infer.builtins())
+  Context(dict.new(), [], refs)
 }
 
 // use capture because we want efficient ability to get to continuations
@@ -148,7 +150,29 @@ pub fn scope_vars(projection: projection.Projection, analysis) {
   env_at(analysis, projection.path_to_zoom(projection.1, []))
 }
 
-pub fn do_analyse(editable, context, eff) -> Analysis {
+pub type Path =
+  Nil
+
+pub type Value =
+  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
+
+pub type ExternalBlocking =
+  fn(Value) -> Result(promise.Promise(Value), istate.Reason(Path))
+
+pub type EffectSpec =
+  #(binding.Mono, binding.Mono, ExternalBlocking)
+
+fn effect_types(effects: List(#(String, EffectSpec))) {
+  listx.value_map(effects, fn(details) { #(details.0, details.1) })
+}
+
+pub fn do_analyse(editable, context, effects) -> Analysis {
+  let eff =
+    effect_types(effects)
+    |> list.fold(t.Empty, fn(acc, new) {
+      let #(label, #(lift, reply)) = new
+      t.EffectExtend(label, #(lift, reply), acc)
+    })
   let Context(bindings, scope, ..) = context
 
   let source = e.to_annotated(editable, [])
@@ -159,10 +183,10 @@ pub fn do_analyse(editable, context, eff) -> Analysis {
   Analysis(bindings, list.zip(paths, types))
 }
 
-pub fn analyse(projection, context, eff) -> Analysis {
-  let editable = projection.rebuild(projection)
-  do_analyse(editable, context, eff)
-}
+// pub fn analyse(projection, context, eff) -> Analysis {
+//   let editable = projection.rebuild(projection)
+//   do_analyse(editable, context, eff)
+// }
 
 // pub fn print(analysis) {
 //   let #(bindings, pairs) = analysis
