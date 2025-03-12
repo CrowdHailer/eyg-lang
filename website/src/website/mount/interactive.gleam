@@ -66,7 +66,7 @@ pub fn init(editable, scope, effects, cache) {
     scope: scope,
     effects: effects,
     cache: cache,
-    analysis: Some(do_analysis(editable, scope, cache, effects)),
+    analysis: Some(do_analysis(editable, scope, cache, effect_types(effects))),
     // analysis: None,
     evaluated: evaluate(editable, scope, cache),
     task_counter: -1,
@@ -80,10 +80,14 @@ pub fn do_analysis(editable, scope, cache, effects) {
   let analysis =
     analysis.do_analyse(
       editable,
-      analysis.within_environment(scope, refs, Nil),
-      effects,
+      analysis.within_environment(scope, refs, Nil)
+        |> analysis.with_effects(effects),
     )
   analysis
+}
+
+fn effect_types(effects: List(#(String, analysis.EffectSpec))) {
+  listx.value_map(effects, fn(details) { #(details.0, details.1) })
 }
 
 pub fn source(state) {
@@ -100,7 +104,12 @@ pub fn set_references(state: Interactive, cache) {
       Running(cache.run(return, cache, block.resume), effects)
   }
   let analysis =
-    Some(do_analysis(state.editable, state.scope, cache, state.effects))
+    Some(do_analysis(
+      state.editable,
+      state.scope,
+      cache,
+      effect_types(state.effects),
+    ))
   Interactive(..state, cache:, evaluated:, run:, analysis:)
 }
 

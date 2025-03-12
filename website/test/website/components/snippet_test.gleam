@@ -1,3 +1,4 @@
+import eyg/analysis/type_/isomorphic as t
 import eyg/ir/dag_json
 import gleam/dictx
 import gleam/int
@@ -182,11 +183,11 @@ fn click(state, path) {
   #(snippet.update(snippet, snippet.UserClickedCode(path)), i + 1)
 }
 
-fn analyse(state) {
+fn analyse(state, effects) {
   let #(client, _) = client.default()
   let #(#(snippet, action), i) = state
   let snippet.Snippet(editable:, ..) = snippet
-  let analysis = interactive.do_analysis(editable, [], client.cache, [])
+  let analysis = interactive.do_analysis(editable, [], client.cache, effects)
   let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
   #(#(snippet, action), i)
 }
@@ -214,7 +215,7 @@ pub fn assigning_to_variable_test() {
     should.equal(options, [])
     Ok("x")
   })
-  |> analyse()
+  |> analyse([])
   |> command("v")
   |> pick_from(fn(options) {
     should.equal(options, [#("x", "Integer")])
@@ -256,13 +257,13 @@ pub fn create_record_test() {
 
 pub fn insert_perform_suggestions_test() {
   empty()
-  |> analyse()
+  |> analyse([#("Alert", #(t.String, t.unit))])
   |> command("p")
   |> pick_from(fn(options) {
-    should.equal(options, [#("x", "Integer")])
-    Ok("x")
+    should.equal(options, [#("Alert", "String : {}")])
+    Ok("Alert")
   })
-  |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
+  |> has_code(e.Call(e.Perform("Alert"), [e.Vacant]))
 }
 
 pub fn search_for_vacant_failure_test() {

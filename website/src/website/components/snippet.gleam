@@ -678,13 +678,10 @@ fn insert_mode(state) {
 }
 
 fn insert_perform(state) {
-  let Snippet(projection: proj, ..) = state
-  // TODO test real
-  let hints = []
-  // effect_types([])
+  let Snippet(projection: proj, analysis:, ..) = state
 
-  case action.perform(proj) {
-    Ok(#(filter, rebuild)) -> {
+  case action.perform(proj, analysis) {
+    Ok(#(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_effect)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }

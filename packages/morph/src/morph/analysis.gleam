@@ -35,7 +35,7 @@ pub type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
-    effect: List(#(String, #(binding.Mono, binding.Mono))),
+    effects: List(#(String, #(binding.Mono, binding.Mono))),
     references: References,
   )
 }
@@ -55,13 +55,17 @@ pub type Analysis {
         ),
       ),
     ),
-    contet: Context,
+    context: Context,
   )
 }
 
 pub fn within_environment(runtime_env, refs, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
   Context(bindings, scope, [], refs)
+}
+
+pub fn with_effects(context, effects) {
+  Context(..context, effects: effects)
 }
 
 pub fn with_references(refs) {
@@ -164,18 +168,14 @@ pub fn scope_vars(projection: projection.Projection, analysis) {
   env_at(analysis, projection.path_to_zoom(projection.1, []))
 }
 
-fn effect_types(effects: List(#(String, EffectSpec))) {
-  listx.value_map(effects, fn(details) { #(details.0, details.1) })
-}
-
-pub fn do_analyse(editable, context, effects) -> Analysis {
+pub fn do_analyse(editable, context) -> Analysis {
+  let Context(bindings, scope, effects, ..) = context
   let eff =
-    effect_types(effects)
+    effects
     |> list.fold(t.Empty, fn(acc, new) {
       let #(label, #(lift, reply)) = new
       t.EffectExtend(label, #(lift, reply), acc)
     })
-  let Context(bindings, scope, ..) = context
 
   let source = e.to_annotated(editable, [])
   let #(bindings, _top_type, _top_eff, tree) =
