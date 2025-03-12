@@ -232,40 +232,22 @@ fn init_example(json, cache) {
   let source =
     e.from_annotated(source)
     |> e.open_all
-  snippet.init(source, [], harness.effects(), cache)
+  snippet.init(source)
 }
 
 pub fn init(_) {
   let #(sync, init_task) = client.default()
   let snippets = [
-    #(int_key, snippet.init(int_example, [], harness.effects(), sync.cache)),
-    #(text_key, snippet.init(text_example, [], harness.effects(), sync.cache)),
-    #(lists_key, snippet.init(lists_example, [], harness.effects(), sync.cache)),
-    #(
-      records_key,
-      snippet.init(records_example, [], harness.effects(), sync.cache),
-    ),
-    #(
-      overwrite_key,
-      snippet.init(overwrite_example, [], harness.effects(), sync.cache),
-    ),
-    #(
-      unions_key,
-      snippet.init(unions_example, [], harness.effects(), sync.cache),
-    ),
-    #(
-      open_case_key,
-      snippet.init(open_case_example, [], harness.effects(), sync.cache),
-    ),
-    #(
-      externals_key,
-      snippet.init(externals_example, [], harness.effects(), sync.cache),
-    ),
-    #(
-      functions_key,
-      snippet.init(functions_example, [], harness.effects(), sync.cache),
-    ),
-    #(fix_key, snippet.init(fix_example, [], harness.effects(), sync.cache)),
+    #(int_key, snippet.init(int_example)),
+    #(text_key, snippet.init(text_example)),
+    #(lists_key, snippet.init(lists_example)),
+    #(records_key, snippet.init(records_example)),
+    #(overwrite_key, snippet.init(overwrite_example)),
+    #(unions_key, snippet.init(unions_example)),
+    #(open_case_key, snippet.init(open_case_example)),
+    #(externals_key, snippet.init(externals_example)),
+    #(functions_key, snippet.init(functions_example)),
+    #(fix_key, snippet.init(fix_example)),
     #(builtins_key, init_example(builtins_example, sync.cache)),
     #(references_key, init_example(references_example, sync.cache)),
     #(perform_key, init_example(perform_example, sync.cache)),

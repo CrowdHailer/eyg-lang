@@ -1,12 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/binding/error
-import eyg/analysis/type_/isomorphic as t
-import eyg/interpreter/block
-import eyg/interpreter/break
-import eyg/interpreter/state as istate
-import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/bit_array
@@ -155,7 +149,7 @@ pub type Snippet {
 // calculator examples on snippet
 // all on homepage
 
-pub fn init(editable, scope, effects, cache) {
+pub fn init(editable) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
   Snippet(
@@ -165,18 +159,11 @@ pub fn init(editable, scope, effects, cache) {
     history: History([], []),
     projection: proj,
     editable: editable,
-    // scope: scope,
-    // effects: effects,
-    // cache: cache,
-    // analysis: Some(do_analysis(editable, scope, cache, effects)),
     analysis: None,
-    // evaluated: evaluate(editable, scope, cache),
-  // task_counter: -1,
-  // run: NotRunning,
   )
 }
 
-pub fn active(editable, scope, effects, cache) {
+pub fn active(editable) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
   Snippet(
@@ -186,14 +173,7 @@ pub fn active(editable, scope, effects, cache) {
     history: History([], []),
     projection: proj,
     editable: editable,
-    // scope: scope,
-    // effects: effects,
-    // cache: cache,
-    // analysis: Some(do_analysis(editable, scope, cache, effects)),
     analysis: None,
-    // evaluated: evaluate(editable, scope, cache),
-  // task_counter: -1,
-  // run: NotRunning,
   )
 }
 

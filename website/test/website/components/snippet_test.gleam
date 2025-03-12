@@ -72,7 +72,7 @@ fn empty() {
 
 fn new(source) {
   let #(client, _) = client.default()
-  let snippet = snippet.init(source, [], [], client.cache)
+  let snippet = snippet.init(source)
   let result = snippet.update(snippet, snippet.UserFocusedOnCode)
   #(result, 0)
 }

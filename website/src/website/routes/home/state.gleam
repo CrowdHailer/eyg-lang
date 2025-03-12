@@ -69,7 +69,8 @@ fn decode_source(json) {
 
 fn init_example(json, cache, config) {
   let source = decode_source(json)
-  snippet.init(source, [], effects(config), cache)
+  snippet.init(source)
+  // [], effects(config), cache)
 }
 
 fn effects(config) {
@@ -78,7 +79,8 @@ fn effects(config) {
 
 fn init_reload_example(json, cache) {
   let source = decode_source(json)
-  snippet.init(source, [], [], cache)
+  snippet.init(source)
+  // [], [], cache)
 }
 
 pub fn init(config) {

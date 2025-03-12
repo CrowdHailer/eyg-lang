@@ -33,7 +33,7 @@ pub type Shell {
 // could just be given a snippet
 pub fn init(effects, cache) {
   let source = e.from_annotated(ir.vacant())
-  Shell(None, [], snippet.init(source, [], effects, cache))
+  Shell(None, [], snippet.init(source))
 }
 
 fn close_many_previous(shell_entries) {

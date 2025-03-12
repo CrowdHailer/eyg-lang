@@ -59,7 +59,11 @@ fn init(config) {
   let source =
     e.from_annotated(source)
     |> e.open_all
-  let snippet = snippet.init(source, [], effects(), cache)
+  let snippet =
+    snippet.init(
+      source,
+      // , [], effects(), cache
+    )
   #(snippet, effect.none())
 }
 

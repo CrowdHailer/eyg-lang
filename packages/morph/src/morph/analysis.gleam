@@ -16,6 +16,18 @@ import gleam/string
 import morph/editable as e
 import morph/projection
 
+pub type Path =
+  Nil
+
+pub type Value =
+  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
+
+pub type ExternalBlocking =
+  fn(Value) -> Result(promise.Promise(Value), istate.Reason(Path))
+
+pub type EffectSpec =
+  #(binding.Mono, binding.Mono, ExternalBlocking)
+
 pub type References =
   Dict(String, binding.Poly)
 
@@ -23,6 +35,7 @@ pub type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
+    effect: List(#(String, #(binding.Mono, binding.Mono))),
     references: References,
   )
 }
@@ -42,16 +55,17 @@ pub type Analysis {
         ),
       ),
     ),
+    contet: Context,
   )
 }
 
 pub fn within_environment(runtime_env, refs, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
-  Context(bindings, scope, refs)
+  Context(bindings, scope, [], refs)
 }
 
 pub fn with_references(refs) {
-  Context(dict.new(), [], refs)
+  Context(dict.new(), [], [], refs)
 }
 
 // use capture because we want efficient ability to get to continuations
@@ -150,18 +164,6 @@ pub fn scope_vars(projection: projection.Projection, analysis) {
   env_at(analysis, projection.path_to_zoom(projection.1, []))
 }
 
-pub type Path =
-  Nil
-
-pub type Value =
-  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
-
-pub type ExternalBlocking =
-  fn(Value) -> Result(promise.Promise(Value), istate.Reason(Path))
-
-pub type EffectSpec =
-  #(binding.Mono, binding.Mono, ExternalBlocking)
-
 fn effect_types(effects: List(#(String, EffectSpec))) {
   listx.value_map(effects, fn(details) { #(details.0, details.1) })
 }
@@ -180,7 +182,7 @@ pub fn do_analyse(editable, context, effects) -> Analysis {
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let types = ir.get_annotation(tree)
   let paths = ir.get_annotation(e.to_annotated(editable, []))
-  Analysis(bindings, list.zip(paths, types))
+  Analysis(bindings, list.zip(paths, types), context)
 }
 
 // pub fn analyse(projection, context, eff) -> Analysis {
@@ -204,8 +206,8 @@ pub fn do_analyse(editable, context, effects) -> Analysis {
 // }
 
 fn env_at(analysis, path) {
-  let Analysis(_bindings, pairs) = analysis
-  case list.key_find(pairs, list.reverse(path)) {
+  let Analysis(inferred:, ..) = analysis
+  case list.key_find(inferred, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
       io.debug(#("didn't find env", path))
@@ -217,13 +219,13 @@ fn env_at(analysis, path) {
 }
 
 pub fn do_type_at(analysis, projection: #(_, _)) {
-  let Analysis(bindings, pairs) = analysis
+  let Analysis(bindings:, inferred:, ..) = analysis
   let path = projection.path(projection)
   // tests to remove this
   // io.debug(path)
-  // io.debug(pairs |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) }))
+  // io.debug(inferred |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) }))
   // TODO a shared info at would be a useful utility to ensure path reversing done correctly
-  case list.key_find(pairs, list.reverse(path)) {
+  case list.key_find(inferred, list.reverse(path)) {
     Ok(#(_result, type_, _eff, _env)) -> Ok(binding.resolve(type_, bindings))
     Error(Nil) -> {
       io.debug(#("didn't find type", path))
@@ -268,8 +270,8 @@ fn rows(t, acc) {
 }
 
 pub fn type_errors(analysis) {
-  let Analysis(_bindings, pairs) = analysis
-  list.filter_map(pairs, fn(r) {
+  let Analysis(inferred:, ..) = analysis
+  list.filter_map(inferred, fn(r) {
     let #(rev, #(r, _, _, _)) = r
     case r {
       Ok(_) -> Error(Nil)
