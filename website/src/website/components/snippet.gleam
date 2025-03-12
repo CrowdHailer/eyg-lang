@@ -225,6 +225,8 @@ pub type Effect {
   MoveBelow
   WriteToClipboard(String)
   ReadFromClipboard
+  NewCode
+  Confirm
   // RunEffect(promise.Promise(#(Int, Value)))
   // Conclude(value: Option(Value), effects: List(RuntimeEffect), scope: Scope)
 }
@@ -300,11 +302,12 @@ fn update_source(proj, state) {
 }
 
 fn update_source_from_buffer(proj, state) {
-  #(update_source(proj, state), Nothing)
+  #(update_source(proj, state), NewCode)
 }
 
 fn update_source_from_pallet(proj, state) {
-  #(update_source(proj, state), FocusOnCode)
+  io.debug("needs focus on bffer")
+  #(update_source(proj, state), NewCode)
 }
 
 fn return_to_buffer(state) {
@@ -967,7 +970,7 @@ pub fn copy_escaped(state) {
 }
 
 fn confirm(state) {
-  todo as "confirm is part of mount"
+  #(state, Confirm)
   // let Snippet(run: run, evaluated: evaluated, ..) = state
   // case run, evaluated {
   //   NotRunning, Ok(#(value, scope)) -> #(state, Conclude(value, [], scope))
@@ -1015,7 +1018,8 @@ pub type TypeError {
 
 // Pass in if client is working
 pub fn type_errors(state) {
-  todo as "probably move to mount"
+  []
+  // todo as "probably move to mount"
   // let Snippet(analysis:, cache:, ..) = state
   // let errors = case analysis {
   //   Some(analysis) -> analysis.type_errors(analysis)
@@ -1111,80 +1115,79 @@ pub fn bare_render(state, failure) {
     // evaluated: evaluated,
     // run: run,
   ) = state
-  todo as "bare render"
-  // let errors = type_errors(state)
+  let errors = type_errors(state)
 
-  // case status {
-  //   Editing(mode) ->
-  //     case mode {
-  //       Command -> [
-  //         actual_render_projection(proj, True, errors),
-  //         case failure {
-  //           Some(failure) ->
-  //             footer_area(neo_orange_4, [element.text(fail_message(failure))])
-  //           None -> render_current(errors, run, evaluated)
-  //         },
-  //       ]
-  //       Pick(picker, _rebuild) -> [
-  //         actual_render_projection(proj, False, errors),
-  //         picker.render(picker)
-  //           |> element.map(MessageFromPicker),
-  //       ]
+  case status {
+    Editing(mode) ->
+      case mode {
+        Command -> [
+          actual_render_projection(proj, True, errors),
+          case failure {
+            Some(failure) ->
+              footer_area(neo_orange_4, [element.text(fail_message(failure))])
+            None -> element.text("render_current(errors, run, evaluated)")
+          },
+        ]
+        Pick(picker, _rebuild) -> [
+          actual_render_projection(proj, False, errors),
+          picker.render(picker)
+            |> element.map(MessageFromPicker),
+        ]
 
-  //       SelectRelease(autocomplete, _) -> [
-  //         actual_render_projection(proj, False, errors),
-  //         autocomplete.render(autocomplete, release_to_option)
-  //           |> element.map(SelectReleaseMessage),
-  //         // picker.render(picker)
-  //       //   |> element.map(MessageFromPicker),
-  //       ]
+        SelectRelease(autocomplete, _) -> [
+          actual_render_projection(proj, False, errors),
+          autocomplete.render(autocomplete, release_to_option)
+            |> element.map(SelectReleaseMessage),
+          // picker.render(picker)
+        //   |> element.map(MessageFromPicker),
+        ]
 
-  //       EditText(value, _rebuild) -> [
-  //         actual_render_projection(proj, False, errors),
-  //         input.render_text(value)
-  //           |> element.map(MessageFromInput),
-  //       ]
+        EditText(value, _rebuild) -> [
+          actual_render_projection(proj, False, errors),
+          input.render_text(value)
+            |> element.map(MessageFromInput),
+        ]
 
-  //       EditInteger(value, _rebuild) -> [
-  //         actual_render_projection(proj, False, errors),
-  //         input.render_number(value)
-  //           |> element.map(MessageFromInput),
-  //       ]
-  //     }
+        EditInteger(value, _rebuild) -> [
+          actual_render_projection(proj, False, errors),
+          input.render_number(value)
+            |> element.map(MessageFromInput),
+        ]
+      }
 
-  //   Idle -> [
-  //     h.pre(
-  //       [
-  //         a.class("language-eyg"),
-  //         a.style(code_area_styles),
-  //         a.attribute("tabindex", "0"),
-  //         event.on_focus(UserFocusedOnCode),
-  //       ],
-  //       render.statements(editable, errors),
-  //     ),
-  //     render_current(errors, run, evaluated),
-  //   ]
-  // }
-}
-
-// TODO remove
-pub fn render_current(errors, run, evaluated) {
-  case errors {
-    [] -> render_run(run, evaluated)
-    _ -> render_errors(errors)
+    Idle -> [
+      h.pre(
+        [
+          a.class("language-eyg"),
+          a.style(code_area_styles),
+          a.attribute("tabindex", "0"),
+          event.on_focus(UserFocusedOnCode),
+        ],
+        render.statements(editable, errors),
+      ),
+      element.text("render_current(errors, run, evaluated)"),
+    ]
   }
 }
 
-pub fn render_errors(errors) {
-  footer_area(
-    neo_orange_4,
-    list.map(errors, render_structured_note_about_error),
-    // list.map(errors, fn(error) {
-  //   let #(path, reason) = error
-  //   h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
-  // }),
-  )
-}
+// TODO remove
+//  fn render_current(errors, run, evaluated) {
+//   case errors {
+//     [] -> render_run(run, evaluated)
+//     _ -> render_errors(errors)
+//   }
+// }
+
+// fn render_errors(errors) {
+//   footer_area(
+//     neo_orange_4,
+//     list.map(errors, render_structured_note_about_error),
+//     // list.map(errors, fn(error) {
+//   //   let #(path, reason) = error
+//   //   h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
+//   // }),
+//   )
+// }
 
 fn render_structured_note_about_error(error) {
   let #(path, reason) = error
@@ -1375,49 +1378,48 @@ fn render_projection(proj, errors) {
   }
 }
 
-fn render_run(run, evaluated) {
-  todo as "render run"
-  // case run {
-  //   NotRunning ->
-  //     case evaluated {
-  //       Ok(#(value, _scope)) ->
-  //         footer_area(neo_green_3, [
-  //           case value {
-  //             Some(value) -> output.render(value)
-  //             None -> element.none()
-  //           },
-  //         ])
-  //       Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-  //         footer_area(neo_blue_3, [
-  //           h.span([event.on_click(UserClickRunEffects)], [
-  //             element.text("Will run "),
-  //             element.text(label),
-  //             element.text(" effect. click to continue."),
-  //           ]),
-  //         ])
-  //       Error(#(reason, _, _, _)) ->
-  //         footer_area(neo_orange_4, [
-  //           element.text(simple_debug.reason_to_string(reason)),
-  //         ])
-  //     }
-  //   Running(Ok(#(value, _scope)), _effects) ->
-  //     // (value, _) ->
-  //     footer_area(neo_green_3, [
-  //       case value {
-  //         Some(value) -> output.render(value)
-  //         None -> element.none()
-  //       },
-  //     ])
-  //   Running(Error(#(break.UnhandledEffect(_label, _), _, _, _)), _effects) ->
-  //     footer_area(neo_green_3, [element.text("running")])
+// fn render_run(run, evaluated) {
+//   case run {
+//     NotRunning ->
+//       case evaluated {
+//         Ok(#(value, _scope)) ->
+//           footer_area(neo_green_3, [
+//             case value {
+//               Some(value) -> output.render(value)
+//               None -> element.none()
+//             },
+//           ])
+//         Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
+//           footer_area(neo_blue_3, [
+//             h.span([event.on_click(UserClickRunEffects)], [
+//               element.text("Will run "),
+//               element.text(label),
+//               element.text(" effect. click to continue."),
+//             ]),
+//           ])
+//         Error(#(reason, _, _, _)) ->
+//           footer_area(neo_orange_4, [
+//             element.text(simple_debug.reason_to_string(reason)),
+//           ])
+//       }
+//     Running(Ok(#(value, _scope)), _effects) ->
+//       // (value, _) ->
+//       footer_area(neo_green_3, [
+//         case value {
+//           Some(value) -> output.render(value)
+//           None -> element.none()
+//         },
+//       ])
+//     Running(Error(#(break.UnhandledEffect(_label, _), _, _, _)), _effects) ->
+//       footer_area(neo_green_3, [element.text("running")])
 
-  //   // run.Handling(label, _meta, _env, _stack, _blocking) ->
-  //   Running(Error(#(reason, _, _, _)), _effects) ->
-  //     footer_area(neo_orange_4, [
-  //       element.text(simple_debug.reason_to_string(reason)),
-  //     ])
-  // }
-}
+//     // run.Handling(label, _meta, _env, _stack, _blocking) ->
+//     Running(Error(#(reason, _, _, _)), _effects) ->
+//       footer_area(neo_orange_4, [
+//         element.text(simple_debug.reason_to_string(reason)),
+//       ])
+//   }
+// }
 
 pub fn fail_message(reason) {
   case reason {

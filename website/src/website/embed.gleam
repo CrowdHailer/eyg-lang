@@ -79,6 +79,8 @@ fn update(snippet, message) {
   let #(snippet, eff) = snippet.update(snippet, message)
   let #(failure, snippet_effect) = case eff {
     snippet.Nothing -> #(None, effect.none())
+    snippet.NewCode -> #(None, effect.none())
+    snippet.Confirm -> #(None, effect.none())
     snippet.Failed(failure) -> #(Some(failure), effect.none())
     // snippet.RunEffect(p) -> #(
     //   None,

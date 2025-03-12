@@ -22,11 +22,15 @@ import website/sync/cache
 // The interactive mount always evaluates new code
 // it is used in the example -> rename from snippet
 
-type Scope =
+pub type Scope =
   List(#(String, analysis.Value))
 
-type Return =
+pub type Return =
   Result(#(Option(analysis.Value), Scope), istate.Debug(analysis.Path))
+
+pub type RuntimeEffect {
+  RuntimeEffect(label: String, lift: analysis.Value, reply: analysis.Value)
+}
 
 pub type Run {
   NotRunning
@@ -41,6 +45,7 @@ pub type Interactive {
     // ------------------
     // Context of code snippet
     // scope before anything runs
+    // TODO remove this from expression
     scope: Scope,
     // spec of effects available at the top level
     effects: List(#(String, analysis.EffectSpec)),
@@ -113,15 +118,11 @@ pub fn set_references(state: Interactive, cache) {
   Interactive(..state, cache:, evaluated:, run:, analysis:)
 }
 
-fn evaluate(editable, scope, cache) {
+pub fn evaluate(editable, scope, cache) {
   e.to_annotated(editable, [])
   |> ir.clear_annotation
   |> block.execute(scope)
   |> cache.run(cache, block.resume)
-}
-
-pub type RuntimeEffect {
-  RuntimeEffect(label: String, lift: analysis.Value, reply: analysis.Value)
 }
 
 fn run_handle_effect(state, task_id, value) {

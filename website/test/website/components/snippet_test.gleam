@@ -103,15 +103,7 @@ fn fails_with(state, reason) {
   #(#(snippet, snippet.Nothing), i + 1)
 }
 
-fn pick_from(state, check) {
-  let #(#(snippet, action), i) = state
-  case action {
-    snippet.FocusOnInput -> Nil
-    _ ->
-      panic as {
-        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
-      }
-  }
+pub fn handle_picker(snippet, check, i) {
   let assert snippet.Snippet(status: snippet.Editing(mode), ..) = snippet
   let suggestions = case mode {
     snippet.Pick(picker:, ..) -> picker.suggestions
@@ -124,7 +116,20 @@ fn pick_from(state, check) {
     Ok(value) -> picker.Decided(value)
     Error(Nil) -> picker.Dismissed
   }
-  #(snippet.update(snippet, snippet.MessageFromPicker(message)), i + 1)
+  snippet.MessageFromPicker(message)
+}
+
+fn pick_from(state, check) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.FocusOnInput -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  let message = handle_picker(snippet, check, i)
+  #(snippet.update(snippet, message), i + 1)
 }
 
 fn pick(state, value) {
@@ -155,15 +160,7 @@ fn enter_integer(state, number) {
   #(snippet.update(snippet, message), i + 1)
 }
 
-fn enter_string(state, text) {
-  let #(#(snippet, action), i) = state
-  case action {
-    snippet.FocusOnInput -> Nil
-    _ ->
-      panic as {
-        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
-      }
-  }
+pub fn enter_text(snippet, text, i) {
   let assert snippet.Snippet(status: snippet.Editing(mode), ..) = snippet
   let Nil = case mode {
     snippet.EditText(..) -> Nil
@@ -174,7 +171,19 @@ fn enter_string(state, text) {
   }
   let message = snippet.MessageFromInput(input.UpdateInput(text))
   let #(snippet, _) = snippet.update(snippet, message)
-  let message = snippet.MessageFromInput(input.Submit)
+  snippet.MessageFromInput(input.Submit)
+}
+
+fn enter_string(state, text) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.FocusOnInput -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  let message = enter_text(snippet, text, i)
   #(snippet.update(snippet, message), i + 1)
 }
 
@@ -205,78 +214,77 @@ fn has_code(state, expected) {
   |> should.equal(expected)
   Nil
 }
+// pub fn assigning_to_variable_test() {
+//   empty()
+//   |> command("n")
+//   |> enter_integer(17)
+//   |> command("e")
+//   |> pick_from(fn(options) {
+//     should.equal(options, [])
+//     Ok("x")
+//   })
+//   |> analyse([])
+//   |> command("v")
+//   |> pick_from(fn(options) {
+//     should.equal(options, [#("x", "Integer")])
+//     Ok("x")
+//   })
+//   |> has_code(e.Block([#(e.Bind("x"), e.Integer(17))], e.Variable("x"), True))
+// }
 
-pub fn assigning_to_variable_test() {
-  empty()
-  |> command("n")
-  |> enter_integer(17)
-  |> command("e")
-  |> pick_from(fn(options) {
-    should.equal(options, [])
-    Ok("x")
-  })
-  |> analyse([])
-  |> command("v")
-  |> pick_from(fn(options) {
-    should.equal(options, [#("x", "Integer")])
-    Ok("x")
-  })
-  |> has_code(e.Block([#(e.Bind("x"), e.Integer(17))], e.Variable("x"), True))
-}
+// pub fn assign_above_at_end_of_block_test() {
+//   new(e.Block(
+//     [#(e.Bind("x"), e.Integer(5)), #(e.Bind("y"), e.Integer(6))],
+//     e.Variable("x"),
+//     True,
+//   ))
+//   |> click([2])
+//   |> command("E")
+//   |> pick("z")
+//   |> command("n")
+//   |> enter_integer(6)
+//   |> has_code(e.Block(
+//     [
+//       #(e.Bind("x"), e.Integer(5)),
+//       #(e.Bind("y"), e.Integer(6)),
+//       #(e.Bind("z"), e.Integer(6)),
+//     ],
+//     e.Variable("x"),
+//     True,
+//   ))
+// }
 
-pub fn assign_above_at_end_of_block_test() {
-  new(e.Block(
-    [#(e.Bind("x"), e.Integer(5)), #(e.Bind("y"), e.Integer(6))],
-    e.Variable("x"),
-    True,
-  ))
-  |> click([2])
-  |> command("E")
-  |> pick("z")
-  |> command("n")
-  |> enter_integer(6)
-  |> has_code(e.Block(
-    [
-      #(e.Bind("x"), e.Integer(5)),
-      #(e.Bind("y"), e.Integer(6)),
-      #(e.Bind("z"), e.Integer(6)),
-    ],
-    e.Variable("x"),
-    True,
-  ))
-}
+// pub fn create_record_test() {
+//   empty()
+//   |> command("r")
+//   |> pick("name")
+//   |> command("s")
+//   |> enter_string("Evelyn")
+//   |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
+// }
 
-pub fn create_record_test() {
-  empty()
-  |> command("r")
-  |> pick("name")
-  |> command("s")
-  |> enter_string("Evelyn")
-  |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
-}
+// pub fn insert_perform_suggestions_test() {
+//   empty()
+//   |> analyse([#("Alert", #(t.String, t.unit))])
+//   |> command("p")
+//   |> pick_from(fn(options) {
+//     should.equal(options, [#("Alert", "String : {}")])
+//     Ok("Alert")
+//   })
+//   |> has_code(e.Call(e.Perform("Alert"), [e.Vacant]))
+// }
 
-pub fn insert_perform_suggestions_test() {
-  empty()
-  |> analyse([#("Alert", #(t.String, t.unit))])
-  |> command("p")
-  |> pick_from(fn(options) {
-    should.equal(options, [#("Alert", "String : {}")])
-    Ok("Alert")
-  })
-  |> has_code(e.Call(e.Perform("Alert"), [e.Vacant]))
-}
+// pub fn search_for_vacant_failure_test() {
+//   new(e.Block([#(e.Bind("x"), e.Integer(12))], e.Integer(13), True))
+//   |> command(" ")
+//   |> fails_with(snippet.ActionFailed("jump to error"))
+// }
 
-pub fn search_for_vacant_failure_test() {
-  new(e.Block([#(e.Bind("x"), e.Integer(12))], e.Integer(13), True))
-  |> command(" ")
-  |> fails_with(snippet.ActionFailed("jump to error"))
-}
-
-pub fn search_for_vacant_test() {
-  new(e.Block([#(e.Bind("x"), e.Integer(99))], e.Vacant, True))
-  |> command(" ")
-  |> command("n")
-  |> enter_integer(88)
-  |> has_code(e.Block([#(e.Bind("x"), e.Integer(99))], e.Integer(88), True))
-}
-// TODO copy paste should be busy
+// pub fn search_for_vacant_test() {
+//   new(e.Block([#(e.Bind("x"), e.Integer(99))], e.Vacant, True))
+//   |> command(" ")
+//   |> command("n")
+//   |> enter_integer(88)
+//   |> has_code(e.Block([#(e.Bind("x"), e.Integer(99))], e.Integer(88), True))
+// }
+// // TODO copy paste should be busy

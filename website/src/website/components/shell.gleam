@@ -1,4 +1,6 @@
+import eyg/interpreter/break
 import eyg/ir/tree as ir
+import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -6,8 +8,12 @@ import morph/analysis
 import morph/editable as e
 import plinth/javascript/console
 import website/components/readonly
+
+// not being reused
+// import website/components/shell/mount
 import website/components/snippet
 import website/mount/interactive
+import website/sync/cache
 
 pub type ShellEntry {
   Executed(
@@ -22,18 +28,76 @@ pub type ShellFailure {
   NoMoreHistory
 }
 
+// Not Runnin
+// running awaiting ref
+// running effect is running
+// running effect has failed
+// running effect is not available
+// running and reference is being looked for
+
+pub type Run {
+  // if no type errors then unhandled effect is still running
+  Run(
+    started: Bool,
+    return: interactive.Return,
+    effects: List(interactive.RuntimeEffect),
+  )
+}
+
+// This one is tricky to remove from mount, so stick with client and mount inline
+// Shell is not a page an so it doesn't keep a client
 pub type Shell {
   Shell(
     failure: Option(ShellFailure),
     previous: List(ShellEntry),
     source: snippet.Snippet,
+    cache: cache.Cache,
+    // I need to rebuild because scope is difference and I want expression in example
+    scope: interactive.Scope,
+    // Evaluated is needed to show what effect will run in the shell console
+    // evaluated: interactive.Return,
+    // current_effects: List(interactive.RuntimeEffect),
+    run: Run,
+    // needs a task counter
   )
 }
 
 // could just be given a snippet
 pub fn init(effects, cache) {
   let source = e.from_annotated(ir.vacant())
-  Shell(None, [], snippet.init(source))
+  let scope = []
+  Shell(
+    failure: None,
+    previous: [],
+    source: snippet.active(source),
+    cache: cache,
+    scope: scope,
+    // what the task would be is derivable
+    // evaluated: interactive.evaluate(source, scope, cache),
+    // current_effects: [],
+    run: Run(False, interactive.evaluate(source, scope, cache), []),
+    // mount: mount.init(source, effects, cache),
+  )
+}
+
+// This double error handling from evaluated to 
+pub fn run_status(shell) {
+  let Shell(run:, ..) = shell
+  case run.return {
+    Ok(_) -> "Done"
+    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) ->
+      case run.started {
+        True -> "Running"
+        False ->
+          case todo {
+            True -> "Waiting"
+            False -> "Error"
+          }
+      }
+    Error(#(break.UndefinedReference(ref), meta, env, k)) -> todo
+    Error(#(break.UndefinedRelease(ref, _, _), meta, env, k)) -> todo
+    _ -> "Error"
+  }
 }
 
 fn close_many_previous(shell_entries) {
@@ -60,7 +124,13 @@ pub fn user_clicked_previous(shell: Shell, exp) {
   // Shell(..shell, source: current)
 }
 
-pub fn shell_snippet_message(shell, message) {
+pub type Effect {
+  Nothing
+  RunEffect
+}
+
+pub fn update(shell, message) {
+  let extrinsic = []
   let shell = close_all_previous(shell)
   let shell = case snippet.user_message(message) {
     True -> Shell(..shell, failure: None)
@@ -68,10 +138,73 @@ pub fn shell_snippet_message(shell, message) {
   }
   let #(source, eff) = snippet.update(shell.source, message)
   case eff {
-    snippet.Nothing -> #(Shell(..shell, source: source), None)
+    snippet.Nothing -> #(Shell(..shell, source: source), Nothing)
+    snippet.NewCode -> #(
+      Shell(
+        ..shell,
+        run: Run(
+          False,
+          {
+            io.debug("running here")
+            io.debug(source.editable)
+            interactive.evaluate(source.editable, shell.scope, shell.cache)
+            |> io.debug
+          },
+          [],
+        ),
+      ),
+      Nothing,
+    )
+    snippet.Confirm ->
+      case shell.run.started {
+        False ->
+          case shell.run.return {
+            // new_scope is all scope
+            Ok(#(value, scope)) -> {
+              io.debug(#(scope), "----------------")
+              let previous = [
+                Executed(
+                  value,
+                  shell.run.effects,
+                  readonly.new(shell.source.editable),
+                ),
+                ..shell.previous
+              ]
+              let source = e.from_annotated(ir.vacant())
+              let shell =
+                Shell(
+                  ..shell,
+                  previous:,
+                  scope:,
+                  source: snippet.active(source),
+                  // what the task would be is derivable
+                  run: Run(
+                    False,
+                    interactive.evaluate(source, scope, shell.cache),
+                    [],
+                  ),
+                )
+              #(shell, Nothing)
+            }
+            Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+              case list.key_find(extrinsic, label) {
+                Ok(#(_lift, _reply, blocking)) ->
+                  case blocking(lift) {
+                    // TODO update running task
+                    Ok(p) -> #(shell, RunEffect)
+                    Error(reason) -> #(shell, Nothing)
+                  }
+                _ -> #(shell, Nothing)
+              }
+            }
+            _ -> #(shell, Nothing)
+          }
+        // already running
+        True -> #(shell, Nothing)
+      }
     snippet.Failed(failure) -> #(
       Shell(..shell, failure: Some(SnippetFailure(failure))),
-      None,
+      Nothing,
     )
 
     // snippet.RunEffect(p) -> #(
@@ -79,17 +212,20 @@ pub fn shell_snippet_message(shell, message) {
     //   Some(snippet.await_running_effect(p)),
     // )
     snippet.FocusOnCode -> #(Shell(..shell, source: source), {
-      snippet.focus_on_buffer()
-      None
+      // TODO need to have effect
+
+      // snippet.focus_on_buffer()
+      Nothing
     })
     snippet.FocusOnInput -> #(Shell(..shell, source: source), {
-      snippet.focus_on_input()
-      None
+      // TODO need to have effect
+      // snippet.focus_on_input()
+      Nothing
     })
-    snippet.ToggleHelp -> #(Shell(..shell, source: source), None)
+    snippet.ToggleHelp -> #(Shell(..shell, source: source), Nothing)
     snippet.MoveAbove -> {
       case shell.previous {
-        [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), None)
+        [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), Nothing)
         [Executed(_value, _effects, readonly), ..] -> {
           todo as "still need a home for these"
           // let scope = shell.source.scope
@@ -97,18 +233,20 @@ pub fn shell_snippet_message(shell, message) {
           // let cache = shell.source.cache
 
           // let current = snippet.active(readonly.source, scope, effects, cache)
-          // #(Shell(..shell, source: current), None)
+          // #(Shell(..shell, source: current), Nothing)
         }
       }
     }
-    snippet.MoveBelow -> #(Shell(..shell, source: source), None)
+    snippet.MoveBelow -> #(Shell(..shell, source: source), Nothing)
     snippet.ReadFromClipboard -> #(
       Shell(..shell, source: source),
-      Some(snippet.read_from_clipboard()),
+      todo as "clipboard",
+      // Some(snippet.read_from_clipboard()),
     )
     snippet.WriteToClipboard(text) -> #(
       Shell(..shell, source: source),
-      Some(snippet.write_to_clipboard(text)),
+      todo as "clipboard",
+      // Some(snippet.write_to_clipboard(text)),
     )
     // snippet.Conclude(value, effects, scope) -> {
     //   let previous = [
@@ -120,7 +258,7 @@ pub fn shell_snippet_message(shell, message) {
 
     //   let source = snippet.active(e.Vacant, scope, effects, cache)
     //   let shell = Shell(..shell, source: source, previous: previous)
-    //   #(shell, None)
+    //   #(shell, Nothing)
     // }
   }
 }

@@ -160,6 +160,9 @@ pub fn update(state: State, message) {
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
+        snippet.NewCode -> #(display_help, effect.none())
+
+        snippet.Confirm -> #(display_help, effect.none())
         snippet.Failed(_failure) -> {
           panic as "put on some state"
         }
@@ -208,14 +211,13 @@ pub fn update(state: State, message) {
       #(state, effect.none())
     }
     ShellMessage(message) -> {
-      let #(shell, snippet_effect) =
-        shell.shell_snippet_message(state.shell, message)
+      let #(shell, snippet_effect) = shell.update(state.shell, message)
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
       let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
       let state = State(..state, sync:, shell:)
-      let snippet_effect = case snippet_effect {
+      let snippet_effect = case todo as "snipppet effect here" {
         None -> effect.none()
         Some(a) -> dispatch_to_shell(a)
       }
@@ -527,8 +529,9 @@ pub fn render(state: State) {
             [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
             [snippet.render_just_projection(state.shell.source, True)],
           ),
-          todo as "render fix",
-          // case state.shell.source.run {
+          element.text("sehell stuff"),
+          // todo as "render fix",
+        // case state.shell.source.run {
         //   snippet.NotRunning ->
         //     h.button(
         //       [

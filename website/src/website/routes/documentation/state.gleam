@@ -214,7 +214,6 @@ pub type State {
 
 pub type Active {
   Editing(String, Option(snippet.Failure))
-  Running(String)
   Nothing
 }
 
@@ -314,13 +313,14 @@ pub fn update(state: State, message) {
           let snippet = snippet.finish_editing(snippet)
           set_example(state, current, snippet)
         }
-        Running(_current) -> panic as "should not click around when running"
         _ -> state
       }
       let snippet = get_example(state, identifier)
       let #(snippet, eff) = snippet.update(snippet, message)
       let #(failure, snippet_effect) = case eff {
         snippet.Nothing -> #(None, effect.none())
+        snippet.NewCode -> #(None, effect.none())
+        snippet.Confirm -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
 
         // snippet.RunEffect(p) -> #(
