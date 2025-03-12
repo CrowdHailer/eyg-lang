@@ -707,17 +707,25 @@ fn paste(state) {
 
 fn search_vacant(state) {
   let Snippet(projection: proj, ..) = state
-  let new = do_search_vacant(proj)
-  navigate_source(new, state)
+  let bottom = p.zoom_in(proj)
+  let initial = p.path(bottom)
+  case do_search_vacant(bottom, initial) {
+    Ok(new) -> navigate_source(new, state)
+    Error(Nil) -> action_failed(state, "jump to error")
+  }
 }
 
-fn do_search_vacant(proj) {
+fn do_search_vacant(proj, initial) {
   let next = navigation.next(proj)
-  case next {
-    #(p.Exp(e.Vacant), _zoom) -> next
-    // If at the top break, can search again to loop around
-    #(p.Exp(_), []) -> next
-    _ -> do_search_vacant(next)
+  case p.path(next) == initial {
+    True -> Error(Nil)
+    False ->
+      case next {
+        #(p.Exp(e.Vacant), _zoom) -> Ok(next)
+        // If at the top break, can search again to loop around
+        #(p.Exp(_), []) -> Error(Nil)
+        _ -> do_search_vacant(next, initial)
+      }
   }
 }
 

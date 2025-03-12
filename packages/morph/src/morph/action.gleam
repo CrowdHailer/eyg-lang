@@ -63,15 +63,17 @@ pub fn make_record(projection, analysis) {
       let zoom = [p.RecordValue(first, [], rest, p.Record), ..zoom]
       Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
-    #(p.Exp(e.Vacant), zoom), _ -> {
-      let new = e.Record([], None)
-      Ok(Updated(#(p.Exp(new), zoom)))
-    }
+    // Mostly this wasn't helpful
+    // #(p.Exp(e.Vacant), zoom), _ -> {
+    //   let new = e.Record([], None)
+    //   Ok(Updated(#(p.Exp(new), zoom)))
+    // }
+    // go to field to cover case that value is vacant
     #(p.Exp(value), zoom), _ -> {
       Ok(
         Choose("", [], fn(label) {
-          let new = e.Record([#(label, value)], None)
-          #(p.Exp(new), zoom)
+          let zoom = [p.RecordValue(label, [], [], p.Record), ..zoom]
+          #(p.Exp(value), zoom)
         }),
       )
     }

@@ -115,6 +115,22 @@ pub fn focus_in_block(assigns, then, path, acc) {
   }
 }
 
+pub fn zoom_in(proj) {
+  let #(focus, zoom) = proj
+  do_zoom_in(focus, zoom)
+}
+
+fn do_zoom_in(focus, zoom) {
+  case focus {
+    Exp(ast) ->
+      case do_focus_at(ast, [0], zoom) {
+        Ok(#(focus, zoom)) -> do_zoom_in(focus, zoom)
+        Error(_) -> #(focus, zoom)
+      }
+    _ -> #(focus, zoom)
+  }
+}
+
 // TODO make private but need a step in function for naviagtion
 pub fn do_focus_at(ast, path, acc) {
   case ast, path {

@@ -1,7 +1,12 @@
 import eyg/ir/dag_json
 import gleam/dictx
+import gleam/int
+import gleam/option.{None}
+import gleam/string
 import gleeunit/should
 import morph/editable as e
+import morph/input
+import morph/picker
 import website/components/snippet
 import website/sync/cache
 import website/sync/client
@@ -51,8 +56,201 @@ pub fn example_loads_index_and_fragment_test() {
   snippet.type_errors(state)
   |> should.equal([])
 }
+
 // pub fn a_new_snippet_request_internal_reference() -> Nil {
 //   todo
 // }
 // TODO test special is no longer here
 // TODO test that a returned value still has type errors
+
+fn empty() {
+  new(e.from_annotated(ir.vacant()))
+}
+
+fn new(source) {
+  let #(client, _) = client.default()
+  let snippet = snippet.init(source, [], [], client.cache)
+  let result = snippet.update(snippet, snippet.UserFocusedOnCode)
+  #(result, 0)
+}
+
+fn command(state, key) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.Nothing | snippet.FocusOnCode -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  #(snippet.update(snippet, snippet.UserPressedCommandKey(key)), i + 1)
+}
+
+fn fails_with(state, reason) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.Failed(message) -> should.equal(message, reason)
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  // increment counter as dismissing error would normally mean a navigation
+  #(#(snippet, snippet.Nothing), i + 1)
+}
+
+fn pick_from(state, check) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.FocusOnInput -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  let assert snippet.Snippet(status: snippet.Editing(mode), ..) = snippet
+  let suggestions = case mode {
+    snippet.Pick(picker:, ..) -> picker.suggestions
+    _ ->
+      panic as {
+        "bad mode at " <> int.to_string(i) <> ": " <> string.inspect(mode)
+      }
+  }
+  let message = case check(suggestions) {
+    Ok(value) -> picker.Decided(value)
+    Error(Nil) -> picker.Dismissed
+  }
+  #(snippet.update(snippet, snippet.MessageFromPicker(message)), i + 1)
+}
+
+fn pick(state, value) {
+  pick_from(state, fn(_) { Ok(value) })
+}
+
+fn enter_integer(state, number) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.FocusOnInput -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  let assert snippet.Snippet(status: snippet.Editing(mode), ..) = snippet
+  let Nil = case mode {
+    snippet.EditInteger(..) -> Nil
+    _ ->
+      panic as {
+        "bad mode at " <> int.to_string(i) <> ": " <> string.inspect(mode)
+      }
+  }
+  let message =
+    snippet.MessageFromInput(input.UpdateInput(int.to_string(number)))
+  let #(snippet, _) = snippet.update(snippet, message)
+  let message = snippet.MessageFromInput(input.Submit)
+  #(snippet.update(snippet, message), i + 1)
+}
+
+fn enter_string(state, text) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.FocusOnInput -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  let assert snippet.Snippet(status: snippet.Editing(mode), ..) = snippet
+  let Nil = case mode {
+    snippet.EditText(..) -> Nil
+    _ ->
+      panic as {
+        "bad mode at " <> int.to_string(i) <> ": " <> string.inspect(mode)
+      }
+  }
+  let message = snippet.MessageFromInput(input.UpdateInput(text))
+  let #(snippet, _) = snippet.update(snippet, message)
+  let message = snippet.MessageFromInput(input.Submit)
+  #(snippet.update(snippet, message), i + 1)
+}
+
+fn click(state, path) {
+  let #(#(snippet, _action), i) = state
+  #(snippet.update(snippet, snippet.UserClickedCode(path)), i + 1)
+}
+
+fn has_code(state, expected) {
+  let #(#(snippet, action), i) = state
+  case action {
+    snippet.FocusOnCode -> Nil
+    _ ->
+      panic as {
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  snippet.source(snippet)
+  |> should.equal(expected)
+  Nil
+}
+
+pub fn assigning_to_variable_test() {
+  empty()
+  |> command("n")
+  |> enter_integer(17)
+  |> command("e")
+  |> pick_from(fn(options) {
+    should.equal(options, [])
+    Ok("x")
+  })
+  |> command("v")
+  |> pick_from(fn(options) {
+    should.equal(options, [#("x", "Integer")])
+    Ok("x")
+  })
+  |> has_code(e.Block([#(e.Bind("x"), e.Integer(17))], e.Variable("x"), True))
+}
+
+pub fn assign_above_at_end_of_block_test() {
+  new(e.Block(
+    [#(e.Bind("x"), e.Integer(5)), #(e.Bind("y"), e.Integer(6))],
+    e.Variable("x"),
+    True,
+  ))
+  |> click([2])
+  |> command("E")
+  |> pick("z")
+  |> command("n")
+  |> enter_integer(6)
+  |> has_code(e.Block(
+    [
+      #(e.Bind("x"), e.Integer(5)),
+      #(e.Bind("y"), e.Integer(6)),
+      #(e.Bind("z"), e.Integer(6)),
+    ],
+    e.Variable("x"),
+    True,
+  ))
+}
+
+pub fn create_record_test() {
+  empty()
+  |> command("r")
+  |> pick("name")
+  |> command("s")
+  |> enter_string("Evelyn")
+  |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
+}
+
+pub fn search_for_vacant_failure_test() {
+  new(e.Block([#(e.Bind("x"), e.Integer(12))], e.Integer(13), True))
+  |> command(" ")
+  |> fails_with(snippet.ActionFailed("jump to error"))
+}
+
+pub fn search_for_vacant_test() {
+  new(e.Block([#(e.Bind("x"), e.Integer(99))], e.Vacant, True))
+  |> command(" ")
+  |> command("n")
+  |> enter_integer(88)
+  |> has_code(e.Block([#(e.Bind("x"), e.Integer(99))], e.Integer(88), True))
+}
