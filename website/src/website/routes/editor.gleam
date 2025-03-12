@@ -163,10 +163,10 @@ pub fn update(state: State, message) {
         snippet.Failed(_failure) -> {
           panic as "put on some state"
         }
-        snippet.RunEffect(p) -> #(
-          display_help,
-          dispatch_to_snippet(snippet.await_running_effect(p)),
-        )
+        // snippet.RunEffect(p) -> #(
+        //   display_help,
+        //   dispatch_to_snippet(snippet.await_running_effect(p)),
+        // )
         snippet.FocusOnCode -> #(
           display_help,
           dispatch_nothing(snippet.focus_on_buffer()),
@@ -186,9 +186,9 @@ pub fn update(state: State, message) {
           display_help,
           dispatch_to_snippet(snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _, _) -> {
-          #(display_help, effect.none())
-        }
+        // snippet.Conclude(_, _, _) -> {
+        //   #(display_help, effect.none())
+        // }
       }
       // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
@@ -236,11 +236,12 @@ pub fn update(state: State, message) {
     SyncMessage(message) -> {
       let State(sync: sync_client, ..) = state
       let #(sync_client, effect) = client.update(sync_client, message)
-      let snippet = snippet.set_references(state.source, sync_client.cache)
+      let snippet = todo as "what's happening with sync"
+      // let snippet = snippet.set_references(state.source, sync_client.cache)
       let shell =
         shell.Shell(
           ..state.shell,
-          source: snippet.set_references(state.shell.source, sync_client.cache),
+          // source: snippet.set_references(state.shell.source, sync_client.cache),
         )
       let state = State(..state, sync: sync_client, source: snippet, shell:)
       #(state, client.lustre_run(effect, SyncMessage))
@@ -526,37 +527,38 @@ pub fn render(state: State) {
             [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
             [snippet.render_just_projection(state.shell.source, True)],
           ),
-          case state.shell.source.run {
-            snippet.NotRunning ->
-              h.button(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-                  ),
-                  event.on_click(snippet.UserPressedCommandKey("Enter")),
-                ],
-                [outline.play_circle()],
-              )
-            snippet.Running(Error(_), _) ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
-                  ),
-                ],
-                [outline.exclamation_circle()],
-              )
+          todo as "render fix",
+          // case state.shell.source.run {
+        //   snippet.NotRunning ->
+        //     h.button(
+        //       [
+        //         a.class(
+        //           "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+        //         ),
+        //         event.on_click(snippet.UserPressedCommandKey("Enter")),
+        //       ],
+        //       [outline.play_circle()],
+        //     )
+        //   snippet.Running(Error(_), _) ->
+        //     h.span(
+        //       [
+        //         a.class(
+        //           "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+        //         ),
+        //       ],
+        //       [outline.exclamation_circle()],
+        //     )
 
-            snippet.Running(_, _) ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
-                  ),
-                ],
-                [outline.arrow_path()],
-              )
-          },
+        //   snippet.Running(_, _) ->
+        //     h.span(
+        //       [
+        //         a.class(
+        //           "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+        //         ),
+        //       ],
+        //       [outline.arrow_path()],
+        //     )
+        // },
         ],
       )
         |> element.map(ShellMessage),

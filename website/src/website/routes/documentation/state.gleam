@@ -341,10 +341,10 @@ pub fn update(state: State, message) {
         snippet.Nothing -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
 
-        snippet.RunEffect(p) -> #(
-          None,
-          dispatch_to_snippet(identifier, snippet.await_running_effect(p)),
-        )
+        // snippet.RunEffect(p) -> #(
+        //   None,
+        //   dispatch_to_snippet(identifier, snippet.await_running_effect(p)),
+        // )
         snippet.FocusOnCode -> #(
           None,
           dispatch_nothing(snippet.focus_on_buffer()),
@@ -364,7 +364,7 @@ pub fn update(state: State, message) {
           None,
           dispatch_to_snippet(identifier, snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _, _) -> #(None, effect.none())
+        // snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_example(state, identifier, snippet)
       let state = State(..state, active: Editing(identifier, failure))
@@ -379,7 +379,8 @@ pub fn update(state: State, message) {
       let #(sync_client, effect) = client.update(sync_client, message)
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
-          snippet.set_references(v, sync_client.cache)
+          todo as "set on all examples"
+          // snippet.set_references(v, sync_client.cache)
         })
       let state = State(..state, cache: sync_client, snippets: snippets)
       #(state, client.lustre_run(effect, SyncMessage))

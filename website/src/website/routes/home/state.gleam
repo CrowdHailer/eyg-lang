@@ -176,10 +176,10 @@ pub fn update(state: State, message) {
       let #(failure, snippet_effect) = case eff {
         snippet.Nothing -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
-        snippet.RunEffect(p) -> #(
-          None,
-          dispatch_to_snippet(id, snippet.await_running_effect(p)),
-        )
+        // snippet.RunEffect(p) -> #(
+        //   None,
+        //   dispatch_to_snippet(id, snippet.await_running_effect(p)),
+        // )
         snippet.FocusOnCode -> #(
           None,
           dispatch_nothing(snippet.focus_on_buffer()),
@@ -199,7 +199,7 @@ pub fn update(state: State, message) {
           None,
           dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _, _) -> #(None, effect.none())
+        // snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_snippet(state, id, snippet)
       let references = snippet.references(snippet)
@@ -231,7 +231,8 @@ pub fn update(state: State, message) {
       let #(sync_client, effect) = client.update(sync_client, message)
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
-          snippet.set_references(v, sync_client.cache)
+          todo as "need to update examples"
+          // snippet.set_references(v, sync_client.cache)
         })
       let reload = reload.update_cache(state.reload, sync_client.cache)
       let state = State(..state, reload:, sync: sync_client, snippets:)

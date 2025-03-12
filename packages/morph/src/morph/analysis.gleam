@@ -25,10 +25,11 @@ pub type Context {
   )
 }
 
-pub type Analysis =
-  #(
-    Dict(Int, binding.Binding),
-    List(
+pub type Analysis {
+
+  Analysis(
+    bindings: Dict(Int, binding.Binding),
+    inferred: List(
       #(
         List(Int),
         #(
@@ -40,6 +41,7 @@ pub type Analysis =
       ),
     ),
   )
+}
 
 pub fn within_environment(runtime_env, refs, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
@@ -154,7 +156,7 @@ pub fn do_analyse(editable, context, eff) -> Analysis {
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let types = ir.get_annotation(tree)
   let paths = ir.get_annotation(e.to_annotated(editable, []))
-  #(bindings, list.zip(paths, types))
+  Analysis(bindings, list.zip(paths, types))
 }
 
 pub fn analyse(projection, context, eff) -> Analysis {
@@ -178,7 +180,7 @@ pub fn analyse(projection, context, eff) -> Analysis {
 // }
 
 fn env_at(analysis, path) {
-  let #(_bindings, pairs) = analysis
+  let Analysis(_bindings, pairs) = analysis
   case list.key_find(pairs, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
@@ -191,7 +193,7 @@ fn env_at(analysis, path) {
 }
 
 pub fn do_type_at(analysis, projection: #(_, _)) {
-  let #(bindings, pairs) = analysis
+  let Analysis(bindings, pairs) = analysis
   let path = projection.path(projection)
   // tests to remove this
   // io.debug(path)
@@ -242,7 +244,7 @@ fn rows(t, acc) {
 }
 
 pub fn type_errors(analysis) {
-  let #(_bindings, pairs) = analysis
+  let Analysis(_bindings, pairs) = analysis
   list.filter_map(pairs, fn(r) {
     let #(rev, #(r, _, _, _)) = r
     case r {

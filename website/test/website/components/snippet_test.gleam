@@ -1,13 +1,15 @@
 import eyg/ir/dag_json
 import gleam/dictx
 import gleam/int
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
+import morph/analysis
 import morph/editable as e
 import morph/input
 import morph/picker
 import website/components/snippet
+import website/mount/interactive
 import website/sync/cache
 import website/sync/client
 
@@ -31,31 +33,32 @@ fn index() {
   )
 }
 
-pub fn example_loads_index_and_fragment_test() {
-  let source = ir.release("foo", 1, foo_cid())
-  let #(client, _) = client.default()
-  let state = snippet.init(e.from_annotated(source), [], [], client.cache)
-  snippet.type_errors(state)
-  |> should.equal([#([], snippet.ReleaseNotFetched("foo", 1, 0))])
+// pub fn example_loads_index_and_fragment_test() {
+//   let source = ir.release("foo", 1, foo_cid())
+//   let #(client, _) = client.default()
+//   let state = snippet.init(e.from_annotated(source), [], [], client.cache)
+//   snippet.type_errors(state)
+//   |> should.equal([#([], snippet.ReleaseNotFetched("foo", 1, 0))])
 
-  let #(client, eff) = client.update(client, client.IndexFetched(Ok(index())))
-  should.equal(eff, [])
-  let state = snippet.set_references(state, client.cache)
+//   let #(client, eff) = client.update(client, client.IndexFetched(Ok(index())))
+//   should.equal(eff, [])
+//   todo as "This wont live in references"
+//   // let state = snippet.set_references(state, client.cache)
 
-  snippet.type_errors(state)
-  |> should.equal([
-    #([], snippet.ReleaseFragmentNotFetched("foo", 1, foo_cid())),
-  ])
+//   // snippet.type_errors(state)
+//   // |> should.equal([
+//   //   #([], snippet.ReleaseFragmentNotFetched("foo", 1, foo_cid())),
+//   // ])
 
-  let message =
-    client.FragmentFetched(foo_cid(), Ok(dag_json.to_block(foo_src())))
-  let #(client, eff) = client.update(client, message)
-  should.equal(eff, [])
+//   // let message =
+//   //   client.FragmentFetched(foo_cid(), Ok(dag_json.to_block(foo_src())))
+//   // let #(client, eff) = client.update(client, message)
+//   // should.equal(eff, [])
 
-  let state = snippet.set_references(state, client.cache)
-  snippet.type_errors(state)
-  |> should.equal([])
-}
+//   // let state = snippet.set_references(state, client.cache)
+//   // snippet.type_errors(state)
+//   // |> should.equal([])
+// }
 
 // pub fn a_new_snippet_request_internal_reference() -> Nil {
 //   todo
@@ -179,6 +182,15 @@ fn click(state, path) {
   #(snippet.update(snippet, snippet.UserClickedCode(path)), i + 1)
 }
 
+fn analyse(state) {
+  let #(client, _) = client.default()
+  let #(#(snippet, action), i) = state
+  let snippet.Snippet(editable:, ..) = snippet
+  let analysis = interactive.do_analysis(editable, [], client.cache, [])
+  let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
+  #(#(snippet, action), i)
+}
+
 fn has_code(state, expected) {
   let #(#(snippet, action), i) = state
   case action {
@@ -202,6 +214,7 @@ pub fn assigning_to_variable_test() {
     should.equal(options, [])
     Ok("x")
   })
+  |> analyse()
   |> command("v")
   |> pick_from(fn(options) {
     should.equal(options, [#("x", "Integer")])
@@ -241,6 +254,17 @@ pub fn create_record_test() {
   |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
 }
 
+pub fn insert_perform_suggestions_test() {
+  empty()
+  |> analyse()
+  |> command("p")
+  |> pick_from(fn(options) {
+    should.equal(options, [#("x", "Integer")])
+    Ok("x")
+  })
+  |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
+}
+
 pub fn search_for_vacant_failure_test() {
   new(e.Block([#(e.Bind("x"), e.Integer(12))], e.Integer(13), True))
   |> command(" ")
@@ -254,3 +278,4 @@ pub fn search_for_vacant_test() {
   |> enter_integer(88)
   |> has_code(e.Block([#(e.Bind("x"), e.Integer(99))], e.Integer(88), True))
 }
+// TODO copy paste should be busy

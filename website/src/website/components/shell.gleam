@@ -6,11 +6,12 @@ import morph/editable as e
 import plinth/javascript/console
 import website/components/readonly
 import website/components/snippet
+import website/mount/interactive
 
 pub type ShellEntry {
   Executed(
-    Option(snippet.Value),
-    List(snippet.RuntimeEffect),
+    Option(interactive.Value),
+    List(interactive.RuntimeEffect),
     readonly.Readonly,
   )
 }
@@ -49,12 +50,13 @@ fn close_all_previous(shell: Shell) {
 }
 
 pub fn user_clicked_previous(shell: Shell, exp) {
-  let scope = shell.source.scope
-  let effects = shell.source.effects
-  let cache = shell.source.cache
+  todo as "where do these live"
+  // let scope = shell.source.scope
+  // let effects = shell.source.effects
+  // let cache = shell.source.cache
 
-  let current = snippet.active(exp, scope, effects, cache)
-  Shell(..shell, source: current)
+  // let current = snippet.active(exp, scope, effects, cache)
+  // Shell(..shell, source: current)
 }
 
 pub fn shell_snippet_message(shell, message) {
@@ -71,10 +73,10 @@ pub fn shell_snippet_message(shell, message) {
       None,
     )
 
-    snippet.RunEffect(p) -> #(
-      Shell(..shell, source: source),
-      Some(snippet.await_running_effect(p)),
-    )
+    // snippet.RunEffect(p) -> #(
+    //   Shell(..shell, source: source),
+    //   Some(snippet.await_running_effect(p)),
+    // )
     snippet.FocusOnCode -> #(Shell(..shell, source: source), {
       snippet.focus_on_buffer()
       None
@@ -88,12 +90,13 @@ pub fn shell_snippet_message(shell, message) {
       case shell.previous {
         [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), None)
         [Executed(_value, _effects, readonly), ..] -> {
-          let scope = shell.source.scope
-          let effects = shell.source.effects
-          let cache = shell.source.cache
+          todo as "still need a home for these"
+          // let scope = shell.source.scope
+          // let effects = shell.source.effects
+          // let cache = shell.source.cache
 
-          let current = snippet.active(readonly.source, scope, effects, cache)
-          #(Shell(..shell, source: current), None)
+          // let current = snippet.active(readonly.source, scope, effects, cache)
+          // #(Shell(..shell, source: current), None)
         }
       }
     }
@@ -106,18 +109,18 @@ pub fn shell_snippet_message(shell, message) {
       Shell(..shell, source: source),
       Some(snippet.write_to_clipboard(text)),
     )
-    snippet.Conclude(value, effects, scope) -> {
-      let previous = [
-        Executed(value, effects, readonly.new(snippet.source(shell.source))),
-        ..shell.previous
-      ]
-      let effects = shell.source.effects
-      let cache = shell.source.cache
+    // snippet.Conclude(value, effects, scope) -> {
+    //   let previous = [
+    //     Executed(value, effects, readonly.new(snippet.source(shell.source))),
+    //     ..shell.previous
+    //   ]
+    //   let effects = shell.source.effects
+    //   let cache = shell.source.cache
 
-      let source = snippet.active(e.Vacant, scope, effects, cache)
-      let shell = Shell(..shell, source: source, previous: previous)
-      #(shell, None)
-    }
+    //   let source = snippet.active(e.Vacant, scope, effects, cache)
+    //   let shell = Shell(..shell, source: source, previous: previous)
+    //   #(shell, None)
+    // }
   }
 }
 
