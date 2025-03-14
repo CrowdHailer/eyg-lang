@@ -105,6 +105,8 @@ pub type Message {
 
 pub type Effect {
   Nothing
+  FocusOnCode
+  FocusOnInput
   // RunFinished
   RunEffect(value: analysis.Value, handler: analysis.ExternalBlocking)
   ReadFromClipboard
@@ -142,13 +144,8 @@ pub fn update(shell, message) {
           Shell(..shell, failure: Some(SnippetFailure(failure))),
           Nothing,
         )
-        // TODO need to handle focusing on code by returning two effects or not actually have it at this level
-        snippet.FocusOnCode -> new_code(shell)
-        snippet.FocusOnInput -> #(shell, {
-          // TODO need to have effect
-          // snippet.focus_on_input()
-          Nothing
-        })
+        snippet.ReturnToCode -> new_code(shell)
+        snippet.FocusOnInput -> #(shell, FocusOnInput)
         snippet.ToggleHelp -> #(shell, Nothing)
         snippet.MoveAbove -> {
           case shell.previous {
@@ -162,7 +159,6 @@ pub fn update(shell, message) {
       }
     }
     ExternalHandlerCompleted(result) -> {
-      // Some/None on further effects
       let #(run, task) = handle_external(shell, result)
       let shell = Shell(..shell, run:)
       case task {
@@ -207,7 +203,7 @@ fn new_code(shell) {
   let run = new_run(source.editable, scope, cache)
 
   let source = snippet_analyse(source, scope, cache, shell.effects)
-  #(Shell(..shell, source:, run:), Nothing)
+  #(Shell(..shell, source:, run:), FocusOnCode)
 }
 
 fn confirm(shell) {

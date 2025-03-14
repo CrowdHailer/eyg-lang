@@ -206,7 +206,8 @@ pub fn user_message(message) {
 pub type Effect {
   Nothing
   Failed(Failure)
-  FocusOnCode
+  // This always assume code hasn't changed
+  ReturnToCode
   FocusOnInput
   ToggleHelp
   MoveAbove
@@ -255,10 +256,6 @@ pub fn read_from_clipboard() {
   // TODO make busy
 }
 
-// pub fn await_running_effect(promise) {
-//   promise.map(promise, RuntimeRepliedFromExternalEffect)
-// }
-
 fn navigate_source(proj, state) {
   let status = Editing(Command)
   let state = Snippet(..state, status: status, projection: proj)
@@ -292,13 +289,12 @@ fn update_source_from_buffer(proj, state) {
 }
 
 fn update_source_from_pallet(proj, state) {
-  io.debug("needs focus on bffer")
   #(update_source(proj, state), NewCode)
 }
 
 fn return_to_buffer(state) {
   let state = Snippet(..state, status: Editing(Command))
-  #(state, FocusOnCode)
+  #(state, ReturnToCode)
 }
 
 fn change_mode(state, mode) {

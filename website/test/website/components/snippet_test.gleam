@@ -81,7 +81,7 @@ fn new(source) {
 fn command(state, key) {
   let #(#(snippet, action), i) = state
   case action {
-    snippet.Nothing | snippet.FocusOnCode -> Nil
+    snippet.Nothing | snippet.ReturnToCode -> Nil
     _ ->
       panic as {
         "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
@@ -204,7 +204,7 @@ fn analyse(state, effects) {
 fn has_code(state, expected) {
   let #(#(snippet, action), i) = state
   case action {
-    snippet.FocusOnCode -> Nil
+    snippet.ReturnToCode -> Nil
     _ ->
       panic as {
         "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)

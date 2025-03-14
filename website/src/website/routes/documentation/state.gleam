@@ -116,8 +116,7 @@ const functions_example = e.Block(
         [e.Bind("f"), e.Bind("x")],
         e.Call(e.Variable("f"), [e.Call(e.Variable("f"), [e.Variable("x")])]),
       ),
-    ),
-    #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
+    ), #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
   ],
   e.Call(e.Variable("inc2"), [e.Integer(5)]),
   False,
@@ -156,16 +155,14 @@ const fix_example = e.Block(
                       True,
                     ),
                   ),
-                ),
-                #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
+                ), #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
               ],
               None,
             ),
           ),
         ],
       ),
-    ),
-    #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
+    ), #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
   ],
   e.Call(e.Variable("count"), [e.List([e.Integer(5)], None)]),
   False,
@@ -322,12 +319,7 @@ pub fn update(state: State, message) {
         snippet.NewCode -> #(None, effect.none())
         snippet.Confirm -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
-
-        // snippet.RunEffect(p) -> #(
-        //   None,
-        //   dispatch_to_snippet(identifier, snippet.await_running_effect(p)),
-        // )
-        snippet.FocusOnCode -> #(
+        snippet.ReturnToCode -> #(
           None,
           dispatch_nothing(snippet.focus_on_buffer()),
         )
@@ -346,7 +338,6 @@ pub fn update(state: State, message) {
           None,
           dispatch_to_snippet(identifier, snippet.write_to_clipboard(text)),
         )
-        // snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_example(state, identifier, snippet)
       let state = State(..state, active: Editing(identifier, failure))

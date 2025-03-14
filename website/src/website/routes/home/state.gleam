@@ -181,11 +181,7 @@ pub fn update(state: State, message) {
 
         snippet.Confirm -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
-        // snippet.RunEffect(p) -> #(
-        //   None,
-        //   dispatch_to_snippet(id, snippet.await_running_effect(p)),
-        // )
-        snippet.FocusOnCode -> #(
+        snippet.ReturnToCode -> #(
           None,
           dispatch_nothing(snippet.focus_on_buffer()),
         )

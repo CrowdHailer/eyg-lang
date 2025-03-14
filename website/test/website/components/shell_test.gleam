@@ -43,7 +43,7 @@ fn update_cache(state, cache) {
 
 fn command(state, key) {
   let #(#(shell, action), i) = state
-  assert_action(action, [shell.Nothing], i)
+  assert_action(action, [shell.Nothing, shell.FocusOnCode], i)
   #(
     shell.update(shell, CurrentMessage(snippet.UserPressedCommandKey(key))),
     i + 1,

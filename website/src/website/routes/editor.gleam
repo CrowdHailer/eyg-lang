@@ -3,12 +3,9 @@ import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/io
-import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
-import gleam/listx
 import gleam/option.{None, Some}
-import gleam/string
 import gleroglero/outline
 import lustre
 import lustre/attribute as a
@@ -25,7 +22,6 @@ import mysig/html
 import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
-import plinth/javascript/console
 import website/components/autocomplete
 import website/components/examples
 import website/components/output
@@ -166,11 +162,7 @@ pub fn update(state: State, message) {
         snippet.Failed(_failure) -> {
           panic as "put on some state"
         }
-        // snippet.RunEffect(p) -> #(
-        //   display_help,
-        //   dispatch_to_snippet(snippet.await_running_effect(p)),
-        // )
-        snippet.FocusOnCode -> #(
+        snippet.ReturnToCode -> #(
           display_help,
           dispatch_nothing(snippet.focus_on_buffer()),
         )
@@ -220,6 +212,8 @@ pub fn update(state: State, message) {
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
           dispatch_to_shell(shell.read_from_clipboard())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
       }
       #(
         state,
@@ -248,6 +242,8 @@ pub fn update(state: State, message) {
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
           dispatch_to_shell(shell.read_from_clipboard())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
       }
       let state = State(..state, sync:, shell:)
       #(

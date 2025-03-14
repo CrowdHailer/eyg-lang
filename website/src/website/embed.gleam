@@ -82,11 +82,7 @@ fn update(snippet, message) {
     snippet.NewCode -> #(None, effect.none())
     snippet.Confirm -> #(None, effect.none())
     snippet.Failed(failure) -> #(Some(failure), effect.none())
-    // snippet.RunEffect(p) -> #(
-    //   None,
-    //   dispatch_to_snippet(snippet.await_running_effect(p)),
-    // )
-    snippet.FocusOnCode -> #(None, dispatch_nothing(snippet.focus_on_buffer()))
+    snippet.ReturnToCode -> #(None, dispatch_nothing(snippet.focus_on_buffer()))
     snippet.FocusOnInput -> #(None, dispatch_nothing(snippet.focus_on_input()))
     snippet.ToggleHelp -> #(None, effect.none())
     snippet.MoveAbove -> #(None, effect.none())
@@ -99,7 +95,6 @@ fn update(snippet, message) {
       None,
       dispatch_to_snippet(snippet.write_to_clipboard(text)),
     )
-    // snippet.Conclude(_, _, _) -> #(None, effect.none())
   }
   io.debug(failure)
   #(snippet, snippet_effect)
