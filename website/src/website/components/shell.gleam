@@ -3,6 +3,7 @@ import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/io
+import gleam/javascript/promise
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -98,7 +99,7 @@ pub type Message {
   // Current could be called input
   CacheUpdate(cache.Cache)
   CurrentMessage(snippet.Message)
-  ExternalHandlerCompleted(Result(analysis.Value, istate.Debug(analysis.Path)))
+  ExternalHandlerCompleted(Result(analysis.Value, istate.Reason(analysis.Path)))
   UserClickedPrevious(Int)
 }
 
@@ -292,7 +293,7 @@ fn handle_external(shell, result) {
   // TODO need to pair up with a run number
   let Run(return:, effects:, ..) = run
   case return {
-    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
+    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case result {
         Ok(reply) -> {
           let effects = [
@@ -308,7 +309,10 @@ fn handle_external(shell, result) {
 
           #(Run(True, return, effects), action)
         }
-        Error(reason) -> #(Run(False, Error(reason), effects), None)
+        Error(reason) -> #(
+          Run(False, Error(#(reason, meta, env, k)), effects),
+          None,
+        )
       }
     }
     _ -> todo
@@ -348,4 +352,14 @@ pub fn message_from_previous_code(shell: Shell, m, i) {
   }
   let shell = Shell(..shell, previous: previous)
   #(shell, effect)
+}
+
+pub fn run_effect(lift, blocking) {
+  case blocking(lift) {
+    Ok(p) -> promise.map(p, fn(v) { ExternalHandlerCompleted(Ok(v)) })
+    Error(debug) ->
+      promise.resolve(
+        ExternalHandlerCompleted(Error(todo as "blocking needs to track debug")),
+      )
+  }
 }

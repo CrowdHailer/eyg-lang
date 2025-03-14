@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/io
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
@@ -205,19 +206,20 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect]))
     }
     ShellMessage(message) -> {
-      let #(shell, snippet_effect) = shell.update(state.shell, message)
+      let #(shell, shell_effect) = shell.update(state.shell, message)
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
       let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
       let state = State(..state, sync:, shell:)
-      let snippet_effect = case todo as "snipppet effect here" {
-        None -> effect.none()
-        Some(a) -> dispatch_to_shell(a)
+      let shell_effect = case shell_effect {
+        shell.Nothing -> effect.none()
+        shell.RunEffect(lift, blocking) ->
+          dispatch_to_shell(shell.run_effect(lift, blocking))
       }
       #(
         state,
-        effect.batch([snippet_effect, client.lustre_run(sync_task, SyncMessage)]),
+        effect.batch([shell_effect, client.lustre_run(sync_task, SyncMessage)]),
       )
     }
     PreviousMessage(m, i) -> {
@@ -232,10 +234,18 @@ pub fn update(state: State, message) {
     SyncMessage(message) -> {
       let State(sync:, shell:, ..) = state
       let #(sync, effect) = client.update(sync, message)
-      let #(shell, action) = shell.update(shell, shell.CacheUpdate(sync.cache))
-      io.debug(#("shell action", action))
+      let #(shell, shell_effect) =
+        shell.update(shell, shell.CacheUpdate(sync.cache))
+      let shell_effect = case shell_effect {
+        shell.Nothing -> effect.none()
+        shell.RunEffect(lift, blocking) ->
+          dispatch_to_shell(shell.run_effect(lift, blocking))
+      }
       let state = State(..state, sync:, shell:)
-      #(state, client.lustre_run(effect, SyncMessage))
+      #(
+        state,
+        effect.batch([client.lustre_run(effect, SyncMessage), shell_effect]),
+      )
     }
   }
 }
