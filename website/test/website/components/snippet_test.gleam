@@ -1,11 +1,9 @@
 import eyg/analysis/type_/isomorphic as t
-import eyg/ir/dag_json
 import gleam/dictx
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
-import morph/analysis
 import morph/editable as e
 import morph/input
 import morph/picker
@@ -81,7 +79,7 @@ fn new(source) {
 fn command(state, key) {
   let #(#(snippet, action), i) = state
   case action {
-    snippet.Nothing | snippet.ReturnToCode -> Nil
+    snippet.Nothing | snippet.ReturnToCode | snippet.NewCode -> Nil
     _ ->
       panic as {
         "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
@@ -204,7 +202,7 @@ fn analyse(state, effects) {
 fn has_code(state, expected) {
   let #(#(snippet, action), i) = state
   case action {
-    snippet.ReturnToCode -> Nil
+    snippet.ReturnToCode | snippet.NewCode -> Nil
     _ ->
       panic as {
         "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
@@ -214,77 +212,78 @@ fn has_code(state, expected) {
   |> should.equal(expected)
   Nil
 }
-// pub fn assigning_to_variable_test() {
-//   empty()
-//   |> command("n")
-//   |> enter_integer(17)
-//   |> command("e")
-//   |> pick_from(fn(options) {
-//     should.equal(options, [])
-//     Ok("x")
-//   })
-//   |> analyse([])
-//   |> command("v")
-//   |> pick_from(fn(options) {
-//     should.equal(options, [#("x", "Integer")])
-//     Ok("x")
-//   })
-//   |> has_code(e.Block([#(e.Bind("x"), e.Integer(17))], e.Variable("x"), True))
-// }
 
-// pub fn assign_above_at_end_of_block_test() {
-//   new(e.Block(
-//     [#(e.Bind("x"), e.Integer(5)), #(e.Bind("y"), e.Integer(6))],
-//     e.Variable("x"),
-//     True,
-//   ))
-//   |> click([2])
-//   |> command("E")
-//   |> pick("z")
-//   |> command("n")
-//   |> enter_integer(6)
-//   |> has_code(e.Block(
-//     [
-//       #(e.Bind("x"), e.Integer(5)),
-//       #(e.Bind("y"), e.Integer(6)),
-//       #(e.Bind("z"), e.Integer(6)),
-//     ],
-//     e.Variable("x"),
-//     True,
-//   ))
-// }
+pub fn assigning_to_variable_test() {
+  empty()
+  |> command("n")
+  |> enter_integer(17)
+  |> command("e")
+  |> pick_from(fn(options) {
+    should.equal(options, [])
+    Ok("x")
+  })
+  |> analyse([])
+  |> command("v")
+  |> pick_from(fn(options) {
+    should.equal(options, [#("x", "Integer")])
+    Ok("x")
+  })
+  |> has_code(e.Block([#(e.Bind("x"), e.Integer(17))], e.Variable("x"), True))
+}
 
-// pub fn create_record_test() {
-//   empty()
-//   |> command("r")
-//   |> pick("name")
-//   |> command("s")
-//   |> enter_string("Evelyn")
-//   |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
-// }
+pub fn assign_above_at_end_of_block_test() {
+  new(e.Block(
+    [#(e.Bind("x"), e.Integer(5)), #(e.Bind("y"), e.Integer(6))],
+    e.Variable("x"),
+    True,
+  ))
+  |> click([2])
+  |> command("E")
+  |> pick("z")
+  |> command("n")
+  |> enter_integer(6)
+  |> has_code(e.Block(
+    [
+      #(e.Bind("x"), e.Integer(5)),
+      #(e.Bind("y"), e.Integer(6)),
+      #(e.Bind("z"), e.Integer(6)),
+    ],
+    e.Variable("x"),
+    True,
+  ))
+}
 
-// pub fn insert_perform_suggestions_test() {
-//   empty()
-//   |> analyse([#("Alert", #(t.String, t.unit))])
-//   |> command("p")
-//   |> pick_from(fn(options) {
-//     should.equal(options, [#("Alert", "String : {}")])
-//     Ok("Alert")
-//   })
-//   |> has_code(e.Call(e.Perform("Alert"), [e.Vacant]))
-// }
+pub fn create_record_test() {
+  empty()
+  |> command("r")
+  |> pick("name")
+  |> command("s")
+  |> enter_string("Evelyn")
+  |> has_code(e.Record([#("name", e.String("Evelyn"))], None))
+}
 
-// pub fn search_for_vacant_failure_test() {
-//   new(e.Block([#(e.Bind("x"), e.Integer(12))], e.Integer(13), True))
-//   |> command(" ")
-//   |> fails_with(snippet.ActionFailed("jump to error"))
-// }
+pub fn insert_perform_suggestions_test() {
+  empty()
+  |> analyse([#("Alert", #(t.String, t.unit))])
+  |> command("p")
+  |> pick_from(fn(options) {
+    should.equal(options, [#("Alert", "String : {}")])
+    Ok("Alert")
+  })
+  |> has_code(e.Call(e.Perform("Alert"), [e.Vacant]))
+}
 
-// pub fn search_for_vacant_test() {
-//   new(e.Block([#(e.Bind("x"), e.Integer(99))], e.Vacant, True))
-//   |> command(" ")
-//   |> command("n")
-//   |> enter_integer(88)
-//   |> has_code(e.Block([#(e.Bind("x"), e.Integer(99))], e.Integer(88), True))
-// }
-// // TODO copy paste should be busy
+pub fn search_for_vacant_failure_test() {
+  new(e.Block([#(e.Bind("x"), e.Integer(12))], e.Integer(13), True))
+  |> command(" ")
+  |> fails_with(snippet.ActionFailed("jump to error"))
+}
+
+pub fn search_for_vacant_test() {
+  new(e.Block([#(e.Bind("x"), e.Integer(99))], e.Vacant, True))
+  |> command(" ")
+  |> command("n")
+  |> enter_integer(88)
+  |> has_code(e.Block([#(e.Bind("x"), e.Integer(99))], e.Integer(88), True))
+}
+// TODO copy paste should be busy

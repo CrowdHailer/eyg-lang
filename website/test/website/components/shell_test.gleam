@@ -382,3 +382,5 @@ pub fn user_can_paste_to_input_test() {
 // running effect has failed
 // running effect is not available
 // running and reference is being looked for
+// TODO replace reference in context with cache
+// TODO test that errors go away after release is loaded
