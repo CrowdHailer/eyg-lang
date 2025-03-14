@@ -363,3 +363,32 @@ pub fn run_effect(lift, blocking) {
       )
   }
 }
+
+pub type Status {
+  Finished
+  WillRunEffect(label: String)
+  RunningEffect(label: String)
+  AwaitingRelease(package: String, release: Int, cid: String)
+  AwaitingReference(cid: String)
+  LoadingSilent
+  Failed
+}
+
+// Needs to join against effects and sync client
+// This double error handling from evaluated to 
+pub fn status(shell) {
+  let Shell(run:, ..) = shell
+  case run.started, run.return {
+    _, Ok(_) -> Finished
+    False, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
+      WillRunEffect(label)
+    True, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
+      RunningEffect(label)
+    True, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) ->
+      AwaitingRelease(p, r, c)
+    True, Error(#(break.UndefinedReference(c), _, _, _)) -> AwaitingReference(c)
+    False, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) -> LoadingSilent
+    False, Error(#(break.UndefinedReference(c), _, _, _)) -> LoadingSilent
+    _, _ -> Failed
+  }
+}
