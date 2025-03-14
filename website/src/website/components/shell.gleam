@@ -2,7 +2,6 @@ import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
-import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/listx
@@ -212,7 +211,7 @@ fn new_code(shell) {
 }
 
 fn confirm(shell) {
-  let Shell(source:, effects: extrinsic, run:, ..) = shell
+  let Shell(effects: extrinsic, run:, ..) = shell
   let Run(started:, return:, effects:) = run
   case started, return {
     False, Ok(#(value, scope)) -> {
@@ -280,7 +279,6 @@ fn run_update_cache(run, cache, effects) {
     }
     _ -> #(run, Nothing)
   }
-  // Do effects should be a thing
 }
 
 fn handle_external(shell, result) {
@@ -310,7 +308,7 @@ fn handle_external(shell, result) {
         )
       }
     }
-    _ -> todo
+    _ -> #(run, None)
   }
 }
 
@@ -372,9 +370,10 @@ pub type Status {
   Finished
   WillRunEffect(label: String)
   RunningEffect(label: String)
+  RequireRelease(package: String, release: Int, cid: String)
+  RequireReference(cid: String)
   AwaitingRelease(package: String, release: Int, cid: String)
   AwaitingReference(cid: String)
-  LoadingSilent
   Failed
 }
 
@@ -391,11 +390,12 @@ pub fn status(shell) {
       }
     True, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
       RunningEffect(label)
+    False, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) ->
+      RequireRelease(p, r, c)
+    False, Error(#(break.UndefinedReference(c), _, _, _)) -> RequireReference(c)
     True, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) ->
       AwaitingRelease(p, r, c)
     True, Error(#(break.UndefinedReference(c), _, _, _)) -> AwaitingReference(c)
-    False, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) -> LoadingSilent
-    False, Error(#(break.UndefinedReference(c), _, _, _)) -> LoadingSilent
     _, _ -> Failed
   }
 }

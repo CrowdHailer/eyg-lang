@@ -543,7 +543,10 @@ pub fn render(state: State) {
             [snippet.render_just_projection(state.shell.source, True)],
           ),
           case shell.status(state.shell) {
-            shell.Finished | shell.LoadingSilent | shell.WillRunEffect(_) ->
+            shell.Finished
+            | shell.RequireRelease(_, _, _)
+            | shell.RequireReference(_)
+            | shell.WillRunEffect(_) ->
               h.button(
                 [
                   a.class(
