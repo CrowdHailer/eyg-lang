@@ -377,11 +377,14 @@ pub type Status {
 // Needs to join against effects and sync client
 // This double error handling from evaluated to 
 pub fn status(shell) {
-  let Shell(run:, ..) = shell
+  let Shell(run:, effects:, ..) = shell
   case run.started, run.return {
     _, Ok(_) -> Finished
     False, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-      WillRunEffect(label)
+      case list.key_find(effects, label) {
+        Ok(_) -> WillRunEffect(label)
+        Error(Nil) -> Failed
+      }
     True, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
       RunningEffect(label)
     True, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) ->

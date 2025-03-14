@@ -534,39 +534,47 @@ pub fn render(state: State) {
             [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
             [snippet.render_just_projection(state.shell.source, True)],
           ),
-          element.text("sehell stuff"),
-          // todo as "render fix",
-        // case state.shell.source.run {
-        //   snippet.NotRunning ->
-        //     h.button(
-        //       [
-        //         a.class(
-        //           "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-        //         ),
-        //         event.on_click(snippet.UserPressedCommandKey("Enter")),
-        //       ],
-        //       [outline.play_circle()],
-        //     )
-        //   snippet.Running(Error(_), _) ->
-        //     h.span(
-        //       [
-        //         a.class(
-        //           "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
-        //         ),
-        //       ],
-        //       [outline.exclamation_circle()],
-        //     )
-
-        //   snippet.Running(_, _) ->
-        //     h.span(
-        //       [
-        //         a.class(
-        //           "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
-        //         ),
-        //       ],
-        //       [outline.arrow_path()],
-        //     )
-        // },
+          case shell.status(state.shell) {
+            shell.Finished | shell.LoadingSilent | shell.WillRunEffect(_) ->
+              h.button(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                  ),
+                  event.on_click(snippet.UserPressedCommandKey("Enter")),
+                ],
+                [outline.play_circle()],
+              )
+            shell.AwaitingReference(_)
+            | shell.AwaitingRelease(_, _, _)
+            | shell.RunningEffect(_) ->
+              h.span(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+                  ),
+                ],
+                [outline.arrow_path()],
+              )
+            shell.Failed ->
+              h.span(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+                  ),
+                ],
+                [outline.exclamation_circle()],
+              )
+          },
+          h.span(
+            [
+              a.class(
+                "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+              ),
+            ],
+            [outline.arrow_path()],
+          ),
+          // },
         ],
       )
         |> element.map(shell.CurrentMessage)
