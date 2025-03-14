@@ -1,6 +1,8 @@
 import eyg/interpreter/break
+import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/io
+import gleam/javascript/promise.{type Promise}
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -69,10 +71,13 @@ pub type Shell {
 pub fn init(effects, cache) {
   let source = e.from_annotated(ir.vacant())
   let scope = []
+  let snippet =
+    snippet.active(source)
+    |> snippet_analyse(scope, cache, effects)
   Shell(
     failure: None,
     previous: [],
-    source: snippet.active(source),
+    source: snippet,
     cache: cache,
     effects: effects,
     scope: scope,
@@ -130,7 +135,7 @@ pub fn user_clicked_previous(shell: Shell, exp) {
 
 pub type Effect {
   Nothing
-  RunEffect
+  RunEffect(value: analysis.Value, handler: analysis.ExternalBlocking)
 }
 
 pub fn update(shell, message) {
@@ -184,18 +189,6 @@ pub fn update(shell, message) {
       todo as "clipboard",
       // Some(snippet.write_to_clipboard(text)),
     )
-    // snippet.Conclude(value, effects, scope) -> {
-    //   let previous = [
-    //     Executed(value, effects, readonly.new(snippet.source(shell.source))),
-    //     ..shell.previous
-    //   ]
-    //   let effects = shell.source.effects
-    //   let cache = shell.source.cache
-
-    //   let source = snippet.active(e.Vacant, scope, effects, cache)
-    //   let shell = Shell(..shell, source: source, previous: previous)
-    //   #(shell, Nothing)
-    // }
   }
 }
 
@@ -216,10 +209,9 @@ fn new_code(shell) {
 }
 
 fn confirm(shell) {
-  let Shell(source:, cache:, run:, ..) = shell
+  let Shell(source:, cache:, effects: extrinsic, run:, ..) = shell
   let Run(started:, return:, effects:) = run
   // TODO add extrinsic or external field to the shell or a context
-  let extrinsic = []
   case started, return {
     False, Ok(#(value, scope)) -> {
       let record = Executed(value, effects, readonly.new(source.editable))
@@ -241,17 +233,37 @@ fn confirm(shell) {
     }
     False, Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case list.key_find(extrinsic, label) {
-        Ok(#(_lift, _reply, blocking)) ->
-          case blocking(lift) {
-            // TODO update running task
-            Ok(p) -> #(shell, RunEffect)
-            Error(reason) -> #(shell, Nothing)
-          }
+        Ok(#(_lift, _reply, blocking)) -> {
+          let run = Run(..run, started: True)
+          let shell = Shell(..shell, run:)
+          #(shell, RunEffect(lift, blocking))
+          // RunEffect(fn() {
+          //   case blocking(lift) {
+          //     Ok(p) -> promise.map(p, Ok)
+          //     Error(reason) -> promise.resolve(Error(reason))
+          //   }
+          // }),
+        }
         _ -> #(shell, Nothing)
       }
     }
     _, _ -> #(shell, Nothing)
   }
+}
+
+// analyse stuff
+
+// this is not just configurable for the reload case
+fn snippet_analyse(snippet, scope, cache, effect_specs) {
+  let snippet.Snippet(editable:, ..) = snippet
+  let analysis =
+    interactive.do_analysis(
+      editable,
+      scope,
+      cache,
+      interactive.effect_types(effect_specs),
+    )
+  let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
 }
 
 // runner stuff

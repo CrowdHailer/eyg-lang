@@ -258,13 +258,8 @@ pub fn make_open_case(projection, analysis) {
 
 pub fn perform(source, analysis) {
   let #(focus, zoom) = source
-  io.debug("pergormin")
   let hints = case analysis {
-    Some(analysis.Analysis(context:, ..)) -> {
-      io.debug(context.effects)
-
-      context.effects
-    }
+    Some(analysis.Analysis(context:, ..)) -> context.effects
     None -> []
   }
   case focus {

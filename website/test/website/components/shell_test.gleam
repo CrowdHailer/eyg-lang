@@ -1,3 +1,4 @@
+import eyg/analysis/type_/isomorphic as t
 import gleam/int
 import gleam/io
 import gleam/list
@@ -65,6 +66,21 @@ fn enter_text(state, text) {
   #(shell.update(shell, message), i + 1)
 }
 
+fn handle_effect(state, label) {
+  let #(#(shell, action), i) = state
+  case action {
+    shell.RunEffect(value, blocking) -> {
+      io.debug(blocking == label)
+    }
+    got -> {
+      let message =
+        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(got)
+      panic as message
+    }
+  }
+  todo as "effect"
+}
+
 fn has_executed(state, with) {
   let #(#(shell, action), i) = state
   let Shell(previous:, ..) = shell
@@ -112,6 +128,33 @@ pub fn types_remain_in_scope_test() {
     should.equal(options, [#("var2", "String"), #("count", "String")])
     Error(Nil)
   })
+}
+
+// Everything is passed in by events so that nested mvu works
+// Just call it run effect
+pub fn effects_are_recorded_test() {
+  let inner = fn(_) { todo }
+  new([
+    #("Inner", #(t.String, t.Integer, inner)),
+    #("Outer", #(t.Integer, t.unit, fn(_) { todo })),
+  ])
+  |> command("p")
+  |> pick_from(fn(options) {
+    should.equal(options, [
+      #("Inner", "String : Integer"),
+      #("Outer", "Integer : {}"),
+    ])
+    Ok("Outer")
+  })
+  |> command("p")
+  |> pick_from(fn(_options) { Ok("Inner") })
+  |> command("s")
+  |> enter_text("Bulb")
+  |> command("Enter")
+  |> handle_effect(inner)
+  |> io.debug
+
+  todo as "test"
 }
 // Test task only starts once
 // needs equal for type narrow test
