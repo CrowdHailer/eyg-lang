@@ -6,7 +6,6 @@ import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
-import gleam/set
 import morph/analysis
 import morph/editable as e
 import plinth/javascript/console
@@ -105,17 +104,23 @@ pub type Message {
 
 pub type Effect {
   Nothing
-  RunFinished
+  // RunFinished
   RunEffect(value: analysis.Value, handler: analysis.ExternalBlocking)
 }
 
 pub fn update(shell, message) {
   case message {
     CacheUpdate(cache) -> {
-      let Shell(run: run, ..) = shell
-      let run = run_update_cache(run, cache)
-      let shell = Shell(..shell, cache:)
-      #(shell, Nothing)
+      let Shell(run:, effects:, ..) = shell
+      let #(run, action) = run_update_cache(run, cache, effects)
+      case run {
+        Run(True, Ok(#(value, scope)), effects) ->
+          finalize(shell, value, scope, effects)
+        _ -> {
+          let shell = Shell(..shell, cache:, run:)
+          #(shell, action)
+        }
+      }
     }
     CurrentMessage(message) -> {
       let shell = close_all_previous(shell)
@@ -211,17 +216,13 @@ fn new_code(shell) {
 }
 
 fn confirm(shell) {
-  let Shell(source:, cache:, effects: extrinsic, run:, ..) = shell
+  let Shell(source:, effects: extrinsic, run:, ..) = shell
   let Run(started:, return:, effects:) = run
-  // TODO add extrinsic or external field to the shell or a context
   case started, return {
     False, Ok(#(value, scope)) -> {
-      let record = Executed(value, effects, readonly.new(source.editable))
-      let previous = [record, ..shell.previous]
-      Shell(..shell, previous:, scope:)
-      |> set_code(e.from_annotated(ir.vacant()))
+      finalize(shell, value, scope, effects)
     }
-    False, Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+    False, Error(#(break.UnhandledEffect(label, lift), _meta, _env, _k)) -> {
       case list.key_find(extrinsic, label) {
         Ok(#(_lift, _reply, blocking)) -> {
           let run = Run(..run, started: True)
@@ -231,8 +232,16 @@ fn confirm(shell) {
         _ -> #(shell, Nothing)
       }
     }
-    _, _ -> #(shell, Nothing)
+    _, _ -> #(Shell(..shell, run: Run(True, return, effects)), Nothing)
   }
+}
+
+fn finalize(shell, value, scope, effects) {
+  let Shell(source:, previous:, ..) = shell
+  let record = Executed(value, effects, readonly.new(source.editable))
+  let previous = [record, ..previous]
+  Shell(..shell, previous:, scope:)
+  |> set_code(e.from_annotated(ir.vacant()))
 }
 
 // analyse stuff
@@ -256,11 +265,26 @@ fn new_run(editable, scope, cache) {
   Run(False, interactive.evaluate(editable, scope, cache), [])
 }
 
-fn run_update_cache(run, cache) {
+fn run_update_cache(run, cache, effects) {
   let Run(started:, return:, ..) = run
-  let return = cache.run(return, cache, block.resume)
+  case return {
+    Error(#(break.UndefinedReference(_), _, _, _))
+    | Error(#(break.UndefinedRelease(_, _, _), _, _, _)) -> {
+      let return = cache.run(return, cache, block.resume)
+      case started {
+        True -> {
+          let action = case lookup_external(return, effects) {
+            Ok(#(lift, blocking)) -> RunEffect(lift, blocking)
+            Error(Nil) -> Nothing
+          }
+          #(Run(..run, return:), action)
+        }
+        False -> #(run, Nothing)
+      }
+    }
+    _ -> #(run, Nothing)
+  }
   // Do effects should be a thing
-  todo
 }
 
 fn handle_external(shell, result) {
@@ -268,8 +292,8 @@ fn handle_external(shell, result) {
   // TODO need to pair up with a run number
   let Run(return:, effects:, ..) = run
   case return {
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      let run = case result {
+    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
+      case result {
         Ok(reply) -> {
           let effects = [
             interactive.RuntimeEffect(label, lift, reply),
@@ -293,7 +317,7 @@ fn handle_external(shell, result) {
 
 fn lookup_external(return, extrinsic) {
   case return {
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+    Error(#(break.UnhandledEffect(label, lift), _meta, _env, _k)) -> {
       case list.key_find(extrinsic, label) {
         Ok(#(_lift, _reply, blocking)) -> Ok(#(lift, blocking))
         _ -> Error(Nil)
