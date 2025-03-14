@@ -10,7 +10,7 @@ pub fn on_hotkey(message) {
     let ctrl = pevent.ctrl_key(event)
     let alt = pevent.alt_key(event)
     case key {
-      "Alt" | "Ctrl" | "Shift" | "Tab" | "Enter" -> Error([])
+      "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
       "F1"
       | "F2"
       | "F3"
