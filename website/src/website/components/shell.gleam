@@ -81,26 +81,6 @@ pub fn init(effects, cache) {
   )
 }
 
-// This double error handling from evaluated to 
-// pub fn run_status(shell) {
-//   let Shell(run:, ..) = shell
-//   case run.return {
-//     Ok(_) -> "Done"
-//     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) ->
-//       case run.started {
-//         True -> "Running"
-//         False ->
-//           case todo {
-//             True -> "Waiting"
-//             False -> "Error"
-//           }
-//       }
-//     Error(#(break.UndefinedReference(ref), meta, env, k)) -> todo
-//     Error(#(break.UndefinedRelease(ref, _, _), meta, env, k)) -> todo
-//     _ -> "Error"
-//   }
-// }
-
 fn close_many_previous(shell_entries) {
   list.map(shell_entries, fn(e) {
     let Executed(a, b, r) = e
@@ -117,6 +97,7 @@ fn close_all_previous(shell: Shell) {
 
 pub type Message {
   // Current could be called input
+  CacheUpdate(cache.Cache)
   CurrentMessage(snippet.Message)
   ExternalHandlerCompleted(Result(analysis.Value, istate.Debug(analysis.Path)))
   UserClickedPrevious(Int)
@@ -130,6 +111,12 @@ pub type Effect {
 
 pub fn update(shell, message) {
   case message {
+    CacheUpdate(cache) -> {
+      let Shell(run: run, ..) = shell
+      let run = run_update_cache(run, cache)
+      let shell = Shell(..shell, cache:)
+      #(shell, Nothing)
+    }
     CurrentMessage(message) -> {
       let shell = close_all_previous(shell)
       let shell = case snippet.user_message(message) {
@@ -143,7 +130,6 @@ pub fn update(shell, message) {
         snippet.Nothing -> #(shell, Nothing)
         snippet.NewCode -> new_code(shell)
         snippet.Confirm -> confirm(shell)
-
         snippet.Failed(failure) -> #(
           Shell(..shell, failure: Some(SnippetFailure(failure))),
           Nothing,
@@ -159,27 +145,17 @@ pub fn update(shell, message) {
         snippet.MoveAbove -> {
           case shell.previous {
             [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), Nothing)
-            [Executed(_value, _effects, readonly), ..] -> {
-              let scope = shell.scope
-              let effects = shell.effects
-              let cache = shell.cache
-
-              let current =
-                snippet.active(readonly.source)
-                |> snippet_analyse(scope, cache, effects)
-
-              #(Shell(..shell, source: current), Nothing)
-            }
+            [Executed(source:, ..), ..] -> set_code(shell, source.source)
           }
         }
-        snippet.MoveBelow -> #(Shell(..shell, source: source), Nothing)
+        snippet.MoveBelow -> #(shell, Nothing)
         snippet.ReadFromClipboard -> #(
-          Shell(..shell, source: source),
+          shell,
           todo as "clipboard",
           // Some(snippet.read_from_clipboard()),
         )
         snippet.WriteToClipboard(text) -> #(
-          Shell(..shell, source: source),
+          shell,
           todo as "clipboard",
           // Some(snippet.write_to_clipboard(text)),
         )
@@ -201,15 +177,8 @@ pub fn update(shell, message) {
                   readonly.new(shell.source.editable),
                 )
               let previous = [record, ..shell.previous]
-              let source = e.from_annotated(ir.vacant())
-              let snippet =
-                snippet.active(source)
-                // Extract analysis also it is being inefficient on scope
-                |> snippet_analyse(scope, shell.cache, shell.effects)
-              let run = new_run(source, scope, shell.cache)
-              let shell =
-                Shell(..shell, previous:, scope:, source: snippet, run:)
-              #(shell, Nothing)
+              Shell(..shell, previous:, scope:)
+              |> set_code(e.from_annotated(ir.vacant()))
             }
 
             Error(_) -> todo as "leave and show error"
@@ -249,14 +218,8 @@ fn confirm(shell) {
     False, Ok(#(value, scope)) -> {
       let record = Executed(value, effects, readonly.new(source.editable))
       let previous = [record, ..shell.previous]
-      let source = e.from_annotated(ir.vacant())
-      let snippet =
-        snippet.active(source)
-        // Extract analysis also it is being inefficient on scope
-        |> snippet_analyse(scope, cache, extrinsic)
-      let run = new_run(source, scope, cache)
-      let shell = Shell(..shell, previous:, scope:, source: snippet, run:)
-      #(shell, Nothing)
+      Shell(..shell, previous:, scope:)
+      |> set_code(e.from_annotated(ir.vacant()))
     }
     False, Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case list.key_find(extrinsic, label) {
@@ -264,12 +227,6 @@ fn confirm(shell) {
           let run = Run(..run, started: True)
           let shell = Shell(..shell, run:)
           #(shell, RunEffect(lift, blocking))
-          // RunEffect(fn() {
-          //   case blocking(lift) {
-          //     Ok(p) -> promise.map(p, Ok)
-          //     Error(reason) -> promise.resolve(Error(reason))
-          //   }
-          // }),
         }
         _ -> #(shell, Nothing)
       }
@@ -290,7 +247,7 @@ fn snippet_analyse(snippet, scope, cache, effect_specs) {
       cache,
       interactive.effect_types(effect_specs),
     )
-  let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
+  snippet.Snippet(..snippet, analysis: Some(analysis))
 }
 
 // runner stuff
@@ -299,8 +256,15 @@ fn new_run(editable, scope, cache) {
   Run(False, interactive.evaluate(editable, scope, cache), [])
 }
 
+fn run_update_cache(run, cache) {
+  let Run(started:, return:, ..) = run
+  let return = cache.run(return, cache, block.resume)
+  // Do effects should be a thing
+  todo
+}
+
 fn handle_external(shell, result) {
-  let Shell(run:, ..) = shell
+  let Shell(run:, cache:, ..) = shell
   // TODO need to pair up with a run number
   let Run(return:, effects:, ..) = run
   case return {
@@ -311,8 +275,8 @@ fn handle_external(shell, result) {
             interactive.RuntimeEffect(label, lift, reply),
             ..effects
           ]
-          // TODO needs cache run
-          let return = block.resume(reply, env, k)
+          let return =
+            cache.run(block.resume(reply, env, k), cache, block.resume)
           let action = case lookup_external(return, shell.effects) {
             Ok(#(lift, blocking)) -> Some(#(lift, blocking))
             Error(Nil) -> None
@@ -338,37 +302,6 @@ fn lookup_external(return, extrinsic) {
     _ -> Error(Nil)
   }
 }
-
-// fn execute_run(return, effects, external) {
-//   case return {
-//     Ok(#(value, scope)) -> {
-//       let record = Executed(value, effects, readonly.new(source.editable))
-//       let previous = [record, ..shell.previous]
-//       let source = e.from_annotated(ir.vacant())
-
-//       let run = new_run(source, scope, cache)
-//       let shell = Shell(..shell, previous:, scope:, source: snippet, run:)
-//       #(shell, Nothing)
-//     }
-//     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-//       case list.key_find(extrinsic, label) {
-//         Ok(#(_lift, _reply, blocking)) -> {
-//           let run = Run(..run, started: True)
-//           let shell = Shell(..shell, run:)
-//           #(shell, RunEffect(lift, blocking))
-//           // RunEffect(fn() {
-//           //   case blocking(lift) {
-//           //     Ok(p) -> promise.map(p, Ok)
-//           //     Error(reason) -> promise.resolve(Error(reason))
-//           //   }
-//           // }),
-//         }
-//         _ -> #(shell, Nothing)
-//       }
-//     }
-//     _, _ -> #(shell, Nothing)
-//   }
-// }
 
 // -----
 

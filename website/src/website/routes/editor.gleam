@@ -230,16 +230,11 @@ pub fn update(state: State, message) {
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
-      let State(sync: sync_client, ..) = state
-      let #(sync_client, effect) = client.update(sync_client, message)
-      let snippet = todo as "what's happening with sync"
-      // let snippet = snippet.set_references(state.source, sync_client.cache)
-      let shell =
-        shell.Shell(
-          ..state.shell,
-          // source: snippet.set_references(state.shell.source, sync_client.cache),
-        )
-      let state = State(..state, sync: sync_client, source: snippet, shell:)
+      let State(sync:, shell:, ..) = state
+      let #(sync, effect) = client.update(sync, message)
+      let #(shell, action) = shell.update(shell, shell.CacheUpdate(sync.cache))
+      io.debug(#("shell action", action))
+      let state = State(..state, sync:, shell:)
       #(state, client.lustre_run(effect, SyncMessage))
     }
   }

@@ -1,17 +1,21 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
+import gleam/dict
+import gleam/dictx
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option.{Some}
 import gleam/string
 import gleeunit/should
 import morph/editable as e
 import morph/input
-import morph/projection
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
 import website/mount/interactive
+import website/sync/cache
 import website/sync/client
 
 fn new(effects) {
@@ -30,6 +34,11 @@ fn assert_action(got, expected, i) {
       panic as message
     }
   }
+}
+
+fn update_cache(state, cache) {
+  let #(#(shell, action), i) = state
+  #(shell.update(shell, shell.CacheUpdate(cache)), i + 1)
 }
 
 fn command(state, key) {
@@ -76,6 +85,18 @@ fn click_previous(state, index) {
   #(shell.update(shell, shell.UserClickedPrevious(index)), i + 1)
 }
 
+fn has_action(state, expected) {
+  let #(#(shell, action), i) = state
+  case action == expected {
+    True -> Nil
+    False ->
+      panic as {
+        "unexpected at " <> int.to_string(i) <> ": " <> string.inspect(action)
+      }
+  }
+  state
+}
+
 // sync to keep the pipeline running
 fn run_effect(state, sync) {
   let #(#(shell, action), i) = state
@@ -99,6 +120,20 @@ fn has_executed(state, with) {
     Ok(shell.Executed(_, _, recent)) -> {
       recent.source
       |> should.equal(with)
+      state
+    }
+    Error(Nil) ->
+      panic as { "no previous history after step " <> int.to_string(i) }
+  }
+}
+
+fn has_value(state, expected) {
+  let #(#(shell, action), i) = state
+  let Shell(previous:, ..) = shell
+  case list.first(previous) {
+    Ok(shell.Executed(value, _effects, _recent)) -> {
+      value
+      |> should.equal(Some(expected))
       state
     }
     Error(Nil) ->
@@ -197,6 +232,80 @@ pub fn effects_are_recorded_test() {
   |> has_input(e.Vacant)
 }
 
+// Test task only starts once
+pub fn run_only_starts_once_test() {
+  new([#("Foo", #(t.String, t.Integer, fn(_) { todo }))])
+  |> command("p")
+  |> pick_from(fn(_options) { Ok("Foo") })
+  |> command("s")
+  |> enter_text("Go Go")
+  |> command("Enter")
+  |> fn(state) {
+    let #(#(shell, action), i) = state
+    #(#(shell, shell.Nothing), i)
+  }
+  |> command("Enter")
+  |> has_action(shell.Nothing)
+}
+
+pub fn foo_src() {
+  ir.record([#("foo", ir.string("My value"))])
+}
+
+pub fn foo_cid() {
+  "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
+}
+
+fn index() {
+  let foo_id = "foo_some_id"
+  let foo_release = cache.Release(foo_id, 1, "time", foo_cid())
+  cache.Index(
+    registry: dictx.singleton("foo", foo_id),
+    packages: dictx.singleton(foo_id, dictx.singleton(1, foo_release)),
+  )
+}
+
+fn cache() {
+  cache.Cache(index: index(), fragments: dict.new())
+  |> cache.install_source(foo_cid(), foo_src())
+}
+
+pub fn run_a_reference_test() {
+  new([])
+  |> update_cache(cache())
+  |> command("#")
+  |> pick_from(fn(options) {
+    should.equal(options, [])
+    Ok(foo_cid())
+  })
+  |> command("g")
+  |> pick_from(fn(options) {
+    should.equal(options, [#("foo", "String")])
+    Ok("foo")
+  })
+  |> command("Enter")
+  |> has_value(v.String("My value"))
+  |> has_input(e.Vacant)
+}
+
+pub fn run_a_late_reference_test() {
+  new([])
+  |> command("#")
+  |> pick_from(fn(options) {
+    should.equal(options, [])
+    Ok(foo_cid())
+  })
+  |> command("g")
+  |> pick_from(fn(options) {
+    should.equal(options, [])
+    Ok("foo")
+  })
+  |> command("Enter")
+  |> update_cache(cache())
+  |> has_value(v.String("My value"))
+  |> has_input(e.Vacant)
+}
+
 pub fn moving_above_loads_last_expression_test() {
   new([])
   |> command("s")
@@ -216,7 +325,6 @@ pub fn user_clicking_previous_test() {
   |> click_previous(0)
   |> has_input(e.String("Pebble"))
 }
-// Test task only starts once
 // needs equal for type narrow test
 // needs effects for perform test
 // When is cancelled or task fails state needs to update
@@ -224,6 +332,8 @@ pub fn user_clicking_previous_test() {
 // test incremental building of scope
 // context should take cache
 // Test will resume from missing ref
+
+// There a started case but where the task isn't running
 
 // A runner keeps the ID but it needs composing with the scope to types and other new versions below
 // The view history function can be a state of the shell

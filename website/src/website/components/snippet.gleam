@@ -49,29 +49,20 @@ const neo_green_3 = "#90ee90"
 const neo_orange_4 = "#ff6b6b"
 
 const embed_area_styles = [
-  #("box-shadow", "6px 6px black"),
-  #("border-style", "solid"),
+  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
   #(
     "font-family",
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-  ),
-  #("background-color", "rgb(255, 255, 255)"),
-  #("border-color", "rgb(0, 0, 0)"),
-  #("border-width", "1px"),
-  #("flex-direction", "column"),
-  #("display", "flex"),
-  #("margin-bottom", "1.5rem"),
-  #("margin-top", ".5rem"),
+  ), #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
+  #("flex-direction", "column"), #("display", "flex"),
+  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
 ]
 
 const code_area_styles = [
-  #("outline", "2px solid transparent"),
-  #("outline-offset", "2px"),
-  #("padding", ".5rem"),
-  #("white-space", "nowrap"),
-  #("overflow", "auto"),
-  #("margin-top", "auto"),
-  #("margin-bottom", "auto"),
+  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
+  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
+  #("margin-top", "auto"), #("margin-bottom", "auto"),
 ]
 
 fn footer_area(color, contents) {
@@ -194,7 +185,6 @@ pub fn references(state) {
 
 pub type Message {
   UserFocusedOnCode
-  // UserClickRunEffects
   UserPressedCommandKey(String)
   UserClickedPath(List(Int))
   UserClickedCode(List(Int))
@@ -202,14 +192,12 @@ pub type Message {
   MessageFromPicker(picker.Message)
   SelectReleaseMessage(autocomplete.Message)
   MessageFromMenu(menu.Message)
-  // RuntimeRepliedFromExternalEffect(#(Int, Value))
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
 }
 
 pub fn user_message(message) {
   case message {
-    // RuntimeRepliedFromExternalEffect(_)
     ClipboardReadCompleted(_) | ClipboardWriteCompleted(_) -> False
     _ -> True
   }
@@ -297,7 +285,7 @@ fn update_source(proj, state) {
     history: history,
     analysis:,
     // evaluated: evaluate(editable, state.scope, state.cache),
-  // run: NotRunning,
+    // run: NotRunning,
   )
 }
 
@@ -917,7 +905,7 @@ fn undo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-        // run: NotRunning,
+          // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -943,7 +931,7 @@ fn redo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-        // run: NotRunning,
+          // run: NotRunning,
         )
       #(state, Nothing)
     }

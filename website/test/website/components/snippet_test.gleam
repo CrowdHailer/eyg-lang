@@ -17,11 +17,11 @@ import website/sync/client
 // TODO test a fragment that doesn't work, i.e. it's effectful
 import eyg/ir/tree as ir
 
-fn foo_src() {
+pub fn foo_src() {
   ir.record([#("foo", ir.string("My value"))])
 }
 
-fn foo_cid() {
+pub fn foo_cid() {
   "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
 }
 
