@@ -104,7 +104,6 @@ pub type Message {
   ToggleFullscreen
   SnippetMessage(snippet.Message)
   // --- these are all shell messages
-  UserClickedPrevious(e.Expression)
   ShellMessage(shell.Message)
   PreviousMessage(readonly.Message, Int)
   // --- end
@@ -204,11 +203,6 @@ pub fn update(state: State, message) {
           display_help: display_help,
         )
       #(state, effect.batch([snippet_effect]))
-    }
-    UserClickedPrevious(exp) -> {
-      let state =
-        State(..state, shell: shell.user_clicked_previous(state.shell, exp))
-      #(state, effect.none())
     }
     ShellMessage(message) -> {
       let #(shell, snippet_effect) = shell.update(state.shell, message)
@@ -458,9 +452,10 @@ pub fn render(state: State) {
                 list.map(examples.examples(), fn(e) {
                   let #(source, message) = e
                   h.li([], [
-                    h.button([event.on_click(UserClickedPrevious(source))], [
-                      element.text(message),
-                    ]),
+                    element.text("TODO as rendering"),
+                    // h.button([event.on_click(UserClickedPrevious(source))], [
+                  //   element.text(message),
+                  // ]),
                   ])
                 }),
               ),
@@ -481,13 +476,14 @@ pub fn render(state: State) {
                     readonly.render(readonly)
                     |> element.map(PreviousMessage(_, i)),
                   ]),
-                  h.button(
-                    [
-                      a.class("absolute top-0 right-0 w-6"),
-                      event.on_click(UserClickedPrevious(readonly.source)),
-                    ],
-                    [outline.arrow_path()],
-                  ),
+                  element.text("TODO as rendering"),
+                  // h.button(
+                //   [
+                //     a.class("absolute top-0 right-0 w-6"),
+                //     event.on_click(UserClickedPrevious(readonly.source)),
+                //   ],
+                //   [outline.arrow_path()],
+                // ),
                 ]),
                 case effects {
                   [] -> element.none()

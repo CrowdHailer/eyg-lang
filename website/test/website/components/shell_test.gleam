@@ -71,6 +71,11 @@ fn enter_text(state, text) {
   #(shell.update(shell, CurrentMessage(message)), i + 1)
 }
 
+fn click_previous(state, index) {
+  let #(#(shell, action), i) = state
+  #(shell.update(shell, shell.UserClickedPrevious(index)), i + 1)
+}
+
 // sync to keep the pipeline running
 fn run_effect(state, sync) {
   let #(#(shell, action), i) = state
@@ -201,6 +206,16 @@ pub fn moving_above_loads_last_expression_test() {
   |> command("ArrowUp")
   |> has_input(e.String("Banjo"))
 }
+
+pub fn user_clicking_previous_test() {
+  new([])
+  |> command("s")
+  |> enter_text("Pebble")
+  |> command("Enter")
+  |> has_input(e.Vacant)
+  |> click_previous(0)
+  |> has_input(e.String("Pebble"))
+}
 // Test task only starts once
 // needs equal for type narrow test
 // needs effects for perform test
@@ -212,3 +227,9 @@ pub fn moving_above_loads_last_expression_test() {
 
 // A runner keeps the ID but it needs composing with the scope to types and other new versions below
 // The view history function can be a state of the shell
+// Not Runnin
+// running awaiting ref
+// running effect is running
+// running effect has failed
+// running effect is not available
+// running and reference is being looked for

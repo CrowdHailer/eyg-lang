@@ -6,6 +6,7 @@ import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
+import gleam/set
 import morph/analysis
 import morph/editable as e
 import plinth/javascript/console
@@ -16,10 +17,10 @@ import website/sync/cache
 
 pub type ShellEntry {
   Executed(
-    Option(analysis.Value),
-    // These are kept in reverse order
-    List(interactive.RuntimeEffect),
-    readonly.Readonly,
+    value: Option(analysis.Value),
+    // The list of effects are kept in reverse order
+    effects: List(interactive.RuntimeEffect),
+    source: readonly.Readonly,
   )
 }
 
@@ -27,13 +28,6 @@ pub type ShellFailure {
   SnippetFailure(snippet.Failure)
   NoMoreHistory
 }
-
-// Not Runnin
-// running awaiting ref
-// running effect is running
-// running effect has failed
-// running effect is not available
-// running and reference is being looked for
 
 pub type Run {
   // if no type errors then unhandled effect is still running
@@ -121,20 +115,11 @@ fn close_all_previous(shell: Shell) {
   Shell(..shell, previous: previous)
 }
 
-pub fn user_clicked_previous(shell: Shell, exp) {
-  todo as "where do these live"
-  // let scope = shell.source.scope
-  // let effects = shell.source.effects
-  // let cache = shell.source.cache
-
-  // let current = snippet.active(exp, scope, effects, cache)
-  // Shell(..shell, source: current)
-}
-
 pub type Message {
   // Current could be called input
   CurrentMessage(snippet.Message)
   ExternalHandlerCompleted(Result(analysis.Value, istate.Debug(analysis.Path)))
+  UserClickedPrevious(Int)
 }
 
 pub type Effect {
@@ -231,7 +216,20 @@ pub fn update(shell, message) {
           }
       }
     }
+    UserClickedPrevious(index) -> {
+      // Don't keep analysis in history as the scope will change, which is the main reason to rerun a snippet
+      let Shell(previous:, ..) = shell
+      case listx.at(previous, index) {
+        Ok(Executed(source:, ..)) -> set_code(shell, source.source)
+        Error(Nil) -> #(shell, Nothing)
+      }
+    }
   }
+}
+
+fn set_code(shell, code) {
+  let shell = Shell(..shell, source: snippet.active(code))
+  new_code(shell)
 }
 
 // The snippet will have cleared it's analysis
