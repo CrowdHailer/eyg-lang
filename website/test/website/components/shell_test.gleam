@@ -325,6 +325,45 @@ pub fn user_clicking_previous_test() {
   |> click_previous(0)
   |> has_input(e.String("Pebble"))
 }
+
+pub fn user_can_copy_from_input_test() {
+  new([])
+  |> command("s")
+  |> enter_text("Jack")
+  |> command("y")
+  |> fn(state) {
+    let #(#(shell, action), i) = state
+    action
+    |> should.equal(shell.WriteToClipboard("{\"0\":\"s\",\"v\":\"Jack\"}"))
+    #(
+      shell.update(
+        shell,
+        CurrentMessage(snippet.ClipboardWriteCompleted(Ok(Nil))),
+      ),
+      i,
+    )
+  }
+}
+
+pub fn user_can_paste_to_input_test() {
+  new([])
+  |> command("Y")
+  |> fn(state) {
+    let #(#(shell, action), i) = state
+    action
+    |> should.equal(shell.ReadFromClipboard)
+    #(
+      shell.update(
+        shell,
+        CurrentMessage(
+          snippet.ClipboardReadCompleted(Ok("{\"0\":\"s\",\"v\":\"Farm\"}")),
+        ),
+      ),
+      i,
+    )
+  }
+  |> has_input(e.String("Farm"))
+}
 // needs equal for type narrow test
 // needs effects for perform test
 // When is cancelled or task fails state needs to update

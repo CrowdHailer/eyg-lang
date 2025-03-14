@@ -62,7 +62,7 @@ const embed_area_styles = [
 const code_area_styles = [
   #("outline", "2px solid transparent"), #("outline-offset", "2px"),
   #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
-  #("margin-top", "auto"), #("margin-bottom", "auto"),
+  #("margin-top", "auto"), #("margin-bottom", "auto"), #("height", "100%"),
 ]
 
 fn footer_area(color, contents) {
@@ -215,8 +215,6 @@ pub type Effect {
   ReadFromClipboard
   NewCode
   Confirm
-  // RunEffect(promise.Promise(#(Int, Value)))
-  // Conclude(value: Option(Value), effects: List(RuntimeEffect), scope: Scope)
 }
 
 pub fn focus_on_buffer() {

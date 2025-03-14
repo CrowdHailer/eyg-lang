@@ -9,6 +9,7 @@ import gleam/listx
 import gleam/option.{type Option, None, Some}
 import morph/analysis
 import morph/editable as e
+import plinth/browser/clipboard
 import plinth/javascript/console
 import website/components/readonly
 import website/components/snippet
@@ -107,6 +108,8 @@ pub type Effect {
   Nothing
   // RunFinished
   RunEffect(value: analysis.Value, handler: analysis.ExternalBlocking)
+  ReadFromClipboard
+  WriteToClipboard(text: String)
 }
 
 pub fn update(shell, message) {
@@ -155,16 +158,8 @@ pub fn update(shell, message) {
           }
         }
         snippet.MoveBelow -> #(shell, Nothing)
-        snippet.ReadFromClipboard -> #(
-          shell,
-          todo as "clipboard",
-          // Some(snippet.read_from_clipboard()),
-        )
-        snippet.WriteToClipboard(text) -> #(
-          shell,
-          todo as "clipboard",
-          // Some(snippet.write_to_clipboard(text)),
-        )
+        snippet.ReadFromClipboard -> #(shell, ReadFromClipboard)
+        snippet.WriteToClipboard(text) -> #(shell, WriteToClipboard(text))
       }
     }
     ExternalHandlerCompleted(result) -> {
@@ -357,11 +352,20 @@ pub fn message_from_previous_code(shell: Shell, m, i) {
 pub fn run_effect(lift, blocking) {
   case blocking(lift) {
     Ok(p) -> promise.map(p, fn(v) { ExternalHandlerCompleted(Ok(v)) })
-    Error(debug) ->
-      promise.resolve(
-        ExternalHandlerCompleted(Error(todo as "blocking needs to track debug")),
-      )
+    Error(reason) -> promise.resolve(ExternalHandlerCompleted(Error(reason)))
   }
+}
+
+pub fn write_to_clipboard(text) {
+  promise.map(clipboard.write_text(text), fn(r) {
+    CurrentMessage(snippet.ClipboardWriteCompleted(r))
+  })
+}
+
+pub fn read_from_clipboard() {
+  promise.map(clipboard.read_text(), fn(r) {
+    CurrentMessage(snippet.ClipboardReadCompleted(r))
+  })
 }
 
 pub type Status {

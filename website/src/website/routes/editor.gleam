@@ -216,6 +216,10 @@ pub fn update(state: State, message) {
         shell.Nothing -> effect.none()
         shell.RunEffect(lift, blocking) ->
           dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.WriteToClipboard(text) ->
+          dispatch_to_shell(shell.write_to_clipboard(text))
+        shell.ReadFromClipboard ->
+          dispatch_to_shell(shell.read_from_clipboard())
       }
       #(
         state,
@@ -240,6 +244,10 @@ pub fn update(state: State, message) {
         shell.Nothing -> effect.none()
         shell.RunEffect(lift, blocking) ->
           dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.WriteToClipboard(text) ->
+          dispatch_to_shell(shell.write_to_clipboard(text))
+        shell.ReadFromClipboard ->
+          dispatch_to_shell(shell.read_from_clipboard())
       }
       let state = State(..state, sync:, shell:)
       #(
@@ -566,15 +574,6 @@ pub fn render(state: State) {
                 [outline.exclamation_circle()],
               )
           },
-          h.span(
-            [
-              a.class(
-                "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
-              ),
-            ],
-            [outline.arrow_path()],
-          ),
-          // },
         ],
       )
         |> element.map(shell.CurrentMessage)
