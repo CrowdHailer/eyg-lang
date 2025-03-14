@@ -96,8 +96,11 @@ fn close_all_previous(shell: Shell) {
 }
 
 pub type Message {
-  // Current could be called input
+  // The shell can be used in a variety of location where setting the input is desirable
+  // On the editor page examples can be chosen to execute in the shell
+  ParentSetSource(e.Expression)
   CacheUpdate(cache.Cache)
+  // Current could be called input
   CurrentMessage(snippet.Message)
   ExternalHandlerCompleted(Result(analysis.Value, istate.Reason(analysis.Path)))
   UserClickedPrevious(Int)
@@ -115,6 +118,7 @@ pub type Effect {
 
 pub fn update(shell, message) {
   case message {
+    ParentSetSource(source) -> set_code(shell, source)
     CacheUpdate(cache) -> {
       let Shell(run:, effects:, ..) = shell
       let #(run, action) = run_update_cache(run, cache, effects)

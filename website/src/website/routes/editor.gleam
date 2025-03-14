@@ -458,10 +458,14 @@ pub fn render(state: State) {
                 list.map(examples.examples(), fn(e) {
                   let #(source, message) = e
                   h.li([], [
-                    element.text("TODO as rendering"),
-                    // h.button([event.on_click(UserClickedPrevious(source))], [
-                  //   element.text(message),
-                  // ]),
+                    h.button(
+                      [
+                        event.on_click(
+                          ShellMessage(shell.ParentSetSource(source)),
+                        ),
+                      ],
+                      [element.text(message)],
+                    ),
                   ])
                 }),
               ),
