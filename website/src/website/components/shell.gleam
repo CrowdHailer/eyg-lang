@@ -44,14 +44,17 @@ pub type Run {
   )
 }
 
-// This one is tricky to remove from mount, so stick with client and mount inline
-// Shell is not a page an so it doesn't keep a client
 pub type Shell {
   Shell(
     failure: Option(ShellFailure),
     previous: List(ShellEntry),
     source: snippet.Snippet,
+    // A shell component is not a whole page so it isn't the canonical state of the client
+    // It keeps only a reference to the client cache that can be updated as required
     cache: cache.Cache,
+    // The derrived properties of a shell are very tightly bound.
+    // Typing is based on the scope which is updated by the runtime.
+    effects: List(#(String, analysis.EffectSpec)),
     // I need to rebuild because scope is difference and I want expression in example
     scope: interactive.Scope,
     // Evaluated is needed to show what effect will run in the shell console
@@ -71,6 +74,7 @@ pub fn init(effects, cache) {
     previous: [],
     source: snippet.active(source),
     cache: cache,
+    effects: effects,
     scope: scope,
     // what the task would be is derivable
     // evaluated: interactive.evaluate(source, scope, cache),
@@ -130,99 +134,31 @@ pub type Effect {
 }
 
 pub fn update(shell, message) {
-  let extrinsic = []
   let shell = close_all_previous(shell)
   let shell = case snippet.user_message(message) {
     True -> Shell(..shell, failure: None)
     False -> shell
   }
+  // The source must always be updated after handling a message
   let #(source, eff) = snippet.update(shell.source, message)
+  let shell = Shell(..shell, source: source)
   case eff {
-    snippet.Nothing -> #(Shell(..shell, source: source), Nothing)
-    snippet.NewCode -> #(
-      Shell(
-        ..shell,
-        run: Run(
-          False,
-          {
-            io.debug("running here")
-            io.debug(source.editable)
-            interactive.evaluate(source.editable, shell.scope, shell.cache)
-            |> io.debug
-          },
-          [],
-        ),
-      ),
-      Nothing,
-    )
-    snippet.Confirm ->
-      case shell.run.started {
-        False ->
-          case shell.run.return {
-            // new_scope is all scope
-            Ok(#(value, scope)) -> {
-              io.debug(#(scope), "----------------")
-              let previous = [
-                Executed(
-                  value,
-                  shell.run.effects,
-                  readonly.new(shell.source.editable),
-                ),
-                ..shell.previous
-              ]
-              let source = e.from_annotated(ir.vacant())
-              let shell =
-                Shell(
-                  ..shell,
-                  previous:,
-                  scope:,
-                  source: snippet.active(source),
-                  // what the task would be is derivable
-                  run: Run(
-                    False,
-                    interactive.evaluate(source, scope, shell.cache),
-                    [],
-                  ),
-                )
-              #(shell, Nothing)
-            }
-            Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-              case list.key_find(extrinsic, label) {
-                Ok(#(_lift, _reply, blocking)) ->
-                  case blocking(lift) {
-                    // TODO update running task
-                    Ok(p) -> #(shell, RunEffect)
-                    Error(reason) -> #(shell, Nothing)
-                  }
-                _ -> #(shell, Nothing)
-              }
-            }
-            _ -> #(shell, Nothing)
-          }
-        // already running
-        True -> #(shell, Nothing)
-      }
+    snippet.Nothing -> #(shell, Nothing)
+    snippet.NewCode -> new_code(shell)
+    snippet.Confirm -> confirm(shell)
+
     snippet.Failed(failure) -> #(
       Shell(..shell, failure: Some(SnippetFailure(failure))),
       Nothing,
     )
-
-    // snippet.RunEffect(p) -> #(
-    //   Shell(..shell, source: source),
-    //   Some(snippet.await_running_effect(p)),
-    // )
-    snippet.FocusOnCode -> #(Shell(..shell, source: source), {
-      // TODO need to have effect
-
-      // snippet.focus_on_buffer()
-      Nothing
-    })
-    snippet.FocusOnInput -> #(Shell(..shell, source: source), {
+    // TODO need to handle focusing on code by returning two effects or not actually have it at this level
+    snippet.FocusOnCode -> new_code(shell)
+    snippet.FocusOnInput -> #(shell, {
       // TODO need to have effect
       // snippet.focus_on_input()
       Nothing
     })
-    snippet.ToggleHelp -> #(Shell(..shell, source: source), Nothing)
+    snippet.ToggleHelp -> #(shell, Nothing)
     snippet.MoveAbove -> {
       case shell.previous {
         [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), Nothing)
@@ -261,6 +197,67 @@ pub fn update(shell, message) {
     //   #(shell, Nothing)
     // }
   }
+}
+
+// The snippet will have cleared it's analysis
+fn new_code(shell) {
+  let Shell(source:, scope:, cache:, ..) = shell
+  let run = new_run(source.editable, scope, cache)
+  // TODO real effects and group context better
+  let analysis =
+    interactive.do_analysis(
+      source.editable,
+      scope,
+      cache,
+      interactive.effect_types([]),
+    )
+  let source = snippet.Snippet(..source, analysis: Some(analysis))
+  #(Shell(..shell, source:, run:), Nothing)
+}
+
+fn confirm(shell) {
+  let Shell(source:, cache:, run:, ..) = shell
+  let Run(started:, return:, effects:) = run
+  // TODO add extrinsic or external field to the shell or a context
+  let extrinsic = []
+  case started, return {
+    False, Ok(#(value, scope)) -> {
+      let record = Executed(value, effects, readonly.new(source.editable))
+      let previous = [record, ..shell.previous]
+      let source = e.from_annotated(ir.vacant())
+      let snippet = snippet.active(source)
+      // Extract analysis also it is being inefficient on scope
+      let analysis =
+        interactive.do_analysis(
+          source,
+          scope,
+          cache,
+          interactive.effect_types([]),
+        )
+      let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
+      let run = new_run(source, scope, cache)
+      let shell = Shell(..shell, previous:, scope:, source: snippet, run:)
+      #(shell, Nothing)
+    }
+    False, Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+      case list.key_find(extrinsic, label) {
+        Ok(#(_lift, _reply, blocking)) ->
+          case blocking(lift) {
+            // TODO update running task
+            Ok(p) -> #(shell, RunEffect)
+            Error(reason) -> #(shell, Nothing)
+          }
+        _ -> #(shell, Nothing)
+      }
+    }
+    _, _ -> #(shell, Nothing)
+  }
+}
+
+// runner stuff
+
+fn new_run(editable, scope, cache) {
+  Run(False, interactive.evaluate(editable, scope, cache), [])
 }
 
 pub fn message_from_previous_code(shell: Shell, m, i) {

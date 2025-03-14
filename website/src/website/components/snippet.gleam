@@ -392,7 +392,7 @@ pub fn update(state, message) {
         _ -> #(state, Failed(NoKeyBinding(key)))
       }
     }
-    UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
+    UserPressedCommandKey(key), _ -> action_failed(state, key)
     UserClickedPath(path), _ ->
       navigate_source(p.focus_at(state.editable, path), state)
 

@@ -91,7 +91,7 @@ pub fn do_analysis(editable, scope, cache, effects) {
   analysis
 }
 
-fn effect_types(effects: List(#(String, analysis.EffectSpec))) {
+pub fn effect_types(effects: List(#(String, analysis.EffectSpec))) {
   listx.value_map(effects, fn(details) { #(details.0, details.1) })
 }
 

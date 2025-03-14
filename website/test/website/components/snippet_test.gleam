@@ -171,7 +171,8 @@ pub fn enter_text(snippet, text, i) {
   }
   let message = snippet.MessageFromInput(input.UpdateInput(text))
   let #(snippet, _) = snippet.update(snippet, message)
-  snippet.MessageFromInput(input.Submit)
+  let message = snippet.MessageFromInput(input.Submit)
+  snippet.update(snippet, message)
 }
 
 fn enter_string(state, text) {
@@ -183,8 +184,7 @@ fn enter_string(state, text) {
         "bad action at " <> int.to_string(i) <> ": " <> string.inspect(action)
       }
   }
-  let message = enter_text(snippet, text, i)
-  #(snippet.update(snippet, message), i + 1)
+  #(enter_text(snippet, text, i), i + 1)
 }
 
 fn click(state, path) {
