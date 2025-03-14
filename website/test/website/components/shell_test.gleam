@@ -159,7 +159,6 @@ pub fn types_remain_in_scope_test() {
 }
 
 // Everything is passed in by events so that nested mvu works
-// Just call it run effect
 pub fn effects_are_recorded_test() {
   new([
     #("Inner", #(t.String, t.Integer, fn(_) { todo })),
@@ -191,6 +190,16 @@ pub fn effects_are_recorded_test() {
     interactive.RuntimeEffect("Inner", v.String("Bulb"), v.Integer(101)),
   ])
   |> has_input(e.Vacant)
+}
+
+pub fn moving_above_loads_last_expression_test() {
+  new([])
+  |> command("s")
+  |> enter_text("Banjo")
+  |> command("Enter")
+  |> has_input(e.Vacant)
+  |> command("ArrowUp")
+  |> has_input(e.String("Banjo"))
 }
 // Test task only starts once
 // needs equal for type narrow test

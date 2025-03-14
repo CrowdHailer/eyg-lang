@@ -3,7 +3,6 @@ import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/io
-import gleam/javascript/promise.{type Promise}
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -11,9 +10,6 @@ import morph/analysis
 import morph/editable as e
 import plinth/javascript/console
 import website/components/readonly
-
-// not being reused
-// import website/components/shell/mount
 import website/components/snippet
 import website/mount/interactive
 import website/sync/cache
@@ -92,24 +88,24 @@ pub fn init(effects, cache) {
 }
 
 // This double error handling from evaluated to 
-pub fn run_status(shell) {
-  let Shell(run:, ..) = shell
-  case run.return {
-    Ok(_) -> "Done"
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) ->
-      case run.started {
-        True -> "Running"
-        False ->
-          case todo {
-            True -> "Waiting"
-            False -> "Error"
-          }
-      }
-    Error(#(break.UndefinedReference(ref), meta, env, k)) -> todo
-    Error(#(break.UndefinedRelease(ref, _, _), meta, env, k)) -> todo
-    _ -> "Error"
-  }
-}
+// pub fn run_status(shell) {
+//   let Shell(run:, ..) = shell
+//   case run.return {
+//     Ok(_) -> "Done"
+//     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) ->
+//       case run.started {
+//         True -> "Running"
+//         False ->
+//           case todo {
+//             True -> "Waiting"
+//             False -> "Error"
+//           }
+//       }
+//     Error(#(break.UndefinedReference(ref), meta, env, k)) -> todo
+//     Error(#(break.UndefinedRelease(ref, _, _), meta, env, k)) -> todo
+//     _ -> "Error"
+//   }
+// }
 
 fn close_many_previous(shell_entries) {
   list.map(shell_entries, fn(e) {
@@ -179,13 +175,15 @@ pub fn update(shell, message) {
           case shell.previous {
             [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), Nothing)
             [Executed(_value, _effects, readonly), ..] -> {
-              todo as "still need a home for these"
-              // let scope = shell.source.scope
-              // let effects = shell.source.effects
-              // let cache = shell.source.cache
+              let scope = shell.scope
+              let effects = shell.effects
+              let cache = shell.cache
 
-              // let current = snippet.active(readonly.source, scope, effects, cache)
-              // #(Shell(..shell, source: current), Nothing)
+              let current =
+                snippet.active(readonly.source)
+                |> snippet_analyse(scope, cache, effects)
+
+              #(Shell(..shell, source: current), Nothing)
             }
           }
         }
@@ -240,15 +238,8 @@ pub fn update(shell, message) {
 fn new_code(shell) {
   let Shell(source:, scope:, cache:, ..) = shell
   let run = new_run(source.editable, scope, cache)
-  // TODO real effects and group context better
-  let analysis =
-    interactive.do_analysis(
-      source.editable,
-      scope,
-      cache,
-      interactive.effect_types([]),
-    )
-  let source = snippet.Snippet(..source, analysis: Some(analysis))
+
+  let source = snippet_analyse(source, scope, cache, shell.effects)
   #(Shell(..shell, source:, run:), Nothing)
 }
 
