@@ -105,7 +105,7 @@ pub type Message {
   SnippetMessage(snippet.Message)
   // --- these are all shell messages
   UserClickedPrevious(e.Expression)
-  ShellMessage(snippet.Message)
+  ShellMessage(shell.Message)
   PreviousMessage(readonly.Message, Int)
   // --- end
   SyncMessage(client.Message)
@@ -422,10 +422,14 @@ pub fn render(state: State) {
   container(
     render_menu_from_state(state)
       |> list.map(fn(e) {
-        element.map(e, snippet.MessageFromMenu) |> element.map(ShellMessage)
+        element.map(e, snippet.MessageFromMenu)
+        |> element.map(shell.CurrentMessage)
+        |> element.map(ShellMessage)
       }),
     [
-      render_pallet(state.shell.source) |> element.map(ShellMessage),
+      render_pallet(state.shell.source)
+        |> element.map(shell.CurrentMessage)
+        |> element.map(ShellMessage),
       h.div([a.class("absolute top-0 w-full bg-white")], [
         help_menu_button(state),
         fullscreen_menu_button(state),
@@ -564,6 +568,7 @@ pub fn render(state: State) {
         // },
         ],
       )
+        |> element.map(shell.CurrentMessage)
         |> element.map(ShellMessage),
     ],
     show,
@@ -706,7 +711,12 @@ fn render_errors(failure, snippet: snippet.Snippet) {
             [], error.Todo | [_], error.Todo -> element.none()
             _, _ ->
               h.div(
-                [event.on_click(ShellMessage(snippet.UserClickedPath(path)))],
+                [
+                  event.on_click(ShellMessage(
+                    snippet.UserClickedPath(path)
+                    |> shell.CurrentMessage,
+                  )),
+                ],
                 [element.text(debug.reason(reason))],
               )
           }

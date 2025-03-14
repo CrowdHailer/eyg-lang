@@ -1,4 +1,5 @@
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/value as v
 import gleam/int
 import gleam/io
 import gleam/list
@@ -7,9 +8,10 @@ import gleeunit/should
 import morph/editable as e
 import morph/input
 import morph/projection
-import website/components/shell.{Shell}
+import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
+import website/mount/interactive
 import website/sync/client
 
 fn new(effects) {
@@ -33,7 +35,10 @@ fn assert_action(got, expected, i) {
 fn command(state, key) {
   let #(#(shell, action), i) = state
   assert_action(action, [shell.Nothing], i)
-  #(shell.update(shell, snippet.UserPressedCommandKey(key)), i + 1)
+  #(
+    shell.update(shell, CurrentMessage(snippet.UserPressedCommandKey(key))),
+    i + 1,
+  )
 }
 
 fn pick_from(state, check) {
@@ -41,7 +46,7 @@ fn pick_from(state, check) {
   // assert_action(action, [snippet.FocusOnInput], i)
   let shell.Shell(source:, ..) = shell
   let message = snippet_test.handle_picker(source, check, i)
-  #(shell.update(shell, message), i + 1)
+  #(shell.update(shell, CurrentMessage(message)), i + 1)
 }
 
 fn pick(state, value) {
@@ -61,16 +66,18 @@ fn enter_text(state, text) {
       }
   }
   let message = snippet.MessageFromInput(input.UpdateInput(text))
-  let #(shell, _) = shell.update(shell, message)
+  let #(shell, _) = shell.update(shell, CurrentMessage(message))
   let message = snippet.MessageFromInput(input.Submit)
-  #(shell.update(shell, message), i + 1)
+  #(shell.update(shell, CurrentMessage(message)), i + 1)
 }
 
-fn handle_effect(state, label) {
+// sync to keep the pipeline running
+fn run_effect(state, sync) {
   let #(#(shell, action), i) = state
   case action {
-    shell.RunEffect(value, blocking) -> {
-      io.debug(blocking == label)
+    shell.RunEffect(value, _blocking) -> {
+      let message = shell.ExternalHandlerCompleted(sync(value))
+      #(shell.update(shell, message), i + 1)
     }
     got -> {
       let message =
@@ -78,7 +85,6 @@ fn handle_effect(state, label) {
       panic as message
     }
   }
-  todo as "effect"
 }
 
 fn has_executed(state, with) {
@@ -93,6 +99,28 @@ fn has_executed(state, with) {
     Error(Nil) ->
       panic as { "no previous history after step " <> int.to_string(i) }
   }
+}
+
+fn has_effects(state, expected) {
+  let #(#(shell, action), i) = state
+  let Shell(previous:, ..) = shell
+  case list.first(previous) {
+    Ok(shell.Executed(_, effects, _recent)) -> {
+      effects
+      |> should.equal(expected)
+      state
+    }
+    Error(Nil) ->
+      panic as { "no previous history after step " <> int.to_string(i) }
+  }
+}
+
+fn has_input(state, expected) {
+  let #(#(shell, action), i) = state
+  let Shell(source:, ..) = shell
+  source.editable
+  |> should.equal(expected)
+  state
 }
 
 // typing is automatic
@@ -133,9 +161,8 @@ pub fn types_remain_in_scope_test() {
 // Everything is passed in by events so that nested mvu works
 // Just call it run effect
 pub fn effects_are_recorded_test() {
-  let inner = fn(_) { todo }
   new([
-    #("Inner", #(t.String, t.Integer, inner)),
+    #("Inner", #(t.String, t.Integer, fn(_) { todo })),
     #("Outer", #(t.Integer, t.unit, fn(_) { todo })),
   ])
   |> command("p")
@@ -151,10 +178,19 @@ pub fn effects_are_recorded_test() {
   |> command("s")
   |> enter_text("Bulb")
   |> command("Enter")
-  |> handle_effect(inner)
-  |> io.debug
-
-  todo as "test"
+  |> run_effect(fn(v) {
+    should.equal(v, v.String("Bulb"))
+    Ok(v.Integer(101))
+  })
+  |> run_effect(fn(v) {
+    should.equal(v, v.Integer(101))
+    Ok(v.unit())
+  })
+  |> has_effects([
+    interactive.RuntimeEffect("Outer", v.Integer(101), v.unit()),
+    interactive.RuntimeEffect("Inner", v.String("Bulb"), v.Integer(101)),
+  ])
+  |> has_input(e.Vacant)
 }
 // Test task only starts once
 // needs equal for type narrow test
