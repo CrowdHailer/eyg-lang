@@ -70,7 +70,6 @@ fn decode_source(json) {
 fn init_example(json, cache, config) {
   let source = decode_source(json)
   snippet.init(source)
-  // [], effects(config), cache)
 }
 
 fn effects(config) {
@@ -80,7 +79,6 @@ fn effects(config) {
 fn init_reload_example(json, cache) {
   let source = decode_source(json)
   snippet.init(source)
-  // [], [], cache)
 }
 
 pub fn init(config) {
@@ -178,7 +176,6 @@ pub fn update(state: State, message) {
       let #(failure, snippet_effect) = case eff {
         snippet.Nothing -> #(None, effect.none())
         snippet.NewCode -> #(None, effect.none())
-
         snippet.Confirm -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
         snippet.ReturnToCode -> #(
@@ -200,7 +197,6 @@ pub fn update(state: State, message) {
           None,
           dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
         )
-        // snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_snippet(state, id, snippet)
       let references = snippet.references(snippet)

@@ -116,7 +116,8 @@ const functions_example = e.Block(
         [e.Bind("f"), e.Bind("x")],
         e.Call(e.Variable("f"), [e.Call(e.Variable("f"), [e.Variable("x")])]),
       ),
-    ), #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
+    ),
+    #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
   ],
   e.Call(e.Variable("inc2"), [e.Integer(5)]),
   False,
@@ -155,14 +156,16 @@ const fix_example = e.Block(
                       True,
                     ),
                   ),
-                ), #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
+                ),
+                #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
               ],
               None,
             ),
           ),
         ],
       ),
-    ), #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
+    ),
+    #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
   ],
   e.Call(e.Variable("count"), [e.List([e.Integer(5)], None)]),
   False,
@@ -274,13 +277,8 @@ fn missing_refs(snippets) {
   })
 }
 
-pub type RunMessage {
-  Start
-}
-
 pub type Message {
   SnippetMessage(String, snippet.Message)
-  RunMessage(String, RunMessage)
   SyncMessage(client.Message)
   AuthMessage(auth_panel.Message)
 }
@@ -343,9 +341,6 @@ pub fn update(state: State, message) {
       let state = State(..state, active: Editing(identifier, failure))
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       #(state, effect.batch([snippet_effect]))
-    }
-    RunMessage(identifier, message) -> {
-      todo
     }
     SyncMessage(message) -> {
       let State(cache: sync_client, ..) = state

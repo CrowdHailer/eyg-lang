@@ -386,3 +386,9 @@ pub fn user_can_paste_to_input_test() {
 // TODO replace reference in context with cache not easy as then morph has to rely on index, these should be part of analysis or interpreter
 // TODO add interactive state to docs or make an example component
 // TODO test that errors go away after release is loaded
+
+// A map of snippets
+// Or an example component with run state
+
+// Have a map of states or a map of examples with enum of state
+// its probably best to be able to have both set ups
