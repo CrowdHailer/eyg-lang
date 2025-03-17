@@ -81,10 +81,20 @@ pub fn from_block(bytes, cache, extrinsic) {
   |> do_analysis
 }
 
-fn execute_snippet(snippet) {
-  let Snippet(editable:, ..) = snippet
-  let source = editable |> e.to_annotated([]) |> ir.clear_annotation
-  expression.execute(source, [])
+pub fn finish_editing(state) {
+  let Example(snippet:, runner:, ..) = state
+  let snippet = snippet.finish_editing(snippet)
+  let runner = runner.stop(runner)
+  Example(..state, snippet:, runner:)
+}
+
+pub fn update_cache(state, cache) {
+  let Example(runner:, ..) = state
+  let #(runner, action) = runner.update(runner, runner.UpdateCache(cache))
+  let state =
+    Example(..state, runner:)
+    |> do_analysis
+  #(state, action)
 }
 
 pub type Message {
@@ -155,6 +165,12 @@ pub fn update(state, message) {
       #(state, action)
     }
   }
+}
+
+fn execute_snippet(snippet) {
+  let Snippet(editable:, ..) = snippet
+  let source = editable |> e.to_annotated([]) |> ir.clear_annotation
+  expression.execute(source, [])
 }
 
 fn do_analysis(state) {

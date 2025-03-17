@@ -39,6 +39,10 @@ pub fn init(initial, cache, extrinsic) {
   )
 }
 
+pub fn stop(state) {
+  Runner(..state, continue: False)
+}
+
 pub type Message(m) {
   Start
   HandlerCompleted(reference: Int, reply: istate.Value(m))
@@ -116,4 +120,8 @@ fn do(state) {
       }
     }
   }
+}
+
+pub fn run_thunk(ref, thunk) {
+  promise.map(thunk(), HandlerCompleted(ref, _))
 }
