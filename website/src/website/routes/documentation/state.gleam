@@ -228,14 +228,6 @@ pub fn set_example(state: State, id, snippet) {
   State(..state, examples: dict.insert(state.examples, id, snippet))
 }
 
-fn init_example(json, cache) {
-  let assert Ok(source) = dag_json.from_block(bit_array.from_string(json))
-  let source =
-    e.from_annotated(source)
-    |> e.open_all
-  snippet.init(source)
-}
-
 fn to_bytes(editable) {
   e.to_annotated(editable, [])
   |> dag_json.to_block

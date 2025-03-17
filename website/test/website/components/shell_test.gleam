@@ -391,18 +391,4 @@ pub fn user_can_paste_to_input_test() {
 // Or an example component with run state
 
 // Have a map of states or a map of examples with enum of state
-// its probably best to be able to have both set ups example makes most sense
-
-// message
-// mountMessage
-// reloadMessge
-
-// snippetMessage
-// There's no value ina 
-
-// So i don't know in the future what I might have more of.
-// scope in notebooks seems very possible
-// updating the type context also seems possible
-// Passing in a function top level check of type i.e. to pass in a function that works with reload doesnt seem like composition
-// There is a separation between run an runner
-// run shouldn't be in analysis.value
+// its probably best to be able to have both set ups

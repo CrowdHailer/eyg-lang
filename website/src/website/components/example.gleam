@@ -1,6 +1,48 @@
+//// This example component is built on the snippet component and runner headless component
+//// 
+//// It is an effectful expression example context
+////  - scope is empty
+////  - blocks ending in vacant nodes are errors
+//// 
+//// It is stateful and sync to be useful in the component tree of a webpage.
+//// All state information is available to a render function
+//// 
+//// It's also important that execution can be stopped. 
+//// When a user switches to another example a delayed effect from the first example should not fire.
+//// For example a program could be written to wait 5 minutes and then alert. 
+//// If coding elsewhere that alert will be very confusing.
+//// 
+//// A previous experiment tried to have a `Run` component, instead of runner.
+//// The difference would be that code could not be edited.
+//// Doing this leave a problem of handling async replies from external handlers.
+//// The next field in the runner needs to persist over code changes so that each async reply message gets a unique ref.
+//// This could be handled outside the component but it makes sense to keep internally to simplify higher layers.
+//// 
+//// Having a continue flag and awaiting field seems like overkill. 
+//// It is not elegant but is necessary to handle the case where a user has started the run
+//// and the return state is a `MissingReference` or `MissingRelease`.
+//// The task field must be None but state needs to be recorded that the user has started the run.
+//// 
+//// The `break.Reason` type is reused and it misses information like if a missing reference is in the process of being looked up
+//// This type could be refactored to accomodate this extra data, or by grouping errors to recoverable and not.
+//// 
+//// I don't think this is a good idea because the `break.Reason` type should not depend on editor usage.
+//// There are also other possible usecases like supercompilation where a `MissingVariable` could be recoverable.
+//// 
+//// ## Improvements
+//// 
+////  1. The runner could be parameterised by resume function so that it could run blocks or expressions.
+////    This would make it reusable in the shell but that seems such a disparate environment is it worth it.
+//// 
+//// 2. The runner could be more flexible and a builder pattern used to specify effects resume etc.
+//// 
+//// 3. Replace continue boolean with an enum of `Zero` `Once` `More` so that effects could finish and wait for user input
+
+import eyg/analysis/type_/binding
 import eyg/interpreter/expression
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/listx
 import gleam/option.{Some}
 import morph/editable as e
 import website/components/runner.{type Runner}
@@ -8,76 +50,26 @@ import website/components/snippet.{type Snippet, Snippet}
 import website/mount/interactive
 import website/sync/cache
 
-// throwing away the run state when a task might complete later is a problem
-// This is an issue of named proceses an a pid id wouldn't have the same problem
-// the pid id would be fine but how do we handle the multiple effects run in a single run
-// Should the runner be built with a builder pattern potentially the runner can have a paramerisation of return type
-// However all of this might be overkill if it can't be used by reload
-
-// The interesting situation was when a run had started but was waiting on a ref because then there was no task function
-
-// run.update(start) -> #(returniswatingref, Nothing)
-// run.update(ExtrinsicHandlerReply) ->
-
-// Cant be unstarted and waiting for a reply
-// Can be started and not waiting for a reply
-
-// Turn break around could have failure type but I'm interested in undefined variable returning something lazy
-// vacant code cold also potentially have a test value
-// pub type Reason(m, c) {
-//   NotAFunction(v.Value(m, c))
-//   UndefinedVariable(String)
-//   UndefinedBuiltin(String)
-//   UndefinedReference(String) + go
-//   UndefinedRelease(package: String, release: Int, cid: String) + go
-//   Vacant
-//   NoMatch(term: v.Value(m, c))
-//   UnhandledEffect(String, v.Value(m, c)) + taskref
-//   IncorrectTerm(expected: String, got: v.Value(m, c))
-//   MissingField(String)
-// }
-
-// We don't have a go step on builtins as we ALWAYS go but we need a variable saying will run for cache update
-// It's sorta useful to say will run for further effects as we can step through effects potentially although you could handle that outse
-// but if you did handle that outside would original go be handled outside probably
-
-// next ref
-
-// Might want auto continue to depend on effect, in which case this is just more composition of execute etc
-
-// Might not want a global effect to run from an example for example wait 20 min and then alert is very confusing if using another example
-
-// continue awaiting: extrinsic_ref,next_ref
-// cancel sets awaiting to none and continue to false
-
-// is reusing Return the problem here or more accuratly break
-
-// is there a task id and ref id equivalence ones idempotent so probably not.
-
-// unhandled effect is the return value 
-// if you change the effects then there will be a task that is not expected
-
-// run once doesn' work with bools if waiting on ref
-// I don't like fixed named enums it leads to a lot of invalid type modelling
-// reload does work on expression
-
-// interactive.block(tree, scope)
-// expression
-
 pub type Example {
-  Example(cache: cache.Cache, snippet: Snippet, runner: Runner(Nil))
+  Example(
+    cache: cache.Cache,
+    snippet: Snippet,
+    effects: List(#(String, #(binding.Mono, binding.Mono))),
+    runner: Runner(Nil),
+  )
 }
 
 pub fn from_block(bytes, cache, extrinsic) {
   let assert Ok(source) = dag_json.from_block(bytes)
+  let #(effects, handlers) = listx.key_unzip(extrinsic)
 
   let snippet =
     e.from_annotated(source)
     |> e.open_all
     |> snippet.init()
-  let runner = runner.init(execute_snippet(snippet), cache, extrinsic)
+  let runner = runner.init(execute_snippet(snippet), cache, handlers)
 
-  Example(cache:, snippet:, runner:)
+  Example(cache:, snippet:, effects:, runner:)
   |> do_analysis
 }
 
@@ -174,10 +166,8 @@ fn execute_snippet(snippet) {
 }
 
 fn do_analysis(state) {
-  let Example(cache:, snippet:, ..) = state
+  let Example(cache:, snippet:, effects:, ..) = state
   let scope = []
-  // TODO effects should be from init
-  let effects = []
   let analysis =
     interactive.do_analysis(snippet.editable, scope, cache, effects)
   let snippet = Snippet(..snippet, analysis: Some(analysis))

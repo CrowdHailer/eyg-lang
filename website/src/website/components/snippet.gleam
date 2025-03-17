@@ -1174,12 +1174,6 @@ fn render_structured_note_about_error(error) {
   // ])
 }
 
-pub fn reason_to_html(r) {
-  h.span([a.style([#("white-space", "nowrap")])], [
-    element.text(debug.reason(r)),
-  ])
-}
-
 pub fn render_pallet(state) {
   let Snippet(status: status, ..) = state
   case status {

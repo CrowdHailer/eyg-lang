@@ -1,18 +1,9 @@
 import eyg/interpreter/block
-import eyg/interpreter/break
 import eyg/interpreter/state as istate
-import eyg/interpreter/value as v
-import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/bit_array
-import gleam/dict
-import gleam/dynamicx
-import gleam/int
-import gleam/io
 import gleam/javascript/promise
-import gleam/list
 import gleam/listx
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, Some}
 
 import morph/analysis
 import morph/editable as e
@@ -125,75 +116,6 @@ pub fn evaluate(editable, scope, cache) {
   |> cache.run(cache, block.resume)
 }
 
-fn run_handle_effect(state, task_id, value) {
-  let Interactive(task_counter: id, run: run, ..) = state
-  case run, id == task_id {
-    Running(
-      Error(#(break.UnhandledEffect(label, lift), _meta, env, k)),
-      effects,
-    ),
-      True
-    -> {
-      let effects = [RuntimeEffect(label, lift, value), ..effects]
-      let task_id = task_id + 1
-      let #(return, task) =
-        block.resume(value, env, k)
-        |> run_blocking(state.cache, state.effects, block.resume)
-      let run = Running(return, effects)
-      let state = Interactive(..state, task_counter: task_id, run: run)
-      let ef = case return {
-        Ok(#(value, scope)) -> Conclude(value, effects, scope)
-        _ ->
-          case task {
-            Some(task) -> {
-              let p = promise.map(task, fn(v) { #(task_id, v) })
-              RunEffect(p)
-            }
-            None -> Nothing
-          }
-      }
-      #(state, ef)
-    }
-    _, _ -> #(state, Nothing)
-  }
-  // case status {
-  //   run.Failed(_) -> #(state, Nothing)
-  //   run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
-
-  //   run.Handling(_label, lift, env, k, blocking) ->
-  //     case blocking(lift) {
-  //       Ok(promise) -> {
-  //         let run = run.Run(status, effect_log)
-  //         let state = Snippet(..state, run: run)
-  //         #(state, RunEffect(promise))
-  //       }
-  //       Error(reason) -> {
-  //         let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-  //         let state = Snippet(..state, run: run)
-  //         #(state, Nothing)
-  //       }
-  //     }
-  // }
-}
-
-// might belong on a run 
-fn run_blocking(return, cache, extrinsic, resume) {
-  let return = cache.run(return, cache, resume)
-  case return {
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      case list.key_find(extrinsic, label) {
-        Ok(#(_lift, _reply, blocking)) ->
-          case blocking(lift) {
-            Ok(p) -> #(return, Some(p))
-            Error(reason) -> #(Error(#(reason, meta, env, k)), None)
-          }
-        _ -> #(return, None)
-      }
-    }
-    _ -> #(return, None)
-  }
-}
-
 pub type Effect {
   Nothing
   RunEffect(promise.Promise(#(Int, analysis.Value)))
@@ -202,20 +124,4 @@ pub type Effect {
     effects: List(RuntimeEffect),
     scope: Scope,
   )
-}
-
-fn run_effects(state) {
-  let Interactive(evaluated: evaluated, task_counter: task_counter, ..) = state
-  let task_counter = task_counter + 1
-  let #(return, task) =
-    run_blocking(evaluated, state.cache, state.effects, block.resume)
-  let run = Running(return, [])
-  let state = Interactive(..state, run: run, task_counter: task_counter)
-  case task {
-    Some(p) -> {
-      let p = promise.map(p, fn(v) { #(task_counter, v) })
-      #(state, RunEffect(p))
-    }
-    None -> #(state, Nothing)
-  }
 }

@@ -1,14 +1,13 @@
+import eyg/analysis/type_/binding/debug
 import eyg/interpreter/break
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
+import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import morph/analysis
 import website/components/example.{Example}
 import website/components/output
-import website/components/runner.{Runner}
 import website/components/simple_debug
 import website/components/snippet
 
@@ -50,7 +49,15 @@ pub fn render(state) {
       [
         snippet.footer_area(
           snippet.neo_orange_4,
-          list.map(warnings, fn(_) { element.text("watn") }),
+          list.map(warnings, fn(error) {
+            let #(_path, reason) = error
+            h.div(
+              [
+                // event.on_click(UserClickedPath(path))
+              ],
+              [reason_to_html(reason)],
+            )
+          }),
         ),
       ]
     }
@@ -64,4 +71,11 @@ pub fn render(state) {
   }
   snippet.render_embedded_with_top_menu(snippet, slot)
   |> element.map(example.SnippetMessage)
+}
+
+// could move to runner view
+pub fn reason_to_html(r) {
+  h.span([a.style([#("white-space", "nowrap")])], [
+    element.text(debug.reason(r)),
+  ])
 }

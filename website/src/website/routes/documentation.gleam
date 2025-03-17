@@ -8,9 +8,7 @@ import lustre/element/html as h
 import mysig/asset
 import mysig/html
 import website/components
-import website/components/example
 import website/components/example/view
-import website/components/snippet
 import website/routes/common
 import website/routes/documentation/state
 
