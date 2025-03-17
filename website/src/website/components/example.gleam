@@ -1,6 +1,12 @@
+import eyg/interpreter/expression
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
+import gleam/option.{Some}
 import morph/editable as e
+import website/components/runner.{type Runner}
 import website/components/snippet.{type Snippet, Snippet}
+import website/mount/interactive
+import website/sync/cache
 
 // throwing away the run state when a task might complete later is a problem
 // This is an issue of named proceses an a pid id wouldn't have the same problem
@@ -58,29 +64,106 @@ import website/components/snippet.{type Snippet, Snippet}
 // interactive.block(tree, scope)
 // expression
 
-pub type Runner {
-  Runner(
-    // if return is missing ref then continue should be once or many
-    // if return is unhandled then continue should be None or many
-    // if return is unhandled and awaiting ref is None then continue is irrelevant
-
-    // if vacant and wantted to put in code then could be none or many once makes some sense in the wat
-    return: Nil,
-    continue: Bool,
-    awaiting_ref: Nil,
-    next_ref: Int,
-  )
-}
-
 pub type Example {
-  Example(snippet: Snippet)
+  Example(cache: cache.Cache, snippet: Snippet, runner: Runner(Nil))
 }
 
-pub fn from_block(bytes) {
+pub fn from_block(bytes, cache, extrinsic) {
   let assert Ok(source) = dag_json.from_block(bytes)
-  let source =
+
+  let snippet =
     e.from_annotated(source)
     |> e.open_all
-  let snippet = snippet.init(source)
-  todo
+    |> snippet.init()
+  let runner = runner.init(execute_snippet(snippet), cache, extrinsic)
+
+  Example(cache:, snippet:, runner:)
+  |> do_analysis
+}
+
+fn execute_snippet(snippet) {
+  let Snippet(editable:, ..) = snippet
+  let source = editable |> e.to_annotated([]) |> ir.clear_annotation
+  expression.execute(source, [])
+}
+
+pub type Message {
+  SnippetMessage(snippet.Message)
+  RunnerMessage(runner.Message(Nil))
+}
+
+pub type Action {
+  Nothing
+  Failed(snippet.Failure)
+  ReturnToCode
+  FocusOnInput
+  ReadFromClipboard
+  WriteToClipboard(text: String)
+  RunExternalHander(id: Int, thunk: runner.Thunk(Nil))
+}
+
+pub fn update(state, message) {
+  case message {
+    SnippetMessage(message) -> {
+      let Example(snippet:, ..) = state
+      let #(snippet, action) = snippet.update(snippet, message)
+      let state = Example(..state, snippet:)
+      case action {
+        snippet.Nothing -> #(state, Nothing)
+        snippet.NewCode -> {
+          let Example(runner:, ..) = state
+          let return = execute_snippet(snippet)
+          let #(runner, action) = runner.update(runner, runner.Reset(return))
+          case action {
+            runner.Nothing -> Nil
+            _ ->
+              panic as "reset expected to always return nothing action becase continue is set to false."
+          }
+          let state = Example(..state, runner:)
+          let state = do_analysis(state)
+          #(state, Nothing)
+        }
+        snippet.Confirm -> {
+          let Example(runner:, ..) = state
+
+          let #(runner, action) = runner.update(runner, runner.Start)
+          let state = Example(..state, runner:)
+          let action = case action {
+            runner.Nothing -> Nothing
+            runner.RunExternalHander(id, thunk) -> RunExternalHander(id, thunk)
+          }
+          #(state, action)
+        }
+        snippet.Failed(failure) -> #(state, Failed(failure))
+        snippet.ReturnToCode -> #(state, ReturnToCode)
+        snippet.FocusOnInput -> #(state, FocusOnInput)
+        snippet.ToggleHelp -> #(state, Nothing)
+        snippet.MoveAbove -> #(state, Nothing)
+        snippet.MoveBelow -> #(state, Nothing)
+        snippet.ReadFromClipboard -> #(state, ReadFromClipboard)
+        snippet.WriteToClipboard(text) -> #(state, WriteToClipboard(text))
+      }
+    }
+    RunnerMessage(message) -> {
+      let Example(runner:, ..) = state
+      let #(runner, action) = runner.update(runner, message)
+      let state = Example(..state, runner:)
+      let action = case action {
+        runner.Nothing -> Nothing
+        runner.RunExternalHander(id, thunk) -> RunExternalHander(id, thunk)
+      }
+      #(state, action)
+    }
+  }
+}
+
+fn do_analysis(state) {
+  let Example(cache:, snippet:, ..) = state
+  let scope = []
+  // TODO effects should be from init
+  let effects = []
+  let analysis =
+    interactive.do_analysis(snippet.editable, scope, cache, effects)
+  let snippet = Snippet(..snippet, analysis: Some(analysis))
+  Example(..state, snippet:)
 }
