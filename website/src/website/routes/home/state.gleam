@@ -2,6 +2,7 @@ import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
+import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
@@ -9,6 +10,7 @@ import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
 import website/components/auth_panel
+import website/components/example
 import website/components/reload
 import website/components/snippet
 import website/harness/browser as harness
@@ -21,13 +23,18 @@ pub type Meta =
 pub type Value =
   value.Value(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
 
+pub type Example {
+  Simple(example.Example)
+  // reload is parameterised by meta, Simple is not
+  Reload(reload.State(List(Int)))
+}
+
 pub type State {
   State(
     auth: auth_panel.State,
     sync: client.Client,
     active: Active,
-    snippets: Dict(String, snippet.Snippet),
-    reload: reload.State(List(Int)),
+    examples: Dict(String, Example),
   )
 }
 
@@ -61,52 +68,53 @@ pub const hot_reload_key = "hot_reload"
 
 pub const hot_reload_example = "{\"0\":\"l\",\"l\":\"initial\",\"v\":{\"0\":\"i\",\"v\":10},\"t\":{\"0\":\"l\",\"l\":\"handle\",\"v\":{\"0\":\"f\",\"l\":\"state\",\"b\":{\"0\":\"f\",\"l\":\"message\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_add\"},\"a\":{\"0\":\"v\",\"l\":\"state\"}},\"a\":{\"0\":\"i\",\"v\":1}}}},\"t\":{\"0\":\"l\",\"l\":\"render\",\"v\":{\"0\":\"f\",\"l\":\"count\",\"b\":{\"0\":\"l\",\"l\":\"count\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"count\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"the total is \"}},\"a\":{\"0\":\"v\",\"l\":\"count\"}}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"render\"},\"a\":{\"0\":\"v\",\"l\":\"render\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"handle\"},\"a\":{\"0\":\"v\",\"l\":\"handle\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"init\"},\"a\":{\"0\":\"v\",\"l\":\"initial\"}},\"a\":{\"0\":\"u\"}}}}}}}"
 
-fn decode_source(json) {
-  let assert Ok(source) = dag_json.from_block(<<json:utf8>>)
-  e.from_annotated(source)
-  |> e.open_all
-}
-
-fn init_example(json, cache, config) {
-  let source = decode_source(json)
-  snippet.init(source)
+fn init_example(json, cache, extrinsic) {
+  example.from_block(<<json:utf8>>, cache, extrinsic)
+  |> Simple
 }
 
 fn effects(config) {
-  list.append(harness.effects(), todo as "spotless.effects(config)")
-}
-
-fn init_reload_example(json, cache) {
-  let source = decode_source(json)
-  snippet.init(source)
+  list.append(
+    harness.effects(),
+    // todo as "spotless.effects(config)"
+    [],
+  )
 }
 
 pub fn init(config) {
   let #(config, storage) = config
+  let effects = effects(config)
   let #(client, init_task) = client.default()
-  let reload_snippet = init_reload_example(hot_reload_example, client.cache)
-  let snippets =
+  let examples =
     [
       #(
         closure_serialization_key,
-        init_example(closure_serialization, client.cache, config),
+        init_example(closure_serialization, client.cache, effects),
       ),
-      #(fetch_key, init_example(fetch_example, client.cache, config)),
-      #(twitter_key, init_example(twitter_example, client.cache, config)),
-      #(type_check_key, init_example(type_check_example, client.cache, config)),
+      #(fetch_key, init_example(fetch_example, client.cache, effects)),
+      #(twitter_key, init_example(twitter_example, client.cache, effects)),
+      #(type_check_key, init_example(type_check_example, client.cache, effects)),
       #(
         predictable_effects_key,
-        init_example(predictable_effects_example, client.cache, config),
+        init_example(predictable_effects_example, client.cache, effects),
       ),
-      #(hot_reload_key, reload_snippet),
+      // TODO reload snippet
+      #(hot_reload_key, {
+        let assert Ok(source) = dag_json.from_block(<<hot_reload_example:utf8>>)
+        reload.init(
+          client.cache,
+          source |> e.from_annotated |> e.to_annotated([]),
+        )
+        |> Reload
+      }),
     ]
     |> dict.from_list
-  let reload =
-    reload.init(client.cache, reload_snippet.editable |> e.to_annotated([]))
+  // let reload =
+  //   
   let #(auth, task) = auth_panel.init(Nil)
-  let missing_cids = missing_refs(snippets)
+  let missing_cids = missing_refs(examples)
   let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
-  let state = State(auth, client, Nothing, snippets, reload)
+  let state = State(auth, client, Nothing, examples)
 
   #(
     state,
@@ -117,34 +125,41 @@ pub fn init(config) {
   )
 }
 
-fn missing_refs(snippets) {
-  dict.fold(snippets, [], fn(acc, _key, snippet) {
-    snippet.references(snippet)
-    |> list.append(acc)
-    |> list.unique
+fn missing_refs(examples) {
+  dict.fold(examples, [], fn(acc, _key, example) {
+    case example {
+      Simple(example.Example(snippet:, ..)) ->
+        snippet.references(snippet)
+        |> list.append(acc)
+        |> list.unique
+      _ ->
+        // todo as "wheres the refs"
+        []
+    }
   })
 }
 
 // Dont abstact as is useful because it uses the specific page State
-pub fn get_snippet(state: State, id) {
-  let assert Ok(snippet) = dict.get(state.snippets, id)
+pub fn get_example(state: State, id) {
+  let assert Ok(snippet) = dict.get(state.examples, id)
   snippet
 }
 
-pub fn set_snippet(state: State, id, snippet) {
-  State(..state, snippets: dict.insert(state.snippets, id, snippet))
+pub fn set_example(state: State, id, snippet) {
+  State(..state, examples: dict.insert(state.examples, id, snippet))
 }
 
 pub type Message {
   AuthMessage(auth_panel.Message)
-  SnippetMessage(String, snippet.Message)
+  SimpleMessage(String, example.Message)
   SyncMessage(client.Message)
   ReloadMessage(reload.Message(List(Int)))
 }
 
 fn dispatch_to_snippet(id, promise) {
   effect.from(fn(d) {
-    promisex.aside(promise, fn(message) { d(SnippetMessage(id, message)) })
+    todo as "should there be a message on example"
+    // promisex.aside(promise, fn(message) { d(SimpleMessage(id, message)) })
   })
 }
 
@@ -161,63 +176,68 @@ pub fn update(state: State, message) {
 
       #(state, auth_panel.dispatch(cmd, AuthMessage, storage))
     }
-    SnippetMessage(id, message) -> {
+    SimpleMessage(id, message) -> {
       let state = case state.active {
         Editing(current, _) if current != id -> {
-          let snippet = get_snippet(state, current)
-          let snippet = snippet.finish_editing(snippet)
-          set_snippet(state, current, snippet)
+          let example = get_example(state, current)
+          let example = case example {
+            Simple(example) -> example.finish_editing(example) |> Simple
+            _ -> todo as "not done"
+          }
+          set_example(state, current, example)
         }
         Running(_current) -> panic as "should not click around when running"
         _ -> state
       }
-      let snippet = get_snippet(state, id)
-      let #(snippet, eff) = snippet.update(snippet, message)
-      let #(failure, snippet_effect) = case eff {
-        snippet.Nothing -> #(None, effect.none())
-        snippet.NewCode -> #(None, effect.none())
-        snippet.Confirm -> #(None, effect.none())
-        snippet.Failed(failure) -> #(Some(failure), effect.none())
-        snippet.ReturnToCode -> #(
-          None,
-          dispatch_nothing(snippet.focus_on_buffer()),
-        )
-        snippet.FocusOnInput -> #(
-          None,
-          dispatch_nothing(snippet.focus_on_input()),
-        )
-        snippet.ToggleHelp -> #(None, effect.none())
-        snippet.MoveAbove -> #(None, effect.none())
-        snippet.MoveBelow -> #(None, effect.none())
-        snippet.ReadFromClipboard -> #(
-          None,
-          dispatch_to_snippet(id, snippet.read_from_clipboard()),
-        )
-        snippet.WriteToClipboard(text) -> #(
-          None,
-          dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
-        )
-      }
-      let state = set_snippet(state, id, snippet)
-      let references = snippet.references(snippet)
-      let #(client, task) = client.fetch_fragments(state.sync, references)
-
-      let reload = case id == hot_reload_key {
-        True -> {
-          let source = snippet.editable |> e.to_annotated([])
-          reload.update_source(state.reload, source)
+      let example = get_example(state, id)
+      let #(state, effect) = case example {
+        Simple(example) -> {
+          let #(example, action) = example.update(example, message)
+          let state = set_example(state, id, Simple(example))
+          let state = State(..state, active: Editing(id, None))
+          let #(failure, snippet_effect) = case action {
+            example.Nothing -> #(state, effect.none())
+            // TODO write in error
+            example.Failed(failure) -> #(state, effect.none())
+            example.ReturnToCode -> #(
+              state,
+              dispatch_nothing(snippet.focus_on_buffer()),
+            )
+            example.FocusOnInput -> #(
+              state,
+              dispatch_nothing(snippet.focus_on_input()),
+            )
+            example.ReadFromClipboard -> #(
+              state,
+              dispatch_to_snippet(id, snippet.read_from_clipboard()),
+            )
+            example.WriteToClipboard(text) -> #(
+              state,
+              dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
+            )
+            example.RunExternalHander(i, d) -> todo
+          }
         }
-        False -> state.reload
+        _ -> {
+          // let reload = case id == hot_reload_key {
+          //   True -> {
+          //     let source = snippet.editable |> e.to_annotated([])
+          //     reload.update_source(state.reload, source)
+          //   }
+          //   False -> state.reload
+          // }
+          todo as "more"
+        }
       }
-      let state = State(..state, reload:, active: Editing(id, failure))
+
       #(
         state,
         effect.batch([
-          snippet_effect,
+          // snippet_effect,
           effect.from(fn(d) {
-            list.map(client.run(task), fn(p) {
-              promise.map(p, fn(r) { d(SyncMessage(r)) })
-            })
+            // list.map(client.run(task), fn(p) {
+            //   promise.map(p, fn(r) { d(SyncMessage(r)) })
+            // })
             Nil
           }),
         ]),
@@ -226,19 +246,31 @@ pub fn update(state: State, message) {
     SyncMessage(message) -> {
       let State(sync: sync_client, ..) = state
       let #(sync_client, effect) = client.update(sync_client, message)
-      let snippets =
-        dict.map_values(state.snippets, fn(_, v) {
-          todo as "need to update examples"
-          // snippet.set_references(v, sync_client.cache)
+      let #(entries, effects) =
+        dict.fold(state.examples, #([], []), fn(acc, key, example) {
+          let #(entries, effects) = acc
+          case example {
+            Simple(example) -> {
+              let #(example, action) =
+                example.update_cache(example, sync_client.cache)
+              let entries = [#(key, Simple(example)), ..entries]
+              #(entries, effects)
+            }
+            Reload(example) -> {
+              let entries = [#(key, Reload(example)), ..entries]
+              #(entries, effects)
+            }
+          }
         })
-      let reload = reload.update_cache(state.reload, sync_client.cache)
-      let state = State(..state, reload:, sync: sync_client, snippets:)
+      let examples = dict.from_list(entries)
+      let state = State(..state, sync: sync_client, examples:)
       #(state, client.lustre_run(effect, SyncMessage))
     }
     ReloadMessage(message) -> {
-      let reload = reload.update(state.reload, message)
-      let state = State(..state, reload:)
-      #(state, effect.none())
+      todo
+      // let reload = reload.update(state.reload, message)
+      // let state = State(..state, reload:)
+      // #(state, effect.none())
     }
   }
 }

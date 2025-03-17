@@ -61,6 +61,10 @@ pub type Example {
 
 pub fn from_block(bytes, cache, extrinsic) {
   let assert Ok(source) = dag_json.from_block(bytes)
+  init(source, cache, extrinsic)
+}
+
+pub fn init(source, cache, extrinsic) {
   let #(effects, handlers) = listx.key_unzip(extrinsic)
 
   let snippet =
