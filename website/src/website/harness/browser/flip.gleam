@@ -27,6 +27,12 @@ pub fn blocking(lift) {
   promise.resolve(value)
 }
 
+pub fn preflight(lift) {
+  use Nil <- result.try(cast.as_unit(lift, Nil))
+  Ok(fn() { boolean_to_eyg(do(Nil)) })
+  // fn() {promise.resolve(value)
+}
+
 pub fn do(_: Nil) {
   case int.random(2) {
     0 -> False

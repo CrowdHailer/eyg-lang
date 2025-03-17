@@ -40,6 +40,7 @@ pub type Run {
 
 pub type Shell {
   Shell(
+    // TODO remove failure as it should be at the page level
     failure: Option(ShellFailure),
     previous: List(ShellEntry),
     source: snippet.Snippet,

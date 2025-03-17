@@ -234,6 +234,7 @@ fn init_example(json, cache) {
   snippet.init(source)
 }
 
+// snippet failure goes at top level
 pub fn init(_) {
   let #(sync, init_task) = client.default()
   let snippets = [
