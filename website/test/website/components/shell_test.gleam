@@ -382,5 +382,7 @@ pub fn user_can_paste_to_input_test() {
 // running effect has failed
 // running effect is not available
 // running and reference is being looked for
-// TODO replace reference in context with cache
+
+// TODO replace reference in context with cache not easy as then morph has to rely on index, these should be part of analysis or interpreter
+// TODO add interactive state to docs or make an example component
 // TODO test that errors go away after release is loaded
