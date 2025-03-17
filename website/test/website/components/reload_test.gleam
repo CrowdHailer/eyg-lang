@@ -9,7 +9,7 @@ import website/components/reload
 import website/sync/cache
 
 fn new(source) {
-  reload.init(cache.init(), source)
+  reload.init(source, cache.init())
 }
 
 fn click_app(state) {
@@ -32,7 +32,7 @@ pub fn init_with_app_starts_value_test() {
   |> should.be_some()
   |> should.equal(v.Integer(10))
 
-  let state = click_app(state)
+  let #(state, action) = click_app(state)
   state.value
   |> should.be_some()
   |> should.equal(v.Integer(11))
@@ -42,13 +42,13 @@ pub fn add_app_after_init_test() {
   let state = new(e.Integer(1) |> e.to_annotated([]))
   state.value
   |> should.be_none()
-  let state = set_source(state, counter_app())
+  let #(state, action) = set_source(state, counter_app())
   state.type_errors
   |> should.equal([])
 
   state.value
   |> should.be_none()
-  let state = click_migrate(state)
+  let #(state, action) = click_migrate(state)
   state.value
   |> should.be_some()
   |> should.equal(v.Integer(10))
@@ -82,12 +82,12 @@ pub fn program_with_inconsistent_types_test() {
   let state = new(source |> e.to_annotated([]))
 
   // Force state to have evaluated
-  let state = reload.State(..state, value: Some(v.String("hi")))
+  let state = reload.Reload(..state, value: Some(v.String("hi")))
   state.value
   |> should.be_some()
   |> should.equal(v.String("hi"))
 
-  let state = set_source(state, counter_app())
+  let #(state, action) = set_source(state, counter_app())
   state.type_errors
   |> should.equal([#([], error.MissingRow("migrate"))])
 }

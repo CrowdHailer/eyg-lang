@@ -392,3 +392,4 @@ pub fn user_can_paste_to_input_test() {
 
 // map of snippets
 // Do I really want the presentation to be the same everywhere probably not
+// show errors on the snippet

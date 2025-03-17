@@ -2,11 +2,8 @@ import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
-import gleam/io
-import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, None}
 import lustre/effect
 import morph/editable as e
 import website/components/auth_panel
@@ -14,7 +11,6 @@ import website/components/example
 import website/components/reload
 import website/components/snippet
 import website/harness/browser as harness
-import website/harness/spotless
 import website/sync/client
 
 pub type Meta =
@@ -26,7 +22,7 @@ pub type Value =
 pub type Example {
   Simple(example.Example)
   // reload is parameterised by meta, Simple is not
-  Reload(reload.State(List(Int)))
+  Reload(reload.Reload(List(Int)))
 }
 
 pub type State {
@@ -73,7 +69,7 @@ fn init_example(json, cache, extrinsic) {
   |> Simple
 }
 
-fn effects(config) {
+fn effects(_config) {
   list.append(
     harness.effects(),
     // todo as "spotless.effects(config)"
@@ -102,8 +98,8 @@ pub fn init(config) {
       #(hot_reload_key, {
         let assert Ok(source) = dag_json.from_block(<<hot_reload_example:utf8>>)
         reload.init(
-          client.cache,
           source |> e.from_annotated |> e.to_annotated([]),
+          client.cache,
         )
         |> Reload
       }),
@@ -152,8 +148,8 @@ pub fn set_example(state: State, id, snippet) {
 pub type Message {
   AuthMessage(auth_panel.Message)
   SimpleMessage(String, example.Message)
+  ReloadMessage(String, reload.Message(List(Int)))
   SyncMessage(client.Message)
-  ReloadMessage(reload.Message(List(Int)))
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -177,25 +173,14 @@ pub fn update(state: State, message) {
       #(state, auth_panel.dispatch(cmd, AuthMessage, storage))
     }
     SimpleMessage(id, message) -> {
-      let state = case state.active {
-        Editing(current, _) if current != id -> {
-          let example = get_example(state, current)
-          let example = case example {
-            Simple(example) -> example.finish_editing(example) |> Simple
-            _ -> todo as "not done"
-          }
-          set_example(state, current, example)
-        }
-        Running(_current) -> panic as "should not click around when running"
-        _ -> state
-      }
+      let state = close_other_examples(state, id)
       let example = get_example(state, id)
-      let #(state, effect) = case example {
+      case example {
         Simple(example) -> {
           let #(example, action) = example.update(example, message)
           let state = set_example(state, id, Simple(example))
           let state = State(..state, active: Editing(id, None))
-          let #(failure, snippet_effect) = case action {
+          case action {
             example.Nothing -> #(state, effect.none())
             // TODO write in error
             example.Failed(failure) -> #(state, effect.none())
@@ -218,30 +203,43 @@ pub fn update(state: State, message) {
             example.RunExternalHander(i, d) -> todo
           }
         }
-        _ -> {
-          // let reload = case id == hot_reload_key {
-          //   True -> {
-          //     let source = snippet.editable |> e.to_annotated([])
-          //     reload.update_source(state.reload, source)
-          //   }
-          //   False -> state.reload
-          // }
-          todo as "more"
-        }
+        _ ->
+          panic as "SimpleMessage should not be sent to other kinds of example"
       }
-
-      #(
-        state,
-        effect.batch([
-          // snippet_effect,
-          effect.from(fn(d) {
-            // list.map(client.run(task), fn(p) {
-            //   promise.map(p, fn(r) { d(SyncMessage(r)) })
-            // })
-            Nil
-          }),
-        ]),
-      )
+    }
+    ReloadMessage(id, message) -> {
+      let state = close_other_examples(state, id)
+      let example = get_example(state, id)
+      case example {
+        Reload(example) -> {
+          let #(example, action) = reload.update(example, message)
+          let state = set_example(state, id, Reload(example))
+          let state = State(..state, active: Editing(id, None))
+          case action {
+            reload.Nothing -> #(state, effect.none())
+            // TODO write in error
+            reload.Failed(failure) -> #(state, effect.none())
+            reload.ReturnToCode -> #(
+              state,
+              dispatch_nothing(snippet.focus_on_buffer()),
+            )
+            reload.FocusOnInput -> #(
+              state,
+              dispatch_nothing(snippet.focus_on_input()),
+            )
+            reload.ReadFromClipboard -> #(
+              state,
+              dispatch_to_snippet(id, snippet.read_from_clipboard()),
+            )
+            reload.WriteToClipboard(text) -> #(
+              state,
+              dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
+            )
+          }
+        }
+        _ ->
+          panic as "SimpleMessage should not be sent to other kinds of example"
+      }
     }
     SyncMessage(message) -> {
       let State(sync: sync_client, ..) = state
@@ -266,11 +264,21 @@ pub fn update(state: State, message) {
       let state = State(..state, sync: sync_client, examples:)
       #(state, client.lustre_run(effect, SyncMessage))
     }
-    ReloadMessage(message) -> {
-      todo
-      // let reload = reload.update(state.reload, message)
-      // let state = State(..state, reload:)
-      // #(state, effect.none())
+  }
+}
+
+fn close_other_examples(state, id) {
+  let State(active:, ..) = state
+  case active {
+    Editing(current, _) if current != id -> {
+      let example = get_example(state, current)
+      let example = case example {
+        Simple(example) -> example.finish_editing(example) |> Simple
+        Reload(example) -> reload.finish_editing(example) |> Reload
+      }
+      set_example(state, current, example)
     }
+    Running(_current) -> panic as "should not click around when running"
+    _ -> state
   }
 }

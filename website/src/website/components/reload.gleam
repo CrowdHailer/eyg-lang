@@ -1,9 +1,12 @@
+//// The reload component allows no effects
+
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/expression
 import eyg/interpreter/expression as r
 import eyg/interpreter/state.{type Value}
 import eyg/interpreter/value as v
@@ -16,29 +19,52 @@ import lustre/element
 import lustre/element/html as h
 import lustre/event
 import morph/analysis
+import morph/editable as e
+import website/components/runner
 import website/components/simple_debug
+import website/components/snippet.{type Snippet, Snippet}
 import website/sync/cache
 
-pub type State(meta) {
-  State(
-    sync: cache.Cache,
-    source: ir.Node(meta),
+// maybe it should be called example or sample
+pub type Reload(meta) {
+  Reload(
+    cache: cache.Cache,
+    snippet: Snippet,
+    // derived values
+    return: runner.Return(Nil),
     // A value indicates if the app has ever run, 
     // No value only occurs when the editor was set up with an invalid empty program.
     // Values are parameterised to Nil because the fragments in the cache have Nil metadata
     // 
     // Init is not automatically called if the starting value is Nil because users might edit via a valid program
     value: Option(Value(Nil)),
+    // TODO remove and put analysis in snippet
     type_errors: List(#(meta, error.Reason)),
     // update and render if we want to keep everything running
     ready_to_migrate: Bool,
   )
 }
 
-pub fn init(sync, source) {
-  let #(value, type_errors) = case type_check(sync, source, None) {
+pub fn init(source, cache) {
+  let snippet =
+    e.from_annotated(source)
+    |> e.open_all
+    |> snippet.init()
+
+  let return = execute_snippet(snippet)
+
+  let state =
+    Reload(
+      cache:,
+      snippet:,
+      return:,
+      value: None,
+      type_errors: [],
+      ready_to_migrate: False,
+    )
+  let #(value, type_errors) = case type_check(cache, source, None) {
     Ok(_) -> {
-      case run_init(sync, source) {
+      case run_field(state, "init", []) {
         Ok(value) -> #(Some(value), [])
         Error(_) -> {
           io.println("this should never error if the type checking has passed.")
@@ -48,7 +74,24 @@ pub fn init(sync, source) {
     }
     Error(type_errors) -> #(None, type_errors)
   }
-  State(sync, source, value, type_errors, False)
+  Reload(..state, value:, type_errors:)
+}
+
+pub fn finish_editing(state) {
+  let Reload(snippet:, ..) = state
+  let snippet = snippet.finish_editing(snippet)
+  Reload(..state, snippet:)
+}
+
+pub fn update_cache(state, cache) {
+  let Reload(snippet:, value:, ..) = state
+
+  let state = Reload(..state, cache: cache)
+  let state = case type_check(cache, todo as "!!!snippet", value) {
+    Ok(migrate) -> Reload(..state, type_errors: [], ready_to_migrate: migrate)
+    Error(type_errors) -> Reload(..state, type_errors:)
+  }
+  #(state, Nothing)
 }
 
 fn type_check(sync, source: ir.Node(List(Int)), value: Option(Value(Nil))) {
@@ -65,24 +108,76 @@ fn type_check(sync, source: ir.Node(List(Int)), value: Option(Value(Nil))) {
 }
 
 pub type Message(meta) {
+  SnippetMessage(snippet.Message)
   ParentUpdatedSource(source: ir.Node(meta))
   ParentUpdatedCache(cache: cache.Cache)
   UserClickedMigrate
   UserClickedApp
 }
 
+pub type Action {
+  Nothing
+  Failed(snippet.Failure)
+  ReturnToCode
+  FocusOnInput
+  ReadFromClipboard
+  WriteToClipboard(text: String)
+  // RunExternalHander(id: Int, thunk: runner.Thunk(Nil))
+}
+
 pub fn update(state, message) {
-  let State(sync:, source:, value:, ..) = state
   case message {
-    ParentUpdatedSource(source) -> update_source(state, source)
+    SnippetMessage(message) -> {
+      let Reload(snippet:, ..) = state
+      let #(snippet, action) = snippet.update(snippet, message)
+      let state = Reload(..state, snippet:)
+      case action {
+        snippet.Nothing -> #(state, Nothing)
+        snippet.NewCode -> {
+          let return = execute_snippet(snippet)
+          let state = Reload(..state, return:)
+          let state = do_analysis(state)
+
+          #(state, Nothing)
+        }
+        snippet.Confirm -> {
+          let Reload(ready_to_migrate:, ..) = state
+          case ready_to_migrate {
+            True -> todo
+            False -> {
+              // TODO as error case
+              #(state, Nothing)
+            }
+          }
+        }
+        snippet.Failed(failure) -> #(state, Failed(failure))
+        snippet.ReturnToCode -> #(state, ReturnToCode)
+        snippet.FocusOnInput -> #(state, FocusOnInput)
+        snippet.ToggleHelp -> #(state, Nothing)
+        snippet.MoveAbove -> #(state, Nothing)
+        snippet.MoveBelow -> #(state, Nothing)
+        snippet.ReadFromClipboard -> #(state, ReadFromClipboard)
+        snippet.WriteToClipboard(text) -> #(state, WriteToClipboard(text))
+      }
+    }
+    ParentUpdatedSource(source) -> {
+      let snippet =
+        e.from_annotated(source)
+        |> e.open_all
+        |> snippet.init()
+      let return = execute_snippet(snippet)
+      let state = do_analysis(Reload(..state, snippet:, return:))
+      #(state, Nothing)
+    }
     ParentUpdatedCache(cache) -> update_cache(state, cache)
     UserClickedMigrate -> update_app(state)
-    UserClickedApp ->
-      case value {
+    UserClickedApp -> {
+      let Reload(value:, ..) = state
+      let state = case value {
         Some(value) -> {
           let args = [#(value, Nil), #(v.unit(), Nil)]
-          case run_field(sync, source, "handle", args) {
-            Ok(value) -> State(..state, value: Some(value))
+          case run_field(state, "handle", args) {
+            Ok(value) -> Reload(..state, value: Some(value))
             Error(_) -> {
               io.println("user clicked app but the handle function failed")
               state
@@ -94,90 +189,92 @@ pub fn update(state, message) {
           state
         }
       }
+      #(state, Nothing)
+    }
   }
 }
 
-pub fn update_source(state, source) {
-  let State(sync:, value:, ..) = state
-
-  let state = State(..state, source:)
-  case type_check(sync, source, value) {
-    Ok(migrate) -> State(..state, type_errors: [], ready_to_migrate: migrate)
-    Error(type_errors) -> State(..state, type_errors:)
-  }
+fn execute_snippet(snippet) {
+  let Snippet(editable:, ..) = snippet
+  let source = editable |> e.to_annotated([]) |> ir.clear_annotation
+  expression.execute(source, [])
 }
 
-pub fn update_cache(state, sync) {
-  let State(source:, value:, ..) = state
-
-  let state = State(..state, sync: sync)
-  case type_check(sync, source, value) {
-    Ok(migrate) -> State(..state, type_errors: [], ready_to_migrate: migrate)
-    Error(type_errors) -> State(..state, type_errors:)
+fn do_analysis(state) {
+  let Reload(cache:, snippet:, value:, ..) = state
+  let source = snippet.editable |> e.to_annotated([])
+  case type_check(cache, source, value) {
+    Ok(migrate) -> Reload(..state, type_errors: [], ready_to_migrate: migrate)
+    Error(type_errors) -> Reload(..state, type_errors:)
   }
 }
 
 pub fn update_app(state) {
-  let State(sync:, source:, value:, ..) = state
+  let Reload(value:, ..) = state
   let result = case value {
-    Some(value) -> run_field(sync, source, "migrate", [#(value, Nil)])
-    None -> run_init(sync, source)
+    Some(value) -> run_field(state, "migrate", [#(value, Nil)])
+    None -> run_field(state, "init", [])
   }
-  case result {
-    Ok(value) -> State(..state, value: Some(value), ready_to_migrate: False)
+  let state = case result {
+    Ok(value) -> Reload(..state, value: Some(value), ready_to_migrate: False)
     Error(_) -> {
       io.println("user clicked migrate which failed")
       state
     }
   }
+  #(state, Nothing)
 }
 
 pub fn render(state) {
-  let State(value:, ready_to_migrate:, type_errors:, ..) = state
+  let Reload(snippet:, value:, ready_to_migrate:, type_errors:, ..) = state
+  // let snippet = state.get_snippet(s, state.hot_reload_key)
   h.div([], [
-    h.p([], [element.text("App state")]),
-    h.div([a.class("border-2 p-2")], [
-      case value {
-        Some(value) -> element.text(simple_debug.value_to_string(value))
-        None -> element.text("has never started")
-      },
-    ]),
-    h.p([], [element.text("Rendered app, click to send message")]),
-    h.div([a.class("border-2 p-2")], [
-      case type_errors, ready_to_migrate {
-        [], True ->
-          h.div([event.on_click(UserClickedMigrate)], [
-            element.text("click to upgrade"),
-          ])
-        [], False -> {
-          let assert Some(value) = value
-          let args = [#(value, Nil)]
-          case run_field(state.sync, state.source, "render", args) {
-            Ok(v.String(page)) -> render_app(page)
-            Ok(_) -> element.text("app render did not return a string")
-            Error(_) ->
-              element.text("app render failed, this should not happen")
+    snippet.render_embedded_with_top_menu(snippet, [])
+      |> element.map(SnippetMessage),
+    h.div([], [
+      h.p([], [element.text("App state")]),
+      h.div([a.class("border-2 p-2")], [
+        case value {
+          Some(value) -> element.text(simple_debug.value_to_string(value))
+          None -> element.text("has never started")
+        },
+      ]),
+      h.p([], [element.text("Rendered app, click to send message")]),
+      h.div([a.class("border-2 p-2")], [
+        case type_errors, ready_to_migrate {
+          [], True ->
+            h.div([event.on_click(UserClickedMigrate)], [
+              element.text("click to upgrade"),
+            ])
+          [], False -> {
+            let assert Some(value) = value
+            case run_field(state, "render", [#(value, Nil)]) {
+              Ok(v.String(page)) -> render_app(page)
+              Ok(_) -> element.text("app render did not return a string")
+              Error(_) ->
+                element.text("app render failed, this should not happen")
+            }
           }
-        }
-        // snippet shows these
-        _, _ ->
-          h.div(
-            [a.class("border-2 border-orange-3 px-2")],
-            list.map(type_errors, fn(error) {
-              let #(_path, reason) = error
-              h.div(
-                [
-                  // event.on_click(state.SnippetMessage(
-                //   state.hot_reload_key,
-                //   snippet.UserClickedPath(path),
-                // )),
-                ],
-                [element.text(debug.reason(reason))],
-              )
-            }),
-          )
-        // element.none()
-      },
+          // snippet shows these
+          _, _ ->
+            h.div(
+              [a.class("border-2 border-orange-3 px-2")],
+              list.map(type_errors, fn(error) {
+                let #(_path, reason) = error
+                h.div(
+                  [
+                    // event.on_click(state.SnippetMessage(
+                  //   state.hot_reload_key,
+                  //   snippet.UserClickedPath(path),
+                  // )),
+                  ],
+                  [element.text(debug.reason(reason))],
+                )
+              }),
+            )
+          // element.none()
+        },
+      ]),
     ]),
   ])
 }
@@ -199,12 +296,9 @@ fn cache_run(sync, return: Result(Value(Nil), state.Debug(Nil))) {
   cache.run(return, sync, r.resume)
 }
 
-fn run_init(sync, source) {
-  run_field(sync, source, "init", [])
-}
-
-fn run_field(sync, source: ir.Node(List(_)), field, args) {
-  case cache_run(sync, r.execute(source |> ir.clear_annotation, [])) {
+fn run_field(state, field, args) {
+  let Reload(cache:, return:, ..) = state
+  case cache_run(cache, return) {
     Ok(value) -> {
       let select = v.Partial(v.Select(field), [])
       case r.call(select, [#(value, Nil), ..args]) {
