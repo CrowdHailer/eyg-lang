@@ -15,12 +15,15 @@ pub type Thunk(m) =
 pub type Handler(m) =
   fn(istate.Value(m)) -> Result(Thunk(m), istate.Reason(m))
 
+pub type Effect(m) =
+  #(String, #(istate.Value(m), istate.Value(m)))
+
 pub type Runner(m) {
   Runner(
     counter: Int,
     cache: cache.Cache,
     extrinsic: List(#(String, Handler(m))),
-    occured: List(#(String, #(istate.Value(m), istate.Value(m)))),
+    occured: List(Effect(m)),
     return: Return(m),
     awaiting: Option(Int),
     continue: Bool,

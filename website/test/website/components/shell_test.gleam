@@ -377,11 +377,6 @@ pub fn user_can_paste_to_input_test() {
 // A runner keeps the ID but it needs composing with the scope to types and other new versions below
 // The view history function can be a state of the shell
 // Not Runnin
-// running awaiting ref
-// running effect is running
-// running effect has failed
-// running effect is not available
-// running and reference is being looked for
 
 // TODO replace reference in context with cache not easy as then morph has to rely on index, these should be part of analysis or interpreter
 // TODO add interactive state to docs or make an example component
@@ -394,3 +389,6 @@ pub fn user_can_paste_to_input_test() {
 // its probably best to be able to have both set ups
 // TODO show error on top of example in document pages
 // TODO load refs 
+
+// map of snippets
+// Do I really want the presentation to be the same everywhere probably not
