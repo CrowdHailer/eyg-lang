@@ -74,7 +74,7 @@ pub fn snippet(state: state.State, i) {
     state.Editing(key, failure) if i == key -> failure
     _ -> None
   }
-  snippet.render_embedded_with_top_menu(state.get_snippet(state, i), failure)
+  snippet.render_embedded_with_top_menu(state.get_snippet(state, i), [])
   |> element.map(state.SnippetMessage(i, _))
 }
 

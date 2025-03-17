@@ -7,7 +7,6 @@ import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
 import gleam/int
-import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/listx
@@ -37,35 +36,42 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
 import website/components/autocomplete
-import website/components/output
-import website/components/simple_debug
 import website/components/snippet/menu
-import website/sync/cache
 
-const neo_blue_3 = "#87ceeb"
+pub const neo_blue_3 = "#87ceeb"
 
-const neo_green_3 = "#90ee90"
+pub const neo_green_3 = "#90ee90"
 
-const neo_orange_4 = "#ff6b6b"
+pub const neo_orange_4 = "#ff6b6b"
 
 const embed_area_styles = [
-  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
+  #("box-shadow", "6px 6px black"),
+  #("border-style", "solid"),
   #(
     "font-family",
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-  ), #("background-color", "rgb(255, 255, 255)"),
-  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
-  #("flex-direction", "column"), #("display", "flex"),
-  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
+  ),
+  #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"),
+  #("border-width", "1px"),
+  #("flex-direction", "column"),
+  #("display", "flex"),
+  #("margin-bottom", "1.5rem"),
+  #("margin-top", ".5rem"),
 ]
 
 const code_area_styles = [
-  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
-  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
-  #("margin-top", "auto"), #("margin-bottom", "auto"), #("height", "100%"),
+  #("outline", "2px solid transparent"),
+  #("outline-offset", "2px"),
+  #("padding", ".5rem"),
+  #("white-space", "nowrap"),
+  #("overflow", "auto"),
+  #("margin-top", "auto"),
+  #("margin-bottom", "auto"),
+  #("height", "100%"),
 ]
 
-fn footer_area(color, contents) {
+pub fn footer_area(color, contents) {
   h.div(
     [
       a.style([
@@ -125,21 +131,6 @@ pub type Snippet {
   )
 }
 
-// Test that click to run starts even if still waiting for references
-// test resolving promise twice is ignored
-// test that cancelling
-
-// run.done(run, cache)
-// checks cache.valid_release -> Ok(True/False) or valid_reference -> Error(As of time) Valid/Invalid/Unknownn/Missing(as_of)
-// Shouldn't be able to construct with badly formatted cid
-
-// new source needs to change the run
-// set_cache on the running code don't need a global running
-// unhandled effect can be trigger for DB etc
-
-// calculator examples on snippet
-// all on homepage
-
 pub fn init(editable) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
@@ -167,11 +158,6 @@ pub fn active(editable) {
     analysis: None,
   )
 }
-
-// pub fn run(state) {
-//   let Snippet(run: run, ..) = state
-//   run
-// }
 
 // TODO build
 pub fn source(state) {
@@ -280,7 +266,7 @@ fn update_source(proj, state) {
     history: history,
     analysis:,
     // evaluated: evaluate(editable, state.scope, state.cache),
-    // run: NotRunning,
+  // run: NotRunning,
   )
 }
 
@@ -899,7 +885,7 @@ fn undo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-          // run: NotRunning,
+        // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -925,7 +911,7 @@ fn redo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-          // run: NotRunning,
+        // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -1062,7 +1048,8 @@ pub fn type_errors(state) {
 }
 
 pub fn render_embedded(state: Snippet, failure) {
-  h.div([a.style(embed_area_styles)], bare_render(state, failure))
+  todo as "render embedded"
+  // h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
 pub fn release_to_option(release) {
@@ -1087,28 +1074,18 @@ pub fn release_to_option(release) {
   ]
 }
 
-pub fn bare_render(state, failure) {
-  let Snippet(
-    status: status,
-    projection: proj,
-    editable:,
-    analysis:,
-    ..,
-    // evaluated: evaluated,
-    // run: run,
-  ) = state
-  let errors = type_errors(state)
-
+fn bare_render(proj, errors, status, slot) {
   case status {
     Editing(mode) ->
       case mode {
         Command -> [
           actual_render_projection(proj, True, errors),
-          case failure {
-            Some(failure) ->
-              footer_area(neo_orange_4, [element.text(fail_message(failure))])
-            None -> element.text("render_current(errors, run, evaluated)")
-          },
+          ..slot
+          // case failure {
+        //   Some(failure) ->
+        //     footer_area(neo_orange_4, [element.text(fail_message(failure))])
+        //   None -> element.text("render_current(errors, run, evaluated)")
+        // },
         ]
         Pick(picker, _rebuild) -> [
           actual_render_projection(proj, False, errors),
@@ -1120,8 +1097,6 @@ pub fn bare_render(state, failure) {
           actual_render_projection(proj, False, errors),
           autocomplete.render(autocomplete, release_to_option)
             |> element.map(SelectReleaseMessage),
-          // picker.render(picker)
-        //   |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
@@ -1145,31 +1120,12 @@ pub fn bare_render(state, failure) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(editable, errors),
+        render.statements(p.rebuild(proj), errors),
       ),
-      element.text("render_current(errors, run, evaluated)"),
+      ..slot
     ]
   }
 }
-
-// TODO remove
-//  fn render_current(errors, run, evaluated) {
-//   case errors {
-//     [] -> render_run(run, evaluated)
-//     _ -> render_errors(errors)
-//   }
-// }
-
-// fn render_errors(errors) {
-//   footer_area(
-//     neo_orange_4,
-//     list.map(errors, render_structured_note_about_error),
-//     // list.map(errors, fn(error) {
-//   //   let #(path, reason) = error
-//   //   h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
-//   // }),
-//   )
-// }
 
 fn render_structured_note_about_error(error) {
   let #(path, reason) = error
@@ -1471,7 +1427,7 @@ pub fn menu_content(status, projection, submenu) {
   }
 }
 
-pub fn render_embedded_with_top_menu(snippet, failure) {
+pub fn render_embedded_with_top_menu(snippet, slot) {
   let display_help = True
   let Snippet(status: status, projection:, menu: menu, ..) = snippet
   let #(top, subcontent) = menu_content(status, projection, menu)
@@ -1492,7 +1448,7 @@ pub fn render_embedded_with_top_menu(snippet, failure) {
         Error([])
       }),
     ],
-    bare_render(snippet, failure)
+    bare_render(projection, [], status, slot)
       |> list.append(case status {
         Idle -> []
         _ -> [
@@ -1561,7 +1517,7 @@ pub fn render_embedded_with_menu(snippet, failure) {
     ],
     [
       render_menu(snippet, False) |> element.map(MessageFromMenu),
-      ..bare_render(snippet, failure)
+      // ..bare_render(snippet, failure)
     ],
   )
 }

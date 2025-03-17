@@ -522,9 +522,6 @@ pub fn render(state: State) {
           }
         })
       }),
-      // snippet.render_current([], state.shell.source.run)
-      //   |> element.map(ShellMessage),
-
       render_errors(state.shell.failure, state.shell.source),
       h.div(
         [
