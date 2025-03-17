@@ -939,112 +939,10 @@ pub fn copy_escaped(state) {
 
 fn confirm(state) {
   #(state, Confirm)
-  // let Snippet(run: run, evaluated: evaluated, ..) = state
-  // case run, evaluated {
-  //   NotRunning, Ok(#(value, scope)) -> #(state, Conclude(value, [], scope))
-  //   Running(Ok(#(value, scope)), effects), _ -> #(
-  //     state,
-  //     Conclude(value, effects, scope),
-  //   )
-  //   NotRunning, _ -> run_effects(state)
-  //   _, _ -> #(state, Nothing)
-  // }
 }
 
 pub fn finish_editing(state) {
   Snippet(..state, status: Idle)
-}
-
-// TODO note or error with context, be nice to jump to location of effect
-// value
-// runtime faile
-// type errors (Only this one is a list)
-// editor error 
-// will perform
-// 
-// Error level action
-pub type TypeError {
-  ReleaseInvalid(package: String, release: Int)
-  ReleaseCheckDoesntMatch(
-    package: String,
-    release: Int,
-    published: String,
-    used: String,
-  )
-  ReleaseNotFetched(package: String, requested: Int, max: Int)
-  ReleaseFragmentNotFetched(package: String, release: Int, cid: String)
-  FragmentInvalid
-  ReferenceNotFetched
-  Todo
-  MissingVariable(String)
-  MissingBuiltin(String)
-  TypeMismatch(binding.Mono, binding.Mono)
-  MissingRow(String)
-  Recursive
-  SameTail(binding.Mono, binding.Mono)
-}
-
-// Pass in if client is working
-pub fn type_errors(state) {
-  []
-  // todo as "probably move to mount"
-  // let Snippet(analysis:, cache:, ..) = state
-  // let errors = case analysis {
-  //   Some(analysis) -> analysis.type_errors(analysis)
-  //   None -> []
-  // }
-  // list.map(errors, fn(error) {
-  //   let #(meta, error) = error
-  //   let error = case error {
-  //     error.UndefinedRelease(p, r, cid) ->
-  //       case cache.fetch_named_cid(cache, p, r) {
-  //         Ok(c) if c == cid ->
-  //           case cache.fetch_fragment(cache, cid) {
-  //             Ok(cache.Fragment(value:, ..)) ->
-  //               case value {
-  //                 Ok(_) -> {
-  //                   io.debug(#("should have resolved ", p, r))
-  //                   ReleaseInvalid(p, r)
-  //                 }
-  //                 Error(#(reason, _, _, _)) -> ReleaseInvalid(p, r)
-  //                 // error info needs to be better 
-  //               }
-  //             Error(Nil) -> ReleaseFragmentNotFetched(p, r, c)
-  //           }
-  //         Ok(c) ->
-  //           ReleaseCheckDoesntMatch(
-  //             package: p,
-  //             release: r,
-  //             published: c,
-  //             used: cid,
-  //           )
-  //         // TODO client is still loading
-  //         Error(Nil) ->
-  //           case cache.max_release(cache, p) {
-  //             Error(Nil) -> ReleaseNotFetched(p, r, 0)
-  //             Ok(max) -> ReleaseNotFetched(p, r, max)
-  //           }
-  //       }
-  //     error.MissingReference(cid) ->
-  //       case cache.fetch_fragment(cache, cid) {
-  //         Ok(cache.Fragment(value:, ..)) ->
-  //           case value {
-  //             Ok(_) -> panic as "if the fragment was there it would be resolved"
-  //             Error(#(reason, _, _, _)) -> FragmentInvalid
-  //             // error info needs to be better 
-  //           }
-  //         Error(Nil) -> ReferenceNotFetched
-  //       }
-  //     error.Todo -> Todo
-  //     error.MissingVariable(var) -> MissingVariable(var)
-  //     error.MissingBuiltin(var) -> MissingBuiltin(var)
-  //     error.TypeMismatch(a, b) -> TypeMismatch(a, b)
-  //     error.MissingRow(l) -> MissingRow(l)
-  //     error.Recursive -> Recursive
-  //     error.SameTail(a, b) -> SameTail(a, b)
-  //   }
-  //   #(meta, error)
-  // })
 }
 
 pub fn render_embedded(state: Snippet, failure) {
@@ -1125,53 +1023,6 @@ fn bare_render(proj, errors, status, slot) {
       ..slot
     ]
   }
-}
-
-fn render_structured_note_about_error(error) {
-  let #(path, reason) = error
-  // TODO color, don't border all errors
-  let reason = case reason {
-    ReleaseInvalid(p, r) ->
-      "The release @" <> p <> ":" <> int.to_string(r) <> " has errors."
-    ReleaseCheckDoesntMatch(package:, release:, ..) ->
-      "The release @"
-      <> package
-      <> ":"
-      <> int.to_string(release)
-      <> " does not use the published checksum."
-    ReleaseNotFetched(package, _, 0) ->
-      "The package '" <> package <> "' has not been published"
-    ReleaseNotFetched(package, r, n) ->
-      "The release "
-      <> int.to_string(r)
-      <> " for '"
-      <> package
-      <> "' is not available. Latest publish is "
-      <> int.to_string(n)
-    ReleaseFragmentNotFetched(package:, release:, ..) ->
-      "The release @"
-      <> package
-      <> ":"
-      <> int.to_string(release)
-      <> " is still loading."
-    FragmentInvalid -> "FragmentInvalid"
-    ReferenceNotFetched -> "ReferenceNotFetched"
-    Todo -> "The program is incomplete."
-    MissingVariable(var) ->
-      "The variable '" <> var <> "' is not available here."
-    MissingBuiltin(identifier) ->
-      "The built-in function '!" <> identifier <> "' is not implemented."
-    TypeMismatch(_t, _t) -> "TypeMismatch"
-    MissingRow(_) -> "MissingRow"
-    Recursive -> "Recursive"
-    SameTail(_t, _t) -> "SameTail"
-  }
-  h.div([event.on_click(UserClickedPath(path))], [element.text(reason)])
-  // radio shows just one of the errors open at a time
-  // h.details([], [
-  //   h.summary([], [element.text(reason)]),
-  //   h.div([], [element.text("MOOOOARE")]),
-  // ])
 }
 
 pub fn render_pallet(state) {
@@ -1309,49 +1160,6 @@ fn render_projection(proj, errors) {
     }
   }
 }
-
-// fn render_run(run, evaluated) {
-//   case run {
-//     NotRunning ->
-//       case evaluated {
-//         Ok(#(value, _scope)) ->
-//           footer_area(neo_green_3, [
-//             case value {
-//               Some(value) -> output.render(value)
-//               None -> element.none()
-//             },
-//           ])
-//         Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-//           footer_area(neo_blue_3, [
-//             h.span([event.on_click(UserClickRunEffects)], [
-//               element.text("Will run "),
-//               element.text(label),
-//               element.text(" effect. click to continue."),
-//             ]),
-//           ])
-//         Error(#(reason, _, _, _)) ->
-//           footer_area(neo_orange_4, [
-//             element.text(simple_debug.reason_to_string(reason)),
-//           ])
-//       }
-//     Running(Ok(#(value, _scope)), _effects) ->
-//       // (value, _) ->
-//       footer_area(neo_green_3, [
-//         case value {
-//           Some(value) -> output.render(value)
-//           None -> element.none()
-//         },
-//       ])
-//     Running(Error(#(break.UnhandledEffect(_label, _), _, _, _)), _effects) ->
-//       footer_area(neo_green_3, [element.text("running")])
-
-//     // run.Handling(label, _meta, _env, _stack, _blocking) ->
-//     Running(Error(#(reason, _, _, _)), _effects) ->
-//       footer_area(neo_orange_4, [
-//         element.text(simple_debug.reason_to_string(reason)),
-//       ])
-//   }
-// }
 
 pub fn fail_message(reason) {
   case reason {
