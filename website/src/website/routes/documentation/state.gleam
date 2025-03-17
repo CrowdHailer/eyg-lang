@@ -277,14 +277,6 @@ pub fn init(_) {
   )
 }
 
-fn missing_refs(examples) {
-  dict.fold(examples, [], fn(acc, _key, snippet) {
-    snippet.references(snippet)
-    |> list.append(acc)
-    |> list.unique
-  })
-}
-
 pub type Message {
   ExampleMessage(String, example.Message)
   SyncMessage(client.Message)

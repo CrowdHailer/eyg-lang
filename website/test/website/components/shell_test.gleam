@@ -392,3 +392,5 @@ pub fn user_can_paste_to_input_test() {
 
 // Have a map of states or a map of examples with enum of state
 // its probably best to be able to have both set ups
+// TODO show error on top of example in document pages
+// TODO load refs 

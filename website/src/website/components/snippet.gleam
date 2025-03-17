@@ -159,7 +159,6 @@ pub fn active(editable) {
   )
 }
 
-// TODO build
 pub fn source(state) {
   let Snippet(editable:, ..) = state
   editable
