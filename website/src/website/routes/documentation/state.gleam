@@ -262,8 +262,7 @@ pub fn init(_) {
   let examples =
     list.map(examples, fn(entry) {
       let #(key, bytes) = entry
-      // TODO real effects
-      #(key, example.from_block(bytes, sync.cache, []))
+      #(key, example.from_block(bytes, sync.cache, harness.effects()))
     })
   let examples = dict.from_list(examples)
   // let missing_cids = missing_refs(examples)

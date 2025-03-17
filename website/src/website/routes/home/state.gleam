@@ -73,7 +73,7 @@ fn init_example(json, cache, config) {
 }
 
 fn effects(config) {
-  list.append(harness.effects(), spotless.effects(config))
+  list.append(harness.effects(), todo as "spotless.effects(config)")
 }
 
 fn init_reload_example(json, cache) {

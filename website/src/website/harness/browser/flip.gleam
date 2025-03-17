@@ -30,7 +30,6 @@ pub fn blocking(lift) {
 pub fn preflight(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
   Ok(fn() { boolean_to_eyg(do(Nil)) })
-  // fn() {promise.resolve(value)
 }
 
 pub fn do(_: Nil) {

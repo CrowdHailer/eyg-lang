@@ -101,24 +101,25 @@ fn update(snippet, message) {
 }
 
 fn effects() {
-  harness.effects()
-  |> list.append([
-    #(
-      netlify_deploy_site.l,
-      #(
-        netlify_deploy_site.lift(),
-        netlify_deploy_site.reply(),
-        netlify_deploy_site.blocking(netlify.local, _),
-      ),
-    ),
-    #(
-      tweet.l,
-      #(tweet.lift(), tweet.reply(), tweet.blocking(
-        twitter.client_id,
-        twitter.redirect_uri,
-        True,
-        _,
-      )),
-    ),
-  ])
+  todo
+  // harness.effects()
+  // |> list.append([
+  //   #(
+  //     netlify_deploy_site.l,
+  //     #(
+  //       netlify_deploy_site.lift(),
+  //       netlify_deploy_site.reply(),
+  //       netlify_deploy_site.blocking(netlify.local, _),
+  //     ),
+  //   ),
+  //   #(
+  //     tweet.l,
+  //     #(tweet.lift(), tweet.reply(), tweet.blocking(
+  //       twitter.client_id,
+  //       twitter.redirect_uri,
+  //       True,
+  //       _,
+  //     )),
+  //   ),
+  // ])
 }

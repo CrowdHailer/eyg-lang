@@ -30,11 +30,16 @@ pub fn render(state) {
   let slot = case runner.continue, runner.awaiting, break, warnings {
     // if running then show is running effect
     _, Some(_), Error(break.UnhandledEffect(label, _)), _ -> [
-      element.text("running effect" <> label),
+      snippet.footer_area(snippet.neo_blue_3, [
+        element.text("Running effect " <> label),
+      ]),
     ]
     // if there is an unhandled effect error then
-    False, _, Error(break.UnhandledEffect(label, _)), _ -> [
-      element.text("will effect" <> label),
+    False, _, Error(break.UnhandledEffect(label, _)), [] -> [
+      snippet.footer_area(snippet.neo_blue_3, [
+        // TODO click to run
+        element.text("Will run effect " <> label),
+      ]),
     ]
     // If there is no type errors but a runtime error it is because analysis is has not finished.
     False, _, Error(reason), [] -> {
