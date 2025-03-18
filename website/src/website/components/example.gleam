@@ -88,7 +88,7 @@ pub fn update_cache(state, cache) {
   let Example(runner:, ..) = state
   let #(runner, action) = runner.update(runner, runner.UpdateCache(cache))
   let state =
-    Example(..state, runner:)
+    Example(..state, cache:, runner:)
     |> do_analysis
   #(state, action)
 }
