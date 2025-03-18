@@ -4,22 +4,14 @@ import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/capture
-import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/io
-import gleam/javascript/promise
 import gleam/list
 import gleam/string
 import morph/editable as e
 import morph/projection
-
-pub type Path =
-  Nil
-
-pub type Value =
-  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 pub type References =
   Dict(String, binding.Poly)

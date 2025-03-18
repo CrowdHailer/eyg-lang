@@ -4,7 +4,6 @@ import eyg/ir/tree as ir
 import gleam/dict
 import gleam/dictx
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{Some}
 import gleam/string

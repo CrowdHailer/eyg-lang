@@ -19,7 +19,7 @@ import website/sync/cache
 
 pub type ShellEntry {
   Executed(
-    value: Option(analysis.Value),
+    value: Option(istate.Value(Nil)),
     // The list of effects are kept in reverse order
     effects: List(runner.Effect(Nil)),
     source: readonly.Readonly,
@@ -109,7 +109,7 @@ pub type Message {
   CacheUpdate(cache.Cache)
   // Current could be called input
   CurrentMessage(snippet.Message)
-  ExternalHandlerCompleted(Result(analysis.Value, istate.Reason(analysis.Path)))
+  ExternalHandlerCompleted(Result(istate.Value(Nil), istate.Reason(Nil)))
   UserClickedPrevious(Int)
 }
 
