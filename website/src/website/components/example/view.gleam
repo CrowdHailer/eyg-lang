@@ -5,6 +5,7 @@ import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/event
 import morph/analysis
 import website/components/example.{Example}
 import website/components/output
@@ -55,13 +56,10 @@ pub fn render(state) {
         snippet.footer_area(
           snippet.neo_orange_4,
           list.map(warnings, fn(error) {
-            let #(_path, reason) = error
-            h.div(
-              [
-                // event.on_click(UserClickedPath(path))
-              ],
-              [reason_to_html(reason)],
-            )
+            let #(path, reason) = error
+            h.div([event.on_click(snippet.UserClickedPath(path))], [
+              reason_to_html(reason),
+            ])
           }),
         ),
       ]

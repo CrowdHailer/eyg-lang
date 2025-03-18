@@ -1,3 +1,30 @@
+//// The snippet component is the base of editing context for EYG programs,
+//// for example the Reload, Shell and example components
+//// 
+//// It builds upon the morph library, it aims to be separate from type checking and runtime considerations
+//// 
+//// This separation is not perfect as edits want to be informed by type information.
+//// Type information is optional as type checking can be slow and we want to be able to edit programs without type information rather than blocking
+//// 
+//// Some information for helping with edits is not just based on the type situation.
+//// 
+////  1. Releases can be identified by their hash, but we want to show the package name and version number
+////    The index on analysis carries this extra data
+////  2. Most functions are defined in an effect free context, hence the suggested list of effects is hardcoded
+////    It is part of the context on the analysis
+//// 
+//// The type checker shouldn't need to know all the different states a release might be in. i.e. not requested yet.
+//// I also don't want to pass an arbitray function from ref to promise of result of type
+//// Doing so would make type checking async even when all referenes are loaded
+//// Instead we inefficiently pass a map of references in.
+//// Inefficient because it involves building from the whole cache.
+//// 
+//// ## Improvements
+//// 
+////  - The type checking context should always be available even if analysis isn't
+////  - Inversion of control so that the typechecking has a callback that is called when a reference is needed.
+////    This is ok in the morph analysis that is explicitly for editor help
+
 import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
@@ -1041,13 +1068,17 @@ pub fn render_pallet(state) {
   }
 }
 
-pub fn render_just_projection(state, autofocus) {
-  let Snippet(status: status, projection: proj, editable:, analysis:, ..) =
-    state
-  let errors = case analysis {
+fn type_errors(snippet) {
+  let Snippet(analysis:, ..) = snippet
+  case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }
+}
+
+pub fn render_just_projection(state, autofocus) {
+  let Snippet(status: status, projection: proj, editable:, ..) = state
+  let errors = type_errors(state)
   case status {
     Editing(_mode) -> {
       actual_render_projection(proj, autofocus, errors)
@@ -1236,7 +1267,7 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
         Error([])
       }),
     ],
-    bare_render(projection, [], status, slot)
+    bare_render(projection, type_errors(snippet), status, slot)
       |> list.append(case status {
         Idle -> []
         _ -> [
