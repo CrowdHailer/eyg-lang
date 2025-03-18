@@ -179,7 +179,8 @@ fn do_analysis(state) {
     analysis.do_analyse(
       snippet.editable,
       analysis.within_environment(scope, refs, Nil)
-        |> analysis.with_effects(effects),
+        |> analysis.with_effects(effects)
+        |> analysis.with_index(cache.package_index(cache)),
     )
   let snippet = Snippet(..snippet, analysis: Some(analysis))
   Example(..state, snippet:)

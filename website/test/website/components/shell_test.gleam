@@ -394,3 +394,19 @@ pub fn user_can_paste_to_input_test() {
 // map of snippets
 // Do I really want the presentation to be the same everywhere probably not
 // show errors on the snippet
+
+// What is the role of analysis if a release checksum doesn't match
+// A release could have its update metadata in it i.e. hash(publisher find new release and source)
+// analysis understands map of references needs to for type
+// analysis could pass in a function of release -> hash but doing so would mean that the help for morph wouldn't be possible
+
+// The snippet also doesn't know about cache because it is used for the runtime and type checking
+// currently inference ignores the information on the reference Should release information live outside
+
+// I want a function that can add types etc
+// I want a function that can add suggestions as they load probably should be external then
+
+// types
+// release information
+// let names
+// AST

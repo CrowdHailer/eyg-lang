@@ -101,8 +101,7 @@ fn update(snippet, message) {
 }
 
 fn effects() {
-  todo
-  // harness.effects()
+  harness.effects()
   // |> list.append([
   //   #(
   //     netlify_deploy_site.l,

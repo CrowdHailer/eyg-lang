@@ -6,6 +6,7 @@ import gleeunit/should
 import morph/analysis
 import website/components/example
 import website/components/runner
+import website/components/snippet
 import website/sync/cache
 import website/sync/client
 
@@ -61,4 +62,29 @@ pub fn analyse_for_cache_update_test() {
   |> should.be_some
   |> analysis.type_errors()
   |> should.equal([])
+}
+
+pub fn suggestions_for_packages_test() {
+  let #(client, _) = client.default()
+  let #(client, action) =
+    client.update(client, client.IndexFetched(Ok(index())))
+  should.equal(action, [])
+  let source = ir.vacant()
+  let example = example.init(source, client.cache, [])
+  let #(example, action) =
+    example.update(example, example.SnippetMessage(snippet.UserFocusedOnCode))
+  action
+  |> should.equal(example.Nothing)
+  let #(example, action) =
+    example.update(
+      example,
+      example.SnippetMessage(snippet.UserPressedCommandKey("@")),
+    )
+  action
+  |> should.equal(example.FocusOnInput)
+  let assert snippet.Editing(snippet.SelectRelease(autocomplete, _)) =
+    example.snippet.status
+
+  autocomplete.items
+  |> should.equal([#("foo", 1, foo_cid())])
 }

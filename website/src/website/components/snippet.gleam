@@ -45,30 +45,20 @@ pub const neo_green_3 = "#90ee90"
 pub const neo_orange_4 = "#ff6b6b"
 
 const embed_area_styles = [
-  #("box-shadow", "6px 6px black"),
-  #("border-style", "solid"),
+  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
   #(
     "font-family",
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-  ),
-  #("background-color", "rgb(255, 255, 255)"),
-  #("border-color", "rgb(0, 0, 0)"),
-  #("border-width", "1px"),
-  #("flex-direction", "column"),
-  #("display", "flex"),
-  #("margin-bottom", "1.5rem"),
-  #("margin-top", ".5rem"),
+  ), #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
+  #("flex-direction", "column"), #("display", "flex"),
+  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
 ]
 
 const code_area_styles = [
-  #("outline", "2px solid transparent"),
-  #("outline-offset", "2px"),
-  #("padding", ".5rem"),
-  #("white-space", "nowrap"),
-  #("overflow", "auto"),
-  #("margin-top", "auto"),
-  #("margin-bottom", "auto"),
-  #("height", "100%"),
+  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
+  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
+  #("margin-top", "auto"), #("margin-bottom", "auto"), #("height", "100%"),
 ]
 
 pub fn footer_area(color, contents) {
@@ -265,7 +255,7 @@ fn update_source(proj, state) {
     history: history,
     analysis:,
     // evaluated: evaluate(editable, state.scope, state.cache),
-  // run: NotRunning,
+    // run: NotRunning,
   )
 }
 
@@ -741,20 +731,22 @@ fn insert_list(state) {
 }
 
 fn insert_release(state) {
-  todo as "need a package index"
-  // let Snippet(projection: proj, cache: cache, ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
-  // let index = cache.package_index(cache)
+  let index = case analysis {
+    Some(analysis.Analysis(context:, ..)) -> context.index
+    None -> []
+  }
 
-  // case action.insert_named_reference(proj) {
-  //   Ok(#(_filter, rebuild)) -> {
-  //     change_mode(
-  //       state,
-  //       SelectRelease(autocomplete.init(index, release_to_string), rebuild),
-  //     )
-  //   }
-  //   Error(Nil) -> action_failed(state, "insert reference")
-  // }
+  case action.insert_named_reference(proj) {
+    Ok(#(_filter, rebuild)) -> {
+      change_mode(
+        state,
+        SelectRelease(autocomplete.init(index, release_to_string), rebuild),
+      )
+    }
+    Error(Nil) -> action_failed(state, "insert reference")
+  }
 }
 
 fn release_to_string(release) {
@@ -884,7 +876,7 @@ fn undo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-        // run: NotRunning,
+          // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -910,7 +902,7 @@ fn redo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-        // run: NotRunning,
+          // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -942,11 +934,6 @@ fn confirm(state) {
 
 pub fn finish_editing(state) {
   Snippet(..state, status: Idle)
-}
-
-pub fn render_embedded(state: Snippet, failure) {
-  todo as "render embedded"
-  // h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
 pub fn release_to_option(release) {

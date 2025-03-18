@@ -16,12 +16,16 @@ import morph/projection
 pub type References =
   Dict(String, binding.Poly)
 
+pub type Index =
+  List(#(String, Int, String))
+
 pub type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
     effects: List(#(String, #(binding.Mono, binding.Mono))),
     references: References,
+    index: Index,
   )
 }
 
@@ -46,15 +50,15 @@ pub type Analysis {
 
 pub fn within_environment(runtime_env, refs, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
-  Context(bindings, scope, [], refs)
+  Context(bindings, scope, [], refs, [])
 }
 
 pub fn with_effects(context, effects) {
   Context(..context, effects: effects)
 }
 
-pub fn with_references(refs) {
-  Context(dict.new(), [], [], refs)
+pub fn with_index(context, index) {
+  Context(..context, index: index)
 }
 
 // use capture because we want efficient ability to get to continuations
