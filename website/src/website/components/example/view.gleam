@@ -38,8 +38,10 @@ pub fn render(state) {
     // if there is an unhandled effect error then
     False, _, Error(break.UnhandledEffect(label, _)), [] -> [
       snippet.footer_area(snippet.neo_blue_3, [
-        // TODO click to run
-        element.text("Will run effect " <> label),
+        h.div([event.on_click(snippet.UserPressedCommandKey("Enter"))], [
+          element.text("Will run effect " <> label <> ". "),
+          h.button([], [element.text("Click to run.")]),
+        ]),
       ]),
     ]
     // If there is no type errors but a runtime error it is because analysis is has not finished.

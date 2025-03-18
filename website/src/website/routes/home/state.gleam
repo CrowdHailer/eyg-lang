@@ -2,13 +2,15 @@ import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
+import gleam/javascript/promise
 import gleam/list
-import gleam/option.{type Option, None}
+import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
 import website/components/auth_panel
 import website/components/example
 import website/components/reload
+import website/components/runner
 import website/components/snippet
 import website/harness/browser as harness
 import website/sync/client
@@ -36,7 +38,6 @@ pub type State {
 
 pub type Active {
   Editing(String, Option(snippet.Failure))
-  Running(String)
   Nothing
 }
 
@@ -94,7 +95,6 @@ pub fn init(config) {
         predictable_effects_key,
         init_example(predictable_effects_example, client.cache, effects),
       ),
-      // TODO reload snippet
       #(hot_reload_key, {
         let assert Ok(source) = dag_json.from_block(<<hot_reload_example:utf8>>)
         reload.init(
@@ -105,8 +105,6 @@ pub fn init(config) {
       }),
     ]
     |> dict.from_list
-  // let reload =
-  //   
   let #(auth, task) = auth_panel.init(Nil)
   let missing_cids = missing_refs(examples)
   let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
@@ -124,13 +122,11 @@ pub fn init(config) {
 fn missing_refs(examples) {
   dict.fold(examples, [], fn(acc, _key, example) {
     case example {
-      Simple(example.Example(snippet:, ..)) ->
+      Simple(example.Example(snippet:, ..))
+      | Reload(reload.Reload(snippet:, ..)) ->
         snippet.references(snippet)
         |> list.append(acc)
         |> list.unique
-      _ ->
-        // todo as "wheres the refs"
-        []
     }
   })
 }
@@ -154,8 +150,19 @@ pub type Message {
 
 fn dispatch_to_snippet(id, promise) {
   effect.from(fn(d) {
-    todo as "should there be a message on example"
-    // promisex.aside(promise, fn(message) { d(SimpleMessage(id, message)) })
+    promise.map(promise, fn(message) {
+      d(SimpleMessage(id, example.SnippetMessage(message)))
+    })
+    Nil
+  })
+}
+
+fn dispatch_to_runner(id, promise) {
+  effect.from(fn(d) {
+    promise.map(promise, fn(message) {
+      d(SimpleMessage(id, example.RunnerMessage(message)))
+    })
+    Nil
   })
 }
 
@@ -179,29 +186,32 @@ pub fn update(state: State, message) {
         Simple(example) -> {
           let #(example, action) = example.update(example, message)
           let state = set_example(state, id, Simple(example))
-          let state = State(..state, active: Editing(id, None))
-          case action {
-            example.Nothing -> #(state, effect.none())
-            // TODO write in error
-            example.Failed(failure) -> #(state, effect.none())
+          let #(failure, action) = case action {
+            example.Nothing -> #(None, effect.none())
+            example.Failed(failure) -> #(Some(failure), effect.none())
             example.ReturnToCode -> #(
-              state,
+              None,
               dispatch_nothing(snippet.focus_on_buffer()),
             )
             example.FocusOnInput -> #(
-              state,
+              None,
               dispatch_nothing(snippet.focus_on_input()),
             )
             example.ReadFromClipboard -> #(
-              state,
+              None,
               dispatch_to_snippet(id, snippet.read_from_clipboard()),
             )
             example.WriteToClipboard(text) -> #(
-              state,
+              None,
               dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
             )
-            example.RunExternalHandler(i, d) -> todo
+            example.RunExternalHandler(ref, thunk) -> #(
+              None,
+              dispatch_to_runner(id, runner.run_thunk(ref, thunk)),
+            )
           }
+          let state = State(..state, active: Editing(id, failure))
+          #(state, action)
         }
         _ ->
           panic as "SimpleMessage should not be sent to other kinds of example"
@@ -214,28 +224,28 @@ pub fn update(state: State, message) {
         Reload(example) -> {
           let #(example, action) = reload.update(example, message)
           let state = set_example(state, id, Reload(example))
-          let state = State(..state, active: Editing(id, None))
-          case action {
-            reload.Nothing -> #(state, effect.none())
-            // TODO write in error
-            reload.Failed(failure) -> #(state, effect.none())
+          let #(failure, action) = case action {
+            reload.Nothing -> #(None, effect.none())
+            reload.Failed(failure) -> #(Some(failure), effect.none())
             reload.ReturnToCode -> #(
-              state,
+              None,
               dispatch_nothing(snippet.focus_on_buffer()),
             )
             reload.FocusOnInput -> #(
-              state,
+              None,
               dispatch_nothing(snippet.focus_on_input()),
             )
             reload.ReadFromClipboard -> #(
-              state,
+              None,
               dispatch_to_snippet(id, snippet.read_from_clipboard()),
             )
             reload.WriteToClipboard(text) -> #(
-              state,
+              None,
               dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
             )
           }
+          let state = State(..state, active: Editing(id, failure))
+          #(state, action)
         }
         _ ->
           panic as "SimpleMessage should not be sent to other kinds of example"
@@ -252,6 +262,14 @@ pub fn update(state: State, message) {
               let #(example, action) =
                 example.update_cache(example, sync_client.cache)
               let entries = [#(key, Simple(example)), ..entries]
+              let effects = case action {
+                runner.Nothing -> effects
+                runner.RunExternalHandler(ref, thunk) -> {
+                  let effect =
+                    dispatch_to_runner(key, runner.run_thunk(ref, thunk))
+                  [effect, ..effects]
+                }
+              }
               #(entries, effects)
             }
             Reload(example) -> {
@@ -262,7 +280,10 @@ pub fn update(state: State, message) {
         })
       let examples = dict.from_list(entries)
       let state = State(..state, sync: sync_client, examples:)
-      #(state, client.lustre_run(effect, SyncMessage))
+      #(
+        state,
+        effect.batch([client.lustre_run(effect, SyncMessage), ..effects]),
+      )
     }
   }
 }
@@ -278,7 +299,6 @@ fn close_other_examples(state, id) {
       }
       set_example(state, current, example)
     }
-    Running(_current) -> panic as "should not click around when running"
     _ -> state
   }
 }

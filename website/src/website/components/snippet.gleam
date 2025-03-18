@@ -1318,7 +1318,7 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
   )
 }
 
-pub fn render_embedded_with_menu(snippet, failure) {
+pub fn render_embedded_with_menu(snippet, _failure) {
   h.pre(
     [
       a.class("eyg-embed language-eyg"),
