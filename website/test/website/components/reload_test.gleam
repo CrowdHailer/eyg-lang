@@ -2,6 +2,8 @@ import eyg/analysis/type_/binding/error
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import gleam/bit_array
+import gleam/dict
+import gleam/io
 import gleam/option.{None, Some}
 import gleeunit/should
 import morph/editable as e
@@ -150,4 +152,27 @@ fn counter_app() {
   |> should.be_ok
   |> e.from_annotated
   |> e.to_annotated([])
+}
+
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/isomorphic as t
+
+fn infer(source, expected) {
+  // Not inclusing any refs
+  let refs = dict.new()
+  let level = 1
+  let b = infer.new_state()
+  let eff = t.Empty
+
+  let source = e.to_annotated(source, [])
+  // expected could be mono or poly
+
+  let #(tree, b) = infer.infer(source, eff, refs, level, b)
+  todo
+}
+
+// let that gets aligned properly on let bindings
+// This can be added to analysis 
+pub fn top_type_test() {
+  todo
 }
