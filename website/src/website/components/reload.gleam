@@ -122,7 +122,7 @@ pub type Action {
   FocusOnInput
   ReadFromClipboard
   WriteToClipboard(text: String)
-  // RunExternalHander(id: Int, thunk: runner.Thunk(Nil))
+  // RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
 }
 
 pub fn update(state, message) {

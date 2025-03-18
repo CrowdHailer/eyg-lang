@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}

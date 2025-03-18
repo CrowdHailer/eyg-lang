@@ -1,7 +1,9 @@
+import eyg/analysis/type_/binding
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
+import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/listx
@@ -11,15 +13,15 @@ import morph/editable as e
 import plinth/browser/clipboard
 import plinth/javascript/console
 import website/components/readonly
+import website/components/runner
 import website/components/snippet
-import website/mount/interactive
 import website/sync/cache
 
 pub type ShellEntry {
   Executed(
     value: Option(analysis.Value),
     // The list of effects are kept in reverse order
-    effects: List(interactive.RuntimeEffect),
+    effects: List(runner.Effect(Nil)),
     source: readonly.Readonly,
   )
 }
@@ -29,13 +31,15 @@ pub type ShellFailure {
   NoMoreHistory
 }
 
+pub type Scope(m) =
+  List(#(String, istate.Value(m)))
+
+pub type Return(m) =
+  Result(#(Option(istate.Value(m)), Scope(m)), istate.Debug(m))
+
 pub type Run {
   // if no type errors then unhandled effect is still running
-  Run(
-    started: Bool,
-    return: interactive.Return,
-    effects: List(interactive.RuntimeEffect),
-  )
+  Run(started: Bool, return: Return(Nil), effects: List(runner.Effect(Nil)))
 }
 
 pub type Shell {
@@ -49,9 +53,10 @@ pub type Shell {
     cache: cache.Cache,
     // The derrived properties of a shell are very tightly bound.
     // Typing is based on the scope which is updated by the runtime.
-    effects: List(#(String, analysis.EffectSpec)),
+    effect_handlers: List(#(String, runner.Handler(Nil))),
+    effect_types: List(#(String, #(binding.Mono, binding.Mono))),
     // I need to rebuild because scope is difference and I want expression in example
-    scope: interactive.Scope,
+    scope: Scope(Nil),
     // Evaluated is needed to show what effect will run in the shell console
     // evaluated: interactive.Return,
     // current_effects: List(interactive.RuntimeEffect),
@@ -64,21 +69,22 @@ pub type Shell {
 pub fn init(effects, cache) {
   let source = e.from_annotated(ir.vacant())
   let scope = []
+  let #(effect_types, effect_handlers) = listx.key_unzip(effects)
   let snippet =
     snippet.active(source)
-    |> snippet_analyse(scope, cache, effects)
+    |> snippet_analyse(scope, cache, effect_types)
   Shell(
     failure: None,
     previous: [],
     source: snippet,
     cache: cache,
-    effects: effects,
+    effect_handlers:,
+    effect_types:,
     scope: scope,
     // what the task would be is derivable
     // evaluated: interactive.evaluate(source, scope, cache),
     // current_effects: [],
-    run: Run(False, interactive.evaluate(source, scope, cache), []),
-    // mount: mount.init(source, effects, cache),
+    run: Run(False, evaluate(source, scope, cache), []),
   )
 }
 
@@ -111,8 +117,8 @@ pub type Effect {
   Nothing
   FocusOnCode
   FocusOnInput
-  // RunFinished
-  RunEffect(value: analysis.Value, handler: analysis.ExternalBlocking)
+  RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
+
   ReadFromClipboard
   WriteToClipboard(text: String)
 }
@@ -121,8 +127,8 @@ pub fn update(shell, message) {
   case message {
     ParentSetSource(source) -> set_code(shell, source)
     CacheUpdate(cache) -> {
-      let Shell(run:, effects:, ..) = shell
-      let #(run, action) = run_update_cache(run, cache, effects)
+      let Shell(run:, effect_handlers:, ..) = shell
+      let #(run, action) = run_update_cache(run, cache, effect_handlers)
       case run {
         Run(True, Ok(#(value, scope)), effects) ->
           finalize(shell, value, scope, effects)
@@ -164,26 +170,18 @@ pub fn update(shell, message) {
       }
     }
     ExternalHandlerCompleted(result) -> {
-      let #(run, task) = handle_external(shell, result)
+      let #(run, action) = handle_external(shell, result)
       let shell = Shell(..shell, run:)
-      case task {
-        Some(#(lift, handler)) -> #(shell, RunEffect(lift, handler))
-        None ->
-          case run.return {
-            Ok(#(value, scope)) -> {
-              let record =
-                Executed(
-                  value,
-                  run.effects,
-                  readonly.new(shell.source.editable),
-                )
-              let previous = [record, ..shell.previous]
-              Shell(..shell, previous:, scope:)
-              |> set_code(e.from_annotated(ir.vacant()))
-            }
 
-            Error(_) -> todo as "leave and show error"
-          }
+      case run.return {
+        Ok(#(value, scope)) -> {
+          let record =
+            Executed(value, run.effects, readonly.new(shell.source.editable))
+          let previous = [record, ..shell.previous]
+          Shell(..shell, previous:, scope:)
+          |> set_code(e.from_annotated(ir.vacant()))
+        }
+        _ -> #(shell, action)
       }
     }
     UserClickedPrevious(index) -> {
@@ -207,23 +205,28 @@ fn new_code(shell) {
   let Shell(source:, scope:, cache:, ..) = shell
   let run = new_run(source.editable, scope, cache)
 
-  let source = snippet_analyse(source, scope, cache, shell.effects)
+  let source = snippet_analyse(source, scope, cache, shell.effect_types)
   #(Shell(..shell, source:, run:), FocusOnCode)
 }
 
 fn confirm(shell) {
-  let Shell(effects: extrinsic, run:, ..) = shell
+  let Shell(effect_handlers: extrinsic, run:, ..) = shell
   let Run(started:, return:, effects:) = run
   case started, return {
     False, Ok(#(value, scope)) -> {
       finalize(shell, value, scope, effects)
     }
-    False, Error(#(break.UnhandledEffect(label, lift), _meta, _env, _k)) -> {
+    False, Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case list.key_find(extrinsic, label) {
-        Ok(#(_lift, _reply, blocking)) -> {
-          let run = Run(..run, started: True)
+        Ok(blocking) -> {
+          let #(return, action) = case blocking(lift) {
+            Ok(thunk) -> #(return, RunExternalHandler(0, thunk))
+            Error(reason) -> #(Error(#(reason, meta, env, k)), Nothing)
+          }
+          let run = Run(..run, started: True, return:)
           let shell = Shell(..shell, run:)
-          #(shell, RunEffect(lift, blocking))
+
+          #(shell, action)
         }
         _ -> #(shell, Nothing)
       }
@@ -243,7 +246,7 @@ fn finalize(shell, value, scope, effects) {
 // analyse stuff
 
 // this is not just configurable for the reload case
-fn snippet_analyse(snippet, scope, cache, effect_specs) {
+fn snippet_analyse(snippet, scope, cache, effect_types) {
   let snippet.Snippet(editable:, ..) = snippet
 
   let refs = cache.type_map(cache)
@@ -252,7 +255,7 @@ fn snippet_analyse(snippet, scope, cache, effect_specs) {
     analysis.do_analyse(
       editable,
       analysis.within_environment(scope, refs, Nil)
-        |> analysis.with_effects(interactive.effect_types(effect_specs)),
+        |> analysis.with_effects(effect_types),
     )
   snippet.Snippet(..snippet, analysis: Some(analysis))
 }
@@ -260,20 +263,26 @@ fn snippet_analyse(snippet, scope, cache, effect_specs) {
 // runner stuff
 
 fn new_run(editable, scope, cache) {
-  Run(False, interactive.evaluate(editable, scope, cache), [])
+  Run(False, evaluate(editable, scope, cache), [])
 }
 
 fn run_update_cache(run, cache, effects) {
   let Run(started:, return:, ..) = run
   case return {
-    Error(#(break.UndefinedReference(_), _, _, _))
-    | Error(#(break.UndefinedRelease(_, _, _), _, _, _)) -> {
+    Error(#(break.UndefinedReference(_), meta, env, k))
+    | Error(#(break.UndefinedRelease(_, _, _), meta, env, k)) -> {
       let return = cache.run(return, cache, block.resume)
       case started {
         True -> {
-          let action = case lookup_external(return, effects) {
-            Ok(#(lift, blocking)) -> RunEffect(lift, blocking)
-            Error(Nil) -> Nothing
+          let #(return, action) = case lookup_external(return, effects) {
+            Ok(#(lift, blocking)) -> {
+              io.debug("real id needed")
+              case blocking(lift) {
+                Ok(thunk) -> #(return, RunExternalHandler(0, thunk))
+                Error(reason) -> #(Error(#(reason, meta, env, k)), Nothing)
+              }
+            }
+            Error(Nil) -> #(return, Nothing)
           }
           #(Run(..run, return:), action)
         }
@@ -292,26 +301,32 @@ fn handle_external(shell, result) {
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case result {
         Ok(reply) -> {
-          let effects = [
-            interactive.RuntimeEffect(label, lift, reply),
-            ..effects
-          ]
+          let effects = [#(label, #(lift, reply)), ..effects]
           let return =
             cache.run(block.resume(reply, env, k), cache, block.resume)
-          let action = case lookup_external(return, shell.effects) {
-            Ok(#(lift, blocking)) -> Some(#(lift, blocking))
-            Error(Nil) -> None
+          case lookup_external(return, shell.effect_handlers) {
+            Ok(#(lift, blocking)) -> {
+              case blocking(lift) {
+                Ok(thunk) -> #(
+                  Run(True, return, effects),
+                  RunExternalHandler(0, thunk),
+                )
+                Error(reason) -> #(
+                  Run(False, Error(#(reason, meta, env, k)), effects),
+                  Nothing,
+                )
+              }
+            }
+            Error(Nil) -> #(Run(True, return, effects), Nothing)
           }
-
-          #(Run(True, return, effects), action)
         }
         Error(reason) -> #(
           Run(False, Error(#(reason, meta, env, k)), effects),
-          None,
+          Nothing,
         )
       }
     }
-    _ -> #(run, None)
+    _ -> #(run, Nothing)
   }
 }
 
@@ -319,7 +334,7 @@ fn lookup_external(return, extrinsic) {
   case return {
     Error(#(break.UnhandledEffect(label, lift), _meta, _env, _k)) -> {
       case list.key_find(extrinsic, label) {
-        Ok(#(_lift, _reply, blocking)) -> Ok(#(lift, blocking))
+        Ok(blocking) -> Ok(#(lift, blocking))
         _ -> Error(Nil)
       }
     }
@@ -383,11 +398,11 @@ pub type Status {
 // Needs to join against effects and sync client
 // This double error handling from evaluated to 
 pub fn status(shell) {
-  let Shell(run:, effects:, ..) = shell
+  let Shell(run:, effect_handlers:, ..) = shell
   case run.started, run.return {
     _, Ok(_) -> Finished
     False, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-      case list.key_find(effects, label) {
+      case list.key_find(effect_handlers, label) {
         Ok(_) -> WillRunEffect(label)
         Error(Nil) -> Failed
       }
@@ -401,4 +416,11 @@ pub fn status(shell) {
     True, Error(#(break.UndefinedReference(c), _, _, _)) -> AwaitingReference(c)
     _, _ -> Failed
   }
+}
+
+pub fn evaluate(editable, scope, cache) {
+  e.to_annotated(editable, [])
+  |> ir.clear_annotation
+  |> block.execute(scope)
+  |> cache.run(cache, block.resume)
 }

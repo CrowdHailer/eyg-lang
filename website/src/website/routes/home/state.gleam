@@ -200,7 +200,7 @@ pub fn update(state: State, message) {
               state,
               dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
             )
-            example.RunExternalHander(i, d) -> todo
+            example.RunExternalHandler(i, d) -> todo
           }
         }
         _ ->

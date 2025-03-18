@@ -203,8 +203,8 @@ pub fn update(state: State, message) {
       let state = State(..state, sync:, shell:)
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()
-        shell.RunEffect(lift, blocking) ->
-          dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.RunExternalHandler(lift, blocking) -> todo as "shelly message"
+        // dispatch_to_shell(shell.run_effect(lift, blocking))
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
@@ -233,8 +233,8 @@ pub fn update(state: State, message) {
         shell.update(shell, shell.CacheUpdate(sync.cache))
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()
-        shell.RunEffect(lift, blocking) ->
-          dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.RunExternalHandler(lift, blocking) -> todo as "run effects here"
+        // dispatch_to_shell(shell.run_effect(lift, blocking))
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
@@ -501,7 +501,8 @@ pub fn render(state: State) {
                     h.div([a.class("text-blue-700")], [
                       h.span([a.class("font-bold")], [element.text("effects ")]),
                       ..list.map(effects, fn(eff) {
-                        h.span([], [element.text(eff.label), element.text(" ")])
+                        let #(label, _) = eff
+                        h.span([], [element.text(label), element.text(" ")])
                         // h.div([a.class("flex gap-1")], [
                         //   output.render(eff.1.0),
                         //   output.render(eff.1.1),

@@ -118,8 +118,7 @@ const functions_example = e.Block(
         [e.Bind("f"), e.Bind("x")],
         e.Call(e.Variable("f"), [e.Call(e.Variable("f"), [e.Variable("x")])]),
       ),
-    ),
-    #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
+    ), #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
   ],
   e.Call(e.Variable("inc2"), [e.Integer(5)]),
   False,
@@ -158,16 +157,14 @@ const fix_example = e.Block(
                       True,
                     ),
                   ),
-                ),
-                #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
+                ), #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
               ],
               None,
             ),
           ),
         ],
       ),
-    ),
-    #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
+    ), #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
   ],
   e.Call(e.Variable("count"), [e.List([e.Integer(5)], None)]),
   False,
@@ -341,7 +338,7 @@ pub fn update(state: State, message) {
           None,
           dispatch_to_snippet(identifier, snippet.write_to_clipboard(text)),
         )
-        example.RunExternalHander(reference, thunk) -> #(
+        example.RunExternalHandler(reference, thunk) -> #(
           None,
           dispatch_to_runner(identifier, runner.run_thunk(reference, thunk)),
         )
@@ -361,7 +358,7 @@ pub fn update(state: State, message) {
           let entries = [#(key, example), ..entries]
           let effects = case action {
             runner.Nothing -> effects
-            runner.RunExternalHander(reference, thunk) -> [
+            runner.RunExternalHandler(reference, thunk) -> [
               dispatch_to_runner(key, runner.run_thunk(reference, thunk)),
               ..effects
             ]

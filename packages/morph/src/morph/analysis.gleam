@@ -11,7 +11,6 @@ import gleam/dict.{type Dict}
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
-import gleam/listx
 import gleam/string
 import morph/editable as e
 import morph/projection
@@ -21,12 +20,6 @@ pub type Path =
 
 pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
-
-pub type ExternalBlocking =
-  fn(Value) -> Result(promise.Promise(Value), istate.Reason(Path))
-
-pub type EffectSpec =
-  #(binding.Mono, binding.Mono, ExternalBlocking)
 
 pub type References =
   Dict(String, binding.Poly)

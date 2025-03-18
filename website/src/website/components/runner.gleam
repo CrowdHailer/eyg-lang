@@ -55,7 +55,7 @@ pub type Message(m) {
 
 pub type Action(m) {
   Nothing
-  RunExternalHander(Int, Thunk(m))
+  RunExternalHandler(Int, Thunk(m))
 }
 
 pub fn update(state, message) {
@@ -106,7 +106,7 @@ fn do(state) {
               case handler(lift) {
                 Ok(thunk) -> {
                   let awaiting = Some(counter)
-                  let action = RunExternalHander(counter, thunk)
+                  let action = RunExternalHandler(counter, thunk)
                   let counter = counter + 1
                   #(Runner(..state, counter:, awaiting:), action)
                 }

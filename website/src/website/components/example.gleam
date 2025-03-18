@@ -48,7 +48,6 @@ import morph/analysis
 import morph/editable as e
 import website/components/runner.{type Runner}
 import website/components/snippet.{type Snippet, Snippet}
-import website/mount/interactive
 import website/sync/cache
 
 pub type Example {
@@ -106,7 +105,7 @@ pub type Action {
   FocusOnInput
   ReadFromClipboard
   WriteToClipboard(text: String)
-  RunExternalHander(id: Int, thunk: runner.Thunk(Nil))
+  RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
 }
 
 pub fn update(state, message) {
@@ -137,7 +136,8 @@ pub fn update(state, message) {
           let state = Example(..state, runner:)
           let action = case action {
             runner.Nothing -> Nothing
-            runner.RunExternalHander(id, thunk) -> RunExternalHander(id, thunk)
+            runner.RunExternalHandler(id, thunk) ->
+              RunExternalHandler(id, thunk)
           }
           #(state, action)
         }
@@ -157,7 +157,7 @@ pub fn update(state, message) {
       let state = Example(..state, runner:)
       let action = case action {
         runner.Nothing -> Nothing
-        runner.RunExternalHander(id, thunk) -> RunExternalHander(id, thunk)
+        runner.RunExternalHandler(id, thunk) -> RunExternalHandler(id, thunk)
       }
       #(state, action)
     }
