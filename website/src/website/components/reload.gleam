@@ -3,7 +3,6 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/expression
@@ -38,8 +37,6 @@ pub type Reload(meta) {
     // 
     // Init is not automatically called if the starting value is Nil because users might edit via a valid program
     value: Option(Value(Nil)),
-    // TODO remove and put analysis in snippet
-    type_errors: List(#(meta, error.Reason)),
     // update and render if we want to keep everything running
     ready_to_migrate: Bool,
   )
@@ -54,27 +51,13 @@ pub fn init(source, cache) {
   let return = execute_snippet(snippet)
 
   let state =
-    Reload(
-      cache:,
-      snippet:,
-      return:,
-      value: None,
-      type_errors: [],
-      ready_to_migrate: False,
-    )
-  let #(value, type_errors) = case type_check(cache, source, None) {
-    Ok(_) -> {
-      case run_field(state, "init", []) {
-        Ok(value) -> #(Some(value), [])
-        Error(_) -> {
-          io.println("this should never error if the type checking has passed.")
-          #(None, [])
-        }
-      }
-    }
-    Error(type_errors) -> #(None, type_errors)
+    Reload(cache:, snippet:, return:, value: None, ready_to_migrate: False)
+    |> do_analysis
+  case type_errors(state) {
+    Some([]) -> update_app(state)
+    Some(_) -> state
+    None -> panic as "the analysis should always occur"
   }
-  Reload(..state, value:, type_errors:)
 }
 
 pub fn finish_editing(state) {
@@ -84,27 +67,12 @@ pub fn finish_editing(state) {
 }
 
 pub fn update_cache(state, cache) {
-  let Reload(snippet:, value:, ..) = state
-
-  let state = Reload(..state, cache: cache)
-  let state = case type_check(cache, todo as "!!!snippet", value) {
-    Ok(migrate) -> Reload(..state, type_errors: [], ready_to_migrate: migrate)
-    Error(type_errors) -> Reload(..state, type_errors:)
-  }
+  let Reload(snippet:, ..) = state
+  let return = execute_snippet(snippet)
+  let state =
+    Reload(..state, cache:, return:)
+    |> do_analysis
   #(state, Nothing)
-}
-
-fn type_check(sync, source: ir.Node(List(Int)), value: Option(Value(Nil))) {
-  let bindings = infer.new_state()
-  let #(app_state_t, bindings) = case value {
-    Some(v) -> {
-      let #(poly, bindings) = analysis.value_to_type(v, bindings, Nil)
-      binding.instantiate(poly, 1, bindings)
-    }
-    None -> binding.mono(1, bindings)
-  }
-  let types = cache.type_map(sync)
-  do_check_against_state(bindings, types, source, app_state_t)
 }
 
 pub type Message(meta) {
@@ -122,7 +90,6 @@ pub type Action {
   FocusOnInput
   ReadFromClipboard
   WriteToClipboard(text: String)
-  // RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
 }
 
 pub fn update(state, message) {
@@ -143,11 +110,8 @@ pub fn update(state, message) {
         snippet.Confirm -> {
           let Reload(ready_to_migrate:, ..) = state
           case ready_to_migrate {
-            True -> todo
-            False -> {
-              // TODO as error case
-              #(state, Nothing)
-            }
+            True -> #(update_app(state), Nothing)
+            False -> #(state, Nothing)
           }
         }
         snippet.Failed(failure) -> #(state, Failed(failure))
@@ -170,7 +134,7 @@ pub fn update(state, message) {
       #(state, Nothing)
     }
     ParentUpdatedCache(cache) -> update_cache(state, cache)
-    UserClickedMigrate -> update_app(state)
+    UserClickedMigrate -> #(update_app(state), Nothing)
     UserClickedApp -> {
       let Reload(value:, ..) = state
       let state = case value {
@@ -200,15 +164,6 @@ fn execute_snippet(snippet) {
   expression.execute(source, [])
 }
 
-fn do_analysis(state) {
-  let Reload(cache:, snippet:, value:, ..) = state
-  let source = snippet.editable |> e.to_annotated([])
-  case type_check(cache, source, value) {
-    Ok(migrate) -> Reload(..state, type_errors: [], ready_to_migrate: migrate)
-    Error(type_errors) -> Reload(..state, type_errors:)
-  }
-}
-
 pub fn update_app(state) {
   let Reload(value:, ..) = state
   let result = case value {
@@ -222,12 +177,12 @@ pub fn update_app(state) {
       state
     }
   }
-  #(state, Nothing)
+  state
 }
 
 pub fn render(state) {
-  let Reload(snippet:, value:, ready_to_migrate:, type_errors:, ..) = state
-  // let snippet = state.get_snippet(s, state.hot_reload_key)
+  let Reload(snippet:, value:, ready_to_migrate:, ..) = state
+
   h.div([], [
     snippet.render_embedded_with_top_menu(snippet, [])
       |> element.map(SnippetMessage),
@@ -241,12 +196,12 @@ pub fn render(state) {
       ]),
       h.p([], [element.text("Rendered app, click to send message")]),
       h.div([a.class("border-2 p-2")], [
-        case type_errors, ready_to_migrate {
-          [], True ->
+        case type_errors(state), ready_to_migrate {
+          Some([]), True ->
             h.div([event.on_click(UserClickedMigrate)], [
               element.text("click to upgrade"),
             ])
-          [], False -> {
+          Some([]), False -> {
             let assert Some(value) = value
             case run_field(state, "render", [#(value, Nil)]) {
               Ok(v.String(page)) -> render_app(page)
@@ -256,10 +211,10 @@ pub fn render(state) {
             }
           }
           // snippet shows these
-          _, _ ->
+          type_errors, _ ->
             h.div(
               [a.class("border-2 border-orange-3 px-2")],
-              list.map(type_errors, fn(error) {
+              list.map(option.unwrap(type_errors, []), fn(error) {
                 let #(_path, reason) = error
                 h.div(
                   [
@@ -292,23 +247,21 @@ pub fn render_app(page) {
 
 // helpers
 
-fn cache_run(sync, return: Result(Value(Nil), state.Debug(Nil))) {
-  cache.run(return, sync, r.resume)
-}
-
 fn run_field(state, field, args) {
   let Reload(cache:, return:, ..) = state
-  case cache_run(cache, return) {
+  case cache.run(return, cache, expression.resume) {
     Ok(value) -> {
       let select = v.Partial(v.Select(field), [])
       case r.call(select, [#(value, Nil), ..args]) {
         Ok(initial) -> Ok(initial)
-        _ -> panic as "we should put the error for this somewhere: init"
+        Error(debug) -> Error(debug)
       }
     }
-    Error(_) -> panic as "we should put the error for this somewhere"
+    Error(reason) -> Error(reason)
   }
 }
+
+// Type checking ------------------------------
 
 fn handle_t(state, message) {
   t.Fun(state, t.Empty, t.Fun(message, t.Empty, state))
@@ -318,24 +271,34 @@ fn render_t(state) {
   t.Fun(state, t.Empty, t.String)
 }
 
+fn do_analysis(state) {
+  let Reload(cache:, snippet:, value:, ..) = state
+  let source = snippet.editable |> e.to_annotated([])
+  let #(analysis, ready_to_migrate) = type_check(cache, source, value)
+  let snippet = Snippet(..snippet, analysis: Some(analysis))
+  Reload(..state, snippet:, ready_to_migrate:)
+}
+
+fn type_check(sync, source: ir.Node(List(Int)), value: Option(Value(Nil))) {
+  let bindings = infer.new_state()
+  let #(app_state_t, bindings) = case value {
+    Some(v) -> {
+      let #(poly, bindings) = analysis.value_to_type(v, bindings, Nil)
+      binding.instantiate(poly, 1, bindings)
+    }
+    None -> binding.mono(1, bindings)
+  }
+  let types = cache.type_map(sync)
+  do_check_against_state(bindings, types, source, app_state_t)
+}
+
 fn do_check_against_state(b, refs, source, old) {
   let level = 1
+  let context = analysis.Context(b, [], [], refs, [])
   let #(tree, b) = infer.infer(source, t.Empty, refs, level, b)
 
-  let paths = ir.get_annotation(source)
-  let info = ir.get_annotation(tree)
-  let assert Ok(info) = list.strict_zip(paths, info)
-  let type_errors =
-    list.filter_map(info, fn(info) {
-      let #(path, #(r, _, _, _)) = info
-      case r {
-        Ok(_) -> Error(Nil)
-        Error(reason) -> Ok(#(path, reason))
-      }
-    })
-
-  let #(_, meta) = tree
-  let #(_, program, _, _) = meta
+  let #(inner, meta) = tree
+  let #(original_err, program, _, _) = meta
 
   let #(rest, b) = binding.mono(level, b)
   let #(new, b) = binding.mono(level, b)
@@ -343,7 +306,7 @@ fn do_check_against_state(b, refs, source, old) {
   // Needs to be open for handle etc
   let init_field = t.Record(t.do_rows([#("init", new)], rest))
 
-  case unify.unify(init_field, program, level, b) {
+  let #(meta, b, migrate) = case unify.unify(init_field, program, level, b) {
     Ok(b) -> {
       // if has init check if init is old or new state type
       let #(migrate_field, upgrade, b) = case unify.unify(old, new, level, b) {
@@ -361,35 +324,38 @@ fn do_check_against_state(b, refs, source, old) {
       let expect =
         t.do_rows([handle_field, render_field, ..migrate_field], remainder)
       case unify.unify(expect, rest, level, b) {
-        Ok(_b) -> {
-          // let state = binding.resolve(new, b)
-          // let state = binding.gen(state, 1, b)
-          // case all_general(state) {
-          //   True -> Ok(upgrade)
-          //   False ->
-          // I think they should all generalise but I don't yet know enough what that means when compined with partially complete programs
-          //     Error([#([], todo as "Not all generalisable"), ..type_errors])
-          // }
-          case type_errors {
-            [] -> Ok(upgrade)
-            _ -> Error(type_errors)
-          }
-        }
-        Error(reason) -> {
-          Error([#([], reason), ..type_errors])
-        }
+        Ok(b) -> #(
+          #(
+            case original_err {
+              Ok(_) -> Ok(Nil)
+              // keep original error because if it did error then calculation proceeds with permissive type
+              Error(reason) -> Error(reason)
+            },
+            program,
+            t.Empty,
+            [],
+          ),
+          b,
+          upgrade,
+        )
+        Error(reason) -> #(#(Error(reason), program, t.Empty, []), b, False)
       }
     }
     Error(reason) -> {
-      Error([#([], reason), ..type_errors])
+      #(#(Error(reason), program, t.Empty, []), b, False)
     }
   }
+  let tree: ir.Node(_) = #(inner, meta)
+  let paths = ir.get_annotation(source)
+  let info = ir.get_annotation(tree)
+  let assert Ok(inferred) = list.strict_zip(paths, info)
+  #(analysis.Analysis(bindings: b, inferred: inferred, context:), migrate)
 }
-// fn all_general(type_) {
-//   infer.ftv(type_)
-//   |> set.filter(fn(t) {
-//     let #(g, _) = t
-//     !g
-//   })
-//   |> set.is_empty
-// }
+
+pub fn type_errors(state) {
+  let Reload(snippet:, ..) = state
+  case snippet.analysis {
+    Some(analysis) -> Some(analysis.type_errors(analysis))
+    None -> None
+  }
+}
