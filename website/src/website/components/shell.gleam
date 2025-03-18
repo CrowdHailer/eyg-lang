@@ -245,12 +245,14 @@ fn finalize(shell, value, scope, effects) {
 // this is not just configurable for the reload case
 fn snippet_analyse(snippet, scope, cache, effect_specs) {
   let snippet.Snippet(editable:, ..) = snippet
+
+  let refs = cache.type_map(cache)
+
   let analysis =
-    interactive.do_analysis(
+    analysis.do_analyse(
       editable,
-      scope,
-      cache,
-      interactive.effect_types(effect_specs),
+      analysis.within_environment(scope, refs, Nil)
+        |> analysis.with_effects(interactive.effect_types(effect_specs)),
     )
   snippet.Snippet(..snippet, analysis: Some(analysis))
 }

@@ -4,6 +4,7 @@ import gleam/int
 import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
+import morph/analysis
 import morph/editable as e
 import morph/input
 import morph/picker
@@ -194,7 +195,15 @@ fn analyse(state, effects) {
   let #(client, _) = client.default()
   let #(#(snippet, action), i) = state
   let snippet.Snippet(editable:, ..) = snippet
-  let analysis = interactive.do_analysis(editable, [], client.cache, effects)
+  let scope = []
+  let refs = cache.type_map(client.cache)
+
+  let analysis =
+    analysis.do_analyse(
+      editable,
+      analysis.within_environment(scope, refs, Nil)
+        |> analysis.with_effects(effects),
+    )
   let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
   #(#(snippet, action), i)
 }

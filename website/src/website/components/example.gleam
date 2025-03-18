@@ -44,6 +44,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/listx
 import gleam/option.{Some}
+import morph/analysis
 import morph/editable as e
 import website/components/runner.{type Runner}
 import website/components/snippet.{type Snippet, Snippet}
@@ -172,8 +173,14 @@ fn execute_snippet(snippet) {
 fn do_analysis(state) {
   let Example(cache:, snippet:, effects:, ..) = state
   let scope = []
+  let refs = cache.type_map(cache)
+
   let analysis =
-    interactive.do_analysis(snippet.editable, scope, cache, effects)
+    analysis.do_analyse(
+      snippet.editable,
+      analysis.within_environment(scope, refs, Nil)
+        |> analysis.with_effects(effects),
+    )
   let snippet = Snippet(..snippet, analysis: Some(analysis))
   Example(..state, snippet:)
 }
