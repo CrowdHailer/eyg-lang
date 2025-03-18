@@ -170,11 +170,6 @@ pub fn do_analyse(editable, context) -> Analysis {
   Analysis(bindings, list.zip(paths, types), context)
 }
 
-// pub fn analyse(projection, context, eff) -> Analysis {
-//   let editable = projection.rebuild(projection)
-//   do_analyse(editable, context, eff)
-// }
-
 // pub fn print(analysis) {
 //   let #(bindings, pairs) = analysis
 //   list.map(pairs, fn(pair) {
