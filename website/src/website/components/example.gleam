@@ -172,13 +172,12 @@ fn execute_snippet(snippet) {
 
 fn do_analysis(state) {
   let Example(cache:, snippet:, effects:, ..) = state
-  let scope = []
-  let refs = cache.type_map(cache)
 
   let analysis =
     analysis.do_analyse(
       snippet.editable,
-      analysis.within_environment(scope, refs, Nil)
+      analysis.context()
+        |> analysis.with_references(cache.type_map(cache))
         |> analysis.with_effects(effects)
         |> analysis.with_index(cache.package_index(cache)),
     )

@@ -140,13 +140,12 @@ fn analyse(state, effects) {
   let #(client, _) = client.default()
   let #(#(snippet, action), i) = state
   let snippet.Snippet(editable:, ..) = snippet
-  let scope = []
-  let refs = cache.type_map(client.cache)
 
   let analysis =
     analysis.do_analyse(
       editable,
-      analysis.within_environment(scope, refs, Nil)
+      analysis.context()
+        |> analysis.with_references(cache.type_map(client.cache))
         |> analysis.with_effects(effects),
     )
   let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))

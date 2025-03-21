@@ -48,9 +48,17 @@ pub type Analysis {
   )
 }
 
-pub fn within_environment(runtime_env, refs, meta) {
+pub fn context() {
+  Context(dict.new(), [], [], dict.new(), [])
+}
+
+pub fn within_environment(runtime_env, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
-  Context(bindings, scope, [], refs, [])
+  Context(bindings, scope, [], dict.new(), [])
+}
+
+pub fn with_references(context, references) {
+  Context(..context, references: references)
 }
 
 pub fn with_effects(context, effects) {
@@ -143,7 +151,7 @@ pub fn value_to_type(value, bindings, meta: t) {
   }
 }
 
-fn env_to_tenv(scope, meta) {
+pub fn env_to_tenv(scope, meta) {
   let bindings = infer.new_state()
 
   list.map_fold(scope, bindings, fn(bindings, pair) {

@@ -3,6 +3,7 @@ import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -54,7 +55,7 @@ pub type Shell {
     // The derrived properties of a shell are very tightly bound.
     // Typing is based on the scope which is updated by the runtime.
     effect_handlers: List(#(String, runner.Handler(Nil))),
-    effect_types: List(#(String, #(binding.Mono, binding.Mono))),
+    context: analysis.Context,
     // I need to rebuild because scope is difference and I want expression in example
     scope: Scope(Nil),
     // Evaluated is needed to show what effect will run in the shell console
@@ -70,21 +71,34 @@ pub fn init(effects, cache) {
   let source = e.from_annotated(ir.vacant())
   let scope = []
   let #(effect_types, effect_handlers) = listx.key_unzip(effects)
-  let snippet =
-    snippet.active(source)
-    |> snippet_analyse(scope, cache, effect_types)
+  let snippet = snippet.active(source)
+
+  let context =
+    analysis.context()
+    |> analysis.with_effects(effect_types)
+    |> update_context(cache)
+
   Shell(
     failure: None,
     previous: [],
     source: snippet,
     cache: cache,
     effect_handlers:,
-    effect_types:,
+    context:,
     scope: scope,
     // what the task would be is derivable
     // evaluated: interactive.evaluate(source, scope, cache),
     // current_effects: [],
     run: Run(False, evaluate(source, scope, cache), []),
+  )
+  |> snippet_analyse
+}
+
+fn update_context(context, cache) {
+  analysis.Context(
+    ..context,
+    references: cache.type_map(cache),
+    index: cache.package_index(cache),
   )
 }
 
@@ -127,8 +141,10 @@ pub fn update(shell, message) {
   case message {
     ParentSetSource(source) -> set_code(shell, source)
     CacheUpdate(cache) -> {
-      let Shell(run:, effect_handlers:, ..) = shell
+      let Shell(context:, run:, effect_handlers:, ..) = shell
+      let shell = Shell(..shell, context: update_context(context, cache))
       let #(run, action) = run_update_cache(run, cache, effect_handlers)
+
       case run {
         Run(True, Ok(#(value, scope)), effects) ->
           finalize(shell, value, scope, effects)
@@ -205,8 +221,7 @@ fn new_code(shell) {
   let Shell(source:, scope:, cache:, ..) = shell
   let run = new_run(source.editable, scope, cache)
 
-  let source = snippet_analyse(source, scope, cache, shell.effect_types)
-  #(Shell(..shell, source:, run:), FocusOnCode)
+  #(Shell(..shell, source:, run:) |> snippet_analyse, FocusOnCode)
 }
 
 fn confirm(shell) {
@@ -236,28 +251,25 @@ fn confirm(shell) {
 }
 
 fn finalize(shell, value, scope, effects) {
-  let Shell(source:, previous:, ..) = shell
+  let Shell(context:, source:, previous:, ..) = shell
   let record = Executed(value, effects, readonly.new(source.editable))
   let previous = [record, ..previous]
-  Shell(..shell, previous:, scope:)
+  let #(bindings, tenv) = analysis.env_to_tenv(scope, Nil)
+  let context = analysis.Context(..context, bindings:, scope: tenv)
+  Shell(..shell, context:, previous:, scope:)
   |> set_code(e.from_annotated(ir.vacant()))
 }
 
 // analyse stuff
 
 // this is not just configurable for the reload case
-fn snippet_analyse(snippet, scope, cache, effect_types) {
-  let snippet.Snippet(editable:, ..) = snippet
+fn snippet_analyse(state) {
+  let Shell(context:, source:, ..) = state
+  let snippet.Snippet(editable:, ..) = source
 
-  let refs = cache.type_map(cache)
-
-  let analysis =
-    analysis.do_analyse(
-      editable,
-      analysis.within_environment(scope, refs, Nil)
-        |> analysis.with_effects(effect_types),
-    )
-  snippet.Snippet(..snippet, analysis: Some(analysis))
+  let analysis = analysis.do_analyse(editable, context)
+  let source = snippet.Snippet(..source, analysis: Some(analysis))
+  Shell(..state, source:)
 }
 
 // runner stuff
