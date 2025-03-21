@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/io
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
@@ -26,6 +27,7 @@ import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
+import website/components/runner
 import website/components/shell
 import website/components/snippet
 import website/harness/browser as harness
@@ -203,8 +205,12 @@ pub fn update(state: State, message) {
       let state = State(..state, sync:, shell:)
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()
-        shell.RunExternalHandler(lift, blocking) -> todo as "shelly message"
-        // dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.RunExternalHandler(ref, thunk) ->
+          dispatch_to_shell(
+            promise.map(thunk(), fn(reply) {
+              shell.ExternalHandlerCompleted(reply)
+            }),
+          )
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->

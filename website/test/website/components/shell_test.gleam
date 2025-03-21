@@ -218,13 +218,13 @@ pub fn effects_are_recorded_test() {
   |> run_effect(fn(v) {
     // TODO how do we get v
     // should.equal(v, v.String("Bulb"))
-    Ok(v.Integer(101))
+    v.Integer(101)
   })
   |> run_effect(fn(v) {
     // TODO how do we get v
 
     // should.equal(v, v.Integer(101))
-    Ok(v.unit())
+    v.unit()
   })
   |> has_effects([
     #("Outer", #(v.Integer(101), v.unit())),
