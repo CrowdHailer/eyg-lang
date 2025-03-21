@@ -425,151 +425,146 @@ pub fn render(state: State) {
         help_menu_button(state),
         fullscreen_menu_button(state),
       ]),
-      h.div(
-        [
-          a.class("expand vstack flex-grow pt-10"),
-          a.style([#("min-height", "0")]),
-        ],
-        case list.length(state.shell.previous) {
-          x if x < 4 -> [
-            h.div([a.class("px-2 text-gray-700 cover")], [
-              h.h2([a.class("texl-lg font-bold")], [element.text("The shell")]),
-              // h.p([], [element.text("Run and test your code here. ")]),
-            // h.button([a.class("underline"), event.on_click(ToggleHelp)], [
-            //   case state.display_help {
-            //     True -> element.text("Hide help.")
-            //     False -> element.text("Show help.")
-            //   },
-            // ]),
-            ]),
-            h.div([a.class("px-2 text-gray-700 cover")], [
-              h.p([], [element.text("examples:")]),
-              h.ul(
-                [a.class("list-inside list-disc")],
-                list.map(examples.examples(), fn(e) {
-                  let #(source, message) = e
-                  h.li([], [
-                    h.button(
-                      [
-                        event.on_click(
-                          ShellMessage(shell.ParentSetSource(source)),
-                        ),
-                      ],
-                      [element.text(message)],
-                    ),
-                  ])
-                }),
-              ),
-            ]),
-          ]
-          _ -> []
-        },
-      ),
-      h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
-        let count = list.length(state.shell.previous) - 1
-        list.index_map(list.reverse(state.shell.previous), fn(p, i) {
-          let i = count - i
-          case p {
-            shell.Executed(value, effects, readonly) ->
-              h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
-                h.div([a.class("relative pr-8")], [
-                  h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
-                    readonly.render(readonly)
-                    |> element.map(shell.PreviousMessage(i, _)),
-                  ]),
-                  h.button(
-                    [
-                      a.class("absolute top-0 right-0 w-6"),
-                      event.on_click(shell.UserClickedPrevious(1)),
-                    ],
-                    [outline.arrow_path()],
-                  ),
-                ]),
-                case effects {
-                  [] -> element.none()
-                  _ ->
-                    h.div([a.class("text-blue-700")], [
-                      h.span([a.class("font-bold")], [element.text("effects ")]),
-                      ..list.map(effects, fn(eff) {
-                        let #(label, _) = eff
-                        h.span([], [element.text(label), element.text(" ")])
-                        // h.div([a.class("flex gap-1")], [
-                        //   output.render(eff.1.0),
-                        //   output.render(eff.1.1),
-                        // ])
-                      })
-                    ])
-                },
-                case value {
-                  Some(value) ->
-                    h.div([a.class(" max-h-60 overflow-auto")], [
-                      // would need to be flex to show inline
-                      // h.span([a.class("font-bold")], [element.text("> ")]),
-                      output.render(value),
-                    ])
-                  None -> element.none()
-                },
-              ])
-          }
-        })
-      })
+      h.div([a.class("h-full")], [
+        render_shell(state.shell)
         |> element.map(ShellMessage),
-      render_errors(state.shell.failure, state.shell.source),
-      h.div(
-        [
-          a.class("cover border-t border-black font-mono bg-white grid"),
-          a.style([
-            #("min-height", "5rem"),
-            #("grid-template-columns", "minmax(0px, 1fr) max-content"),
-          ]),
-        ],
-        [
-          h.div(
-            [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
-            [snippet.render_just_projection(state.shell.source, True)],
-          ),
-          case shell.status(state.shell) {
-            shell.Finished
-            | shell.RequireRelease(_, _, _)
-            | shell.RequireReference(_)
-            | shell.WillRunEffect(_) ->
-              h.button(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-                  ),
-                  event.on_click(snippet.UserPressedCommandKey("Enter")),
-                ],
-                [outline.play_circle()],
-              )
-            shell.AwaitingReference(_)
-            | shell.AwaitingRelease(_, _, _)
-            | shell.RunningEffect(_) ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
-                  ),
-                ],
-                [outline.arrow_path()],
-              )
-            shell.Failed ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
-                  ),
-                ],
-                [outline.exclamation_circle()],
-              )
-          },
-        ],
-      )
-        |> element.map(shell.CurrentMessage)
-        |> element.map(ShellMessage),
+        // h.div([], [element.text("hello")]),
+      ]),
     ],
     show,
   )
+}
+
+fn render_shell(shell: shell.Shell) {
+  h.div([a.class("h-full flex flex-col")], [
+    h.div(
+      [
+        a.class("expand vstack flex-grow pt-10"),
+        a.style([#("min-height", "0")]),
+      ],
+      case list.length(shell.previous) {
+        x if x < 4 -> [
+          h.div([a.class("px-2 text-gray-700 cover")], [
+            h.h2([a.class("texl-lg font-bold")], [element.text("The shell")]),
+          ]),
+          h.div([a.class("px-2 text-gray-700 cover")], [
+            h.p([], [element.text("examples:")]),
+            h.ul(
+              [a.class("list-inside list-disc")],
+              list.map(examples.examples(), fn(e) {
+                let #(source, message) = e
+                h.li([], [
+                  h.button([event.on_click(shell.ParentSetSource(source))], [
+                    element.text(message),
+                  ]),
+                ])
+              }),
+            ),
+          ]),
+        ]
+        _ -> []
+      },
+    ),
+    h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
+      let count = list.length(shell.previous) - 1
+      list.index_map(list.reverse(shell.previous), fn(p, i) {
+        let i = count - i
+        case p {
+          shell.Executed(value, effects, readonly) ->
+            h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
+              h.div([a.class("relative pr-8")], [
+                h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
+                  readonly.render(readonly)
+                  |> element.map(shell.PreviousMessage(i, _)),
+                ]),
+                h.button(
+                  [
+                    a.class("absolute top-0 right-0 w-6"),
+                    event.on_click(shell.UserClickedPrevious(1)),
+                  ],
+                  [outline.arrow_path()],
+                ),
+              ]),
+              case effects {
+                [] -> element.none()
+                _ ->
+                  h.div([a.class("text-blue-700")], [
+                    h.span([a.class("font-bold")], [element.text("effects ")]),
+                    ..list.map(effects, fn(eff) {
+                      let #(label, _) = eff
+                      h.span([], [element.text(label), element.text(" ")])
+                      // h.div([a.class("flex gap-1")], [
+                      //   output.render(eff.1.0),
+                      //   output.render(eff.1.1),
+                      // ])
+                    })
+                  ])
+              },
+              case value {
+                Some(value) ->
+                  h.div([a.class(" max-h-60 overflow-auto")], [
+                    // would need to be flex to show inline
+                    // h.span([a.class("font-bold")], [element.text("> ")]),
+                    output.render(value),
+                  ])
+                None -> element.none()
+              },
+            ])
+        }
+      })
+    }),
+    render_errors(shell.failure, shell.source),
+    h.div(
+      [
+        a.class("cover border-t border-black font-mono bg-white grid"),
+        a.style([
+          #("min-height", "5rem"),
+          #("grid-template-columns", "minmax(0px, 1fr) max-content"),
+        ]),
+      ],
+      [
+        h.div([a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])], [
+          snippet.render_just_projection(shell.source, True),
+        ]),
+        case shell.status(shell) {
+          shell.Finished
+          | shell.RequireRelease(_, _, _)
+          | shell.RequireReference(_)
+          | shell.WillRunEffect(_) ->
+            h.button(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                ),
+                event.on_click(snippet.UserPressedCommandKey("Enter")),
+              ],
+              [outline.play_circle()],
+            )
+          shell.AwaitingReference(_)
+          | shell.AwaitingRelease(_, _, _)
+          | shell.RunningEffect(_) ->
+            h.span(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+                ),
+              ],
+              [outline.arrow_path()],
+            )
+          shell.Failed ->
+            h.span(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+                ),
+              ],
+              [outline.exclamation_circle()],
+            )
+        },
+      ],
+    )
+      |> element.map(shell.CurrentMessage),
+  ])
 }
 
 pub fn render_menu(status, projection, submenu, display_help) {
@@ -647,10 +642,10 @@ fn render_errors(failure, snippet: snippet.Snippet) {
             _, _ ->
               h.div(
                 [
-                  event.on_click(ShellMessage(
+                  event.on_click(
                     snippet.UserClickedPath(path)
                     |> shell.CurrentMessage,
-                  )),
+                  ),
                 ],
                 [element.text(debug.reason(reason))],
               )
