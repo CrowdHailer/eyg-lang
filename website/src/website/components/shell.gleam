@@ -1,9 +1,7 @@
-import eyg/analysis/type_/binding
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
-import gleam/dict
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -12,7 +10,6 @@ import gleam/option.{type Option, None, Some}
 import morph/analysis
 import morph/editable as e
 import plinth/browser/clipboard
-import plinth/javascript/console
 import website/components/readonly
 import website/components/runner
 import website/components/snippet
@@ -125,6 +122,7 @@ pub type Message {
   CurrentMessage(snippet.Message)
   ExternalHandlerCompleted(istate.Value(Nil))
   UserClickedPrevious(Int)
+  PreviousMessage(Int, readonly.Message)
 }
 
 pub type Effect {
@@ -207,6 +205,24 @@ pub fn update(shell, message) {
         Ok(Executed(source:, ..)) -> set_code(shell, source.source)
         Error(Nil) -> #(shell, Nothing)
       }
+    }
+    PreviousMessage(index, message) -> {
+      let assert Ok(#(pre, executed, post)) =
+        listx.split_around(shell.previous, index)
+      let pre = close_many_previous(pre)
+      let post = close_many_previous(post)
+      let Executed(a, b, r) = executed
+      let #(r, action) = readonly.update(r, message)
+      let previous = listx.gather_around(pre, Executed(a, b, r), post)
+      let effect = case action {
+        readonly.Nothing -> Nothing
+        readonly.Fail(_message) -> Nothing
+        readonly.MoveAbove -> Nothing
+        readonly.MoveBelow -> Nothing
+        readonly.WriteToClipboard(text) -> WriteToClipboard(text)
+      }
+      let shell = Shell(..shell, previous: previous)
+      #(shell, effect)
     }
   }
 }
@@ -347,27 +363,6 @@ fn lookup_external(return, extrinsic) {
 }
 
 // -----
-
-pub fn message_from_previous_code(shell: Shell, m, i) {
-  let assert Ok(#(pre, executed, post)) = listx.split_around(shell.previous, i)
-  let pre = close_many_previous(pre)
-  let post = close_many_previous(post)
-  let Executed(a, b, r) = executed
-  let #(r, action) = readonly.update(r, m)
-  let previous = listx.gather_around(pre, Executed(a, b, r), post)
-  let effect = case action {
-    readonly.Nothing -> None
-    readonly.Fail(message) -> {
-      console.warn(message)
-      None
-    }
-    readonly.MoveAbove -> None
-    readonly.MoveBelow -> None
-    readonly.WriteToClipboard(text) -> Some(readonly.write_to_clipboard(text))
-  }
-  let shell = Shell(..shell, previous: previous)
-  #(shell, effect)
-}
 
 pub fn write_to_clipboard(text) {
   promise.map(clipboard.write_text(text), fn(r) {

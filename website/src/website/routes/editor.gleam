@@ -27,7 +27,6 @@ import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
-import website/components/runner
 import website/components/shell
 import website/components/snippet
 import website/harness/browser as harness
@@ -102,22 +101,13 @@ pub type Message {
   ToggleHelp
   ToggleFullscreen
   SnippetMessage(snippet.Message)
-  // --- these are all shell messages
   ShellMessage(shell.Message)
-  PreviousMessage(readonly.Message, Int)
-  // --- end
   SyncMessage(client.Message)
 }
 
 fn dispatch_to_snippet(promise) {
   effect.from(fn(d) {
     promisex.aside(promise, fn(message) { d(SnippetMessage(message)) })
-  })
-}
-
-fn dispatch_to_previous(promise, i) {
-  effect.from(fn(d) {
-    promisex.aside(promise, fn(message) { d(PreviousMessage(message, i)) })
   })
 }
 
@@ -159,7 +149,6 @@ pub fn update(state: State, message) {
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
         snippet.NewCode -> #(display_help, effect.none())
-
         snippet.Confirm -> #(display_help, effect.none())
         snippet.Failed(_failure) -> {
           panic as "put on some state"
@@ -222,15 +211,6 @@ pub fn update(state: State, message) {
         state,
         effect.batch([shell_effect, client.lustre_run(sync_task, SyncMessage)]),
       )
-    }
-    PreviousMessage(m, i) -> {
-      let shell = state.shell
-      let #(shell, action) = shell.message_from_previous_code(shell, m, i)
-      let effect = case action {
-        None -> effect.none()
-        Some(a) -> dispatch_to_previous(a, i)
-      }
-      #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
       let State(sync:, shell:, ..) = state
@@ -494,12 +474,12 @@ pub fn render(state: State) {
                 h.div([a.class("relative pr-8")], [
                   h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
                     readonly.render(readonly)
-                    |> element.map(PreviousMessage(_, i)),
+                    |> element.map(shell.PreviousMessage(i, _)),
                   ]),
                   h.button(
                     [
                       a.class("absolute top-0 right-0 w-6"),
-                      event.on_click(ShellMessage(shell.UserClickedPrevious(1))),
+                      event.on_click(shell.UserClickedPrevious(1)),
                     ],
                     [outline.arrow_path()],
                   ),
@@ -531,7 +511,8 @@ pub fn render(state: State) {
               ])
           }
         })
-      }),
+      })
+        |> element.map(ShellMessage),
       render_errors(state.shell.failure, state.shell.source),
       h.div(
         [
