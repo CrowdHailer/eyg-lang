@@ -239,8 +239,12 @@ pub fn update(state: State, message) {
         shell.update(shell, shell.CacheUpdate(sync.cache))
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()
-        shell.RunExternalHandler(lift, blocking) -> todo as "run effects here"
-        // dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.RunExternalHandler(ref, thunk) ->
+          dispatch_to_shell(
+            promise.map(thunk(), fn(reply) {
+              shell.ExternalHandlerCompleted(reply)
+            }),
+          )
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
@@ -492,14 +496,13 @@ pub fn render(state: State) {
                     readonly.render(readonly)
                     |> element.map(PreviousMessage(_, i)),
                   ]),
-                  element.text("TODO as rendering"),
-                  // h.button(
-                //   [
-                //     a.class("absolute top-0 right-0 w-6"),
-                //     event.on_click(UserClickedPrevious(readonly.source)),
-                //   ],
-                //   [outline.arrow_path()],
-                // ),
+                  h.button(
+                    [
+                      a.class("absolute top-0 right-0 w-6"),
+                      event.on_click(ShellMessage(shell.UserClickedPrevious(1))),
+                    ],
+                    [outline.arrow_path()],
+                  ),
                 ]),
                 case effects {
                   [] -> element.none()
