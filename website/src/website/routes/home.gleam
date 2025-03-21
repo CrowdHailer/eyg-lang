@@ -1,5 +1,4 @@
 import gleam/list
-import gleam/option.{None}
 import lustre
 import lustre/attribute as a
 import lustre/element
@@ -9,8 +8,8 @@ import mysig/asset/client
 import mysig/html
 import website/components
 import website/components/auth_panel
+import website/components/example/view
 import website/components/reload
-import website/components/snippet
 import website/config
 import website/harness/spotless.{Config}
 import website/harness/spotless/netlify
@@ -70,12 +69,16 @@ pub fn client() {
 }
 
 pub fn snippet(state: state.State, i) {
-  let failure = case state.active {
-    state.Editing(key, failure) if i == key -> failure
-    _ -> None
+  // let failure = case state.active {
+  //   state.Editing(key, failure) if i == key -> failure
+  //   _ -> None
+  // }
+  case state.get_example(state, i) {
+    state.Simple(example) ->
+      view.render(example) |> element.map(state.SimpleMessage(i, _))
+    state.Reload(example) ->
+      reload.render(example) |> element.map(state.ReloadMessage(i, _))
   }
-  snippet.render_embedded_with_top_menu(state.get_snippet(state, i), failure)
-  |> element.map(state.SnippetMessage(i, _))
 }
 
 fn page_area(content) {
@@ -337,9 +340,7 @@ fn view() {
           "Other languages have the possiblity of closure serialisation, but EYG's runtime is designed to make them efficient.",
         ],
         action("Read the documentation.", "/documentation", Useful),
-        [
-          // snippet(s, state.closure_serialization_key)
-        ],
+        [snippet(s, state.closure_serialization_key)],
         False,
       ),
       feature(
@@ -355,14 +356,7 @@ fn view() {
           "#" <> components.signup,
           Confident,
         ),
-        {
-          let snippet = state.get_snippet(s, state.hot_reload_key)
-          [
-            snippet.render_embedded(snippet, None)
-              |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
-            reload.render(s.reload) |> element.map(state.ReloadMessage),
-          ]
-        },
+        [snippet(s, state.hot_reload_key)],
         True,
       ),
       feature(

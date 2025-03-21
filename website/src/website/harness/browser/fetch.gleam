@@ -22,6 +22,11 @@ pub fn blocking(lift) {
   promise.map(do(request), result_to_eyg)
 }
 
+pub fn preflight(lift) {
+  use request <- result.try(http.request_to_gleam(lift))
+  Ok(fn() { promise.map(do(request), result_to_eyg) })
+}
+
 pub fn handle(lift) {
   use p <- result.map(blocking(lift))
   v.Promise(p)

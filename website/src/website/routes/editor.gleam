@@ -5,9 +5,7 @@ import gleam/int
 import gleam/io
 import gleam/javascript/promisex
 import gleam/list
-import gleam/listx
 import gleam/option.{None, Some}
-import gleam/string
 import gleroglero/outline
 import lustre
 import lustre/attribute as a
@@ -24,7 +22,6 @@ import mysig/html
 import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
-import plinth/javascript/console
 import website/components/autocomplete
 import website/components/examples
 import website/components/output
@@ -102,7 +99,7 @@ pub fn init(_) {
   let #(client, sync_task) = client.default()
   let source = e.from_annotated(ir.vacant())
   let shell = shell.init(effects(), client.cache)
-  let snippet = snippet.init(source, [], [], client.cache)
+  let snippet = snippet.init(source)
   let state = State(client, snippet, shell, False)
   #(state, client.lustre_run(sync_task, SyncMessage))
 }
@@ -112,8 +109,7 @@ pub type Message {
   ToggleFullscreen
   SnippetMessage(snippet.Message)
   // --- these are all shell messages
-  UserClickedPrevious(e.Expression)
-  ShellMessage(snippet.Message)
+  ShellMessage(shell.Message)
   PreviousMessage(readonly.Message, Int)
   // --- end
   SyncMessage(client.Message)
@@ -168,14 +164,13 @@ pub fn update(state: State, message) {
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
+        snippet.NewCode -> #(display_help, effect.none())
+
+        snippet.Confirm -> #(display_help, effect.none())
         snippet.Failed(_failure) -> {
           panic as "put on some state"
         }
-        snippet.RunEffect(p) -> #(
-          display_help,
-          dispatch_to_snippet(snippet.await_running_effect(p)),
-        )
-        snippet.FocusOnCode -> #(
+        snippet.ReturnToCode -> #(
           display_help,
           dispatch_nothing(snippet.focus_on_buffer()),
         )
@@ -194,9 +189,6 @@ pub fn update(state: State, message) {
           display_help,
           dispatch_to_snippet(snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _, _) -> {
-          #(display_help, effect.none())
-        }
       }
       // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
@@ -210,26 +202,27 @@ pub fn update(state: State, message) {
         )
       #(state, effect.batch([snippet_effect]))
     }
-    UserClickedPrevious(exp) -> {
-      let state =
-        State(..state, shell: shell.user_clicked_previous(state.shell, exp))
-      #(state, effect.none())
-    }
     ShellMessage(message) -> {
-      let #(shell, snippet_effect) =
-        shell.shell_snippet_message(state.shell, message)
+      let #(shell, shell_effect) = shell.update(state.shell, message)
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
       let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
       let state = State(..state, sync:, shell:)
-      let snippet_effect = case snippet_effect {
-        None -> effect.none()
-        Some(a) -> dispatch_to_shell(a)
+      let shell_effect = case shell_effect {
+        shell.Nothing -> effect.none()
+        shell.RunExternalHandler(lift, blocking) -> todo as "shelly message"
+        // dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.WriteToClipboard(text) ->
+          dispatch_to_shell(shell.write_to_clipboard(text))
+        shell.ReadFromClipboard ->
+          dispatch_to_shell(shell.read_from_clipboard())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
       }
       #(
         state,
-        effect.batch([snippet_effect, client.lustre_run(sync_task, SyncMessage)]),
+        effect.batch([shell_effect, client.lustre_run(sync_task, SyncMessage)]),
       )
     }
     PreviousMessage(m, i) -> {
@@ -242,16 +235,26 @@ pub fn update(state: State, message) {
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
-      let State(sync: sync_client, ..) = state
-      let #(sync_client, effect) = client.update(sync_client, message)
-      let snippet = snippet.set_references(state.source, sync_client.cache)
-      let shell =
-        shell.Shell(
-          ..state.shell,
-          source: snippet.set_references(state.shell.source, sync_client.cache),
-        )
-      let state = State(..state, sync: sync_client, source: snippet, shell:)
-      #(state, client.lustre_run(effect, SyncMessage))
+      let State(sync:, shell:, ..) = state
+      let #(sync, effect) = client.update(sync, message)
+      let #(shell, shell_effect) =
+        shell.update(shell, shell.CacheUpdate(sync.cache))
+      let shell_effect = case shell_effect {
+        shell.Nothing -> effect.none()
+        shell.RunExternalHandler(lift, blocking) -> todo as "run effects here"
+        // dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.WriteToClipboard(text) ->
+          dispatch_to_shell(shell.write_to_clipboard(text))
+        shell.ReadFromClipboard ->
+          dispatch_to_shell(shell.read_from_clipboard())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+      }
+      let state = State(..state, sync:, shell:)
+      #(
+        state,
+        effect.batch([client.lustre_run(effect, SyncMessage), shell_effect]),
+      )
     }
   }
 }
@@ -427,10 +430,14 @@ pub fn render(state: State) {
   container(
     render_menu_from_state(state)
       |> list.map(fn(e) {
-        element.map(e, snippet.MessageFromMenu) |> element.map(ShellMessage)
+        element.map(e, snippet.MessageFromMenu)
+        |> element.map(shell.CurrentMessage)
+        |> element.map(ShellMessage)
       }),
     [
-      render_pallet(state.shell.source) |> element.map(ShellMessage),
+      render_pallet(state.shell.source)
+        |> element.map(shell.CurrentMessage)
+        |> element.map(ShellMessage),
       h.div([a.class("absolute top-0 w-full bg-white")], [
         help_menu_button(state),
         fullscreen_menu_button(state),
@@ -459,9 +466,14 @@ pub fn render(state: State) {
                 list.map(examples.examples(), fn(e) {
                   let #(source, message) = e
                   h.li([], [
-                    h.button([event.on_click(UserClickedPrevious(source))], [
-                      element.text(message),
-                    ]),
+                    h.button(
+                      [
+                        event.on_click(
+                          ShellMessage(shell.ParentSetSource(source)),
+                        ),
+                      ],
+                      [element.text(message)],
+                    ),
                   ])
                 }),
               ),
@@ -482,13 +494,14 @@ pub fn render(state: State) {
                     readonly.render(readonly)
                     |> element.map(PreviousMessage(_, i)),
                   ]),
-                  h.button(
-                    [
-                      a.class("absolute top-0 right-0 w-6"),
-                      event.on_click(UserClickedPrevious(readonly.source)),
-                    ],
-                    [outline.arrow_path()],
-                  ),
+                  element.text("TODO as rendering"),
+                  // h.button(
+                //   [
+                //     a.class("absolute top-0 right-0 w-6"),
+                //     event.on_click(UserClickedPrevious(readonly.source)),
+                //   ],
+                //   [outline.arrow_path()],
+                // ),
                 ]),
                 case effects {
                   [] -> element.none()
@@ -496,7 +509,8 @@ pub fn render(state: State) {
                     h.div([a.class("text-blue-700")], [
                       h.span([a.class("font-bold")], [element.text("effects ")]),
                       ..list.map(effects, fn(eff) {
-                        h.span([], [element.text(eff.label), element.text(" ")])
+                        let #(label, _) = eff
+                        h.span([], [element.text(label), element.text(" ")])
                         // h.div([a.class("flex gap-1")], [
                         //   output.render(eff.1.0),
                         //   output.render(eff.1.1),
@@ -517,9 +531,6 @@ pub fn render(state: State) {
           }
         })
       }),
-      // snippet.render_current([], state.shell.source.run)
-      //   |> element.map(ShellMessage),
-
       render_errors(state.shell.failure, state.shell.source),
       h.div(
         [
@@ -534,8 +545,11 @@ pub fn render(state: State) {
             [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
             [snippet.render_just_projection(state.shell.source, True)],
           ),
-          case state.shell.source.run {
-            snippet.NotRunning ->
+          case shell.status(state.shell) {
+            shell.Finished
+            | shell.RequireRelease(_, _, _)
+            | shell.RequireReference(_)
+            | shell.WillRunEffect(_) ->
               h.button(
                 [
                   a.class(
@@ -545,17 +559,9 @@ pub fn render(state: State) {
                 ],
                 [outline.play_circle()],
               )
-            snippet.Running(Error(_), _) ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
-                  ),
-                ],
-                [outline.exclamation_circle()],
-              )
-
-            snippet.Running(_, _) ->
+            shell.AwaitingReference(_)
+            | shell.AwaitingRelease(_, _, _)
+            | shell.RunningEffect(_) ->
               h.span(
                 [
                   a.class(
@@ -564,9 +570,19 @@ pub fn render(state: State) {
                 ],
                 [outline.arrow_path()],
               )
+            shell.Failed ->
+              h.span(
+                [
+                  a.class(
+                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+                  ),
+                ],
+                [outline.exclamation_circle()],
+              )
           },
         ],
       )
+        |> element.map(shell.CurrentMessage)
         |> element.map(ShellMessage),
     ],
     show,
@@ -716,7 +732,12 @@ fn render_errors(failure, snippet: snippet.Snippet) {
             [], error.Todo | [_], error.Todo -> element.none()
             _, _ ->
               h.div(
-                [event.on_click(ShellMessage(snippet.UserClickedPath(path)))],
+                [
+                  event.on_click(ShellMessage(
+                    snippet.UserClickedPath(path)
+                    |> shell.CurrentMessage,
+                  )),
+                ],
                 [element.text(debug.reason(reason))],
               )
           }

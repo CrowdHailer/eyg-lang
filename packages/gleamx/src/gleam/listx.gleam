@@ -28,6 +28,14 @@ pub fn key_unique(list: List(#(a, b))) -> List(#(a, b)) {
   }
 }
 
+pub fn key_unzip(pairs) {
+  list.fold_right(pairs, #([], []), fn(acc, entry) {
+    let #(xs, ys) = acc
+    let #(key, #(x, y)) = entry
+    #([#(key, x), ..xs], [#(key, y), ..ys])
+  })
+}
+
 fn do_filter_errors(l, acc) {
   case l {
     [] -> list.reverse(acc)

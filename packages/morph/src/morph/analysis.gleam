@@ -16,19 +16,24 @@ import morph/projection
 pub type References =
   Dict(String, binding.Poly)
 
+pub type Index =
+  List(#(String, Int, String))
+
 pub type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
+    effects: List(#(String, #(binding.Mono, binding.Mono))),
     references: References,
-    builtins: List(#(String, binding.Poly)),
+    index: Index,
   )
 }
 
-pub type Analysis =
-  #(
-    Dict(Int, binding.Binding),
-    List(
+pub type Analysis {
+
+  Analysis(
+    bindings: Dict(Int, binding.Binding),
+    inferred: List(
       #(
         List(Int),
         #(
@@ -39,15 +44,21 @@ pub type Analysis =
         ),
       ),
     ),
+    context: Context,
   )
+}
 
 pub fn within_environment(runtime_env, refs, meta) {
   let #(bindings, scope) = env_to_tenv(runtime_env, meta)
-  Context(bindings, scope, refs, infer.builtins())
+  Context(bindings, scope, [], refs, [])
 }
 
-pub fn with_references(refs) {
-  Context(dict.new(), [], refs, infer.builtins())
+pub fn with_effects(context, effects) {
+  Context(..context, effects: effects)
+}
+
+pub fn with_index(context, index) {
+  Context(..context, index: index)
 }
 
 // use capture because we want efficient ability to get to continuations
@@ -146,20 +157,21 @@ pub fn scope_vars(projection: projection.Projection, analysis) {
   env_at(analysis, projection.path_to_zoom(projection.1, []))
 }
 
-pub fn do_analyse(editable, context, eff) -> Analysis {
-  let Context(bindings, scope, ..) = context
+pub fn do_analyse(editable, context) -> Analysis {
+  let Context(bindings, scope, effects, ..) = context
+  let eff =
+    effects
+    |> list.fold(t.Empty, fn(acc, new) {
+      let #(label, #(lift, reply)) = new
+      t.EffectExtend(label, #(lift, reply), acc)
+    })
 
   let source = e.to_annotated(editable, [])
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let types = ir.get_annotation(tree)
   let paths = ir.get_annotation(e.to_annotated(editable, []))
-  #(bindings, list.zip(paths, types))
-}
-
-pub fn analyse(projection, context, eff) -> Analysis {
-  let editable = projection.rebuild(projection)
-  do_analyse(editable, context, eff)
+  Analysis(bindings, list.zip(paths, types), context)
 }
 
 // pub fn print(analysis) {
@@ -178,8 +190,8 @@ pub fn analyse(projection, context, eff) -> Analysis {
 // }
 
 fn env_at(analysis, path) {
-  let #(_bindings, pairs) = analysis
-  case list.key_find(pairs, list.reverse(path)) {
+  let Analysis(inferred:, ..) = analysis
+  case list.key_find(inferred, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
       io.debug(#("didn't find env", path))
@@ -191,13 +203,13 @@ fn env_at(analysis, path) {
 }
 
 pub fn do_type_at(analysis, projection: #(_, _)) {
-  let #(bindings, pairs) = analysis
+  let Analysis(bindings:, inferred:, ..) = analysis
   let path = projection.path(projection)
   // tests to remove this
   // io.debug(path)
-  // io.debug(pairs |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) }))
+  // io.debug(inferred |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) }))
   // TODO a shared info at would be a useful utility to ensure path reversing done correctly
-  case list.key_find(pairs, list.reverse(path)) {
+  case list.key_find(inferred, list.reverse(path)) {
     Ok(#(_result, type_, _eff, _env)) -> Ok(binding.resolve(type_, bindings))
     Error(Nil) -> {
       io.debug(#("didn't find type", path))
@@ -242,8 +254,8 @@ fn rows(t, acc) {
 }
 
 pub fn type_errors(analysis) {
-  let #(_bindings, pairs) = analysis
-  list.filter_map(pairs, fn(r) {
+  let Analysis(inferred:, ..) = analysis
+  list.filter_map(inferred, fn(r) {
     let #(rev, #(r, _, _, _)) = r
     case r {
       Ok(_) -> Error(Nil)

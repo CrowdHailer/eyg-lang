@@ -129,9 +129,16 @@ pub fn delete(zip) {
       Ok(#(p.FnParam(p.AssignPattern(e.Bind("_")), pre, post, body), zoom))
     p.Label(_, _, pre, [#(l, v), ..post], for), _ ->
       Ok(#(p.Label(l, v, pre, post, for), zoom))
+    p.Exp(e.Vacant),
+      [p.RecordValue(_label, pre, [#(l, v), ..post], for), ..zoom]
+    -> Ok(#(p.Label(l, v, pre, post, for), zoom))
     p.Label(_, _, [#(l, v), ..pre], [], for), _ ->
       Ok(#(p.Label(l, v, pre, [], for), zoom))
+    p.Exp(e.Vacant), [p.RecordValue(_label, [#(l, v), ..pre], [], for), ..zoom] ->
+      Ok(#(p.Exp(v), [p.RecordValue(l, pre, [], for), ..zoom]))
     p.Label(_, _, [], [], p.Record), _ -> Ok(#(p.Exp(e.Record([], None)), zoom))
+    p.Exp(e.Vacant), [p.RecordValue(_label, [], [], _for), ..zoom] ->
+      Ok(#(p.Exp(e.Record([], None)), zoom))
     p.Match(top, _, _, pre, [#(label, branch), ..post], otherwise), zoom ->
       Ok(#(p.Match(top, label, branch, pre, post, otherwise), zoom))
     p.Match(top, _, _, [#(label, branch), ..pre], [], otherwise), zoom ->
@@ -188,8 +195,8 @@ pub fn assign_before(zip) {
     }
     #(p.Exp(then), [p.BlockTail(lets), ..rest]) -> {
       let build = fn(new) {
-        let details = p.AssignStatement(new)
-        #(p.Assign(details, e.Vacant, lets, [], then), rest)
+        let zoom = [p.BlockValue(new, list.reverse(lets), [], then), ..rest]
+        #(p.Exp(e.Vacant), zoom)
       }
       Ok(build)
     }

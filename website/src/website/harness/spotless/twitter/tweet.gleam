@@ -39,7 +39,7 @@ pub fn blocking(client_id, redirect_uri, local, lift) {
   Ok(promise.map(do(client_id, redirect_uri, local, content), result_to_eyg))
 }
 
-// pub fn impl(app, lift) {
+// fn impl(app, lift) {
 //   use p <- result.map(blocking(app, lift))
 //   v.Promise(p)
 // }

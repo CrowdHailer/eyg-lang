@@ -15,7 +15,7 @@ pub fn type_() {
   #(l, #(lift, reply))
 }
 
-pub fn impl(lift) {
+fn impl(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
   Ok(v.String(do()))
 }
@@ -23,6 +23,11 @@ pub fn impl(lift) {
 pub fn blocking(lift) {
   use value <- result.map(impl(lift))
   promise.resolve(value)
+}
+
+pub fn preflight(lift) {
+  use value <- result.map(impl(lift))
+  fn() { promise.resolve(value) }
 }
 
 pub fn do() {

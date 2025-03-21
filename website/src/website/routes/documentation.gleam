@@ -8,7 +8,7 @@ import lustre/element/html as h
 import mysig/asset
 import mysig/html
 import website/components
-import website/components/snippet
+import website/components/example/view
 import website/routes/common
 import website/routes/documentation/state
 
@@ -498,11 +498,14 @@ fn render(state) {
 }
 
 fn example(state: state.State, identifier) {
-  let snippet = state.get_example(state, identifier)
-  let failure = case state.active {
-    state.Editing(key, failure) if identifier == key -> failure
-    _ -> None
-  }
-  snippet.render_embedded_with_top_menu(snippet, failure)
-  |> element.map(state.SnippetMessage(identifier, _))
+  // let example =
+  state.get_example(state, identifier)
+  |> view.render
+  // let failure = case state.active {
+  //   state.Editing(key, failure) if identifier == key -> failure
+  //   _ -> None
+  // }
+  // snippet.render_embedded_with_top_menu(example.snippet, failure)
+  // |> element.map(example.SnippetMessage)
+  |> element.map(state.ExampleMessage(identifier, _))
 }
