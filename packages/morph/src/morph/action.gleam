@@ -255,15 +255,19 @@ pub fn make_open_case(projection, analysis) {
   }
 }
 
-pub fn perform(source) {
+pub fn perform(source, analysis) {
   let #(focus, zoom) = source
+  let hints = case analysis {
+    Some(analysis.Analysis(context:, ..)) -> context.effects
+    None -> []
+  }
   case focus {
     p.Exp(lift) -> {
       let rebuild = fn(label) {
         let zoom = [p.CallArg(e.Perform(label), [], []), ..zoom]
         #(p.Exp(lift), zoom)
       }
-      Ok(#("", rebuild))
+      Ok(#("", hints, rebuild))
     }
     _ -> Error(Nil)
   }

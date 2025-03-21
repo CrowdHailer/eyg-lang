@@ -17,17 +17,25 @@ pub fn type_() {
   #(l, #(lift, reply()))
 }
 
-pub fn impl(url) {
-  use url <- try(cast.as_string(url))
-  let frame = #(600, 700)
-  let reply = case browser.open(url, frame) {
-    Ok(_popup) -> v.ok(v.unit())
-    Error(reason) -> v.error(v.String(reason))
-  }
-  Ok(reply)
+fn impl(lift) {
+  use url <- try(cast.as_string(lift))
+  Ok(do(url))
 }
 
 pub fn blocking(lift) {
   use value <- result.map(impl(lift))
   promise.resolve(value)
+}
+
+pub fn preflight(lift) {
+  use url <- try(cast.as_string(lift))
+  Ok(fn() { promise.resolve(do(url)) })
+}
+
+fn do(url) {
+  let frame = #(600, 700)
+  case browser.open(url, frame) {
+    Ok(_popup) -> v.ok(v.unit())
+    Error(reason) -> v.error(v.String(reason))
+  }
 }

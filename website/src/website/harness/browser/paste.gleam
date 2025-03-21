@@ -22,6 +22,11 @@ pub fn blocking(lift) {
   Ok(promise.map(do(), result_to_eyg))
 }
 
+pub fn preflight(lift) {
+  use Nil <- result.try(cast.as_unit(lift, Nil))
+  Ok(fn() { promise.map(do(), result_to_eyg) })
+}
+
 pub fn non_blocking(lift) {
   use p <- result.try(blocking(lift))
   Ok(v.Promise(p))

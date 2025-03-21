@@ -39,7 +39,7 @@ pub fn blocking(app, lift) {
   Ok(promise.map(do(app), result_to_eyg))
 }
 
-pub fn impl(app, lift) {
+fn impl(app, lift) {
   use p <- result.map(blocking(app, lift))
   v.Promise(p)
 }

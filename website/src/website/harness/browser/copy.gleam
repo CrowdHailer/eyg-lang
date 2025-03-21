@@ -22,6 +22,11 @@ pub fn blocking(lift) {
   Ok(promise.map(do(message), result_to_eyg))
 }
 
+pub fn preflight(lift) {
+  use message <- result.try(cast.as_string(lift))
+  Ok(fn() { promise.map(do(message), result_to_eyg) })
+}
+
 pub fn non_blocking(lift) {
   use p <- result.try(blocking(lift))
   Ok(v.Promise(p))

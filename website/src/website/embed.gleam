@@ -59,7 +59,11 @@ fn init(config) {
   let source =
     e.from_annotated(source)
     |> e.open_all
-  let snippet = snippet.init(source, [], effects(), cache)
+  let snippet =
+    snippet.init(
+      source,
+      // , [], effects(), cache
+    )
   #(snippet, effect.none())
 }
 
@@ -75,12 +79,10 @@ fn update(snippet, message) {
   let #(snippet, eff) = snippet.update(snippet, message)
   let #(failure, snippet_effect) = case eff {
     snippet.Nothing -> #(None, effect.none())
+    snippet.NewCode -> #(None, effect.none())
+    snippet.Confirm -> #(None, effect.none())
     snippet.Failed(failure) -> #(Some(failure), effect.none())
-    snippet.RunEffect(p) -> #(
-      None,
-      dispatch_to_snippet(snippet.await_running_effect(p)),
-    )
-    snippet.FocusOnCode -> #(None, dispatch_nothing(snippet.focus_on_buffer()))
+    snippet.ReturnToCode -> #(None, dispatch_nothing(snippet.focus_on_buffer()))
     snippet.FocusOnInput -> #(None, dispatch_nothing(snippet.focus_on_input()))
     snippet.ToggleHelp -> #(None, effect.none())
     snippet.MoveAbove -> #(None, effect.none())
@@ -93,7 +95,6 @@ fn update(snippet, message) {
       None,
       dispatch_to_snippet(snippet.write_to_clipboard(text)),
     )
-    snippet.Conclude(_, _, _) -> #(None, effect.none())
   }
   io.debug(failure)
   #(snippet, snippet_effect)
@@ -101,23 +102,23 @@ fn update(snippet, message) {
 
 fn effects() {
   harness.effects()
-  |> list.append([
-    #(
-      netlify_deploy_site.l,
-      #(
-        netlify_deploy_site.lift(),
-        netlify_deploy_site.reply(),
-        netlify_deploy_site.blocking(netlify.local, _),
-      ),
-    ),
-    #(
-      tweet.l,
-      #(tweet.lift(), tweet.reply(), tweet.blocking(
-        twitter.client_id,
-        twitter.redirect_uri,
-        True,
-        _,
-      )),
-    ),
-  ])
+  // |> list.append([
+  //   #(
+  //     netlify_deploy_site.l,
+  //     #(
+  //       netlify_deploy_site.lift(),
+  //       netlify_deploy_site.reply(),
+  //       netlify_deploy_site.blocking(netlify.local, _),
+  //     ),
+  //   ),
+  //   #(
+  //     tweet.l,
+  //     #(tweet.lift(), tweet.reply(), tweet.blocking(
+  //       twitter.client_id,
+  //       twitter.redirect_uri,
+  //       True,
+  //       _,
+  //     )),
+  //   ),
+  // ])
 }

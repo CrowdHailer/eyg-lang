@@ -1,19 +1,39 @@
+//// The snippet component is the base of editing context for EYG programs,
+//// for example the Reload, Shell and example components
+//// 
+//// It builds upon the morph library, it aims to be separate from type checking and runtime considerations
+//// 
+//// This separation is not perfect as edits want to be informed by type information.
+//// Type information is optional as type checking can be slow and we want to be able to edit programs without type information rather than blocking
+//// 
+//// Some information for helping with edits is not just based on the type situation.
+//// 
+////  1. Releases can be identified by their hash, but we want to show the package name and version number
+////    The index on analysis carries this extra data
+////  2. Most functions are defined in an effect free context, hence the suggested list of effects is hardcoded
+////    It is part of the context on the analysis
+//// 
+//// The type checker shouldn't need to know all the different states a release might be in. i.e. not requested yet.
+//// I also don't want to pass an arbitray function from ref to promise of result of type
+//// Doing so would make type checking async even when all referenes are loaded
+//// Instead we inefficiently pass a map of references in.
+//// Inefficient because it involves building from the whole cache.
+//// 
+//// ## Improvements
+//// 
+////  - The type checking context should always be available even if analysis isn't
+////  - Inversion of control so that the typechecking has a callback that is called when a reference is needed.
+////    This is ok in the morph analysis that is explicitly for editor help
+
 import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/binding/error
-import eyg/analysis/type_/isomorphic as t
-import eyg/interpreter/block
-import eyg/interpreter/break
-import eyg/interpreter/state as istate
-import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
 import gleam/int
-import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/listx
@@ -43,44 +63,32 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
 import website/components/autocomplete
-import website/components/output
-import website/components/simple_debug
 import website/components/snippet/menu
-import website/sync/cache
 
-const neo_blue_3 = "#87ceeb"
+pub const neo_blue_3 = "#87ceeb"
 
-const neo_green_3 = "#90ee90"
+pub const neo_green_3 = "#90ee90"
 
-const neo_orange_4 = "#ff6b6b"
+pub const neo_orange_4 = "#ff6b6b"
 
 const embed_area_styles = [
-  #("box-shadow", "6px 6px black"),
-  #("border-style", "solid"),
+  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
   #(
     "font-family",
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-  ),
-  #("background-color", "rgb(255, 255, 255)"),
-  #("border-color", "rgb(0, 0, 0)"),
-  #("border-width", "1px"),
-  #("flex-direction", "column"),
-  #("display", "flex"),
-  #("margin-bottom", "1.5rem"),
-  #("margin-top", ".5rem"),
+  ), #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
+  #("flex-direction", "column"), #("display", "flex"),
+  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
 ]
 
 const code_area_styles = [
-  #("outline", "2px solid transparent"),
-  #("outline-offset", "2px"),
-  #("padding", ".5rem"),
-  #("white-space", "nowrap"),
-  #("overflow", "auto"),
-  #("margin-top", "auto"),
-  #("margin-bottom", "auto"),
+  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
+  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
+  #("margin-top", "auto"), #("margin-bottom", "auto"), #("height", "100%"),
 ]
 
-fn footer_area(color, contents) {
+pub fn footer_area(color, contents) {
   h.div(
     [
       a.style([
@@ -96,28 +104,10 @@ fn footer_area(color, contents) {
   )
 }
 
-type ExternalBlocking =
-  fn(Value) -> Result(promise.Promise(Value), istate.Reason(Path))
-
-type EffectSpec =
-  #(binding.Mono, binding.Mono, ExternalBlocking)
-
 pub type Status {
   Idle
   Editing(Mode)
 }
-
-type Path =
-  Nil
-
-pub type Value =
-  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
-
-type Scope =
-  List(#(String, Value))
-
-type Return =
-  Result(#(Option(Value), Scope), istate.Debug(Path))
 
 pub type History {
   History(undo: List(p.Projection), redo: List(p.Projection))
@@ -126,7 +116,7 @@ pub type History {
 pub type Failure {
   NoKeyBinding(key: String)
   ActionFailed(action: String)
-  RunFailed(istate.Debug(Path))
+  // RunFailed(istate.Debug(Path))
 }
 
 pub type Mode {
@@ -138,12 +128,6 @@ pub type Mode {
   )
   EditText(String, fn(String) -> p.Projection)
   EditInteger(Int, fn(Int) -> p.Projection)
-}
-
-pub type Run {
-  NotRunning
-  // if no type errors then unhandled effect is still running
-  Running(Return, List(RuntimeEffect))
 }
 
 pub type Snippet {
@@ -158,44 +142,13 @@ pub type Snippet {
     projection: p.Projection,
     // editable is derived from projection
     editable: e.Expression,
-    // ------------------
-    // Context of code snippet
-    // scope before anything runs
-    scope: Scope,
-    // spec of effects available at the top level
-    effects: List(#(String, EffectSpec)),
-    cache: cache.Cache,
-    // ------------------
-    // Analysis might need to change i.e. reload
+    // ---------------------
+    // analaysis can be cached as an object
     analysis: Option(analysis.Analysis),
-    // ------------------
-    // Run object could be global would change in other components
-    // Computed values, relies on the cache, scope and effects
-    // this is the value from the expression not part of run at all
-    evaluated: Return,
-    // A snippet can have multiple runs, the task counter needs to be unique over all of them
-    // Could be task id and we have one central task runner
-    task_counter: Int,
-    run: Run,
   )
 }
 
-// Test that click to run starts even if still waiting for references
-// test resolving promise twice is ignored
-// test that cancelling
-
-// run.done(run, cache)
-// checks cache.valid_release -> Ok(True/False) or valid_reference -> Error(As of time) Valid/Invalid/Unknownn/Missing(as_of)
-// Shouldn't be able to construct with badly formatted cid
-
-// new source needs to change the run
-// set_cache on the running code don't need a global running
-// unhandled effect can be trigger for DB etc
-
-// calculator examples on snippet
-// all on homepage
-
-pub fn init(editable, scope, effects, cache) {
+pub fn init(editable) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
   Snippet(
@@ -205,24 +158,11 @@ pub fn init(editable, scope, effects, cache) {
     history: History([], []),
     projection: proj,
     editable: editable,
-    scope: scope,
-    effects: effects,
-    cache: cache,
-    analysis: Some(do_analysis(editable, scope, cache, effects)),
-    evaluated: evaluate(editable, scope, cache),
-    task_counter: -1,
-    run: NotRunning,
+    analysis: None,
   )
 }
 
-fn evaluate(editable, scope, cache) {
-  e.to_annotated(editable, [])
-  |> ir.clear_annotation
-  |> block.execute(scope)
-  |> cache.run(cache, block.resume)
-}
-
-pub fn active(editable, scope, effects, cache) {
+pub fn active(editable) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
   Snippet(
@@ -232,58 +172,13 @@ pub fn active(editable, scope, effects, cache) {
     history: History([], []),
     projection: proj,
     editable: editable,
-    scope: scope,
-    effects: effects,
-    cache: cache,
-    analysis: Some(do_analysis(editable, scope, cache, effects)),
-    evaluated: evaluate(editable, scope, cache),
-    task_counter: -1,
-    run: NotRunning,
+    analysis: None,
   )
-}
-
-fn do_analysis(editable, scope, cache, effects) {
-  let refs = cache.type_map(cache)
-  let eff =
-    effect_types(effects)
-    |> list.fold(t.Empty, fn(acc, new) {
-      let #(label, #(lift, reply)) = new
-      t.EffectExtend(label, #(lift, reply), acc)
-    })
-  let analysis =
-    analysis.do_analyse(
-      editable,
-      analysis.within_environment(scope, refs, Nil),
-      eff,
-    )
-  analysis
-}
-
-fn effect_types(effects: List(#(String, EffectSpec))) {
-  listx.value_map(effects, fn(details) { #(details.0, details.1) })
-}
-
-pub fn run(state) {
-  let Snippet(run: run, ..) = state
-  run
 }
 
 pub fn source(state) {
   let Snippet(editable:, ..) = state
   editable
-}
-
-pub fn set_references(state, cache) {
-  // If evaluated changes then run should change in the same way
-  let evaluated = evaluate(source(state), state.scope, cache)
-  let run = case state.run {
-    NotRunning -> state.run
-    Running(return, effects) ->
-      Running(cache.run(return, cache, block.resume), effects)
-  }
-  let analysis =
-    Some(do_analysis(state.editable, state.scope, cache, state.effects))
-  Snippet(..state, cache:, evaluated:, run:, analysis:)
 }
 
 pub fn references(state) {
@@ -292,7 +187,6 @@ pub fn references(state) {
 
 pub type Message {
   UserFocusedOnCode
-  UserClickRunEffects
   UserPressedCommandKey(String)
   UserClickedPath(List(Int))
   UserClickedCode(List(Int))
@@ -300,36 +194,30 @@ pub type Message {
   MessageFromPicker(picker.Message)
   SelectReleaseMessage(autocomplete.Message)
   MessageFromMenu(menu.Message)
-  RuntimeRepliedFromExternalEffect(#(Int, Value))
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
 }
 
 pub fn user_message(message) {
   case message {
-    RuntimeRepliedFromExternalEffect(_)
-    | ClipboardReadCompleted(_)
-    | ClipboardWriteCompleted(_) -> False
+    ClipboardReadCompleted(_) | ClipboardWriteCompleted(_) -> False
     _ -> True
   }
-}
-
-pub type RuntimeEffect {
-  RuntimeEffect(label: String, lift: Value, reply: Value)
 }
 
 pub type Effect {
   Nothing
   Failed(Failure)
-  FocusOnCode
+  // This always assume code hasn't changed
+  ReturnToCode
   FocusOnInput
   ToggleHelp
   MoveAbove
   MoveBelow
   WriteToClipboard(String)
   ReadFromClipboard
-  RunEffect(promise.Promise(#(Int, Value)))
-  Conclude(value: Option(Value), effects: List(RuntimeEffect), scope: Scope)
+  NewCode
+  Confirm
 }
 
 pub fn focus_on_buffer() {
@@ -370,10 +258,6 @@ pub fn read_from_clipboard() {
   // TODO make busy
 }
 
-pub fn await_running_effect(promise) {
-  promise.map(promise, RuntimeRepliedFromExternalEffect)
-}
-
 fn navigate_source(proj, state) {
   let status = Editing(Command)
   let state = Snippet(..state, status: status, projection: proj)
@@ -388,8 +272,8 @@ fn update_source(proj, state) {
   let history = History(undo: undo, redo: [])
   let status = Editing(Command)
 
-  let analysis =
-    Some(do_analysis(editable, state.scope, state.cache, state.effects))
+  let analysis = None
+  //   Some(do_analysis(editable, state.scope, state.cache, state.effects))
   Snippet(
     ..state,
     status: status,
@@ -397,22 +281,22 @@ fn update_source(proj, state) {
     editable: editable,
     history: history,
     analysis:,
-    evaluated: evaluate(editable, state.scope, state.cache),
-    run: NotRunning,
+    // evaluated: evaluate(editable, state.scope, state.cache),
+    // run: NotRunning,
   )
 }
 
 fn update_source_from_buffer(proj, state) {
-  #(update_source(proj, state), Nothing)
+  #(update_source(proj, state), NewCode)
 }
 
 fn update_source_from_pallet(proj, state) {
-  #(update_source(proj, state), FocusOnCode)
+  #(update_source(proj, state), NewCode)
 }
 
 fn return_to_buffer(state) {
   let state = Snippet(..state, status: Editing(Command))
-  #(state, FocusOnCode)
+  #(state, ReturnToCode)
 }
 
 fn change_mode(state, mode) {
@@ -492,7 +376,7 @@ pub fn update(state, message) {
         _ -> #(state, Failed(NoKeyBinding(key)))
       }
     }
-    UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
+    UserPressedCommandKey(key), _ -> action_failed(state, key)
     UserClickedPath(path), _ ->
       navigate_source(p.focus_at(state.editable, path), state)
 
@@ -563,9 +447,9 @@ pub fn update(state, message) {
         Some(key) -> update(state, UserPressedCommandKey(key))
       }
     }
-    UserClickRunEffects, _ -> run_effects(state)
-    RuntimeRepliedFromExternalEffect(#(task_id, reply)), _ ->
-      run_handle_effect(state, task_id, reply)
+    // UserClickRunEffects, _ -> run_effects(state)
+    // RuntimeRepliedFromExternalEffect(#(task_id, reply)), _ ->
+    //   run_handle_effect(state, task_id, reply)
     ClipboardReadCompleted(return), _ -> {
       let assert Editing(Command) = status
       case return {
@@ -586,75 +470,6 @@ pub fn update(state, message) {
         Ok(Nil) -> #(state, Nothing)
         Error(_) -> action_failed(state, "paste")
       }
-  }
-}
-
-fn run_handle_effect(state, task_id, value) {
-  let Snippet(task_counter: id, run: run, ..) = state
-  case run, id == task_id {
-    Running(
-      Error(#(break.UnhandledEffect(label, lift), _meta, env, k)),
-      effects,
-    ),
-      True
-    -> {
-      let effects = [RuntimeEffect(label, lift, value), ..effects]
-      let task_id = task_id + 1
-      let #(return, task) =
-        block.resume(value, env, k)
-        |> run_blocking(state.cache, state.effects, block.resume)
-      let run = Running(return, effects)
-      let state = Snippet(..state, task_counter: task_id, run: run)
-      let ef = case return {
-        Ok(#(value, scope)) -> Conclude(value, effects, scope)
-        _ ->
-          case task {
-            Some(task) -> {
-              let p = promise.map(task, fn(v) { #(task_id, v) })
-              RunEffect(p)
-            }
-            None -> Nothing
-          }
-      }
-      #(state, ef)
-    }
-    _, _ -> #(state, Nothing)
-  }
-  // case status {
-  //   run.Failed(_) -> #(state, Nothing)
-  //   run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
-
-  //   run.Handling(_label, lift, env, k, blocking) ->
-  //     case blocking(lift) {
-  //       Ok(promise) -> {
-  //         let run = run.Run(status, effect_log)
-  //         let state = Snippet(..state, run: run)
-  //         #(state, RunEffect(promise))
-  //       }
-  //       Error(reason) -> {
-  //         let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-  //         let state = Snippet(..state, run: run)
-  //         #(state, Nothing)
-  //       }
-  //     }
-  // }
-}
-
-// might belong on a run 
-fn run_blocking(return, cache, extrinsic, resume) {
-  let return = cache.run(return, cache, resume)
-  case return {
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      case list.key_find(extrinsic, label) {
-        Ok(#(_lift, _reply, blocking)) ->
-          case blocking(lift) {
-            Ok(p) -> #(return, Some(p))
-            Error(reason) -> #(Error(#(reason, meta, env, k)), None)
-          }
-        _ -> #(return, None)
-      }
-    }
-    _ -> #(return, None)
   }
 }
 
@@ -850,10 +665,10 @@ fn insert_mode(state) {
 }
 
 fn insert_perform(state) {
-  let Snippet(projection: proj, effects: effects, ..) = state
-  let hints = effect_types(effects)
-  case action.perform(proj) {
-    Ok(#(filter, rebuild)) -> {
+  let Snippet(projection: proj, analysis:, ..) = state
+
+  case action.perform(proj, analysis) {
+    Ok(#(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_effect)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
@@ -943,9 +758,12 @@ fn insert_list(state) {
 }
 
 fn insert_release(state) {
-  let Snippet(projection: proj, cache: cache, ..) = state
+  let Snippet(projection: proj, analysis:, ..) = state
 
-  let index = cache.package_index(cache)
+  let index = case analysis {
+    Some(analysis.Analysis(context:, ..)) -> context.index
+    None -> []
+  }
 
   case action.insert_named_reference(proj) {
     Ok(#(_filter, rebuild)) -> {
@@ -1071,8 +889,9 @@ fn undo(state) {
     [] -> action_failed(state, "undo")
     [saved, ..rest] -> {
       let editable = p.rebuild(saved)
-      let analysis =
-        Some(do_analysis(editable, state.scope, state.cache, state.effects))
+      let analysis = None
+      // TODO
+      // Some(do_analysis(editable, state.scope, state.cache, state.effects))
       let history = History(undo: rest, redo: [proj, ..history.redo])
       let status = Editing(Command)
       let state =
@@ -1083,8 +902,8 @@ fn undo(state) {
           editable:,
           history: history,
           analysis:,
-          evaluated: evaluate(editable, state.scope, state.cache),
-          run: NotRunning,
+          // evaluated: evaluate(editable, state.scope, state.cache),
+          // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -1097,8 +916,8 @@ fn redo(state) {
     [] -> action_failed(state, "redo")
     [saved, ..rest] -> {
       let editable = p.rebuild(saved)
-      let analysis =
-        Some(do_analysis(editable, state.scope, state.cache, state.effects))
+      let analysis = None
+      // Some(do_analysis(editable, state.scope, state.cache, state.effects))
       let history = History(undo: [proj, ..history.undo], redo: rest)
       let status = Editing(Command)
       let state =
@@ -1109,8 +928,8 @@ fn redo(state) {
           editable:,
           history: history,
           analysis:,
-          evaluated: evaluate(editable, state.scope, state.cache),
-          run: NotRunning,
+          // evaluated: evaluate(editable, state.scope, state.cache),
+          // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -1137,130 +956,11 @@ pub fn copy_escaped(state) {
 }
 
 fn confirm(state) {
-  let Snippet(run: run, evaluated: evaluated, ..) = state
-  case run, evaluated {
-    NotRunning, Ok(#(value, scope)) -> #(state, Conclude(value, [], scope))
-    Running(Ok(#(value, scope)), effects), _ -> #(
-      state,
-      Conclude(value, effects, scope),
-    )
-    NotRunning, _ -> run_effects(state)
-    _, _ -> #(state, Nothing)
-  }
-}
-
-fn run_effects(state) {
-  let Snippet(evaluated: evaluated, task_counter: task_counter, ..) = state
-  let task_counter = task_counter + 1
-  let #(return, task) =
-    run_blocking(evaluated, state.cache, state.effects, block.resume)
-  let run = Running(return, [])
-  let state = Snippet(..state, run: run, task_counter: task_counter)
-  case task {
-    Some(p) -> {
-      let p = promise.map(p, fn(v) { #(task_counter, v) })
-      #(state, RunEffect(p))
-    }
-    None -> #(state, Nothing)
-  }
+  #(state, Confirm)
 }
 
 pub fn finish_editing(state) {
   Snippet(..state, status: Idle)
-}
-
-// TODO note or error with context, be nice to jump to location of effect
-// value
-// runtime faile
-// type errors (Only this one is a list)
-// editor error 
-// will perform
-// 
-// Error level action
-pub type TypeError {
-  ReleaseInvalid(package: String, release: Int)
-  ReleaseCheckDoesntMatch(
-    package: String,
-    release: Int,
-    published: String,
-    used: String,
-  )
-  ReleaseNotFetched(package: String, requested: Int, max: Int)
-  ReleaseFragmentNotFetched(package: String, release: Int, cid: String)
-  FragmentInvalid
-  ReferenceNotFetched
-  Todo
-  MissingVariable(String)
-  MissingBuiltin(String)
-  TypeMismatch(binding.Mono, binding.Mono)
-  MissingRow(String)
-  Recursive
-  SameTail(binding.Mono, binding.Mono)
-}
-
-// Pass in if client is working
-pub fn type_errors(state) {
-  let Snippet(analysis:, cache:, ..) = state
-  let errors = case analysis {
-    Some(analysis) -> analysis.type_errors(analysis)
-    None -> []
-  }
-  list.map(errors, fn(error) {
-    let #(meta, error) = error
-    let error = case error {
-      error.UndefinedRelease(p, r, cid) ->
-        case cache.fetch_named_cid(cache, p, r) {
-          Ok(c) if c == cid ->
-            case cache.fetch_fragment(cache, cid) {
-              Ok(cache.Fragment(value:, ..)) ->
-                case value {
-                  Ok(_) -> {
-                    io.debug(#("should have resolved ", p, r))
-                    ReleaseInvalid(p, r)
-                  }
-                  Error(#(reason, _, _, _)) -> ReleaseInvalid(p, r)
-                  // error info needs to be better 
-                }
-              Error(Nil) -> ReleaseFragmentNotFetched(p, r, c)
-            }
-          Ok(c) ->
-            ReleaseCheckDoesntMatch(
-              package: p,
-              release: r,
-              published: c,
-              used: cid,
-            )
-          // TODO client is still loading
-          Error(Nil) ->
-            case cache.max_release(cache, p) {
-              Error(Nil) -> ReleaseNotFetched(p, r, 0)
-              Ok(max) -> ReleaseNotFetched(p, r, max)
-            }
-        }
-      error.MissingReference(cid) ->
-        case cache.fetch_fragment(cache, cid) {
-          Ok(cache.Fragment(value:, ..)) ->
-            case value {
-              Ok(_) -> panic as "if the fragment was there it would be resolved"
-              Error(#(reason, _, _, _)) -> FragmentInvalid
-              // error info needs to be better 
-            }
-          Error(Nil) -> ReferenceNotFetched
-        }
-      error.Todo -> Todo
-      error.MissingVariable(var) -> MissingVariable(var)
-      error.MissingBuiltin(var) -> MissingBuiltin(var)
-      error.TypeMismatch(a, b) -> TypeMismatch(a, b)
-      error.MissingRow(l) -> MissingRow(l)
-      error.Recursive -> Recursive
-      error.SameTail(a, b) -> SameTail(a, b)
-    }
-    #(meta, error)
-  })
-}
-
-pub fn render_embedded(state: Snippet, failure) {
-  h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
 pub fn release_to_option(release) {
@@ -1285,28 +985,18 @@ pub fn release_to_option(release) {
   ]
 }
 
-pub fn bare_render(state, failure) {
-  let Snippet(
-    status: status,
-    projection: proj,
-    editable:,
-    analysis:,
-    evaluated: evaluated,
-    run: run,
-    ..,
-  ) = state
-  let errors = type_errors(state)
-
+fn bare_render(proj, errors, status, slot) {
   case status {
     Editing(mode) ->
       case mode {
         Command -> [
           actual_render_projection(proj, True, errors),
-          case failure {
-            Some(failure) ->
-              footer_area(neo_orange_4, [element.text(fail_message(failure))])
-            None -> render_current(errors, run, evaluated)
-          },
+          ..slot
+          // case failure {
+        //   Some(failure) ->
+        //     footer_area(neo_orange_4, [element.text(fail_message(failure))])
+        //   None -> element.text("render_current(errors, run, evaluated)")
+        // },
         ]
         Pick(picker, _rebuild) -> [
           actual_render_projection(proj, False, errors),
@@ -1318,8 +1008,6 @@ pub fn bare_render(state, failure) {
           actual_render_projection(proj, False, errors),
           autocomplete.render(autocomplete, release_to_option)
             |> element.map(SelectReleaseMessage),
-          // picker.render(picker)
-        //   |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
@@ -1343,83 +1031,11 @@ pub fn bare_render(state, failure) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(editable, errors),
+        render.statements(p.rebuild(proj), errors),
       ),
-      render_current(errors, run, evaluated),
+      ..slot
     ]
   }
-}
-
-// TODO remove
-pub fn render_current(errors, run, evaluated) {
-  case errors {
-    [] -> render_run(run, evaluated)
-    _ -> render_errors(errors)
-  }
-}
-
-pub fn render_errors(errors) {
-  footer_area(
-    neo_orange_4,
-    list.map(errors, render_structured_note_about_error),
-    // list.map(errors, fn(error) {
-  //   let #(path, reason) = error
-  //   h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
-  // }),
-  )
-}
-
-fn render_structured_note_about_error(error) {
-  let #(path, reason) = error
-  // TODO color, don't border all errors
-  let reason = case reason {
-    ReleaseInvalid(p, r) ->
-      "The release @" <> p <> ":" <> int.to_string(r) <> " has errors."
-    ReleaseCheckDoesntMatch(package:, release:, ..) ->
-      "The release @"
-      <> package
-      <> ":"
-      <> int.to_string(release)
-      <> " does not use the published checksum."
-    ReleaseNotFetched(package, _, 0) ->
-      "The package '" <> package <> "' has not been published"
-    ReleaseNotFetched(package, r, n) ->
-      "The release "
-      <> int.to_string(r)
-      <> " for '"
-      <> package
-      <> "' is not available. Latest publish is "
-      <> int.to_string(n)
-    ReleaseFragmentNotFetched(package:, release:, ..) ->
-      "The release @"
-      <> package
-      <> ":"
-      <> int.to_string(release)
-      <> " is still loading."
-    FragmentInvalid -> "FragmentInvalid"
-    ReferenceNotFetched -> "ReferenceNotFetched"
-    Todo -> "The program is incomplete."
-    MissingVariable(var) ->
-      "The variable '" <> var <> "' is not available here."
-    MissingBuiltin(identifier) ->
-      "The built-in function '!" <> identifier <> "' is not implemented."
-    TypeMismatch(_t, _t) -> "TypeMismatch"
-    MissingRow(_) -> "MissingRow"
-    Recursive -> "Recursive"
-    SameTail(_t, _t) -> "SameTail"
-  }
-  h.div([event.on_click(UserClickedPath(path))], [element.text(reason)])
-  // radio shows just one of the errors open at a time
-  // h.details([], [
-  //   h.summary([], [element.text(reason)]),
-  //   h.div([], [element.text("MOOOOARE")]),
-  // ])
-}
-
-pub fn reason_to_html(r) {
-  h.span([a.style([#("white-space", "nowrap")])], [
-    element.text(debug.reason(r)),
-  ])
 }
 
 pub fn render_pallet(state) {
@@ -1452,13 +1068,17 @@ pub fn render_pallet(state) {
   }
 }
 
-pub fn render_just_projection(state, autofocus) {
-  let Snippet(status: status, projection: proj, editable:, analysis:, ..) =
-    state
-  let errors = case analysis {
+fn type_errors(snippet) {
+  let Snippet(analysis:, ..) = snippet
+  case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }
+}
+
+pub fn render_just_projection(state, autofocus) {
+  let Snippet(status: status, projection: proj, editable:, ..) = state
+  let errors = type_errors(state)
   case status {
     Editing(_mode) -> {
       actual_render_projection(proj, autofocus, errors)
@@ -1558,55 +1178,12 @@ fn render_projection(proj, errors) {
   }
 }
 
-fn render_run(run, evaluated) {
-  case run {
-    NotRunning ->
-      case evaluated {
-        Ok(#(value, _scope)) ->
-          footer_area(neo_green_3, [
-            case value {
-              Some(value) -> output.render(value)
-              None -> element.none()
-            },
-          ])
-        Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-          footer_area(neo_blue_3, [
-            h.span([event.on_click(UserClickRunEffects)], [
-              element.text("Will run "),
-              element.text(label),
-              element.text(" effect. click to continue."),
-            ]),
-          ])
-        Error(#(reason, _, _, _)) ->
-          footer_area(neo_orange_4, [
-            element.text(simple_debug.reason_to_string(reason)),
-          ])
-      }
-    Running(Ok(#(value, _scope)), _effects) ->
-      // (value, _) ->
-      footer_area(neo_green_3, [
-        case value {
-          Some(value) -> output.render(value)
-          None -> element.none()
-        },
-      ])
-    Running(Error(#(break.UnhandledEffect(_label, _), _, _, _)), _effects) ->
-      footer_area(neo_green_3, [element.text("running")])
-
-    // run.Handling(label, _meta, _env, _stack, _blocking) ->
-    Running(Error(#(reason, _, _, _)), _effects) ->
-      footer_area(neo_orange_4, [
-        element.text(simple_debug.reason_to_string(reason)),
-      ])
-  }
-}
-
 pub fn fail_message(reason) {
   case reason {
     NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
     ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
-    RunFailed(#(reason, _, _, _)) -> simple_debug.reason_to_string(reason)
+    // RunFailed(#(reason, _, _, _)) -> simple_debug.reason_to_string(reason)
   }
 }
 
@@ -1669,7 +1246,7 @@ pub fn menu_content(status, projection, submenu) {
   }
 }
 
-pub fn render_embedded_with_top_menu(snippet, failure) {
+pub fn render_embedded_with_top_menu(snippet, slot) {
   let display_help = True
   let Snippet(status: status, projection:, menu: menu, ..) = snippet
   let #(top, subcontent) = menu_content(status, projection, menu)
@@ -1690,7 +1267,7 @@ pub fn render_embedded_with_top_menu(snippet, failure) {
         Error([])
       }),
     ],
-    bare_render(snippet, failure)
+    bare_render(projection, type_errors(snippet), status, slot)
       |> list.append(case status {
         Idle -> []
         _ -> [
@@ -1741,7 +1318,7 @@ pub fn render_embedded_with_top_menu(snippet, failure) {
   )
 }
 
-pub fn render_embedded_with_menu(snippet, failure) {
+pub fn render_embedded_with_menu(snippet, _failure) {
   h.pre(
     [
       a.class("eyg-embed language-eyg"),
@@ -1759,7 +1336,7 @@ pub fn render_embedded_with_menu(snippet, failure) {
     ],
     [
       render_menu(snippet, False) |> element.map(MessageFromMenu),
-      ..bare_render(snippet, failure)
+      // ..bare_render(snippet, failure)
     ],
   )
 }
