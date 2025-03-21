@@ -29,6 +29,7 @@ import website/components/output
 import website/components/readonly
 import website/components/shell
 import website/components/snippet
+import website/components/vertical_menu
 import website/harness/browser as harness
 import website/routes/common
 import website/sync/client
@@ -574,8 +575,9 @@ pub fn render(state: State) {
 pub fn render_menu(status, projection, submenu, display_help) {
   let #(top, subcontent) = snippet.menu_content(status, projection, submenu)
   case subcontent {
-    None -> one_col_menu(display_help, top)
-    Some(#(key, more)) -> two_col_menu(display_help, top, key, more)
+    None -> vertical_menu.one_col_menu(display_help, top)
+    Some(#(key, more)) ->
+      vertical_menu.two_col_menu(display_help, top, key, more)
   }
 }
 
@@ -591,7 +593,7 @@ fn help_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
     [
-      snippet.icon(
+      vertical_menu.icon(
         outline.question_mark_circle(),
         "hide help",
         state.display_help,
@@ -603,71 +605,8 @@ fn help_menu_button(state: State) {
 fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-    [snippet.icon(outline.tv(), "fullscreen", state.display_help)],
+    [vertical_menu.icon(outline.tv(), "fullscreen", state.display_help)],
   )
-}
-
-fn one_col_menu(display_help, options) {
-  [
-    // help_menu_button(state),
-    // same as grid below
-    h.div(
-      [
-        a.class("grid overflow-y-auto"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
-      ],
-      [
-        h.div(
-          [a.class("flex flex-col justify-end text-gray-200 py-2")],
-          list.map(options, fn(entry) {
-            let #(i, text, k) = entry
-            snippet.button(k, [snippet.icon(i, text, display_help)])
-          }),
-        ),
-      ],
-    ),
-  ]
-}
-
-fn two_col_menu(display_help, top, active, sub) {
-  [
-    h.div(
-      [
-        a.class("grid overflow-y-auto overflow-x-hidden"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
-      ],
-      [
-        h.div(
-          [a.class("flex flex-col justify-end text-gray-200 py-2")],
-          list.map(top, fn(entry) {
-            let #(i, text, k) = entry
-            h.button(
-              [
-                a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
-                a.classes([#("bg-yellow-600", text == active)]),
-                event.on_click(k),
-              ],
-              [snippet.icon(i, text, False)],
-            )
-          }),
-        ),
-        h.div(
-          [
-            a.class(
-              "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
-            ),
-          ],
-          list.map(sub, fn(entry) {
-            let #(i, text, k) = entry
-            h.button(
-              [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-              [snippet.icon(i, text, display_help)],
-            )
-          }),
-        ),
-      ],
-    ),
-  ]
 }
 
 fn render_errors(failure, snippet: snippet.Snippet) {
