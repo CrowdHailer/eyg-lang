@@ -131,13 +131,13 @@ pub fn home_page() {
           html.stylesheet(html.tailwind_2_2_11),
           html.stylesheet(asset.src(layout)),
           h.meta([a.name("twitter:card"), a.content("summary_large_image")]),
-          html.plausible("eyg.run"),
         ],
         common.page_meta(
           "/news",
           "EYG news",
           "Updates from the development of the EYG language and structural editor.",
         ),
+        common.diagnostics(),
       ]),
       [
         components.header(fn(_) { todo }, None),
@@ -217,13 +217,13 @@ fn web_editions(editions) {
               }",
               ),
               h.meta([a.name("twitter:card"), a.content("summary_large_image")]),
-              html.plausible("eyg.run"),
             ],
             common.page_meta(
               "/news/editions/" <> int.to_string(index),
               "EYG news: " <> title,
               "Updates from the development of the EYG language and structural editor.",
             ),
+            common.diagnostics(),
           ]),
           [
             h.div(

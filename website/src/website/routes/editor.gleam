@@ -55,7 +55,6 @@ fn layout(body) {
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
         common.prism_style(),
-        html.plausible("eyg.run"),
         h.style([], "html { height: 100%; }\nbody { min-height: 100%; }\n"),
       ],
       common.page_meta(
@@ -63,6 +62,7 @@ fn layout(body) {
         "EYG",
         "EYG is a programming language for predictable, useful and most of all confident development.",
       ),
+      common.diagnostics(),
     ]),
     body,
   )
