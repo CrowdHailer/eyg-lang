@@ -1,6 +1,8 @@
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/uri.{Uri}
+import lustre/attribute as a
+import lustre/element/html as h
 import mysig/html
 import mysig/preview
 
@@ -23,6 +25,21 @@ pub fn page_meta(path path, title title, description description) {
       "Penelopea the mascot for the EYG programming language.",
     ),
   )
+}
+
+pub fn diagnostics() {
+  [
+    h.script(
+      [
+        a.src(
+          "https://js-de.sentry-cdn.com/02395cbfda3bca6b1c19224f411d0b03.min.js",
+        ),
+        a.attribute("crossorigin", "anonymous"),
+      ],
+      "",
+    ),
+    html.plausible("eyg.run"),
+  ]
 }
 
 pub fn prism_style() {

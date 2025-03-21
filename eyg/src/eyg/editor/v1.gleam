@@ -54,6 +54,16 @@ fn layout(title, body, bundle) {
         html.stylesheet(html.tailwind_2_2_11),
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
+        // common not in scope of EYG project
+        h.script(
+          [
+            a.src(
+              "https://js-de.sentry-cdn.com/02395cbfda3bca6b1c19224f411d0b03.min.js",
+            ),
+            a.attribute("crossorigin", "anonymous"),
+          ],
+          "",
+        ),
         html.plausible("eyg.run"),
       ],
       preview.homepage(

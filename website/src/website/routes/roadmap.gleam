@@ -25,13 +25,13 @@ fn layout(body) {
         html.stylesheet(html.tailwind_2_2_11),
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
-        html.plausible("eyg.run"),
       ],
       common.page_meta(
         "/roadmap",
         "Development roadmap for EYG language",
         "A list of the major enchancements being added to the EYG programming language.",
       ),
+      common.diagnostics(),
     ]),
     body,
   )

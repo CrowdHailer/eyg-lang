@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/io
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
@@ -26,6 +27,7 @@ import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
+import website/components/runner
 import website/components/shell
 import website/components/snippet
 import website/harness/browser as harness
@@ -54,7 +56,6 @@ fn layout(body) {
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
         common.prism_style(),
-        html.plausible("eyg.run"),
         h.style([], "html { height: 100%; }\nbody { min-height: 100%; }\n"),
       ],
       common.page_meta(
@@ -62,6 +63,7 @@ fn layout(body) {
         "EYG",
         "EYG is a programming language for predictable, useful and most of all confident development.",
       ),
+      common.diagnostics(),
     ]),
     body,
   )
@@ -211,8 +213,12 @@ pub fn update(state: State, message) {
       let state = State(..state, sync:, shell:)
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()
-        shell.RunExternalHandler(lift, blocking) -> todo as "shelly message"
-        // dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.RunExternalHandler(ref, thunk) ->
+          dispatch_to_shell(
+            promise.map(thunk(), fn(reply) {
+              shell.ExternalHandlerCompleted(reply)
+            }),
+          )
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
@@ -241,8 +247,12 @@ pub fn update(state: State, message) {
         shell.update(shell, shell.CacheUpdate(sync.cache))
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()
-        shell.RunExternalHandler(lift, blocking) -> todo as "run effects here"
-        // dispatch_to_shell(shell.run_effect(lift, blocking))
+        shell.RunExternalHandler(ref, thunk) ->
+          dispatch_to_shell(
+            promise.map(thunk(), fn(reply) {
+              shell.ExternalHandlerCompleted(reply)
+            }),
+          )
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
@@ -494,14 +504,13 @@ pub fn render(state: State) {
                     readonly.render(readonly)
                     |> element.map(PreviousMessage(_, i)),
                   ]),
-                  element.text("TODO as rendering"),
-                  // h.button(
-                //   [
-                //     a.class("absolute top-0 right-0 w-6"),
-                //     event.on_click(UserClickedPrevious(readonly.source)),
-                //   ],
-                //   [outline.arrow_path()],
-                // ),
+                  h.button(
+                    [
+                      a.class("absolute top-0 right-0 w-6"),
+                      event.on_click(ShellMessage(shell.UserClickedPrevious(1))),
+                    ],
+                    [outline.arrow_path()],
+                  ),
                 ]),
                 case effects {
                   [] -> element.none()

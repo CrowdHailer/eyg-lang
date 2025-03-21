@@ -109,7 +109,7 @@ pub type Message {
   CacheUpdate(cache.Cache)
   // Current could be called input
   CurrentMessage(snippet.Message)
-  ExternalHandlerCompleted(Result(istate.Value(Nil), istate.Reason(Nil)))
+  ExternalHandlerCompleted(istate.Value(Nil))
   UserClickedPrevious(Int)
 }
 
@@ -169,8 +169,8 @@ pub fn update(shell, message) {
         snippet.WriteToClipboard(text) -> #(shell, WriteToClipboard(text))
       }
     }
-    ExternalHandlerCompleted(result) -> {
-      let #(run, action) = handle_external(shell, result)
+    ExternalHandlerCompleted(reply) -> {
+      let #(run, action) = handle_external(shell, reply)
       let shell = Shell(..shell, run:)
 
       case run.return {
@@ -293,39 +293,31 @@ fn run_update_cache(run, cache, effects) {
   }
 }
 
-fn handle_external(shell, result) {
+fn handle_external(shell, reply) {
   let Shell(run:, cache:, ..) = shell
   // TODO need to pair up with a run number
   let Run(return:, effects:, ..) = run
   case return {
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      case result {
-        Ok(reply) -> {
-          let effects = [#(label, #(lift, reply)), ..effects]
-          let return =
-            cache.run(block.resume(reply, env, k), cache, block.resume)
-          case lookup_external(return, shell.effect_handlers) {
-            Ok(#(lift, blocking)) -> {
-              case blocking(lift) {
-                Ok(thunk) -> #(
-                  Run(True, return, effects),
-                  RunExternalHandler(0, thunk),
-                )
-                Error(reason) -> #(
-                  Run(False, Error(#(reason, meta, env, k)), effects),
-                  Nothing,
-                )
-              }
-            }
-            Error(Nil) -> #(Run(True, return, effects), Nothing)
+      let effects = [#(label, #(lift, reply)), ..effects]
+      let return = cache.run(block.resume(reply, env, k), cache, block.resume)
+      case lookup_external(return, shell.effect_handlers) {
+        Ok(#(lift, blocking)) -> {
+          case blocking(lift) {
+            Ok(thunk) -> #(
+              Run(True, return, effects),
+              RunExternalHandler(0, thunk),
+            )
+            Error(reason) -> #(
+              Run(False, Error(#(reason, meta, env, k)), effects),
+              Nothing,
+            )
           }
         }
-        Error(reason) -> #(
-          Run(False, Error(#(reason, meta, env, k)), effects),
-          Nothing,
-        )
+        Error(Nil) -> #(Run(True, return, effects), Nothing)
       }
     }
+
     _ -> #(run, Nothing)
   }
 }
@@ -363,13 +355,6 @@ pub fn message_from_previous_code(shell: Shell, m, i) {
   }
   let shell = Shell(..shell, previous: previous)
   #(shell, effect)
-}
-
-pub fn run_effect(lift, blocking) {
-  case blocking(lift) {
-    Ok(p) -> promise.map(p, fn(v) { ExternalHandlerCompleted(Ok(v)) })
-    Error(reason) -> promise.resolve(ExternalHandlerCompleted(Error(reason)))
-  }
 }
 
 pub fn write_to_clipboard(text) {
