@@ -127,7 +127,7 @@ pub fn update(state, message) {
           }
           let state = Example(..state, runner:)
           let state = do_analysis(state)
-          #(state, Nothing)
+          #(state, ReturnToCode)
         }
         snippet.Confirm -> {
           let Example(runner:, ..) = state
