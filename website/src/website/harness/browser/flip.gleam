@@ -17,7 +17,7 @@ pub fn type_() {
   #(l, #(lift, reply()))
 }
 
-pub fn impl(lift) {
+fn impl(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
   Ok(boolean_to_eyg(do(Nil)))
 }
@@ -29,7 +29,7 @@ pub fn blocking(lift) {
 
 pub fn preflight(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
-  Ok(fn() { boolean_to_eyg(do(Nil)) })
+  Ok(fn() { promise.resolve(boolean_to_eyg(do(Nil))) })
 }
 
 pub fn do(_: Nil) {

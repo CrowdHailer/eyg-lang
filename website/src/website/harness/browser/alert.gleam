@@ -15,7 +15,7 @@ pub fn type_() {
   #(l, #(lift, reply))
 }
 
-pub fn impl(lift) {
+fn impl(lift) {
   use message <- result.try(cast.as_string(lift))
   let Nil = do(message)
   Ok(v.unit())

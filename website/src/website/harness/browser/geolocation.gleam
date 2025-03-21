@@ -39,6 +39,11 @@ pub fn blocking(lift) {
   promise.map(do(), result_to_eyg)
 }
 
+pub fn preflight(lift) {
+  use Nil <- result.map(cast.as_unit(lift, Nil))
+  fn() { promise.map(do(), result_to_eyg) }
+}
+
 pub fn handle(lift) {
   use p <- result.map(blocking(lift))
   v.Promise(p)
