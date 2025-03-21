@@ -1,11 +1,15 @@
 import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/binding/unify
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict
 import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
 import gleeunit/should
+import morph/analysis
 import morph/editable as e
 import website/components/reload
 import website/components/snippet
@@ -168,11 +172,49 @@ fn infer(source, expected) {
   // expected could be mono or poly
 
   let #(tree, b) = infer.infer(source, eff, refs, level, b)
-  todo
+  let #(inner, meta) = tree
+  let #(original_error, inferred, eff, env) = meta
+  // The inferred type is always available it is a type var in the case of an original error
+  // We should unify with the context to give maximum help to the editor
+  let result = unify.unify(inferred, expected, level, b)
+
+  io.debug(tree)
+  case result {
+    Ok(b) -> {
+      let meta = #(original_error, inferred, eff, env)
+      let tree = #(inner, meta)
+      #(tree, b)
+    }
+    Error(reason) -> {
+      let meta = #(Error(reason), inferred, eff, env)
+      let tree = #(inner, meta)
+      #(tree, b)
+    }
+  }
+}
+
+fn analyse(source, expected) {
+  let paths = ir.get_annotation(source |> e.to_annotated([]))
+  let #(tree, b) = infer(source, expected)
+  let info = ir.get_annotation(tree)
+  list.strict_zip(paths, info)
 }
 
 // let that gets aligned properly on let bindings
 // This can be added to analysis 
 pub fn top_type_test() {
-  todo
+  let source = e.Integer(10)
+  analyse(source, t.String)
+  // |> analysis.type_errors()
+  |> io.debug
+}
+
+// What's the situation when type should be something else. I think put in expected type
+// if in tree we error and then call as something
+
+pub fn top_type_test() {
+  let source = e.Integer(10)
+  analyse(source, t.String)
+  // |> analysis.type_errors()
+  |> io.debug
 }
