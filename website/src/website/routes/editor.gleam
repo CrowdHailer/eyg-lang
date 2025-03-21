@@ -145,15 +145,17 @@ pub fn update(state: State, message) {
     )
 
     SnippetMessage(message) -> {
+      io.debug("snip ms")
+
       let #(snippet, eff) = snippet.update(state.source, message)
-      let State(display_help: display_help, ..) = state
+      let shell = shell.finish_editing(state.shell)
+      let state = State(..state, shell:)
+      let State(display_help:, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
         snippet.NewCode -> #(display_help, effect.none())
         snippet.Confirm -> #(display_help, effect.none())
-        snippet.Failed(_failure) -> {
-          panic as "put on some state"
-        }
+        snippet.Failed(_failure) -> #(display_help, effect.none())
         snippet.ReturnToCode -> #(
           display_help,
           dispatch_nothing(snippet.focus_on_buffer()),
@@ -177,16 +179,13 @@ pub fn update(state: State, message) {
       // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       io.debug("We need the sync effect")
-      let state =
-        State(
-          ..state,
-          source: snippet,
-          // cache: cache,
-          display_help: display_help,
-        )
+      let state = State(..state, source: snippet, display_help: display_help)
       #(state, effect.batch([snippet_effect]))
     }
     ShellMessage(message) -> {
+      let source = snippet.finish_editing(state.source)
+      let state = State(..state, source:)
+
       let #(shell, shell_effect) = shell.update(state.shell, message)
       let references =
         snippet.references(state.source)
@@ -408,32 +407,55 @@ fn render_user_input(raw, type_, message) {
   ])
 }
 
-pub fn render(state: State) {
-  let show = state.display_help
-  container(
-    render_menu_from_state(state)
-      |> list.map(fn(e) {
-        element.map(e, snippet.MessageFromMenu)
-        |> element.map(shell.CurrentMessage)
-        |> element.map(ShellMessage)
-      }),
-    [
-      render_pallet(state.shell.source)
-        |> element.map(shell.CurrentMessage)
-        |> element.map(ShellMessage),
-      h.div([a.class("absolute top-0 w-full bg-white")], [
-        help_menu_button(state),
-        fullscreen_menu_button(state),
-      ]),
-      h.div([a.class("h-full")], [
-        render_shell(state.shell)
-        |> element.map(ShellMessage),
-        // h.div([], [element.text("hello")]),
-      ]),
-    ],
-    show,
-  )
+fn hstack(class, children) {
+  h.div([a.class("flex h-full justify-center " <> class)], children)
 }
+
+pub fn render(state: State) {
+  hstack(" p-8 ", [
+    render_pallet(state.shell.source)
+      |> element.map(shell.CurrentMessage)
+      |> element.map(ShellMessage),
+    render_pallet(state.source)
+      |> element.map(SnippetMessage),
+    // TODO autofocus needs to depend on snippet status
+    h.div([a.class("max-w-2xl h-full w-full bg-white border-2 border-dashed")], [
+      snippet.render_just_projection(state.source, True)
+      |> element.map(SnippetMessage),
+    ]),
+    h.div([a.class("max-w-2xl h-full w-full bg-white border-2 border-dashed")], [
+      render_shell(state.shell)
+      |> element.map(ShellMessage),
+    ]),
+  ])
+}
+
+// pub fn render(state: State) {
+//   let show = state.display_help
+//   container(
+//     render_menu_from_state(state)
+//       |> list.map(fn(e) {
+//         element.map(e, snippet.MessageFromMenu)
+//         |> element.map(shell.CurrentMessage)
+//         |> element.map(ShellMessage)
+//       }),
+//     [
+//       render_pallet(state.shell.source)
+//         |> element.map(shell.CurrentMessage)
+//         |> element.map(ShellMessage),
+//       h.div([a.class("absolute top-0 w-full bg-white")], [
+//         help_menu_button(state),
+//         fullscreen_menu_button(state),
+//       ]),
+//       h.div([a.class("h-full")], [
+//         render_shell(state.shell)
+//         |> element.map(ShellMessage),
+//         // h.div([], [element.text("hello")]),
+//       ]),
+//     ],
+//     show,
+//   )
+// }
 
 fn render_shell(shell: shell.Shell) {
   h.div([a.class("h-full flex flex-col")], [

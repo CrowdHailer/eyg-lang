@@ -113,6 +113,13 @@ fn close_all_previous(shell: Shell) {
   Shell(..shell, previous: previous)
 }
 
+pub fn finish_editing(state) {
+  let Shell(source:, ..) = state
+  let snippet = snippet.finish_editing(source)
+  // let runner = runner.stop(runner)
+  Shell(..state, source:)
+}
+
 pub type Message {
   // The shell can be used in a variety of location where setting the input is desirable
   // On the editor page examples can be chosen to execute in the shell
