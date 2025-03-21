@@ -90,7 +90,7 @@ pub type State {
 
 fn effects() {
   [
-    #(netlify.l, #(netlify.lift(), netlify.reply(), netlify.blocking)),
+    #(netlify.l, #(#(netlify.lift(), netlify.reply()), netlify.preflight)),
     ..harness.effects()
   ]
 }

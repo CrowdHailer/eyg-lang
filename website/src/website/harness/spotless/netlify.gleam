@@ -3,7 +3,6 @@ import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/http
 import gleam/http/request
-import gleam/io
 import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result.{try}
@@ -53,30 +52,31 @@ pub const eyg_website = netlify.App(
   "https://eyg.run/auth/netlify",
 )
 
-pub fn blocking(lift) {
+fn cast(lift) {
   use method <- try(cast.field(
     "method",
     cast.as_varient(_, [#("GET", cast.as_unit(_, http.Get))]),
     lift,
   ))
-  io.debug(method)
   use path <- try(cast.field("path", cast.as_string, lift))
-  io.debug(path)
   use query <- try(cast.field("query", cast.as_list, lift))
-  io.debug(query)
   use headers <- try(cast.field("headers", cast.as_list, lift))
-  io.debug(headers)
   use body <- try(cast.field("body", cast.as_binary, lift))
-  io.debug(body)
+  Ok(#(method, path, query, headers, body))
+}
 
-  // use Nil <- result.map(cast.as_unit(lift, Nil))
+pub fn blocking(lift) {
+  use #(method, path, query, headers, body) <- try(cast(lift))
   // TODO real app
   Ok(promise.map(do(local, method, path, query, headers, body), result_to_eyg))
 }
 
-fn impl(app, lift) {
-  use p <- result.map(blocking(lift))
-  v.Promise(p)
+pub fn preflight(lift) {
+  use #(method, path, query, headers, body) <- try(cast(lift))
+  // TODO real app
+  Ok(fn() {
+    promise.map(do(local, method, path, query, headers, body), result_to_eyg)
+  })
 }
 
 pub fn do(app, method, path, query, headers, body) {
