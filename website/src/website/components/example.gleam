@@ -55,7 +55,7 @@ pub type Example {
     cache: cache.Cache,
     snippet: Snippet,
     effects: List(#(String, #(binding.Mono, binding.Mono))),
-    runner: Runner(Nil),
+    runner: runner.Expression(Nil),
   )
 }
 
@@ -71,7 +71,8 @@ pub fn init(source, cache, extrinsic) {
     e.from_annotated(source)
     |> e.open_all
     |> snippet.init()
-  let runner = runner.init(execute_snippet(snippet), cache, handlers)
+  let runner =
+    runner.init(execute_snippet(snippet), cache, handlers, expression.resume)
 
   Example(cache:, snippet:, effects:, runner:)
   |> do_analysis
@@ -95,7 +96,7 @@ pub fn update_cache(state, cache) {
 
 pub type Message {
   SnippetMessage(snippet.Message)
-  RunnerMessage(runner.Message(Nil))
+  RunnerMessage(runner.ExpressionMessage(Nil))
 }
 
 pub type Action {

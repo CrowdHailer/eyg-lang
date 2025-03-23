@@ -1,13 +1,12 @@
 import eyg/interpreter/break
-import eyg/interpreter/expression
 import eyg/interpreter/state as istate
 import gleam/javascript/promise
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import website/sync/cache
 
-pub type Return(m) =
-  Result(istate.Value(m), istate.Debug(m))
+pub type Return(r, m) =
+  Result(r, istate.Debug(m))
 
 pub type Thunk(m) =
   fn() -> promise.Promise(istate.Value(m))
@@ -18,19 +17,23 @@ pub type Handler(m) =
 pub type Effect(m) =
   #(String, #(istate.Value(m), istate.Value(m)))
 
-pub type Runner(m) {
+pub type Runner(r, m) {
   Runner(
     counter: Int,
     cache: cache.Cache,
     extrinsic: List(#(String, Handler(m))),
     occured: List(Effect(m)),
-    return: Return(m),
+    return: Return(r, m),
     awaiting: Option(Int),
     continue: Bool,
+    resume: fn(istate.Value(m), istate.Env(m), istate.Stack(m)) -> Return(r, m),
   )
 }
 
-pub fn init(initial, cache, extrinsic) {
+pub type Expression(m) =
+  Runner(istate.Value(m), m)
+
+pub fn init(initial, cache, extrinsic, resume) -> Runner(r, m) {
   Runner(
     counter: 0,
     cache: cache,
@@ -39,6 +42,7 @@ pub fn init(initial, cache, extrinsic) {
     return: initial,
     awaiting: None,
     continue: False,
+    resume:,
   )
 }
 
@@ -46,10 +50,13 @@ pub fn stop(state) {
   Runner(..state, continue: False)
 }
 
-pub type Message(m) {
+pub type ExpressionMessage(m) =
+  Message(istate.Value(m), m)
+
+pub type Message(r, m) {
   Start
   HandlerCompleted(reference: Int, reply: istate.Value(m))
-  Reset(return: Return(m))
+  Reset(return: Return(r, m))
   UpdateCache(cache.Cache)
 }
 
@@ -74,13 +81,13 @@ fn reset(state, return) {
 }
 
 fn handler_completed(state, ref, reply) {
-  let Runner(occured:, return:, awaiting:, ..) = state
+  let Runner(occured:, return:, awaiting:, resume:, ..) = state
   case awaiting {
     Some(r) if r == ref ->
       case return {
         Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
           let occured = [#(label, #(lift, reply)), ..occured]
-          let return = expression.resume(reply, env, k)
+          let return = resume(reply, env, k)
           let state = Runner(..state, occured:, return:, awaiting: None)
           do(state)
         }
@@ -95,9 +102,10 @@ fn do(state) {
   case awaiting {
     Some(_) -> #(state, Nothing)
     None -> {
-      let Runner(counter:, cache:, extrinsic:, return:, continue:, ..) = state
+      let Runner(counter:, cache:, extrinsic:, return:, continue:, resume:, ..) =
+        state
 
-      let return = cache.run(return, cache, expression.resume)
+      let return = cache.run(return, cache, resume)
       let state = Runner(..state, return:)
       case continue, return {
         True, Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
