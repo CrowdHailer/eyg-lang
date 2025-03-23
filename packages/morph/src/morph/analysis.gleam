@@ -78,17 +78,18 @@ pub fn with_references(context, references) {
 
 pub fn with_effects(context, effects) {
   let Context(bindings:, ..) = context
-  list.map_fold(effects, #(bindings, dict.new()), fn(acc, effect) {
-    let #(label, #(lift, lower)) = effect
+  let #(#(bindings, _), effects) =
+    list.map_fold(effects, #(bindings, dict.new()), fn(acc, effect) {
+      let #(label, #(lift, lower)) = effect
 
-    let acc = list.fold(t.vars(lift), acc, do_rebase_type)
-    let lift = t.substitute(lift, acc.1)
-    let acc = list.fold(t.vars(lower), acc, do_rebase_type)
-    let lower = t.substitute(lower, acc.1)
+      let acc = list.fold(t.vars(lift), acc, do_rebase_type)
+      let assert Ok(lift) = t.substitute(lift, acc.1)
+      let acc = list.fold(t.vars(lower), acc, do_rebase_type)
+      let assert Ok(lower) = t.substitute(lower, acc.1)
 
-    #(acc, #(label, #(lift, lower)))
-  })
-  Context(..context, effects: effects)
+      #(acc, #(label, #(lift, lower)))
+    })
+  Context(..context, bindings:, effects:)
 }
 
 fn do_rebase_type(acc, orig) {

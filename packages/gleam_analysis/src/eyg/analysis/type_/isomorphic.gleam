@@ -62,7 +62,7 @@ pub fn substitute(type_, substitutions) {
   case type_ {
     Var(x) ->
       case dict.get(substitutions, x) {
-        Ok(replacement) -> Ok(Var(replacement))
+        Ok(replacement) -> Ok(replacement)
         Error(Nil) -> Error(x)
       }
     Fun(from, eff, to) -> {
