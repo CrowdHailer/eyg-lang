@@ -119,8 +119,8 @@ fn dispatch_to_shell(promise) {
   })
 }
 
-fn dispatch_nothing(_promise) {
-  effect.none()
+fn dispatch_nothing(func) {
+  effect.from(fn(_dispatch) { func() })
 }
 
 pub fn update(state: State, message) {
@@ -150,18 +150,19 @@ pub fn update(state: State, message) {
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
-        snippet.NewCode -> #(display_help, effect.none())
+        snippet.NewCode -> #(
+          display_help,
+          dispatch_nothing(snippet.focus_on_buffer),
+        )
         snippet.Confirm -> #(display_help, effect.none())
-        snippet.Failed(_failure) -> {
-          panic as "put on some state"
-        }
+        snippet.Failed(_failure) -> #(display_help, effect.none())
         snippet.ReturnToCode -> #(
           display_help,
-          dispatch_nothing(snippet.focus_on_buffer()),
+          dispatch_nothing(snippet.focus_on_buffer),
         )
         snippet.FocusOnInput -> #(
           display_help,
-          dispatch_nothing(snippet.focus_on_input()),
+          dispatch_nothing(snippet.focus_on_input),
         )
         snippet.ToggleHelp -> #(!display_help, effect.none())
         snippet.MoveAbove -> #(display_help, effect.none())
@@ -206,8 +207,8 @@ pub fn update(state: State, message) {
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
           dispatch_to_shell(shell.read_from_clipboard())
-        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
-        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer)
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
       }
       #(
         state,
@@ -231,8 +232,8 @@ pub fn update(state: State, message) {
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
           dispatch_to_shell(shell.read_from_clipboard())
-        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
-        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer)
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
       }
       let state = State(..state, sync:, shell:)
       #(
