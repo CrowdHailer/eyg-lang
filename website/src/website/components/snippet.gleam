@@ -349,6 +349,7 @@ pub fn update(state, message) {
         "E" -> assign_above(state)
         "e" -> assign_to(state)
         "r" -> insert_record(state)
+        "R" -> insert_empty_record(state)
         "t" -> insert_tag(state)
         "y" -> copy(state)
         "Y" -> paste(state)
@@ -602,6 +603,14 @@ fn insert_record(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(value, hints), rebuild))
     }
+    Error(Nil) -> action_failed(state, "create record")
+  }
+}
+
+fn insert_empty_record(state) {
+  let Snippet(projection:, ..) = state
+  case action.make_empty_record(projection) {
+    Ok(projection) -> update_source_from_buffer(projection, state)
     Error(Nil) -> action_failed(state, "create record")
   }
 }
