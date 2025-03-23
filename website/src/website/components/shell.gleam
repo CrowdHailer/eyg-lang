@@ -1,5 +1,4 @@
 import eyg/interpreter/block
-import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/javascript/promise
@@ -272,39 +271,6 @@ pub fn read_from_clipboard() {
   promise.map(clipboard.read_text(), fn(r) {
     CurrentMessage(snippet.ClipboardReadCompleted(r))
   })
-}
-
-pub type Status {
-  Finished
-  WillRunEffect(label: String)
-  RunningEffect(label: String)
-  RequireRelease(package: String, release: Int, cid: String)
-  RequireReference(cid: String)
-  AwaitingRelease(package: String, release: Int, cid: String)
-  AwaitingReference(cid: String)
-  Failed
-}
-
-// Needs to join against effects and sync client
-// This double error handling from evaluated to 
-pub fn status(shell) {
-  let Shell(runner:, ..) = shell
-  case runner.awaiting, runner.continue, runner.return {
-    _, _, Ok(_) -> Finished
-    Some(_), _, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-      WillRunEffect(label)
-    _, True, Error(#(break.UnhandledEffect(label, _), _, _, _)) ->
-      RunningEffect(label)
-    _, False, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) ->
-      RequireRelease(p, r, c)
-    _, False, Error(#(break.UndefinedReference(c), _, _, _)) ->
-      RequireReference(c)
-    _, True, Error(#(break.UndefinedRelease(p, r, c), _, _, _)) ->
-      AwaitingRelease(p, r, c)
-    _, True, Error(#(break.UndefinedReference(c), _, _, _)) ->
-      AwaitingReference(c)
-    _, _, _ -> Failed
-  }
 }
 
 pub fn evaluate(editable, scope, cache) {

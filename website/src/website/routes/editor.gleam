@@ -29,6 +29,7 @@ import website/components/output
 import website/components/readonly
 import website/components/runner
 import website/components/shell
+import website/components/simple_debug
 import website/components/snippet
 import website/components/vertical_menu
 import website/harness/browser as harness
@@ -528,11 +529,8 @@ fn render_shell(shell: shell.Shell) {
         h.div([a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])], [
           snippet.render_just_projection(shell.source, True),
         ]),
-        case shell.status(shell) {
-          shell.Finished
-          | shell.RequireRelease(_, _, _)
-          | shell.RequireReference(_)
-          | shell.WillRunEffect(_) ->
+        case shell.runner {
+          runner.Runner(continue: False, ..) ->
             h.button(
               [
                 a.class(
@@ -542,9 +540,7 @@ fn render_shell(shell: shell.Shell) {
               ],
               [outline.play_circle()],
             )
-          shell.AwaitingReference(_)
-          | shell.AwaitingRelease(_, _, _)
-          | shell.RunningEffect(_) ->
+          runner.Runner(awaiting: Some(_), ..) ->
             h.span(
               [
                 a.class(
@@ -553,14 +549,25 @@ fn render_shell(shell: shell.Shell) {
               ],
               [outline.arrow_path()],
             )
-          shell.Failed ->
+          runner.Runner(return: Error(#(reason, _, _, _)), ..) ->
             h.span(
               [
                 a.class(
                   "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
                 ),
+                a.title(simple_debug.reason_to_string(reason)),
               ],
               [outline.exclamation_circle()],
+            )
+          _ ->
+            h.button(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                ),
+                event.on_click(snippet.UserPressedCommandKey("Enter")),
+              ],
+              [outline.play_circle()],
             )
         },
       ],
