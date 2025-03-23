@@ -46,7 +46,7 @@ import gleam/listx
 import gleam/option.{Some}
 import morph/analysis
 import morph/editable as e
-import website/components/runner.{type Runner}
+import website/components/runner
 import website/components/snippet.{type Snippet, Snippet}
 import website/sync/cache
 
@@ -132,13 +132,13 @@ pub fn update(state, message) {
         }
         snippet.Confirm -> {
           let Example(runner:, ..) = state
-
           let #(runner, action) = runner.update(runner, runner.Start)
           let state = Example(..state, runner:)
           let action = case action {
             runner.Nothing -> Nothing
             runner.RunExternalHandler(id, thunk) ->
               RunExternalHandler(id, thunk)
+            runner.Conclude(_) -> Nothing
           }
           #(state, action)
         }
@@ -159,6 +159,7 @@ pub fn update(state, message) {
       let action = case action {
         runner.Nothing -> Nothing
         runner.RunExternalHandler(id, thunk) -> RunExternalHandler(id, thunk)
+        runner.Conclude(_) -> Nothing
       }
       #(state, action)
     }

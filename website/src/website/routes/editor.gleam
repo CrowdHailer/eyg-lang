@@ -27,6 +27,7 @@ import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
+import website/components/runner
 import website/components/shell
 import website/components/snippet
 import website/components/vertical_menu
@@ -198,7 +199,7 @@ pub fn update(state: State, message) {
         shell.RunExternalHandler(ref, thunk) ->
           dispatch_to_shell(
             promise.map(thunk(), fn(reply) {
-              shell.ExternalHandlerCompleted(reply)
+              shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
             }),
           )
         shell.WriteToClipboard(text) ->
@@ -223,7 +224,7 @@ pub fn update(state: State, message) {
         shell.RunExternalHandler(ref, thunk) ->
           dispatch_to_shell(
             promise.map(thunk(), fn(reply) {
-              shell.ExternalHandlerCompleted(reply)
+              shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
             }),
           )
         shell.WriteToClipboard(text) ->

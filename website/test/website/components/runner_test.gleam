@@ -42,8 +42,6 @@ pub fn block_expression_test() {
   use message <- promise.await(runner.run_thunk(ref, thunk))
   let #(runner, action) = runner.update(runner, message)
 
-  action
-  |> should.equal(runner.Nothing)
   let #(value, env) =
     runner.return
     |> should.be_ok
@@ -54,5 +52,7 @@ pub fn block_expression_test() {
     #("y", v.String(value: "world")),
     #("x", v.String(value: "From Foo")),
   ])
+  action
+  |> should.equal(runner.Conclude(#(value, env)))
   promise.resolve(Nil)
 }

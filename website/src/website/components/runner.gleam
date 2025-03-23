@@ -8,6 +8,9 @@ import website/sync/cache
 pub type Return(r, m) =
   Result(r, istate.Debug(m))
 
+pub type Scope(m) =
+  List(#(String, istate.Value(m)))
+
 pub type Thunk(m) =
   fn() -> promise.Promise(istate.Value(m))
 
@@ -33,6 +36,9 @@ pub type Runner(r, m) {
 pub type Expression(m) =
   Runner(istate.Value(m), m)
 
+pub type Block(m) =
+  Runner(#(Option(istate.Value(m)), Scope(m)), m)
+
 pub fn init(initial, cache, extrinsic, resume) -> Runner(r, m) {
   Runner(
     counter: 0,
@@ -53,6 +59,9 @@ pub fn stop(state) {
 pub type ExpressionMessage(m) =
   Message(istate.Value(m), m)
 
+pub type BlockMessage(m) =
+  Message(#(Option(istate.Value(m)), Scope(m)), m)
+
 pub type Message(r, m) {
   Start
   HandlerCompleted(reference: Int, reply: istate.Value(m))
@@ -60,9 +69,10 @@ pub type Message(r, m) {
   UpdateCache(cache.Cache)
 }
 
-pub type Action(m) {
+pub type Action(r, m) {
   Nothing
   RunExternalHandler(Int, Thunk(m))
+  Conclude(r)
 }
 
 pub fn update(state, message) {
@@ -127,6 +137,10 @@ fn do(state) {
             _ -> #(state, Nothing)
           }
         }
+        True, Ok(return) -> #(
+          Runner(..state, continue: False),
+          Conclude(return),
+        )
         _, _ -> #(state, Nothing)
       }
     }
