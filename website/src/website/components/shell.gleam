@@ -93,6 +93,27 @@ fn close_all_previous(shell: Shell) {
   Shell(..shell, previous: previous)
 }
 
+// Would be good to test setting effects
+pub fn set_effects(state, effects) {
+  let Shell(cache:, runner:, ..) = state
+  let #(types, handlers) = listx.key_unzip(effects)
+  let #(runner, _) = runner.set_handlers(runner, handlers)
+
+  let context =
+    analysis.context()
+    |> analysis.with_effects(types)
+    |> update_context(cache)
+  Shell(..state, context:, runner:)
+  |> snippet_analyse
+}
+
+pub fn finish_editing(state) {
+  let Shell(source:, ..) = state
+  let source = snippet.finish_editing(source)
+  // let runner = runner.stop(runner)
+  Shell(..state, source:)
+}
+
 pub type Message {
   // The shell can be used in a variety of location where setting the input is desirable
   // On the editor page examples can be chosen to execute in the shell

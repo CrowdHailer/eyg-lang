@@ -1,12 +1,18 @@
+import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/block
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleroglero/outline
 import lustre
 import lustre/attribute as a
@@ -34,6 +40,7 @@ import website/components/snippet
 import website/components/vertical_menu
 import website/harness/browser as harness
 import website/routes/common
+import website/sync/cache
 import website/sync/client
 
 pub fn app(module, func) {
@@ -85,6 +92,7 @@ pub fn client() {
 pub type State {
   State(
     sync: client.Client,
+    // source could be renamed scratch and be of type pad or some such
     source: snippet.Snippet,
     shell: shell.Shell,
     display_help: Bool,
@@ -96,8 +104,76 @@ pub fn init(_) {
   let source = e.from_annotated(ir.vacant())
   let shell = shell.init(harness.effects(), client.cache)
   let snippet = snippet.init(source)
-  let state = State(client, snippet, shell, False)
+  let state =
+    State(client, snippet, shell, False)
+    |> analyse_scratch
   #(state, client.lustre_run(sync_task, SyncMessage))
+}
+
+fn analyse_scratch(state) {
+  let State(sync:, source:, shell:, ..) = state
+  let cache = sync.cache
+  let effects = []
+  let analysis =
+    analysis.do_analyse(
+      source.editable,
+      analysis.context()
+        |> analysis.with_references(cache.type_map(cache))
+        |> analysis.with_effects(effects)
+        |> analysis.with_index(cache.package_index(cache)),
+    )
+
+  let analysis.Analysis(bindings, tree, _) = analysis
+  let assert [#(_, #(reason, t, _eff, env)), ..] = tree
+  // let t = case reason {
+  //   Error(error.Todo) -> {
+  //     io.debug(env)
+  //     todo
+  //   }
+  //   _ -> t
+  // }
+  // let t = binding.resolve(t, bindings)
+  // io.debug(t)
+  // This type must have no free vars
+  let s = source.editable |> e.to_annotated([]) |> ir.clear_annotation()
+  let value = case block.execute(s, []) {
+    Ok(#(Some(v), _)) ->
+      // Ok(fn() { promise.resolve(v) })
+      Ok(v)
+    Ok(#(None, env)) ->
+      // Ok(fn() {
+      list.fold(env, dict.new(), fn(acc, entry) {
+        let #(var, value) = entry
+        dict.upsert(acc, var, option.unwrap(_, value))
+      })
+      |> v.Record
+      |> Ok
+    // |> promise.resolve
+    // })
+    Error(#(reason, _, _, _)) -> Error(reason)
+  }
+  let t = case value {
+    Ok(v) -> {
+      let #(t, b) = analysis.value_to_type(v, dict.new(), Nil)
+      binding.instantiate(t, 1, b).0
+    }
+    Error(reason) -> t.Var(1)
+  }
+
+  let shell_effects = [
+    #(
+      "Import",
+      #(#(t.unit, t), fn(_unit) {
+        value |> result.map(fn(v) { fn() { promise.resolve(v) } })
+      }),
+    ),
+    ..harness.effects()
+  ]
+
+  let shell = shell.set_effects(shell, shell_effects)
+
+  let source = snippet.Snippet(..source, analysis: Some(analysis))
+  State(..state, source:, shell:)
 }
 
 pub type Message {
@@ -145,10 +221,11 @@ pub fn update(state: State, message) {
         Nil
       }),
     )
-
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
-      let State(display_help: display_help, ..) = state
+      let shell = shell.finish_editing(state.shell)
+      let state = State(..state, shell:)
+      let State(display_help:, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
         snippet.NewCode -> #(
@@ -179,17 +256,16 @@ pub fn update(state: State, message) {
       }
       // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      io.debug("We need the sync effect")
+      // io.debug("We need the sync effect")
       let state =
-        State(
-          ..state,
-          source: snippet,
-          // cache: cache,
-          display_help: display_help,
-        )
+        State(..state, source: snippet, display_help: display_help)
+        |> analyse_scratch
       #(state, effect.batch([snippet_effect]))
     }
     ShellMessage(message) -> {
+      let source = snippet.finish_editing(state.source)
+      let state = State(..state, source:)
+
       let #(shell, shell_effect) = shell.update(state.shell, message)
       let references =
         snippet.references(state.source)
@@ -217,8 +293,9 @@ pub fn update(state: State, message) {
       )
     }
     SyncMessage(message) -> {
-      let State(sync:, shell:, ..) = state
+      let State(sync:, shell:, source:, ..) = state
       let #(sync, effect) = client.update(sync, message)
+      // let #(snippet)
       let #(shell, shell_effect) =
         shell.update(shell, shell.CacheUpdate(sync.cache))
       let shell_effect = case shell_effect {
@@ -411,32 +488,55 @@ fn render_user_input(raw, type_, message) {
   ])
 }
 
-pub fn render(state: State) {
-  let show = state.display_help
-  container(
-    render_menu_from_state(state)
-      |> list.map(fn(e) {
-        element.map(e, snippet.MessageFromMenu)
-        |> element.map(shell.CurrentMessage)
-        |> element.map(ShellMessage)
-      }),
-    [
-      render_pallet(state.shell.source)
-        |> element.map(shell.CurrentMessage)
-        |> element.map(ShellMessage),
-      h.div([a.class("absolute top-0 w-full bg-white")], [
-        help_menu_button(state),
-        fullscreen_menu_button(state),
-      ]),
-      h.div([a.class("h-full")], [
-        render_shell(state.shell)
-        |> element.map(ShellMessage),
-        // h.div([], [element.text("hello")]),
-      ]),
-    ],
-    show,
-  )
+fn hstack(class, children) {
+  h.div([a.class("flex h-full justify-center " <> class)], children)
 }
+
+pub fn render(state: State) {
+  hstack(" p-8 ", [
+    render_pallet(state.shell.source)
+      |> element.map(shell.CurrentMessage)
+      |> element.map(ShellMessage),
+    render_pallet(state.source)
+      |> element.map(SnippetMessage),
+    // TODO autofocus needs to depend on snippet status
+    h.div([a.class("max-w-2xl h-full w-full bg-white border-2 border-dashed")], [
+      snippet.render_just_projection(state.source, True)
+      |> element.map(SnippetMessage),
+    ]),
+    h.div([a.class("max-w-2xl h-full w-full bg-white border-2 border-dashed")], [
+      render_shell(state.shell)
+      |> element.map(ShellMessage),
+    ]),
+  ])
+}
+
+// pub fn render(state: State) {
+//   let show = state.display_help
+//   container(
+//     render_menu_from_state(state)
+//       |> list.map(fn(e) {
+//         element.map(e, snippet.MessageFromMenu)
+//         |> element.map(shell.CurrentMessage)
+//         |> element.map(ShellMessage)
+//       }),
+//     [
+//       render_pallet(state.shell.source)
+//         |> element.map(shell.CurrentMessage)
+//         |> element.map(ShellMessage),
+//       h.div([a.class("absolute top-0 w-full bg-white")], [
+//         help_menu_button(state),
+//         fullscreen_menu_button(state),
+//       ]),
+//       h.div([a.class("h-full")], [
+//         render_shell(state.shell)
+//         |> element.map(ShellMessage),
+//         // h.div([], [element.text("hello")]),
+//       ]),
+//     ],
+//     show,
+//   )
+// }
 
 fn render_shell(shell: shell.Shell) {
   h.div([a.class("h-full flex flex-col")], [

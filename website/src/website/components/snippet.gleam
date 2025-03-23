@@ -97,6 +97,9 @@ const code_area_styles = [
   #("margin-top", "auto"),
   #("margin-bottom", "auto"),
   #("height", "100%"),
+  #("display", "flex"),
+  #("flex-direction", "column"),
+  #("justify-content", "center"),
 ]
 
 pub fn footer_area(color, contents) {

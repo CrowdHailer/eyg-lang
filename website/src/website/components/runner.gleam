@@ -48,12 +48,16 @@ pub fn init(initial, cache, extrinsic, resume) -> Runner(r, m) {
     return: initial,
     awaiting: None,
     continue: False,
-    resume:,
+    resume: resume,
   )
 }
 
 pub fn stop(state) {
   Runner(..state, continue: False)
+}
+
+pub fn set_handlers(state, extrinsic) {
+  do(Runner(..state, extrinsic:))
 }
 
 pub type ExpressionMessage(m) =
