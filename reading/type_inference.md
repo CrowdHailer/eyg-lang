@@ -3,6 +3,9 @@
 A Hindley–Milner (HM) type system is a classical type system for the lambda calculus with parametric polymorphism.
 Several Algorithms are described for infering HM types. Algorithm W, M
 
+- https://github.com/tomprimozic/type-systems/blob/master/extensible_rows/test_infer.ml
+- https://github.com/wdamron/poly/blob/master/infer.go
+
 Various extensions exist, when considering extensions do they leave inference complete without annotations.
 - https://www.cs.princeton.edu/courses/archive/spring12/cos320/typing.pdf explaining typing
 - https://steshaw.org/hm/hindley-milner.pdf A good walkthrough, that helped explain to me the fix point
