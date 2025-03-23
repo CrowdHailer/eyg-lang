@@ -294,7 +294,8 @@ fn type_check(sync, source: ir.Node(List(Int)), value: Option(Value(Nil))) {
 
 fn do_check_against_state(b, refs, source, old) {
   let level = 1
-  let context = analysis.Context(b, [], [], refs, [])
+  let context =
+    analysis.context_with_bindings(b) |> analysis.with_references(refs)
   let #(tree, b) = infer.infer(source, t.Empty, refs, level, b)
 
   let #(inner, meta) = tree

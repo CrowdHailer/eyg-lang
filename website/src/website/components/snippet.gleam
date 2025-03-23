@@ -781,7 +781,7 @@ fn insert_release(state) {
   let Snippet(projection: proj, analysis:, ..) = state
 
   let index = case analysis {
-    Some(analysis.Analysis(context:, ..)) -> context.index
+    Some(analysis.Analysis(context:, ..)) -> analysis.index(context)
     None -> []
   }
 

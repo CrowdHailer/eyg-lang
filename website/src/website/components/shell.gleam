@@ -74,11 +74,9 @@ pub fn init(effects, cache) {
 }
 
 fn update_context(context, cache) {
-  analysis.Context(
-    ..context,
-    references: cache.type_map(cache),
-    index: cache.package_index(cache),
-  )
+  context
+  |> analysis.with_references(cache.type_map(cache))
+  |> analysis.with_index(cache.package_index(cache))
 }
 
 fn close_many_previous(shell_entries) {
@@ -241,8 +239,7 @@ fn finalize(shell, return) {
   let #(value, scope) = return
   let record = Executed(value, runner.occured, readonly.new(source.editable))
   let previous = [record, ..previous]
-  let #(bindings, tenv) = analysis.env_to_tenv(scope, Nil)
-  let context = analysis.Context(..context, bindings:, scope: tenv)
+  let context = analysis.within_environment(context, scope, Nil)
   Shell(..shell, context:, previous:, scope:)
   |> set_code(e.from_annotated(ir.vacant()))
 }

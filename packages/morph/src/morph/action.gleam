@@ -265,7 +265,7 @@ pub fn make_open_case(projection, analysis) {
 pub fn perform(source, analysis) {
   let #(focus, zoom) = source
   let hints = case analysis {
-    Some(analysis.Analysis(context:, ..)) -> context.effects
+    Some(analysis.Analysis(context:, ..)) -> analysis.effects(context)
     None -> []
   }
   case focus {

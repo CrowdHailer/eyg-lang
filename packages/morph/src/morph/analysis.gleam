@@ -19,7 +19,7 @@ pub type References =
 pub type Index =
   List(#(String, Int, String))
 
-pub type Context {
+pub opaque type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
@@ -27,6 +27,16 @@ pub type Context {
     references: References,
     index: Index,
   )
+}
+
+pub fn effects(context) {
+  let Context(effects:, ..) = context
+  effects
+}
+
+pub fn index(context) {
+  let Context(index:, ..) = context
+  index
 }
 
 pub type Analysis {
@@ -48,13 +58,18 @@ pub type Analysis {
   )
 }
 
+pub fn context_with_bindings(bindings) {
+  Context(bindings, [], [], dict.new(), [])
+}
+
 pub fn context() {
   Context(dict.new(), [], [], dict.new(), [])
 }
 
-pub fn within_environment(runtime_env, meta) {
-  let #(bindings, scope) = env_to_tenv(runtime_env, meta)
-  Context(bindings, scope, [], dict.new(), [])
+pub fn within_environment(context, runtime_env, meta) {
+  let Context(bindings:, ..) = context
+  let #(bindings, scope) = env_to_tenv(bindings, runtime_env, meta)
+  Context(..context, bindings:, scope:)
 }
 
 pub fn with_references(context, references) {
@@ -62,7 +77,32 @@ pub fn with_references(context, references) {
 }
 
 pub fn with_effects(context, effects) {
+  let Context(bindings:, ..) = context
+  list.map_fold(effects, #(bindings, dict.new()), fn(acc, effect) {
+    let #(label, #(lift, lower)) = effect
+
+    let acc = list.fold(t.vars(lift), acc, do_rebase_type)
+    let lift = t.substitute(lift, acc.1)
+    let acc = list.fold(t.vars(lower), acc, do_rebase_type)
+    let lower = t.substitute(lower, acc.1)
+
+    #(acc, #(label, #(lift, lower)))
+  })
   Context(..context, effects: effects)
+}
+
+fn do_rebase_type(acc, orig) {
+  let #(bindings, substitutions) = acc
+  let #(bindings, substitutions) = case dict.get(substitutions, orig) {
+    Ok(_) -> #(bindings, substitutions)
+    Error(Nil) -> {
+      let #(replacement, bindings) = binding.mono(1, bindings)
+      let substitutions = dict.insert(substitutions, orig, replacement)
+      #(bindings, substitutions)
+    }
+  }
+  let acc = #(bindings, substitutions)
+  #(bindings, substitutions)
 }
 
 pub fn with_index(context, index) {
@@ -151,9 +191,7 @@ pub fn value_to_type(value, bindings, meta: t) {
   }
 }
 
-pub fn env_to_tenv(scope, meta) {
-  let bindings = infer.new_state()
-
+pub fn env_to_tenv(bindings, scope, meta) {
   list.map_fold(scope, bindings, fn(bindings, pair) {
     let #(var, value) = pair
     let #(type_, bindings) = value_to_type(value, bindings, meta)
