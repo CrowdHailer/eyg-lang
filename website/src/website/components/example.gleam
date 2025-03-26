@@ -104,6 +104,7 @@ pub type Action {
   Failed(snippet.Failure)
   ReturnToCode
   FocusOnInput
+  ToggleHelp
   ReadFromClipboard
   WriteToClipboard(text: String)
   RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
@@ -145,7 +146,7 @@ pub fn update(state, message) {
         snippet.Failed(failure) -> #(state, Failed(failure))
         snippet.ReturnToCode -> #(state, ReturnToCode)
         snippet.FocusOnInput -> #(state, FocusOnInput)
-        snippet.ToggleHelp -> #(state, Nothing)
+        snippet.ToggleHelp -> #(state, ToggleHelp)
         snippet.MoveAbove -> #(state, Nothing)
         snippet.MoveBelow -> #(state, Nothing)
         snippet.ReadFromClipboard -> #(state, ReadFromClipboard)
