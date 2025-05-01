@@ -101,14 +101,14 @@ fn feature(title, description, last, item, reverse) {
       a.classes([#("flex-row-reverse", reverse)]),
     ],
     [
-      h.div([a.style([#("flex", "0 1 40%")])], [
+      h.div([a.style([#("width", "40%")])], [
         h.h2([a.class("text-4xl my-8 font-bold")], [element.text(title)]),
         ..list.map(description, fn(d) {
           h.div([a.class("my-2 text-lg")], [element.text(d)])
         })
         |> list.append([last])
       ]),
-      h.div([a.class(""), a.style([#("flex", "0 1 60%")])], item),
+      h.div([a.class(""), a.style([#("width", "60%")])], item),
     ],
   )
 }
