@@ -1319,6 +1319,142 @@
     }
   },
   {
+    "name": "binary from integers",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "ta"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "i",
+              "v": 10
+            },
+            "f": {
+              "0": "c"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "i",
+            "v": 1
+          },
+          "f": {
+            "0": "c"
+          }
+        }
+      },
+      "f": {
+        "0": "b",
+        "l": "binary_from_integers"
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": "AQo"
+        }
+      }
+    }
+  },
+  {
+    "name": "binary from integers, empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "ta"
+      },
+      "f": {
+        "0": "b",
+        "l": "binary_from_integers"
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "binary fold, empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "b",
+        "l": "int_add"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "x",
+            "v": {
+              "/": {
+                "bytes": "AQo"
+              }
+            }
+          },
+          "f": {
+            "0": "b",
+            "l": "binary_fold"
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 11
+    }
+  },
+  {
+    "name": "binary fold, empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "b",
+        "l": "int_add"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "x",
+            "v": {
+              "/": {
+                "bytes": ""
+              }
+            }
+          },
+          "f": {
+            "0": "b",
+            "l": "binary_fold"
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 0
+    }
+  },
+  {
     "name": "pop from empty list",
     "source": {
       "0": "a",
