@@ -167,8 +167,9 @@ pub fn top_content(projection) {
   let #(focus, zoom) = projection
   case focus {
     // create
-    p.Exp(exp) ->
-      case exp {
+    p.Exp(exp) -> {
+      // Piping case into another expression produces invalid JS on 1.10.0
+      let tmp = case exp {
         e.Variable(_) | e.Reference(_) | e.Release(_, _, _) -> [
           edit(),
           select_field(),
@@ -190,6 +191,7 @@ pub fn top_content(projection) {
         // match open match
         e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
       }
+      tmp
       |> list.append([assign()], _)
       |> list.append(case zoom {
         [p.ListItem(_, _, _), ..] | [p.CallArg(_, _, _), ..] -> [
@@ -200,6 +202,7 @@ pub fn top_content(projection) {
         _ -> []
       })
       |> list.append([collection(), more(), undo(), expand(), delete()])
+    }
 
     p.Assign(pattern, _, _, _, _) ->
       list.flatten([
