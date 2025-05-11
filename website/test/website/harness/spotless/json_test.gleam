@@ -135,6 +135,48 @@ pub fn json_test() {
         ),
       ),
     ]),
+    // These test check that exponents result in an error. Exponents should be supported
+    #("1.0e10", [
+      v.Tagged("Unexpected", v.Integer(101)),
+      v.Tagged("Unexpected", v.Integer(101)),
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.false()), #("integer", v.Integer(10))]),
+        ),
+      ),
+    ]),
+    #("-1.0E2", [
+      v.Tagged("Unexpected", v.Integer(69)),
+      v.Tagged("Unexpected", v.Integer(69)),
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.false()), #("integer", v.Integer(2))]),
+        ),
+      ),
+    ]),
+    #("1e10", [
+      v.Tagged("Unexpected", v.Integer(101)),
+      v.Tagged("Unexpected", v.Integer(101)),
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.false()), #("integer", v.Integer(10))]),
+        ),
+      ),
+    ]),
+    #("-1E2", [
+      v.Tagged("Unexpected", v.Integer(69)),
+      v.Tagged("Unexpected", v.Integer(69)),
+      v.Tagged(
+        "Integer",
+        v.Record(
+          dict.from_list([#("negative", v.false()), #("integer", v.Integer(2))]),
+        ),
+      ),
+    ]),
+    // #("1.0A10", [v.Tagged("True", v.unit())]),
     // list
     #("[]", [
       v.Tagged("LeftBracket", v.unit()),
