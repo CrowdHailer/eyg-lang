@@ -430,8 +430,14 @@ pub fn builtins() {
     #("string_to_binary", pure1(t.String, t.Binary)),
     #("string_from_binary", pure1(t.Binary, t.result(t.String, t.unit))),
     // This should be literals
-    // #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
-
+    #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
+    #("binary_fold", {
+      let acc = q(1)
+      // eff only thrown by reduce when last argument given
+      let eff = q(2)
+      let reducer = t.Fun(t.Integer, eff, t.Fun(acc, eff, acc))
+      pure2(t.Binary, acc, t.Fun(reducer, eff, acc))
+    }),
     // Don't optimise for object creation
     // #("uncons", {
     //   let el = q(0)
