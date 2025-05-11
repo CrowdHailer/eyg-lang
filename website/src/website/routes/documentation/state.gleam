@@ -118,7 +118,8 @@ const functions_example = e.Block(
         [e.Bind("f"), e.Bind("x")],
         e.Call(e.Variable("f"), [e.Call(e.Variable("f"), [e.Variable("x")])]),
       ),
-    ), #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
+    ),
+    #(e.Bind("inc2"), e.Call(e.Variable("twice"), [e.Variable("inc")])),
   ],
   e.Call(e.Variable("inc2"), [e.Integer(5)]),
   False,
@@ -157,14 +158,16 @@ const fix_example = e.Block(
                       True,
                     ),
                   ),
-                ), #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
+                ),
+                #("Error", e.Function([e.Bind("_")], e.Variable("total"))),
               ],
               None,
             ),
           ),
         ],
       ),
-    ), #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
+    ),
+    #(e.Bind("count"), e.Call(e.Variable("count"), [e.Integer(0)])),
   ],
   e.Call(e.Variable("count"), [e.List([e.Integer(5)], None)]),
   False,
@@ -204,6 +207,7 @@ const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\
 
 pub type State {
   State(
+    show_help: Bool,
     auth: auth_panel.State,
     cache: client.Client,
     active: Active,
@@ -264,7 +268,7 @@ pub fn init(_) {
   let examples = dict.from_list(examples)
   // let missing_cids = missing_refs(examples)
   let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
-  let state = State(auth, sync, Nothing, examples)
+  let state = State(False, auth, sync, Nothing, examples)
   #(
     state,
     effect.batch([
@@ -319,32 +323,40 @@ pub fn update(state: State, message) {
       }
       let example = get_example(state, identifier)
       let #(example, action) = example.update(example, message)
-      let #(failure, snippet_effect) = case action {
-        example.Nothing -> #(None, effect.none())
-        example.Failed(failure) -> #(Some(failure), effect.none())
+      let State(show_help:, ..) = state
+      let #(show_help, failure, snippet_effect) = case action {
+        example.Nothing -> #(show_help, None, effect.none())
+        example.Failed(failure) -> #(show_help, Some(failure), effect.none())
         example.ReturnToCode -> #(
+          show_help,
           None,
           dispatch_nothing(snippet.focus_on_buffer()),
         )
         example.FocusOnInput -> #(
+          show_help,
           None,
           dispatch_nothing(snippet.focus_on_input()),
         )
+        example.ToggleHelp -> #(!show_help, None, effect.none())
         example.ReadFromClipboard -> #(
+          show_help,
           None,
           dispatch_to_snippet(identifier, snippet.read_from_clipboard()),
         )
         example.WriteToClipboard(text) -> #(
+          show_help,
           None,
           dispatch_to_snippet(identifier, snippet.write_to_clipboard(text)),
         )
         example.RunExternalHandler(reference, thunk) -> #(
+          show_help,
           None,
           dispatch_to_runner(identifier, runner.run_thunk(reference, thunk)),
         )
       }
       let state = set_example(state, identifier, example)
-      let state = State(..state, active: Editing(identifier, failure))
+      let state =
+        State(..state, show_help:, active: Editing(identifier, failure))
       #(state, effect.batch([snippet_effect]))
     }
     SyncMessage(message) -> {
@@ -362,6 +374,7 @@ pub fn update(state: State, message) {
               dispatch_to_runner(key, runner.run_thunk(reference, thunk)),
               ..effects
             ]
+            runner.Conclude(_return) -> effects
           }
           #(effects, entries)
         })

@@ -46,7 +46,7 @@ import gleam/listx
 import gleam/option.{Some}
 import morph/analysis
 import morph/editable as e
-import website/components/runner.{type Runner}
+import website/components/runner
 import website/components/snippet.{type Snippet, Snippet}
 import website/sync/cache
 
@@ -55,7 +55,7 @@ pub type Example {
     cache: cache.Cache,
     snippet: Snippet,
     effects: List(#(String, #(binding.Mono, binding.Mono))),
-    runner: Runner(Nil),
+    runner: runner.Expression(Nil),
   )
 }
 
@@ -71,7 +71,8 @@ pub fn init(source, cache, extrinsic) {
     e.from_annotated(source)
     |> e.open_all
     |> snippet.init()
-  let runner = runner.init(execute_snippet(snippet), cache, handlers)
+  let runner =
+    runner.init(execute_snippet(snippet), cache, handlers, expression.resume)
 
   Example(cache:, snippet:, effects:, runner:)
   |> do_analysis
@@ -95,7 +96,7 @@ pub fn update_cache(state, cache) {
 
 pub type Message {
   SnippetMessage(snippet.Message)
-  RunnerMessage(runner.Message(Nil))
+  RunnerMessage(runner.ExpressionMessage(Nil))
 }
 
 pub type Action {
@@ -103,6 +104,7 @@ pub type Action {
   Failed(snippet.Failure)
   ReturnToCode
   FocusOnInput
+  ToggleHelp
   ReadFromClipboard
   WriteToClipboard(text: String)
   RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
@@ -131,20 +133,20 @@ pub fn update(state, message) {
         }
         snippet.Confirm -> {
           let Example(runner:, ..) = state
-
           let #(runner, action) = runner.update(runner, runner.Start)
           let state = Example(..state, runner:)
           let action = case action {
             runner.Nothing -> Nothing
             runner.RunExternalHandler(id, thunk) ->
               RunExternalHandler(id, thunk)
+            runner.Conclude(_) -> Nothing
           }
           #(state, action)
         }
         snippet.Failed(failure) -> #(state, Failed(failure))
         snippet.ReturnToCode -> #(state, ReturnToCode)
         snippet.FocusOnInput -> #(state, FocusOnInput)
-        snippet.ToggleHelp -> #(state, Nothing)
+        snippet.ToggleHelp -> #(state, ToggleHelp)
         snippet.MoveAbove -> #(state, Nothing)
         snippet.MoveBelow -> #(state, Nothing)
         snippet.ReadFromClipboard -> #(state, ReadFromClipboard)
@@ -158,6 +160,7 @@ pub fn update(state, message) {
       let action = case action {
         runner.Nothing -> Nothing
         runner.RunExternalHandler(id, thunk) -> RunExternalHandler(id, thunk)
+        runner.Conclude(_) -> Nothing
       }
       #(state, action)
     }

@@ -36,6 +36,7 @@ morph = {path= "../packages/morph"}
 dag_json = ">= 1.1.0 and < 2.0.0"
 gleam_javascript = ">= 1.0.0 and < 2.0.0"
 plinth = ">= 0.5.8 and < 1.0.0"
+website = {path= "../website"}
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

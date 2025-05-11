@@ -64,6 +64,7 @@ import plinth/browser/window
 import plinth/javascript/console
 import website/components/autocomplete
 import website/components/snippet/menu
+import website/components/vertical_menu
 
 pub const neo_blue_3 = "#87ceeb"
 
@@ -72,20 +73,30 @@ pub const neo_green_3 = "#90ee90"
 pub const neo_orange_4 = "#ff6b6b"
 
 const embed_area_styles = [
-  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
+  #("box-shadow", "6px 6px black"),
+  #("border-style", "solid"),
   #(
     "font-family",
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-  ), #("background-color", "rgb(255, 255, 255)"),
-  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
-  #("flex-direction", "column"), #("display", "flex"),
-  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
+  ),
+  #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"),
+  #("border-width", "1px"),
+  #("flex-direction", "column"),
+  #("display", "flex"),
+  #("margin-bottom", "1.5rem"),
+  #("margin-top", ".5rem"),
 ]
 
 const code_area_styles = [
-  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
-  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
-  #("margin-top", "auto"), #("margin-bottom", "auto"), #("height", "100%"),
+  #("outline", "2px solid transparent"),
+  #("outline-offset", "2px"),
+  #("padding", ".5rem"),
+  #("white-space", "nowrap"),
+  #("overflow", "auto"),
+  #("margin-top", "auto"),
+  #("margin-bottom", "auto"),
+  #("height", "100%"),
 ]
 
 pub fn footer_area(color, contents) {
@@ -282,7 +293,7 @@ fn update_source(proj, state) {
     history: history,
     analysis:,
     // evaluated: evaluate(editable, state.scope, state.cache),
-    // run: NotRunning,
+  // run: NotRunning,
   )
 }
 
@@ -338,6 +349,7 @@ pub fn update(state, message) {
         "E" -> assign_above(state)
         "e" -> assign_to(state)
         "r" -> insert_record(state)
+        "R" -> insert_empty_record(state)
         "t" -> insert_tag(state)
         "y" -> copy(state)
         "Y" -> paste(state)
@@ -591,6 +603,14 @@ fn insert_record(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(value, hints), rebuild))
     }
+    Error(Nil) -> action_failed(state, "create record")
+  }
+}
+
+fn insert_empty_record(state) {
+  let Snippet(projection:, ..) = state
+  case action.make_empty_record(projection) {
+    Ok(projection) -> update_source_from_buffer(projection, state)
     Error(Nil) -> action_failed(state, "create record")
   }
 }
@@ -903,7 +923,7 @@ fn undo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-          // run: NotRunning,
+        // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -929,7 +949,7 @@ fn redo(state) {
           history: history,
           analysis:,
           // evaluated: evaluate(editable, state.scope, state.cache),
-          // run: NotRunning,
+        // run: NotRunning,
         )
       #(state, Nothing)
     }
@@ -1290,7 +1310,9 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
                   ],
                   fn(entry) {
                     let #(i, text, k) = entry
-                    button(k, [icon(i, text, display_help)])
+                    vertical_menu.button(k, [
+                      vertical_menu.icon(i, text, display_help),
+                    ])
                   },
                 ),
               )
@@ -1308,7 +1330,9 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
                 ],
                 list.map(top, fn(entry) {
                   let #(i, text, k) = entry
-                  button(k, [icon(i, text, display_help)])
+                  vertical_menu.button(k, [
+                    vertical_menu.icon(i, text, display_help),
+                  ])
                 }),
               )
               |> element.map(MessageFromMenu)
@@ -1381,62 +1405,7 @@ fn render_column(items, display_help) {
     ],
     list.map(items, fn(entry) {
       let #(i, text, k) = entry
-      button(k, [icon(i, text, display_help)])
+      vertical_menu.button(k, [vertical_menu.icon(i, text, display_help)])
     }),
-  )
-}
-
-pub fn button(action, content) {
-  h.button(
-    [
-      a.class("morph button"),
-      a.style([
-        // #("background", "none"),
-        #("outline", "none"),
-        #("border", "none"),
-        #("padding-left", ".5rem"),
-        #("padding-right", ".5rem"),
-        #("padding-top", ".25rem"),
-        #("padding-bottom", ".25rem"),
-        #("cursor", "pointer"),
-        // TODO hover color
-      ]),
-      event.on_click(action),
-    ],
-    content,
-  )
-}
-
-pub fn icon(image, text, display_help) {
-  h.span(
-    [
-      a.style([
-        #("align-items", "center"),
-        #("border-radius", ".25rem"),
-        #("display", "flex"),
-      ]),
-    ],
-    [
-      h.span(
-        [
-          a.style([
-            #("font-size", "1.25rem"),
-            #("line-height", "1.75rem"),
-            #("text-align", "center"),
-            #("width", "1.5rem"),
-            #("height", "1.75rem"),
-            #("display", "inline-block"),
-          ]),
-        ],
-        [image],
-      ),
-      case display_help {
-        True ->
-          h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
-            element.text(text),
-          ])
-        False -> element.none()
-      },
-    ],
   )
 }

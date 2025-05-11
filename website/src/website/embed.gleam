@@ -42,6 +42,7 @@ pub fn run() {
       element.AfterEnd,
       "<div id=\"" <> id <> "\"></div>",
     )
+    |> echo
     let json = string.replace(json, "&quot;", "\"")
     let assert Ok(source) = dag_json.from_block(bit_array.from_string(json))
     // ORIGIN is not used when pulling from supabase

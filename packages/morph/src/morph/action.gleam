@@ -102,6 +102,13 @@ pub fn make_record(projection, analysis) {
   }
 }
 
+pub fn make_empty_record(projection) {
+  case projection {
+    #(p.Exp(_), zoom) -> Ok(#(p.Exp(e.Record([], None)), zoom))
+    _ -> Error(Nil)
+  }
+}
+
 pub fn overwrite_record(projection, analysis) {
   case projection {
     #(p.Exp(exp), zoom) -> {

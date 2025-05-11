@@ -387,7 +387,7 @@ fn content() {
         [],
       ],
       "loading, editing and saving larger programs is easy.",
-      Pending,
+      InProgress,
     ),
     Feature(
       "sign-package-release",

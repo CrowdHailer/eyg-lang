@@ -5,7 +5,6 @@ import eyg/analysis/type_/binding/debug
 import eyg/interpreter/value as v
 import eyg/runtime/break as old_break
 import eyg/runtime/value as old_value
-import eygir/tree
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -14,6 +13,7 @@ import lustre/attribute.{class, classes, id}
 import lustre/element.{text}
 import lustre/element/html.{div, p, pre, span, textarea}
 import lustre/event.{on_click, on_input}
+import website/components/tree
 
 pub fn render(s: state.State) {
   div([class("vstack wrap")], [

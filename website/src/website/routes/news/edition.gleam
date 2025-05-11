@@ -258,6 +258,7 @@ pub fn block(container) {
           ),
         ],
       )
+    jot.RawBlock(_content) -> panic as "not supported"
   }
 }
 

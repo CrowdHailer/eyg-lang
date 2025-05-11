@@ -5,10 +5,15 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/event
+import morph/editable as e
 import mysig/asset
 import mysig/html
 import website/components
+import website/components/example
 import website/components/example/view
+import website/components/snippet
+import website/components/tree
 import website/routes/common
 import website/routes/documentation/state
 
@@ -157,6 +162,7 @@ fn render(state) {
               "Closure serialization",
             ]),
             section_content("Editor features", ["Copy paste", "Next vacant"]),
+            section_content("Advanced", ["Show IR"]),
           ]),
         ],
       ),
@@ -490,6 +496,15 @@ fn render(state) {
           ],
           None,
         ),
+        chapter(
+          "13",
+          "Show IR",
+          [
+            p("The intermediate representation (IR) is a stable interface."),
+            p("Press '?' in any example to toggle showing the IR"),
+          ],
+          None,
+        ),
         h.div([a.style([#("height", "30vh")])], []),
         components.footer(),
       ]),
@@ -498,14 +513,19 @@ fn render(state) {
 }
 
 fn example(state: state.State, identifier) {
-  // let example =
-  state.get_example(state, identifier)
-  |> view.render
-  // let failure = case state.active {
-  //   state.Editing(key, failure) if identifier == key -> failure
-  //   _ -> None
-  // }
-  // snippet.render_embedded_with_top_menu(example.snippet, failure)
-  // |> element.map(example.SnippetMessage)
-  |> element.map(state.ExampleMessage(identifier, _))
+  let example = state.get_example(state, identifier)
+  element.fragment([
+    example
+      |> view.render
+      |> element.map(state.ExampleMessage(identifier, _)),
+    case state.show_help {
+      True ->
+        h.pre(
+          [a.class("leading-none p-2 bg-gray-200")],
+          tree.lines(example.snippet.editable |> e.to_annotated([]))
+            |> list.map(fn(line) { element.text(line <> "\n") }),
+        )
+      False -> element.none()
+    },
+  ])
 }

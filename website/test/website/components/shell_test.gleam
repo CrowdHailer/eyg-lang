@@ -10,6 +10,7 @@ import gleam/string
 import gleeunit/should
 import morph/editable as e
 import morph/input
+import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
@@ -99,8 +100,8 @@ fn has_action(state, expected) {
 fn run_effect(state, sync) {
   let #(#(shell, action), i) = state
   case action {
-    shell.RunExternalHandler(value, _blocking) -> {
-      let message = shell.ExternalHandlerCompleted(sync(value))
+    shell.RunExternalHandler(ref, _blocking) -> {
+      let message = shell.RunnerMessage(runner.HandlerCompleted(ref, sync(Nil)))
       #(shell.update(shell, message), i + 1)
     }
     got -> {

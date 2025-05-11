@@ -30,7 +30,7 @@ pub type Reload(meta) {
     cache: cache.Cache,
     snippet: Snippet,
     // derived values
-    return: runner.Return(Nil),
+    return: runner.Return(state.Value(Nil), Nil),
     // A value indicates if the app has ever run, 
     // No value only occurs when the editor was set up with an invalid empty program.
     // Values are parameterised to Nil because the fragments in the cache have Nil metadata

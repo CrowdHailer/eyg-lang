@@ -1,27 +1,3 @@
-## Development Environment
-
-Everything is started in Docker containers using docker compose.
-
-1.  `docker-compose run --workdir /opt/app/eyg editor watchexec --exts gleam -- gleam build`
-2.  Run a terminal for the editor image, cd in to the editor directory and run npm run dev.
-    This also starts a server, need port 5000 mapped
-    `docker-compose run -p 5000:5000 editor_frontend npm run dev`
-3.  run tests in eyg folder with `./bin/test` VERY slow with mounted volume on mac
-
-
-## Slate
-
-1. `docker-compose build editor`
-2. `docker-compose run -p 8080:8080 editor` Need to ensure built first
-  - run with bash and restart for quick dev
-  - `nodemon ./server.js`
-3. `flyctl deploy` to push
-
-Notes:
-
-- network mode host is not supported on mac.
-- volume mapping on mac is very slow.
-
 ## Descisions
 
 

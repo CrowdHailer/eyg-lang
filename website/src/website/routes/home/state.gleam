@@ -197,6 +197,7 @@ pub fn update(state: State, message) {
               None,
               dispatch_nothing(snippet.focus_on_input()),
             )
+            example.ToggleHelp -> #(None, effect.none())
             example.ReadFromClipboard -> #(
               None,
               dispatch_to_snippet(id, snippet.read_from_clipboard()),
@@ -269,6 +270,7 @@ pub fn update(state: State, message) {
                     dispatch_to_runner(key, runner.run_thunk(ref, thunk))
                   [effect, ..effects]
                 }
+                runner.Conclude(_return) -> effects
               }
               #(entries, effects)
             }

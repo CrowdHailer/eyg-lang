@@ -29,7 +29,9 @@ import website/components/output
 import website/components/readonly
 import website/components/runner
 import website/components/shell
+import website/components/simple_debug
 import website/components/snippet
+import website/components/vertical_menu
 import website/harness/browser as harness
 import website/harness/spotless/netlify
 import website/routes/common
@@ -110,10 +112,7 @@ pub type Message {
   ToggleHelp
   ToggleFullscreen
   SnippetMessage(snippet.Message)
-  // --- these are all shell messages
   ShellMessage(shell.Message)
-  PreviousMessage(readonly.Message, Int)
-  // --- end
   SyncMessage(client.Message)
 }
 
@@ -123,20 +122,14 @@ fn dispatch_to_snippet(promise) {
   })
 }
 
-fn dispatch_to_previous(promise, i) {
-  effect.from(fn(d) {
-    promisex.aside(promise, fn(message) { d(PreviousMessage(message, i)) })
-  })
-}
-
 fn dispatch_to_shell(promise) {
   effect.from(fn(d) {
     promisex.aside(promise, fn(message) { d(ShellMessage(message)) })
   })
 }
 
-fn dispatch_nothing(_promise) {
-  effect.none()
+fn dispatch_nothing(func) {
+  effect.from(fn(_dispatch) { func() })
 }
 
 pub fn update(state: State, message) {
@@ -166,19 +159,19 @@ pub fn update(state: State, message) {
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
-        snippet.NewCode -> #(display_help, effect.none())
-
+        snippet.NewCode -> #(
+          display_help,
+          dispatch_nothing(snippet.focus_on_buffer),
+        )
         snippet.Confirm -> #(display_help, effect.none())
-        snippet.Failed(_failure) -> {
-          panic as "put on some state"
-        }
+        snippet.Failed(_failure) -> #(display_help, effect.none())
         snippet.ReturnToCode -> #(
           display_help,
-          dispatch_nothing(snippet.focus_on_buffer()),
+          dispatch_nothing(snippet.focus_on_buffer),
         )
         snippet.FocusOnInput -> #(
           display_help,
-          dispatch_nothing(snippet.focus_on_input()),
+          dispatch_nothing(snippet.focus_on_input),
         )
         snippet.ToggleHelp -> #(!display_help, effect.none())
         snippet.MoveAbove -> #(display_help, effect.none())
@@ -216,29 +209,20 @@ pub fn update(state: State, message) {
         shell.RunExternalHandler(ref, thunk) ->
           dispatch_to_shell(
             promise.map(thunk(), fn(reply) {
-              shell.ExternalHandlerCompleted(reply)
+              shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
             }),
           )
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
           dispatch_to_shell(shell.read_from_clipboard())
-        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
-        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer)
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
       }
       #(
         state,
         effect.batch([shell_effect, client.lustre_run(sync_task, SyncMessage)]),
       )
-    }
-    PreviousMessage(m, i) -> {
-      let shell = state.shell
-      let #(shell, action) = shell.message_from_previous_code(shell, m, i)
-      let effect = case action {
-        None -> effect.none()
-        Some(a) -> dispatch_to_previous(a, i)
-      }
-      #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
       let State(sync:, shell:, ..) = state
@@ -250,15 +234,15 @@ pub fn update(state: State, message) {
         shell.RunExternalHandler(ref, thunk) ->
           dispatch_to_shell(
             promise.map(thunk(), fn(reply) {
-              shell.ExternalHandlerCompleted(reply)
+              shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
             }),
           )
         shell.WriteToClipboard(text) ->
           dispatch_to_shell(shell.write_to_clipboard(text))
         shell.ReadFromClipboard ->
           dispatch_to_shell(shell.read_from_clipboard())
-        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
-        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer)
+        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
       }
       let state = State(..state, sync:, shell:)
       #(
@@ -452,157 +436,160 @@ pub fn render(state: State) {
         help_menu_button(state),
         fullscreen_menu_button(state),
       ]),
-      h.div(
-        [
-          a.class("expand vstack flex-grow pt-10"),
-          a.style([#("min-height", "0")]),
-        ],
-        case list.length(state.shell.previous) {
-          x if x < 4 -> [
-            h.div([a.class("px-2 text-gray-700 cover")], [
-              h.h2([a.class("texl-lg font-bold")], [element.text("The shell")]),
-              // h.p([], [element.text("Run and test your code here. ")]),
-            // h.button([a.class("underline"), event.on_click(ToggleHelp)], [
-            //   case state.display_help {
-            //     True -> element.text("Hide help.")
-            //     False -> element.text("Show help.")
-            //   },
-            // ]),
-            ]),
-            h.div([a.class("px-2 text-gray-700 cover")], [
-              h.p([], [element.text("examples:")]),
-              h.ul(
-                [a.class("list-inside list-disc")],
-                list.map(examples.examples(), fn(e) {
-                  let #(source, message) = e
-                  h.li([], [
-                    h.button(
-                      [
-                        event.on_click(
-                          ShellMessage(shell.ParentSetSource(source)),
-                        ),
-                      ],
-                      [element.text(message)],
-                    ),
-                  ])
-                }),
-              ),
-            ]),
-          ]
-          _ -> []
-        },
-      ),
-      h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
-        let count = list.length(state.shell.previous) - 1
-        list.index_map(list.reverse(state.shell.previous), fn(p, i) {
-          let i = count - i
-          case p {
-            shell.Executed(value, effects, readonly) ->
-              h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
-                h.div([a.class("relative pr-8")], [
-                  h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
-                    readonly.render(readonly)
-                    |> element.map(PreviousMessage(_, i)),
-                  ]),
-                  h.button(
-                    [
-                      a.class("absolute top-0 right-0 w-6"),
-                      event.on_click(ShellMessage(shell.UserClickedPrevious(1))),
-                    ],
-                    [outline.arrow_path()],
-                  ),
-                ]),
-                case effects {
-                  [] -> element.none()
-                  _ ->
-                    h.div([a.class("text-blue-700")], [
-                      h.span([a.class("font-bold")], [element.text("effects ")]),
-                      ..list.map(effects, fn(eff) {
-                        let #(label, _) = eff
-                        h.span([], [element.text(label), element.text(" ")])
-                        // h.div([a.class("flex gap-1")], [
-                        //   output.render(eff.1.0),
-                        //   output.render(eff.1.1),
-                        // ])
-                      })
-                    ])
-                },
-                case value {
-                  Some(value) ->
-                    h.div([a.class(" max-h-60 overflow-auto")], [
-                      // would need to be flex to show inline
-                      // h.span([a.class("font-bold")], [element.text("> ")]),
-                      output.render(value),
-                    ])
-                  None -> element.none()
-                },
-              ])
-          }
-        })
-      }),
-      render_errors(state.shell.failure, state.shell.source),
-      h.div(
-        [
-          a.class("cover border-t border-black font-mono bg-white grid"),
-          a.style([
-            #("min-height", "5rem"),
-            #("grid-template-columns", "minmax(0px, 1fr) max-content"),
-          ]),
-        ],
-        [
-          h.div(
-            [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
-            [snippet.render_just_projection(state.shell.source, True)],
-          ),
-          case shell.status(state.shell) {
-            shell.Finished
-            | shell.RequireRelease(_, _, _)
-            | shell.RequireReference(_)
-            | shell.WillRunEffect(_) ->
-              h.button(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-                  ),
-                  event.on_click(snippet.UserPressedCommandKey("Enter")),
-                ],
-                [outline.play_circle()],
-              )
-            shell.AwaitingReference(_)
-            | shell.AwaitingRelease(_, _, _)
-            | shell.RunningEffect(_) ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
-                  ),
-                ],
-                [outline.arrow_path()],
-              )
-            shell.Failed ->
-              h.span(
-                [
-                  a.class(
-                    "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
-                  ),
-                ],
-                [outline.exclamation_circle()],
-              )
-          },
-        ],
-      )
-        |> element.map(shell.CurrentMessage)
+      h.div([a.class("h-full")], [
+        render_shell(state.shell)
         |> element.map(ShellMessage),
+        // h.div([], [element.text("hello")]),
+      ]),
     ],
     show,
   )
 }
 
+fn render_shell(shell: shell.Shell) {
+  h.div([a.class("h-full flex flex-col")], [
+    h.div(
+      [
+        a.class("expand vstack flex-grow pt-10"),
+        a.style([#("min-height", "0")]),
+      ],
+      case list.length(shell.previous) {
+        x if x < 4 -> [
+          h.div([a.class("px-2 text-gray-700 cover")], [
+            h.h2([a.class("texl-lg font-bold")], [element.text("The shell")]),
+          ]),
+          h.div([a.class("px-2 text-gray-700 cover")], [
+            h.p([], [element.text("examples:")]),
+            h.ul(
+              [a.class("list-inside list-disc")],
+              list.map(examples.examples(), fn(e) {
+                let #(source, message) = e
+                h.li([], [
+                  h.button([event.on_click(shell.ParentSetSource(source))], [
+                    element.text(message),
+                  ]),
+                ])
+              }),
+            ),
+          ]),
+        ]
+        _ -> []
+      },
+    ),
+    h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
+      let count = list.length(shell.previous) - 1
+      list.index_map(list.reverse(shell.previous), fn(p, i) {
+        let i = count - i
+        case p {
+          shell.Executed(value, effects, readonly) ->
+            h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
+              h.div([a.class("relative pr-8")], [
+                h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
+                  readonly.render(readonly)
+                  |> element.map(shell.PreviousMessage(i, _)),
+                ]),
+                h.button(
+                  [
+                    a.class("absolute top-0 right-0 w-6"),
+                    event.on_click(shell.UserClickedPrevious(1)),
+                  ],
+                  [outline.arrow_path()],
+                ),
+              ]),
+              case effects {
+                [] -> element.none()
+                _ ->
+                  h.div([a.class("text-blue-700")], [
+                    h.span([a.class("font-bold")], [element.text("effects ")]),
+                    ..list.map(effects, fn(eff) {
+                      let #(label, _) = eff
+                      h.span([], [element.text(label), element.text(" ")])
+                      // h.div([a.class("flex gap-1")], [
+                      //   output.render(eff.1.0),
+                      //   output.render(eff.1.1),
+                      // ])
+                    })
+                  ])
+              },
+              case value {
+                Some(value) ->
+                  h.div([a.class(" max-h-60 overflow-auto")], [
+                    // would need to be flex to show inline
+                    // h.span([a.class("font-bold")], [element.text("> ")]),
+                    output.render(value),
+                  ])
+                None -> element.none()
+              },
+            ])
+        }
+      })
+    }),
+    render_errors(shell.failure, shell.source),
+    h.div(
+      [
+        a.class("cover border-t border-black font-mono bg-white grid"),
+        a.style([
+          #("min-height", "5rem"),
+          #("grid-template-columns", "minmax(0px, 1fr) max-content"),
+        ]),
+      ],
+      [
+        h.div([a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])], [
+          snippet.render_just_projection(shell.source, True),
+        ]),
+        case shell.runner {
+          runner.Runner(continue: False, ..) ->
+            h.button(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                ),
+                event.on_click(snippet.UserPressedCommandKey("Enter")),
+              ],
+              [outline.play_circle()],
+            )
+          runner.Runner(awaiting: Some(_), ..) ->
+            h.span(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+                ),
+              ],
+              [outline.arrow_path()],
+            )
+          runner.Runner(return: Error(#(reason, _, _, _)), ..) ->
+            h.span(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+                ),
+                a.title(simple_debug.reason_to_string(reason)),
+              ],
+              [outline.exclamation_circle()],
+            )
+          _ ->
+            h.button(
+              [
+                a.class(
+                  "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                ),
+                event.on_click(snippet.UserPressedCommandKey("Enter")),
+              ],
+              [outline.play_circle()],
+            )
+        },
+      ],
+    )
+      |> element.map(shell.CurrentMessage),
+  ])
+}
+
 pub fn render_menu(status, projection, submenu, display_help) {
   let #(top, subcontent) = snippet.menu_content(status, projection, submenu)
   case subcontent {
-    None -> one_col_menu(display_help, top)
-    Some(#(key, more)) -> two_col_menu(display_help, top, key, more)
+    None -> vertical_menu.one_col_menu(display_help, top)
+    Some(#(key, more)) ->
+      vertical_menu.two_col_menu(display_help, top, key, more)
   }
 }
 
@@ -618,7 +605,7 @@ fn help_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
     [
-      snippet.icon(
+      vertical_menu.icon(
         outline.question_mark_circle(),
         "hide help",
         state.display_help,
@@ -630,78 +617,8 @@ fn help_menu_button(state: State) {
 fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-    [snippet.icon(outline.tv(), "fullscreen", state.display_help)],
+    [vertical_menu.icon(outline.tv(), "fullscreen", state.display_help)],
   )
-}
-
-// fn file_menu_button(state: State) {
-//   h.button(
-//     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-//     [snippet.icon(outline.tv(), "fullscreen", state.display_help)],
-//   )
-// }
-
-fn one_col_menu(display_help, options) {
-  [
-    // help_menu_button(state),
-    // same as grid below
-    h.div(
-      [
-        a.class("grid overflow-y-auto"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
-      ],
-      [
-        h.div(
-          [a.class("flex flex-col justify-end text-gray-200 py-2")],
-          list.map(options, fn(entry) {
-            let #(i, text, k) = entry
-            snippet.button(k, [snippet.icon(i, text, display_help)])
-          }),
-        ),
-      ],
-    ),
-  ]
-}
-
-fn two_col_menu(display_help, top, active, sub) {
-  [
-    h.div(
-      [
-        a.class("grid overflow-y-auto overflow-x-hidden"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
-      ],
-      [
-        h.div(
-          [a.class("flex flex-col justify-end text-gray-200 py-2")],
-          list.map(top, fn(entry) {
-            let #(i, text, k) = entry
-            h.button(
-              [
-                a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
-                a.classes([#("bg-yellow-600", text == active)]),
-                event.on_click(k),
-              ],
-              [snippet.icon(i, text, False)],
-            )
-          }),
-        ),
-        h.div(
-          [
-            a.class(
-              "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
-            ),
-          ],
-          list.map(sub, fn(entry) {
-            let #(i, text, k) = entry
-            h.button(
-              [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-              [snippet.icon(i, text, display_help)],
-            )
-          }),
-        ),
-      ],
-    ),
-  ]
 }
 
 fn render_errors(failure, snippet: snippet.Snippet) {
@@ -742,10 +659,10 @@ fn render_errors(failure, snippet: snippet.Snippet) {
             _, _ ->
               h.div(
                 [
-                  event.on_click(ShellMessage(
+                  event.on_click(
                     snippet.UserClickedPath(path)
                     |> shell.CurrentMessage,
-                  )),
+                  ),
                 ],
                 [element.text(debug.reason(reason))],
               )
