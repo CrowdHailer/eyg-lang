@@ -49,7 +49,7 @@ References are encoded as Content IDentifiers (CIDs).
 // apply(function, argument)
 {"0": "a", "f": expression, "a": expression}
 // let(label, value, then)
-{"0": "a", "l": label, "v": expression, "t": expression}
+{"0": "l", "l": label, "v": expression, "t": expression}
 // b already taken when adding binary
 // binary(value)
 {"0": "x", "v": bytes}
