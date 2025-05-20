@@ -6,9 +6,9 @@ import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
 import midas/browser
-import midas/sdk/netlify
-import midas/sdk/netlify/schema
 import midas/task
+import netlify
+import netlify/schema
 import snag
 import website/harness/spotless/netlify/site
 import website/harness/spotless/proxy
@@ -39,8 +39,9 @@ pub fn blocking(app, lift) {
 pub fn do(app) {
   let task = {
     use token <- task.do(netlify.authenticate(app))
-    let site = schema.site_setup
-    netlify.create_site(token, site, None)
+    // let site = schema.site_setup
+    // netlify.create_site(token, site, None)
+    todo as "not implemented"
   }
   let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
   browser.run(task)

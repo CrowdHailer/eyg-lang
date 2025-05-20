@@ -12,7 +12,6 @@ import website/components/example/view
 import website/components/reload
 import website/config
 import website/harness/spotless.{Config}
-import website/harness/spotless/netlify
 import website/routes/common
 import website/routes/home/state
 
@@ -21,8 +20,7 @@ import website/routes/home/state
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
   use ssr <- asset.do(view())
-  let config =
-    Config(dnsimple_local: True, netlify: netlify.local, twitter_local: True)
+  let config = Config(dnsimple_local: True, twitter_local: True)
   let #(state, _eff) = state.init(#(config, auth_panel.in_memory_store()))
 
   layout([

@@ -1,5 +1,3 @@
-import midas/sdk/netlify
-import website/harness/spotless/dnsimple/list_domains as dnsimple_list_domains
 import website/harness/spotless/gmail/list_messages as gmail_list_messages
 import website/harness/spotless/gmail/send as gmail_send
 import website/harness/spotless/google
@@ -9,23 +7,21 @@ import website/harness/spotless/netlify/deploy_site as netlify_deploy_site
 import website/harness/spotless/netlify/list_sites as netlify_list_sites
 import website/harness/spotless/twitter
 import website/harness/spotless/twitter/tweet
-import website/harness/spotless/vimeo
-import website/harness/spotless/vimeo/my_videos as vimeo_my_videos
 
 pub type Config {
-  Config(dnsimple_local: Bool, netlify: netlify.App, twitter_local: Bool)
+  Config(dnsimple_local: Bool, twitter_local: Bool)
 }
 
 pub fn effects(config: Config) {
   [
-    #(
-      dnsimple_list_domains.l,
-      #(
-        dnsimple_list_domains.lift(),
-        dnsimple_list_domains.reply(),
-        dnsimple_list_domains.blocking(config.dnsimple_local, _),
-      ),
-    ),
+    // #(
+    //   dnsimple_list_domains.l,
+    //   #(
+    //     dnsimple_list_domains.lift(),
+    //     dnsimple_list_domains.reply(),
+    //     dnsimple_list_domains.blocking(config.dnsimple_local, _),
+    //   ),
+    // ),
     #(google.l, #(google.lift, google.reply, google.blocking(google.local, _))),
     #(
       gmail_send.l,
@@ -50,13 +46,13 @@ pub fn effects(config: Config) {
         gmail_list_messages.blocking(google.local, _),
       ),
     ),
-    #(
-      vimeo_my_videos.l,
-      #(vimeo_my_videos.lift, vimeo_my_videos.reply(), vimeo_my_videos.blocking(
-        vimeo.local,
-        _,
-      )),
-    ),
+    // #(
+    //   vimeo_my_videos.l,
+    //   #(vimeo_my_videos.lift, vimeo_my_videos.reply(), vimeo_my_videos.blocking(
+    //     vimeo.local,
+    //     _,
+    //   )),
+    // ),
     // #(
     //   netlify_list_sites.l,
     //   #(

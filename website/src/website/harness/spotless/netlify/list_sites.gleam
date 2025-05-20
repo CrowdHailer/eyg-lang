@@ -6,8 +6,8 @@ import gleam/list
 import gleam/option.{None}
 import gleam/result
 import midas/browser
-import midas/sdk/netlify
 import midas/task
+import netlify
 import snag
 import website/harness/spotless/netlify/site
 
@@ -42,8 +42,9 @@ pub fn do(app) {
 }
 
 fn result_to_eyg(result) {
-  case result {
-    Ok(videos) -> v.ok(v.LinkedList(list.map(videos, site.to_eyg)))
-    Error(reason) -> v.error(v.String(snag.line_print(reason)))
-  }
+  // case result {
+  //   Ok(videos) -> v.ok(v.LinkedList(list.map(videos, site.to_eyg)))
+  //   Error(reason) -> v.error(v.String(snag.line_print(reason)))
+  // }
+  todo as "handle nested error"
 }

@@ -14,8 +14,8 @@ import gleam/result
 import gleam/string
 import justin
 import midas/browser
-import midas/sdk/netlify
 import midas/task
+import netlify
 import oas
 import snag
 import website/harness/spotless/proxy

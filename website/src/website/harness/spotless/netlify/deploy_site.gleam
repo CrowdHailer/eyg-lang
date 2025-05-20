@@ -6,8 +6,8 @@ import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
 import midas/browser
-import midas/sdk/netlify
 import midas/task
+import netlify
 import snag
 import website/harness/spotless/proxy
 

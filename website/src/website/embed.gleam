@@ -17,10 +17,6 @@ import plinth/browser/element
 import plinth/javascript/console
 import website/components/snippet
 import website/harness/browser as harness
-import website/harness/spotless/netlify
-import website/harness/spotless/netlify/deploy_site as netlify_deploy_site
-import website/harness/spotless/twitter
-import website/harness/spotless/twitter/tweet
 import website/sync/cache
 
 pub fn run() {

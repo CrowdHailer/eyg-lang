@@ -7,11 +7,11 @@ import gleam/result
 import gleam/string
 import lustre/element
 import midas/node
-import midas/sdk/netlify
 import midas/task as t
 import mysig/build
 import mysig/dev
 import mysig/route.{Route}
+import netlify
 import plinth/node/process
 import simplifile
 import snag
