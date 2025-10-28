@@ -1,10 +1,6 @@
-// import gleam/dynamic
-
-// import gleam/dynamicx
 import gleam/io
 import gleam/list
-
-// import gleam/listx
+import gleam/string
 
 pub type Node(m) =
   #(Expression(m), m)
@@ -481,7 +477,7 @@ pub fn do_gather_snippets(node, comments, assigns, acc) {
       do_gather_snippets(then, comments, assigns, acc)
     }
     tail, _ -> {
-      io.debug(tail)
+      io.println(string.inspect(tail))
       [#(comments, assigns), ..acc]
     }
   }

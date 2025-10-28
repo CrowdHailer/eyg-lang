@@ -44,7 +44,7 @@ pub fn ir_suite_test() {
     case calculated == expected {
       True -> Nil
       False -> {
-        cid.from_tree(source) |> io.debug
+        cid.from_tree(source) |> promise.map(io.println)
         panic as { "test failed for " <> name }
       }
     }

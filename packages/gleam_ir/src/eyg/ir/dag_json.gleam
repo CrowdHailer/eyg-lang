@@ -1,9 +1,6 @@
 import dag_json as codec
 import eyg/ir/tree as ir
-import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/list
-import gleam/result
 import multiformats/cid
 
 fn label_decoder(for, meta) {
@@ -92,16 +89,6 @@ pub fn from_block(data) {
     Ok(json) -> decode(json)
     Error(reason) -> Error([decode.DecodeError("valid dag-json", reason, [])])
   }
-}
-
-pub fn decode_dynamic_error(json) {
-  decode(json)
-  |> result.map_error(fn(errors) {
-    list.map(errors, fn(error) {
-      let decode.DecodeError(expected, found, path) = error
-      dynamic.DecodeError(expected, found, path)
-    })
-  })
 }
 
 fn node(name, attributes) {
