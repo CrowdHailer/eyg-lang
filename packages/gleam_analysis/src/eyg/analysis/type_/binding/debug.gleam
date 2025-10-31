@@ -127,7 +127,7 @@ fn collect_effect(eff, acc) {
     t.Var(i) -> [string.append("..", int.to_string(i)), ..acc]
     t.Empty -> acc
     _ -> {
-      io.debug("unexpected effect")
+      io.println("unexpected effect")
       acc
     }
   }

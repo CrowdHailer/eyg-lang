@@ -91,7 +91,7 @@ pub fn to_fat_line(exp) {
 }
 
 fn indent(inner) {
-  h.div([a.style([#("padding-left", "2ch")])], inner)
+  h.div([a.styles([#("padding-left", "2ch")])], inner)
 }
 
 pub fn to_fat_lines(lines) {

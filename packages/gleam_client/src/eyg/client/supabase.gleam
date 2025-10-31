@@ -1,48 +1,46 @@
-import dag_json as dag_json_lib
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/dynamic/decode
 import gleam/http/request
 import gleam/http/response
+import gleam/json
 import gleam/list
 import gleam/result
 import gleam/string
 import midas/task as t
 import snag
 import supa/client
-import website/sync/cache
 
 pub const client = client.Client(
   "wrdiolbafudgmcgvqhnb.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndyZGlvbGJhZnVkZ21jZ3ZxaG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM5MzI3NDgsImV4cCI6MjA0OTUwODc0OH0.1NiYvSdqzwekOrHAIlaoD0B6ncI5F1RK8zX6kcTdIJ0",
 )
 
-fn base() {
+fn base(client) {
+  let client.Client(host:, key:) = client
   request.new()
-  |> request.set_host(client.host)
-  |> request.prepend_header("apikey", client.key)
+  |> request.set_host(host)
+  |> request.prepend_header("apikey", key)
   // Authorization header needed for auth endpoint
-  |> request.prepend_header("Authorization", "Bearer " <> client.key)
+  |> request.prepend_header("Authorization", "Bearer " <> key)
   |> request.set_body(<<>>)
 }
 
 fn decode(response: response.Response(_), decoder) {
   case response.status {
     200 ->
-      case dag_json_lib.decode(response.body) {
-        Ok(dyn) ->
-          decode.run(dyn, decoder)
-          |> result.map_error(fn(reason) { snag.new(string.inspect(reason)) })
+      case json.parse_bits(response.body, decoder) {
+        Ok(dyn) -> Ok(dyn)
         Error(reason) -> snag.error(string.inspect(reason))
       }
     _ -> panic
   }
 }
 
-pub fn get_fragments() {
+pub fn get_fragments(client) {
   let request =
-    base()
+    base(client)
     |> request.set_path("/rest/v1/fragments")
     |> request.set_query([#("select", "*")])
   use response <- t.do(t.fetch(request))
@@ -50,18 +48,26 @@ pub fn get_fragments() {
   t.done(data)
 }
 
-pub fn fetch_fragment(cid) {
-  let request =
-    base()
-    |> request.set_path("/rest/v1/fragments")
-    |> request.set_query([#("select", "*"), #("hash", "eq." <> cid)])
+pub fn fetch_fragment(client, cid) {
+  let request = fetch_fragment_request(client, cid)
   use response <- t.do(t.fetch(request))
-  use data <- t.try(decode(response, decode.list(fragment_decoder())))
+  use data <- t.try(fetch_fragment_response(response))
+  t.done(data)
+}
+
+pub fn fetch_fragment_request(client, cid) {
+  base(client)
+  |> request.set_path("/rest/v1/fragments")
+  |> request.set_query([#("select", "*"), #("hash", "eq." <> cid)])
+}
+
+pub fn fetch_fragment_response(response) {
+  use data <- result.try(decode(response, decode.list(fragment_decoder())))
   case data {
-    [Fragment(hash: h, code:, ..) as f] if h == cid ->
+    [Fragment(code:, ..)] ->
       // Ideally I'd download bytes but we trust supabase
-      t.done(dag_json.to_block(code))
-    _ -> t.abort(snag.new("no hash with cid"))
+      Ok(code)
+    _ -> Error(snag.new("no hash with cid"))
   }
 }
 
@@ -76,14 +82,21 @@ fn fragment_decoder() {
   decode.success(Fragment(hash, created_at, code))
 }
 
-pub fn get_releases() {
-  let request =
-    base()
-    |> request.set_path("/rest/v1/releases")
-    |> request.set_query([#("select", "*")])
+pub fn get_releases(client) {
+  let request = get_registrations_request(client)
   use response <- t.do(t.fetch(request))
-  use data <- t.try(decode(response, decode.list(release_decoder())))
+  use data <- t.try(get_releases_response(response))
   t.done(data)
+}
+
+pub fn get_releases_request(client) {
+  base(client)
+  |> request.set_path("/rest/v1/releases")
+  |> request.set_query([#("select", "*")])
+}
+
+pub fn get_releases_response(response) {
+  decode(response, decode.list(release_decoder()))
 }
 
 fn release_decoder() {
@@ -91,17 +104,25 @@ fn release_decoder() {
   use version <- decode.field("version", decode.int)
   use created_at <- decode.field("created_at", decode.string)
   use hash <- decode.field("hash", decode.string)
-  decode.success(cache.Release(package_id, version, created_at, hash))
+  decode.success(Release(package_id, version, created_at, hash))
 }
 
-pub fn get_registrations() {
-  let request =
-    base()
-    |> request.set_path("/rest/v1/registrations")
-    |> request.set_query([#("select", "*")])
+pub fn get_registrations(client) {
+  let request = get_registrations_request(client)
+
   use response <- t.do(t.fetch(request))
-  use data <- t.try(decode(response, decode.list(registration_decoder())))
+  use data <- t.try(get_registrations_response(response))
   t.done(data)
+}
+
+pub fn get_registrations_request(client) {
+  base(client)
+  |> request.set_path("/rest/v1/registrations")
+  |> request.set_query([#("select", "*")])
+}
+
+pub fn get_registrations_response(response) {
+  decode(response, decode.list(registration_decoder()))
 }
 
 pub type Registration {
@@ -116,8 +137,8 @@ fn registration_decoder() {
   decode.success(Registration(id, created_at, name, package_id))
 }
 
-pub fn fetch_index() {
-  use registrations <- t.do(get_registrations())
+pub fn fetch_index(client) {
+  use registrations <- t.do(get_registrations(client))
   let registrations =
     dict.from_list(
       list.map(registrations, fn(registration) {
@@ -125,7 +146,7 @@ pub fn fetch_index() {
       }),
     )
 
-  use releases <- t.do(get_releases())
+  use releases <- t.do(get_releases(client))
   let releases =
     list.group(releases, fn(release) { release.package_id })
     |> dict.map_values(fn(_, releases) {
@@ -133,5 +154,16 @@ pub fn fetch_index() {
       |> dict.from_list
     })
 
-  t.done(cache.Index(registrations, releases))
+  t.done(Index(registrations, releases))
+}
+
+pub type Release {
+  Release(package_id: String, version: Int, created_at: String, hash: String)
+}
+
+pub type Index {
+  Index(
+    registry: Dict(String, String),
+    packages: Dict(String, Dict(Int, Release)),
+  )
 }

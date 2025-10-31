@@ -1,10 +1,12 @@
 import dag_json
 import eyg/ir/cid
 import eyg/ir/dag_json as codec
+import eyg/ir/promise
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/io
-import gleam/javascript/promise
+import gleam/javascript/promise as ogpromise
+import gleam/json
 import gleam/list
 import gleeunit/should
 import simplifile
@@ -30,9 +32,7 @@ pub fn ir_suite_test() {
   let tests =
     simplifile.read_bits("../../spec/ir_suite.json")
     |> should.be_ok
-    |> dag_json.decode()
-    |> should.be_ok
-    |> decode.run(suite_decoder())
+    |> json.parse_bits(suite_decoder())
     |> should.be_ok
 
   list.map(tests, fn(fixture) {
@@ -40,11 +40,35 @@ pub fn ir_suite_test() {
     let source =
       codec.decode(raw)
       |> should.be_ok
-    use calculated <- promise.map(cid.from_tree(source))
+    let assert Ok(calculated) = cid.from_tree(source)
     case calculated == expected {
       True -> Nil
       False -> {
-        cid.from_tree(source) |> promise.map(io.println)
+        io.println(calculated)
+        panic as { "test failed for " <> name }
+      }
+    }
+  })
+}
+
+pub fn ir_async_suite_test() -> ogpromise.Promise(List(Nil)) {
+  let tests =
+    simplifile.read_bits("../../spec/ir_suite.json")
+    |> should.be_ok
+    |> json.parse_bits(suite_decoder())
+    |> should.be_ok
+
+  list.map(tests, fn(fixture) {
+    let Fixture(name, raw, expected) = fixture
+    let source =
+      codec.decode(raw)
+      |> should.be_ok
+    use calculated <- promise.map(cid.from_tree_async(source))
+    let assert Ok(calculated) = calculated
+    case calculated == expected {
+      True -> Nil
+      False -> {
+        io.println(calculated)
         panic as { "test failed for " <> name }
       }
     }

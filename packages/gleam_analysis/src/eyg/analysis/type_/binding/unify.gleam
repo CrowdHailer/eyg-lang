@@ -165,7 +165,7 @@ fn rewrite_row(required, type_, level, bindings, check) {
           case check {
             // catch infinite loop
             t.Var(j) if i == j -> {
-              io.debug("same tails")
+              io.println("same tails")
               Error(error.SameTail(t.Var(i), t.Var(j)))
             }
             _ -> {
@@ -206,7 +206,7 @@ fn rewrite_effect(required, type_, level, bindings, check: t.Type(_)) {
           case check {
             // catch infinite loop
             t.Var(j) if i == j -> {
-              io.debug("same effect tails")
+              io.println("same effect tails")
               Error(error.TypeMismatch(t.Var(i), t.Var(j)))
             }
             _ -> {

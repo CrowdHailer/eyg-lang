@@ -202,7 +202,7 @@ fn env_at(analysis, path) {
   case list.key_find(inferred, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
-      io.debug(#("didn't find env", path))
+      echo #("didn't find env", path)
       // let Context(bindings, tenv, ..) = root_env
       // tenv
       []
@@ -214,13 +214,13 @@ pub fn do_type_at(analysis, projection: #(_, _)) {
   let Analysis(bindings:, inferred:, ..) = analysis
   let path = projection.path(projection)
   // tests to remove this
-  // io.debug(path)
-  // io.debug(inferred |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) }))
+  // echopath
+  // echoinferred |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) })
   // TODO a shared info at would be a useful utility to ensure path reversing done correctly
   case list.key_find(inferred, list.reverse(path)) {
     Ok(#(_result, type_, _eff, _env)) -> Ok(binding.resolve(type_, bindings))
     Error(Nil) -> {
-      io.debug(#("didn't find type", path))
+      echo #("didn't find type", path)
       Error(Nil)
     }
   }

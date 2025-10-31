@@ -97,7 +97,7 @@ pub fn from_annotated(node) {
       gather_cons(rest, [from_annotated(value)])
     ir.Tail -> List([], None)
     ir.Cons -> {
-      io.debug("bare cons")
+      io.println("bare cons")
       panic
     }
 
@@ -105,14 +105,14 @@ pub fn from_annotated(node) {
       gather_extends(rest, [#(l, from_annotated(value))])
     ir.Empty -> Record([], None)
     ir.Extend(_) -> {
-      io.debug("bare extend")
+      io.println("bare extend")
       panic
     }
 
     ir.Apply(#(ir.Apply(#(ir.Overwrite(l), _), value), _), rest) ->
       gather_overwrite(rest, [#(l, from_annotated(value))])
     ir.Overwrite(_) -> {
-      io.debug("bare overwrite")
+      io.println("bare overwrite")
       panic
     }
 
@@ -135,11 +135,11 @@ pub fn from_annotated(node) {
       Function([Bind("$")], Case(Variable("$"), matches, otherwise))
     }
     ir.Case(_) -> {
-      io.debug("bare case")
+      io.println("bare case")
       Variable("CASE!!")
     }
     ir.NoCases -> {
-      io.debug("bare nocases")
+      io.println("bare nocases")
       Variable("NOCASE!!")
     }
 

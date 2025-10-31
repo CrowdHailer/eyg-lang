@@ -4,7 +4,7 @@ import morph/lustre/frame
 
 pub fn focus() {
   [
-    a.style([
+    a.styles([
       #("padding", ".25rem"),
       #("background-color", "rgb(167, 243, 208)"),
       #("border-radius", ".25rem"),
@@ -14,7 +14,7 @@ pub fn focus() {
 }
 
 pub fn error() {
-  [a.style([#("text-decoration", "underline red wavy")])]
+  [a.styles([#("text-decoration", "underline red wavy")])]
 }
 
 pub fn frame(frame, attributes) {

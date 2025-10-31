@@ -3,6 +3,7 @@ import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import gleam/result.{try}
+import gleam/string
 import morph/editable as e
 import morph/projection as p
 
@@ -624,7 +625,7 @@ pub fn move_right(zip) {
       #(p.Exp(value), zoom)
     }
     _ -> {
-      io.debug(#("cant move right", zip))
+      io.println(string.inspect(#("cant move right", zip)))
       zip
     }
   }
@@ -715,7 +716,7 @@ pub fn move_left(zip) {
       rest,
     )
     _ -> {
-      io.debug(#("cant move left", zip))
+      echo #("cant move left", zip)
       zip
     }
   }
@@ -741,7 +742,7 @@ pub fn decrease(zip) {
       zoom,
     )
     _ -> {
-      io.debug(zip)
+      echo zip
       panic as "decrease"
     }
   }

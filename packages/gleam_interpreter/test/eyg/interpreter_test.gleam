@@ -6,7 +6,7 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json as codec
 import eyg/ir/tree as ir
 import gleam/dynamic/decode
-import gleam/io
+import gleam/json
 import gleam/list
 import gleam/string
 import gleeunit/should
@@ -32,7 +32,7 @@ fn value_decoder() {
   use <- decode.recursive
   decode.one_of(
     {
-      use bytes <- decode.field("binary", decode.bit_array)
+      use bytes <- decode.field("binary", dag_json.decode_bytes())
       decode.success(v.Binary(bytes))
     },
     [
@@ -161,7 +161,7 @@ fn check_evaluated(name, got, expected) {
       panic as { name <> " failed because " <> string.inspect(reason) }
     }
     _, _ -> {
-      let _ = io.debug(got)
+      let _ = echo got
       panic as { name <> " failed" }
     }
   }
@@ -174,9 +174,7 @@ pub fn evaluation_suite_test() {
     |> list.map(fn(file) {
       simplifile.read_bits(dir <> file)
       |> should.be_ok
-      |> dag_json.decode()
-      |> should.be_ok
-      |> decode.run(suite_decoder())
+      |> json.parse_bits(suite_decoder())
       |> should.be_ok
     })
     |> list.flatten
@@ -193,8 +191,8 @@ pub fn evaluation_suite_test() {
           -> r.resume(reply, env, k)
           _ ->
             panic as {
-              "did not raise correct effect" <> string.inspect(return)
-            }
+                "did not raise correct effect" <> string.inspect(return)
+              }
         }
       })
     check_evaluated(name, final, expected)

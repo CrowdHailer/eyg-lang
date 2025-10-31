@@ -17,10 +17,10 @@ pub fn render_number(value) {
 }
 
 pub fn styled_input(value, type_, class, styles) {
-  h.form([event.on_submit(Submit)], [
+  h.form([event.on_submit(fn(_) { Submit })], [
     h.input([
       a.class(class),
-      a.style(styles),
+      a.styles(styles),
       a.value(value),
       a.type_(type_),
       a.attribute("autofocus", "true"),

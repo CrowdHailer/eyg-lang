@@ -1,7 +1,8 @@
 import dag_json as codec
 import eyg/ir/tree as ir
 import gleam/dynamic/decode
-import multiformats/cid
+import gleam/json
+import multiformats/cid/v1
 
 fn label_decoder(for, meta) {
   use label <- decode.field("l", decode.string)
@@ -9,15 +10,6 @@ fn label_decoder(for, meta) {
 }
 
 const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
-
-fn cid_decoder() {
-  decode.new_primitive_decoder("CID", fn(raw) {
-    case cid.decode(raw) {
-      Ok(cid) -> Ok(cid.to_string(cid))
-      Error(Nil) -> Error(vacant_cid)
-    }
-  })
-}
 
 pub fn decoder(meta) {
   use switch <- decode.field("0", decode.string)
@@ -40,7 +32,7 @@ pub fn decoder(meta) {
       decode.success(#(ir.Let(label, value, then), meta))
     }
     "x" -> {
-      use bytes <- decode.field("v", decode.bit_array)
+      use bytes <- decode.field("v", codec.decode_bytes())
       decode.success(#(ir.Binary(bytes), meta))
     }
     "i" -> {
@@ -65,13 +57,15 @@ pub fn decoder(meta) {
     "h" -> label_decoder(ir.Handle, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
-      use cid <- decode.field("l", cid_decoder())
+      use cid <- decode.field("l", codec.decode_cid())
+      let assert Ok(cid) = v1.to_string(cid)
       decode.success(#(ir.Reference(cid), meta))
     }
     "@" -> {
       use package <- decode.field("p", decode.string)
       use release <- decode.field("r", decode.int)
-      use cid <- decode.field("l", cid_decoder())
+      use cid <- decode.field("l", codec.decode_cid())
+      let assert Ok(cid) = v1.to_string(cid)
       decode.success(#(ir.Release(package, release, cid), meta))
     }
     _ -> {
@@ -85,10 +79,7 @@ pub fn decode(json) {
 }
 
 pub fn from_block(data) {
-  case codec.decode(data) {
-    Ok(json) -> decode(json)
-    Error(reason) -> Error([decode.DecodeError("valid dag-json", reason, [])])
-  }
+  json.parse_bits(data, decoder(Nil))
 }
 
 fn node(name, attributes) {

@@ -59,17 +59,17 @@ pub fn render(picker) {
 fn do_render(picker, filter, suggestions, index) {
   h.form(
     [
-      a.style([
+      a.styles([
         #(
           "font-family",
           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
         ),
       ]),
-      event.on_submit(on_submit(picker)),
+      event.on_submit(fn(_) { on_submit(picker) }),
     ],
     [
       h.input([
-        a.style([
+        a.styles([
           #("line-height", "inherit"),
           #("color", "inherit"),
           #("font-family", "inherit"),
@@ -95,7 +95,7 @@ fn do_render(picker, filter, suggestions, index) {
         event.on_input(on_input(_, picker)),
       ]),
       h.hr([
-        a.style([
+        a.styles([
           #("border-color", "rgb(55, 65, 81)"),
           #("margin-top", ".25rem"),
           #("margin-bottom", ".25rem"),
@@ -109,7 +109,7 @@ fn do_render(picker, filter, suggestions, index) {
         let #(name, detail) = line
         h.div(
           [
-            a.style([
+            a.styles([
               #("padding-top", ".25rem"),
               #("padding-bottom", ".25rem"),
               #("padding-left", ".75rem"),
@@ -126,11 +126,11 @@ fn do_render(picker, filter, suggestions, index) {
             event.on_click(Decided(name)),
           ],
           [
-            h.span([a.style([#("font-weight", "700")])], [text(name)]),
-            h.span([a.style([#("flex-grow", "1")])], [text(": ")]),
+            h.span([a.styles([#("font-weight", "700")])], [text(name)]),
+            h.span([a.styles([#("flex-grow", "1")])], [text(": ")]),
             h.span(
               [
-                a.style([
+                a.styles([
                   #("padding-left", ".5rem"),
                   #("overflow", "hidden"),
                   #("text-overflow", "ellipsis"),
