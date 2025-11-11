@@ -3,9 +3,63 @@ import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/list
 import gleam/set
+
+// None of context is tested
+pub type Context {
+  Context(
+    env: List(#(String, binding.Poly)),
+    eff: binding.Mono,
+    refs: Dict(String, binding.Poly),
+    level: Int,
+    bindings: Dict(Int, binding.Binding),
+  )
+}
+
+pub fn pure() {
+  let bindings = new_state()
+  Context([], t.Empty, dict.new(), 1, bindings)
+}
+
+pub fn unpure() {
+  let bindings = new_state()
+  let #(t, bindings) = binding.mono(1, bindings)
+  Context([], t, dict.new(), 1, bindings)
+}
+
+pub fn check(context, source) {
+  let Context(env:, eff:, refs:, level:, bindings:) = context
+  let #(bindings, _type, _eff, acc) =
+    do_infer(source, env, eff, refs, level, bindings)
+  // TODO make opaque analysis
+  #(bindings, acc, source)
+}
+
+pub fn all_errors(inference) {
+  let #(bindings, acc, source) = inference
+  let meta = ir.get_annotation(source)
+  let info = ir.get_annotation(acc)
+  let assert Ok(info) = list.strict_zip(meta, info)
+  let new_errors =
+    info
+    |> list.filter_map(fn(pair) {
+      let #(meta, #(result, _type, _eff, _scope)) = pair
+      case result {
+        Ok(Nil) -> Error(Nil)
+        Error(reason) -> Ok(#(meta, reason))
+      }
+    })
+}
+
+pub fn type_(inference) {
+  let #(bindings, acc, source) = inference
+  let #(_tree, #(_error, type_, _eff, _env)) = acc
+  binding.resolve(type_, bindings)
+}
+
+// --- old direct code
 
 pub fn new_state() {
   dict.new()
@@ -359,28 +413,25 @@ fn builtin(name) {
 pub fn builtins() {
   [
     #("equal", pure2(q(0), q(0), t.boolean)),
+
     // debug is an effect because the format is not fully specified
     // #("debug", pure1(q(0), t.String)),
-
     // if the passed in constructor raises an effect then fix does too
     #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
+
     // Eval is effectful and so should be an effect, does that mean that Serialize also needs to be an effect
     // #(
     //   "eval",
     //   t.Fun(q(0), t.EffectExtend("Eval", #(t.unit, t.unit), t.Empty), q(1)),
     // ),
-
     // #("serialize", pure1(q(0), t.String)),
     // #("capture", pure1(q(0), t.ast())),
-
     // An effect or something that is built in EYG itself
     // #("to_javascript", pure2(q(0), q(1), t.String)),
-
     // These should be in EYG or effects if needed
     // #("encode_uri", pure1(t.String, t.String)),
     // #("decode_uri_component", pure1(t.String, t.String)),
     // #("base64_encode", pure1(t.Binary, t.String)),
-
     #("int_compare", {
       let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
       pure2(t.Integer, t.Integer, return)
@@ -390,9 +441,9 @@ pub fn builtins() {
     #("int_multiply", pure2(t.Integer, t.Integer, t.Integer)),
     #("int_divide", pure2(t.Integer, t.Integer, t.result(t.Integer, t.unit))),
     #("int_absolute", pure1(t.Integer, t.Integer)),
+
     // Removed as negate is subtract(0, x) or multiply(-1, x)
     // #("int_negate", pure1(t.Integer, t.Integer)),
-
     #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
     #("int_to_string", pure1(t.Integer, t.String)),
     // string
