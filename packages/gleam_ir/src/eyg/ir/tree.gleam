@@ -387,6 +387,31 @@ fn do_list_named_references(exp, found) {
   }
 }
 
+pub fn map_release(exp, mapper) {
+  let #(exp, meta) = exp
+  case exp {
+    Release(package, release, identifier) -> {
+      let #(package, release, identifier) = mapper(package, release, identifier)
+      #(Release(package, release, identifier), meta)
+    }
+    Let(label, value, then) -> {
+      let value = map_release(value, mapper)
+      let then = map_release(then, mapper)
+      #(Let(label, value, then), meta)
+    }
+    Lambda(label, body) -> {
+      let body = map_release(body, mapper)
+      #(Lambda(label, body), meta)
+    }
+    Apply(func, arg) -> {
+      let func = map_release(func, mapper)
+      let arg = map_release(arg, mapper)
+      #(Apply(func, arg), meta)
+    }
+    _ -> #(exp, meta)
+  }
+}
+
 pub fn free_variables(exp) {
   do_free_variables(exp, [], [])
 }

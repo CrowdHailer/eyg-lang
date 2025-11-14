@@ -18,15 +18,28 @@ pub type Context {
   )
 }
 
+/// pure creates a new inference context to infer an expression with no effects.
+/// Any effect from the expression will be a type error
 pub fn pure() {
   let bindings = new_state()
   Context([], t.Empty, dict.new(), 1, bindings)
 }
 
+/// unpure creates a new inference context which accepts any effect.
 pub fn unpure() {
   let bindings = new_state()
   let #(t, bindings) = binding.mono(1, bindings)
   Context([], t, dict.new(), 1, bindings)
+}
+
+pub fn with_references(context, refs) {
+  Context(..context, refs:)
+}
+
+pub fn with_effect(context, label, lift, lower) {
+  let Context(eff:, ..) = context
+  let eff = t.EffectExtend(label, #(lift, lower), eff)
+  Context(..context, eff:)
 }
 
 pub fn check(context, source) {
@@ -57,6 +70,13 @@ pub fn type_(inference) {
   let #(bindings, acc, source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc
   binding.resolve(type_, bindings)
+}
+
+pub fn poly_type(inference) {
+  let #(bindings, acc, source) = inference
+  let #(_tree, #(_error, type_, _eff, _env)) = acc
+  let mono = binding.resolve(type_, bindings)
+  binding.gen(mono, 1, bindings)
 }
 
 // --- old direct code
