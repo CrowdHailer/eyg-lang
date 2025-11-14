@@ -265,7 +265,10 @@ pub fn block(container) {
           ),
         ],
       )
-    jot.RawBlock(_content) -> panic as "not supported"
+    jot.RawBlock(_content)
+    | jot.BlockQuote(attributes: _, items: _)
+    | jot.BulletList(layout: _, style: _, items: _)
+    | jot.Div(attributes: _, items: _) -> panic as "not supported"
   }
 }
 
@@ -312,7 +315,10 @@ pub fn inline(content) {
           ],
           [e.text(content)],
         )
-      jot.Footnote(_) -> todo
+      jot.Footnote(_)
+      | jot.MathDisplay(content: _)
+      | jot.MathInline(content: _)
+      | jot.NonBreakingSpace -> todo
     }
   })
 }
