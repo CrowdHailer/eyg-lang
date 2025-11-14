@@ -1,3 +1,4 @@
+import eyg/client/supabase
 import eyg/ir/cid
 import gleam/io
 import gleam/javascript/promise.{type Promise}
@@ -6,7 +7,6 @@ import gleam/result
 import lustre/effect
 import midas/browser
 import website/sync/cache
-import website/sync/supabase
 
 pub type Failure {
   CommunicationFailure
@@ -33,11 +33,19 @@ pub fn default() {
   init(
     Remote(
       fn() {
-        browser.run(supabase.fetch_index())
+        browser.run(supabase.fetch_index(supabase.client))
+        |> promise.map(
+          result.map(_, fn(index) {
+            let supabase.Index(registry:, packages:) = index
+            let packages = todo
+            cache.Index(registry:, packages:)
+          }),
+        )
         |> promise.map(result.replace_error(_, CommunicationFailure))
       },
       fn(cid) {
-        browser.run(supabase.fetch_fragment(cid))
+        browser.run(supabase.fetch_fragment(supabase.client, cid))
+        |> promise.map(result.map(_, fn(index) { todo }))
         |> promise.map(result.replace_error(_, CommunicationFailure))
       },
     ),
@@ -70,7 +78,8 @@ pub fn run(effects) {
 
           case result {
             Ok(bytes) -> {
-              use got <- promise.map(cid.from_block(bytes))
+              use got <- promise.map(cid.from_block_async(bytes))
+              let assert Ok(got) = got
               case asked == got {
                 True -> FragmentFetched(asked, Ok(bytes))
                 False -> FragmentFetched(asked, Error(DigestIncorrect))
@@ -98,7 +107,7 @@ pub fn update(state, message) {
     }
     IndexFetched(Error(reason)) -> {
       // It's possible to try again later
-      io.debug(reason)
+      echo reason
       #(state, [])
     }
     FragmentFetched(cid, Ok(bytes)) ->
@@ -117,7 +126,7 @@ pub fn update(state, message) {
       }
     FragmentFetched(_cid, Error(reason)) -> {
       // It's possible to try again later
-      io.debug(reason)
+      echo reason
       #(state, [])
     }
   }

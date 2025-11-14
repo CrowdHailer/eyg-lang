@@ -16,7 +16,7 @@ fn above() {
   h.div(
     [
       a.class("flex gap-2"),
-      a.style([
+      a.styles([
         #("position", "absolute"),
         // #("background-color", "rgba(0, 0, 0, 0.75)"),
         #("color", "white"),
@@ -27,8 +27,8 @@ fn above() {
         // #("opacity", "0"),
         // #("visibility", "hidden"),
         #("transition", "opacity 0.3s ease"),
-        // 
 
+        // 
         // 
         #("bottom", "100%"),
         #("left", "0"),
@@ -73,7 +73,7 @@ fn below() {
   h.div(
     [
       a.class("flex gap-2"),
-      a.style([
+      a.styles([
         #("position", "absolute"),
         // #("background-color", "rgba(0, 0, 0, 0.75)"),
         #("color", "white"),

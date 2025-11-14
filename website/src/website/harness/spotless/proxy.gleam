@@ -26,6 +26,7 @@ pub fn proxy(task, scheme, host, port, prefix) {
       task.Write(a, b, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.Zip(lift, resume) ->
       task.Zip(lift, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
+    _ -> todo
   }
 }
 

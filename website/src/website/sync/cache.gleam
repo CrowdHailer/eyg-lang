@@ -79,7 +79,7 @@ pub fn run(return, cache, resume) {
               case dict.get(fragments, cid) {
                 Ok(Fragment(value: Ok(value), ..)) -> resume(value, env, k)
                 Ok(Fragment(value: Error(#(debug, _, _, _)), ..)) -> {
-                  io.debug(debug)
+                  echo debug
                   return
                 }
                 _ -> return

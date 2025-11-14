@@ -40,7 +40,7 @@ pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
   layout([
     h.div(
-      [a.id("app"), a.style([#("position", "absolute"), #("inset", "0")])],
+      [a.id("app"), a.styles([#("position", "absolute"), #("inset", "0")])],
       [],
     ),
     h.script([a.src(asset.src(script))], ""),
@@ -179,7 +179,7 @@ pub fn update(state: State, message) {
       }
       // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      io.debug("We need the sync effect")
+      echo "We need the sync effect"
       let state =
         State(
           ..state,
@@ -250,7 +250,7 @@ fn not_a_modal(content, dismiss: a) {
     h.div(
       [
         a.class("absolute inset-0 bg-gray-100 bg-opacity-70 vstack z-10"),
-        a.style([#("backdrop-filter", "blur(4px)")]),
+        a.styles([#("backdrop-filter", "blur(4px)")]),
         event.on_click(dismiss),
       ],
       [],
@@ -280,7 +280,7 @@ fn container(menu, page, open) {
       a.class(
         "h-full overflow-hidden grid justify-center p-1 md:p-4 gap-1 md:gap-2 bg-gray-900",
       ),
-      a.style([
+      a.styles([
         #("grid-template-columns", case open {
           True -> "max-content minmax(0px, 920px)"
           False -> "max-content minmax(0px, 920px)"
@@ -297,7 +297,7 @@ fn container(menu, page, open) {
           a.class(
             "overflow-auto bg-white relative flex flex-col rounded font-mono",
           ),
-          a.style([#("min-width", min), #("overscroll-behavior-y", "contain")]),
+          a.styles([#("min-width", min), #("overscroll-behavior-y", "contain")]),
         ],
         page,
       ),
@@ -443,7 +443,7 @@ fn render_shell(shell: shell.Shell) {
     h.div(
       [
         a.class("expand vstack flex-grow pt-10"),
-        a.style([#("min-height", "0")]),
+        a.styles([#("min-height", "0")]),
       ],
       case list.length(shell.previous) {
         x if x < 4 -> [
@@ -520,13 +520,13 @@ fn render_shell(shell: shell.Shell) {
     h.div(
       [
         a.class("cover border-t border-black font-mono bg-white grid"),
-        a.style([
+        a.styles([
           #("min-height", "5rem"),
           #("grid-template-columns", "minmax(0px, 1fr) max-content"),
         ]),
       ],
       [
-        h.div([a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])], [
+        h.div([a.styles([#("max-height", "65vh"), #("overflow-y", "scroll")])], [
           snippet.render_just_projection(shell.source, True),
         ]),
         case shell.runner {
@@ -625,7 +625,7 @@ fn render_errors(failure, snippet: snippet.Snippet) {
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
-          a.style([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+          a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
         ],
         [element.text(snippet.fail_message(failure))],
       )
@@ -633,7 +633,7 @@ fn render_errors(failure, snippet: snippet.Snippet) {
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
-          a.style([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+          a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
         ],
         [element.text("No previous code to select")],
       )
@@ -641,7 +641,7 @@ fn render_errors(failure, snippet: snippet.Snippet) {
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
-          a.style([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+          a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
         ],
         list.map(errors, fn(error) {
           let #(path, reason) = error

@@ -11,7 +11,8 @@ import midas/task as t
 import mysig/build
 import mysig/dev
 import mysig/route.{Route}
-import netlify
+
+// import netlify
 import plinth/node/process
 import simplifile
 import snag
@@ -44,18 +45,19 @@ fn do_main(args) {
 }
 
 // doesn't have client secret
-pub const netlify_local_app = netlify.App(
-  "cQmYKaFm-2VasrJeeyobXXz5G58Fxy2zQ6DRMPANWow",
-  "http://localhost:8080/auth/netlify",
-)
+// pub const netlify_local_app = netlify.App(
+//   "cQmYKaFm-2VasrJeeyobXXz5G58Fxy2zQ6DRMPANWow",
+//   "http://localhost:8080/auth/netlify",
+// )
 
 const site_id = "eae24b5b-4854-4973-8a9f-8fb3b1c423c0"
 
 fn deploy(_args) {
   use files <- promise.try_await(build.to_files(routes()))
   let task = {
-    use token <- t.do(netlify.authenticate(netlify_local_app))
-    use _ <- t.do(netlify.deploy_site(token, site_id, files))
+    todo as "netlify"
+    // use token <- t.do(netlify.authenticate(netlify_local_app))
+    // use _ <- t.do(netlify.deploy_site(token, site_id, files))
     use _ <- t.do(t.log("Deployed"))
     t.done(Nil)
   }

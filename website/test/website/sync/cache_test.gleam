@@ -3,7 +3,6 @@ import eyg/interpreter/value as v
 import eyg/ir/cid
 import eyg/ir/tree as ir
 import gleam/dict
-import gleam/io
 import gleam/javascript/promise
 import gleeunit/should
 import website/sync/cache
@@ -18,11 +17,12 @@ fn should_have_value(cache: cache.Cache, ref, value) {
 
 pub fn install_invalid_block_test() {
   let bytes = <<"Not code">>
-  use cid <- promise.map(cid.from_block(bytes))
+  use cid <- promise.map(cid.from_block_async(bytes))
+  let assert Ok(cid) = cid
   let cache = cache.init()
   cache.install_fragment(cache, cid, bytes)
   |> should.be_error
-  |> io.debug
+  |> echo
 }
 
 const vacant_bytes = <<"{\"0\":\"z\"}">>

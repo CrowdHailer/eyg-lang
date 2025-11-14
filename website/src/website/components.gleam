@@ -37,7 +37,7 @@ pub fn header(authenticate, session) {
       a.class(
         "fixed top-0 right-0 left-0 z-20 bg-white bg-opacity-80 border-b border-white",
       ),
-      a.style([#("backdrop-filter", "blur(6px)")]),
+      a.styles([#("backdrop-filter", "blur(6px)")]),
     ],
     [
       h.header([a.class("mx-auto w-full max-w-7xl hstack py-1 px-1 md:px-8")], [
@@ -115,7 +115,7 @@ pub fn card(children) {
 pub fn keycap(letter) {
   h.span(
     [
-      a.style([
+      a.styles([
         #("box-shadow", "1px 1px 0px 2px black"),
         #("font-size", "85%"),
         #("font-weight", "bold"),

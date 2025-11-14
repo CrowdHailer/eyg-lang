@@ -1,5 +1,6 @@
 import eyg/ir/dag_json
 import gleam/bit_array
+import gleam/dynamic/decode
 
 // TODO remove
 import gleam/dynamicx
@@ -183,29 +184,32 @@ pub fn render(state) {
           a.class("outline-none"),
           a.attribute("tabindex", "0"),
           // a.autofocus(True),
-          event.on("click", fn(event) {
-            let assert Ok(e) = pevent.cast_event(event)
-            let target = pevent.target(e)
-            let rev =
-              target
-              |> dynamicx.unsafe_coerce
-              |> dom_element.dataset_get("rev")
-            case rev {
-              Ok(rev) -> {
-                let assert Ok(rev) = case rev {
-                  "" -> Ok([])
-                  _ ->
-                    string.split(rev, ",")
-                    |> list.try_map(int.parse)
+          event.on(
+            "click",
+            decode.new_primitive_decoder("click", fn(event) {
+              let assert Ok(e) = pevent.cast_event(event)
+              let target = pevent.target(e)
+              let rev =
+                target
+                |> dynamicx.unsafe_coerce
+                |> dom_element.dataset_get("rev")
+              case rev {
+                Ok(rev) -> {
+                  let assert Ok(rev) = case rev {
+                    "" -> Ok([])
+                    _ ->
+                      string.split(rev, ",")
+                      |> list.try_map(int.parse)
+                  }
+                  Ok(UserClickedCode(list.reverse(rev)))
                 }
-                Ok(UserClickedCode(list.reverse(rev)))
+                Error(_) -> {
+                  console.log(target)
+                  Error(UserClickedCode([]))
+                }
               }
-              Error(_) -> {
-                console.log(target)
-                Error([])
-              }
-            }
-          }),
+            }),
+          ),
           utils.on_hotkey(UserPressedCommandKey),
         ],
         [projection_rendered],

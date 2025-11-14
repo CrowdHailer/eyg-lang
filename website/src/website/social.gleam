@@ -10,7 +10,7 @@ const blacker = "#151515"
 pub fn render() {
   h.body(
     [
-      a.style([
+      a.styles([
         #("margin", "0"),
         #("width", "1200px"),
         #("max-height", "630px"),
@@ -24,7 +24,7 @@ pub fn render() {
     [
       h.div(
         [
-          a.style([
+          a.styles([
             #("padding", "0 20px"),
             #("flex-grow", "1"),
             #("display", "flex"),
@@ -36,14 +36,14 @@ pub fn render() {
           h.img([
             a.src("https://eyg.run/assets/pea.webp"),
             a.alt("Penelopea, EYG's mascot"),
-            a.style([#("max-width", "460px")]),
+            a.styles([#("max-width", "460px")]),
           ]),
           h.div([], [
-            h.div([a.style([#("color", blacker), #("font-size", "4.5rem")])], [
+            h.div([a.styles([#("color", blacker), #("font-size", "4.5rem")])], [
               element.text("The EYG language"),
               h.div(
                 [
-                  a.style([
+                  a.styles([
                     #("color", blacker),
                     #("font-size", "3rem"),
                     #("display", "grid"),
@@ -60,7 +60,7 @@ pub fn render() {
         ],
       ),
       h.div(
-        [a.style([#("height", "90px"), #("background", "rgb(209,250,229)")])],
+        [a.styles([#("height", "90px"), #("background", "rgb(209,250,229)")])],
         [],
       ),
     ],

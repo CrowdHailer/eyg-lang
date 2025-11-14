@@ -32,6 +32,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict
+import gleam/dynamic/decode
 import gleam/dynamicx
 import gleam/int
 import gleam/javascript/promise
@@ -102,7 +103,7 @@ const code_area_styles = [
 pub fn footer_area(color, contents) {
   h.div(
     [
-      a.style([
+      a.styles([
         #("border-color", color),
         #("padding-left", ".5rem"),
         #("padding-right", ".5rem"),
@@ -987,13 +988,13 @@ pub fn release_to_option(release) {
   let #(package, release, _cid) = release
 
   [
-    h.span([a.style([#("font-weight", "700")])], [
+    h.span([a.styles([#("font-weight", "700")])], [
       element.text(package <> ":" <> int.to_string(release)),
     ]),
-    h.span([a.style([#("flex-grow", "1")])], [element.text(" ")]),
+    h.span([a.styles([#("flex-grow", "1")])], [element.text(" ")]),
     h.span(
       [
-        a.style([
+        a.styles([
           #("padding-left", ".5rem"),
           #("overflow", "hidden"),
           #("text-overflow", "ellipsis"),
@@ -1047,7 +1048,7 @@ fn bare_render(proj, errors, status, slot) {
       h.pre(
         [
           a.class("language-eyg"),
-          a.style(code_area_styles),
+          a.styles(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -1107,7 +1108,7 @@ pub fn render_just_projection(state, autofocus) {
       h.pre(
         [
           a.class("language-eyg"),
-          a.style(code_area_styles),
+          a.styles(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -1120,61 +1121,67 @@ fn actual_render_projection(proj, autofocus, errors) {
   h.pre(
     [
       a.class("language-eyg"),
-      a.style(code_area_styles),
+      a.styles(code_area_styles),
       ..case autofocus {
         True -> [
           a.attribute("tabindex", "0"),
           a.attribute("autofocus", "true"),
           // a.autofocus(True),
-          event.on("click", fn(event) {
-            let assert Ok(e) = pevent.cast_event(event)
-            let target = pevent.target(e)
-            let rev =
-              target
-              |> dynamicx.unsafe_coerce
-              |> dom_element.dataset_get("rev")
-            case rev {
-              Ok(rev) -> {
-                let assert Ok(rev) = case rev {
-                  "" -> Ok([])
-                  _ ->
-                    string.split(rev, ",")
-                    |> list.try_map(int.parse)
+          event.on(
+            "click",
+            decode.new_primitive_decoder("click", fn(event) {
+              let assert Ok(e) = pevent.cast_event(event)
+              let target = pevent.target(e)
+              let rev =
+                target
+                |> dynamicx.unsafe_coerce
+                |> dom_element.dataset_get("rev")
+              case rev {
+                Ok(rev) -> {
+                  let assert Ok(rev) = case rev {
+                    "" -> Ok([])
+                    _ ->
+                      string.split(rev, ",")
+                      |> list.try_map(int.parse)
+                  }
+                  Ok(UserClickedCode(list.reverse(rev)))
                 }
-                Ok(UserClickedCode(list.reverse(rev)))
+                Error(_) -> {
+                  console.log(target)
+                  Error(UserClickedPath([]))
+                }
               }
-              Error(_) -> {
-                console.log(target)
-                Error([])
-              }
-            }
-          }),
+            }),
+          ),
           utils.on_hotkey(UserPressedCommandKey),
         ]
         False -> [
-          event.on("click", fn(event) {
-            let assert Ok(e) = pevent.cast_event(event)
-            let target = pevent.target(e)
-            let rev =
-              target
-              |> dynamicx.unsafe_coerce
-              |> dom_element.dataset_get("rev")
-            case rev {
-              Ok(rev) -> {
-                let assert Ok(rev) = case rev {
-                  "" -> Ok([])
-                  _ ->
-                    string.split(rev, ",")
-                    |> list.try_map(int.parse)
+          event.on(
+            "click",
+            decode.new_primitive_decoder("click", fn(event) {
+              let assert Ok(e) = pevent.cast_event(event)
+              let target = pevent.target(e)
+              let rev =
+                target
+                |> dynamicx.unsafe_coerce
+                |> dom_element.dataset_get("rev")
+              case rev {
+                Ok(rev) -> {
+                  let assert Ok(rev) = case rev {
+                    "" -> Ok([])
+                    _ ->
+                      string.split(rev, ",")
+                      |> list.try_map(int.parse)
+                  }
+                  Ok(UserClickedCode(list.reverse(rev)))
                 }
-                Ok(UserClickedCode(list.reverse(rev)))
+                Error(_) -> {
+                  console.log(target)
+                  Error(UserClickedPath([]))
+                }
               }
-              Error(_) -> {
-                console.log(target)
-                Error([])
-              }
-            }
-          }),
+            }),
+          ),
         ]
       }
     ],
@@ -1274,7 +1281,7 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
   h.pre(
     [
       a.class("language-eyg"),
-      a.style([
+      a.styles([
         #("position", "relative"),
         #("margin", "0"),
         #("padding", "0"),
@@ -1282,10 +1289,13 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
         ..embed_area_styles
       ]),
       // This is needed to stop the component interfering with remark slides
-      event.on("keypress", fn(event) {
-        event.stop_propagation(event)
-        Error([])
-      }),
+      event.on(
+        "keypress",
+        decode.new_primitive_decoder("", fn(_event) {
+          Error(UserClickedPath([]))
+        }),
+      )
+        |> event.stop_propagation(),
     ],
     bare_render(projection, type_errors(snippet), status, slot)
       |> list.append(case status {
@@ -1295,7 +1305,7 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
             Some(#(_key, subitems)) ->
               h.div(
                 [
-                  a.style([
+                  a.styles([
                     // #("padding-top", ".5rem"),
                     // #("padding-bottom", ".5rem"),
                     #("justify-content", "flex-end"),
@@ -1320,7 +1330,7 @@ pub fn render_embedded_with_top_menu(snippet, slot) {
             None ->
               h.div(
                 [
-                  a.style([
+                  a.styles([
                     // #("padding-top", ".5rem"),
                     // #("padding-bottom", ".5rem"),
                     #("justify-content", "flex-end"),
@@ -1346,17 +1356,20 @@ pub fn render_embedded_with_menu(snippet, _failure) {
   h.pre(
     [
       a.class("eyg-embed language-eyg"),
-      a.style([
+      a.styles([
         #("position", "relative"),
         #("margin", "0"),
         #("padding", "0"),
         #("overflow", "initial"),
       ]),
       // This is needed to stop the component interfering with remark slides
-      event.on("keypress", fn(event) {
-        event.stop_propagation(event)
-        Error([])
-      }),
+      event.on(
+        "keypress",
+        decode.new_primitive_decoder("", fn(_event) {
+          Error(UserClickedPath([]))
+        }),
+      )
+        |> event.stop_propagation(),
     ],
     [
       render_menu(snippet, False) |> element.map(MessageFromMenu),
@@ -1371,7 +1384,7 @@ fn render_menu(snippet, display_help) {
   h.div(
     [
       a.class("eyg-menu-container"),
-      a.style([
+      a.styles([
         #("position", "absolute"),
         #("left", "0"),
         #("top", "50%"),
@@ -1395,7 +1408,7 @@ fn render_menu(snippet, display_help) {
 fn render_column(items, display_help) {
   h.div(
     [
-      a.style([
+      a.styles([
         #("padding-top", ".5rem"),
         #("padding-bottom", ".5rem"),
         #("justify-content", "flex-end"),

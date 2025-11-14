@@ -2,7 +2,8 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
 import gleam/dict
 import gleam/option
-import netlify/schema
+
+// import netlify/schema
 
 pub fn t() {
   t.record([
@@ -14,13 +15,14 @@ pub fn t() {
 }
 
 pub fn to_eyg(site) {
-  let schema.Site(id: id, state: state, name: name, url: url, ..) = site
-  v.Record(
-    dict.from_list([
-      #("id", v.String(option.unwrap(id, ""))),
-      #("state", v.String(option.unwrap(state, ""))),
-      #("name", v.String(option.unwrap(name, ""))),
-      #("url", v.String(option.unwrap(url, ""))),
-    ]),
-  )
+  todo
+  // let schema.Site(id: id, state: state, name: name, url: url, ..) = site
+  // v.Record(
+  //   dict.from_list([
+  //     #("id", v.String(option.unwrap(id, ""))),
+  //     #("state", v.String(option.unwrap(state, ""))),
+  //     #("name", v.String(option.unwrap(name, ""))),
+  //     #("url", v.String(option.unwrap(url, ""))),
+  //   ]),
+  // )
 }

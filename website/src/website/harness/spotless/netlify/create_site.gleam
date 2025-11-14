@@ -7,8 +7,9 @@ import gleam/option.{None}
 import gleam/result
 import midas/browser
 import midas/task
-import netlify
-import netlify/schema
+
+// import netlify
+// import netlify/schema
 import snag
 import website/harness/spotless/netlify/site
 import website/harness/spotless/proxy
@@ -38,7 +39,7 @@ pub fn blocking(app, lift) {
 
 pub fn do(app) {
   let task = {
-    use token <- task.do(netlify.authenticate(app))
+    // use token <- task.do(netlify.authenticate(app))
     // let site = schema.site_setup
     // netlify.create_site(token, site, None)
     todo as "not implemented"

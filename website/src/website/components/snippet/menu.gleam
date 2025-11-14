@@ -271,7 +271,7 @@ pub fn submenu_more() {
     #(outline.bolt_slash(), "handle effect", cmd("h")),
     #(outline.bolt(), "perform effect", cmd("p")),
     #(
-      h.span([a.style([#("font-size", "0.8rem")])], [element.text("1101")]),
+      h.span([a.styles([#("font-size", "0.8rem")])], [element.text("1101")]),
       "binary",
       cmd("b"),
     ),

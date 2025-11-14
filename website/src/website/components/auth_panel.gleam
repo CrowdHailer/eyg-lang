@@ -114,7 +114,7 @@ pub fn local_storage(key) {
     fn() {
       case storage.get_item(local, key) {
         Ok(value) ->
-          case json.decode(value, auth.verify_decoder) {
+          case json.parse(value, auth.verify_decoder()) {
             Ok(value) -> Ok(Some(value))
             Error(reason) -> Error(snag.new(string.inspect(reason)))
           }
@@ -236,7 +236,7 @@ fn card_content(title, paragraph, error) {
 }
 
 fn email_form(email_address) {
-  h.form([a.class("mt-6"), event.on_submit(UserClickedSendCode)], [
+  h.form([a.class("mt-6"), event.on_submit(fn(_) { UserClickedSendCode })], [
     h.div([], [
       h.input([
         a.type_("email"),
@@ -317,25 +317,28 @@ pub fn render(state) {
             ],
             state.error,
           ),
-          h.form([a.class("mt-6"), event.on_submit(UserClickedVerifyCode)], [
-            h.div([], [
-              h.input([
-                a.required(True),
-                a.class("w-full p-1 bg-gray-100"),
-                a.placeholder("code"),
-                event.on_input(UserInputedCode),
-                a.value(state.code),
+          h.form(
+            [a.class("mt-6"), event.on_submit(fn(_) { UserClickedVerifyCode })],
+            [
+              h.div([], [
+                h.input([
+                  a.required(True),
+                  a.class("w-full p-1 bg-gray-100"),
+                  a.placeholder("code"),
+                  event.on_input(UserInputedCode),
+                  a.value(state.code),
+                ]),
               ]),
-            ]),
-            h.button(
-              [
-                a.class(
-                  "w-full mt-2 py-2 px-3  text-white font-bold bg-gray-900 border-2 border-gray-900",
-                ),
-              ],
-              [element.text("Verify")],
-            ),
-          ]),
+              h.button(
+                [
+                  a.class(
+                    "w-full mt-2 py-2 px-3  text-white font-bold bg-gray-900 border-2 border-gray-900",
+                  ),
+                ],
+                [element.text("Verify")],
+              ),
+            ],
+          ),
         ]
       }
     ]),

@@ -77,7 +77,7 @@ fn note(content) {
   h.div(
     [
       a.class("sticky mt-2 top-12 p-2 shadow-md bg-yellow-1"),
-      a.style([
+      a.styles([
         #("align-self", "start"),
         #("flex", "0 0 200px"),
         #("overflow", "hidden"),
@@ -92,14 +92,14 @@ fn chapter(_index, title, content, comment) {
     [
       //     a.class("vstack outline-none"),
     //     // make this optional or not have at all
-    //   //  a.style([#("min-height", "100vh")])
+    //   //  a.styles([#("min-height", "100vh")])
     ],
     [
       h2(title),
       h.div(
         [
           a.class("md:grid gap-6"),
-          a.style([#("grid-template-columns", "1fr 200px")]),
+          a.styles([#("grid-template-columns", "1fr 200px")]),
         ],
         [
           h.div([a.class("expand max-w-3xl")], content),
@@ -109,7 +109,7 @@ fn chapter(_index, title, content, comment) {
               h.div(
                 [
                   a.class(""),
-                  a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
+                  a.styles([#("flex", "0 0 200px"), #("overflow", "hidden")]),
                 ],
                 [],
               )
@@ -149,7 +149,7 @@ fn render(state) {
       h.div(
         [
           a.class("hidden py-12 top-0 lg:block sticky"),
-          a.style([#("align-self", "flex-start")]),
+          a.styles([#("align-self", "flex-start")]),
         ],
         [
           h.aside([a.class("w-72 p-6 pb-8 bg-green-100 rounded-2xl")], [
@@ -505,7 +505,7 @@ fn render(state) {
           ],
           None,
         ),
-        h.div([a.style([#("height", "30vh")])], []),
+        h.div([a.styles([#("height", "30vh")])], []),
         components.footer(),
       ]),
     ]),

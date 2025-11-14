@@ -14,7 +14,7 @@ pub fn one_col_menu(display_help, options) {
     h.div(
       [
         a.class("grid overflow-y-auto"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
+        a.styles([#("grid-template-columns", "max-content max-content")]),
       ],
       [
         h.div(
@@ -34,7 +34,7 @@ pub fn two_col_menu(display_help, top, active, sub) {
     h.div(
       [
         a.class("grid overflow-y-auto overflow-x-hidden"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
+        a.styles([#("grid-template-columns", "max-content max-content")]),
       ],
       [
         h.div(
@@ -74,7 +74,7 @@ pub fn button(action, content) {
   h.button(
     [
       a.class("morph button"),
-      a.style([
+      a.styles([
         // #("background", "none"),
         #("outline", "none"),
         #("border", "none"),
@@ -94,7 +94,7 @@ pub fn button(action, content) {
 pub fn icon(image, text, display_help) {
   h.span(
     [
-      a.style([
+      a.styles([
         #("align-items", "center"),
         #("border-radius", ".25rem"),
         #("display", "flex"),
@@ -103,7 +103,7 @@ pub fn icon(image, text, display_help) {
     [
       h.span(
         [
-          a.style([
+          a.styles([
             #("font-size", "1.25rem"),
             #("line-height", "1.75rem"),
             #("text-align", "center"),

@@ -1,9 +1,8 @@
-import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import gleam/string
 import lustre/attribute as a
 import lustre/element/html as h
@@ -80,7 +79,7 @@ pub fn update(state, message) {
           case listx.at(remaining, i) {
             Ok(item) -> #(state, ItemSelected(item))
             Error(Nil) -> {
-              io.debug("there should be a selection")
+              io.println("there should be a selection")
               #(state, Nothing)
             }
           }
@@ -92,7 +91,7 @@ pub fn update(state, message) {
               #(state, Nothing)
             }
             Error(Nil) -> {
-              io.debug("there should be a selection")
+              io.println("there should be a selection")
               #(state, Nothing)
             }
           }
@@ -106,7 +105,7 @@ pub fn update(state, message) {
       case listx.at(remaining_items(state), index) {
         Ok(item) -> #(state, ItemSelected(item))
         Error(Nil) -> {
-          io.debug("there should be a selection")
+          io.println("there should be a selection")
           #(state, Nothing)
         }
       }
@@ -118,7 +117,7 @@ pub fn render(state: State(_), item_render) {
   let query = state.query
   h.div(
     [
-      a.style([
+      a.styles([
         #(
           "font-family",
           "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
@@ -127,7 +126,7 @@ pub fn render(state: State(_), item_render) {
     ],
     [
       h.input([
-        a.style([
+        a.styles([
           #("line-height", "inherit"),
           #("color", "inherit"),
           #("font-family", "inherit"),
@@ -149,21 +148,21 @@ pub fn render(state: State(_), item_render) {
         a.attribute("autocomplete", "off"),
         a.attribute("autofocus", "true"),
         a.required(True),
-        event.on("keydown", fn(event) {
-          // waiting for lustre 5.0 that uses the decode API
-          use key <- result.try(dynamic.field("key", dynamic.string)(event))
+        event.on("keydown", {
+          use key <- decode.field("key", decode.string)
+
           case key {
-            "ArrowDown" -> Ok(UserPressedDown)
-            "ArrowUp" -> Ok(UserPressedUp)
-            "Enter" -> Ok(UserPressedEnter)
-            "Escape" -> Ok(UserPressedEscape)
-            _ -> Error([])
+            "ArrowDown" -> decode.success(UserPressedDown)
+            "ArrowUp" -> decode.success(UserPressedUp)
+            "Enter" -> decode.success(UserPressedEnter)
+            "Escape" -> decode.success(UserPressedEscape)
+            _ -> decode.failure(UserPressedDown, "not a valid key")
           }
         }),
         event.on_input(UserChangedQuery),
       ]),
       h.hr([
-        a.style([
+        a.styles([
           #("border-color", "rgb(55, 65, 81)"),
           #("margin-top", ".25rem"),
           #("margin-bottom", ".25rem"),
@@ -179,7 +178,7 @@ pub fn render(state: State(_), item_render) {
         }
         h.div(
           [
-            a.style([
+            a.styles([
               #("padding-top", ".25rem"),
               #("padding-bottom", ".25rem"),
               #("padding-left", ".75rem"),

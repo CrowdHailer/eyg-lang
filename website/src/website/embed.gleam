@@ -25,7 +25,7 @@ pub fn run() {
   // use result <- promise.map(browser.run(remote.load_task()))
   // let assert Ok(dump) = result
   // let cache = sync.load(cache, dump)
-  io.debug("load the original")
+  echo "load the original"
   let cache = cache.init()
 
   list.index_map(array.to_list(scripts), fn(script, i) {
@@ -92,7 +92,7 @@ fn update(snippet, message) {
       dispatch_to_snippet(snippet.write_to_clipboard(text)),
     )
   }
-  io.debug(failure)
+  echo failure
   #(snippet, snippet_effect)
 }
 

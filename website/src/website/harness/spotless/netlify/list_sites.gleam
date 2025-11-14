@@ -7,7 +7,8 @@ import gleam/option.{None}
 import gleam/result
 import midas/browser
 import midas/task
-import netlify
+
+// import netlify
 import snag
 import website/harness/spotless/netlify/site
 
@@ -35,8 +36,9 @@ fn impl(app, lift) {
 
 pub fn do(app) {
   let task = {
-    use token <- task.do(netlify.authenticate(app))
-    netlify.list_sites(token, None, None, None, None)
+    todo
+    // use token <- task.do(netlify.authenticate(app))
+    // netlify.list_sites(token, None, None, None, None)
   }
   browser.run(task)
 }

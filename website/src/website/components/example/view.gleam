@@ -80,7 +80,7 @@ pub fn render(state) {
 
 // could move to runner view
 pub fn reason_to_html(r) {
-  h.span([a.style([#("white-space", "nowrap")])], [
+  h.span([a.styles([#("white-space", "nowrap")])], [
     element.text(debug.reason(r)),
   ])
 }

@@ -82,7 +82,7 @@ pub fn snippet(state: state.State, i) {
 fn page_area(content) {
   h.div(
     [
-      a.style([
+      a.styles([
         // #("min-height", "100vh")
       ]),
       a.class("vstack"),
@@ -95,18 +95,18 @@ fn feature(title, description, last, item, reverse) {
   h.div(
     [
       a.class("mx-auto w-full max-w-6xl my-28 px-1 md:px-8 gap-12 md:flex"),
-      a.style([#("align-items", "center")]),
+      a.styles([#("align-items", "center")]),
       a.classes([#("flex-row-reverse", reverse)]),
     ],
     [
-      h.div([a.style([#("width", "40%")])], [
+      h.div([a.styles([#("width", "40%")])], [
         h.h2([a.class("text-4xl my-8 font-bold")], [element.text(title)]),
         ..list.map(description, fn(d) {
           h.div([a.class("my-2 text-lg")], [element.text(d)])
         })
         |> list.append([last])
       ]),
-      h.div([a.class(""), a.style([#("width", "60%")])], item),
+      h.div([a.class(""), a.styles([#("width", "60%")])], item),
     ],
   )
 }
@@ -188,7 +188,7 @@ fn view() {
               a.class("w-full max-w-xl"),
               a.src(asset.src(penelopea)),
               a.alt("Penelopea, EYG's mascot"),
-              // a.style([
+              // a.styles([
             //   #("width", "500px"),
             //   #("height", "500px"),
             //   // #("vertical-align", "bottom"),

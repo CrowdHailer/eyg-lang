@@ -152,14 +152,14 @@ pub fn home_page() {
           ]),
           h.div(
             [
-              a.style([#("max-width", "660px")]),
+              a.styles([#("max-width", "660px")]),
               a.class(
                 "mx-auto my-4 rounded-xl border-black border overflow-hidden",
               ),
             ],
             [
               letter_container([edition.preview(latest, index, asset.src(pea))]),
-              h.div([a.style([#("padding", "0 1.5rem")])], [
+              h.div([a.styles([#("padding", "0 1.5rem")])], [
                 h.a(
                   [
                     a.class("underline"),
@@ -227,7 +227,7 @@ fn web_editions(editions) {
           ]),
           [
             h.div(
-              [a.id("container"), a.style([#("background", edition.charcoal)])],
+              [a.id("container"), a.styles([#("background", edition.charcoal)])],
               [letter_container([edition]), inline_subscribe()],
             ),
           ],
@@ -241,7 +241,7 @@ fn web_editions(editions) {
 fn letter_container(contents) {
   h.div(
     [
-      a.style([
+      a.styles([
         #("margin", "0 auto"),
         #("max-width", "660px"),
         #("background", "white"),
@@ -254,7 +254,7 @@ fn letter_container(contents) {
 fn inline_subscribe() {
   h.div(
     [
-      a.style([
+      a.styles([
         #("margin", "0 auto"),
         #("width", "600px"),
         #("background", "white"),

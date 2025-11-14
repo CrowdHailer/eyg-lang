@@ -20,9 +20,9 @@ pub fn render(value) {
       }
     }
     v.String(string) ->
-      h.pre([a.style([#("margin", "0")])], [
+      h.pre([a.styles([#("margin", "0")])], [
         // It is not possible to set the font size on a pre element.
-        h.span([a.style([#("font-size", "1rem")])], [text(string)]),
+        h.span([a.styles([#("font-size", "1rem")])], [text(string)]),
       ])
     _ -> render_value(value)
   }
