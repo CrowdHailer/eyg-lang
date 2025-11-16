@@ -57,15 +57,22 @@ pub fn decoder(meta) {
     "h" -> label_decoder(ir.Handle, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
-      use cid <- decode.field("l", codec.decode_cid())
-      let assert Ok(cid) = v1.to_string(cid)
+      use cid <- decode.field(
+        "l",
+        decode.field("/", decode.string, decode.success),
+      )
+      // let assert Ok(cid) = v1.to_string(cid)
       decode.success(#(ir.Reference(cid), meta))
     }
     "@" -> {
       use package <- decode.field("p", decode.string)
       use release <- decode.field("r", decode.int)
-      use cid <- decode.field("l", codec.decode_cid())
-      let assert Ok(cid) = v1.to_string(cid)
+      use cid <- decode.field(
+        "l",
+        decode.field("/", decode.string, decode.success),
+      )
+      // Need a cid type if going to decode here
+      // let assert Ok(cid) = v1.to_string(cid)
       decode.success(#(ir.Release(package, release, cid), meta))
     }
     _ -> {
