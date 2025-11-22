@@ -332,7 +332,7 @@ pub fn builtin_test() {
   ])
 
   let state = j.new_state()
-  let #(var, state) = binding.mono(0, state)
+  let #(var, state) = binding.poly(0, state)
   "!int_add(1, 2)"
   |> do_calc(var, state)
   |> should.equal([
@@ -351,7 +351,7 @@ pub fn builtin_test() {
 // (x) -<Log String {}, Alert String 0, ..1> List(x)
 pub fn perform_test() {
   let state = j.new_state()
-  let #(var, state) = binding.mono(0, state)
+  let #(var, state) = binding.poly(0, state)
   "perform Log(\"thing\")"
   |> do_calc(var, state)
   |> should.equal([
@@ -389,7 +389,7 @@ pub fn combine_effect_test() {
     let x = perform Log(\"info\")
     perform Foo(5)
   }"
-  |> calc(t.Var(-1))
+  |> calc(t.Var(#(False, -1)))
   |> should.equal([
     #(Ok(Nil), "(0 <Log(↑String ↓3), Foo(↑Integer ↓13)>) -> 13", ""),
     #(Ok(Nil), "13", ""),
@@ -404,7 +404,7 @@ pub fn combine_effect_test() {
   "(_) -> {
     perform Foo(perform Log(\"info\"))
   }"
-  |> calc(t.Var(-1))
+  |> calc(t.Var(#(False, -1)))
   |> should.equal([
     #(Ok(Nil), "(0 <Log(↑String ↓12), Foo(↑12 ↓13)>) -> 13", ""),
     #(Ok(Nil), "13", "Foo(↑12 ↓13)"),
@@ -477,7 +477,7 @@ pub fn combine_unknown_effect_test() {
 
 pub fn first_class_function_with_effects_test() {
   let state = j.new_state()
-  let #(var, state) = binding.mono(0, state)
+  let #(var, state) = binding.poly(0, state)
   "(f) -> {
     f({})
   }"
@@ -560,3 +560,18 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "Integer", ""),
   ])
 }
+
+pub fn poly_in_return_test() {
+  "[!int_to_string(perform Abort(\"hi\")),perform Abort(\"hi\")]"
+  |> calc(t.Var(#(True, 0)))
+  // |> echo
+  // todo
+}
+
+pub fn poly_eff_in_fn_test() -> Nil {
+  "(_)-> { [!int_to_string(perform Abort(\"hi\")),perform Abort(\"hi\")] }"
+  |> calc(t.Var(#(True, 0)))
+  |> echo
+  todo
+}
+// Can it be prepopulated with 

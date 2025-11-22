@@ -11,7 +11,7 @@ import gleam/set
 pub type Context {
   Context(
     env: List(#(String, binding.Poly)),
-    eff: binding.Mono,
+    eff: binding.Poly,
     refs: Dict(String, binding.Poly),
     level: Int,
     bindings: Dict(Int, binding.Binding),
@@ -29,6 +29,8 @@ pub fn pure() {
 pub fn unpure() {
   let bindings = new_state()
   let #(t, bindings) = binding.mono(1, bindings)
+  echo t
+  let t = todo
   Context([], t, dict.new(), 1, bindings)
 }
 
@@ -169,7 +171,14 @@ fn eff_tail(eff) {
 pub type Env =
   List(#(String, binding.Poly))
 
-pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
+pub fn do_infer(
+  source,
+  env,
+  eff: binding.Poly,
+  refs: dict.Dict(_, _),
+  level,
+  bindings,
+) -> #(_, binding.Mono, binding.Poly, #(_, _)) {
   let #(exp, _meta) = source
   case exp {
     ir.Variable(x) ->
@@ -191,10 +200,12 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let assert t.Var(i) = type_x
       let scheme_x = t.Var(#(False, i))
       let level = level + 1
-      let #(type_eff, bindings) = binding.mono(level, bindings)
+      let #(type_eff, bindings) = binding.poly(level, bindings)
 
       let #(bindings, type_r, type_eff, inner) =
         do_infer(body, [#(x, scheme_x), ..env], type_eff, refs, level, bindings)
+
+      let #(type_eff, bindings) = binding.instantiate(type_eff, level, bindings)
 
       let type_ = t.Fun(type_x, type_eff, type_r)
       let level = level - 1
@@ -239,9 +250,10 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
           }
         }
       }
+      let #(type_eff, bindings) = binding.instantiate(eff, level, bindings)
 
       let #(bindings, result) = case
-        unify.unify(test_eff, eff, level, bindings)
+        unify.unify(test_eff, type_eff, level, bindings)
       {
         Ok(bindings) -> #(bindings, result)
         // First error, is there a result.and function
@@ -329,7 +341,7 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
   }
 }
 
-fn lookup_ref(refs, reason, id, env, eff, level, bindings) {
+fn lookup_ref(refs, reason, id, env, eff: binding.Poly, level, bindings) {
   case dict.get(refs, id) {
     Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Reference(id))
     Error(Nil) -> {
