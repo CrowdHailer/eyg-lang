@@ -7,7 +7,6 @@ Records, Unions and Effects are all implemented as row types.
 [![Package Version](https://img.shields.io/hexpm/v/eyg_analysis)](https://hex.pm/packages/eyg_analysis)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/eyg_analysis/)
 
-
 ## Usage
 
 Analysing an EYG program completly infers the type of every node.
@@ -16,7 +15,6 @@ Type information includes the following for every node:
 - Any type errors
 - Any effects raised by evaluating the expression
 - The type of all variables in scope for that expression
-
 
 When passing ref types in then everything should generalise Except where there are holes/errors
 

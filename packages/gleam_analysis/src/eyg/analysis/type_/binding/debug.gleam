@@ -52,7 +52,7 @@ fn render_function(to, acc) {
           let arg = render_type(arg)
           case eff {
             // assumes resolved TODO remove and use the open close code
-            t.Var(_) -> arg
+            // t.Var(_) -> arg
             t.Empty -> arg
             _ -> arg <> " <" <> render_effects(eff) <> ">"
           }

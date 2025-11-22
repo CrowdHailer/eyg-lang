@@ -4,14 +4,14 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
-import eyg/parse
+import eyg/parser
 import gleam/dict
 import gleam/list
 import gleeunit/should
 
 fn parse(src) {
   src
-  |> parse.all_from_string()
+  |> parser.all_from_string()
   |> should.be_ok()
 }
 
