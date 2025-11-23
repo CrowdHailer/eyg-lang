@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/result
 import gleam/set.{type Set}
 import type_systems/counter_result.{bind, ok, stop}
 
@@ -20,16 +21,21 @@ pub type Expression {
   App(Expression, Expression)
   Abs(String, Expression)
   Let(String, Expression, Expression)
+  Constant(Primitive)
+}
+
+pub type Primitive {
+  Integer
 }
 
 pub type MonoType {
   TVar(Int)
   TFun(MonoType, MonoType)
-  TPrimitive(Primitive)
+  TPrimitive(TPrimitive)
 }
 
-pub type Primitive {
-  Integer
+pub type TPrimitive {
+  TInteger
 }
 
 pub type PolyType {
@@ -37,22 +43,53 @@ pub type PolyType {
 }
 
 pub type Substitution =
-  dict.Dict(Int, Nil)
+  dict.Dict(Int, MonoType)
 
 fn empty() {
   dict.new()
 }
 
-fn compose(a, b) {
+fn compose(a, b) -> Substitution {
   todo
 }
 
-fn apply(sub, t) {
-  todo
+fn apply(s, t) {
+  case t {
+    // This assumes subs are already all applied
+    TVar(i) -> dict.get(s, i) |> result.unwrap(t)
+    TFun(t1, t2) -> TFun(apply(s, t1), apply(s, t2))
+    primitive -> primitive
+  }
 }
 
 fn apply_env(sub, a) {
   todo
+}
+
+fn occurs(i, t) {
+  case t {
+    TVar(j) -> i == j
+    TFun(t1, t2) -> occurs(i, t1) || occurs(i, t2)
+    _ -> False
+  }
+}
+
+fn unify(t1, t2) -> counter_result.CounterResult(Substitution, String) {
+  case t1, t2 {
+    TVar(i), TVar(j) if i == j -> ok(empty())
+    TVar(i), t | t, TVar(i) ->
+      case occurs(i, t) {
+        True -> stop("")
+        False -> ok(dict.from_list([#(i, t)]))
+      }
+    TFun(t1, t2), TFun(u1, u2) -> {
+      use s1 <- bind(unify(t1, u1))
+      use s2 <- bind(unify(apply(s1, t2), apply(s1, u2)))
+      ok(compose(s1, s2))
+    }
+    TPrimitive(p), TPrimitive(q) if p == q -> ok(empty())
+    _, _ -> stop("")
+  }
 }
 
 fn instantiate(scheme) {
@@ -60,10 +97,6 @@ fn instantiate(scheme) {
 }
 
 fn generalize(s, t) {
-  todo
-}
-
-fn unify(t1, t2) {
   todo
 }
 
@@ -96,6 +129,41 @@ pub fn w(a, exp, k) {
       use #(s2, t2) <- w(apply_env(s1, a), e2)
       ok(#(compose(s2, s1), t2))
     }
+    Constant(Integer) -> ok(#(empty(), TPrimitive(TInteger)))
   }
   |> bind(k)
+}
+
+// Top down
+pub fn m(env, exp, type_) -> counter_result.CounterResult(Substitution, String) {
+  case exp {
+    Constant(Integer) -> unify(type_, TPrimitive(TInteger))
+    Var(x) -> {
+      use scheme <- bind(lookup(env, x))
+      let t = instantiate(scheme)
+      unify(type_, t)
+    }
+    Abs(x, e) -> {
+      use beta1 <- fresh()
+      use beta2 <- fresh()
+      use s1 <- bind(unify(type_, TFun(beta1, beta2)))
+      let env = apply_env(s1, dict.insert(env, x, ForAll(set.new(), beta1)))
+      use s2 <- bind(m(env, e, apply(s1, beta2)))
+      ok(compose(s2, s1))
+    }
+    App(e1, e2) -> {
+      use beta <- fresh()
+      use s1 <- bind(m(env, e1, TFun(beta, type_)))
+      use s2 <- bind(m(apply_env(s1, env), e2, apply(s1, beta)))
+      ok(compose(s2, s1))
+    }
+    Let(x, e1, e2) -> {
+      use beta <- fresh()
+      use s1 <- bind(m(env, e1, beta))
+      let scheme = generalize(s1, apply(s1, beta))
+      let env = apply_env(s1, env) |> dict.insert(x, scheme)
+      use s2 <- bind(m(env, e2, apply(s1, type_)))
+      ok(compose(s2, s1))
+    }
+  }
 }
