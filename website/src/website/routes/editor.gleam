@@ -34,6 +34,7 @@ import website/components/snippet
 import website/components/vertical_menu
 import website/harness/browser as harness
 import website/routes/common
+import website/routes/home
 import website/sync/client
 
 pub fn app(module, func) {
@@ -48,7 +49,7 @@ pub fn app(module, func) {
 }
 
 fn layout(body) {
-  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use layout <- asset.do(asset.load(home.layout_path))
   use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   html.doc(
     list.flatten([

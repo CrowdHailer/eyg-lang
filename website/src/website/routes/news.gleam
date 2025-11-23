@@ -12,6 +12,7 @@ import mysig/route
 import website/components
 import website/components/clock
 import website/routes/common
+import website/routes/home
 import website/routes/news/appearance
 import website/routes/news/archive
 import website/routes/news/edition.{Edition}
@@ -123,7 +124,7 @@ pub fn home_page() {
     })
 
   use pea <- asset.do(asset.load("src/website/images/pea.webp"))
-  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use layout <- asset.do(asset.load(home.layout_path))
   let page =
     html.doc(
       list.flatten([
@@ -189,7 +190,7 @@ fn web_editions(editions) {
     let Edition(title: title, ..) = edition
     let page = {
       use pea <- asset.do(asset.load("src/website/images/pea.webp"))
-      use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+      use layout <- asset.do(asset.load(home.layout_path))
       let edition = edition.render(edition, index, asset.src(pea))
 
       let page =

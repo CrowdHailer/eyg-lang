@@ -16,6 +16,7 @@ import website/components/snippet
 import website/components/tree
 import website/routes/common
 import website/routes/documentation/state
+import website/routes/home
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
@@ -23,7 +24,7 @@ pub fn app(module, func) {
 }
 
 fn layout(body) {
-  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use layout <- asset.do(asset.load(home.layout_path))
   use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   html.doc(
     list.flatten([

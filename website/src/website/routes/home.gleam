@@ -29,8 +29,10 @@ pub fn app(module, func) {
   ])
 }
 
+pub const layout_path = "build/packages/mysig/priv/static/layout.css"
+
 fn layout(body) {
-  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use layout <- asset.do(asset.load(layout_path))
   use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   html.doc(
     list.flatten([

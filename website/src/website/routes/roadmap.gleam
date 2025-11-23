@@ -14,10 +14,11 @@ import website/components
 import website/components/clock
 import website/components/typeset as t
 import website/routes/common
+import website/routes/home
 import website/routes/news/edition
 
 fn layout(body) {
-  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use layout <- asset.do(asset.load(home.layout_path))
   use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   html.doc(
     list.flatten([
@@ -491,6 +492,7 @@ fn content() {
       "large runtime values can be rendered and a user can interact with them.",
       Pending,
     ),
+
     // Feature(
     //   "Compact format for saving programs",
     //   [
@@ -499,14 +501,12 @@ fn content() {
     //         "A more space efficient for saved EYG programs.
     // This would reduce storage requirements allowing more packages to be stored and indexed in the client.
     // It would also requce the size of downloads uploads when transmitting programs.
-
     // The current storage format is JSON which is inefficent in terms of storage and load/parse.",
     //       ),
     //     ],
     //   ],
     //   Pending,
     // ),
-
     Feature(
       "native-runtime",
       "Native runtime",
