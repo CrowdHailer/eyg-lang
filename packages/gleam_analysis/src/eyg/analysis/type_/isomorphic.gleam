@@ -16,6 +16,7 @@ pub type Type(var) {
   Empty
   RowExtend(String, Type(var), Type(var))
   EffectExtend(String, #(Type(var), Type(var)), Type(var))
+  Never
   Promise(Type(var))
 }
 

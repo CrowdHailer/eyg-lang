@@ -55,6 +55,7 @@ fn builtins() {
   |> dict.insert("equal", builtin.equal)
   |> dict.insert("fix", builtin.fix)
   |> dict.insert("fixed", builtin.fixed)
+  |> dict.insert("never", builtin.never)
   // integer
   |> dict.insert("int_compare", builtin.int_compare)
   |> dict.insert("int_add", builtin.add)

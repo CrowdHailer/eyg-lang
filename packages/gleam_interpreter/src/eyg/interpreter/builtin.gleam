@@ -1,3 +1,4 @@
+import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
@@ -38,6 +39,12 @@ pub fn do_fixed(builder, arg, meta, env, k) {
     env,
     state.Stack(state.CallWith(arg, env), meta, k),
   )
+}
+
+pub const never = state.Arity1(do_never)
+
+pub fn do_never(arg, _meta, _env, _k) {
+  Error(break.IncorrectTerm(expected: "Never", got: arg))
 }
 
 pub const int_compare = state.Arity2(do_int_compare)

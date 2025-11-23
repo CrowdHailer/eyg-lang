@@ -54,6 +54,7 @@ pub fn resolve(type_, bindings) {
         #(resolve(lift, bindings), resolve(reply, bindings)),
         resolve(rest, bindings),
       )
+    t.Never -> t.Never
     t.Promise(inner) -> t.Promise(resolve(inner, bindings))
   }
 }
@@ -101,6 +102,7 @@ pub fn gen(type_, level, bindings) {
       let rest = gen(rest, level, bindings)
       t.EffectExtend(label, #(lift, reply), rest)
     }
+    t.Never -> t.Never
     t.Promise(inner) -> t.Promise(gen(inner, level, bindings))
   }
 }
@@ -155,6 +157,7 @@ fn do_inst(poly, level, bindings, subs) {
       let #(rest, bindings, subs) = do_inst(rest, level, bindings, subs)
       #(t.EffectExtend(label, #(lift, reply), rest), bindings, subs)
     }
+    t.Never -> #(t.Never, bindings, subs)
     t.Promise(inner) -> {
       let #(inner, bindings, subs) = do_inst(inner, level, bindings, subs)
       #(t.Promise(inner), bindings, subs)

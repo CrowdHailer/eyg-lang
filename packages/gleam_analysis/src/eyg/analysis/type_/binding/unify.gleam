@@ -83,6 +83,7 @@ fn do_unify(ts, level, bindings) -> Result(dict.Dict(Int, binding.Binding), _) {
             Error(reason) -> Error(reason)
           }
         }
+        t.Never, _, t.Never, _ -> do_unify(ts, level, bindings)
         t.Promise(t1), _, t.Promise(t2), _ ->
           do_unify([#(t1, t2), ..ts], level, bindings)
         _, _, _, _ -> Error(error.TypeMismatch(t1, t2))
@@ -136,6 +137,7 @@ fn do_occurs_and_levels(i, level, types, bindings) {
           let types = [lift, reply, rest, ..types]
           do_occurs_and_levels(i, level, types, bindings)
         }
+        t.Never -> do_occurs_and_levels(i, level, types, bindings)
         t.Promise(inner) ->
           do_occurs_and_levels(i, level, [inner, ..types], bindings)
       }

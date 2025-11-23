@@ -126,6 +126,7 @@ pub fn ftv(type_) {
     t.RowExtend(_, field, tail) -> set.union(ftv(field), ftv(tail))
     t.EffectExtend(_, #(lift, reply), tail) ->
       set.union(ftv(lift), set.union(ftv(reply), ftv(tail)))
+    t.Never -> set.new()
     t.Promise(inner) -> ftv(inner)
   }
 }
@@ -438,6 +439,8 @@ pub fn builtins() {
     // #("debug", pure1(q(0), t.String)),
     // if the passed in constructor raises an effect then fix does too
     #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
+    // TODO do we want a never type
+    #("never", pure1(t.Never, q(1))),
 
     // Eval is effectful and so should be an effect, does that mean that Serialize also needs to be an effect
     // #(
