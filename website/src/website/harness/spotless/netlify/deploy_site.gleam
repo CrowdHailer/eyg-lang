@@ -6,11 +6,11 @@ import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
 import midas/browser
+import midas/effect as e
 import midas/task
 
 // import netlify
 import snag
-import website/harness/spotless/proxy
 
 pub const l = "Netlify.DeploySite"
 
@@ -56,7 +56,7 @@ pub fn do(app, site_id, files) {
     // use token <- task.do(netlify.authenticate(app))
     // netlify.deploy_site(token, site_id, files)
   }
-  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
+  let task = e.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
   browser.run(task)
 }
 

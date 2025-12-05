@@ -8,10 +8,10 @@ import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
 import midas/browser
+import midas/effect as e
 import midas/sdk/twitter
 import midas/task
 import snag
-import website/harness/spotless/proxy
 
 pub const l = "Twitter.Tweet"
 
@@ -61,7 +61,7 @@ pub fn do(client_id, redirect_uri, local, content) {
     use token <- task.do(authenticate(client_id, redirect_uri, local, scopes))
     twitter.create_tweet(token, content)
   }
-  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/twitter")
+  let task = e.proxy(task, http.Https, "eyg.run", None, "/api/twitter")
   browser.run(task)
 }
 
