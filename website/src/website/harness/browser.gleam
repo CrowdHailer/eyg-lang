@@ -4,6 +4,7 @@ import website/harness/browser/copy
 import website/harness/browser/download
 import website/harness/browser/fetch
 import website/harness/browser/flip
+import website/harness/browser/follow
 import website/harness/browser/geolocation as geo
 import website/harness/browser/now
 import website/harness/browser/paste
@@ -19,6 +20,7 @@ pub fn effects() {
     #(download.l, #(#(download.lift, download.reply()), download.preflight)),
     #(flip.l, #(#(flip.lift, flip.reply()), flip.preflight)),
     #(fetch.l, #(#(fetch.lift(), fetch.lower()), fetch.preflight)),
+    #(follow.l, #(#(follow.lift(), follow.lower()), follow.preflight)),
     // #(fs_list.l, #(#(fs_list.lift, fs_list.lower()), fs_list.preflight)),
     // #(fs_read.l, #(#(fs_read.lift, fs_read.lower()), fs_read.preflight)),
     #(geo.l, #(#(geo.lift, geo.lower()), geo.preflight)),
