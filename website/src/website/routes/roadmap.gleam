@@ -143,11 +143,11 @@ fn project_commit_link(hash) {
 }
 
 fn vimeo_text_link(text, id) {
-  jot.Link([jot.Text(text)], jot.Url("https://vimeo.com" <> id))
+  t.link(text, "https://vimeo.com" <> id)
 }
 
 fn website_text_link(text, id) {
-  jot.Link([jot.Text(text)], jot.Url("https://eyg.run" <> id))
+  t.link(text, "https://eyg.run" <> id)
 }
 
 fn status_badge(status) {

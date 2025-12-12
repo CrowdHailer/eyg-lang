@@ -1,5 +1,6 @@
 // scrawl article post essay
 
+import gleam/dict
 import jot
 
 pub fn text(content) {
@@ -7,7 +8,7 @@ pub fn text(content) {
 }
 
 pub fn link(content, url) {
-  jot.Link([jot.Text(content)], jot.Url(url))
+  jot.Link(dict.new(), [jot.Text(content)], jot.Url(url))
 }
 
 pub fn emphasis(content) {

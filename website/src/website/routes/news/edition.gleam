@@ -5,6 +5,7 @@ import jot
 import lustre/attribute as a
 import lustre/element as e
 import lustre/element/html as h
+import website/components/typeset
 
 pub const white = "#fefefc"
 
@@ -130,7 +131,7 @@ fn footer(edition_url) {
       block(
         jot.Paragraph(dict.new(), [
           jot.Text("This issue is available, and shareable, at "),
-          jot.Link([jot.Text(edition_url)], jot.Url(edition_url)),
+          typeset.link(edition_url, edition_url),
         ]),
       ),
     ],
@@ -140,7 +141,7 @@ fn footer(edition_url) {
 pub fn preview(post, index, pea_src) {
   let Edition(_date, title, raw) = post
   let document = jot.parse(raw)
-  let jot.Document(content, _references, _footnotes) = document
+  let jot.Document(content:, ..) = document
   let sections =
     list.map(
       [jot.Heading(dict.new(), 1, [jot.Text(title)]), ..list.take(content, 1)],
@@ -165,7 +166,7 @@ pub fn preview(post, index, pea_src) {
 pub fn render(post, index, pea_src) {
   let Edition(_date, title, raw) = post
   let document = jot.parse(raw)
-  let jot.Document(content, _references, _footnotes) = document
+  let jot.Document(content:, ..) = document
   let sections =
     list.map([jot.Heading(dict.new(), 1, [jot.Text(title)]), ..content], block)
   let edition_url = "https://eyg.run/news/editions/" <> int.to_string(index)
@@ -265,10 +266,19 @@ pub fn block(container) {
           ),
         ],
       )
+    jot.BulletList(items:, ..) ->
+      h.ul(
+        [],
+        list.map(items, fn(item) {
+          h.li([], [h.div([], list.map(item, block))])
+        }),
+      )
     jot.RawBlock(_content)
     | jot.BlockQuote(attributes: _, items: _)
-    | jot.BulletList(layout: _, style: _, items: _)
-    | jot.Div(attributes: _, items: _) -> panic as "not supported"
+    | jot.Div(attributes: _, items: _) -> {
+      echo container
+      panic as "not supported"
+    }
   }
 }
 
@@ -277,7 +287,7 @@ pub fn inline(content) {
     case item {
       jot.Linebreak -> h.br([])
       jot.Text(content) -> e.text(content)
-      jot.Link(content, destination) ->
+      jot.Link(content:, destination:, ..) ->
         h.a(
           [
             a.styles([#("text-decoration", "underline")]),
@@ -288,7 +298,7 @@ pub fn inline(content) {
           ],
           inline(content),
         )
-      jot.Image(_content, destination) ->
+      jot.Image(destination:, ..) ->
         h.img([
           {
             let assert jot.Url(url) = destination
@@ -318,7 +328,8 @@ pub fn inline(content) {
       jot.Footnote(_)
       | jot.MathDisplay(content: _)
       | jot.MathInline(content: _)
-      | jot.NonBreakingSpace -> todo
+      | jot.NonBreakingSpace
+      | jot.Span(..) -> panic as "not supported"
     }
   })
 }
