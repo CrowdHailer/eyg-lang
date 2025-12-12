@@ -23,6 +23,7 @@ pub fn render_type(typ) {
     t.Integer -> "Integer"
     t.Binary -> "Binary"
     t.String -> "String"
+    t.Never -> "Never"
     t.LinkedList(el) -> string.concat(["List(", render_type(el), ")"])
     t.Fun(from, effects, to) ->
       string.concat([

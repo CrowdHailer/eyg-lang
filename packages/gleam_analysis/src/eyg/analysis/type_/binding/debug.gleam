@@ -23,6 +23,7 @@ pub fn render_type(typ) {
     t.Integer -> "Integer"
     t.Binary -> "Binary"
     t.String -> "String"
+    t.Never -> "Never"
     t.List(el) -> "List(" <> render_type(el) <> ")"
     t.Fun(from, eff, to) -> render_function(to, [#(from, eff)])
     t.Union(row) -> string.join(render_row(row), " | ")
