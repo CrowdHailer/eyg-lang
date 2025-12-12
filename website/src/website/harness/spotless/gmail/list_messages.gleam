@@ -39,11 +39,6 @@ pub fn blocking(app, lift) {
   Ok(promise.map(do(app), result_to_eyg))
 }
 
-fn impl(app, lift) {
-  use p <- result.map(blocking(app, lift))
-  v.Promise(p)
-}
-
 const scopes = [
   "https://www.googleapis.com/auth/calendar.events.readonly",
   "https://www.googleapis.com/auth/gmail.send",
@@ -56,7 +51,7 @@ pub fn do(app) {
     use user_id <- task.do(google.userinfo(token))
     gmail.list_messages(token, user_id)
   }
-  browser.run(task)
+  browser.run_task(task)
 }
 
 fn result_to_eyg(result) {

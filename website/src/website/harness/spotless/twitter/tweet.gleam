@@ -3,7 +3,6 @@ import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/http
 import gleam/int
-import gleam/io
 import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
@@ -39,11 +38,6 @@ pub fn blocking(client_id, redirect_uri, local, lift) {
   Ok(promise.map(do(client_id, redirect_uri, local, content), result_to_eyg))
 }
 
-// fn impl(app, lift) {
-//   use p <- result.map(blocking(app, lift))
-//   v.Promise(p)
-// }
-
 const scopes = ["tweet.read", "tweet.write", "users.read"]
 
 fn authenticate(client_id, redirect_uri, local, scopes) {
@@ -62,7 +56,7 @@ pub fn do(client_id, redirect_uri, local, content) {
     twitter.create_tweet(token, content)
   }
   let task = e.proxy(task, http.Https, "eyg.run", None, "/api/twitter")
-  browser.run(task)
+  browser.run_task(task)
 }
 
 fn result_to_eyg(result) {

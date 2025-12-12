@@ -57,7 +57,7 @@ pub fn do(app, site_id, files) {
     // netlify.deploy_site(token, site_id, files)
   }
   let task = e.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
-  browser.run(task)
+  browser.run_task(task)
 }
 
 fn result_to_eyg(result) {

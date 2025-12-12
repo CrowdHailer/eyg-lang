@@ -54,7 +54,7 @@ pub fn do(app, to, message) {
     use email <- task.do(google.userinfo(token))
     gmail.send(token, email, to, message)
   }
-  browser.run(task)
+  browser.run_task(task)
 }
 
 fn result_to_eyg(result) {

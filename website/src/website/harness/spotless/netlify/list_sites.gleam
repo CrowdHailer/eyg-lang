@@ -29,18 +29,13 @@ pub fn blocking(app, lift) {
   promise.map(do(app), result_to_eyg)
 }
 
-fn impl(app, lift) {
-  use p <- result.map(blocking(app, lift))
-  v.Promise(p)
-}
-
 pub fn do(app) {
   let task = {
     todo
     // use token <- task.do(netlify.authenticate(app))
     // netlify.list_sites(token, None, None, None, None)
   }
-  browser.run(task)
+  browser.run_task(task)
 }
 
 fn result_to_eyg(result) {

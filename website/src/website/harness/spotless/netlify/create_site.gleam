@@ -45,7 +45,7 @@ pub fn do(app) {
     todo as "not implemented"
   }
   let task = e.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
-  browser.run(task)
+  browser.run_task(task)
 }
 
 fn result_to_eyg(result) {

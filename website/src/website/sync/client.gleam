@@ -33,7 +33,7 @@ pub fn default() {
   init(
     Remote(
       fn() {
-        browser.run(supabase.fetch_index(supabase.client))
+        browser.run_task(supabase.fetch_index(supabase.client))
         |> promise.map(
           result.map(_, fn(index) {
             let supabase.Index(registry:, packages:) = index
@@ -44,7 +44,7 @@ pub fn default() {
         |> promise.map(result.replace_error(_, CommunicationFailure))
       },
       fn(cid) {
-        browser.run(supabase.fetch_fragment(supabase.client, cid))
+        browser.run_task(supabase.fetch_fragment(supabase.client, cid))
         |> promise.map(result.map(_, fn(index) { todo }))
         |> promise.map(result.replace_error(_, CommunicationFailure))
       },

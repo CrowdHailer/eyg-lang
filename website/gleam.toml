@@ -25,7 +25,7 @@ eyg_interpreter = {path= "../packages/gleam_interpreter"}
 eyg_analysis = {path= "../packages/gleam_analysis"}
 eyg_client = {path= "../packages/gleam_client"}
 morph = {path= "../packages/morph"}
-midas_browser = ">= 0.1.5 and < 1.0.0"
+midas_browser = ">= 1.0.0 and < 2.0.0"
 gleam_fetch = ">= 1.1.1 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
 oas = ">= 7.2.0 and < 8.0.0"
