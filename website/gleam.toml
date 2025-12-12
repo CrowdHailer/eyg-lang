@@ -29,7 +29,8 @@ midas_browser = ">= 1.0.0 and < 2.0.0"
 gleam_fetch = ">= 1.1.1 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
 oas = ">= 7.2.0 and < 8.0.0"
-# netlify = ">= 1.0.0 and < 2.0.0"
+netlify = ">= 1.0.0 and < 2.0.0"
+spotless = ">= 3.2.0 and < 4.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
