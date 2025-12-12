@@ -93,7 +93,7 @@ pub type State {
 }
 
 pub fn init(_) {
-  let #(client, sync_task) = client.default()
+  let #(client, sync_task) = client.registry()
   let source = e.from_annotated(ir.vacant())
   let shell = shell.init(harness.effects(), client.cache)
   let snippet = snippet.init(source)

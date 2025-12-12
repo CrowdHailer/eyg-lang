@@ -8,7 +8,10 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
+import gleam/dynamic/decode
+import gleam/int
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/result
 import website/sync/fragment
@@ -118,11 +121,68 @@ pub type Release {
   Release(package_id: String, version: Int, created_at: String, hash: String)
 }
 
+fn release_decoder() {
+  use package_id <- decode.field("package_id", decode.string)
+  use version <- decode.field("version", decode.int)
+  use created_at <- decode.field("created_at", decode.string)
+  use hash <- decode.field("hash", decode.string)
+  decode.success(Release(package_id:, version:, created_at:, hash:))
+}
+
+fn release_encode(release) {
+  let Release(package_id:, version:, created_at:, hash:) = release
+  json.object([
+    #("package_id", json.string(package_id)),
+    #("version", json.int(version)),
+    #("created_at", json.string(created_at)),
+    #("hash", json.string(hash)),
+  ])
+}
+
 pub type Index {
   Index(
     registry: Dict(String, String),
     packages: Dict(String, Dict(Int, Release)),
   )
+}
+
+pub fn index_decoder() {
+  use registry <- decode.field(
+    "registry",
+    decode.dict(decode.string, decode.string),
+  )
+  use packages <- decode.field(
+    "packages",
+    decode.dict(
+      decode.string,
+      decode.dict(
+        {
+          use str <- decode.then(decode.string)
+          case int.parse(str) {
+            Ok(version) -> decode.success(version)
+            Error(_) -> decode.failure(0, "version must be an integer")
+          }
+        },
+        release_decoder(),
+      ),
+    ),
+  )
+  decode.success(Index(registry:, packages:))
+}
+
+pub fn index_encode(index) {
+  let Index(registry:, packages:) = index
+  json.object([
+    #("registry", json.dict(registry, fn(x) { x }, json.string)),
+    #(
+      "packages",
+      json.dict(packages, fn(x) { x }, json.dict(
+        _,
+        int.to_string,
+        release_encode,
+      )),
+    ),
+  ])
 }
 
 pub fn index_init() {

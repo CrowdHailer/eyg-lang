@@ -1,11 +1,14 @@
 import eyg/client/supabase
 import eyg/ir/cid
+import gleam/http/request
 import gleam/io
 import gleam/javascript/promise.{type Promise}
+import gleam/json
 import gleam/list
 import gleam/result
 import lustre/effect
 import midas/browser
+import midas/task as t
 import website/sync/cache
 
 pub type Failure {
@@ -25,8 +28,47 @@ pub type Client {
   Client(remote: Remote, cache: cache.Cache)
 }
 
+// client init used only in tests
 pub fn init(remote) {
   #(Client(remote, cache.init()), [RequireIndex(remote)])
+}
+
+pub fn registry() -> #(Client, List(Effect)) {
+  init(
+    Remote(
+      fn() {
+        {
+          let request =
+            request.new()
+            |> request.set_host("localhost")
+            |> request.set_path("/packages")
+            |> request.set_body(<<>>)
+          use response <- t.do(t.fetch(request))
+
+          let assert Ok(index) =
+            json.parse_bits(response.body, cache.index_decoder())
+
+          t.done(index)
+        }
+        |> browser.run_task()
+        |> promise.map(result.replace_error(_, CommunicationFailure))
+      },
+      fn(cid) {
+        {
+          let request =
+            request.new()
+            |> request.set_host("localhost")
+            |> request.set_path("/fragments/" <> cid)
+            |> request.set_body(<<>>)
+          use response <- t.do(t.fetch(request))
+
+          t.done(response.body)
+        }
+        |> browser.run_task()
+        |> promise.map(result.replace_error(_, CommunicationFailure))
+      },
+    ),
+  )
 }
 
 pub fn default() {
