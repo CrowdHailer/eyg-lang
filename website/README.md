@@ -2,6 +2,8 @@
 
 ## Development
 
-All development scripts are defined in the `website/dev` module.
-*This is currently in `src` but will be moved to `dev` when that capability is in Gleam.*
+```sh
+gleam dev
+```
 
+visit [http://localhost:8080](http://localhost:8080)
