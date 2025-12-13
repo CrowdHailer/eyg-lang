@@ -91,7 +91,7 @@ fn do_render(picker, filter, suggestions, index) {
         a.attribute("autocomplete", "off"),
         a.attribute("autofocus", "true"),
         a.required(True),
-        utils.on_hotkey(on_keydown(_, picker)),
+        utils.on_hotkey(on_keydown(_, picker), Dismissed),
         event.on_input(on_input(_, picker)),
       ]),
       h.hr([

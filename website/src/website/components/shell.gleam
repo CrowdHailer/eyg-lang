@@ -216,7 +216,7 @@ fn new_code(shell) {
   let Shell(source:, scope:, runner:, ..) = shell
   let source = source.editable |> e.to_annotated([]) |> ir.clear_annotation
 
-  let #(runner, action) =
+  let #(runner, _action) =
     runner.update(runner, runner.Reset(block.execute(source, scope)))
 
   #(Shell(..shell, runner:) |> snippet_analyse, FocusOnCode)

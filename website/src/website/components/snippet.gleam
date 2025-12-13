@@ -1153,7 +1153,7 @@ fn actual_render_projection(proj, autofocus, errors) {
               }
             }),
           ),
-          utils.on_hotkey(UserPressedCommandKey),
+          utils.on_hotkey(UserPressedCommandKey, UserFocusedOnCode),
         ]
         False -> [
           event.on(

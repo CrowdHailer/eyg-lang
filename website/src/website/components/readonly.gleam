@@ -210,7 +210,7 @@ pub fn render(state) {
               }
             }),
           ),
-          utils.on_hotkey(UserPressedCommandKey),
+          utils.on_hotkey(UserPressedCommandKey, UserFocusedOnCode),
         ],
         [projection_rendered],
       )

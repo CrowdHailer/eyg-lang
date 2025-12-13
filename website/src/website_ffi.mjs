@@ -20,8 +20,11 @@ export function downloadFile(file) {
 
 // https://stackoverflow.com/questions/33406169/failed-to-execute-setselectionrange-on-htmlinputelement-the-input-elements
 export function selectAllInput(input) {
-  let type = input.type;
-  input.type = 'text';
-  input.setSelectionRange(0, input.value.length);
-  input.type = type;
+  // pre elements are in some cases focused on and they don't have a value field
+  if (input.value != undefined) {
+    let type = input.type;
+    input.type = 'text';
+    input.setSelectionRange(0, input.value.length);
+    input.type = type;
+  }
 }

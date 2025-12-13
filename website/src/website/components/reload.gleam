@@ -6,7 +6,6 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/expression
-import eyg/interpreter/expression as r
 import eyg/interpreter/state.{type Value}
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
@@ -252,7 +251,7 @@ fn run_field(state, field, args) {
   case cache.run(return, cache, expression.resume) {
     Ok(value) -> {
       let select = v.Partial(v.Select(field), [])
-      case r.call(select, [#(value, Nil), ..args]) {
+      case expression.call(select, [#(value, Nil), ..args]) {
         Ok(initial) -> Ok(initial)
         Error(debug) -> Error(debug)
       }
