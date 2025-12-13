@@ -2,7 +2,6 @@ import eyg/interpreter/block
 import eyg/interpreter/expression
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import gleam/io
 import gleam/javascript/promise
 import gleam/option.{None}
 import gleeunit/should

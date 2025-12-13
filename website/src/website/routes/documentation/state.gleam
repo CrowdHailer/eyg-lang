@@ -236,7 +236,7 @@ fn to_bytes(editable) {
 
 // snippet failure goes at top level
 pub fn init(_) {
-  let #(sync, init_task) = client.default()
+  let #(sync, init_task) = client.registry()
   let examples = [
     #(int_key, to_bytes(int_example)),
     #(text_key, to_bytes(text_example)),

@@ -5,14 +5,11 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import lustre/event
 import morph/editable as e
 import mysig/asset
 import mysig/html
 import website/components
-import website/components/example
 import website/components/example/view
-import website/components/snippet
 import website/components/tree
 import website/routes/common
 import website/routes/documentation/state

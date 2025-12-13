@@ -2,7 +2,6 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
 import gleam/int
-import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list

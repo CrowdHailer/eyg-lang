@@ -81,7 +81,7 @@ fn effects(_config) {
 pub fn init(config) {
   let #(config, storage) = config
   let effects = effects(config)
-  let #(client, init_task) = client.default()
+  let #(client, init_task) = client.registry()
   let examples =
     [
       #(

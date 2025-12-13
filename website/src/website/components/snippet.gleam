@@ -469,9 +469,13 @@ pub fn update(state, message) {
         Ok(text) ->
           case dag_json.from_block(bit_array.from_string(text)) {
             Ok(expression) -> {
-              let assert #(p.Exp(_), zoom) = state.projection
-              let proj = #(p.Exp(e.from_annotated(expression)), zoom)
-              update_source_from_buffer(proj, state)
+              case state.projection {
+                #(p.Exp(_), zoom) -> {
+                  let proj = #(p.Exp(e.from_annotated(expression)), zoom)
+                  update_source_from_buffer(proj, state)
+                }
+                _ -> action_failed(state, "paste")
+              }
             }
             Error(_) -> action_failed(state, "paste")
           }

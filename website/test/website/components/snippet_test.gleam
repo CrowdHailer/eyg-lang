@@ -137,7 +137,7 @@ fn click(state, path) {
 }
 
 fn analyse(state, effects) {
-  let #(client, _) = client.default()
+  let #(client, _) = client.registry()
   let #(#(snippet, action), i) = state
   let snippet.Snippet(editable:, ..) = snippet
 

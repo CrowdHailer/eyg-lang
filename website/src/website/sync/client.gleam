@@ -1,5 +1,3 @@
-import eyg/client/supabase
-import eyg/ir/cid
 import gleam/http/request
 import gleam/io
 import gleam/javascript/promise.{type Promise}
@@ -61,33 +59,12 @@ pub fn registry() -> #(Client, List(Effect)) {
             |> request.set_path("/fragments/" <> cid)
             |> request.set_body(<<>>)
           use response <- t.do(t.fetch(request))
+          // echo json.parse_bits(response.body, dag_json.decoder(Nil))
+          // promise.map(cid.from_block_async(response.body), fn(x) { echo x })
 
           t.done(response.body)
         }
         |> browser.run_task()
-        |> promise.map(result.replace_error(_, CommunicationFailure))
-      },
-    ),
-  )
-}
-
-pub fn default() {
-  init(
-    Remote(
-      fn() {
-        browser.run_task(supabase.fetch_index(supabase.client))
-        |> promise.map(
-          result.map(_, fn(index) {
-            let supabase.Index(registry:, packages:) = index
-            let packages = todo
-            cache.Index(registry:, packages:)
-          }),
-        )
-        |> promise.map(result.replace_error(_, CommunicationFailure))
-      },
-      fn(cid) {
-        browser.run_task(supabase.fetch_fragment(supabase.client, cid))
-        |> promise.map(result.map(_, fn(index) { todo }))
         |> promise.map(result.replace_error(_, CommunicationFailure))
       },
     ),
@@ -120,12 +97,14 @@ pub fn run(effects) {
 
           case result {
             Ok(bytes) -> {
-              use got <- promise.map(cid.from_block_async(bytes))
-              let assert Ok(got) = got
-              case asked == got {
-                True -> FragmentFetched(asked, Ok(bytes))
-                False -> FragmentFetched(asked, Error(DigestIncorrect))
-              }
+              io.println("skipping cid check, trust server.")
+              // use got <- promise.map(cid.from_block_async(bytes))
+              // let assert Ok(got) = got
+              // case asked == got {
+              //   True -> FragmentFetched(asked, Ok(bytes))
+              //   False -> FragmentFetched(asked, Error(DigestIncorrect))
+              // }
+              promise.resolve(FragmentFetched(asked, Ok(bytes)))
             }
             Error(reason) ->
               promise.resolve(FragmentFetched(asked, Error(reason)))

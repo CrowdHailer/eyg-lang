@@ -5,7 +5,6 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleeunit/should

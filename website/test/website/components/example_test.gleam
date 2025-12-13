@@ -29,7 +29,7 @@ fn index() {
 
 pub fn analyse_for_cache_update_test() {
   let source = ir.release("foo", 1, foo_cid())
-  let #(client, _) = client.default()
+  let #(client, _) = client.registry()
   let example = example.init(source, client.cache, [])
   example.snippet.analysis
   |> should.be_some
@@ -65,7 +65,7 @@ pub fn analyse_for_cache_update_test() {
 }
 
 pub fn suggestions_for_packages_test() {
-  let #(client, _) = client.default()
+  let #(client, _) = client.registry()
   let #(client, action) =
     client.update(client, client.IndexFetched(Ok(index())))
   should.equal(action, [])

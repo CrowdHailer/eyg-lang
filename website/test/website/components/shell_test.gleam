@@ -18,7 +18,7 @@ import website/sync/cache
 import website/sync/client
 
 fn new(effects) {
-  let #(client, _) = client.default()
+  let #(client, _) = client.registry()
   let shell = shell.init(effects, client.cache)
   // let result = snippet.update(snippet, snippet.UserFocusedOnCode)
   #(#(shell, shell.Nothing), 0)
@@ -36,7 +36,7 @@ fn assert_action(got, expected, i) {
 }
 
 fn update_cache(state, cache) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   #(shell.update(shell, shell.CacheUpdate(cache)), i + 1)
 }
 
@@ -50,7 +50,7 @@ fn command(state, key) {
 }
 
 fn pick_from(state, check) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   // assert_action(action, [snippet.FocusOnInput], i)
   let shell.Shell(source:, ..) = shell
   let message = snippet_test.handle_picker(source, check, i)
@@ -63,7 +63,7 @@ fn pick(state, value) {
 
 fn enter_text(state, text) {
   // This handles 2 messages we want both to go through the update path so don't share with snippet
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   let Shell(source: snippet, ..) = shell
   let assert snippet.Snippet(status: snippet.Editing(mode), ..) = snippet
   let Nil = case mode {
@@ -80,12 +80,12 @@ fn enter_text(state, text) {
 }
 
 fn click_previous(state, index) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   #(shell.update(shell, shell.UserClickedPrevious(index)), i + 1)
 }
 
 fn has_action(state, expected) {
-  let #(#(shell, action), i) = state
+  let #(#(_shell, action), i) = state
   case action == expected {
     True -> Nil
     False ->
@@ -113,7 +113,7 @@ fn run_effect(state, sync) {
 }
 
 fn has_executed(state, with) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   let Shell(previous:, ..) = shell
   case list.first(previous) {
     Ok(shell.Executed(_, _, recent)) -> {
@@ -127,7 +127,7 @@ fn has_executed(state, with) {
 }
 
 fn has_value(state, expected) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   let Shell(previous:, ..) = shell
   case list.first(previous) {
     Ok(shell.Executed(value, _effects, _recent)) -> {
@@ -141,7 +141,7 @@ fn has_value(state, expected) {
 }
 
 fn has_effects(state, expected) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), i) = state
   let Shell(previous:, ..) = shell
   case list.first(previous) {
     Ok(shell.Executed(_, effects, _recent)) -> {
@@ -155,7 +155,7 @@ fn has_effects(state, expected) {
 }
 
 fn has_input(state, expected) {
-  let #(#(shell, action), i) = state
+  let #(#(shell, _action), _i) = state
   let Shell(source:, ..) = shell
   source.editable
   |> should.equal(expected)
@@ -243,7 +243,7 @@ pub fn run_only_starts_once_test() {
   |> enter_text("Go Go")
   |> command("Enter")
   |> fn(state) {
-    let #(#(shell, action), i) = state
+    let #(#(shell, _action), i) = state
     #(#(shell, shell.Nothing), i)
   }
   |> command("Enter")
