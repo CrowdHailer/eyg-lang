@@ -27,7 +27,7 @@ pub fn effects() {
     #(now.l, #(#(now.lift, now.reply), now.preflight)),
     #(paste.l, #(#(paste.lift, paste.reply()), paste.preflight)),
     #(prompt.l, #(#(prompt.lift, prompt.reply()), prompt.preflight)),
-    #(random.l, #(#(random.lift, random.reply()), random.preflight)),
+    #(random.l, #(#(random.lift, random.lower), random.preflight)),
     #(visit.l, #(#(visit.lift, visit.reply()), visit.preflight)),
   ]
 }

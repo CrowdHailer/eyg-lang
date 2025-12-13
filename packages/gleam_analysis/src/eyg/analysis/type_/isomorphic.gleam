@@ -53,6 +53,10 @@ pub fn option(value) {
   Union(RowExtend("Some", value, RowExtend("None", unit, Empty)))
 }
 
+pub fn key_value_list(inner) {
+  List(record([#("key", String), #("value", inner)]))
+}
+
 pub const file = Record(
   RowExtend("name", String, RowExtend("content", Binary, Empty)),
 )

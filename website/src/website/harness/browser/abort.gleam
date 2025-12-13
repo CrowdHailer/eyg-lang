@@ -5,7 +5,7 @@ pub const l = "Abort"
 
 pub const lift = t.String
 
-pub const reply = t.unit
+pub const reply = t.Never
 
 pub fn type_() {
   #(l, #(lift, reply))

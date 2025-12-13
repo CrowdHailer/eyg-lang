@@ -7,19 +7,17 @@ import gleam/result
 
 pub const l = "Random"
 
-pub const lift = t.unit
+pub const lift = t.Integer
 
-pub fn reply() {
-  t.Integer
-}
+pub const lower = t.Integer
 
 pub fn type_() {
-  #(l, #(lift, reply()))
+  #(l, #(lift, lower))
 }
 
 fn impl(lift) {
-  use Nil <- result.try(cast.as_unit(lift, Nil))
-  Ok(v.Integer(do(Nil)))
+  use max <- result.try(cast.as_integer(lift))
+  Ok(v.Integer(do(max)))
 }
 
 pub fn blocking(lift) {
@@ -32,6 +30,6 @@ pub fn preflight(lift) {
   fn() { promise.resolve(value) }
 }
 
-pub fn do(_: Nil) {
-  int.random(100)
+pub fn do(max) {
+  int.random(max)
 }
