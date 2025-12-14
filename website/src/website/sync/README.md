@@ -4,16 +4,6 @@ Fetch and publish fragments and packages.
 
 Is archive a better name, or dependency or package. sync message is a good name
 
-# Fragment vs Package
-
-A fragment is an EYG expression that is identified by it's hash.
-A package consists of an ordered set of releases where each release points at a valid, pure fragment.
-
-Pure means that the expression is side-effect free (it can contain functions with side effects), valid means that there are no type errors.
-
-I want a term for valid fragments.
-Calling invalid fragments blobs seems acceptable but I think for most people blob means binary.
-
 
 
 ## Cache
