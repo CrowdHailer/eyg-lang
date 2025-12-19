@@ -1,5 +1,7 @@
 import dag_json
 import gleam/dynamic/decode
+import gleam/http/response.{Response}
+import gleam/json
 import multiformats/cid/v1
 
 pub const release_published = "release_published"
@@ -27,4 +29,23 @@ pub fn payload_encode(payload) {
       ])
     }
   }
+}
+
+pub fn pull_events_response(response) {
+  let Response(status:, body:, ..) = response
+  case status {
+    200 ->
+      json.parse_bits(body, {
+        use events <- decode.field("events", decode.list(payload_decoder()))
+        decode.success(events)
+      })
+    _ -> todo
+  }
+}
+
+pub fn decode_events(body) {
+  json.parse(body, {
+    use events <- decode.field("events", decode.list(payload_decoder()))
+    decode.success(events)
+  })
 }

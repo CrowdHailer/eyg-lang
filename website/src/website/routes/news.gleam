@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/list
-import gleam/option.{None}
 import gleam/string
 import gleroglero/outline
 import lustre/attribute as a
@@ -141,7 +140,7 @@ pub fn home_page() {
         common.diagnostics(),
       ]),
       [
-        components.header(fn(_) { todo }, None),
+        components.header(),
         h.div([a.class("pt-14 pb-1 p-2")], [
           h.div([a.class("max-w-3xl mx-auto")], [
             h.h1([a.class("text-xl font-bold")], [element.text("News")]),

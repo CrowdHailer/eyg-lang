@@ -7,11 +7,11 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
-import website/components/auth_panel
 import website/components/example
 import website/components/reload
 import website/components/runner
 import website/components/snippet
+import website/config
 import website/harness/browser as harness
 import website/sync/client
 
@@ -28,12 +28,7 @@ pub type Example {
 }
 
 pub type State {
-  State(
-    auth: auth_panel.State,
-    sync: client.Client,
-    active: Active,
-    examples: Dict(String, Example),
-  )
+  State(sync: client.Client, active: Active, examples: Dict(String, Example))
 }
 
 pub type Active {
@@ -70,7 +65,7 @@ fn init_example(json, cache, extrinsic) {
   |> Simple
 }
 
-fn effects(_config) {
+fn effects() {
   list.append(
     harness.effects(),
     // todo as "spotless.effects(config)"
@@ -79,9 +74,9 @@ fn effects(_config) {
 }
 
 pub fn init(config) {
-  let #(config, storage) = config
-  let effects = effects(config)
-  let #(client, init_task) = client.init(todo)
+  let config.Config(registry_origin:) = config
+  let #(client, init_tasks) = client.init(registry_origin)
+  let effects = effects()
   let examples =
     [
       #(
@@ -105,18 +100,12 @@ pub fn init(config) {
       }),
     ]
     |> dict.from_list
-  let #(auth, task) = auth_panel.init(Nil)
-  let missing_cids = missing_refs(examples)
-  // let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
-  let state = State(auth, client, Nothing, examples)
 
-  #(
-    state,
-    effect.batch([
-      auth_panel.dispatch(task, AuthMessage, storage),
-      // client.lustre_run(list.append(init_task, sync_task), SyncMessage),
-    ]),
-  )
+  let missing_cids = missing_refs(examples)
+  let #(client, sync_tasks) = client.fetch_fragments(client, missing_cids)
+  let state = State(client, Nothing, examples)
+
+  #(state, client.lustre_run(list.append(init_tasks, sync_tasks), SyncMessage))
 }
 
 fn missing_refs(examples) {
@@ -142,7 +131,7 @@ pub fn set_example(state: State, id, snippet) {
 }
 
 pub type Message {
-  AuthMessage(auth_panel.Message)
+
   SimpleMessage(String, example.Message)
   ReloadMessage(String, reload.Message(List(Int)))
   SyncMessage(client.Message)
@@ -172,13 +161,6 @@ fn dispatch_nothing(_promise) {
 
 pub fn update(state: State, message) {
   case message {
-    AuthMessage(message) -> {
-      let #(auth, cmd) = auth_panel.update(state.auth, message)
-      let state = State(..state, auth: auth)
-      let assert Ok(storage) = auth_panel.local_storage("session")
-
-      #(state, auth_panel.dispatch(cmd, AuthMessage, storage))
-    }
     SimpleMessage(id, message) -> {
       let state = close_other_examples(state, id)
       let example = get_example(state, id)

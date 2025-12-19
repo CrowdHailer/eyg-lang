@@ -6,7 +6,6 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
-import website/components/auth_panel
 import website/components/example.{type Example}
 import website/components/runner
 import website/components/snippet
@@ -208,7 +207,6 @@ const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\
 pub type State {
   State(
     show_help: Bool,
-    auth: auth_panel.State,
     cache: sync.Client,
     active: Active,
     examples: Dict(String, Example),
@@ -256,8 +254,7 @@ pub fn init(_) {
     #(multiple_resume_key, bit_array.from_string(multiple_resume_example)),
     #(capture_key, bit_array.from_string(capture_example)),
   ]
-  let #(auth, task) = auth_panel.init(Nil)
-  let assert Ok(storage) = auth_panel.local_storage("session")
+
   // TODO refs 
   // TODO make snippet update edit refs
   let missing_cids = []
@@ -269,11 +266,10 @@ pub fn init(_) {
   let examples = dict.from_list(examples)
   // let missing_cids = missing_refs(examples)
   // let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
-  let state = State(False, auth, sync, Nothing, examples)
+  let state = State(False, sync, Nothing, examples)
   #(
     state,
     effect.batch([
-      auth_panel.dispatch(task, AuthMessage, storage),
       // client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
@@ -282,7 +278,6 @@ pub fn init(_) {
 pub type Message {
   ExampleMessage(String, example.Message)
   SyncMessage(sync.Message)
-  AuthMessage(auth_panel.Message)
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -307,12 +302,6 @@ fn dispatch_nothing(_promise) {
 
 pub fn update(state: State, message) {
   case message {
-    AuthMessage(message) -> {
-      let #(auth, task) = auth_panel.update(state.auth, message)
-      let state = State(..state, auth: auth)
-      let assert Ok(storage) = auth_panel.local_storage("session")
-      #(state, auth_panel.dispatch(task, AuthMessage, storage))
-    }
     ExampleMessage(identifier, message) -> {
       let state = case state.active {
         Editing(current, _) if current != identifier -> {

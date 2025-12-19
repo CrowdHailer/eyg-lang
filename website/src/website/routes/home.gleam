@@ -1,4 +1,6 @@
+import gleam/http
 import gleam/list
+import gleam/option.{None}
 import lustre
 import lustre/attribute as a
 import lustre/element
@@ -6,12 +8,11 @@ import lustre/element/html as h
 import mysig/asset
 import mysig/asset/client
 import mysig/html
+import spotless/origin
 import website/components
-import website/components/auth_panel
 import website/components/example/view
 import website/components/reload
 import website/config
-import website/harness/spotless.{Config}
 import website/routes/common
 import website/routes/home/state
 
@@ -20,8 +21,8 @@ import website/routes/home/state
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
   use ssr <- asset.do(view())
-  let config = Config(dnsimple_local: True, twitter_local: True)
-  let #(state, _eff) = state.init(#(config, auth_panel.in_memory_store()))
+  let config = config.Config(origin.Origin(http.Https, "eyg.run", None))
+  let #(state, _eff) = state.init(config)
 
   layout([
     h.div([a.id("app")], [ssr(state)]),
@@ -63,8 +64,7 @@ pub fn page() {
 pub fn client() {
   let assert Ok(render) = client.load_manifest(view())
   let app = lustre.application(state.init, state.update, render)
-  let assert Ok(_) =
-    lustre.start(app, "#app", #(config.load(), auth_panel.in_memory_store()))
+  let assert Ok(_) = lustre.start(app, "#app", config.load())
   Nil
 }
 
@@ -149,11 +149,7 @@ fn view() {
   use penelopea <- asset.do(asset.load("src/website/images/pea.webp"))
   fn(s: state.State) {
     h.div([a.class("")], [
-      case s.auth.active {
-        True -> auth_panel.render(s.auth) |> element.map(state.AuthMessage)
-        False -> element.none()
-      },
-      components.header(state.AuthMessage, s.auth.session),
+      components.header(),
       page_area([
         h.div([a.class("expand hstack")], [
           h.div([a.class("m-2")], [

@@ -51,7 +51,7 @@ fn escape_id(text) {
 
 fn body() {
   [
-    components.header(fn(_) { todo }, None),
+    components.header(),
     h.div(
       [a.class("bg-gradient-to-bl from-green-100 pt-14 pb-1 to-green-200")],
       [

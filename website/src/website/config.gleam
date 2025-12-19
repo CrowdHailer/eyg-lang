@@ -1,10 +1,17 @@
+import gleam/http
+import gleam/option.{None}
 import plinth/browser/window
-import website/harness/spotless.{Config}
+import spotless/origin
+
+pub type Config {
+  Config(registry_origin: origin.Origin)
+}
 
 pub fn load() {
   case window.origin() {
-    "http://localhost:8080" -> Config(dnsimple_local: True, twitter_local: True)
-    "https://eyg.run" -> Config(dnsimple_local: False, twitter_local: False)
+    "http://localhost:8080" ->
+      Config(origin.Origin(http.Https, "localhost", None))
+    "https://eyg.run" -> Config(origin.Origin(http.Https, "eyg.run", None))
     _ -> panic as "No apps configured"
   }
 }
