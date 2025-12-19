@@ -18,10 +18,11 @@ import website/sync/cache
 import website/sync/client
 
 fn new(effects) {
-  let #(client, _) = client.registry()
-  let shell = shell.init(effects, client.cache)
-  // let result = snippet.update(snippet, snippet.UserFocusedOnCode)
-  #(#(shell, shell.Nothing), 0)
+  todo
+  // let #(client, _) = client.registry()
+  // let shell = shell.init(effects, client.cache)
+  // // let result = snippet.update(snippet, snippet.UserFocusedOnCode)
+  // #(#(shell, shell.Nothing), 0)
 }
 
 fn assert_action(got, expected, i) {
@@ -259,17 +260,19 @@ pub fn foo_cid() {
 }
 
 fn index() {
-  let foo_id = "foo_some_id"
-  let foo_release = cache.Release(foo_id, 1, "time", foo_cid())
-  cache.Index(
-    registry: dictx.singleton("foo", foo_id),
-    packages: dictx.singleton(foo_id, dictx.singleton(1, foo_release)),
-  )
+  todo
+  // let foo_id = "foo_some_id"
+  // let foo_release = cache.Release(foo_id, 1, "time", foo_cid())
+  // cache.Index(
+  //   registry: dictx.singleton("foo", foo_id),
+  //   packages: dictx.singleton(foo_id, dictx.singleton(1, foo_release)),
+  // )
 }
 
 fn cache() {
-  cache.Cache(index: index(), fragments: dict.new())
-  |> cache.install_source(foo_cid(), foo_src())
+  todo
+  // cache.Cache(index: index(), fragments: dict.new())
+  // |> cache.install_source(foo_cid(), foo_src())
 }
 
 pub fn run_a_reference_test() {

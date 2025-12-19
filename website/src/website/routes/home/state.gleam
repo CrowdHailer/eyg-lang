@@ -81,7 +81,7 @@ fn effects(_config) {
 pub fn init(config) {
   let #(config, storage) = config
   let effects = effects(config)
-  let #(client, init_task) = client.registry()
+  let #(client, init_task) = client.init(todo)
   let examples =
     [
       #(
@@ -107,14 +107,14 @@ pub fn init(config) {
     |> dict.from_list
   let #(auth, task) = auth_panel.init(Nil)
   let missing_cids = missing_refs(examples)
-  let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
+  // let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
   let state = State(auth, client, Nothing, examples)
 
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
+      // client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
 }
@@ -284,7 +284,11 @@ pub fn update(state: State, message) {
       let state = State(..state, sync: sync_client, examples:)
       #(
         state,
-        effect.batch([client.lustre_run(effect, SyncMessage), ..effects]),
+        effect.batch([
+          // client.lustre_run(effect, SyncMessage),
+          todo,
+          ..effects
+        ]),
       )
     }
   }

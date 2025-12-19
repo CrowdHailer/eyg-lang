@@ -92,7 +92,7 @@ pub type State {
 }
 
 pub fn init(_) {
-  let #(client, sync_task) = client.registry()
+  let #(client, sync_task) = client.init(todo)
   let source = e.from_annotated(ir.vacant())
   let shell = shell.init(harness.effects(), client.cache)
   let snippet = snippet.init(source)
@@ -194,7 +194,8 @@ pub fn update(state: State, message) {
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
-      let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
+      let #(sync, sync_task) = todo as "fetch fragments"
+      // client.fetch_fragments(state.sync, references)
       let state = State(..state, sync:, shell:)
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()

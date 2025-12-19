@@ -11,7 +11,7 @@ import website/components/example.{type Example}
 import website/components/runner
 import website/components/snippet
 import website/harness/browser as harness
-import website/sync/client
+import website/sync/client as sync
 
 pub const int_key = "int"
 
@@ -209,7 +209,7 @@ pub type State {
   State(
     show_help: Bool,
     auth: auth_panel.State,
-    cache: client.Client,
+    cache: sync.Client,
     active: Active,
     examples: Dict(String, Example),
   )
@@ -236,7 +236,8 @@ fn to_bytes(editable) {
 
 // snippet failure goes at top level
 pub fn init(_) {
-  let #(sync, init_task) = client.registry()
+  let #(sync, init_task) = sync.init(todo)
+
   let examples = [
     #(int_key, to_bytes(int_example)),
     #(text_key, to_bytes(text_example)),
@@ -267,20 +268,20 @@ pub fn init(_) {
     })
   let examples = dict.from_list(examples)
   // let missing_cids = missing_refs(examples)
-  let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
+  // let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
   let state = State(False, auth, sync, Nothing, examples)
   #(
     state,
     effect.batch([
       auth_panel.dispatch(task, AuthMessage, storage),
-      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
+      // client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
 }
 
 pub type Message {
   ExampleMessage(String, example.Message)
-  SyncMessage(client.Message)
+  SyncMessage(sync.Message)
   AuthMessage(auth_panel.Message)
 }
 
@@ -360,28 +361,29 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect]))
     }
     SyncMessage(message) -> {
-      let State(cache: sync_client, ..) = state
-      let #(sync_client, effect) = client.update(sync_client, message)
-      let #(effects, entries) =
-        dict.fold(state.examples, #([], []), fn(acc, key, example) {
-          let #(effects, entries) = acc
-          let #(example, action) =
-            example.update_cache(example, sync_client.cache)
-          let entries = [#(key, example), ..entries]
-          let effects = case action {
-            runner.Nothing -> effects
-            runner.RunExternalHandler(reference, thunk) -> [
-              dispatch_to_runner(key, runner.run_thunk(reference, thunk)),
-              ..effects
-            ]
-            runner.Conclude(_return) -> effects
-          }
-          #(effects, entries)
-        })
-      let examples = dict.from_list(entries)
-      let state = State(..state, cache: sync_client, examples: examples)
-      let effects = [client.lustre_run(effect, SyncMessage), ..effects]
-      #(state, effect.batch(effects))
+      todo
+      // let State(cache: sync_client, ..) = state
+      // let #(sync_client, effect) = client.update(sync_client, message)
+      // let #(effects, entries) =
+      //   dict.fold(state.examples, #([], []), fn(acc, key, example) {
+      //     let #(effects, entries) = acc
+      //     let #(example, action) =
+      //       example.update_cache(example, sync_client.cache)
+      //     let entries = [#(key, example), ..entries]
+      //     let effects = case action {
+      //       runner.Nothing -> effects
+      //       runner.RunExternalHandler(reference, thunk) -> [
+      //         dispatch_to_runner(key, runner.run_thunk(reference, thunk)),
+      //         ..effects
+      //       ]
+      //       runner.Conclude(_return) -> effects
+      //     }
+      //     #(effects, entries)
+      //   })
+      // let examples = dict.from_list(entries)
+      // let state = State(..state, cache: sync_client, examples: examples)
+      // let effects = [client.lustre_run(effect, SyncMessage), ..effects]
+      // #(state, effect.batch(effects))
     }
   }
 }
