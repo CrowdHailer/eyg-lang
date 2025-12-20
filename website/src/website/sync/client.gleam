@@ -1,5 +1,7 @@
+import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/fetch
+import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{type Response, Response}
 import gleam/int
@@ -20,6 +22,7 @@ pub type Client {
 pub type Action {
   SyncFrom(origin: origin.Origin, since: Int)
   FetchFragments(origin: origin.Origin, cids: List(String))
+  Share(origin: origin.Origin, block: BitArray)
 }
 
 pub fn init(origin) -> #(Client, _) {
@@ -34,9 +37,16 @@ pub fn fetch_fragments(client, cids) {
   #(client, [FetchFragments(origin:, cids:)])
 }
 
+pub fn share(client, source) {
+  let block = dag_json.to_block(source)
+  let Client(origin:, ..) = client
+  #(client, [Share(origin:, block:)])
+}
+
 pub type Message {
   ReleasesFetched(Result(Response(BitArray), fetch.FetchError))
   FragmentFetched(Result(Response(BitArray), fetch.FetchError))
+  FragmentShared(Result(Response(BitArray), fetch.FetchError))
 }
 
 pub type SyncError {
@@ -81,6 +91,20 @@ pub fn update(client, message) -> #(Client, _) {
         }
       }
     }
+    FragmentShared(result) -> {
+      case result {
+        Ok(Response(status: 200, ..)) -> todo
+
+        Ok(Response(status:, ..)) -> {
+          echo #("share failed", status)
+          #(client, [])
+        }
+        Error(reason) -> {
+          echo #("network error", reason)
+          #(client, [])
+        }
+      }
+    }
   }
 }
 
@@ -97,6 +121,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
         origin_to_request(origin)
         |> request.set_path("/registry/events")
         |> request.set_query([#("since", int.to_string(since))])
+        |> request.set_body(<<>>)
 
       promise.map(fetch(request), fn(response) {
         [dispatch(ReleasesFetched(response))]
@@ -108,11 +133,24 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
           let request =
             origin_to_request(origin)
             |> request.set_path("/registry/f/" <> cid)
+            |> request.set_body(<<>>)
           promise.map(fetch(request), fn(response) {
             dispatch(FragmentFetched(response))
           })
         }),
       )
+    }
+    Share(origin:, block:) -> {
+      let request =
+        origin_to_request(origin)
+        |> request.set_method(http.Post)
+        |> request.set_path("/registry/share")
+        |> request.set_header("content-type", "application/json")
+        |> request.set_body(block)
+
+      promise.map(fetch(request), fn(response) {
+        [dispatch(FragmentShared(response))]
+      })
     }
   }
 }
@@ -124,6 +162,6 @@ fn origin_to_request(origin) {
 }
 
 fn fetch(request) {
-  use response <- promise.try_await(fetch.send(request))
+  use response <- promise.try_await(fetch.send_bits(request))
   fetch.read_bytes_body(response)
 }

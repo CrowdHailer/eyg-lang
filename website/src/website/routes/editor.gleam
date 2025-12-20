@@ -105,6 +105,7 @@ pub fn init(config) {
 pub type Message {
   ToggleHelp
   ToggleFullscreen
+  ShareCurrent
   SnippetMessage(snippet.Message)
   ShellMessage(shell.Message)
   SyncMessage(client.Message)
@@ -147,7 +148,16 @@ pub fn update(state: State, message) {
         Nil
       }),
     )
+    ShareCurrent -> {
+      let State(sync:, ..) = state
+      let editable = snippet.source(state.shell.source)
+      let source = e.to_annotated(editable, [])
 
+      let #(sync, task) = client.share(sync, source)
+      let state = State(..state, sync:)
+      // Error action is response possible
+      #(state, client.lustre_run(task, SyncMessage))
+    }
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       let State(display_help: display_help, ..) = state
@@ -429,6 +439,7 @@ pub fn render(state: State) {
       h.div([a.class("absolute top-0 w-full bg-white")], [
         help_menu_button(state),
         fullscreen_menu_button(state),
+        share_button(state),
       ]),
       h.div([a.class("h-full")], [
         render_shell(state.shell)
@@ -612,6 +623,19 @@ fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
     [vertical_menu.icon(outline.tv(), "fullscreen", state.display_help)],
+  )
+}
+
+fn share_button(state: State) {
+  h.button(
+    [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ShareCurrent)],
+    [
+      vertical_menu.icon(
+        outline.arrow_up_on_square(),
+        "share",
+        state.display_help,
+      ),
+    ],
   )
 }
 
