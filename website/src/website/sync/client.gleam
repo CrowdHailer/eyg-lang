@@ -3,7 +3,6 @@ import gleam/dynamic/decode
 import gleam/fetch
 import gleam/http/request.{Request}
 import gleam/http/response.{type Response, Response}
-import gleam/int
 import gleam/javascript/promise
 import gleam/list
 import lustre/effect
@@ -44,7 +43,10 @@ pub fn share(client, source) {
 
 pub type Message {
   ReleasesFetched(Result(Response(BitArray), fetch.FetchError))
-  FragmentFetched(Result(Response(BitArray), fetch.FetchError))
+  FragmentFetched(
+    cid: String,
+    result: Result(Response(BitArray), fetch.FetchError),
+  )
   FragmentShared(Result(Response(BitArray), fetch.FetchError))
 }
 
@@ -53,15 +55,15 @@ pub type SyncError {
   ProtocolError(decode.DecodeError)
 }
 
-pub fn update(client, message) -> #(Client, _) {
+pub fn update(client: Client, message) -> #(Client, _) {
   case message {
     ReleasesFetched(result) -> {
       case result {
         Ok(response) ->
           case protocol.pull_events_response(response) {
             Ok(protocol.PullEventsResponse(events:, cursor:)) -> {
-              // Check out of order pulls
-              echo #("sync events", events)
+              let cache = list.fold(events, client.cache, cache.apply)
+              let client = Client(..client, cursor:, cache:)
               #(client, [])
             }
             Error(reason) -> {
@@ -76,9 +78,13 @@ pub fn update(client, message) -> #(Client, _) {
         }
       }
     }
-    FragmentFetched(result) -> {
+    FragmentFetched(cid:, result:) -> {
       case result {
-        Ok(Response(status: 200, ..)) -> todo
+        Ok(Response(status: 200, body:, ..)) -> {
+          let cache = cache.add(client.cache, cid, body)
+          let client = Client(..client, cache:)
+          #(client, [])
+        }
         Ok(Response(status: 404, ..)) -> {
           echo #("no fragment found")
           #(client, [])
@@ -125,8 +131,8 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
       promise.await_list(
         list.map(cids, fn(cid) {
           let request = protocol.fetch_fragment_request(origin, cid)
-          promise.map(fetch(request), fn(response) {
-            dispatch(FragmentFetched(response))
+          promise.map(fetch(request), fn(result) {
+            dispatch(FragmentFetched(cid:, result:))
           })
         }),
       )

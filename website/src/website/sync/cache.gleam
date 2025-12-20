@@ -1,13 +1,21 @@
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/interpreter/break
+import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
+import morph/analysis
+import website/sync/protocol
 
 pub type Cache {
   Cache(
+    // Latest release for each package
+    packages: Dict(String, Release),
+    // All releases
     releases: Dict(#(String, Int), Release),
     fragments: Dict(String, Fragment),
   )
@@ -28,15 +36,37 @@ pub type Value =
   v.Value(Meta, #(List(#(state.Kontinue(Meta), Meta)), state.Env(Meta)))
 
 pub fn init() {
-  Cache(releases: dict.new(), fragments: dict.new())
+  Cache(packages: dict.new(), releases: dict.new(), fragments: dict.new())
 }
 
-// pub fn start(exp, scope) {
-//   block.execute(exp, scope)
-// }
+pub fn apply(cache: Cache, event: protocol.Payload) -> Cache {
+  case event {
+    protocol.ReleasePublished(package_id:, version:, fragment:) -> {
+      let release =
+        Release(package_id:, version:, created_at: "todo", cid: fragment)
+      let packages = dict.insert(cache.packages, package_id, release)
+      let releases =
+        dict.insert(cache.releases, #(package_id, version), release)
+      Cache(..cache, packages:, releases:)
+    }
+  }
+}
+
+pub fn add(cache: Cache, cid: String, block: BitArray) {
+  let assert Ok(source) = dag_json.from_block(block)
+  let inference = infer.pure() |> infer.check(source)
+  let scope = []
+  let assert Ok(value) =
+    run(expression.execute(source, scope), cache, expression.resume)
+  let type_ = infer.poly_type(inference)
+
+  let fragment = Fragment(source:, value:, type_:)
+  let fragments = dict.insert(cache.fragments, cid, fragment)
+  Cache(..cache, fragments:)
+}
 
 pub fn run(return, cache, resume) {
-  let Cache(releases:, fragments:) = cache
+  let Cache(releases:, fragments:, ..) = cache
   case return {
     Error(#(break.UndefinedRelease(package, version, cid), _meta, env, k)) ->
       case dict.get(releases, #(package, version)) {
@@ -55,28 +85,6 @@ pub fn run(return, cache, resume) {
     _ -> return
   }
 }
-
-// pub fn max_release(cache, package) {
-//   let Cache(index: index, ..) = cache
-//   case dict.get(index.registry, package) {
-//     Ok(package_id) ->
-//       case dict.get(index.packages, package_id) {
-//         Ok(package) -> {
-//           case dict.size(package) {
-//             0 -> Error(Nil)
-//             n -> Ok(n)
-//           }
-//         }
-
-//         Error(Nil) -> Error(Nil)
-//       }
-//     Error(Nil) -> Error(Nil)
-//   }
-// }
-
-// pub fn fetch_fragment(cache: Cache, cid) {
-//   dict.get(cache.fragments, cid)
-// }
 
 // // Fragment is a cache of the computed value
 // fn create_fragment(source, return, types) {
@@ -175,6 +183,11 @@ fn do_type_map(fragments) {
 }
 
 pub fn package_index(cache) {
-  echo "todo find the latest for each package"
-  []
+  let Cache(packages:, ..) = cache
+  // There is no order to this listing 
+  dict.values(packages)
+  |> list.map(fn(r) {
+    let Release(package_id: package, version:, cid: fragment, ..) = r
+    analysis.Release(package:, version:, fragment:)
+  })
 }

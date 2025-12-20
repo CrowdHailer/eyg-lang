@@ -135,7 +135,7 @@ pub type Mode {
   Command
   Pick(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
   SelectRelease(
-    autocomplete: autocomplete.State(#(String, Int, String)),
+    autocomplete: autocomplete.State(analysis.Release),
     rebuild: fn(String, Int, String) -> p.Projection,
   )
   EditText(String, fn(String) -> p.Projection)
@@ -444,7 +444,7 @@ pub fn update(state, message) {
       case event {
         autocomplete.Nothing ->
           keep_editing(state, SelectRelease(autocomplete, rebuild))
-        autocomplete.ItemSelected(#(p, r, cid)) ->
+        autocomplete.ItemSelected(analysis.Release(p, r, cid)) ->
           update_source_from_pallet(rebuild(p, r, cid), state)
         autocomplete.Dismiss -> return_to_buffer(state)
       }
@@ -802,7 +802,7 @@ fn insert_release(state) {
 }
 
 fn release_to_string(release) {
-  let #(package, release, _) = release
+  let analysis.Release(package, release, _) = release
   package <> ":" <> int.to_string(release)
 }
 
@@ -989,7 +989,7 @@ pub fn finish_editing(state) {
 }
 
 pub fn release_to_option(release) {
-  let #(package, release, _cid) = release
+  let analysis.Release(package, release, _cid) = release
 
   [
     h.span([a.styles([#("font-weight", "700")])], [
