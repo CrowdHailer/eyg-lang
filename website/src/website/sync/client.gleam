@@ -1,7 +1,6 @@
 import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/fetch
-import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{type Response, Response}
 import gleam/int
@@ -117,12 +116,7 @@ pub fn lustre_run(tasks: List(Action), wrapper: fn(Message) -> t) {
 fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {
-      let request =
-        origin_to_request(origin)
-        |> request.set_path("/registry/events")
-        |> request.set_query([#("since", int.to_string(since))])
-        |> request.set_body(<<>>)
-
+      let request = protocol.pull_events_request(origin, since)
       promise.map(fetch(request), fn(response) {
         [dispatch(ReleasesFetched(response))]
       })
@@ -130,10 +124,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
     FetchFragments(origin:, cids:) -> {
       promise.await_list(
         list.map(cids, fn(cid) {
-          let request =
-            origin_to_request(origin)
-            |> request.set_path("/registry/f/" <> cid)
-            |> request.set_body(<<>>)
+          let request = protocol.fetch_fragment_request(origin, cid)
           promise.map(fetch(request), fn(response) {
             dispatch(FragmentFetched(response))
           })
@@ -141,12 +132,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
       )
     }
     Share(origin:, block:) -> {
-      let request =
-        origin_to_request(origin)
-        |> request.set_method(http.Post)
-        |> request.set_path("/registry/share")
-        |> request.set_header("content-type", "application/json")
-        |> request.set_body(block)
+      let request = protocol.share_request(origin, block)
 
       promise.map(fetch(request), fn(response) {
         [dispatch(FragmentShared(response))]
@@ -155,7 +141,8 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
   }
 }
 
-fn origin_to_request(origin) {
+// TODO move to spotless
+pub fn origin_to_request(origin) {
   let origin.Origin(scheme:, host:, port:) = origin
 
   Request(..request.new(), scheme:, host:, port:)
