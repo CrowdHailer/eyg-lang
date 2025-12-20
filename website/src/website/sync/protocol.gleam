@@ -31,13 +31,18 @@ pub fn payload_encode(payload) {
   }
 }
 
+pub type PullEventsResponse {
+  PullEventsResponse(events: List(Payload), cursor: Int)
+}
+
 pub fn pull_events_response(response) {
   let Response(status:, body:, ..) = response
   case status {
     200 ->
       json.parse_bits(body, {
         use events <- decode.field("events", decode.list(payload_decoder()))
-        decode.success(events)
+        use cursor <- decode.field("cursor", decode.int)
+        decode.success(PullEventsResponse(events:, cursor:))
       })
     _ -> todo
   }

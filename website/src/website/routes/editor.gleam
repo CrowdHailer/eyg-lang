@@ -31,6 +31,7 @@ import website/components/shell
 import website/components/simple_debug
 import website/components/snippet
 import website/components/vertical_menu
+import website/config
 import website/harness/browser as harness
 import website/routes/common
 import website/routes/home
@@ -78,7 +79,7 @@ pub fn page() {
 
 pub fn client() {
   let app = lustre.application(init, update, render)
-  let assert Ok(_) = lustre.start(app, "#app", Nil)
+  let assert Ok(_) = lustre.start(app, "#app", config.load())
   Nil
 }
 
@@ -91,8 +92,9 @@ pub type State {
   )
 }
 
-pub fn init(_) {
-  let #(client, sync_task) = client.init(todo)
+pub fn init(config) {
+  let config.Config(registry_origin:) = config
+  let #(client, sync_task) = client.init(registry_origin)
   let source = e.from_annotated(ir.vacant())
   let shell = shell.init(harness.effects(), client.cache)
   let snippet = snippet.init(source)
@@ -194,8 +196,7 @@ pub fn update(state: State, message) {
       let references =
         snippet.references(state.source)
         |> list.append(snippet.references(shell.source))
-      let #(sync, sync_task) = todo as "fetch fragments"
-      // client.fetch_fragments(state.sync, references)
+      let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
       let state = State(..state, sync:, shell:)
       let shell_effect = case shell_effect {
         shell.Nothing -> effect.none()

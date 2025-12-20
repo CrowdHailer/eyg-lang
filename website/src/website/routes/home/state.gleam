@@ -236,7 +236,7 @@ pub fn update(state: State, message) {
     }
     SyncMessage(message) -> {
       let State(sync: sync_client, ..) = state
-      let #(sync_client, effect) = client.update(sync_client, message)
+      let #(sync_client, sync_tasks) = client.update(sync_client, message)
       let #(entries, effects) =
         dict.fold(state.examples, #([], []), fn(acc, key, example) {
           let #(entries, effects) = acc
@@ -266,11 +266,7 @@ pub fn update(state: State, message) {
       let state = State(..state, sync: sync_client, examples:)
       #(
         state,
-        effect.batch([
-          // client.lustre_run(effect, SyncMessage),
-          todo,
-          ..effects
-        ]),
+        effect.batch([client.lustre_run(sync_tasks, SyncMessage), ..effects]),
       )
     }
   }

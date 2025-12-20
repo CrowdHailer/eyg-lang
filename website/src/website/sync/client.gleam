@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/fetch
 import gleam/http/request.{Request}
-import gleam/http/response.{type Response}
+import gleam/http/response.{type Response, Response}
 import gleam/int
 import gleam/javascript/promise
 import gleam/list
@@ -47,26 +47,41 @@ pub type SyncError {
 pub fn update(client, message) -> #(Client, _) {
   case message {
     ReleasesFetched(result) -> {
-      echo "releaes"
-      todo
+      case result {
+        Ok(response) ->
+          case protocol.pull_events_response(response) {
+            Ok(protocol.PullEventsResponse(events:, cursor:)) -> {
+              // Check out of order pulls
+              echo #("sync events", events)
+              #(client, [])
+            }
+            Error(reason) -> {
+              echo #("protocol error", reason)
+              #(client, [])
+            }
+          }
+        // TODO I can test network error by restarting and not accepting certificate warning
+        Error(reason) -> {
+          echo #("network error", reason)
+          #(client, [])
+        }
+      }
     }
     FragmentFetched(result) -> {
-      echo "fragment"
-      todo
+      case result {
+        Ok(Response(status: 200, ..)) -> todo
+        Ok(Response(status: 404, ..)) -> {
+          echo #("no fragment found")
+          #(client, [])
+        }
+        Ok(Response(status: _, ..)) -> todo
+        Error(reason) -> {
+          echo #("network error", reason)
+          #(client, [])
+        }
+      }
     }
   }
-  // case response {
-  //   Ok(response) ->
-  //     // case protocol.pull_events_response(response) {
-  //     //   Ok(out) -> {
-  //     //     echo out
-  //     //     todo
-  //     //   }
-  //     //   Error(reason) -> Error(ProtocolError(reason))
-  //     // }
-  //   Error(reason) -> Error(FetchError(reason))
-  // }
-  // }
 }
 
 pub fn lustre_run(tasks: List(Action), wrapper: fn(Message) -> t) {
