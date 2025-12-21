@@ -10,7 +10,6 @@ import morph/input
 import morph/picker
 import website/components/snippet
 import website/sync/cache
-import website/sync/client
 
 fn empty() {
   new(e.from_annotated(ir.vacant()))
@@ -137,20 +136,18 @@ fn click(state, path) {
 }
 
 fn analyse(state, effects) {
-  todo
-  // let #(client, _) = client.registry()
-  // let #(#(snippet, action), i) = state
-  // let snippet.Snippet(editable:, ..) = snippet
+  let #(#(snippet, action), i) = state
+  let snippet.Snippet(editable:, ..) = snippet
 
-  // let analysis =
-  //   analysis.do_analyse(
-  //     editable,
-  //     analysis.context()
-  //       |> analysis.with_references(cache.type_map(client.cache))
-  //       |> analysis.with_effects(effects),
-  //   )
-  // let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
-  // #(#(snippet, action), i)
+  let analysis =
+    analysis.do_analyse(
+      editable,
+      analysis.context()
+        |> analysis.with_references(cache.type_map(cache.init()))
+        |> analysis.with_effects(effects),
+    )
+  let snippet = snippet.Snippet(..snippet, analysis: Some(analysis))
+  #(#(snippet, action), i)
 }
 
 fn has_code(state, expected) {

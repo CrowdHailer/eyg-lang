@@ -1,28 +1,30 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/dict
-import gleam/dictx
+import gleam/http
 import gleam/int
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
 import morph/editable as e
 import morph/input
+import spotless/origin
 import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
 import website/sync/cache
 import website/sync/client
+import website/sync/protocol
 
 fn new(effects) {
-  todo
-  // let #(client, _) = client.registry()
-  // let shell = shell.init(effects, client.cache)
-  // // let result = snippet.update(snippet, snippet.UserFocusedOnCode)
-  // #(#(shell, shell.Nothing), 0)
+  let #(client, _) =
+    client.init(origin.Origin(http.Https, "registry.eyg.test", None))
+  let shell = shell.init(effects, client.cache)
+  // let result = snippet.update(snippet, snippet.UserFocusedOnCode)
+  #(#(shell, shell.Nothing), 0)
 }
 
 fn assert_action(got, expected, i) {
@@ -201,8 +203,14 @@ pub fn types_remain_in_scope_test() {
 // Everything is passed in by events so that nested mvu works
 pub fn effects_are_recorded_test() {
   new([
-    #("Inner", #(#(t.String, t.Integer), fn(_) { Ok(fn() { todo }) })),
-    #("Outer", #(#(t.Integer, t.unit), fn(_) { Ok(fn() { todo }) })),
+    #(
+      "Inner",
+      #(#(t.String, t.Integer), fn(_) { Ok(fn() { panic as "test handler" }) }),
+    ),
+    #(
+      "Outer",
+      #(#(t.Integer, t.unit), fn(_) { Ok(fn() { panic as "test handler" }) }),
+    ),
   ])
   |> command("p")
   |> pick_from(fn(options) {
@@ -217,12 +225,12 @@ pub fn effects_are_recorded_test() {
   |> command("s")
   |> enter_text("Bulb")
   |> command("Enter")
-  |> run_effect(fn(v) {
+  |> run_effect(fn(_v) {
     // TODO how do we get v
     // should.equal(v, v.String("Bulb"))
     v.Integer(101)
   })
-  |> run_effect(fn(v) {
+  |> run_effect(fn(_v) {
     // TODO how do we get v
 
     // should.equal(v, v.Integer(101))
@@ -237,7 +245,12 @@ pub fn effects_are_recorded_test() {
 
 // Test task only starts once
 pub fn run_only_starts_once_test() {
-  new([#("Foo", #(#(t.String, t.Integer), fn(_) { Ok(fn() { todo }) }))])
+  new([
+    #(
+      "Foo",
+      #(#(t.String, t.Integer), fn(_) { Ok(fn() { panic as "test handler" }) }),
+    ),
+  ])
   |> command("p")
   |> pick_from(fn(_options) { Ok("Foo") })
   |> command("s")
@@ -259,20 +272,10 @@ pub fn foo_cid() {
   "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
 }
 
-fn index() {
-  todo
-  // let foo_id = "foo_some_id"
-  // let foo_release = cache.Release(foo_id, 1, "time", foo_cid())
-  // cache.Index(
-  //   registry: dictx.singleton("foo", foo_id),
-  //   packages: dictx.singleton(foo_id, dictx.singleton(1, foo_release)),
-  // )
-}
-
-fn cache() {
-  todo
-  // cache.Cache(index: index(), fragments: dict.new())
-  // |> cache.install_source(foo_cid(), foo_src())
+fn cache() -> cache.Cache {
+  cache.init()
+  |> cache.add(foo_cid(), dag_json.to_block(foo_src()))
+  |> cache.apply(protocol.ReleasePublished("foo", 1, foo_cid()))
 }
 
 pub fn run_a_reference_test() {
@@ -369,48 +372,3 @@ pub fn user_can_paste_to_input_test() {
   }
   |> has_input(e.String("Farm"))
 }
-// needs equal for type narrow test
-// needs effects for perform test
-// When is cancelled or task fails state needs to update
-// error if missing ref
-// test incremental building of scope
-// context should take cache
-// Test will resume from missing ref
-
-// There a started case but where the task isn't running
-
-// A runner keeps the ID but it needs composing with the scope to types and other new versions below
-// The view history function can be a state of the shell
-// Not Runnin
-
-// TODO replace reference in context with cache not easy as then morph has to rely on index, these should be part of analysis or interpreter
-// TODO add interactive state to docs or make an example component
-// TODO test that errors go away after release is loaded
-
-// A map of snippets
-// Or an example component with run state
-
-// Have a map of states or a map of examples with enum of state
-// its probably best to be able to have both set ups
-// TODO show error on top of example in document pages
-// TODO load refs 
-
-// map of snippets
-// Do I really want the presentation to be the same everywhere probably not
-// show errors on the snippet
-
-// What is the role of analysis if a release checksum doesn't match
-// A release could have its update metadata in it i.e. hash(publisher find new release and source)
-// analysis understands map of references needs to for type
-// analysis could pass in a function of release -> hash but doing so would mean that the help for morph wouldn't be possible
-
-// The snippet also doesn't know about cache because it is used for the runtime and type checking
-// currently inference ignores the information on the reference Should release information live outside
-
-// I want a function that can add types etc
-// I want a function that can add suggestions as they load probably should be external then
-
-// types
-// release information
-// let names
-// AST
