@@ -1,7 +1,6 @@
 import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/fetch
-import gleam/http/request.{Request}
 import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/list
@@ -145,13 +144,6 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
       })
     }
   }
-}
-
-// TODO move to spotless
-pub fn origin_to_request(origin) {
-  let origin.Origin(scheme:, host:, port:) = origin
-
-  Request(..request.new(), scheme:, host:, port:)
 }
 
 fn fetch(request) {
