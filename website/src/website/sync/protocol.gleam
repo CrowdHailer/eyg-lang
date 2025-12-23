@@ -85,7 +85,10 @@ pub fn share_response(response) {
   let Response(status:, body:, ..) = response
   case status {
     200 -> bit_array.to_string(body)
-    _ -> todo
+    _ -> {
+      echo response
+      todo
+    }
   }
 }
 

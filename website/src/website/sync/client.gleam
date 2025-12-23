@@ -9,9 +9,16 @@ import spotless/origin
 import website/sync/cache
 import website/sync/protocol
 
-// initialize and start pull
 pub type Client {
-  Client(origin: origin.Origin, cursor: Int, cache: cache.Cache)
+  Client(status: Status, origin: origin.Origin, cursor: Int, cache: cache.Cache)
+}
+
+/// Status is related to the current index synching in progress.
+/// Fragment pulls are tracked separatly
+pub type Status {
+  Idle
+  Syncing
+  Disconnected
 }
 
 /// Actions are always returned as a list of actions,
@@ -22,11 +29,27 @@ pub type Action {
   Share(origin: origin.Origin, block: BitArray)
 }
 
+fn new(origin) {
+  Client(status: Idle, origin:, cursor: 0, cache: cache.init())
+}
+
+pub fn syncing(client: Client) {
+  client.status == Syncing
+}
+
+/// Starts or restarts sync if client Idle/Disconnected
+fn sync(client) {
+  let Client(status:, origin:, cursor:, ..) = client
+  case status {
+    Syncing -> #(client, [])
+    _ -> #(Client(..client, status: Syncing), [SyncFrom(origin:, since: cursor)])
+  }
+}
+
+// initialize and start pull
 pub fn init(origin) -> #(Client, _) {
-  let cache = cache.init()
-  let cursor = 0
-  let client = Client(origin:, cursor:, cache:)
-  #(client, [SyncFrom(origin:, since: cursor)])
+  new(origin)
+  |> sync()
 }
 
 pub fn fetch_fragments(client, cids) {
@@ -62,8 +85,22 @@ pub fn update(client: Client, message) -> #(Client, _) {
           case protocol.pull_events_response(response) {
             Ok(protocol.PullEventsResponse(events:, cursor:)) -> {
               let cache = list.fold(events, client.cache, cache.apply)
+              let new =
+                list.filter_map(events, fn(event) {
+                  case event {
+                    protocol.ReleasePublished(fragment:, ..) ->
+                      case cache.has_fragment(cache, fragment) {
+                        True -> Error(Nil)
+                        False -> Ok(fragment)
+                      }
+                  }
+                })
+              let actions = case new {
+                [] -> []
+                _ -> [FetchFragments(client.origin, new)]
+              }
               let client = Client(..client, cursor:, cache:)
-              #(client, [])
+              #(client, actions)
             }
             Error(reason) -> {
               echo #("protocol error", reason)

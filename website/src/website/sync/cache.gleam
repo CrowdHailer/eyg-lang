@@ -39,6 +39,11 @@ pub fn init() {
   Cache(packages: dict.new(), releases: dict.new(), fragments: dict.new())
 }
 
+pub fn has_fragment(cache, key) {
+  let Cache(fragments:, ..) = cache
+  dict.has_key(fragments, key)
+}
+
 pub fn apply(cache: Cache, event: protocol.Payload) -> Cache {
   case event {
     protocol.ReleasePublished(package_id:, version:, fragment:) -> {

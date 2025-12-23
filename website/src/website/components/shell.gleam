@@ -124,6 +124,7 @@ pub fn update(shell, message) {
       let #(runner, action) = runner.update(runner, runner.UpdateCache(cache))
       let context = update_context(context, cache)
       let shell = Shell(..shell, context:, runner:)
+      let shell = snippet_analyse(shell)
       case action {
         runner.Nothing -> #(shell, Nothing)
         runner.RunExternalHandler(ref, thunk) -> #(

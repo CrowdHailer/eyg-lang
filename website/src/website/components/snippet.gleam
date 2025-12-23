@@ -785,10 +785,14 @@ fn insert_list(state) {
 fn insert_release(state) {
   let Snippet(projection: proj, analysis:, ..) = state
 
+  // echo analysis
   let index = case analysis {
     Some(analysis.Analysis(context:, ..)) -> context.index
     None -> []
   }
+
+  // Action to pick package, this is a shop and everything
+  // Could pass in a list of packages, but we don't want this
 
   case action.insert_named_reference(proj) {
     Ok(#(_filter, rebuild)) -> {
@@ -1060,36 +1064,6 @@ fn bare_render(proj, errors, status, slot) {
       ),
       ..slot
     ]
-  }
-}
-
-pub fn render_pallet(state) {
-  let Snippet(status: status, ..) = state
-  case status {
-    Editing(mode) ->
-      case mode {
-        Command -> []
-
-        Pick(picker, _rebuild) -> [
-          picker.render(picker)
-          |> element.map(MessageFromPicker),
-        ]
-        SelectRelease(_, _) -> [
-          element.text("TODO are we rendering this pallet"),
-        ]
-
-        EditText(value, _rebuild) -> [
-          input.render_text(value)
-          |> element.map(MessageFromInput),
-        ]
-
-        EditInteger(value, _rebuild) -> [
-          input.render_number(value)
-          |> element.map(MessageFromInput),
-        ]
-      }
-
-    Idle -> []
   }
 }
 

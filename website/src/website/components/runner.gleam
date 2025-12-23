@@ -134,7 +134,10 @@ fn do(state) {
                 }
               }
             }
-            _ -> #(state, Nothing)
+            _ -> {
+              echo #("unknown effect", label)
+              #(state, Nothing)
+            }
           }
         }
         True, Ok(return) -> #(
