@@ -1,5 +1,7 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/interpreter/value
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/javascript/promise
@@ -32,7 +34,7 @@ import website/components/simple_debug
 import website/components/snippet
 import website/components/vertical_menu
 import website/config
-import website/harness/browser as harness
+import website/harness/browser
 import website/routes/common
 import website/routes/home
 import website/sync/client
@@ -144,7 +146,7 @@ pub type State {
   State(
     sync: client.Client,
     source: snippet.Snippet,
-    shell: shell.Shell,
+    shell: shell.Shell(browser.Effect),
     display_help: Bool,
   )
 }
@@ -167,7 +169,7 @@ pub fn init(config) {
   let config.Config(registry_origin:) = config
   let #(client, sync_task) = client.init(registry_origin)
   let actions = list.map(sync_task, SyncAction)
-  let shell = shell.init(harness.effects(), client.cache)
+  let shell = shell.init(browser.lookup(), client.cache)
   let source = e.from_annotated(ir.vacant())
   let snippet = snippet.init(source)
   let state = State(client, snippet, shell, False)
@@ -230,51 +232,67 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
       #(state, snippet_effects)
     }
     ShellMessage(message) -> {
-      let #(shell, shell_effect) = shell.update(state.shell, message)
+      let #(state, shell_effect) = shell_update(state, message)
       let references =
         snippet.references(state.source)
-        |> list.append(snippet.references(shell.source))
+        |> list.append(snippet.references(state.shell.source))
       // TODO new references from shell message
       let #(sync, actions) = case references {
         [] -> #(state.sync, [])
         _ -> client.fetch_fragments(state.sync, references)
       }
       let actions = list.map(actions, SyncAction)
-      let state = State(..state, sync:, shell:)
-      let shell_effect = case shell_effect {
-        shell.Nothing -> []
-        shell.RunExternalHandler(ref, thunk) -> [RunExternalHandler(ref, thunk)]
-        // dispatch_to_shell(
-        //   promise.map(thunk(), fn(reply) {
-        //     shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
-        //   }),
-        // )
-        shell.WriteToClipboard(text) -> [WriteToClipboad(text:)]
-        shell.ReadFromClipboard -> [ReadShellFromClipboard]
-        shell.FocusOnCode -> [FocusOnBuffer]
-        shell.FocusOnInput -> [FocusOnInput]
-      }
+      let state = State(..state, sync:)
 
       #(state, list.append(shell_effect, actions))
     }
     SyncMessage(message) -> {
-      let State(sync:, shell:, ..) = state
+      let State(sync:, ..) = state
       let #(sync, actions) = client.update(sync, message)
+      let state = State(..state, sync:)
       let actions = list.map(actions, SyncAction)
 
-      let #(shell, shell_action) =
-        shell.update(shell, shell.CacheUpdate(sync.cache))
-      let shell_action = case shell_action {
-        shell.Nothing -> []
-        shell.RunExternalHandler(ref, thunk) -> [RunExternalHandler(ref, thunk)]
-        shell.WriteToClipboard(text) -> [WriteToClipboad(text:)]
-        shell.ReadFromClipboard -> [ReadShellFromClipboard]
-        shell.FocusOnCode -> [FocusOnBuffer]
-        shell.FocusOnInput -> [FocusOnInput]
-      }
-      let state = State(..state, sync:, shell:)
+      let #(state, shell_action) =
+        shell_update(state, shell.CacheUpdate(sync.cache))
       #(state, list.append(shell_action, actions))
     }
+  }
+}
+
+/// recursivly handle sync effects.
+/// Cannot have effects relying on editor state be transformed to thunks when updating editor state
+/// For example file write
+fn shell_update(state: State, message) {
+  let #(shell, shell_effect) = shell.update(state.shell, message)
+
+  let state = State(..state, shell:)
+  case shell_effect {
+    shell.Nothing -> #(state, [])
+    shell.RunExternalHandler(ref, thunk) ->
+      case thunk {
+        browser.Alert(_message) -> #(state, [
+          RunExternalHandler(ref, fn() { browser.run(thunk) }),
+        ])
+        browser.ReadFile(file:) -> {
+          let reply = case file {
+            "index.eyg.json" -> {
+              let bytes =
+                dag_json.to_block(e.to_annotated(state.source.editable, []))
+              value.ok(value.Binary(bytes))
+            }
+            _ -> value.error(value.String("unknown file: " <> file))
+          }
+
+          shell_update(
+            state,
+            shell.RunnerMessage(runner.HandlerCompleted(ref, reply)),
+          )
+        }
+      }
+    shell.WriteToClipboard(text) -> #(state, [WriteToClipboad(text:)])
+    shell.ReadFromClipboard -> #(state, [ReadShellFromClipboard])
+    shell.FocusOnCode -> #(state, [FocusOnBuffer])
+    shell.FocusOnInput -> #(state, [FocusOnInput])
   }
 }
 
@@ -472,7 +490,7 @@ pub fn render(state: State) {
   )
 }
 
-fn render_shell(shell: shell.Shell) {
+fn render_shell(shell: shell.Shell(_)) {
   h.div([a.class("h-full flex flex-col")], [
     h.div(
       [

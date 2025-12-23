@@ -1,5 +1,8 @@
+import eyg/interpreter/value
 import eyg/ir/cid
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/option.{Some}
 import morph/analysis
 import morph/editable
 import morph/picker
@@ -88,9 +91,16 @@ pub fn read_from_scratch_test() {
     editor.ShellMessage(
       shell.CurrentMessage(snippet.UserPressedCommandKey("Enter")),
     )
+
   let #(state, actions) = editor.update(state, message)
-  echo actions
-  todo
+  // The ReadFile effect is synchronous in the editor so it concludes.
+  assert actions == [editor.FocusOnBuffer]
+
+  let bytes = dag_json.to_block(ir.vacant())
+  let assert [shell.Executed(value:, effects:, ..)] = state.shell.previous
+  let lowered = value.ok(value.Binary(bytes))
+  assert value == Some(lowered)
+  assert effects == [#("ReadFile", #(value.String("index.eyg.json"), lowered))]
 }
 
 fn no_packages() {

@@ -5,8 +5,9 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import website/sync/cache
 
-pub type Return(r, m) =
-  Result(r, istate.Debug(m))
+/// Return is parameterised because it can return the result of executing an expression or block
+pub type Return(return, m) =
+  Result(return, istate.Debug(m))
 
 pub type Scope(m) =
   List(#(String, istate.Value(m)))
@@ -14,32 +15,34 @@ pub type Scope(m) =
 pub type Thunk(m) =
   fn() -> promise.Promise(istate.Value(m))
 
-pub type Handler(m) =
-  fn(istate.Value(m)) -> Result(Thunk(m), istate.Reason(m))
+/// Handler is the lookup that returns a cast input
+pub type Handler(ready, m) =
+  fn(istate.Value(m)) -> Result(ready, istate.Reason(m))
 
 pub type Effect(m) =
   #(String, #(istate.Value(m), istate.Value(m)))
 
-pub type Runner(r, m) {
+pub type Runner(ready, return, m) {
   Runner(
     counter: Int,
     cache: cache.Cache,
-    extrinsic: List(#(String, Handler(m))),
+    extrinsic: List(#(String, Handler(ready, m))),
     occured: List(Effect(m)),
-    return: Return(r, m),
+    return: Return(return, m),
     awaiting: Option(Int),
     continue: Bool,
-    resume: fn(istate.Value(m), istate.Env(m), istate.Stack(m)) -> Return(r, m),
+    resume: fn(istate.Value(m), istate.Env(m), istate.Stack(m)) ->
+      Return(return, m),
   )
 }
 
-pub type Expression(m) =
-  Runner(istate.Value(m), m)
+pub type Expression(ready, m) =
+  Runner(ready, istate.Value(m), m)
 
-pub type Block(m) =
-  Runner(#(Option(istate.Value(m)), Scope(m)), m)
+pub type Block(ready, m) =
+  Runner(ready, #(Option(istate.Value(m)), Scope(m)), m)
 
-pub fn init(initial, cache, extrinsic, resume) -> Runner(r, m) {
+pub fn init(initial, cache, extrinsic, resume) -> Runner(_, r, m) {
   Runner(
     counter: 0,
     cache: cache,
@@ -69,10 +72,10 @@ pub type Message(r, m) {
   UpdateCache(cache.Cache)
 }
 
-pub type Action(r, m) {
+pub type Action(return, ready) {
   Nothing
-  RunExternalHandler(Int, Thunk(m))
-  Conclude(r)
+  RunExternalHandler(Int, ready)
+  Conclude(return)
 }
 
 pub fn update(state, message) {
