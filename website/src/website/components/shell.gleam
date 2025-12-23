@@ -27,7 +27,7 @@ pub type ShellFailure {
   NoMoreHistory
 }
 
-pub type Shell {
+pub type Shell(ready) {
   Shell(
     // TODO remove failure as it should be at the page level
     failure: Option(ShellFailure),
@@ -41,7 +41,7 @@ pub type Shell {
     context: analysis.Context,
     // I need to rebuild because scope is difference and I want expression in example
     scope: runner.Scope(Nil),
-    runner: runner.Block(Nil),
+    runner: runner.Block(ready, Nil),
   )
 }
 
@@ -89,7 +89,7 @@ fn close_many_previous(shell_entries) {
   })
 }
 
-fn close_all_previous(shell: Shell) {
+fn close_all_previous(shell: Shell(_)) {
   let previous = close_many_previous(shell.previous)
 
   Shell(..shell, previous: previous)
@@ -107,11 +107,11 @@ pub type Message {
   PreviousMessage(Int, readonly.Message)
 }
 
-pub type Effect {
+pub type Effect(ready) {
   Nothing
   FocusOnCode
   FocusOnInput
-  RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
+  RunExternalHandler(id: Int, thunk: ready)
   ReadFromClipboard
   WriteToClipboard(text: String)
 }
@@ -124,6 +124,7 @@ pub fn update(shell, message) {
       let #(runner, action) = runner.update(runner, runner.UpdateCache(cache))
       let context = update_context(context, cache)
       let shell = Shell(..shell, context:, runner:)
+      let shell = snippet_analyse(shell)
       case action {
         runner.Nothing -> #(shell, Nothing)
         runner.RunExternalHandler(ref, thunk) -> #(

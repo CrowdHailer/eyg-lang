@@ -11,6 +11,7 @@ import mysig/html
 import website/components
 import website/components/example/view
 import website/components/tree
+import website/config
 import website/routes/common
 import website/routes/documentation/state
 import website/routes/home
@@ -50,7 +51,7 @@ pub fn page() {
 
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)
-  let assert Ok(_) = lustre.start(app, "#app", Nil)
+  let assert Ok(_) = lustre.start(app, "#app", config.load())
   Nil
 }
 
@@ -142,7 +143,7 @@ fn section_content(title, chapters) {
 // simpleter documentation
 fn render(state) {
   h.div([a.class("")], [
-    components.header(state.AuthMessage, None),
+    components.header(),
     h.div([a.class("lg:flex px-1 md:px-4 gap-10 mx-auto")], [
       h.div(
         [

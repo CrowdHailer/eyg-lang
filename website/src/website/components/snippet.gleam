@@ -135,7 +135,7 @@ pub type Mode {
   Command
   Pick(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
   SelectRelease(
-    autocomplete: autocomplete.State(#(String, Int, String)),
+    autocomplete: autocomplete.State(analysis.Release),
     rebuild: fn(String, Int, String) -> p.Projection,
   )
   EditText(String, fn(String) -> p.Projection)
@@ -444,7 +444,7 @@ pub fn update(state, message) {
       case event {
         autocomplete.Nothing ->
           keep_editing(state, SelectRelease(autocomplete, rebuild))
-        autocomplete.ItemSelected(#(p, r, cid)) ->
+        autocomplete.ItemSelected(analysis.Release(p, r, cid)) ->
           update_source_from_pallet(rebuild(p, r, cid), state)
         autocomplete.Dismiss -> return_to_buffer(state)
       }
@@ -785,10 +785,14 @@ fn insert_list(state) {
 fn insert_release(state) {
   let Snippet(projection: proj, analysis:, ..) = state
 
+  // echo analysis
   let index = case analysis {
     Some(analysis.Analysis(context:, ..)) -> context.index
     None -> []
   }
+
+  // Action to pick package, this is a shop and everything
+  // Could pass in a list of packages, but we don't want this
 
   case action.insert_named_reference(proj) {
     Ok(#(_filter, rebuild)) -> {
@@ -802,7 +806,7 @@ fn insert_release(state) {
 }
 
 fn release_to_string(release) {
-  let #(package, release, _) = release
+  let analysis.Release(package, release, _) = release
   package <> ":" <> int.to_string(release)
 }
 
@@ -989,7 +993,7 @@ pub fn finish_editing(state) {
 }
 
 pub fn release_to_option(release) {
-  let #(package, release, _cid) = release
+  let analysis.Release(package, release, _cid) = release
 
   [
     h.span([a.styles([#("font-weight", "700")])], [
@@ -1060,36 +1064,6 @@ fn bare_render(proj, errors, status, slot) {
       ),
       ..slot
     ]
-  }
-}
-
-pub fn render_pallet(state) {
-  let Snippet(status: status, ..) = state
-  case status {
-    Editing(mode) ->
-      case mode {
-        Command -> []
-
-        Pick(picker, _rebuild) -> [
-          picker.render(picker)
-          |> element.map(MessageFromPicker),
-        ]
-        SelectRelease(_, _) -> [
-          element.text("TODO are we rendering this pallet"),
-        ]
-
-        EditText(value, _rebuild) -> [
-          input.render_text(value)
-          |> element.map(MessageFromInput),
-        ]
-
-        EditInteger(value, _rebuild) -> [
-          input.render_number(value)
-          |> element.map(MessageFromInput),
-        ]
-      }
-
-    Idle -> []
   }
 }
 

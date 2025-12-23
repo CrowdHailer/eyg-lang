@@ -177,7 +177,6 @@ fn infer(source, expected) {
   // We should unify with the context to give maximum help to the editor
   let result = unify.unify(inferred, expected, level, b)
 
-  echo tree
   case result {
     Ok(b) -> {
       let meta = #(original_error, inferred, eff, env)

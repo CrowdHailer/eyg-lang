@@ -2,14 +2,13 @@ import dag_json as codec
 import eyg/ir/tree as ir
 import gleam/dynamic/decode
 import gleam/json
-import multiformats/cid/v1
 
 fn label_decoder(for, meta) {
   use label <- decode.field("l", decode.string)
   decode.success(#(for(label), meta))
 }
 
-const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
+pub const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
 
 pub fn decoder(meta) {
   use switch <- decode.field("0", decode.string)
@@ -142,4 +141,8 @@ pub fn to_data_model(tree) {
 
 pub fn to_block(data) {
   codec.encode(to_data_model(data))
+}
+
+pub fn to_string(data) {
+  json.to_string(to_data_model(data))
 }

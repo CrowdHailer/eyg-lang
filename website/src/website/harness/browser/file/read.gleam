@@ -6,7 +6,7 @@ import gleam/result
 import plinth/browser/file
 import plinth/browser/file_system
 
-pub const l = "File.Read"
+pub const l = "ReadFile"
 
 pub const lift = t.String
 

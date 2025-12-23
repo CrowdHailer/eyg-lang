@@ -1,5 +1,7 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/interpreter/value
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/javascript/promise
@@ -31,7 +33,8 @@ import website/components/shell
 import website/components/simple_debug
 import website/components/snippet
 import website/components/vertical_menu
-import website/harness/browser as harness
+import website/config
+import website/harness/browser
 import website/routes/common
 import website/routes/home
 import website/sync/client
@@ -77,35 +80,50 @@ pub fn page() {
 }
 
 pub fn client() {
-  let app = lustre.application(init, update, render)
-  let assert Ok(_) = lustre.start(app, "#app", Nil)
+  let app = lustre.application(do_init, do_update, render)
+  let assert Ok(_) = lustre.start(app, "#app", config.load())
   Nil
 }
 
-pub type State {
-  State(
-    sync: client.Client,
-    source: snippet.Snippet,
-    shell: shell.Shell,
-    display_help: Bool,
-  )
+fn do_init(config) {
+  let #(state, actions) = init(config)
+  #(state, effect.batch(list.map(actions, run)))
 }
 
-pub fn init(_) {
-  let #(client, sync_task) = client.registry()
-  let source = e.from_annotated(ir.vacant())
-  let shell = shell.init(harness.effects(), client.cache)
-  let snippet = snippet.init(source)
-  let state = State(client, snippet, shell, False)
-  #(state, client.lustre_run(sync_task, SyncMessage))
+fn do_update(state, message) {
+  let #(state, actions) = update(state, message)
+  #(state, effect.batch(list.map(actions, run)))
 }
 
-pub type Message {
-  ToggleHelp
-  ToggleFullscreen
-  SnippetMessage(snippet.Message)
-  ShellMessage(shell.Message)
-  SyncMessage(client.Message)
+fn run(action) {
+  case action {
+    SyncAction(action) -> client.lustre_run([action], SyncMessage)
+    DoToggleFullScreen ->
+      effect.from(fn(_d) {
+        let w = window.self()
+        let doc = window.document(w)
+        case document.fullscreen_element(doc) {
+          Ok(_) -> document.exit_fullscreen(doc)
+          Error(Nil) -> {
+            let assert Ok(el) = document.get_element_by_id("app")
+            pelement.request_fullscreen(el)
+          }
+        }
+        Nil
+      })
+    FocusOnBuffer -> dispatch_nothing(snippet.focus_on_buffer)
+    FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
+    ReadFromClipboard -> dispatch_to_snippet(snippet.read_from_clipboard())
+    ReadShellFromClipboard -> dispatch_to_shell(shell.read_from_clipboard())
+    RunExternalHandler(id:, thunk:) ->
+      dispatch_to_shell(
+        promise.map(thunk(), fn(reply) {
+          shell.RunnerMessage(runner.HandlerCompleted(id, reply))
+        }),
+      )
+    WriteToClipboad(text:) ->
+      dispatch_to_snippet(snippet.write_to_clipboard(text))
+  }
 }
 
 fn dispatch_to_snippet(promise) {
@@ -124,58 +142,82 @@ fn dispatch_nothing(func) {
   effect.from(fn(_dispatch) { func() })
 }
 
-pub fn update(state: State, message) {
-  case message {
-    ToggleHelp -> #(
-      State(..state, display_help: !state.display_help),
-      effect.none(),
-    )
-    ToggleFullscreen -> #(
-      state,
-      effect.from(fn(_d) {
-        let w = window.self()
-        let doc = window.document(w)
-        case document.fullscreen_element(doc) {
-          Ok(_) -> document.exit_fullscreen(doc)
-          Error(Nil) -> {
-            let assert Ok(el) = document.get_element_by_id("app")
-            pelement.request_fullscreen(el)
-          }
-        }
-        Nil
-      }),
-    )
+pub type State {
+  State(
+    sync: client.Client,
+    source: snippet.Snippet,
+    shell: shell.Shell(browser.Effect),
+    display_help: Bool,
+  )
+}
 
+pub type Action {
+  DoToggleFullScreen
+  SyncAction(client.Action)
+  // SnippetActions
+  // FocusOnBuffer and FocusOnInput relies on autofocus, should be updated to an id managed by parent
+  FocusOnBuffer
+  FocusOnInput
+  // Need to keep record of which thing they refer to
+  ReadFromClipboard
+  ReadShellFromClipboard
+  WriteToClipboad(text: String)
+  RunExternalHandler(id: Int, thunk: runner.Thunk(Nil))
+}
+
+pub fn init(config) {
+  let config.Config(registry_origin:) = config
+  let #(client, sync_task) = client.init(registry_origin)
+  let actions = list.map(sync_task, SyncAction)
+  let shell = shell.init(browser.lookup(), client.cache)
+  let source = e.from_annotated(ir.vacant())
+  let snippet = snippet.init(source)
+  let state = State(client, snippet, shell, False)
+  #(state, actions)
+}
+
+pub type Message {
+  ToggleHelp
+  ToggleFullscreen
+  ShareCurrent
+  SnippetMessage(snippet.Message)
+  ShellMessage(shell.Message)
+  SyncMessage(client.Message)
+}
+
+pub fn update(state: State, message) -> #(State, List(Action)) {
+  case message {
+    ToggleHelp -> #(State(..state, display_help: !state.display_help), [])
+    ToggleFullscreen -> #(state, [DoToggleFullScreen])
+    ShareCurrent -> {
+      let State(sync:, ..) = state
+      let editable = snippet.source(state.shell.source)
+      let source = e.to_annotated(editable, [])
+
+      let #(sync, actions) = client.share(sync, source)
+      let state = State(..state, sync:)
+      // Error action is response possible
+      #(state, list.map(actions, SyncAction))
+    }
     SnippetMessage(message) -> {
-      let #(snippet, eff) = snippet.update(state.source, message)
+      let #(snippet, action) = snippet.update(state.source, message)
       let State(display_help: display_help, ..) = state
-      let #(display_help, snippet_effect) = case eff {
-        snippet.Nothing -> #(display_help, effect.none())
-        snippet.NewCode -> #(
-          display_help,
-          dispatch_nothing(snippet.focus_on_buffer),
-        )
-        snippet.Confirm -> #(display_help, effect.none())
-        snippet.Failed(_failure) -> #(display_help, effect.none())
-        snippet.ReturnToCode -> #(
-          display_help,
-          dispatch_nothing(snippet.focus_on_buffer),
-        )
-        snippet.FocusOnInput -> #(
-          display_help,
-          dispatch_nothing(snippet.focus_on_input),
-        )
-        snippet.ToggleHelp -> #(!display_help, effect.none())
-        snippet.MoveAbove -> #(display_help, effect.none())
-        snippet.MoveBelow -> #(display_help, effect.none())
-        snippet.ReadFromClipboard -> #(
-          display_help,
-          dispatch_to_snippet(snippet.read_from_clipboard()),
-        )
-        snippet.WriteToClipboard(text) -> #(
-          display_help,
-          dispatch_to_snippet(snippet.write_to_clipboard(text)),
-        )
+
+      let #(display_help, snippet_effects) = case action {
+        snippet.Nothing -> #(display_help, [])
+        snippet.NewCode -> #(display_help, [FocusOnBuffer])
+        snippet.Confirm -> #(display_help, [])
+        snippet.Failed(_failure) -> #(display_help, [])
+        snippet.ReturnToCode -> #(display_help, [FocusOnBuffer])
+        snippet.FocusOnInput -> #(display_help, [FocusOnInput])
+        snippet.ToggleHelp -> #(!display_help, [])
+        snippet.MoveAbove -> #(display_help, [])
+        snippet.MoveBelow -> #(display_help, [])
+        snippet.ReadFromClipboard -> #(display_help, [])
+
+        snippet.WriteToClipboard(text) -> #(display_help, [
+          WriteToClipboad(text:),
+        ])
       }
       // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
@@ -187,61 +229,70 @@ pub fn update(state: State, message) {
           // cache: cache,
           display_help: display_help,
         )
-      #(state, effect.batch([snippet_effect]))
+      #(state, snippet_effects)
     }
     ShellMessage(message) -> {
-      let #(shell, shell_effect) = shell.update(state.shell, message)
+      let #(state, shell_effect) = shell_update(state, message)
       let references =
         snippet.references(state.source)
-        |> list.append(snippet.references(shell.source))
-      let #(sync, sync_task) = client.fetch_fragments(state.sync, references)
-      let state = State(..state, sync:, shell:)
-      let shell_effect = case shell_effect {
-        shell.Nothing -> effect.none()
-        shell.RunExternalHandler(ref, thunk) ->
-          dispatch_to_shell(
-            promise.map(thunk(), fn(reply) {
-              shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
-            }),
-          )
-        shell.WriteToClipboard(text) ->
-          dispatch_to_shell(shell.write_to_clipboard(text))
-        shell.ReadFromClipboard ->
-          dispatch_to_shell(shell.read_from_clipboard())
-        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer)
-        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
+        |> list.append(snippet.references(state.shell.source))
+      // TODO new references from shell message
+      let #(sync, actions) = case references {
+        [] -> #(state.sync, [])
+        _ -> client.fetch_fragments(state.sync, references)
       }
-      #(
-        state,
-        effect.batch([shell_effect, client.lustre_run(sync_task, SyncMessage)]),
-      )
+      let actions = list.map(actions, SyncAction)
+      let state = State(..state, sync:)
+
+      #(state, list.append(shell_effect, actions))
     }
     SyncMessage(message) -> {
-      let State(sync:, shell:, ..) = state
-      let #(sync, effect) = client.update(sync, message)
-      let #(shell, shell_effect) =
-        shell.update(shell, shell.CacheUpdate(sync.cache))
-      let shell_effect = case shell_effect {
-        shell.Nothing -> effect.none()
-        shell.RunExternalHandler(ref, thunk) ->
-          dispatch_to_shell(
-            promise.map(thunk(), fn(reply) {
-              shell.RunnerMessage(runner.HandlerCompleted(ref, reply))
-            }),
-          )
-        shell.WriteToClipboard(text) ->
-          dispatch_to_shell(shell.write_to_clipboard(text))
-        shell.ReadFromClipboard ->
-          dispatch_to_shell(shell.read_from_clipboard())
-        shell.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer)
-        shell.FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
-      }
-      let state = State(..state, sync:, shell:)
-      #(
-        state,
-        effect.batch([client.lustre_run(effect, SyncMessage), shell_effect]),
-      )
+      let State(sync:, ..) = state
+      let #(sync, actions) = client.update(sync, message)
+      let state = State(..state, sync:)
+      let actions = list.map(actions, SyncAction)
+
+      let #(state, shell_action) =
+        shell_update(state, shell.CacheUpdate(sync.cache))
+      #(state, list.append(shell_action, actions))
     }
+  }
+}
+
+/// recursivly handle sync effects.
+/// Cannot have effects relying on editor state be transformed to thunks when updating editor state
+/// For example file write
+fn shell_update(state: State, message) {
+  let #(shell, shell_effect) = shell.update(state.shell, message)
+
+  let state = State(..state, shell:)
+  case shell_effect {
+    shell.Nothing -> #(state, [])
+    shell.RunExternalHandler(ref, thunk) ->
+      case thunk {
+        browser.Alert(_message) -> #(state, [
+          RunExternalHandler(ref, fn() { browser.run(thunk) }),
+        ])
+        browser.ReadFile(file:) -> {
+          let reply = case file {
+            "index.eyg.json" -> {
+              let bytes =
+                dag_json.to_block(e.to_annotated(state.source.editable, []))
+              value.ok(value.Binary(bytes))
+            }
+            _ -> value.error(value.String("unknown file: " <> file))
+          }
+
+          shell_update(
+            state,
+            shell.RunnerMessage(runner.HandlerCompleted(ref, reply)),
+          )
+        }
+      }
+    shell.WriteToClipboard(text) -> #(state, [WriteToClipboad(text:)])
+    shell.ReadFromClipboard -> #(state, [ReadShellFromClipboard])
+    shell.FocusOnCode -> #(state, [FocusOnBuffer])
+    shell.FocusOnInput -> #(state, [FocusOnInput])
   }
 }
 
@@ -427,6 +478,7 @@ pub fn render(state: State) {
       h.div([a.class("absolute top-0 w-full bg-white")], [
         help_menu_button(state),
         fullscreen_menu_button(state),
+        share_button(state),
       ]),
       h.div([a.class("h-full")], [
         render_shell(state.shell)
@@ -438,7 +490,7 @@ pub fn render(state: State) {
   )
 }
 
-fn render_shell(shell: shell.Shell) {
+fn render_shell(shell: shell.Shell(_)) {
   h.div([a.class("h-full flex flex-col")], [
     h.div(
       [
@@ -610,6 +662,19 @@ fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
     [vertical_menu.icon(outline.tv(), "fullscreen", state.display_help)],
+  )
+}
+
+fn share_button(state: State) {
+  h.button(
+    [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ShareCurrent)],
+    [
+      vertical_menu.icon(
+        outline.arrow_up_on_square(),
+        "share",
+        state.display_help,
+      ),
+    ],
   )
 }
 

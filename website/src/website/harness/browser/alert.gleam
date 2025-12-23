@@ -15,6 +15,18 @@ pub fn type_() {
   #(l, #(lift, reply))
 }
 
+pub fn cast_to(then) {
+  fn(lift) {
+    use message <- result.try(cast.as_string(lift))
+    Ok(then(message))
+  }
+}
+
+pub fn run(message) {
+  let Nil = do(message)
+  promise.resolve(v.unit())
+}
+
 fn impl(lift) {
   use message <- result.try(cast.as_string(lift))
   let Nil = do(message)

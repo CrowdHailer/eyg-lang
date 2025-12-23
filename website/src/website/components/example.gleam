@@ -55,7 +55,7 @@ pub type Example {
     cache: cache.Cache,
     snippet: Snippet,
     effects: List(#(String, #(binding.Mono, binding.Mono))),
-    runner: runner.Expression(Nil),
+    runner: runner.Expression(runner.Thunk(Nil), Nil),
   )
 }
 

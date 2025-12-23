@@ -16,8 +16,12 @@ import morph/projection
 pub type References =
   Dict(String, binding.Poly)
 
+pub type Release {
+  Release(package: String, version: Int, fragment: String)
+}
+
 pub type Index =
-  List(#(String, Int, String))
+  List(Release)
 
 pub type Context {
   Context(

@@ -6,10 +6,10 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/editable as e
-import website/components/auth_panel
 import website/components/example.{type Example}
 import website/components/runner
 import website/components/snippet
+import website/config
 import website/harness/browser as harness
 import website/sync/client
 
@@ -208,7 +208,6 @@ const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\
 pub type State {
   State(
     show_help: Bool,
-    auth: auth_panel.State,
     cache: client.Client,
     active: Active,
     examples: Dict(String, Example),
@@ -235,8 +234,10 @@ fn to_bytes(editable) {
 }
 
 // snippet failure goes at top level
-pub fn init(_) {
-  let #(sync, init_task) = client.registry()
+pub fn init(config) {
+  let config.Config(registry_origin:) = config
+  let #(client, init_task) = client.init(registry_origin)
+
   let examples = [
     #(int_key, to_bytes(int_example)),
     #(text_key, to_bytes(text_example)),
@@ -255,24 +256,22 @@ pub fn init(_) {
     #(multiple_resume_key, bit_array.from_string(multiple_resume_example)),
     #(capture_key, bit_array.from_string(capture_example)),
   ]
-  let #(auth, task) = auth_panel.init(Nil)
-  let assert Ok(storage) = auth_panel.local_storage("session")
+
   // TODO refs 
   // TODO make snippet update edit refs
   let missing_cids = []
   let examples =
     list.map(examples, fn(entry) {
       let #(key, bytes) = entry
-      #(key, example.from_block(bytes, sync.cache, harness.effects()))
+      #(key, example.from_block(bytes, client.cache, harness.effects()))
     })
   let examples = dict.from_list(examples)
   // let missing_cids = missing_refs(examples)
-  let #(sync, sync_task) = client.fetch_fragments(sync, missing_cids)
-  let state = State(False, auth, sync, Nothing, examples)
+  let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
+  let state = State(False, client, Nothing, examples)
   #(
     state,
     effect.batch([
-      auth_panel.dispatch(task, AuthMessage, storage),
       client.lustre_run(list.append(init_task, sync_task), SyncMessage),
     ]),
   )
@@ -281,7 +280,6 @@ pub fn init(_) {
 pub type Message {
   ExampleMessage(String, example.Message)
   SyncMessage(client.Message)
-  AuthMessage(auth_panel.Message)
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -306,12 +304,6 @@ fn dispatch_nothing(_promise) {
 
 pub fn update(state: State, message) {
   case message {
-    AuthMessage(message) -> {
-      let #(auth, task) = auth_panel.update(state.auth, message)
-      let state = State(..state, auth: auth)
-      let assert Ok(storage) = auth_panel.local_storage("session")
-      #(state, auth_panel.dispatch(task, AuthMessage, storage))
-    }
     ExampleMessage(identifier, message) -> {
       let state = case state.active {
         Editing(current, _) if current != identifier -> {

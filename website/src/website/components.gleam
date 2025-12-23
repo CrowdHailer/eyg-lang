@@ -3,8 +3,6 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
-import supa/auth
-import website/components/auth_panel
 
 const secondary_button_classes = "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 
@@ -30,7 +28,7 @@ fn action_button(event, text) {
   )
 }
 
-pub fn header(authenticate, session) {
+pub fn header() {
   // z index needed to go over vimeo video embeds
   h.div(
     [
