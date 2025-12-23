@@ -125,6 +125,8 @@ pub type History {
   History(undo: List(p.Projection), redo: List(p.Projection))
 }
 
+pub const empty_history = History([], [])
+
 pub type Failure {
   NoKeyBinding(key: String)
   ActionFailed(action: String)
@@ -539,12 +541,16 @@ fn paste(state) {
 
 fn search_vacant(state) {
   let Snippet(projection: proj, ..) = state
-  let bottom = p.zoom_in(proj)
-  let initial = p.path(bottom)
-  case do_search_vacant(bottom, initial) {
+  case go_to_next_vacant(proj) {
     Ok(new) -> navigate_source(new, state)
     Error(Nil) -> action_failed(state, "jump to error")
   }
+}
+
+pub fn go_to_next_vacant(projection) {
+  let bottom = p.zoom_in(projection)
+  let initial = p.path(bottom)
+  do_search_vacant(bottom, initial)
 }
 
 fn do_search_vacant(proj, initial) {

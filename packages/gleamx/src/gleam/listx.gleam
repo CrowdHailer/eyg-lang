@@ -11,6 +11,7 @@ pub fn key_sort(in) {
   })
 }
 
+/// Delete a given key from a keylist
 pub fn key_reject(in, rejected) {
   list.filter(in, fn(keyword) {
     let #(key, _value) = keyword

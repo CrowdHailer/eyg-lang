@@ -29,7 +29,7 @@ pub type Action {
   Share(origin: origin.Origin, block: BitArray)
 }
 
-fn new(origin) {
+pub fn new(origin) {
   Client(status: Idle, origin:, cursor: 0, cache: cache.init())
 }
 
@@ -38,7 +38,7 @@ pub fn syncing(client: Client) {
 }
 
 /// Starts or restarts sync if client Idle/Disconnected
-fn sync(client) {
+pub fn sync(client) {
   let Client(status:, origin:, cursor:, ..) = client
   case status {
     Syncing -> #(client, [])

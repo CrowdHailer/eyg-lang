@@ -4,6 +4,13 @@ import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import morph/editable as e
 
+/// return a projection with everything selected
+pub fn all(source) {
+  #(Exp(source), [])
+}
+
+pub const empty = #(Exp(e.Vacant), [])
+
 // record goes through field and bind at same level assign uses path approach
 // No reverseing needed of final accumutator,
 // The zoom list builds from the bottom of the tree and at each step the accumulator is 

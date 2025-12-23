@@ -73,7 +73,8 @@ pub fn init(effects, cache) {
   |> snippet_analyse
 }
 
-fn update_context(context, cache) {
+// this is update_context_with_cache
+pub fn update_context(context, cache) {
   analysis.Context(
     ..context,
     references: cache.type_map(cache),
