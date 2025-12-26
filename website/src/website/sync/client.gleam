@@ -155,6 +155,14 @@ pub fn lustre_run(tasks: List(Action), wrapper: fn(Message) -> t) {
   })
 }
 
+pub fn lustre_run_single(task: Action, wrapper: fn(Message) -> t) {
+  effect.from(fn(dispatch) {
+    do_run(task, fn(return) { dispatch(wrapper(return)) })
+    // effect from needs to return Nil (not promise of Nil)
+    Nil
+  })
+}
+
 fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {

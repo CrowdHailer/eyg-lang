@@ -1173,7 +1173,7 @@ fn actual_render_projection(proj, autofocus, errors) {
   )
 }
 
-fn render_projection(proj, errors) {
+pub fn render_projection(proj, errors) {
   let #(focus, zoom) = proj
   case focus, zoom {
     p.Exp(e), [] ->

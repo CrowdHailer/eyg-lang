@@ -172,6 +172,7 @@ fn user_pressed_key(state, key) {
     Editing -> user_pressed_command_key(state, key)
     _ -> {
       echo "unexpected"
+      echo mode
       #(state, [])
     }
   }

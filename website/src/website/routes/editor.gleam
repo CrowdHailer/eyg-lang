@@ -356,6 +356,34 @@ fn container(menu, page, open) {
   )
 }
 
+pub fn render_picker(picker) {
+  h.div([a.class("flex-grow p-2 pb-12 h-full overflow-y-auto")], [
+    h.div([a.class("font-bold")], [element.text("Label:")]),
+    picker.render(picker),
+    h.div(
+      [
+        a.class("absolute bottom-0 right-4 flex gap-2 my-2 justify-end"),
+      ],
+      [
+        h.button(
+          [
+            a.class("py-1 px-2 bg-gray-200 rounded border border-black "),
+            event.on_click(picker.Dismissed),
+          ],
+          [element.text("Cancel")],
+        ),
+        h.button(
+          [
+            a.class("py-1 px-2 bg-gray-300 rounded border border-black "),
+            event.on_click(picker.Decided(picker.current(picker))),
+          ],
+          [element.text("Submit")],
+        ),
+      ],
+    ),
+  ])
+}
+
 fn render_pallet(state: snippet.Snippet) {
   let snippet.Snippet(status: status, ..) = state
   case status {
@@ -365,37 +393,7 @@ fn render_pallet(state: snippet.Snippet) {
 
         snippet.Pick(picker, _rebuild) ->
           [
-            h.div([a.class("flex-grow p-2 pb-12 h-full overflow-y-auto")], [
-              h.div([a.class("font-bold")], [element.text("Label:")]),
-              picker.render(picker),
-              h.div(
-                [
-                  a.class(
-                    "absolute bottom-0 right-4 flex gap-2 my-2 justify-end",
-                  ),
-                ],
-                [
-                  h.button(
-                    [
-                      a.class(
-                        "py-1 px-2 bg-gray-200 rounded border border-black ",
-                      ),
-                      event.on_click(picker.Dismissed),
-                    ],
-                    [element.text("Cancel")],
-                  ),
-                  h.button(
-                    [
-                      a.class(
-                        "py-1 px-2 bg-gray-300 rounded border border-black ",
-                      ),
-                      event.on_click(picker.Decided(picker.current(picker))),
-                    ],
-                    [element.text("Submit")],
-                  ),
-                ],
-              ),
-            ]),
+            render_picker(picker),
           ]
           |> not_a_modal(picker.Dismissed)
           |> element.map(snippet.MessageFromPicker)

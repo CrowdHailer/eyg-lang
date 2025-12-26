@@ -23,6 +23,7 @@ import website/routes/news
 import website/routes/news/archive
 import website/routes/news/edition
 import website/routes/roadmap
+import website/routes/workspace
 
 pub fn main() {
   do_main(list.drop(array.to_list(process.argv()), 2))
@@ -85,6 +86,7 @@ fn routes() {
       Route(index: route.Page(documentation.page()), items: []),
     ),
     #("editor", Route(index: route.Page(editor.page()), items: [])),
+    #("workspace", Route(index: route.Page(workspace.page()), items: [])),
     #("news", news.route()),
     #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),
   ])
