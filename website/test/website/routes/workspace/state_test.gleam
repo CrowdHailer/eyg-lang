@@ -153,6 +153,18 @@ pub fn select_typed_field_test() {
 
 // match
 
+pub fn suggest_shell_effects_test() {
+  let state = no_packages()
+  let message = state.UserPressedCommandKey("p")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  echo state.mode
+  assert state.user_error == None
+  todo
+}
+
+// --------------- Copy/Paste -------------------------
+
 pub fn can_copy_from_repl_test() {
   let state = no_packages()
   let source = ir.let_("m", ir.string("Top Cat."), ir.variable("m"))

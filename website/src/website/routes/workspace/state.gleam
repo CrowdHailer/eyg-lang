@@ -20,8 +20,20 @@ import morph/transformation
 import website/components/snippet
 import website/config
 import website/harness/browser
+import website/routes/workspace/buffer
 import website/sync/cache
 import website/sync/client
+
+// TODO move above/below
+// TODO press p in handler
+// Create module effect
+
+// Do we return actions from Buffer
+// Are all the returns Current/labels + types and rebuild
+// No because for choose packages we might go all the way to a semantic search
+// Instead query from analysis. buffer.checkin_context
+
+// TODO remove morph analysis instead try and link we contextual infer context
 
 // Snippet actions returned a `NewCode action`
 // new_code in the shell handles clearing analysis and running snippet analyse
@@ -32,6 +44,31 @@ import website/sync/client
 // buffer errs or clears state
 // copy is better at top level that actions returned from buffer, need other errors
 // Buffer failure won't include unknown key type
+
+// All the help is based on exact projection position
+// type_varients,type_fields,or count arguments
+
+// complexity on making record was on the pattern matching mostly
+// OR editing matches
+// extend before/after
+
+// Keybind -> buffer.Message
+// apply(buffer,action) -> history/not updated analysis or not removed
+// when does new analysis get set
+
+// overwrite etc does it move, can we get a new buffer in the right position
+
+// Nothing -> We expect this
+// Failed(Failure) -> return error
+// ReturnToCode -> Don't need this is all key bindings
+// FocusOnInput -> This is interesting Not from the Snippet
+// ToggleHelp -> Not part of it
+// MoveAbove -> Needed
+// MoveBelow -> Needed
+// WriteToClipboard(String)
+// ReadFromClipboard
+// NewCode -> Clear from analysis
+// Confirm
 
 pub type State {
   State(
@@ -198,9 +235,11 @@ fn user_pressed_command_key(state, key) {
     "e" -> assign_to(state)
     "y" -> copy(state)
     "Y" -> paste(state)
+    "p" -> perform(state)
     "a" -> increase(state)
     "g" -> select_field(state)
     "@" -> choose_release(state)
+    // choose release just checks is expression
     "n" -> insert_integer(state)
     "v" -> insert_variable(state)
     "Enter" -> confirm(state)
@@ -208,6 +247,24 @@ fn user_pressed_command_key(state, key) {
     _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
   }
 }
+
+// Experiment with op on buffer, will try move above/bellow as test first
+// fn op(state, operation) {
+//   let buffer = active(state)
+//   let buffer = buffer_operate(buffer, operation)
+//   // result of buffer
+//   set_active(state, buffer)
+// }
+
+// If analysis missing then request and do the query
+// Buffer should track packages on v 0
+
+// fn buffer_operate(buffer: Buffer, operation) {
+//   case operation {
+//     buffer.GoToNext -> todo
+//     _ -> todo
+//   }
+// }
 
 fn navigated(projection, state) {
   let State(focused:, ..) = state
@@ -267,6 +324,17 @@ fn paste(state) {
 fn fail(state, action) {
   let state = State(..state, user_error: Some(snippet.ActionFailed(action)))
   #(state, [])
+}
+
+fn perform(state) {
+  let buffer = active(state)
+  echo buffer
+  let analysis = do_analysis(buffer.projection)
+  // analysis on the effects of the function
+  echo analysis
+  // is on expression
+  // effects
+  todo
 }
 
 fn increase(state) {
