@@ -35,6 +35,7 @@ import website/sync/client
 pub type State {
   State(
     mode: Mode,
+    user_error: Option(snippet.Failure),
     focused: Target,
     repl: Buffer,
     modules: List(#(String, Buffer)),
@@ -109,6 +110,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
     State(
       sync:,
       mode: Editing,
+      user_error: None,
       focused: Repl,
       repl: empty_buffer(),
       modules: [],
@@ -180,6 +182,7 @@ fn user_pressed_key(state, key) {
 
 fn user_pressed_command_key(state, key) {
   let State(repl:, ..) = state
+  let state = State(..state, user_error: None)
   case key {
     "ArrowRight" -> navigation.next(repl.projection) |> navigated(state)
     "ArrowLeft" -> navigation.previous(repl.projection) |> navigated(state)
@@ -190,11 +193,7 @@ fn user_pressed_command_key(state, key) {
     "v" -> insert_variable(state)
     "Enter" -> confirm(state)
     " " -> search_vacant(state)
-    _ -> {
-      echo key
-      // TODO pressing unknown key shows error
-      #(state, [])
-    }
+    _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
   }
 }
 

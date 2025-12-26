@@ -31,6 +31,19 @@ import website/sync/protocol/server
 // 7. relative references
 
 // --------------- 1. Navigations -------------------------
+pub fn unknown_key_binding_results_in_error_test() {
+  let state = no_packages()
+  let message = state.UserPressedCommandKey("MagicKey")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.user_error == Some(snippet.NoKeyBinding("MagicKey"))
+
+  let message = state.UserPressedCommandKey("e")
+  let #(state, _actions) = state.update(state, message)
+  // assert actions == []
+  assert state.user_error == None
+}
+
 pub fn navigate_let_test() {
   let state = no_packages()
   let source = e.Block([#(e.Bind("i"), e.Integer(1))], e.Integer(2), True)
