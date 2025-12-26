@@ -1,3 +1,4 @@
+import gleam/javascript/promise
 import gleam/list
 import lustre
 import lustre/attribute as a
@@ -6,6 +7,7 @@ import lustre/element
 import lustre/element/html as h
 import mysig/asset
 import mysig/html
+import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/event
 import website/config
@@ -81,6 +83,12 @@ fn run(action) {
       echo "TODO focus on input"
       effect.none()
     }
+    state.WriteToClipboard(text:) ->
+      effect.from(fn(dispatch) {
+        promise.map(clipboard.write_text(text), fn(result) { dispatch(todo) })
+        Nil
+      })
+    state.ReadFromClipboard -> todo
     state.RunEffect(..) -> todo
     state.SyncAction(action) ->
       client.lustre_run_single(action, state.SyncMessage)

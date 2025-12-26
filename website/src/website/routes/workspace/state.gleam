@@ -1,4 +1,3 @@
-import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -6,7 +5,7 @@ import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
 import eyg/ir/tree
-import gleam/dict
+import gleam/bit_array
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -18,7 +17,6 @@ import morph/navigation
 import morph/picker
 import morph/projection as p
 import morph/transformation
-import website/components/runner
 import website/components/snippet
 import website/config
 import website/harness/browser
@@ -31,6 +29,9 @@ import website/sync/client
 
 // create a try function that returns state with error
 // Use the ir builder as editable is an internal API that might change in Tests
+// buffer errs or clears state
+// copy is better at top level that actions returned from buffer, need other errors
+// Buffer failure won't include unknown key type
 
 pub type State {
   State(
@@ -89,6 +90,8 @@ pub type Mode {
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
   RunningShell(debug: istate.Debug(Meta))
+  WritingToClipboard
+  ReadingFromClipboard
 }
 
 pub type Target {
@@ -98,6 +101,8 @@ pub type Target {
 
 pub type Action {
   FocusOnInput
+  WriteToClipboard(text: String)
+  ReadFromClipboard
   RunEffect(browser.Effect)
   SyncAction(client.Action)
 }
@@ -151,6 +156,8 @@ pub type Message {
   // These might become autocomplete
   UserChosePackage(analysis.Release)
   InputMessage(input.Message)
+  ClipboardReadCompleted(Result(String, String))
+  ClipboardWriteCompleted(Result(Nil, String))
   EffectImplementationCompleted(reference: Int, reply: istate.Value(Meta))
   PickerMessage(picker.Message)
   SyncMessage(client.Message)
@@ -161,6 +168,8 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
     UserChosePackage(release) -> user_chose_package(state, release)
     InputMessage(message) -> input_message(state, message)
+    ClipboardReadCompleted(result) -> clipboard_read_complete(state, result)
+    ClipboardWriteCompleted(result) -> clipboard_write_complete(state, result)
     EffectImplementationCompleted(reference:, reply:) ->
       effect_implementation_completed(state, reference, reply)
     PickerMessage(message) -> picker_message(state, message)
@@ -187,6 +196,9 @@ fn user_pressed_command_key(state, key) {
     "ArrowRight" -> navigation.next(repl.projection) |> navigated(state)
     "ArrowLeft" -> navigation.previous(repl.projection) |> navigated(state)
     "e" -> assign_to(state)
+    "y" -> copy(state)
+    "Y" -> paste(state)
+    "a" -> increase(state)
     "g" -> select_field(state)
     "@" -> choose_release(state)
     "n" -> insert_integer(state)
@@ -223,6 +235,46 @@ fn assign_to(state) {
     Error(Nil) -> todo as "failed position"
   }
   #(state, [FocusOnInput])
+}
+
+fn copy(state) {
+  let buffer = active(state)
+  case buffer.projection {
+    #(p.Exp(expression), _) -> {
+      let text =
+        editable.to_annotated(expression, [])
+        |> dag_json.to_string
+
+      let state = State(..state, mode: WritingToClipboard)
+      #(state, [WriteToClipboard(text:)])
+    }
+    _ -> fail(state, "copy")
+  }
+}
+
+fn paste(state) {
+  let buffer = active(state)
+  case buffer.projection {
+    #(p.Exp(_expression), _) -> {
+      let state = State(..state, mode: ReadingFromClipboard)
+      #(state, [ReadFromClipboard])
+    }
+    _ -> todo
+    // fail(state, "copy")
+  }
+}
+
+fn fail(state, action) {
+  let state = State(..state, user_error: Some(snippet.ActionFailed(action)))
+  #(state, [])
+}
+
+fn increase(state) {
+  let buffer = active(state)
+  case navigation.increase(buffer.projection) {
+    Ok(projection) -> navigated(projection, state)
+    _ -> todo
+  }
 }
 
 fn select_field(state) {
@@ -403,6 +455,46 @@ fn input_message(state, message) {
         input.Cancelled -> todo
       }
     _, _ -> todo
+  }
+}
+
+fn clipboard_read_complete(state, return) {
+  let State(mode:, ..) = state
+  case mode {
+    ReadingFromClipboard ->
+      case return {
+        Ok(text) ->
+          case dag_json.from_block(bit_array.from_string(text)) {
+            Ok(expression) -> {
+              case active(state).projection {
+                #(p.Exp(_), zoom) -> {
+                  let proj = #(p.Exp(editable.from_annotated(expression)), zoom)
+                  // update_source_from_buffer(proj, state)
+                  #(update_projection(state, proj), [])
+                }
+                _ -> todo as "action_failed(state, paste)"
+              }
+            }
+            Error(_) -> todo as "action_failed(state, paste)"
+          }
+        Error(_) -> todo as "action_failed(state, paste)"
+      }
+    _ -> todo
+  }
+}
+
+fn clipboard_write_complete(state, message) {
+  let State(mode:, ..) = state
+  case mode {
+    WritingToClipboard ->
+      case message {
+        Ok(Nil) -> {
+          let state = State(..state, mode: Editing)
+          #(state, [])
+        }
+        Error(_) -> todo
+      }
+    _ -> todo
   }
 }
 

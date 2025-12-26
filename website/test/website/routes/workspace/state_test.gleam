@@ -1,7 +1,6 @@
 import eyg/interpreter/break
 import eyg/interpreter/value
 import eyg/ir/cid
-import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
@@ -12,7 +11,6 @@ import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
-import website/components/shell
 import website/components/snippet
 import website/harness/browser
 import website/routes/helpers
@@ -154,6 +152,69 @@ pub fn select_typed_field_test() {
 }
 
 // match
+
+pub fn can_copy_from_repl_test() {
+  let state = no_packages()
+  let source = ir.let_("m", ir.string("Top Cat."), ir.variable("m"))
+  let state = set_repl(state, source)
+
+  let message = state.UserPressedCommandKey("y")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.user_error == Some(snippet.ActionFailed("copy"))
+
+  let message = state.UserPressedCommandKey("ArrowRight")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  let message = state.UserPressedCommandKey("y")
+  let #(state, actions) = state.update(state, message)
+  let assert [state.WriteToClipboard(text:)] = actions
+  assert text == "{\"0\":\"s\",\"v\":\"Top Cat.\"}"
+  assert state.user_error == None
+  assert state.mode == state.WritingToClipboard
+
+  // return result
+  let message = state.ClipboardWriteCompleted(Ok(Nil))
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.user_error == None
+  assert state.mode == state.Editing
+
+  let message = state.UserPressedCommandKey("a")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.user_error == None
+  let message = state.UserPressedCommandKey("a")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.user_error == None
+
+  let message = state.UserPressedCommandKey("y")
+  let #(state, actions) = state.update(state, message)
+  let assert [state.WriteToClipboard(text:)] = actions
+  assert text
+    == "{\"0\":\"l\",\"l\":\"m\",\"t\":{\"0\":\"v\",\"l\":\"m\"},\"v\":{\"0\":\"s\",\"v\":\"Top Cat.\"}}"
+  assert state.user_error == None
+  assert state.mode == state.WritingToClipboard
+}
+
+pub fn can_paste_to_repl_test() {
+  let state = no_packages()
+  let message = state.UserPressedCommandKey("Y")
+  let #(state, actions) = state.update(state, message)
+  assert actions == [state.ReadFromClipboard]
+  assert state.user_error == None
+  assert state.mode == state.ReadingFromClipboard
+
+  let message =
+    state.ClipboardReadCompleted(Ok("{\"0\":\"s\",\"v\":\"Wallpaper\"}"))
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.user_error == None
+  assert state.mode == state.Editing
+}
+
+// --------------- 2. Evaluation -------------------------
 
 // New with value
 // move prev earlier space to vacant
@@ -400,4 +461,11 @@ fn no_packages() {
   let #(state, actions) = state.update(state, message)
   assert actions == []
   state
+}
+
+// Goes to first place in reply
+fn set_repl(state, source) {
+  let source = e.from_annotated(source)
+  let projection = navigation.first(source)
+  state.replace_repl(state, projection)
 }
