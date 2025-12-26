@@ -4,6 +4,7 @@ import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/list
 import gleam/option.{None, Some}
 import morph/analysis
 import morph/editable as e
@@ -125,8 +126,18 @@ pub fn select_typed_field_test() {
   let message = state.UserPressedCommandKey("g")
   let #(state, actions) = state.update(state, message)
   assert actions == []
-  // TODO make sure type checking is done
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(value: "", suggestions:) = picker
+  assert list.length(suggestions) == 2
+  assert Ok("Integer") == list.key_find(suggestions, "size")
+
+  // The picker is weird in that it updates the whole state in the message, and the list of suggestions is constant
+  let new = picker.Typing("si", suggestions)
+  let message = state.PickerMessage(picker.Updated(new))
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
   // echo state.mode
+  // TODO make sure type checking is done
 }
 
 // match
@@ -338,7 +349,7 @@ pub fn read_missing_file_test() {
   let #(state, actions) = state.update(state, message)
   // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == []
-  echo state
+  // echo state
   // let bytes = dag_json.to_block(ir.vacant())
   // let assert [shell.Executed(value:, effects:, ..)] = state.shell.previous
   // let lowered = value.ok(value.Binary(bytes))
@@ -360,7 +371,7 @@ pub fn read_source_file_test() {
   let #(state, actions) = state.update(state, message)
   // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == []
-  echo state
+  // echo state
   // let bytes = dag_json.to_block(ir.vacant())
   // let assert [shell.Executed(value:, effects:, ..)] = state.shell.previous
   // let lowered = value.ok(value.Binary(bytes))

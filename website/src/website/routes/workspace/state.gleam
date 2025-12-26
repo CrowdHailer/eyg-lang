@@ -192,7 +192,8 @@ fn user_pressed_command_key(state, key) {
     " " -> search_vacant(state)
     _ -> {
       echo key
-      todo
+      // TODO pressing unknown key shows error
+      #(state, [])
     }
   }
 }
@@ -227,8 +228,8 @@ fn assign_to(state) {
 
 fn select_field(state) {
   let buffer = active(state)
-  let analysis = None
-  case action.select_field(buffer.projection, analysis) {
+  let analysis = do_analysis(buffer.projection)
+  case action.select_field(buffer.projection, Some(analysis)) {
     Ok(#(hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
       #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
@@ -274,12 +275,8 @@ fn insert_integer(state) {
 
 fn insert_variable(state) {
   let buffer = active(state)
-  let context =
-    analysis.context()
-    |> analysis.with_effects([])
-  // |> update_context(cache)
-  // analysis context includes effects and releases
-  let analysis = analysis.do_analyse(p.rebuild(buffer.projection), context)
+
+  let analysis = do_analysis(buffer.projection)
 
   case action.insert_variable(buffer.projection, Some(analysis)) {
     Ok(#(filter, hints, rebuild)) -> {
@@ -288,6 +285,17 @@ fn insert_variable(state) {
     }
     Error(Nil) -> todo
   }
+}
+
+fn do_analysis(projection) {
+  // |> update_context(cache)
+  // analysis context includes effects and releases
+  let context =
+    analysis.context()
+    |> analysis.with_effects([])
+  // |> update_context(cache)
+  // analysis context includes effects and releases
+  analysis.do_analyse(p.rebuild(projection), context)
 }
 
 fn confirm(state) {
@@ -325,11 +333,11 @@ fn confirm(state) {
                           case return {
                             Ok(value) -> {
                               let state = State(..state, mode: Editing)
-                              echo value
+                              // echo value
                               #(state, [])
                             }
                             _ -> {
-                              echo return
+                              // echo return
                               todo
                             }
                           }
@@ -404,7 +412,7 @@ fn effect_implementation_completed(state, reference, reply) {
   case mode {
     RunningShell(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
       // TODO check reference and awaiting match
-      echo reference
+      // echo reference
       // TODO move occured to a current state
       let occured = []
       let occured = [#(label, #(lift, reply)), ..occured]
@@ -430,9 +438,12 @@ fn effect_implementation_completed(state, reference, reply) {
 fn picker_message(state, message) {
   let State(mode:, ..) = state
   case mode {
-    Picking(picker:, rebuild:) ->
+    Picking(picker: _, rebuild:) ->
       case message {
-        picker.Updated(..) -> todo
+        picker.Updated(picker:) -> #(
+          State(..state, mode: Picking(picker:, rebuild:)),
+          [],
+        )
         picker.Decided(label) -> {
           let new = rebuild(label)
           #(update_projection(state, new), [])
