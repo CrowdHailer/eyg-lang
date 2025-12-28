@@ -65,8 +65,19 @@ pub fn check(context, source) -> Analysis(_) {
   Analysis(bindings:, tree:, original: source)
 }
 
+pub fn missing_references(inference) {
+  all_errors(inference)
+  |> list.filter_map(fn(error) {
+    let #(_, reason) = error
+    case reason {
+      error.MissingReference(ref) -> Ok(ref)
+      _ -> Error(Nil)
+    }
+  })
+}
+
 pub fn all_errors(inference) {
-  let #(bindings, acc, source) = inference
+  let Analysis(_bindings, acc, source) = inference
   let meta = ir.get_annotation(source)
   let info = ir.get_annotation(acc)
   let assert Ok(info) = list.strict_zip(meta, info)

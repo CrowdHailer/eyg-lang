@@ -54,7 +54,11 @@ pub fn init(origin) -> #(Client, _) {
 
 pub fn fetch_fragments(client, cids) {
   let Client(origin:, ..) = client
-  #(client, [FetchFragments(origin:, cids:)])
+  let actions = case cids {
+    [] -> []
+    _ -> [FetchFragments(origin:, cids:)]
+  }
+  #(client, actions)
 }
 
 pub fn share(client, source) {

@@ -366,17 +366,15 @@ pub fn run_anonymous_reference_test() {
   let message = state.PickerMessage(picker.Decided(cid))
 
   let #(state, actions) = state.update(state, message)
-  echo "should look up ref"
-  assert actions == []
+  let assert [state.SyncAction(client.FetchFragments(cids:, ..))] = actions
+  assert [cid] == cids
   let assert state.Editing = state.mode
 
+  // Shows errors and testing as a warning
   // let #(state, _) = press_key(state, "Enter")
   echo state.mode
   // reference state should be fetching
 }
-
-// let message = state.PickerMessage(picker.Dismissed)
-// let #(state, actions) = state.update(initial, message)
 
 // simple evaluation
 // effectful evaluation

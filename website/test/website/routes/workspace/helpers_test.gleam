@@ -6,10 +6,12 @@ import website/routes/workspace/state
 
 pub fn types_of_list_items_test() {
   let projection = #(p.Exp(e.Vacant), [p.ListItem([e.Integer(1)], [], None)])
-  assert Ok(t.Integer) == state.target_type(projection)
+  let buffer = state.from_projection(projection)
+  assert Ok(t.Integer) == state.target_type(buffer)
 }
 
 pub fn types_of_list_tail_test() {
   let projection = #(p.Exp(e.Vacant), [p.ListTail([e.Integer(1)])])
-  assert Ok(t.List(t.Integer)) == state.target_type(projection)
+  let buffer = state.from_projection(projection)
+  assert Ok(t.List(t.Integer)) == state.target_type(buffer)
 }

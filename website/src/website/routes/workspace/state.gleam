@@ -30,9 +30,6 @@ import website/harness/browser
 import website/sync/cache
 import website/sync/client
 
-// Do analysis should be switched to using contextual
-// action is build on analysis
-// Work out how to migrate actions to not use morph analysis
 // get rid of implicit insert when clicking on the same thing.
 // j is expected on a vacant node
 
@@ -40,8 +37,6 @@ import website/sync/client
 // Are all the returns Current/labels + types and rebuild
 // No because for choose packages we might go all the way to a semantic search
 // Instead query from analysis. buffer.checkin_context
-
-// TODO remove morph analysis instead try and link we contextual infer context
 
 // Snippet actions returned a `NewCode action`
 // new_code in the shell handles clearing analysis and running snippet analyse
@@ -91,7 +86,11 @@ pub type State {
 }
 
 pub type Buffer {
-  Buffer(history: snippet.History, projection: p.Projection)
+  Buffer(
+    history: snippet.History,
+    projection: p.Projection,
+    analysis: infer.Analysis(List(Int)),
+  )
 }
 
 fn history_new_entry(old, history) {
@@ -100,16 +99,27 @@ fn history_new_entry(old, history) {
   snippet.History(undo: undo, redo: [])
 }
 
+fn analyse(projection) -> infer.Analysis(List(Int)) {
+  let source = e.to_annotated(p.rebuild(projection), [])
+
+  infer.pure()
+  |> infer.check(source)
+}
+
 fn empty_buffer() {
-  Buffer(history: snippet.empty_history, projection: p.empty)
+  from_projection(p.empty)
 }
 
 fn new_buffer(source) {
   from_projection(navigation.first(source))
 }
 
-fn from_projection(projection) {
-  Buffer(history: snippet.empty_history, projection:)
+pub fn from_projection(projection) {
+  Buffer(
+    history: snippet.empty_history,
+    projection:,
+    analysis: analyse(projection),
+  )
 }
 
 /// set an expression in the active buffer assumes that you are already on an expression
@@ -119,16 +129,39 @@ fn set_expression(state, expression) {
   case buffer.projection {
     #(p.Exp(_), zoom) -> {
       let new = #(p.Exp(expression), zoom)
-      Ok(update_projection(state, new))
+      update_projection(state, new)
     }
-    _ -> Error(Nil)
+    _ -> todo
   }
 }
 
 fn update_buffer_code(buffer, new) {
-  let Buffer(history:, projection: old) = buffer
+  let Buffer(history:, projection: old, ..) = buffer
   let history = history_new_entry(old, history)
-  Buffer(history:, projection: new)
+  Buffer(history:, projection: new, analysis: analyse(new))
+}
+
+fn buffer_update_position(buffer, projection) {
+  Buffer(..buffer, projection:)
+}
+
+/// public for testing as a helper
+pub fn target_type(buffer) {
+  let Buffer(projection:, analysis:, ..) = buffer
+
+  let path = p.path(projection)
+
+  // multi pick is what we really want here
+  infer.type_at(analysis, path)
+}
+
+fn target_scope(buffer) {
+  let Buffer(projection:, analysis:, ..) = buffer
+
+  let path = p.path(projection)
+
+  // multi pick is what we really want here
+  infer.scope_at(analysis, path)
 }
 
 /// Always used after a change that was from a command and that changes the history
@@ -138,7 +171,13 @@ fn update_projection(state, new) {
   case focused {
     Repl -> {
       let repl = update_buffer_code(state.repl, new)
-      State(..state, mode: Editing, repl:)
+
+      let cids = infer.missing_references(repl.analysis)
+      let #(sync, actions) = client.fetch_fragments(state.sync, cids)
+      let actions = list.map(actions, SyncAction)
+
+      let state = State(..state, mode: Editing, repl:, sync:)
+      #(state, actions)
     }
     Module(path) -> {
       let module = case dict.get(modules, path) {
@@ -146,7 +185,10 @@ fn update_projection(state, new) {
         Error(Nil) -> from_projection(new)
       }
       let modules = dict.insert(modules, path, module)
-      State(..state, mode: Editing, modules:)
+      let state = State(..state, mode: Editing, modules:)
+      // TODO fetch here
+      let actions = []
+      #(state, actions)
     }
   }
 }
@@ -315,7 +357,7 @@ fn move_up(state) {
   let buffer = active(state)
   case navigation.move_up(buffer.projection) {
     Ok(new) -> {
-      let buffer = Buffer(..buffer, projection: new)
+      // let buffer = Buffer(..buffer, projection: new)
       case state.focused {
         Repl -> todo
         _ -> todo
@@ -345,10 +387,9 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
   let state = case focused {
     Repl ->
       case navigation(state.repl.projection) {
-        Ok(projection) -> {
-          let repl = Buffer(..state.repl, projection:)
-          State(..state, repl:)
-        }
+        Ok(projection) ->
+          State(..state, repl: buffer_update_position(state.repl, projection))
+
         Error(_) -> state_fail(state, reason)
       }
     Module(path) ->
@@ -356,7 +397,7 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
         Ok(buffer) ->
           case navigation(buffer.projection) {
             Ok(projection) -> {
-              let buffer = Buffer(..buffer, projection:)
+              let buffer = buffer_update_position(buffer, projection)
               let modules = dict.insert(modules, path, buffer)
               State(..state, modules:)
             }
@@ -369,11 +410,7 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
 }
 
 fn assign_to(state) {
-  let State(focused:, ..) = state
-  let buffer = case focused {
-    Repl -> state.repl
-    _ -> todo
-  }
+  let buffer = active(state)
   let state = case transformation.assign_before(buffer.projection) {
     Ok(rebuild) ->
       State(
@@ -386,10 +423,7 @@ fn assign_to(state) {
 }
 
 fn insert_empty_record(state) {
-  case set_expression(state, e.Record([], None)) {
-    Ok(state) -> #(state, [])
-    Error(Nil) -> todo
-  }
+  set_expression(state, e.Record([], None))
 }
 
 fn copy(state) {
@@ -463,7 +497,7 @@ fn increase(state) {
 
 fn select_field(state) {
   let buffer = active(state)
-  let hints = case target_type(buffer.projection) {
+  let hints = case target_type(buffer) {
     Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
     _ -> []
   }
@@ -487,11 +521,8 @@ fn user_chose_package(state, release) {
     ChoosingPackage -> {
       let analysis.Release(package:, version:, fragment:) = release
       let release = e.Release(package:, release: version, identifer: fragment)
-      let state = case set_expression(state, release) {
-        Ok(state) -> State(..state, mode: Editing)
-        _ -> todo
-      }
-      #(state, [FocusOnInput])
+      let #(state, actions) = set_expression(state, release)
+      #(state, [FocusOnInput, ..actions])
     }
 
     _ -> todo
@@ -522,7 +553,7 @@ fn insert_integer(state) {
 
 fn insert_case(state) {
   let buffer = active(state)
-  case target_type(buffer.projection) {
+  case target_type(buffer) {
     Ok(t.Union(t.RowExtend(first, _, rest))) -> {
       // expect there to be at least one row and for it not to be open
       let rest =
@@ -539,7 +570,7 @@ fn insert_case(state) {
         p.CaseMatch(top, first, [], rest, None),
         ..zoom
       ])
-      #(update_projection(state, new), [])
+      update_projection(state, new)
     }
     _ -> todo
   }
@@ -547,7 +578,7 @@ fn insert_case(state) {
 
 fn insert_variable(state) {
   let buffer = active(state)
-  let scope = target_scope(buffer.projection) |> result.unwrap([])
+  let scope = target_scope(buffer) |> result.unwrap([])
   let hints = listx.value_map(scope, snippet.render_poly)
   case buffer.projection {
     #(p.Exp(_), zoom) -> {
@@ -682,10 +713,7 @@ fn input_message(state, message) {
           let state = State(..state, mode:)
           #(state, [])
         }
-        input.Confirmed(value) -> #(
-          update_projection(state, rebuild(value)),
-          [],
-        )
+        input.Confirmed(value) -> update_projection(state, rebuild(value))
         input.Cancelled -> todo
       }
     _, _ -> todo
@@ -699,12 +727,9 @@ fn clipboard_read_complete(state, return) {
       case return {
         Ok(text) ->
           case dag_json.from_block(bit_array.from_string(text)) {
-            Ok(expression) -> {
-              case set_expression(state, e.from_annotated(expression)) {
-                Ok(state) -> #(state, [])
-                Error(Nil) -> todo as "action_failed(state, paste)"
-              }
-            }
+            Ok(expression) ->
+              set_expression(state, e.from_annotated(expression))
+
             Error(_) -> todo as "action_failed(state, paste)"
           }
         Error(_) -> todo as "action_failed(state, paste)"
@@ -767,7 +792,7 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           let new = rebuild(label)
-          #(update_projection(state, new), [])
+          update_projection(state, new)
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
@@ -794,28 +819,4 @@ fn sync_message(state, message) {
   let actions = list.map(actions, SyncAction)
   let state = State(..state, sync:)
   #(state, actions)
-}
-
-pub fn target_type(projection) {
-  let source = e.to_annotated(p.rebuild(projection), [])
-  let analysis =
-    infer.pure()
-    |> infer.check(source)
-
-  let path = p.path(projection)
-
-  // multi pick is what we really want here
-  infer.type_at(analysis, path)
-}
-
-pub fn target_scope(projection) {
-  let source = e.to_annotated(p.rebuild(projection), [])
-  let analysis =
-    infer.pure()
-    |> infer.check(source)
-
-  let path = p.path(projection)
-
-  // multi pick is what we really want here
-  infer.scope_at(analysis, path)
 }
