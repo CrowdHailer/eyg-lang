@@ -53,7 +53,7 @@ fn set_expression(state, expression) {
       let new = #(p.Exp(expression), zoom)
       update_projection(state, new)
     }
-    _ -> todo
+    _ -> fail(state, "set expression")
   }
 }
 
@@ -315,8 +315,7 @@ fn paste(state) {
       let state = State(..state, mode: ReadingFromClipboard)
       #(state, [ReadFromClipboard])
     }
-    _ -> todo
-    // fail(state, "copy")
+    _ -> fail(state, "paste")
   }
 }
 
@@ -385,7 +384,26 @@ fn select_field(state) {
     }
     _ -> todo
   }
+  // picked_transform(state, hints, do_select_field)
 }
+
+// fn do_select_field(projection) {
+//   case projection {
+//     #(p.Exp(inner), zoom) ->
+//       Ok(fn(label) { #(p.Exp(e.Select(inner, label)), zoom) })
+//     _ -> Error(Nil)
+//   }
+// }
+
+// fn picked_transform(state, hints, start: fn(p.Projection) -> _) {
+//   case start(active(state).projection) {
+//     Ok(rebuild) -> #(
+//       State(..state, mode: Picking(picker.new("", hints), rebuild:)),
+//       [],
+//     )
+//     Error(Nil) -> todo
+//   }
+// }
 
 fn insert_empty_list(state) {
   set_expression(state, e.List([], None))

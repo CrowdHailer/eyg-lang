@@ -258,6 +258,13 @@ pub fn suggest_shell_effects_test() {
   assert list.key_find(suggestions, "Alert") == Ok("String : {}")
 }
 
+pub fn cant_set_expression_on_assignment_test() {
+  let state = no_packages()
+  let source = ir.let_("here", ir.vacant(), ir.vacant())
+  let state = set_repl(state, source)
+  press_key_failure(state, "L")
+}
+
 pub fn simple_edit_in_module_test() {
   // open module
   let state = no_packages()
@@ -374,6 +381,14 @@ pub fn can_paste_to_repl_test() {
   assert actions == []
   assert state.user_error == None
   assert state.mode == state.Editing
+}
+
+pub fn cant_paste_on_assignment_test() {
+  let state = no_packages()
+  let source = ir.let_("here", ir.vacant(), ir.vacant())
+  let state = set_repl(state, source)
+  let reason = press_key_failure(state, "Y")
+  assert snippet.ActionFailed("paste") == reason
 }
 
 // --------------- 3. Evaluation -------------------------
