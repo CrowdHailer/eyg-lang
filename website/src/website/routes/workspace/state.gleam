@@ -267,30 +267,13 @@ fn always_nav(state, navigation) {
 }
 
 fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
-  let State(focused:, modules:, ..) = state
-  let state = case focused {
-    Repl ->
-      case navigation(state.repl.projection) {
-        Ok(projection) ->
-          State(..state, repl: buffer.update_position(state.repl, projection))
-
-        Error(_) -> state_fail(state, reason)
-      }
-    Module(path) ->
-      case dict.get(modules, path) {
-        Ok(buffer) ->
-          case navigation(buffer.projection) {
-            Ok(projection) -> {
-              let buffer = buffer.update_position(buffer, projection)
-              let modules = dict.insert(modules, path, buffer)
-              State(..state, modules:)
-            }
-            Error(_) -> state_fail(state, reason)
-          }
-        Error(Nil) -> todo
-      }
+  case navigation(active(state).projection) {
+    Ok(projection) -> {
+      let buffer = buffer.update_position(state.repl, projection)
+      #(replace_buffer(state, buffer), [])
+    }
+    Error(_) -> fail(state, reason)
   }
-  #(state, [])
 }
 
 fn assign_to(state) {
