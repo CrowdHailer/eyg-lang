@@ -28,8 +28,6 @@ import website/routes/workspace/buffer
 import website/sync/cache
 import website/sync/client
 
-// TODO move above/below
-// TODO press p in handler
 // Create module effect
 // Do analysis should be switched to using contextual
 // action is build on analysis
@@ -113,15 +111,28 @@ fn from_projection(projection) {
   Buffer(history: snippet.empty_history, projection:)
 }
 
-// put/slot_expression
-// update_source was the snippet function that also handles history
-fn slot_expression(buffer, expression) {
-  let Buffer(history:, projection: old) = buffer
-  case old {
+/// set an expression in the active buffer assumes that you are already on an expression
+fn set_expression(state, expression) {
+  let buffer = active(state)
+  case buffer.projection {
     #(p.Exp(_), zoom) -> {
       let new = #(p.Exp(expression), zoom)
+      Ok(update_projection(state, new))
+    }
+    _ -> Error(Nil)
+  }
+}
+
+/// Always used after a change that was from a command and that changes the history
+/// The new value is the full projection, probably from a rebuild function
+fn update_projection(state, new) {
+  let State(focused:, ..) = state
+  case focused {
+    Repl -> {
+      let Buffer(history:, projection: old) = state.repl
       let history = history_new_entry(old, history)
-      Ok(Buffer(history:, projection: new))
+      let repl = Buffer(history:, projection: new)
+      State(..state, mode: Editing, repl:)
     }
     _ -> todo
   }
@@ -422,11 +433,10 @@ fn user_chose_package(state, release) {
   let State(mode:, ..) = state
   case mode {
     ChoosingPackage -> {
-      let assert Repl = state.focused
       let analysis.Release(package:, version:, fragment:) = release
       let release = e.Release(package:, release: version, identifer: fragment)
-      let state = case slot_expression(state.repl, release) {
-        Ok(repl) -> State(..state, mode: Editing, repl:)
+      let state = case set_expression(state, release) {
+        Ok(state) -> State(..state, mode: Editing)
         _ -> todo
       }
       #(state, [FocusOnInput])
@@ -712,21 +722,6 @@ fn picker_message(state, message) {
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
-    _ -> todo
-  }
-}
-
-/// Always used after a change that was from a command and that changes the history
-/// 
-fn update_projection(state, new) {
-  let State(focused:, ..) = state
-  case focused {
-    Repl -> {
-      let Buffer(history:, projection: old) = state.repl
-      let history = history_new_entry(old, history)
-      let repl = Buffer(history:, projection: new)
-      State(..state, mode: Editing, repl:)
-    }
     _ -> todo
   }
 }
