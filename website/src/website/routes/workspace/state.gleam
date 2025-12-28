@@ -24,7 +24,6 @@ import website/components/shell
 import website/components/snippet
 import website/config
 import website/harness/browser
-import website/routes/workspace/buffer
 import website/sync/cache
 import website/sync/client
 
@@ -187,20 +186,14 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
 }
 
 fn active(state) {
-  let State(focused:, ..) = state
+  let State(focused:, modules:, ..) = state
   case focused {
     Repl -> state.repl
-    _ -> todo
-  }
-}
-
-/// This is just a lens into active, it is used for navigation an edits that change code
-/// Maybe the history should keep all the analysis fine but it can change if unknown refs are a thing
-fn set_active(state, new) {
-  let State(focused:, ..) = state
-  case focused {
-    Repl -> State(..state, repl: new)
-    _ -> todo
+    Module(path) ->
+      case list.key_find(modules, path) {
+        Ok(buffer) -> buffer
+        _ -> todo
+      }
   }
 }
 
@@ -253,11 +246,10 @@ fn user_pressed_key(state, key) {
 }
 
 fn user_pressed_command_key(state, key) {
-  let State(repl:, ..) = state
   let state = State(..state, user_error: None)
   case key {
-    "ArrowRight" -> navigation.next(repl.projection) |> navigated(state)
-    "ArrowLeft" -> navigation.previous(repl.projection) |> navigated(state)
+    "ArrowRight" -> move_next(state)
+    "ArrowLeft" -> move_previous(state)
     "ArrowUp" -> move_up(state)
     "ArrowDown" -> move_down(state)
     "e" -> assign_to(state)
@@ -296,21 +288,24 @@ fn user_pressed_command_key(state, key) {
 //   }
 // }
 
-fn navigated(projection, state) {
-  let State(focused:, ..) = state
-  case focused {
-    Repl -> {
-      let repl = Buffer(..state.repl, projection:)
-      #(State(..state, repl:), [])
-    }
-    _ -> todo
-  }
+fn move_next(state) {
+  always_nav(state, navigation.next)
+}
+
+fn move_previous(state) {
+  always_nav(state, navigation.previous)
 }
 
 fn move_up(state) {
   let buffer = active(state)
   case navigation.move_up(buffer.projection) {
-    Ok(new) -> navigated(navigation.next(new), state)
+    Ok(new) -> {
+      let buffer = Buffer(..buffer, projection: new)
+      case state.focused {
+        Repl -> todo
+        _ -> todo
+      }
+    }
     Error(Nil) ->
       case state.focused == Repl, state.previous {
         True, [entry, ..] -> {
@@ -323,7 +318,39 @@ fn move_up(state) {
 }
 
 fn move_down(state) {
-  todo
+  nav(state, navigation.move_down, "move below")
+}
+
+fn always_nav(state, navigation) {
+  nav(state, fn(p) { Ok(navigation(p)) }, "")
+}
+
+fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
+  let State(focused:, modules:, ..) = state
+  let state = case focused {
+    Repl ->
+      case navigation(state.repl.projection) {
+        Ok(projection) -> {
+          let repl = Buffer(..state.repl, projection:)
+          State(..state, repl:)
+        }
+        Error(_) -> state_fail(state, reason)
+      }
+    Module(path) ->
+      case list.key_pop(modules, path) {
+        Ok(#(buffer, rest)) ->
+          case navigation(buffer.projection) {
+            Ok(projection) -> {
+              let buffer = Buffer(..buffer, projection:)
+              let modules = [#(path, buffer), ..rest]
+              State(..state, modules:)
+            }
+            Error(_) -> state_fail(state, reason)
+          }
+        Error(Nil) -> todo
+      }
+  }
+  #(state, [])
 }
 
 fn assign_to(state) {
@@ -370,8 +397,12 @@ fn paste(state) {
   }
 }
 
+fn state_fail(state, action) {
+  State(..state, user_error: Some(snippet.ActionFailed(action)))
+}
+
 fn fail(state, action) {
-  let state = State(..state, user_error: Some(snippet.ActionFailed(action)))
+  let state = state_fail(state, action)
   #(state, [])
 }
 
@@ -405,11 +436,7 @@ fn perform(state) {
 }
 
 fn increase(state) {
-  let buffer = active(state)
-  case navigation.increase(buffer.projection) {
-    Ok(projection) -> navigated(projection, state)
-    _ -> todo
-  }
+  nav(state, navigation.increase, "increase selection")
 }
 
 fn select_field(state) {
@@ -609,14 +636,7 @@ fn evaluate(editable) {
 }
 
 fn search_vacant(state) {
-  let buffer = active(state)
-  case snippet.go_to_next_vacant(buffer.projection) {
-    Ok(projection) -> {
-      let buffer = Buffer(..buffer, projection:)
-      #(set_active(state, buffer), [])
-    }
-    _ -> todo
-  }
+  nav(state, snippet.go_to_next_vacant, "Jump to vacant")
 }
 
 fn input_message(state, message) {
@@ -734,10 +754,10 @@ pub fn replace_repl(state, new) {
 }
 
 /// Used for testing
-pub fn set_module(state, name, source) {
+pub fn set_module(state, name, projection) {
   let State(modules:, ..) = state
   let modules = listx.key_reject(modules, name)
-  let modules = [#(name, new_buffer(source)), ..modules]
+  let modules = [#(name, from_projection(projection)), ..modules]
   State(..state, modules:)
 }
 

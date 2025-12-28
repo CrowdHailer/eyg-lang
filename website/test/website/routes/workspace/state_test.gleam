@@ -122,6 +122,26 @@ pub fn navigate_to_vacant_test() {
     == state.repl.projection
 }
 
+// TODO create Module
+// Open Module
+// Escape is back
+pub fn vertical_move_in_file_test() {
+  let state = no_packages()
+  let state =
+    set_module(state, "foo.eyg.json", ir.let_("x", ir.string("a"), ir.unit()))
+  let state = state.State(..state, focused: state.Module("foo.eyg.json"))
+  let reason = press_key_failure(state, "ArrowUp")
+  assert snippet.ActionFailed("move above") == reason
+
+  let #(state, actions) = press_key(state, "ArrowDown")
+  assert [] == actions
+  let module = read_module(state, "foo.eyg.json")
+  let assert #(p.Exp(e.Record([], None)), [p.BlockTail(..)]) = module.projection
+
+  let reason = press_key_failure(state, "ArrowDown")
+  assert snippet.ActionFailed("move below") == reason
+}
+
 // --------------- 2. Editing -------------------------
 
 pub const true = e.Call(e.Tag("True"), [e.Record([], None)])
@@ -237,8 +257,6 @@ pub fn can_paste_to_repl_test() {
 
 // Reading from scratch is not the same as referencing scratch which must also work
 
-// New with value
-// move prev earlier space to vacant
 pub fn evaluate_expression_in_shell_test() {
   let state = no_packages()
   let source = ir.integer(187)
@@ -291,7 +309,6 @@ pub fn bad_input_effect_test() {
   assert break.IncorrectTerm("String", value.Record(dict.new())) == reason
 }
 
-// TODO bad input
 pub fn alert_effect_test() {
   let state = no_packages()
   let source = ir.call(ir.perform("Alert"), [ir.string("great test!")])
@@ -329,6 +346,7 @@ pub fn run_anonymous_reference_test() {
 
   // let #(state, _) = press_key(state, "Enter")
   echo state.mode
+  // reference state should be fetching
 }
 
 // let message = state.PickerMessage(picker.Dismissed)
@@ -402,7 +420,7 @@ pub fn read_missing_file_test() {
 pub fn read_source_file_test() {
   let state = no_packages()
   let file = "index.eyg.json"
-  let state = state.set_module(state, file, e.Integer(100))
+  let state = set_module(state, file, ir.integer(100))
   let source = ir.call(ir.perform("ReadFile"), [ir.string(file)])
   let state = set_repl(state, source)
 
@@ -435,6 +453,12 @@ fn set_repl(state, source) {
   state.replace_repl(state, projection)
 }
 
+fn set_module(state, name, source) {
+  let source = e.from_annotated(source)
+  let projection = navigation.first(source)
+  state.set_module(state, name, projection)
+}
+
 fn select_all_in_repl(state, source) {
   let source = e.from_annotated(source)
   let projection = #(p.Exp(source), [])
@@ -453,4 +477,10 @@ fn press_key_failure(state, key) {
   let #(state, actions) = state.update(state, message)
   let assert Some(reason) = state.user_error
   reason
+}
+
+fn read_module(state, path) {
+  let state.State(modules:, ..) = state
+  let assert Ok(buffer) = list.key_find(modules, path)
+  buffer
 }
