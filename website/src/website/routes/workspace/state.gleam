@@ -29,7 +29,6 @@ import website/harness/browser
 import website/sync/cache
 import website/sync/client
 
-// Create module effect
 // Do analysis should be switched to using contextual
 // action is build on analysis
 // Work out how to migrate actions to not use morph analysis
@@ -709,13 +708,9 @@ fn clipboard_read_complete(state, return) {
         Ok(text) ->
           case dag_json.from_block(bit_array.from_string(text)) {
             Ok(expression) -> {
-              case active(state).projection {
-                #(p.Exp(_), zoom) -> {
-                  let proj = #(p.Exp(e.from_annotated(expression)), zoom)
-                  // update_source_from_buffer(proj, state)
-                  #(update_projection(state, proj), [])
-                }
-                _ -> todo as "action_failed(state, paste)"
+              case set_expression(state, e.from_annotated(expression)) {
+                Ok(state) -> #(state, [])
+                Error(Nil) -> todo as "action_failed(state, paste)"
               }
             }
             Error(_) -> todo as "action_failed(state, paste)"
@@ -790,8 +785,7 @@ fn picker_message(state, message) {
 
 /// Used for testing
 pub fn replace_repl(state, new) {
-  let State(repl:, ..) = state
-  let repl = Buffer(..repl, projection: new)
+  let repl = from_projection(new)
   State(..state, repl:)
 }
 

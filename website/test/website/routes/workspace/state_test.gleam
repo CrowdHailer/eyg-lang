@@ -8,7 +8,6 @@ import gleam/list
 import gleam/option.{None, Some}
 import morph/analysis
 import morph/editable as e
-import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
