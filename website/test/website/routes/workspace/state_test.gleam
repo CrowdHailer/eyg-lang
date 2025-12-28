@@ -5,7 +5,6 @@ import eyg/interpreter/value
 import eyg/ir/cid
 import eyg/ir/tree as ir
 import gleam/dict
-import gleam/http/response
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -188,6 +187,13 @@ pub fn auto_match_test() {
   let #(state, actions) = press_key(state, "m")
   assert actions == []
   assert state.mode == state.Editing
+}
+
+pub fn cant_match_test() {
+  let state = no_packages()
+  let source = ir.let_("here", ir.vacant(), ir.vacant())
+  let state = set_repl(state, source)
+  press_key_failure(state, "m")
 }
 
 pub fn suggest_shell_effects_test() {

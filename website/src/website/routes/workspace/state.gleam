@@ -28,52 +28,9 @@ import website/components/shell
 import website/components/snippet
 import website/config
 import website/harness/browser
+import website/routes/workspace/buffer.{type Buffer}
 import website/sync/cache
 import website/sync/client
-
-// get rid of implicit insert when clicking on the same thing.
-// j is expected on a vacant node
-// Test nested pulling of references into the cache
-
-// Do we return actions from Buffer
-// Are all the returns Current/labels + types and rebuild
-// No because for choose packages we might go all the way to a semantic search
-// Instead query from analysis. buffer.checkin_context
-
-// Snippet actions returned a `NewCode action`
-// new_code in the shell handles clearing analysis and running snippet analyse
-// Choice for type checking don't check if any missing refs? the is permanent, but no relative still might change
-
-// create a try function that returns state with error
-// Use the ir builder as editable is an internal API that might change in Tests
-// buffer errs or clears state
-// copy is better at top level that actions returned from buffer, need other errors
-// Buffer failure won't include unknown key type
-
-// All the help is based on exact projection position
-// type_varients,type_fields,or count arguments
-
-// complexity on making record was on the pattern matching mostly
-// OR editing matches
-// extend before/after
-
-// Keybind -> buffer.Message
-// apply(buffer,action) -> history/not updated analysis or not removed
-// when does new analysis get set
-
-// overwrite etc does it move, can we get a new buffer in the right position
-
-// Nothing -> We expect this
-// Failed(Failure) -> return error
-// ReturnToCode -> Don't need this is all key bindings
-// FocusOnInput -> This is interesting Not from the Snippet
-// ToggleHelp -> Not part of it
-// MoveAbove -> Needed
-// MoveBelow -> Needed
-// WriteToClipboard(String)
-// ReadFromClipboard
-// NewCode -> Clear from analysis
-// Confirm
 
 pub type State {
   State(
@@ -84,43 +41,6 @@ pub type State {
     repl: Buffer,
     modules: Dict(String, Buffer),
     sync: client.Client,
-  )
-}
-
-pub type Buffer {
-  Buffer(
-    history: snippet.History,
-    projection: p.Projection,
-    analysis: infer.Analysis(List(Int)),
-  )
-}
-
-fn history_new_entry(old, history) {
-  let snippet.History(undo: undo, ..) = history
-  let undo = [old, ..undo]
-  snippet.History(undo: undo, redo: [])
-}
-
-fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {
-  let source = e.to_annotated(p.rebuild(projection), [])
-
-  context
-  |> infer.check(source)
-}
-
-fn empty_buffer(context) {
-  from_projection(p.empty, context)
-}
-
-fn new_buffer(source, context) {
-  from_projection(navigation.first(source), context)
-}
-
-pub fn from_projection(projection, context) {
-  Buffer(
-    history: snippet.empty_history,
-    projection:,
-    analysis: analyse(projection, context),
   )
 }
 
@@ -137,47 +57,6 @@ fn set_expression(state, expression) {
   }
 }
 
-fn update_buffer_code(buffer, new, context) {
-  let Buffer(history:, projection: old, ..) = buffer
-  let history = history_new_entry(old, history)
-  Buffer(history:, projection: new, analysis: analyse(new, context))
-}
-
-fn buffer_update_position(buffer, projection) {
-  Buffer(..buffer, projection:)
-}
-
-fn buffer_add_references(buffer, new, cache) {
-  let Buffer(analysis:, ..) = buffer
-  case list.any(infer.missing_references(analysis), set.contains(new, _)) {
-    True ->
-      Buffer(
-        ..buffer,
-        analysis: analyse(buffer.projection, typing_context(cache)),
-      )
-    False -> buffer
-  }
-}
-
-/// public for testing as a helper
-pub fn target_type(buffer) {
-  let Buffer(projection:, analysis:, ..) = buffer
-
-  let path = p.path(projection)
-
-  // multi pick is what we really want here
-  infer.type_at(analysis, path)
-}
-
-fn target_scope(buffer) {
-  let Buffer(projection:, analysis:, ..) = buffer
-
-  let path = p.path(projection)
-
-  // multi pick is what we really want here
-  infer.scope_at(analysis, path)
-}
-
 fn typing_context(cache: cache.Cache) {
   infer.pure()
   |> infer.with_references(cache.type_map(cache))
@@ -190,7 +69,7 @@ fn update_projection(state, new) {
   case focused {
     Repl -> {
       let repl =
-        update_buffer_code(state.repl, new, typing_context(state.sync.cache))
+        buffer.update_code(state.repl, new, typing_context(state.sync.cache))
 
       let cids = infer.missing_references(repl.analysis)
       let #(sync, actions) = client.fetch_fragments(state.sync, cids)
@@ -202,8 +81,9 @@ fn update_projection(state, new) {
     Module(path) -> {
       let module = case dict.get(modules, path) {
         Ok(buffer) ->
-          update_buffer_code(buffer, new, typing_context(state.sync.cache))
-        Error(Nil) -> from_projection(new, typing_context(state.sync.cache))
+          buffer.update_code(buffer, new, typing_context(state.sync.cache))
+        Error(Nil) ->
+          buffer.from_projection(new, typing_context(state.sync.cache))
       }
       let modules = dict.insert(modules, path, module)
       let state = State(..state, mode: Editing, modules:)
@@ -256,7 +136,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       user_error: None,
       focused: Repl,
       previous: [],
-      repl: empty_buffer(typing_context(sync.cache)),
+      repl: buffer.empty(typing_context(sync.cache)),
       modules: dict.new(),
     )
   #(state, actions)
@@ -269,7 +149,7 @@ fn active(state) {
     Module(path) ->
       case dict.get(modules, path) {
         Ok(buffer) -> buffer
-        _ -> empty_buffer(typing_context(state.sync.cache))
+        _ -> buffer.empty(typing_context(state.sync.cache))
       }
   }
 }
@@ -348,24 +228,6 @@ fn user_pressed_command_key(state, key) {
   }
 }
 
-// Experiment with op on buffer, will try move above/bellow as test first
-// fn op(state, operation) {
-//   let buffer = active(state)
-//   let buffer = buffer_operate(buffer, operation)
-//   // result of buffer
-//   set_active(state, buffer)
-// }
-
-// If analysis missing then request and do the query
-// Buffer should track packages on v 0
-
-// fn buffer_operate(buffer: Buffer, operation) {
-//   case operation {
-//     buffer.GoToNext -> todo
-//     _ -> todo
-//   }
-// }
-
 fn move_next(state) {
   always_nav(state, navigation.next)
 }
@@ -388,7 +250,7 @@ fn move_up(state) {
       case state.focused == Repl, state.previous {
         True, [entry, ..] -> {
           let repl =
-            from_projection(
+            buffer.from_projection(
               entry.source.projection,
               typing_context(state.sync.cache),
             )
@@ -413,7 +275,7 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
     Repl ->
       case navigation(state.repl.projection) {
         Ok(projection) ->
-          State(..state, repl: buffer_update_position(state.repl, projection))
+          State(..state, repl: buffer.update_position(state.repl, projection))
 
         Error(_) -> state_fail(state, reason)
       }
@@ -422,7 +284,7 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
         Ok(buffer) ->
           case navigation(buffer.projection) {
             Ok(projection) -> {
-              let buffer = buffer_update_position(buffer, projection)
+              let buffer = buffer.update_position(buffer, projection)
               let modules = dict.insert(modules, path, buffer)
               State(..state, modules:)
             }
@@ -522,7 +384,7 @@ fn increase(state) {
 
 fn select_field(state) {
   let buffer = active(state)
-  let hints = case target_type(buffer) {
+  let hints = case buffer.target_type(buffer) {
     Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
     _ -> []
   }
@@ -578,7 +440,7 @@ fn insert_integer(state) {
 
 fn insert_case(state) {
   let buffer = active(state)
-  case target_type(buffer) {
+  case buffer.target_type(buffer) {
     Ok(t.Union(t.RowExtend(first, _, rest))) -> {
       // expect there to be at least one row and for it not to be open
       let rest =
@@ -597,13 +459,17 @@ fn insert_case(state) {
       ])
       update_projection(state, new)
     }
-    _ -> todo
+    _ ->
+      case buffer.projection {
+        #(p.Exp(_), _) -> todo
+        _ -> fail(state, "insert match")
+      }
   }
 }
 
 fn insert_variable(state) {
   let buffer = active(state)
-  let scope = target_scope(buffer) |> result.unwrap([])
+  let scope = buffer.target_scope(buffer) |> result.unwrap([])
   let hints = listx.value_map(scope, snippet.render_poly)
   case buffer.projection {
     #(p.Exp(_), zoom) -> {
@@ -629,7 +495,7 @@ fn confirm(state) {
               source: readonly.new(p.rebuild(state.repl.projection)),
             )
           let previous = [entry, ..state.previous]
-          let repl = empty_buffer(typing_context(state.sync.cache))
+          let repl = buffer.empty(typing_context(state.sync.cache))
           let state = State(..state, previous:, repl:)
           #(state, [])
         }
@@ -845,7 +711,7 @@ fn picker_message(state, message) {
 
 /// Used for testing
 pub fn replace_repl(state: State, new) {
-  let repl = from_projection(new, typing_context(state.sync.cache))
+  let repl = buffer.from_projection(new, typing_context(state.sync.cache))
   State(..state, repl:)
 }
 
@@ -853,7 +719,7 @@ pub fn replace_repl(state: State, new) {
 pub fn set_module(state, name, projection) {
   let State(modules:, ..) = state
   let modules =
-    dict.insert(modules, name, from_projection(projection, infer.pure()))
+    dict.insert(modules, name, buffer.from_projection(projection, infer.pure()))
   State(..state, modules:)
 }
 
@@ -865,7 +731,7 @@ fn sync_message(state, message) {
   let before = set.from_list(dict.keys(before))
   let after = set.from_list(dict.keys(sync.cache.fragments))
   let diff = set.difference(after, before)
-  let repl = buffer_add_references(state.repl, diff, sync.cache)
+  let repl = buffer.add_references(state.repl, diff, typing_context(sync.cache))
 
   let state = State(..state, sync:, repl:)
   #(state, actions)
