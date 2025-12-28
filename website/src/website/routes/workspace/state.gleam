@@ -19,6 +19,8 @@ import morph/navigation
 import morph/picker
 import morph/projection as p
 import morph/transformation
+import website/components/readonly
+import website/components/shell
 import website/components/snippet
 import website/config
 import website/harness/browser
@@ -31,6 +33,9 @@ import website/sync/client
 // Create module effect
 // Do analysis should be switched to using contextual
 // action is build on analysis
+// Work out how to migrate actions to not use morph analysis
+// get rid of implicit insert when clicking on the same thing.
+// j is expected on a vacant node
 
 // Do we return actions from Buffer
 // Are all the returns Current/labels + types and rebuild
@@ -79,6 +84,7 @@ pub type State {
     mode: Mode,
     user_error: Option(snippet.Failure),
     focused: Target,
+    previous: List(shell.ShellEntry),
     repl: Buffer,
     modules: List(#(String, Buffer)),
     sync: client.Client,
@@ -100,7 +106,11 @@ fn empty_buffer() {
 }
 
 fn new_buffer(source) {
-  Buffer(history: snippet.empty_history, projection: navigation.first(source))
+  from_projection(navigation.first(source))
+}
+
+fn from_projection(projection) {
+  Buffer(history: snippet.empty_history, projection:)
 }
 
 // put/slot_expression
@@ -158,6 +168,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       mode: Editing,
       user_error: None,
       focused: Repl,
+      previous: [],
       repl: empty_buffer(),
       modules: [],
     )
@@ -236,6 +247,8 @@ fn user_pressed_command_key(state, key) {
   case key {
     "ArrowRight" -> navigation.next(repl.projection) |> navigated(state)
     "ArrowLeft" -> navigation.previous(repl.projection) |> navigated(state)
+    "ArrowUp" -> move_up(state)
+    "ArrowDown" -> move_down(state)
     "e" -> assign_to(state)
     "y" -> copy(state)
     "Y" -> paste(state)
@@ -243,6 +256,7 @@ fn user_pressed_command_key(state, key) {
     "a" -> increase(state)
     "g" -> select_field(state)
     "@" -> choose_release(state)
+    "#" -> insert_reference(state)
     // choose release just checks is expression
     "n" -> insert_integer(state)
     "m" -> insert_case(state)
@@ -280,6 +294,25 @@ fn navigated(projection, state) {
     }
     _ -> todo
   }
+}
+
+fn move_up(state) {
+  let buffer = active(state)
+  case navigation.move_up(buffer.projection) {
+    Ok(new) -> navigated(navigation.next(new), state)
+    Error(Nil) ->
+      case state.focused == Repl, state.previous {
+        True, [entry, ..] -> {
+          let repl = from_projection(entry.source.projection)
+          #(State(..state, repl:), [])
+        }
+        _, _ -> fail(state, "move above")
+      }
+  }
+}
+
+fn move_down(state) {
+  todo
 }
 
 fn assign_to(state) {
@@ -403,6 +436,17 @@ fn user_chose_package(state, release) {
   }
 }
 
+fn insert_reference(state) {
+  let buffer = active(state)
+  case action.insert_reference(buffer.projection) {
+    Ok(#(current, rebuild)) -> {
+      let mode = Picking(picker: picker.new(current, []), rebuild:)
+      #(State(..state, mode:), [FocusOnInput])
+    }
+    _ -> todo
+  }
+}
+
 fn insert_integer(state) {
   let buffer = active(state)
   case transformation.integer(buffer.projection) {
@@ -470,7 +514,19 @@ fn confirm(state) {
     Repl -> {
       let editable = p.rebuild(state.repl.projection)
       case evaluate(editable) {
-        Ok(value) -> todo
+        Ok(#(value, scope)) -> {
+          // Type is shell entry
+          let entry =
+            shell.Executed(
+              value:,
+              effects: [],
+              source: readonly.new(p.rebuild(state.repl.projection)),
+            )
+          let previous = [entry, ..state.previous]
+          let repl = empty_buffer()
+          let state = State(..state, previous:, repl:)
+          #(state, [])
+        }
         Error(#(reason, meta, env, k) as debug) ->
           case reason {
             break.UnhandledEffect(label, input) ->
