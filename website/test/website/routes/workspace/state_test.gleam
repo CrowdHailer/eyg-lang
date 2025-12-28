@@ -151,16 +151,25 @@ pub fn select_typed_field_test() {
   // TODO make sure type checking is done
 }
 
-// match
+pub fn auto_match_test() {
+  let state = no_packages()
+  let source = ir.call(ir.builtin("equal"), [ir.integer(1), ir.integer(2)])
+  let state = select_all_in_repl(state, source)
+  let #(state, actions) = press_key(state, "m")
+  assert actions == []
+  echo state.mode
+  // todo
+}
 
 pub fn suggest_shell_effects_test() {
   let state = no_packages()
   let message = state.UserPressedCommandKey("p")
   let #(state, actions) = state.update(state, message)
   assert actions == []
-  echo state.mode
   assert state.user_error == None
-  todo
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(suggestions:, ..) = picker
+  assert list.key_find(suggestions, "Alert") == Ok("String : {}")
 }
 
 // --------------- Copy/Paste -------------------------
@@ -480,4 +489,17 @@ fn set_repl(state, source) {
   let source = e.from_annotated(source)
   let projection = navigation.first(source)
   state.replace_repl(state, projection)
+}
+
+fn select_all_in_repl(state, source) {
+  let source = e.from_annotated(source)
+  let projection = #(p.Exp(source), [])
+  state.replace_repl(state, projection)
+}
+
+fn press_key(state, key) {
+  let message = state.UserPressedCommandKey(key)
+  let #(state, actions) = state.update(state, message)
+  assert state.user_error == None
+  #(state, actions)
 }

@@ -1,4 +1,6 @@
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
@@ -11,7 +13,7 @@ import gleam/listx
 import gleam/option.{type Option, None, Some}
 import morph/action
 import morph/analysis
-import morph/editable
+import morph/editable as e
 import morph/input
 import morph/navigation
 import morph/picker
@@ -27,6 +29,8 @@ import website/sync/client
 // TODO move above/below
 // TODO press p in handler
 // Create module effect
+// Do analysis should be switched to using contextual
+// action is build on analysis
 
 // Do we return actions from Buffer
 // Are all the returns Current/labels + types and rebuild
@@ -241,6 +245,7 @@ fn user_pressed_command_key(state, key) {
     "@" -> choose_release(state)
     // choose release just checks is expression
     "n" -> insert_integer(state)
+    "m" -> insert_case(state)
     "v" -> insert_variable(state)
     "Enter" -> confirm(state)
     " " -> search_vacant(state)
@@ -287,7 +292,7 @@ fn assign_to(state) {
     Ok(rebuild) ->
       State(
         ..state,
-        mode: Picking(picker.new("", []), fn(s) { rebuild(editable.Bind(s)) }),
+        mode: Picking(picker.new("", []), fn(s) { rebuild(e.Bind(s)) }),
       )
     Error(Nil) -> todo as "failed position"
   }
@@ -299,7 +304,7 @@ fn copy(state) {
   case buffer.projection {
     #(p.Exp(expression), _) -> {
       let text =
-        editable.to_annotated(expression, [])
+        e.to_annotated(expression, [])
         |> dag_json.to_string
 
       let state = State(..state, mode: WritingToClipboard)
@@ -326,15 +331,33 @@ fn fail(state, action) {
   #(state, [])
 }
 
+// wrap in an on expression
 fn perform(state) {
   let buffer = active(state)
-  echo buffer
-  let analysis = do_analysis(buffer.projection)
-  // analysis on the effects of the function
-  echo analysis
-  // is on expression
-  // effects
-  todo
+
+  case buffer.projection {
+    #(p.Exp(lift), zoom) -> {
+      let hints =
+        browser.lookup()
+        |> list.map(fn(effect) {
+          let #(key, #(types, _)) = effect
+          #(key, snippet.render_effect(types))
+        })
+      let rebuild = fn(label) {
+        let zoom = [p.CallArg(e.Perform(label), [], []), ..zoom]
+        #(p.Exp(lift), zoom)
+      }
+      #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
+    }
+    _ ->
+      // echo buffer
+      // let analysis = do_analysis(buffer.projection)
+      // // analysis on the effects of the function
+      // echo analysis
+      // is on expression
+      // effects
+      todo
+  }
 }
 
 fn increase(state) {
@@ -368,8 +391,7 @@ fn user_chose_package(state, release) {
     ChoosingPackage -> {
       let assert Repl = state.focused
       let analysis.Release(package:, version:, fragment:) = release
-      let release =
-        editable.Release(package:, release: version, identifer: fragment)
+      let release = e.Release(package:, release: version, identifer: fragment)
       let state = case slot_expression(state.repl, release) {
         Ok(repl) -> State(..state, mode: Editing, repl:)
         _ -> todo
@@ -389,6 +411,31 @@ fn insert_integer(state) {
       [FocusOnInput],
     )
     Error(Nil) -> todo as "error"
+  }
+}
+
+fn insert_case(state) {
+  let buffer = active(state)
+  case target_type(buffer.projection) {
+    Ok(t.Union(t.RowExtend(first, _, rest))) -> {
+      // expect there to be at least one row and for it not to be open
+      let rest =
+        list.map(analysis.rows(rest), fn(r) {
+          let #(label, _) = r
+          #(label, e.Function([e.Bind("_")], e.Vacant))
+        })
+      // Need to unpick as in some cases we just create and in others we pick.
+      // Reality is we want a pick multiple
+      let assert #(p.Exp(top), zoom) = buffer.projection
+
+      let new = #(p.Exp(e.Vacant), [
+        p.Body([e.Bind("_")]),
+        p.CaseMatch(top, first, [], rest, None),
+        ..zoom
+      ])
+      #(update_projection(state, new), [])
+    }
+    _ -> todo
   }
 }
 
@@ -438,7 +485,7 @@ fn confirm(state) {
                               value.ok(
                                 value.Binary(
                                   dag_json.to_block(
-                                    editable.to_annotated(
+                                    e.to_annotated(
                                       p.rebuild(buffer.projection),
                                       [],
                                     ),
@@ -489,7 +536,7 @@ fn confirm(state) {
 }
 
 fn evaluate(editable) {
-  editable.to_annotated(editable, [])
+  e.to_annotated(editable, [])
   |> tree.clear_annotation()
   // TODO why do we clear this
   |> block.execute([])
@@ -536,7 +583,7 @@ fn clipboard_read_complete(state, return) {
             Ok(expression) -> {
               case active(state).projection {
                 #(p.Exp(_), zoom) -> {
-                  let proj = #(p.Exp(editable.from_annotated(expression)), zoom)
+                  let proj = #(p.Exp(e.from_annotated(expression)), zoom)
                   // update_source_from_buffer(proj, state)
                   #(update_projection(state, proj), [])
                 }
@@ -649,4 +696,16 @@ fn sync_message(state, message) {
   let actions = list.map(actions, SyncAction)
   let state = State(..state, sync:)
   #(state, actions)
+}
+
+pub fn target_type(projection) {
+  let source = e.to_annotated(p.rebuild(projection), [])
+  let analysis =
+    infer.pure()
+    |> infer.check(source)
+
+  let path = p.path(projection)
+
+  // multi pick is what we really want here
+  infer.type_at(analysis, path)
 }

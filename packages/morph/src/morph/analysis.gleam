@@ -246,21 +246,26 @@ pub fn count_args(projection, analysis) {
 
 pub fn type_fields(projection, analysis) {
   case do_type_at(analysis, projection) {
-    Ok(t.Record(row_type)) -> rows(row_type, [])
+    Ok(t.Record(row_type)) -> rows(row_type)
     _ -> []
   }
 }
 
 pub fn type_variants(projection, analysis) {
   case do_type_at(analysis, projection) {
-    Ok(t.Union(row_type)) -> rows(row_type, [])
+    Ok(t.Union(row_type)) -> rows(row_type)
     _ -> []
   }
 }
 
-fn rows(t, acc) {
+// TODO move to type
+pub fn rows(t) {
+  do_rows(t, [])
+}
+
+fn do_rows(t, acc) {
   case t {
-    t.RowExtend(label, value, rest) -> rows(rest, [#(label, value), ..acc])
+    t.RowExtend(label, value, rest) -> do_rows(rest, [#(label, value), ..acc])
     _ -> list.reverse(acc)
   }
 }

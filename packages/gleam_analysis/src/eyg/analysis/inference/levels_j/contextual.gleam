@@ -42,12 +42,27 @@ pub fn with_effect(context, label, lift, lower) {
   Context(..context, eff:)
 }
 
-pub fn check(context, source) {
+pub type Analysis(meta) {
+  Analysis(
+    bindings: Dict(Int, binding.Binding),
+    tree: ir.Node(
+      #(
+        Result(Nil, error.Reason),
+        binding.Mono,
+        binding.Mono,
+        List(#(String, binding.Poly)),
+      ),
+    ),
+    original: ir.Node(meta),
+  )
+}
+
+pub fn check(context, source) -> Analysis(_) {
   let Context(env:, eff:, refs:, level:, bindings:) = context
-  let #(bindings, _type, _eff, acc) =
+  let #(bindings, _type, _eff, tree) =
     do_infer(source, env, eff, refs, level, bindings)
   // TODO make opaque analysis
-  #(bindings, acc, source)
+  Analysis(bindings:, tree:, original: source)
 }
 
 pub fn all_errors(inference) {
@@ -55,25 +70,40 @@ pub fn all_errors(inference) {
   let meta = ir.get_annotation(source)
   let info = ir.get_annotation(acc)
   let assert Ok(info) = list.strict_zip(meta, info)
-  let new_errors =
-    info
-    |> list.filter_map(fn(pair) {
-      let #(meta, #(result, _type, _eff, _scope)) = pair
-      case result {
-        Ok(Nil) -> Error(Nil)
-        Error(reason) -> Ok(#(meta, reason))
-      }
-    })
+
+  info
+  |> list.filter_map(fn(pair) {
+    let #(meta, #(result, _type, _eff, _scope)) = pair
+    case result {
+      Ok(Nil) -> Error(Nil)
+      Error(reason) -> Ok(#(meta, reason))
+    }
+  })
+}
+
+pub fn type_at(inference: Analysis(_), desired) {
+  let Analysis(bindings, acc, source) = inference
+  let meta = ir.get_annotation(source)
+  let info = ir.get_annotation(acc)
+  let assert Ok(info) = list.strict_zip(meta, info)
+  info
+  |> list.find_map(fn(pair) {
+    let #(meta, #(_result, type_, _effect, _scope)) = pair
+    case meta == desired {
+      True -> Ok(binding.resolve(type_, bindings))
+      False -> Error(Nil)
+    }
+  })
 }
 
 pub fn type_(inference) {
-  let #(bindings, acc, source) = inference
+  let Analysis(bindings, acc, source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc
   binding.resolve(type_, bindings)
 }
 
 pub fn poly_type(inference) {
-  let #(bindings, acc, source) = inference
+  let Analysis(bindings, acc, source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc
   let mono = binding.resolve(type_, bindings)
   binding.gen(mono, 1, bindings)

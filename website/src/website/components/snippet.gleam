@@ -1232,7 +1232,7 @@ pub fn fail_message(reason) {
 //     }
 //   }
 // }
-fn render_effect(eff) {
+pub fn render_effect(eff) {
   let #(lift, reply) = eff
   string.concat([debug.mono(lift), " : ", debug.mono(reply)])
 }
