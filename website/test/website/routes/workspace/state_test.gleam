@@ -1,8 +1,11 @@
+import eyg/analysis/inference/levels_j/contextual
+import eyg/analysis/type_/binding/error
 import eyg/interpreter/break
 import eyg/interpreter/value
 import eyg/ir/cid
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/http/response
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -361,7 +364,8 @@ pub fn run_anonymous_reference_test() {
   assert actions == [state.FocusOnInput]
   let assert state.Picking(picker.Typing(..), ..) = state.mode
 
-  let source = ir.integer(int.random(1_000_000))
+  let rand = int.random(1_000_000)
+  let source = ir.integer(rand)
   let assert Ok(cid) = cid.from_tree(source)
   let message = state.PickerMessage(picker.Decided(cid))
 
@@ -370,14 +374,23 @@ pub fn run_anonymous_reference_test() {
   assert [cid] == cids
   let assert state.Editing = state.mode
 
-  // Shows errors and testing as a warning
-  // let #(state, _) = press_key(state, "Enter")
-  echo state.mode
-  // reference state should be fetching
+  let assert [err] = contextual.all_errors(state.repl.analysis)
+  assert #([], error.MissingReference(cid)) == err
+
+  let response = server.fetch_fragment_response(source)
+  let message = state.SyncMessage(client.FragmentFetched(cid, Ok(response)))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert [] = contextual.all_errors(state.repl.analysis)
+
+  let #(state, actions) = press_key(state, "Enter")
+  assert [] == actions
+
+  let assert state.Editing = state.mode
+  echo state.previous
 }
 
-// simple evaluation
-// effectful evaluation
+// TODO running with a reference stays present
 
 pub fn initial_package_sync_test() {
   let #(state, actions) = state.init(helpers.config())

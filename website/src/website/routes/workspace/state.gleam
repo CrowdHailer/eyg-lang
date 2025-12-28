@@ -14,6 +14,7 @@ import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/set
 import morph/action
 import morph/analysis
 import morph/editable as e
@@ -32,6 +33,7 @@ import website/sync/client
 
 // get rid of implicit insert when clicking on the same thing.
 // j is expected on a vacant node
+// Test nested pulling of references into the cache
 
 // Do we return actions from Buffer
 // Are all the returns Current/labels + types and rebuild
@@ -99,26 +101,26 @@ fn history_new_entry(old, history) {
   snippet.History(undo: undo, redo: [])
 }
 
-fn analyse(projection) -> infer.Analysis(List(Int)) {
+fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {
   let source = e.to_annotated(p.rebuild(projection), [])
 
-  infer.pure()
+  context
   |> infer.check(source)
 }
 
-fn empty_buffer() {
-  from_projection(p.empty)
+fn empty_buffer(context) {
+  from_projection(p.empty, context)
 }
 
-fn new_buffer(source) {
-  from_projection(navigation.first(source))
+fn new_buffer(source, context) {
+  from_projection(navigation.first(source), context)
 }
 
-pub fn from_projection(projection) {
+pub fn from_projection(projection, context) {
   Buffer(
     history: snippet.empty_history,
     projection:,
-    analysis: analyse(projection),
+    analysis: analyse(projection, context),
   )
 }
 
@@ -135,14 +137,26 @@ fn set_expression(state, expression) {
   }
 }
 
-fn update_buffer_code(buffer, new) {
+fn update_buffer_code(buffer, new, context) {
   let Buffer(history:, projection: old, ..) = buffer
   let history = history_new_entry(old, history)
-  Buffer(history:, projection: new, analysis: analyse(new))
+  Buffer(history:, projection: new, analysis: analyse(new, context))
 }
 
 fn buffer_update_position(buffer, projection) {
   Buffer(..buffer, projection:)
+}
+
+fn buffer_add_references(buffer, new, cache) {
+  let Buffer(analysis:, ..) = buffer
+  case list.any(infer.missing_references(analysis), set.contains(new, _)) {
+    True ->
+      Buffer(
+        ..buffer,
+        analysis: analyse(buffer.projection, typing_context(cache)),
+      )
+    False -> buffer
+  }
 }
 
 /// public for testing as a helper
@@ -164,13 +178,19 @@ fn target_scope(buffer) {
   infer.scope_at(analysis, path)
 }
 
+fn typing_context(cache: cache.Cache) {
+  infer.pure()
+  |> infer.with_references(cache.type_map(cache))
+}
+
 /// Always used after a change that was from a command and that changes the history
 /// The new value is the full projection, probably from a rebuild function
 fn update_projection(state, new) {
   let State(focused:, modules:, ..) = state
   case focused {
     Repl -> {
-      let repl = update_buffer_code(state.repl, new)
+      let repl =
+        update_buffer_code(state.repl, new, typing_context(state.sync.cache))
 
       let cids = infer.missing_references(repl.analysis)
       let #(sync, actions) = client.fetch_fragments(state.sync, cids)
@@ -181,8 +201,9 @@ fn update_projection(state, new) {
     }
     Module(path) -> {
       let module = case dict.get(modules, path) {
-        Ok(buffer) -> update_buffer_code(buffer, new)
-        Error(Nil) -> from_projection(new)
+        Ok(buffer) ->
+          update_buffer_code(buffer, new, typing_context(state.sync.cache))
+        Error(Nil) -> from_projection(new, typing_context(state.sync.cache))
       }
       let modules = dict.insert(modules, path, module)
       let state = State(..state, mode: Editing, modules:)
@@ -235,7 +256,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       user_error: None,
       focused: Repl,
       previous: [],
-      repl: empty_buffer(),
+      repl: empty_buffer(typing_context(sync.cache)),
       modules: dict.new(),
     )
   #(state, actions)
@@ -248,7 +269,7 @@ fn active(state) {
     Module(path) ->
       case dict.get(modules, path) {
         Ok(buffer) -> buffer
-        _ -> empty_buffer()
+        _ -> empty_buffer(typing_context(state.sync.cache))
       }
   }
 }
@@ -366,7 +387,11 @@ fn move_up(state) {
     Error(Nil) ->
       case state.focused == Repl, state.previous {
         True, [entry, ..] -> {
-          let repl = from_projection(entry.source.projection)
+          let repl =
+            from_projection(
+              entry.source.projection,
+              typing_context(state.sync.cache),
+            )
           #(State(..state, repl:), [])
         }
         _, _ -> fail(state, "move above")
@@ -604,7 +629,7 @@ fn confirm(state) {
               source: readonly.new(p.rebuild(state.repl.projection)),
             )
           let previous = [entry, ..state.previous]
-          let repl = empty_buffer()
+          let repl = empty_buffer(typing_context(state.sync.cache))
           let state = State(..state, previous:, repl:)
           #(state, [])
         }
@@ -680,6 +705,24 @@ fn confirm(state) {
                   let state = State(..state, mode: RunningShell(debug:))
                   #(state, [])
                 }
+              }
+            break.UndefinedReference(cid) ->
+              case dict.get(state.sync.cache.fragments, cid) {
+                Ok(cache.Fragment(value:, ..)) -> {
+                  let return = block.resume(value, env, k)
+                  case return {
+                    Ok(value) -> {
+                      let state = State(..state, mode: Editing)
+                      // echo value
+                      #(state, [])
+                    }
+                    _ -> {
+                      // echo return
+                      todo
+                    }
+                  }
+                }
+                _ -> todo
               }
             _ -> {
               echo reason
@@ -801,22 +844,29 @@ fn picker_message(state, message) {
 }
 
 /// Used for testing
-pub fn replace_repl(state, new) {
-  let repl = from_projection(new)
+pub fn replace_repl(state: State, new) {
+  let repl = from_projection(new, typing_context(state.sync.cache))
   State(..state, repl:)
 }
 
 /// Used for testing
 pub fn set_module(state, name, projection) {
   let State(modules:, ..) = state
-  let modules = dict.insert(modules, name, from_projection(projection))
+  let modules =
+    dict.insert(modules, name, from_projection(projection, infer.pure()))
   State(..state, modules:)
 }
 
 fn sync_message(state, message) {
   let State(sync:, ..) = state
+  let before = sync.cache.fragments
   let #(sync, actions) = client.update(sync, message)
   let actions = list.map(actions, SyncAction)
-  let state = State(..state, sync:)
+  let before = set.from_list(dict.keys(before))
+  let after = set.from_list(dict.keys(sync.cache.fragments))
+  let diff = set.difference(after, before)
+  let repl = buffer_add_references(state.repl, diff, sync.cache)
+
+  let state = State(..state, sync:, repl:)
   #(state, actions)
 }
