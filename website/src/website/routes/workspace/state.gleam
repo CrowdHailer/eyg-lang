@@ -3,11 +3,13 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/cast
 import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
+import gleam/dict.{type Dict}
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -83,7 +85,7 @@ pub type State {
     focused: Target,
     previous: List(shell.ShellEntry),
     repl: Buffer,
-    modules: List(#(String, Buffer)),
+    modules: Dict(String, Buffer),
     sync: client.Client,
   )
 }
@@ -111,6 +113,7 @@ fn from_projection(projection) {
 }
 
 /// set an expression in the active buffer assumes that you are already on an expression
+/// Always goes back to editing unless a fail
 fn set_expression(state, expression) {
   let buffer = active(state)
   case buffer.projection {
@@ -122,18 +125,29 @@ fn set_expression(state, expression) {
   }
 }
 
+fn update_buffer_code(buffer, new) {
+  let Buffer(history:, projection: old) = buffer
+  let history = history_new_entry(old, history)
+  Buffer(history:, projection: new)
+}
+
 /// Always used after a change that was from a command and that changes the history
 /// The new value is the full projection, probably from a rebuild function
 fn update_projection(state, new) {
-  let State(focused:, ..) = state
+  let State(focused:, modules:, ..) = state
   case focused {
     Repl -> {
-      let Buffer(history:, projection: old) = state.repl
-      let history = history_new_entry(old, history)
-      let repl = Buffer(history:, projection: new)
+      let repl = update_buffer_code(state.repl, new)
       State(..state, mode: Editing, repl:)
     }
-    _ -> todo
+    Module(path) -> {
+      let module = case dict.get(modules, path) {
+        Ok(buffer) -> update_buffer_code(buffer, new)
+        Error(Nil) -> from_projection(new)
+      }
+      let modules = dict.insert(modules, path, module)
+      State(..state, mode: Editing, modules:)
+    }
   }
 }
 
@@ -180,7 +194,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       focused: Repl,
       previous: [],
       repl: empty_buffer(),
-      modules: [],
+      modules: dict.new(),
     )
   #(state, actions)
 }
@@ -190,9 +204,9 @@ fn active(state) {
   case focused {
     Repl -> state.repl
     Module(path) ->
-      case list.key_find(modules, path) {
+      case dict.get(modules, path) {
         Ok(buffer) -> buffer
-        _ -> todo
+        _ -> empty_buffer()
       }
   }
 }
@@ -253,6 +267,7 @@ fn user_pressed_command_key(state, key) {
     "ArrowUp" -> move_up(state)
     "ArrowDown" -> move_down(state)
     "e" -> assign_to(state)
+    "R" -> insert_empty_record(state)
     "y" -> copy(state)
     "Y" -> paste(state)
     "p" -> perform(state)
@@ -337,12 +352,12 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
         Error(_) -> state_fail(state, reason)
       }
     Module(path) ->
-      case list.key_pop(modules, path) {
-        Ok(#(buffer, rest)) ->
+      case dict.get(modules, path) {
+        Ok(buffer) ->
           case navigation(buffer.projection) {
             Ok(projection) -> {
               let buffer = Buffer(..buffer, projection:)
-              let modules = [#(path, buffer), ..rest]
+              let modules = dict.insert(modules, path, buffer)
               State(..state, modules:)
             }
             Error(_) -> state_fail(state, reason)
@@ -368,6 +383,13 @@ fn assign_to(state) {
     Error(Nil) -> todo as "failed position"
   }
   #(state, [FocusOnInput])
+}
+
+fn insert_empty_record(state) {
+  case set_expression(state, e.Record([], None)) {
+    Ok(state) -> #(state, [])
+    Error(Nil) -> todo
+  }
 }
 
 fn copy(state) {
@@ -566,6 +588,26 @@ fn confirm(state) {
         }
         Error(#(reason, meta, env, k) as debug) ->
           case reason {
+            // internal not part of browser
+            break.UnhandledEffect("Open", input) ->
+              case cast.as_string(input) {
+                Ok(filename) -> {
+                  let return = block.resume(value.Record(dict.new()), env, k)
+                  let state = State(..state, focused: Module(filename))
+                  case return {
+                    Ok(value) -> {
+                      let state = State(..state, mode: Editing)
+                      // echo value
+                      #(state, [])
+                    }
+                    _ -> {
+                      // echo return
+                      todo
+                    }
+                  }
+                }
+                Error(_) -> todo
+              }
             break.UnhandledEffect(label, input) ->
               case list.key_find(browser.lookup(), label) {
                 Ok(#(#(_, _), cast)) ->
@@ -573,7 +615,7 @@ fn confirm(state) {
                     Ok(effect) ->
                       case effect {
                         browser.ReadFile(file:) -> {
-                          let reply = case list.key_find(state.modules, file) {
+                          let reply = case dict.get(state.modules, file) {
                             Ok(buffer) ->
                               value.ok(
                                 value.Binary(
@@ -756,8 +798,7 @@ pub fn replace_repl(state, new) {
 /// Used for testing
 pub fn set_module(state, name, projection) {
   let State(modules:, ..) = state
-  let modules = listx.key_reject(modules, name)
-  let modules = [#(name, from_projection(projection)), ..modules]
+  let modules = dict.insert(modules, name, from_projection(projection))
   State(..state, modules:)
 }
 

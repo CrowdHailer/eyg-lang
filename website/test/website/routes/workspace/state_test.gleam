@@ -190,6 +190,24 @@ pub fn suggest_shell_effects_test() {
   assert list.key_find(suggestions, "Alert") == Ok("String : {}")
 }
 
+pub fn simple_edit_in_module_test() {
+  // open module
+  let state = no_packages()
+  let source = ir.call(ir.perform("Open"), [ir.string("user.eyg.json")])
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "Enter")
+  assert actions == []
+  assert state.Module("user.eyg.json") == state.focused
+  assert state.Editing == state.mode
+
+  let #(state, actions) = press_key(state, "R")
+  assert [] == actions
+  assert state.Module("user.eyg.json") == state.focused
+  assert state.Editing == state.mode
+  let assert #(p.Exp(e.Record([], None)), []) =
+    read_module(state, "user.eyg.json").projection
+}
+
 // --------------- Copy/Paste -------------------------
 
 pub fn can_copy_from_repl_test() {
@@ -481,6 +499,6 @@ fn press_key_failure(state, key) {
 
 fn read_module(state, path) {
   let state.State(modules:, ..) = state
-  let assert Ok(buffer) = list.key_find(modules, path)
+  let assert Ok(buffer) = dict.get(modules, path)
   buffer
 }
