@@ -102,7 +102,7 @@ pub type Mode {
   // The Picker is still used as their is string input for fields,enums,variable
   Picking(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
   // The projection in the target keeps all the rebuild information, but can error
-  EditingText
+  EditingText(value: String, rebuild: fn(String) -> p.Projection)
   EditingInteger(value: Int, rebuild: fn(Int) -> p.Projection)
   ChoosingPackage
   // Only the shell is ever run
@@ -205,6 +205,7 @@ fn user_pressed_key(state, key) {
 fn user_pressed_command_key(state, key) {
   let state = State(..state, user_error: None)
   case key {
+    "Escape" -> #(State(..state, focused: Repl), [])
     "ArrowRight" -> move_next(state)
     "ArrowLeft" -> move_previous(state)
     "ArrowUp" -> move_up(state)
@@ -215,6 +216,7 @@ fn user_pressed_command_key(state, key) {
     "Y" -> paste(state)
     "p" -> perform(state)
     "a" -> increase(state)
+    "s" -> insert_string(state)
     "g" -> select_field(state)
     "@" -> choose_release(state)
     "#" -> insert_reference(state)
@@ -380,6 +382,16 @@ fn perform(state) {
 
 fn increase(state) {
   nav(state, navigation.increase, "increase selection")
+}
+
+fn insert_string(state) {
+  case transformation.string(active(state).projection) {
+    Ok(#(value, rebuild)) -> {
+      let state = State(..state, mode: EditingText(value:, rebuild:))
+      #(state, [])
+    }
+    Error(Nil) -> fail(state, "create text")
+  }
 }
 
 fn select_field(state) {
@@ -597,7 +609,7 @@ fn confirm(state) {
           }
       }
     }
-    _ -> todo
+    _ -> fail(state, "Can't execute module")
   }
 }
 
@@ -619,6 +631,16 @@ fn input_message(state, message) {
       case input.update_number(value, message) {
         input.Continue(new) -> {
           let mode = EditingInteger(..mode, value: new)
+          let state = State(..state, mode:)
+          #(state, [])
+        }
+        input.Confirmed(value) -> update_projection(state, rebuild(value))
+        input.Cancelled -> todo
+      }
+    EditingText(value:, rebuild:), _ ->
+      case input.update_text(value, message) {
+        input.Continue(new) -> {
+          let mode = EditingText(..mode, value: new)
           let state = State(..state, mode:)
           #(state, [])
         }

@@ -420,7 +420,7 @@ fn render_pallet(state: snippet.Snippet) {
   }
 }
 
-fn render_text(value) {
+pub fn render_text(value) {
   render_user_input(value, "text", "Enter text:")
 }
 

@@ -10,6 +10,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import morph/analysis
 import morph/editable as e
+import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
@@ -123,9 +124,6 @@ pub fn navigate_to_vacant_test() {
     == state.repl.projection
 }
 
-// TODO create Module
-// Open Module
-// Escape is back
 pub fn vertical_move_in_file_test() {
   let state = no_packages()
   let state =
@@ -143,6 +141,21 @@ pub fn vertical_move_in_file_test() {
   assert snippet.ActionFailed("move below") == reason
 }
 
+pub fn navigate_back_to_shell_test() {
+  let state = no_packages()
+  let name = "bar.eyg.json"
+  let state = set_module(state, name, ir.let_("x", ir.string("a"), ir.unit()))
+  let state = state.State(..state, focused: state.Module(name))
+
+  // assert =
+  assert snippet.ActionFailed(action: "Can't execute module")
+    == press_key_failure(state, "Enter")
+
+  let #(state, actions) = press_key(state, "Escape")
+  assert [] == actions
+  assert state.Repl == state.focused
+}
+
 // --------------- 2. Editing -------------------------
 
 pub fn variable_insert_test() {
@@ -157,6 +170,30 @@ pub fn variable_insert_test() {
   let assert picker.Typing(value: "", suggestions:) = picker
   assert [#("user", "String")] == suggestions
 }
+
+pub fn insert_string_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "s")
+  assert [] == actions
+  let assert state.EditingText(value:, ..) = state.mode
+  assert "" == value
+
+  let message = state.InputMessage(input.UpdateInput("silly."))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert state.EditingText(value:, ..) = state.mode
+  assert "silly." == value
+
+  let message = state.InputMessage(input.Submit)
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+  assert #(p.Exp(e.String("silly.")), []) == state.repl.projection
+}
+
+// pub fn insert_integer_test() {
+//   todo
+// }
 
 pub fn select_typed_field_test() {
   let state = no_packages()
