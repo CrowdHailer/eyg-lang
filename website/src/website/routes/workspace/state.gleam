@@ -65,31 +65,26 @@ fn typing_context(cache: cache.Cache) {
 /// Always used after a change that was from a command and that changes the history
 /// The new value is the full projection, probably from a rebuild function
 fn update_projection(state, new) {
+  let buffer =
+    buffer.update_code(active(state), new, typing_context(state.sync.cache))
+  let cids = infer.missing_references(buffer.analysis)
+  let #(sync, actions) = client.fetch_fragments(state.sync, cids)
+  let actions = list.map(actions, SyncAction)
+
+  let state =
+    State(..state, mode: Editing, sync:)
+    |> replace_buffer(buffer)
+  #(state, actions)
+}
+
+/// replaces buffer in the tree
+fn replace_buffer(state: State, buffer) {
   let State(focused:, modules:, ..) = state
   case focused {
-    Repl -> {
-      let repl =
-        buffer.update_code(state.repl, new, typing_context(state.sync.cache))
-
-      let cids = infer.missing_references(repl.analysis)
-      let #(sync, actions) = client.fetch_fragments(state.sync, cids)
-      let actions = list.map(actions, SyncAction)
-
-      let state = State(..state, mode: Editing, repl:, sync:)
-      #(state, actions)
-    }
+    Repl -> State(..state, repl: buffer)
     Module(path) -> {
-      let module = case dict.get(modules, path) {
-        Ok(buffer) ->
-          buffer.update_code(buffer, new, typing_context(state.sync.cache))
-        Error(Nil) ->
-          buffer.from_projection(new, typing_context(state.sync.cache))
-      }
-      let modules = dict.insert(modules, path, module)
-      let state = State(..state, mode: Editing, modules:)
-      // TODO fetch here
-      let actions = []
-      #(state, actions)
+      let modules = dict.insert(modules, path, buffer)
+      State(..state, modules:)
     }
   }
 }
@@ -242,11 +237,8 @@ fn move_up(state) {
   let buffer = active(state)
   case navigation.move_up(buffer.projection) {
     Ok(new) -> {
-      // let buffer = Buffer(..buffer, projection: new)
-      case state.focused {
-        Repl -> todo
-        _ -> todo
-      }
+      let buffer = buffer.update_position(buffer, new)
+      #(replace_buffer(state, buffer), [])
     }
     Error(Nil) ->
       case state.focused == Repl, state.previous {

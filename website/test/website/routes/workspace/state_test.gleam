@@ -139,6 +139,20 @@ pub fn vertical_move_in_file_test() {
 
   let reason = press_key_failure(state, "ArrowDown")
   assert snippet.ActionFailed("move below") == reason
+
+  let #(state, actions) = press_key(state, "ArrowUp")
+  assert [] == actions
+  let module = read_module(state, "foo.eyg.json")
+  let assert #(
+    p.Assign(
+      p.AssignStatement(e.Bind("x")),
+      e.String("a"),
+      [],
+      [],
+      e.Record([], None),
+    ),
+    [],
+  ) = module.projection
 }
 
 pub fn navigate_back_to_shell_test() {
