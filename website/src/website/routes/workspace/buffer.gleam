@@ -19,6 +19,31 @@ fn history_new_entry(old, history) {
   snippet.History(undo: undo, redo: [])
 }
 
+pub fn undo(buffer, context) {
+  let Buffer(history:, projection:, ..) = buffer
+
+  case history.undo {
+    [first, ..rest] -> {
+      let redo = [projection, ..history.redo]
+      let history = snippet.History(undo: rest, redo:)
+      Ok(Buffer(history:, projection: first, analysis: analyse(first, context)))
+    }
+    [] -> Error(Nil)
+  }
+}
+
+pub fn redo(buffer, context) {
+  let Buffer(history:, projection:, ..) = buffer
+  case history.redo {
+    [first, ..rest] -> {
+      let undo = [projection, ..history.undo]
+      let history = snippet.History(undo:, redo: rest)
+      Ok(Buffer(history:, projection: first, analysis: analyse(first, context)))
+    }
+    [] -> Error(Nil)
+  }
+}
+
 fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {
   let source = e.to_annotated(p.rebuild(projection), [])
 

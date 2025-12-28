@@ -276,6 +276,43 @@ pub fn simple_edit_in_module_test() {
     read_module(state, "user.eyg.json").projection
 }
 
+// --------------- undo/redo -------------------------
+pub fn undo_redo_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "R")
+  assert [] == actions
+  assert #(p.Exp(e.Record([], None)), []) == state.repl.projection
+
+  let #(state, actions) = press_key(state, "z")
+  assert [] == actions
+  assert #(p.Exp(e.Vacant), []) == state.repl.projection
+
+  let reason = press_key_failure(state, "z")
+  assert snippet.ActionFailed("undo") == reason
+
+  let #(state, actions) = press_key(state, "Z")
+  assert [] == actions
+  assert #(p.Exp(e.Record([], None)), []) == state.repl.projection
+
+  let reason = press_key_failure(state, "Z")
+  assert snippet.ActionFailed("redo") == reason
+}
+
+pub fn reset_redo_with_edit_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "R")
+  assert [] == actions
+
+  let #(state, actions) = press_key(state, "z")
+  assert [] == actions
+
+  let #(state, actions) = press_key(state, "L")
+  assert [] == actions
+
+  let reason = press_key_failure(state, "Z")
+  assert snippet.ActionFailed("redo") == reason
+}
+
 // --------------- Copy/Paste -------------------------
 
 pub fn can_copy_from_repl_test() {

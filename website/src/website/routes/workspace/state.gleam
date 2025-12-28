@@ -213,9 +213,12 @@ fn user_pressed_command_key(state, key) {
     "a" -> increase(state)
     "s" -> insert_string(state)
     "g" -> select_field(state)
+    "L" -> insert_empty_list(state)
     "@" -> choose_release(state)
     "#" -> insert_reference(state)
     // choose release just checks is expression
+    "Z" -> redo(state)
+    "z" -> undo(state)
     "n" -> insert_integer(state)
     "m" -> insert_case(state)
     "v" -> insert_variable(state)
@@ -401,6 +404,10 @@ fn select_field(state) {
   }
 }
 
+fn insert_empty_list(state) {
+  set_expression(state, e.List([], None))
+}
+
 fn choose_release(state) {
   let state = State(..state, mode: ChoosingPackage)
   #(state, [FocusOnInput])
@@ -428,6 +435,20 @@ fn insert_reference(state) {
       #(State(..state, mode:), [FocusOnInput])
     }
     _ -> todo
+  }
+}
+
+fn undo(state) {
+  case buffer.undo(active(state), typing_context(state.sync.cache)) {
+    Ok(buffer) -> #(replace_buffer(state, buffer), [])
+    Error(Nil) -> fail(state, "undo")
+  }
+}
+
+fn redo(state) {
+  case buffer.redo(active(state), typing_context(state.sync.cache)) {
+    Ok(buffer) -> #(replace_buffer(state, buffer), [])
+    Error(Nil) -> fail(state, "redo")
   }
 }
 
