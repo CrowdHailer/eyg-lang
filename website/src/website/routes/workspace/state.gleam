@@ -13,6 +13,7 @@ import gleam/dict.{type Dict}
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import morph/action
 import morph/analysis
 import morph/editable as e
@@ -447,7 +448,7 @@ fn perform(state) {
     }
     _ ->
       // echo buffer
-      // let analysis = do_analysis(buffer.projection)
+
       // // analysis on the effects of the function
       // echo analysis
       // is on expression
@@ -462,13 +463,16 @@ fn increase(state) {
 
 fn select_field(state) {
   let buffer = active(state)
-  let analysis = do_analysis(buffer.projection)
-  case action.select_field(buffer.projection, Some(analysis)) {
-    Ok(#(hints, rebuild)) -> {
-      let hints = listx.value_map(hints, debug.mono)
+  let hints = case target_type(buffer.projection) {
+    Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
+    _ -> []
+  }
+  case buffer.projection {
+    #(p.Exp(inner), zoom) -> {
+      let rebuild = fn(label) { #(p.Exp(e.Select(inner, label)), zoom) }
       #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
     }
-    Error(Nil) -> todo as "cant select field"
+    _ -> todo
   }
 }
 
@@ -543,27 +547,15 @@ fn insert_case(state) {
 
 fn insert_variable(state) {
   let buffer = active(state)
-
-  let analysis = do_analysis(buffer.projection)
-
-  case action.insert_variable(buffer.projection, Some(analysis)) {
-    Ok(#(filter, hints, rebuild)) -> {
-      let hints = listx.value_map(hints, snippet.render_poly)
-      #(State(..state, mode: Picking(picker.new(filter, hints), rebuild:)), [])
+  let scope = target_scope(buffer.projection) |> result.unwrap([])
+  let hints = listx.value_map(scope, snippet.render_poly)
+  case buffer.projection {
+    #(p.Exp(_), zoom) -> {
+      let rebuild = fn(var) { #(p.Exp(e.Variable(var)), zoom) }
+      #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
     }
-    Error(Nil) -> todo
+    _ -> todo
   }
-}
-
-fn do_analysis(projection) {
-  // |> update_context(cache)
-  // analysis context includes effects and releases
-  let context =
-    analysis.context()
-    |> analysis.with_effects([])
-  // |> update_context(cache)
-  // analysis context includes effects and releases
-  analysis.do_analyse(p.rebuild(projection), context)
 }
 
 fn confirm(state) {
@@ -814,4 +806,16 @@ pub fn target_type(projection) {
 
   // multi pick is what we really want here
   infer.type_at(analysis, path)
+}
+
+pub fn target_scope(projection) {
+  let source = e.to_annotated(p.rebuild(projection), [])
+  let analysis =
+    infer.pure()
+    |> infer.check(source)
+
+  let path = p.path(projection)
+
+  // multi pick is what we really want here
+  infer.scope_at(analysis, path)
 }

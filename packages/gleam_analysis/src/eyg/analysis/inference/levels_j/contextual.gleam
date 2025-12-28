@@ -96,6 +96,21 @@ pub fn type_at(inference: Analysis(_), desired) {
   })
 }
 
+pub fn scope_at(inference: Analysis(_), desired) {
+  let Analysis(_bindings, acc, source) = inference
+  let meta = ir.get_annotation(source)
+  let info = ir.get_annotation(acc)
+  let assert Ok(info) = list.strict_zip(meta, info)
+  info
+  |> list.find_map(fn(pair) {
+    let #(meta, #(_result, _type, _effect, scope)) = pair
+    case meta == desired {
+      True -> Ok(scope)
+      False -> Error(Nil)
+    }
+  })
+}
+
 pub fn type_(inference) {
   let Analysis(bindings, acc, source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc

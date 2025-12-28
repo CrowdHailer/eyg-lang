@@ -143,9 +143,18 @@ pub fn vertical_move_in_file_test() {
 
 // --------------- 2. Editing -------------------------
 
-pub const true = e.Call(e.Tag("True"), [e.Record([], None)])
-
-pub const false = e.Call(e.Tag("False"), [e.Record([], None)])
+pub fn variable_insert_test() {
+  let state = no_packages()
+  let source = ir.let_("user", ir.string("tim"), ir.vacant())
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, " ")
+  assert [] == actions
+  let #(state, actions) = press_key(state, "v")
+  assert [] == actions
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(value: "", suggestions:) = picker
+  assert [#("user", "String")] == suggestions
+}
 
 pub fn select_typed_field_test() {
   let state = no_packages()
