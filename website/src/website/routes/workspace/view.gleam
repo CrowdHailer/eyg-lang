@@ -23,7 +23,7 @@ pub fn render(state: state.State) {
         state.EditingText(value:, rebuild:) ->
           modal([editor.render_text(value) |> element.map(state.InputMessage)])
         state.ReadingFromClipboard -> modal([h.text("something")])
-        state.RunningShell(debug:) -> modal([h.text("something")])
+        state.RunningShell(occured:, debug:) -> modal([h.text("something")])
         state.WritingToClipboard -> modal([h.text("something")])
         state.Editing ->
           case state.user_error {

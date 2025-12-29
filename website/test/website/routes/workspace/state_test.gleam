@@ -14,6 +14,7 @@ import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
+import website/components/shell
 import website/components/snippet
 import website/harness/browser
 import website/routes/helpers
@@ -425,7 +426,7 @@ pub fn unknown_effect_test() {
 
   assert actions == []
   // Should the error be on the shell or a key press error
-  let assert state.RunningShell(debug:) = state.mode
+  let assert state.RunningShell(debug:, ..) = state.mode
   let #(reason, _, _, _) = debug
   let assert break.UnhandledEffect(
     "Launch",
@@ -442,28 +443,50 @@ pub fn bad_input_effect_test() {
   let #(state, actions) = state.update(state, message)
   // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == []
-  let assert state.RunningShell(debug:) = state.mode
+  let assert state.RunningShell(debug:, ..) = state.mode
   let #(reason, _, _, _) = debug
   assert break.IncorrectTerm("String", value.Record(dict.new())) == reason
 }
 
-pub fn alert_effect_test() {
+pub fn multiple_effect_test() {
   let state = no_packages()
-  let source = ir.call(ir.perform("Alert"), [ir.string("great test!")])
+  let source =
+    ir.let_(
+      "_",
+      ir.call(ir.perform("Alert"), [ir.string("great test!")]),
+      ir.call(ir.perform("Alert"), [ir.string("Next test")]),
+    )
   let state = set_repl(state, source)
 
   let message = state.UserPressedCommandKey("Enter")
+
   let #(state, actions) = state.update(state, message)
-  // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == [state.RunEffect(browser.Alert("great test!"))]
   let assert state.RunningShell(..) = state.mode
 
-  // Test multiple effects
+  let message = state.EffectImplementationCompleted(123, value.unit())
+  let #(state, actions) = state.update(state, message)
+  assert actions == [state.RunEffect(browser.Alert("Next test"))]
+  let assert state.RunningShell(..) = state.mode
 
   let message = state.EffectImplementationCompleted(123, value.unit())
   let #(state, actions) = state.update(state, message)
-  assert actions == []
+  assert [] == actions
   let assert state.Editing = state.mode
+
+  let assert [shell.Executed(value:, effects:, ..)] = state.previous
+  assert Some(value.Record(dict.from_list([]))) == value
+  let assert [one, two] = effects
+  assert #("Alert", #(
+      value.String("great test!"),
+      value.Record(dict.from_list([])),
+    ))
+    == one
+  assert #("Alert", #(
+      value.String("Next test"),
+      value.Record(dict.from_list([])),
+    ))
+    == two
 }
 
 pub fn run_anonymous_reference_test() {

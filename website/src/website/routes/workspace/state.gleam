@@ -102,7 +102,10 @@ pub type Mode {
   ChoosingPackage
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
-  RunningShell(debug: istate.Debug(Meta))
+  RunningShell(
+    occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
+    debug: istate.Debug(Meta),
+  )
   WritingToClipboard
   ReadingFromClipboard
 }
@@ -511,117 +514,7 @@ fn confirm(state) {
   case focused {
     Repl -> {
       let editable = p.rebuild(state.repl.projection)
-      case evaluate(editable) {
-        Ok(#(value, scope)) -> {
-          // Type is shell entry
-          let entry =
-            shell.Executed(
-              value:,
-              effects: [],
-              source: readonly.new(p.rebuild(state.repl.projection)),
-            )
-          let previous = [entry, ..state.previous]
-          let repl = buffer.empty(typing_context(state.sync.cache))
-          let state = State(..state, previous:, repl:)
-          #(state, [])
-        }
-        Error(#(reason, meta, env, k) as debug) ->
-          case reason {
-            // internal not part of browser
-            break.UnhandledEffect("Open", input) ->
-              case cast.as_string(input) {
-                Ok(filename) -> {
-                  let return = block.resume(value.Record(dict.new()), env, k)
-                  let state = State(..state, focused: Module(filename))
-                  case return {
-                    Ok(value) -> {
-                      let state = State(..state, mode: Editing)
-                      // echo value
-                      #(state, [])
-                    }
-                    _ -> {
-                      // echo return
-                      todo
-                    }
-                  }
-                }
-                Error(_) -> todo
-              }
-            break.UnhandledEffect(label, input) ->
-              case list.key_find(browser.lookup(), label) {
-                Ok(#(#(_, _), cast)) ->
-                  case cast(input) {
-                    Ok(effect) ->
-                      case effect {
-                        browser.ReadFile(file:) -> {
-                          let reply = case dict.get(state.modules, file) {
-                            Ok(buffer) ->
-                              value.ok(
-                                value.Binary(
-                                  dag_json.to_block(
-                                    e.to_annotated(
-                                      p.rebuild(buffer.projection),
-                                      [],
-                                    ),
-                                  ),
-                                ),
-                              )
-                            Error(_) -> value.error(value.String("No file"))
-                          }
-
-                          let return = block.resume(reply, env, k)
-                          case return {
-                            Ok(value) -> {
-                              let state = State(..state, mode: Editing)
-                              // echo value
-                              #(state, [])
-                            }
-                            _ -> {
-                              // echo return
-                              todo
-                            }
-                          }
-                        }
-                        _ -> {
-                          let state = State(..state, mode: RunningShell(debug:))
-                          #(state, [RunEffect(effect)])
-                        }
-                      }
-                    Error(reason) -> {
-                      let debug = #(reason, meta, env, k)
-                      let state = State(..state, mode: RunningShell(debug:))
-                      #(state, [])
-                    }
-                  }
-                Error(Nil) -> {
-                  let state = State(..state, mode: RunningShell(debug:))
-                  #(state, [])
-                }
-              }
-            break.UndefinedReference(cid) ->
-              case dict.get(state.sync.cache.fragments, cid) {
-                Ok(cache.Fragment(value:, ..)) -> {
-                  let return = block.resume(value, env, k)
-                  case return {
-                    Ok(value) -> {
-                      let state = State(..state, mode: Editing)
-                      // echo value
-                      #(state, [])
-                    }
-                    _ -> {
-                      // echo return
-                      todo
-                    }
-                  }
-                }
-                _ -> todo
-              }
-            _ -> {
-              echo reason
-              todo
-            }
-          }
-      }
+      run(evaluate(editable), [], state)
     }
     _ -> fail(state, "Can't execute module")
   }
@@ -632,6 +525,89 @@ fn evaluate(editable) {
   |> tree.clear_annotation()
   // TODO why do we clear this
   |> block.execute([])
+}
+
+fn run(return, occured, state: State) {
+  case return {
+    Ok(#(value, scope)) -> {
+      // Type is shell entry
+      let entry =
+        shell.Executed(
+          value:,
+          effects: list.reverse(occured),
+          source: readonly.new(p.rebuild(state.repl.projection)),
+        )
+      let previous = [entry, ..state.previous]
+      let repl = buffer.empty(typing_context(state.sync.cache))
+      let state = State(..state, mode: Editing, previous:, repl:)
+      #(state, [])
+    }
+    Error(debug) -> {
+      let #(reason, meta, env, k) = debug
+      case reason {
+        // internal not part of browser
+        break.UnhandledEffect("Open", input) ->
+          case cast.as_string(input) {
+            Ok(filename) -> {
+              let return = block.resume(value.Record(dict.new()), env, k)
+              let state = State(..state, focused: Module(filename))
+              // let occured = [#()]
+              run(return, occured, state)
+            }
+            Error(_) -> todo
+          }
+        break.UnhandledEffect(label, input) ->
+          case list.key_find(browser.lookup(), label) {
+            Ok(#(#(_, _), cast)) ->
+              case cast(input) {
+                Ok(effect) ->
+                  case effect {
+                    browser.ReadFile(file:) -> {
+                      let reply = case dict.get(state.modules, file) {
+                        Ok(buffer) ->
+                          value.ok(
+                            value.Binary(
+                              dag_json.to_block(
+                                e.to_annotated(p.rebuild(buffer.projection), []),
+                              ),
+                            ),
+                          )
+                        Error(_) -> value.error(value.String("No file"))
+                      }
+
+                      run(block.resume(reply, env, k), occured, state)
+                    }
+                    _ -> {
+                      let state =
+                        State(..state, mode: RunningShell(occured:, debug:))
+                      #(state, [RunEffect(effect)])
+                    }
+                  }
+                Error(reason) -> {
+                  let debug = #(reason, meta, env, k)
+                  let state =
+                    State(..state, mode: RunningShell(occured:, debug:))
+                  #(state, [])
+                }
+              }
+            Error(Nil) -> {
+              let state = State(..state, mode: RunningShell(occured:, debug:))
+              #(state, [])
+            }
+          }
+        break.UndefinedReference(cid) ->
+          case dict.get(state.sync.cache.fragments, cid) {
+            Ok(cache.Fragment(value:, ..)) ->
+              run(block.resume(value, env, k), occured, state)
+            _ -> todo
+          }
+        _ -> {
+          echo reason
+          todo
+        }
+      }
+    }
+  }
 }
 
 fn search_vacant(state) {
@@ -701,29 +677,24 @@ fn clipboard_write_complete(state, message) {
 fn effect_implementation_completed(state, reference, reply) {
   let State(mode:, ..) = state
   case mode {
-    RunningShell(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
+    // put awaiting false for the fact it's no longer running
+    RunningShell(occured, #(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
       // TODO check reference and awaiting match
       // echo reference
-      // TODO move occured to a current state
-      let occured = []
+
       let occured = [#(label, #(lift, reply)), ..occured]
-      let return = block.resume(reply, env, k)
-      case return {
-        Ok(value) -> {
-          let state = State(..state, mode: Editing)
-          #(state, [])
-        }
-        _ -> {
-          echo return
-          todo
-        }
-      }
+      run(block.resume(reply, env, k), occured, state)
     }
     _ -> {
       echo reply
       todo
     }
   }
+}
+
+// put mode on the first argument and  update state before looping
+fn resume_from_effect(label, lift, reply, env, k) {
+  todo
 }
 
 fn picker_message(state, message) {
