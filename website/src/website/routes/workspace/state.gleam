@@ -190,9 +190,10 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
 
 fn user_pressed_key(state, key) {
   let State(mode:, ..) = state
-  case mode {
-    Editing -> user_pressed_command_key(state, key)
-    _ -> {
+  case mode, key {
+    Editing, _ -> user_pressed_command_key(state, key)
+    RunningShell(..), "Escape" -> #(State(..state, mode: Editing), [])
+    _, _ -> {
       echo "unexpected"
       echo mode
       #(state, [])
@@ -637,7 +638,7 @@ fn input_message(state, message) {
         input.Confirmed(value) -> update_projection(state, rebuild(value))
         input.Cancelled -> todo
       }
-    _, _ -> todo
+    _, _ -> #(state, [])
   }
 }
 
@@ -651,11 +652,11 @@ fn clipboard_read_complete(state, return) {
             Ok(expression) ->
               set_expression(state, e.from_annotated(expression))
 
-            Error(_) -> todo as "action_failed(state, paste)"
+            Error(_) -> fail(state, "paste")
           }
-        Error(_) -> todo as "action_failed(state, paste)"
+        Error(_) -> fail(state, "paste")
       }
-    _ -> todo
+    _ -> #(state, [])
   }
 }
 
@@ -668,9 +669,9 @@ fn clipboard_write_complete(state, message) {
           let state = State(..state, mode: Editing)
           #(state, [])
         }
-        Error(_) -> todo
+        Error(_) -> fail(state, "copy")
       }
-    _ -> todo
+    _ -> #(state, [])
   }
 }
 
@@ -680,15 +681,11 @@ fn effect_implementation_completed(state, reference, reply) {
     // put awaiting false for the fact it's no longer running
     RunningShell(occured, #(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
       // TODO check reference and awaiting match
-      // echo reference
 
       let occured = [#(label, #(lift, reply)), ..occured]
       run(block.resume(reply, env, k), occured, state)
     }
-    _ -> {
-      echo reply
-      todo
-    }
+    _ -> #(state, [])
   }
 }
 

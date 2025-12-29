@@ -489,6 +489,29 @@ pub fn multiple_effect_test() {
     == two
 }
 
+pub fn cancel_running_effect_test() {
+  let state = no_packages()
+  let source = ir.call(ir.perform("Alert"), [ir.string("annoying")])
+  let state = set_repl(state, source)
+
+  let message = state.UserPressedCommandKey("Enter")
+  let #(state, actions) = state.update(state, message)
+  // The ReadFile effect is synchronous in the editor so it concludes.
+  assert actions == [state.RunEffect(browser.Alert("annoying"))]
+  let assert state.RunningShell(..) = state.mode
+
+  let #(state, actions) = press_key(state, "Escape")
+  assert [] == actions
+  let assert state.Editing = state.mode
+  // TODO move to flip and show that a subsequent request doesn't race
+
+  let message = state.EffectImplementationCompleted(123, value.unit())
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert state.Editing = state.mode
+  assert [] == state.previous
+}
+
 pub fn run_anonymous_reference_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "#")
