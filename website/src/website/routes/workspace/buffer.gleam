@@ -1,4 +1,5 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/ir/cid
 import gleam/list
 import gleam/set
 import morph/editable as e
@@ -42,6 +43,13 @@ pub fn redo(buffer, context) {
     }
     [] -> Error(Nil)
   }
+}
+
+pub fn cid(buffer) {
+  let Buffer(projection:, ..) = buffer
+  let source = e.to_annotated(p.rebuild(projection), [])
+  let assert Ok(current) = cid.from_tree(source)
+  current
 }
 
 fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {

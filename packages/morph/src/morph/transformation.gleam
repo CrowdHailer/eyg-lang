@@ -504,10 +504,15 @@ pub fn open_match(zip) {
 
 pub fn perform(zip) {
   let #(focus, zoom) = zip
+
   case focus {
-    p.Exp(e.Vacant) -> Ok(fn(new) { #(p.Exp(e.Perform(new)), zoom) })
-    p.Exp(inner) ->
-      Ok(fn(new) { #(p.Exp(e.Perform(new)), [p.CallFn([inner]), ..zoom]) })
+    p.Exp(lift) -> {
+      let rebuild = fn(label) {
+        let zoom = [p.CallArg(e.Perform(label), [], []), ..zoom]
+        #(p.Exp(lift), zoom)
+      }
+      Ok(rebuild)
+    }
     _ -> Error(Nil)
   }
 }

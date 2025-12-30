@@ -6,6 +6,7 @@ import lustre/element
 import lustre/element/html as h
 import morph/editable
 import morph/projection
+import website/components/simple_debug
 import website/components/snippet
 import website/routes/editor
 import website/routes/workspace/state
@@ -19,12 +20,21 @@ pub fn render(state: state.State) {
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])
         state.ChoosingPackage -> modal([h.text("something")])
-        state.EditingInteger(value:, rebuild:) -> modal([h.text("something")])
-        state.EditingText(value:, rebuild:) ->
+        state.EditingInteger(value:, ..) ->
+          modal([editor.render_number(value) |> element.map(state.InputMessage)])
+        state.EditingText(value:, ..) ->
           modal([editor.render_text(value) |> element.map(state.InputMessage)])
-        state.ReadingFromClipboard -> modal([h.text("something")])
-        state.RunningShell(occured:, debug:) -> modal([h.text("something")])
-        state.WritingToClipboard -> modal([h.text("something")])
+        state.ReadingFromClipboard -> element.none()
+        state.WritingToClipboard -> element.none()
+        state.RunningShell(occured:, awaiting:, debug:) ->
+          modal([
+            editor.render_effects_history(list.reverse(occured)),
+            case awaiting {
+              Some(_) -> h.div([], [h.text("running")])
+              None ->
+                h.div([], [h.text(simple_debug.reason_to_string(debug.0))])
+            },
+          ])
         state.Editing ->
           case state.user_error {
             Some(reason) -> top([h.text(snippet.fail_message(reason))])
@@ -49,6 +59,11 @@ pub fn render(state: state.State) {
         h.div([a.class("expand")], case state.focused {
           state.Repl -> [
             h.text("Shell"),
+            editor.render_previous(
+              state.previous,
+              state.PreviousMessage,
+              state.UserSelectedPrevious,
+            ),
             snippet.render_projection(state.repl.projection, []),
           ]
           state.Module(filepath) -> [
@@ -71,7 +86,7 @@ fn modal(children) {
   h.div(
     [
       a.class(
-        "fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center p-4",
+        "fixed inset-0 bg-white z-10 bg-opacity-80 flex items-center justify-center p-4",
       ),
     ],
     [

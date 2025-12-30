@@ -424,7 +424,7 @@ pub fn render_text(value) {
   render_user_input(value, "text", "Enter text:")
 }
 
-fn render_number(value) {
+pub fn render_number(value) {
   let raw = case value {
     0 -> ""
     _ -> int.to_string(value)
@@ -495,6 +495,7 @@ fn render_shell(shell: shell.Shell(_)) {
         a.class("expand vstack flex-grow pt-10"),
         a.styles([#("min-height", "0")]),
       ],
+      // This is all the examples if nothing already set
       case list.length(shell.previous) {
         x if x < 4 -> [
           h.div([a.class("px-2 text-gray-700 cover")], [
@@ -518,54 +519,11 @@ fn render_shell(shell: shell.Shell(_)) {
         _ -> []
       },
     ),
-    h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
-      let count = list.length(shell.previous) - 1
-      list.index_map(list.reverse(shell.previous), fn(p, i) {
-        let i = count - i
-        case p {
-          shell.Executed(value, effects, readonly) ->
-            h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
-              h.div([a.class("relative pr-8")], [
-                h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
-                  readonly.render(readonly)
-                  |> element.map(shell.PreviousMessage(i, _)),
-                ]),
-                h.button(
-                  [
-                    a.class("absolute top-0 right-0 w-6"),
-                    event.on_click(shell.UserClickedPrevious(1)),
-                  ],
-                  [outline.arrow_path()],
-                ),
-              ]),
-              case effects {
-                [] -> element.none()
-                _ ->
-                  h.div([a.class("text-blue-700")], [
-                    h.span([a.class("font-bold")], [element.text("effects ")]),
-                    ..list.map(effects, fn(eff) {
-                      let #(label, _) = eff
-                      h.span([], [element.text(label), element.text(" ")])
-                      // h.div([a.class("flex gap-1")], [
-                      //   output.render(eff.1.0),
-                      //   output.render(eff.1.1),
-                      // ])
-                    })
-                  ])
-              },
-              case value {
-                Some(value) ->
-                  h.div([a.class(" max-h-60 overflow-auto")], [
-                    // would need to be flex to show inline
-                    // h.span([a.class("font-bold")], [element.text("> ")]),
-                    output.render(value),
-                  ])
-                None -> element.none()
-              },
-            ])
-        }
-      })
-    }),
+    render_previous(
+      shell.previous,
+      shell.PreviousMessage,
+      shell.UserClickedPrevious,
+    ),
     render_errors(shell.failure, shell.source),
     h.div(
       [
@@ -624,6 +582,61 @@ fn render_shell(shell: shell.Shell(_)) {
     )
       |> element.map(shell.CurrentMessage),
   ])
+}
+
+pub fn render_previous(previous, on_readonly, on_previous) -> element.Element(a) {
+  h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
+    let count = list.length(previous) - 1
+    list.index_map(list.reverse(previous), fn(p, i) {
+      let i = count - i
+      case p {
+        shell.Executed(value, effects, readonly) ->
+          h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
+            h.div([a.class("relative pr-8")], [
+              h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
+                readonly.render(readonly)
+                |> element.map(on_readonly(i, _)),
+              ]),
+              h.button(
+                [
+                  a.class("absolute top-0 right-0 w-6"),
+                  event.on_click(on_previous(1)),
+                ],
+                [outline.arrow_path()],
+              ),
+            ]),
+            render_effects_history(effects),
+            case value {
+              Some(value) ->
+                h.div([a.class(" max-h-60 overflow-auto")], [
+                  // would need to be flex to show inline
+                  // h.span([a.class("font-bold")], [element.text("> ")]),
+                  output.render(value),
+                ])
+              None -> element.none()
+            },
+          ])
+      }
+    })
+  })
+}
+
+pub fn render_effects_history(effects) {
+  case effects {
+    [] -> element.none()
+    _ ->
+      h.div([a.class("text-blue-700")], [
+        h.span([a.class("font-bold")], [element.text("effects ")]),
+        ..list.map(effects, fn(eff) {
+          let #(label, _) = eff
+          h.span([], [element.text(label), element.text(" ")])
+          // h.div([a.class("flex gap-1")], [
+          //   output.render(eff.1.0),
+          //   output.render(eff.1.1),
+          // ])
+        })
+      ])
+  }
 }
 
 pub fn render_menu(status, projection, submenu, display_help) {

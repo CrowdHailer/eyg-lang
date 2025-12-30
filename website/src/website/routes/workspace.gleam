@@ -80,15 +80,23 @@ fn do_update(state, message) {
 fn run(action) {
   case action {
     state.FocusOnInput -> {
-      echo "TODO focus on input"
+      // This seems to be unnecessary if only one autofocused input, and the code doesn't have a tabindex
       effect.none()
     }
     state.WriteToClipboard(text:) ->
       effect.from(fn(dispatch) {
-        promise.map(clipboard.write_text(text), fn(result) { dispatch(todo) })
+        promise.map(clipboard.write_text(text), fn(result) {
+          dispatch(state.ClipboardWriteCompleted(result))
+        })
         Nil
       })
-    state.ReadFromClipboard -> todo
+    state.ReadFromClipboard ->
+      effect.from(fn(dispatch) {
+        promise.map(clipboard.read_text(), fn(result) {
+          dispatch(state.ClipboardReadCompleted(result))
+        })
+        Nil
+      })
     state.RunEffect(..) -> todo
     state.SyncAction(action) ->
       client.lustre_run_single(action, state.SyncMessage)

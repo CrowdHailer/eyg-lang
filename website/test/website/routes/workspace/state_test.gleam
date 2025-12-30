@@ -18,6 +18,7 @@ import website/components/shell
 import website/components/snippet
 import website/harness/browser
 import website/routes/helpers
+import website/routes/workspace/buffer
 import website/routes/workspace/state
 import website/sync/client
 import website/sync/protocol
@@ -186,6 +187,14 @@ pub fn variable_insert_test() {
   assert [#("user", "String")] == suggestions
 }
 
+pub fn cant_insert_variable_on_assignment_test() {
+  let state = no_packages()
+  let source = ir.let_("x", ir.integer(7), ir.unit())
+  let state = set_repl(state, source)
+  let reason = press_key_failure(state, "v")
+  assert snippet.ActionFailed(action: "insert variable") == reason
+}
+
 pub fn insert_string_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "s")
@@ -206,17 +215,72 @@ pub fn insert_string_test() {
   assert #(p.Exp(e.String("silly.")), []) == state.repl.projection
 }
 
-// pub fn insert_integer_test() {
-//   todo
-// }
+pub fn cancel_string_insert_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "s")
+  assert [] == actions
+  let assert state.EditingText(value:, ..) = state.mode
+  assert "" == value
+
+  let message = state.InputMessage(input.UpdateInput("silly."))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert state.EditingText(value:, ..) = state.mode
+  assert "silly." == value
+
+  let message = state.InputMessage(input.KeyDown("Escape"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+  assert #(p.Exp(e.Vacant), []) == state.repl.projection
+}
+
+pub fn insert_integer_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "n")
+  assert [state.FocusOnInput] == actions
+  let assert state.EditingInteger(value:, ..) = state.mode
+  assert 0 == value
+
+  let message = state.InputMessage(input.UpdateInput("28"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert state.EditingInteger(value:, ..) = state.mode
+  assert 28 == value
+
+  let message = state.InputMessage(input.Submit)
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+  assert #(p.Exp(e.Integer(28)), []) == state.repl.projection
+}
+
+pub fn cancel_integer_insert_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "n")
+  assert [state.FocusOnInput] == actions
+  let assert state.EditingInteger(value:, ..) = state.mode
+  assert 0 == value
+
+  let message = state.InputMessage(input.UpdateInput("95"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert state.EditingInteger(value:, ..) = state.mode
+  assert 95 == value
+
+  let message = state.InputMessage(input.KeyDown("Escape"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+  assert #(p.Exp(e.Vacant), []) == state.repl.projection
+}
 
 pub fn select_typed_field_test() {
   let state = no_packages()
   let source = ir.record([#("sweet", ir.true()), #("size", ir.integer(3))])
   let state = select_all_in_repl(state, source)
 
-  let message = state.UserPressedCommandKey("g")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "g")
   assert actions == []
   let assert state.Picking(picker:, ..) = state.mode
   let assert picker.Typing(value: "", suggestions:) = picker
@@ -230,6 +294,31 @@ pub fn select_typed_field_test() {
   assert actions == []
   // echo state.mode
   // TODO make sure type checking is done
+}
+
+pub fn tag_on_vacant_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "t")
+  assert actions == [state.FocusOnInput]
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(value: "", suggestions:) = picker
+  assert [] == suggestions
+}
+
+pub fn tag_with_hints_test() {
+  let state = no_packages()
+  let source =
+    ir.match(ir.vacant(), [
+      #("Apples", ir.lambda("_", ir.vacant())),
+      #("Oranges", ir.lambda("_", ir.vacant())),
+    ])
+  let state = set_repl(state, source)
+
+  let #(state, actions) = press_key(state, "t")
+  assert actions == [state.FocusOnInput]
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(value: "", suggestions:) = picker
+  assert [#("Apples", "0"), #("Oranges", "11")] == suggestions
 }
 
 pub fn auto_match_test() {
@@ -248,10 +337,22 @@ pub fn cant_match_test() {
   press_key_failure(state, "m")
 }
 
+// TODO tag
+
+pub fn insert_builtin_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "j")
+  assert actions == []
+  assert state.user_error == None
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(suggestions:, ..) = picker
+  assert list.key_find(suggestions, "int_to_string")
+    == Ok("(Integer) -> String")
+}
+
 pub fn suggest_shell_effects_test() {
   let state = no_packages()
-  let message = state.UserPressedCommandKey("p")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "p")
   assert actions == []
   assert state.user_error == None
   let assert state.Picking(picker:, ..) = state.mode
@@ -282,6 +383,25 @@ pub fn simple_edit_in_module_test() {
   assert state.Editing == state.mode
   let assert #(p.Exp(e.Record([], None)), []) =
     read_module(state, "user.eyg.json").projection
+}
+
+pub fn bad_open_arg_test() {
+  // open module
+  let state = no_packages()
+  let source = ir.call(ir.perform("Open"), [ir.unit()])
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "Enter")
+  assert actions == []
+
+  let assert state.RunningShell(awaiting: None, debug:, ..) = state.mode
+  assert break.IncorrectTerm("String", value.Record(dict.from_list([])))
+    == debug.0
+}
+
+pub fn cant_delete_nothing_test() {
+  let state = no_packages()
+  let reason = press_key_failure(state, "d")
+  assert snippet.ActionFailed("delete") == reason
 }
 
 // --------------- undo/redo -------------------------
@@ -416,6 +536,23 @@ pub fn move_up_without_history_test() {
   assert snippet.ActionFailed("move above") == reason
 }
 
+pub fn evaluate_bad_expression_in_shell_test() {
+  let state = no_packages()
+  let source = ir.variable("vanished")
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "Enter")
+  assert actions == []
+  let assert state.RunningShell(awaiting:, debug:, ..) = state.mode
+  assert None == awaiting
+  assert break.UndefinedVariable("vanished") == debug.0
+  assert #(p.Exp(e.Variable("vanished")), []) == state.repl.projection
+
+  let #(state, actions) = press_key(state, "L")
+  assert actions == []
+  assert state.Editing == state.mode
+  assert #(p.Exp(e.List([], None)), []) == state.repl.projection
+}
+
 pub fn unknown_effect_test() {
   let state = no_packages()
   let source = ir.call(ir.perform("Launch"), [ir.string("All the missiles")])
@@ -494,8 +631,7 @@ pub fn cancel_running_effect_test() {
   let source = ir.call(ir.perform("Alert"), [ir.string("annoying")])
   let state = set_repl(state, source)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == [state.RunEffect(browser.Alert("annoying"))]
   let assert state.RunningShell(..) = state.mode
@@ -512,6 +648,36 @@ pub fn cancel_running_effect_test() {
   assert [] == state.previous
 }
 
+// --------------- 4. block eval -------------------------
+
+pub fn shell_scope_test() {
+  let state = no_packages()
+  let source = ir.let_("x", ir.integer(171), ir.vacant())
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "Enter")
+  assert [] == actions
+  let assert state.Editing = state.mode
+  let assert [shell.Executed(value: None, ..)] = state.previous
+
+  let #(state, actions) = press_key(state, "v")
+  assert [] == actions
+  let assert state.Picking(picker:, ..) = state.mode
+
+  let assert [#("x", "Integer")] = picker.suggestions
+
+  let message = state.PickerMessage(picker.Decided("x"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+
+  let #(state, actions) = press_key(state, "Enter")
+  assert [] == actions
+  assert state.Editing == state.mode
+  let assert [shell.Executed(value: Some(value.Integer(171)), ..), _] =
+    state.previous
+}
+
+// --------------- 4. References -------------------------
 pub fn run_anonymous_reference_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "#")
@@ -542,7 +708,23 @@ pub fn run_anonymous_reference_test() {
   assert [] == actions
 
   let assert state.Editing = state.mode
-  echo state.previous
+  // echo state.previous
+}
+
+pub fn fails_on_unknown_reference_test() {
+  let state = no_packages()
+
+  // Don't make this available
+  let rand = int.random(1_000_000)
+  let lib = ir.integer(rand)
+  let assert Ok(cid) = cid.from_tree(lib)
+
+  let state = set_repl(state, ir.reference(cid))
+  let #(state, actions) = press_key(state, "Enter")
+  assert [] == actions
+  let assert state.RunningShell(awaiting:, debug:, ..) = state.mode
+  assert None == awaiting
+  assert break.UndefinedReference(cid) == debug.0
 }
 
 // TODO running with a reference stays present
@@ -582,10 +764,13 @@ pub fn initial_package_sync_test() {
   assert actions == [state.FocusOnInput]
   assert state.Editing == state.mode
   assert state.Repl == state.focused
-  // let message = state.UserPressedCommandKey("Enter")
-  // let #(state, actions) = state.update(state, message)
-  // assert actions == [state.FocusOnInput]
-  // TODO test type and run
+
+  assert [] == contextual.all_errors(state.repl.analysis)
+
+  let message = state.UserPressedCommandKey("Enter")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.Editing == state.mode
 }
 
 // test network error fetching packages
@@ -628,6 +813,36 @@ pub fn read_source_file_test() {
   // assert effects == [#("ReadFile", #(value.String("index.eyg.json"), lowered))]
 }
 
+// --------------- 1. Relative references -------------------------
+
+// track the references in the buffer
+pub fn read_reference_from_repl_test() {
+  let state = no_packages()
+  let file = "index.eyg.json"
+  let rand = int.random(1_000_000)
+  let lib = ir.integer(rand)
+  let assert Ok(cid) = cid.from_tree(lib)
+  let state = set_module(state, file, lib)
+
+  let ref = ir.release("./index", 0, cid)
+  let source = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
+  let state = set_repl(state, source)
+
+  assert [] == contextual.all_errors(state.repl.analysis)
+
+  let message = state.UserPressedCommandKey("Enter")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.Editing == state.mode
+  let assert [shell.Executed(value: Some(value), ..)] = state.previous
+  assert value.Integer(rand + 1) == value
+}
+
+// Fails for bad cid
+// type checking updates
+// cant create circular references
+
+// --------------- Helpers -------------------------
 fn no_packages() {
   let #(state, actions) = state.init(helpers.config())
   let assert [state.SyncAction(client.SyncFrom(since: 0, ..))] = actions
@@ -667,6 +882,7 @@ fn press_key(state, key) {
 fn press_key_failure(state, key) {
   let message = state.UserPressedCommandKey(key)
   let #(state, actions) = state.update(state, message)
+  assert [] == actions
   let assert Some(reason) = state.user_error
   reason
 }
