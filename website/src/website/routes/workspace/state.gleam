@@ -7,7 +7,6 @@ import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/state as istate
 import eyg/interpreter/value
-import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
@@ -104,26 +103,26 @@ fn typing_context(
 /// The new value is the full projection, probably from a rebuild function
 fn update_projection(state, new) {
   let buffer = buffer.update_code(active(state), new, ctx(state))
-  let cids = infer.missing_references(buffer.analysis)
-  let #(sync, actions) = client.fetch_fragments(state.sync, cids)
-  let actions = list.map(actions, SyncAction)
 
-  let state =
-    State(..state, mode: Editing, sync:)
-    |> replace_buffer(buffer)
-  #(state, actions)
+  State(..state, mode: Editing)
+  |> replace_buffer(buffer)
 }
 
 /// replaces buffer in the tree
 fn replace_buffer(state: State, buffer) {
   let State(focused:, modules:, ..) = state
-  case focused {
+  let state = case focused {
     Repl -> State(..state, repl: buffer)
     Module(path) -> {
       let modules = dict.insert(modules, path, buffer)
       State(..state, modules:)
     }
   }
+  let cids = infer.missing_references(buffer.analysis)
+  let #(sync, actions) = client.fetch_fragments(state.sync, cids)
+  let actions = list.map(actions, SyncAction)
+  let state = State(..state, sync:)
+  #(state, actions)
 }
 
 pub type Mode {
@@ -298,7 +297,7 @@ fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
   case navigation(active(state).projection) {
     Ok(projection) -> {
       let buffer = buffer.update_position(state.repl, projection)
-      #(replace_buffer(state, buffer), [])
+      replace_buffer(state, buffer)
     }
     Error(_) -> fail(state, reason)
   }
@@ -317,7 +316,7 @@ fn move_up(state) {
   case navigation.move_up(buffer.projection) {
     Ok(new) -> {
       let buffer = buffer.update_position(buffer, new)
-      #(replace_buffer(state, buffer), [])
+      replace_buffer(state, buffer)
     }
     Error(Nil) ->
       case state.focused == Repl, state.previous {
@@ -487,7 +486,7 @@ fn insert_reference(state) {
 
 fn map_buffer(state, name, f) {
   case f(active(state), ctx(state)) {
-    Ok(buffer) -> #(replace_buffer(state, buffer), [])
+    Ok(buffer) -> replace_buffer(state, buffer)
     Error(Nil) -> fail(state, name)
   }
 }

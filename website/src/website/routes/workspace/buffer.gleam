@@ -107,3 +107,7 @@ pub fn target_scope(buffer) {
   // multi pick is what we really want here
   infer.scope_at(analysis, path)
 }
+
+pub fn perform() {
+  todo
+}
