@@ -251,6 +251,22 @@ pub fn call(zip) {
   }
 }
 
+pub fn call_many(zip) {
+  case zip {
+    // TODO can handle pre and post arguments BUT problably need to look at zoom not focus
+    // #(p.Exp(e.Call(f, args)), rest) ->
+    //   Ok(#(p.Exp(e.Vacant), [p.CallArg(f, list.reverse(args), []), ..rest]))
+    // #(p.Exp(f), [p.CallFn(args), ..rest]) ->
+    //   Ok(#(p.Exp(e.Vacant), [p.CallArg(f, [], args), ..rest]))
+    #(p.Exp(f), rest) ->
+      Ok(fn(arity) {
+        let post = list.repeat(e.Vacant, arity - 1)
+        #(p.Exp(e.Vacant), [p.CallArg(f, [], post), ..rest])
+      })
+    _ -> Error(Nil)
+  }
+}
+
 pub fn call_with(zip) {
   case zip {
     // #(p.Exp(e.Call(f, args)), rest) ->
@@ -338,6 +354,7 @@ pub fn extend(zip) {
   }
 }
 
+/// spread list works from inside the list
 pub fn spread_list(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
@@ -349,6 +366,7 @@ pub fn spread_list(zip) {
   }
 }
 
+/// toggle spread works if you have highlighted the list
 pub fn toggle_spread(zip) {
   let #(focus, zoom) = zip
   case focus {
@@ -387,36 +405,42 @@ pub fn toggle_otherwise(zip) {
 pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant) -> Ok(NoString(#(p.Exp(e.Record([], None)), zoom)))
-    p.Exp(e.Record([], None)) ->
-      Ok(
-        NeedString(fn(new) {
-          #(p.Exp(e.Record([#(new, e.Vacant)], None)), zoom)
-        }),
-      )
-    p.Exp(item) ->
-      Ok(NeedString(fn(new) { #(p.Exp(e.Record([#(new, item)], None)), zoom) }))
-    p.Assign(detail, value, pre, post, then) -> {
-      let detail = case detail {
-        p.AssignPattern(e.Bind(var)) -> p.AssignField(var, var, [], [])
-        p.AssignPattern(e.Destructure(fields)) ->
-          p.AssignField("f", "f", list.reverse(fields), [])
-        _ -> panic as "cant build as record"
-      }
-      Ok(NoString(#(p.Assign(detail, value, pre, post, then), zoom)))
-    }
-    p.FnParam(p.AssignPattern(e.Bind(label)), pre, post, body) ->
-      Ok(
-        NoString(#(
-          p.FnParam(
-            p.AssignPattern(e.Destructure([#(label, label)])),
-            pre,
-            post,
-            body,
-          ),
-          zoom,
-        )),
-      )
+    p.Exp(inner) ->
+      Ok(fn(labels) {
+        case labels {
+          [] -> #(p.Exp(e.Record([], None)), zoom)
+          [first, ..rest] -> #(p.Exp(inner), [
+            p.RecordValue(
+              first,
+              [],
+              list.map(rest, fn(label) { #(label, e.Vacant) }),
+              p.Record,
+            ),
+            ..zoom
+          ])
+        }
+      })
+    // p.Assign(detail, value, pre, post, then) -> {
+    //   let detail = case detail {
+    //     p.AssignPattern(e.Bind(var)) -> p.AssignField(var, var, [], [])
+    //     p.AssignPattern(e.Destructure(fields)) ->
+    //       p.AssignField("f", "f", list.reverse(fields), [])
+    //     _ -> panic as "cant build as record"
+    //   }
+    //   Ok(NoString(#(p.Assign(detail, value, pre, post, then), zoom)))
+    // }
+    // p.FnParam(p.AssignPattern(e.Bind(label)), pre, post, body) ->
+    //   Ok(
+    //     NoString(#(
+    //       p.FnParam(
+    //         p.AssignPattern(e.Destructure([#(label, label)])),
+    //         pre,
+    //         post,
+    //         body,
+    //       ),
+    //       zoom,
+    //     )),
+    //   )
     _ -> Error(Nil)
   }
 }
@@ -432,6 +456,15 @@ pub fn select(zip) {
         )
       })
     p.Exp(inner) -> Ok(fn(new) { #(p.Exp(e.Select(inner, new)), zoom) })
+    _ -> Error(Nil)
+  }
+}
+
+pub fn select_field(projection) {
+  case projection {
+    #(p.Exp(inner), zoom) -> {
+      Ok(fn(label) { #(p.Exp(e.Select(inner, label)), zoom) })
+    }
     _ -> Error(Nil)
   }
 }
@@ -523,6 +556,37 @@ pub fn builtin(zip) {
     p.Exp(e.Builtin(content)) ->
       Ok(#(content, fn(content) { #(p.Exp(e.Builtin(content)), zoom) }))
     p.Exp(_) -> Ok(#("", fn(content) { #(p.Exp(e.Builtin(content)), zoom) }))
+    _ -> Error(Nil)
+  }
+}
+
+pub fn insert_reference(projection) {
+  case projection {
+    #(p.Exp(exp), zoom) -> {
+      let current = case exp {
+        e.Reference(id) -> id
+        _ -> ""
+      }
+      Ok(#(current, fn(id) { #(p.Exp(e.Reference(id)), zoom) }))
+    }
+    _ -> Error(Nil)
+  }
+}
+
+pub fn insert_release(projection) {
+  case projection {
+    #(p.Exp(exp), zoom) -> {
+      let current = case exp {
+        e.Release(package, release, cid) -> Some(#(package, release, cid))
+        _ -> None
+      }
+      Ok(
+        #(current, fn(new) {
+          let #(package, release, cid) = new
+          #(p.Exp(e.Release(package, release, cid)), zoom)
+        }),
+      )
+    }
     _ -> Error(Nil)
   }
 }

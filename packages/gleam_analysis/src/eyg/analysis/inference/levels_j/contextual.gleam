@@ -5,6 +5,7 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/result.{try}
 import gleam/set
 
 // None of context is tested
@@ -92,44 +93,58 @@ pub fn all_errors(inference) {
   })
 }
 
-pub fn type_at(inference: Analysis(_), desired) {
-  let Analysis(bindings, acc, source) = inference
-  let meta = ir.get_annotation(source)
-  let info = ir.get_annotation(acc)
-  let assert Ok(info) = list.strict_zip(meta, info)
-  info
-  |> list.find_map(fn(pair) {
-    let #(meta, #(_result, type_, _effect, _scope)) = pair
-    case meta == desired {
-      True -> Ok(binding.resolve(type_, bindings))
-      False -> Error(Nil)
-    }
-  })
-}
-
-pub fn scope_at(inference: Analysis(_), desired) {
+fn info_at(inference: Analysis(_), desired) {
   let Analysis(_bindings, acc, source) = inference
   let meta = ir.get_annotation(source)
   let info = ir.get_annotation(acc)
   let assert Ok(info) = list.strict_zip(meta, info)
   info
   |> list.find_map(fn(pair) {
-    let #(meta, #(_result, _type, _effect, scope)) = pair
+    let #(meta, info) = pair
     case meta == desired {
-      True -> Ok(scope)
+      True -> Ok(info)
       False -> Error(Nil)
     }
   })
 }
 
+pub fn type_at(inference: Analysis(_), desired) {
+  use #(_result, type_, _effect, _scope) <- try(info_at(inference, desired))
+  Ok(binding.resolve(type_, inference.bindings))
+}
+
+pub fn scope_at(inference: Analysis(_), desired) {
+  use #(_result, _type, _effect, scope) <- try(info_at(inference, desired))
+  Ok(scope)
+}
+
+pub fn arity_at(inference: Analysis(_), desired) {
+  use type_ <- try(type_at(inference, desired))
+  count_args(type_)
+}
+
+pub fn count_args(type_) {
+  case type_ {
+    t.Fun(_, _, return) -> Ok(do_count_args(return, 1))
+    _ -> Error(Nil)
+  }
+}
+
+fn do_count_args(type_, acc) {
+  case type_ {
+    t.Fun(_, _, return) -> do_count_args(return, acc + 1)
+    _ -> acc
+  }
+}
+
 pub fn type_(inference) {
-  let Analysis(bindings, acc, source) = inference
+  let Analysis(bindings, acc, _source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc
   binding.resolve(type_, bindings)
 }
 
 pub fn poly_type(inference) {
-  let Analysis(bindings, acc, source) = inference
+  let Analysis(bindings, acc, _source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc
   let mono = binding.resolve(type_, bindings)
   binding.gen(mono, 1, bindings)

@@ -19,12 +19,19 @@ pub fn render(state: state.State) {
           modal([
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])
-        state.ChoosingPackage -> modal([h.text("something")])
+        state.ChoosingPackage(picker:, ..) ->
+          modal([
+            editor.render_picker(picker) |> element.map(state.PickerMessage),
+          ])
+        state.ChoosingModule(picker:, ..) ->
+          modal([
+            editor.render_picker(picker) |> element.map(state.PickerMessage),
+          ])
         state.EditingInteger(value:, ..) ->
           modal([editor.render_number(value) |> element.map(state.InputMessage)])
         state.EditingText(value:, ..) ->
           modal([editor.render_text(value) |> element.map(state.InputMessage)])
-        state.ReadingFromClipboard -> element.none()
+        state.ReadingFromClipboard(..) -> element.none()
         state.WritingToClipboard -> element.none()
         state.RunningShell(occured:, awaiting:, debug:) ->
           modal([
@@ -52,7 +59,7 @@ pub fn render(state: state.State) {
           h.div(
             [],
             list.map(dict.to_list(state.modules), fn(module) {
-              h.div([], [h.text(module.0)])
+              h.div([], [h.text(module.0.0)])
             }),
           ),
         ]),
@@ -66,10 +73,10 @@ pub fn render(state: state.State) {
             ),
             snippet.render_projection(state.repl.projection, []),
           ]
-          state.Module(filepath) -> [
+          state.Module(#(filepath, _) as with_ex) -> [
             h.text(filepath),
             {
-              let projection = case dict.get(state.modules, filepath) {
+              let projection = case dict.get(state.modules, with_ex) {
                 Ok(buffer) -> buffer.projection
                 Error(Nil) -> projection.all(editable.Vacant)
               }

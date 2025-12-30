@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/error
 import eyg/interpreter/break
 import eyg/interpreter/value
 import eyg/ir/cid
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
@@ -18,7 +19,6 @@ import website/components/shell
 import website/components/snippet
 import website/harness/browser
 import website/routes/helpers
-import website/routes/workspace/buffer
 import website/routes/workspace/state
 import website/sync/client
 import website/sync/protocol
@@ -41,9 +41,8 @@ pub fn unknown_key_binding_results_in_error_test() {
   assert actions == []
   assert state.user_error == Some(snippet.NoKeyBinding("MagicKey"))
 
-  let message = state.UserPressedCommandKey("e")
-  let #(state, _actions) = state.update(state, message)
-  // assert actions == []
+  let #(state, _actions) = press_key(state, "L")
+  assert [] == actions
   assert state.user_error == None
 }
 
@@ -129,14 +128,19 @@ pub fn navigate_to_vacant_test() {
 pub fn vertical_move_in_file_test() {
   let state = no_packages()
   let state =
-    set_module(state, "foo.eyg.json", ir.let_("x", ir.string("a"), ir.unit()))
-  let state = state.State(..state, focused: state.Module("foo.eyg.json"))
+    set_module(
+      state,
+      #("foo", state.EygJson),
+      ir.let_("x", ir.string("a"), ir.unit()),
+    )
+  let state =
+    state.State(..state, focused: state.Module(#("foo", state.EygJson)))
   let reason = press_key_failure(state, "ArrowUp")
   assert snippet.ActionFailed("move above") == reason
 
   let #(state, actions) = press_key(state, "ArrowDown")
   assert [] == actions
-  let module = read_module(state, "foo.eyg.json")
+  let module = read_module(state, #("foo", state.EygJson))
   let assert #(p.Exp(e.Record([], None)), [p.BlockTail(..)]) = module.projection
 
   let reason = press_key_failure(state, "ArrowDown")
@@ -144,7 +148,7 @@ pub fn vertical_move_in_file_test() {
 
   let #(state, actions) = press_key(state, "ArrowUp")
   assert [] == actions
-  let module = read_module(state, "foo.eyg.json")
+  let module = read_module(state, #("foo", state.EygJson))
   let assert #(
     p.Assign(
       p.AssignStatement(e.Bind("x")),
@@ -159,9 +163,15 @@ pub fn vertical_move_in_file_test() {
 
 pub fn navigate_back_to_shell_test() {
   let state = no_packages()
-  let name = "bar.eyg.json"
-  let state = set_module(state, name, ir.let_("x", ir.string("a"), ir.unit()))
-  let state = state.State(..state, focused: state.Module(name))
+  let name = "bar"
+  let state =
+    set_module(
+      state,
+      #(name, state.EygJson),
+      ir.let_("x", ir.string("a"), ir.unit()),
+    )
+  let state =
+    state.State(..state, focused: state.Module(#(name, state.EygJson)))
 
   // assert =
   assert snippet.ActionFailed(action: "Can't execute module")
@@ -195,10 +205,38 @@ pub fn cant_insert_variable_on_assignment_test() {
   assert snippet.ActionFailed(action: "insert variable") == reason
 }
 
+pub fn insert_function_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "f")
+  assert [state.FocusOnInput] == actions
+  let assert state.Picking(picker:, ..) = state.mode
+  // echo picker
+}
+
+pub fn call_function_chooses_argument_count_test() {
+  let state = no_packages()
+  let source = ir.builtin("equal")
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "c")
+  assert [] == actions
+  assert #(p.Exp(e.Vacant), [
+      p.CallArg(func: e.Builtin("equal"), pre: [], post: [e.Vacant]),
+    ])
+    == state.repl.projection
+}
+
+pub fn insert_binary_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "b")
+  assert [] == actions
+  let assert state.Editing = state.mode
+  assert #(p.Exp(e.Binary(<<>>)), []) == state.repl.projection
+}
+
 pub fn insert_string_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "s")
-  assert [] == actions
+  assert [state.FocusOnInput] == actions
   let assert state.EditingText(value:, ..) = state.mode
   assert "" == value
 
@@ -218,7 +256,7 @@ pub fn insert_string_test() {
 pub fn cancel_string_insert_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "s")
-  assert [] == actions
+  assert [state.FocusOnInput] == actions
   let assert state.EditingText(value:, ..) = state.mode
   assert "" == value
 
@@ -275,13 +313,48 @@ pub fn cancel_integer_insert_test() {
   assert #(p.Exp(e.Vacant), []) == state.repl.projection
 }
 
+pub fn insert_list_test() {
+  let state = no_packages()
+  let source = ir.integer(22)
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "l")
+  assert [] == actions
+  assert state.Editing == state.mode
+}
+
+pub fn extend_list_before_test() {
+  let state = no_packages()
+  let source = ir.list([ir.integer(85)])
+  let state = set_repl(state, source)
+
+  let #(state, actions) = press_key(state, "<")
+  assert [] == actions
+  assert state.Editing == state.mode
+  assert #(p.Exp(e.Vacant), [p.ListItem([], [e.Integer(85)], None)])
+    == state.repl.projection
+}
+
+pub fn insert_record_test() {
+  let state = no_packages()
+  let source = ir.call(ir.select("location"), [ir.vacant()])
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "r")
+  // Type infor not working properly
+  // assert [] == actions
+  // echo state.mode
+
+  // todo
+}
+
+// insert record on assignment
+
 pub fn select_typed_field_test() {
   let state = no_packages()
   let source = ir.record([#("sweet", ir.true()), #("size", ir.integer(3))])
   let state = select_all_in_repl(state, source)
 
   let #(state, actions) = press_key(state, "g")
-  assert actions == []
+  assert actions == [state.FocusOnInput]
   let assert state.Picking(picker:, ..) = state.mode
   let assert picker.Typing(value: "", suggestions:) = picker
   assert list.length(suggestions) == 2
@@ -292,8 +365,21 @@ pub fn select_typed_field_test() {
   let message = state.PickerMessage(picker.Updated(new))
   let #(state, actions) = state.update(state, message)
   assert actions == []
-  // echo state.mode
-  // TODO make sure type checking is done
+  let assert state.Picking(picker:, ..) = state.mode
+  assert new == picker
+}
+
+pub fn overwrite_test() {
+  let state = no_packages()
+  let source = ir.record([#("pink", ir.true()), #("distance", ir.integer(3))])
+  let state = select_all_in_repl(state, source)
+
+  let #(state, actions) = press_key(state, "o")
+  assert actions == [state.FocusOnInput]
+  let assert state.Picking(picker:, ..) = state.mode
+  let assert picker.Typing(value: "", suggestions:) = picker
+  assert list.length(suggestions) == 2
+  assert Ok("Integer") == list.key_find(suggestions, "distance")
 }
 
 pub fn tag_on_vacant_test() {
@@ -337,12 +423,10 @@ pub fn cant_match_test() {
   press_key_failure(state, "m")
 }
 
-// TODO tag
-
 pub fn insert_builtin_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "j")
-  assert actions == []
+  assert actions == [state.FocusOnInput]
   assert state.user_error == None
   let assert state.Picking(picker:, ..) = state.mode
   let assert picker.Typing(suggestions:, ..) = picker
@@ -370,19 +454,19 @@ pub fn cant_set_expression_on_assignment_test() {
 pub fn simple_edit_in_module_test() {
   // open module
   let state = no_packages()
-  let source = ir.call(ir.perform("Open"), [ir.string("user.eyg.json")])
+  let source = ir.call(ir.perform("Open"), [ir.string("user")])
   let state = set_repl(state, source)
   let #(state, actions) = press_key(state, "Enter")
   assert actions == []
-  assert state.Module("user.eyg.json") == state.focused
+  assert state.Module(#("user", state.EygJson)) == state.focused
   assert state.Editing == state.mode
 
   let #(state, actions) = press_key(state, "R")
   assert [] == actions
-  assert state.Module("user.eyg.json") == state.focused
+  assert state.Module(#("user", state.EygJson)) == state.focused
   assert state.Editing == state.mode
   let assert #(p.Exp(e.Record([], None)), []) =
-    read_module(state, "user.eyg.json").projection
+    read_module(state, #("user", state.EygJson)).projection
 }
 
 pub fn bad_open_arg_test() {
@@ -396,6 +480,16 @@ pub fn bad_open_arg_test() {
   let assert state.RunningShell(awaiting: None, debug:, ..) = state.mode
   assert break.IncorrectTerm("String", value.Record(dict.from_list([])))
     == debug.0
+}
+
+pub fn enter_insert_mode_test() {
+  let state = no_packages()
+  let source = ir.string("straberry")
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "i")
+  assert [state.FocusOnInput] == actions
+  let assert state.Picking(picker: picker.Typing(value:, ..), ..) = state.mode
+  assert "straberry" == value
 }
 
 pub fn cant_delete_nothing_test() {
@@ -494,8 +588,7 @@ pub fn can_paste_to_repl_test() {
   let #(state, actions) = state.update(state, message)
   assert actions == [state.ReadFromClipboard]
   assert state.user_error == None
-  assert state.mode == state.ReadingFromClipboard
-
+  let assert state.ReadingFromClipboard(..) = state.mode
   let message =
     state.ClipboardReadCompleted(Ok("{\"0\":\"s\",\"v\":\"Wallpaper\"}"))
   let #(state, actions) = state.update(state, message)
@@ -578,7 +671,6 @@ pub fn bad_input_effect_test() {
 
   let message = state.UserPressedCommandKey("Enter")
   let #(state, actions) = state.update(state, message)
-  // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == []
   let assert state.RunningShell(debug:, ..) = state.mode
   let #(reason, _, _, _) = debug
@@ -632,7 +724,6 @@ pub fn cancel_running_effect_test() {
   let state = set_repl(state, source)
 
   let #(state, actions) = press_key(state, "Enter")
-  // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == [state.RunEffect(browser.Alert("annoying"))]
   let assert state.RunningShell(..) = state.mode
 
@@ -753,15 +844,15 @@ pub fn initial_package_sync_test() {
   let message = state.UserPressedCommandKey("@")
   let #(state, actions) = state.update(state, message)
   assert actions == [state.FocusOnInput]
-  assert state.ChoosingPackage == state.mode
+  let assert state.ChoosingPackage(..) = state.mode
   assert state.Repl == state.focused
 
   let assert [release] = state.package_choice(state)
   let assert analysis.Release(package: "foo", version: 1, ..) = release
 
-  let message = state.UserChosePackage(release)
+  let message = state.PickerMessage(picker.Decided("foo"))
   let #(state, actions) = state.update(state, message)
-  assert actions == [state.FocusOnInput]
+  assert actions == []
   assert state.Editing == state.mode
   assert state.Repl == state.focused
 
@@ -773,44 +864,47 @@ pub fn initial_package_sync_test() {
   assert state.Editing == state.mode
 }
 
-// test network error fetching packages
-// fetch fragment from source
-// read the file
-
-pub fn read_missing_file_test() {
+pub fn read_missing_source_file_test() {
   let state = no_packages()
   let source = ir.call(ir.perform("ReadFile"), [ir.string("index.eyg.json")])
   let state = set_repl(state, source)
 
   let message = state.UserPressedCommandKey("Enter")
   let #(state, actions) = state.update(state, message)
-  // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == []
-  // echo state
-  // let bytes = dag_json.to_block(ir.vacant())
-  // let assert [shell.Executed(value:, effects:, ..)] = state.shell.previous
-  // let lowered = value.ok(value.Binary(bytes))
-  // assert value == Some(lowered)
-  // assert effects == [#("ReadFile", #(value.String("index.eyg.json"), lowered))]
+  assert state.Editing == state.mode
+  let assert [shell.Executed(value:, ..)] = state.previous
+  assert Some(value.Tagged("Error", value.String("No file"))) == value
 }
 
-pub fn read_source_file_test() {
+pub fn read_missing_file_test() {
   let state = no_packages()
-  let file = "index.eyg.json"
-  let state = set_module(state, file, ir.integer(100))
-  let source = ir.call(ir.perform("ReadFile"), [ir.string(file)])
+  let source = ir.call(ir.perform("ReadFile"), [ir.string("index.txt")])
   let state = set_repl(state, source)
 
   let message = state.UserPressedCommandKey("Enter")
   let #(state, actions) = state.update(state, message)
-  // The ReadFile effect is synchronous in the editor so it concludes.
   assert actions == []
-  // echo state
-  // let bytes = dag_json.to_block(ir.vacant())
-  // let assert [shell.Executed(value:, effects:, ..)] = state.shell.previous
-  // let lowered = value.ok(value.Binary(bytes))
-  // assert value == Some(lowered)
-  // assert effects == [#("ReadFile", #(value.String("index.eyg.json"), lowered))]
+  assert state.Editing == state.mode
+  let assert [shell.Executed(value:, ..)] = state.previous
+  assert Some(value.Tagged("Error", value.String("No file"))) == value
+}
+
+pub fn read_source_file_test() {
+  let state = no_packages()
+  let file = "index"
+  let lib = ir.integer(100)
+  let state = set_module(state, #(file, state.EygJson), lib)
+  let source = ir.call(ir.perform("ReadFile"), [ir.string(file <> ".eyg.json")])
+  let state = set_repl(state, source)
+
+  let message = state.UserPressedCommandKey("Enter")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.Editing == state.mode
+  let assert [shell.Executed(value:, ..)] = state.previous
+  let assert Some(value.Tagged("Ok", value.Binary(bytes))) = value
+  assert dag_json.to_block(lib) == bytes
 }
 
 // --------------- 1. Relative references -------------------------
@@ -818,13 +912,13 @@ pub fn read_source_file_test() {
 // track the references in the buffer
 pub fn read_reference_from_repl_test() {
   let state = no_packages()
-  let file = "index.eyg.json"
+  let file = "index"
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
   let assert Ok(cid) = cid.from_tree(lib)
-  let state = set_module(state, file, lib)
+  let state = set_module(state, #(file, state.EygJson), lib)
 
-  let ref = ir.release("./index", 0, cid)
+  let ref = ir.release("./index", 0, "./index")
   let source = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
   let state = set_repl(state, source)
 

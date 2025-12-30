@@ -652,9 +652,9 @@ fn insert_tag(state) {
 }
 
 fn extend_before(state) {
-  let Snippet(projection: proj, analysis:, ..) = state
+  let Snippet(projection: proj, ..) = state
 
-  case action.extend_before(proj, analysis) {
+  case action.extend_before(proj) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
@@ -665,9 +665,9 @@ fn extend_before(state) {
 }
 
 fn extend_after(state) {
-  let Snippet(projection: proj, analysis:, ..) = state
+  let Snippet(projection: proj, ..) = state
 
-  case action.extend_after(proj, analysis) {
+  case action.extend_after(proj) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
@@ -819,7 +819,7 @@ fn release_to_string(release) {
 fn insert_reference(state) {
   let Snippet(projection: proj, ..) = state
 
-  case action.insert_reference(proj) {
+  case transformation.insert_reference(proj) {
     Ok(#(filter, rebuild)) -> {
       change_mode(state, Pick(picker.new(filter, []), rebuild))
     }

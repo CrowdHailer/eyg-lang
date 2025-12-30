@@ -11,20 +11,18 @@ import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
 import gleam/dict.{type Dict}
+import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set
 import gleam/string
-import morph/action
 import morph/analysis
 import morph/editable as e
 import morph/input
-import morph/navigation
 import morph/picker
 import morph/projection as p
-import morph/transformation
 import website/components/readonly
 import website/components/shell
 import website/components/snippet
@@ -42,26 +40,54 @@ pub type State {
     previous: List(shell.ShellEntry),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
-    modules: Dict(String, Buffer),
+    modules: Dict(Filename, Buffer),
     sync: client.Client,
   )
 }
 
+pub type Mode {
+  Editing
+  // The Picker is still used as their is string input for fields,enums,variable
+  Picking(picker: picker.Picker, rebuild: Rebuild(String))
+  // The projection in the target keeps all the rebuild information, but can error
+  EditingText(value: String, rebuild: Rebuild(String))
+  EditingInteger(value: Int, rebuild: Rebuild(Int))
+  ChoosingPackage(
+    picker: picker.Picker,
+    rebuild: Rebuild(#(String, Int, String)),
+  )
+  ChoosingModule(
+    picker: picker.Picker,
+    rebuild: Rebuild(#(String, Int, String)),
+  )
+  // Only the shell is ever run
+  // Once the run finishes the input is reset and running return
+  RunningShell(
+    occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
+    awaiting: Option(Int),
+    debug: istate.Debug(Meta),
+  )
+  WritingToClipboard
+  ReadingFromClipboard(rebuild: Rebuild(e.Expression))
+}
+
+pub type Rebuild(t) =
+  fn(t, infer.Context) -> Buffer
+
+pub type Target {
+  Repl
+  Module(name: Filename)
+}
+
+pub type Filename =
+  #(String, Ext)
+
+pub type Ext {
+  EygJson
+}
+
 pub type Meta =
   Nil
-
-/// set an expression in the active buffer assumes that you are already on an expression
-/// Always goes back to editing unless a fail
-fn set_expression(state, expression) {
-  let buffer = active(state)
-  case buffer.projection {
-    #(p.Exp(_), zoom) -> {
-      let new = #(p.Exp(expression), zoom)
-      update_projection(state, new)
-    }
-    _ -> fail(state, "set expression")
-  }
-}
 
 /// helper to make a context from a state, when a state exists
 /// In not all cases does this exist
@@ -72,22 +98,21 @@ fn ctx(state) {
 
 fn typing_context(
   scope: List(#(String, istate.Value(Meta))),
-  modules: Dict(String, Buffer),
+  modules: Dict(Filename, Buffer),
   cache: cache.Cache,
 ) {
   let #(bindings, tenv) = analysis.env_to_tenv(scope, Nil)
   let relative =
     dict.to_list(modules)
     |> list.filter_map(fn(entry) {
-      let #(path, buffer) = entry
-      use #(_name, rest) <- result.try(string.split_once(path, ".eyg.json"))
-      case rest {
-        "" -> {
+      let #(#(name, ext), buffer) = entry
+
+      case ext {
+        EygJson -> {
           // name is only when we check the refs
           // "./" <> name
-          Ok(#(buffer.cid(buffer), infer.poly_type(buffer.analysis)))
+          Ok(#("./" <> name, infer.poly_type(buffer.analysis)))
         }
-        _ -> Error(Nil)
       }
     })
     |> dict.from_list()
@@ -102,22 +127,16 @@ fn typing_context(
 /// Always used after a change that was from a command and that changes the history
 /// The new value is the full projection, probably from a rebuild function
 fn update_projection(state, new) {
-  let buffer = buffer.update_code(active(state), new, ctx(state))
+  let gen = buffer.update_code(active(state), new, _)
 
   State(..state, mode: Editing)
-  |> replace_buffer(buffer)
+  |> replace_buffer(gen)
 }
 
 /// replaces buffer in the tree
-fn replace_buffer(state: State, buffer) {
-  let State(focused:, modules:, ..) = state
-  let state = case focused {
-    Repl -> State(..state, repl: buffer)
-    Module(path) -> {
-      let modules = dict.insert(modules, path, buffer)
-      State(..state, modules:)
-    }
-  }
+fn replace_buffer(state: State, gen) {
+  let buffer = gen(ctx(state))
+  let state = set_buffer(state, buffer)
   let cids = infer.missing_references(buffer.analysis)
   let #(sync, actions) = client.fetch_fragments(state.sync, cids)
   let actions = list.map(actions, SyncAction)
@@ -125,28 +144,15 @@ fn replace_buffer(state: State, buffer) {
   #(state, actions)
 }
 
-pub type Mode {
-  Editing
-  // The Picker is still used as their is string input for fields,enums,variable
-  Picking(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
-  // The projection in the target keeps all the rebuild information, but can error
-  EditingText(value: String, rebuild: fn(String) -> p.Projection)
-  EditingInteger(value: Int, rebuild: fn(Int) -> p.Projection)
-  ChoosingPackage
-  // Only the shell is ever run
-  // Once the run finishes the input is reset and running return
-  RunningShell(
-    occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
-    awaiting: Option(Int),
-    debug: istate.Debug(Meta),
-  )
-  WritingToClipboard
-  ReadingFromClipboard
-}
-
-pub type Target {
-  Repl
-  Module(name: String)
+fn set_buffer(state, buffer) {
+  let State(focused:, modules:, ..) = state
+  case focused {
+    Repl -> State(..state, repl: buffer)
+    Module(path) -> {
+      let modules = dict.insert(modules, path, buffer)
+      State(..state, modules:)
+    }
+  }
 }
 
 pub type Action {
@@ -201,8 +207,7 @@ pub type Message {
   // 
   // This event assumes you are in command mode somewhere
   UserPressedCommandKey(key: String)
-  // These might become autocomplete
-  UserChosePackage(analysis.Release)
+
   InputMessage(input.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
@@ -216,7 +221,6 @@ pub type Message {
 pub fn update(state: State, message) -> #(State, List(Action)) {
   case message {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
-    UserChosePackage(release) -> user_chose_package(state, release)
     InputMessage(message) -> input_message(state, message)
     ClipboardReadCompleted(result) -> clipboard_read_complete(state, result)
     ClipboardWriteCompleted(result) -> clipboard_write_complete(state, result)
@@ -234,7 +238,8 @@ fn user_pressed_key(state, key) {
   case mode, key {
     Editing, _ -> user_pressed_command_key(state, key)
     RunningShell(..), "Escape" -> #(State(..state, mode: Editing), [])
-    RunningShell(awaiting: None, ..), _ -> user_pressed_command_key(state, key)
+    RunningShell(awaiting: None, ..), _ ->
+      user_pressed_command_key(State(..state, mode: Editing), key)
     _, _ -> {
       echo "unexpected"
       echo mode
@@ -247,76 +252,78 @@ fn user_pressed_command_key(state, key) {
   let state = State(..state, user_error: None)
   case key {
     "Escape" -> #(State(..state, focused: Repl), [])
-    "ArrowRight" -> move_next(state)
-    "ArrowLeft" -> move_previous(state)
+    "ArrowRight" -> navigate(state, "move right", buffer.next)
+    "ArrowLeft" -> navigate(state, "move left", buffer.previous)
     "ArrowUp" -> move_up(state)
-    "ArrowDown" -> move_down(state)
-    "e" -> assign_to(state)
-    "R" -> place(state, "create record", e.Record([], None))
+    "ArrowDown" -> navigate(state, "move below", buffer.down)
+    "q" -> choose_module(state)
+    "E" -> pick_any(state, "assign", buffer.assign_before)
+    "e" -> pick_any(state, "assign", buffer.assign)
+    "R" -> transform(state, "create record", buffer.create_empty_record)
+    "r" -> create_record(state)
     "t" -> insert_tag(state)
     "y" -> copy(state)
     "Y" -> paste(state)
+    // "u"
+    "i" -> insert(state)
+    "o" -> overwrite(state)
     "p" -> perform(state)
-    "a" -> nav(state, navigation.increase, "increase selection")
+    "a" -> navigate(state, "increase selection", buffer.increase)
     "s" -> insert_string(state)
-    "d" -> transform(state, "delete", transformation.delete)
+    "d" -> transform(state, "delete", buffer.delete)
+    "f" -> pick_any(state, "insert function", buffer.insert_function)
     "g" -> select_field(state)
+    // "h" -> 
     "j" -> insert_builtin(state)
-    "L" -> place(state, "create list", e.List([], None))
+    // "k"
+    "L" -> transform(state, "create list", buffer.create_empty_list)
+    "l" -> transform(state, "create list", buffer.create_list)
     "@" -> choose_release(state)
-    "#" -> insert_reference(state)
+    "#" -> pick_any(state, "insert reference", buffer.insert_reference)
     // choose release just checks is expression
     "Z" -> map_buffer(state, "redo", buffer.redo)
     "z" -> map_buffer(state, "undo", buffer.undo)
+    "x" -> transform(state, "spread", buffer.spread)
+    "c" -> call_function(state)
+    // "C" insert one
+    "b" -> transform(state, "create list", buffer.insert_binary)
     "n" -> insert_integer(state)
     "m" -> insert_case(state)
     "v" -> insert_variable(state)
+    "<" -> transform(state, "insert before", buffer.insert_before)
+    ">" -> transform(state, "insert after", buffer.insert_after)
     "Enter" -> confirm(state)
-    " " -> search_vacant(state)
+    " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
   }
 }
 
-fn place(state, name, new) {
-  transform(state, name, fn(projection) {
-    case projection {
-      #(p.Exp(_), zoom) -> Ok(#(p.Exp(new), zoom))
-      _ -> Error(Nil)
-    }
-  })
+fn navigate(state, name, func) {
+  case func(active(state)) {
+    Ok(gen) -> #(set_buffer(state, gen), [])
+    Error(_) -> fail(state, name)
+  }
 }
 
 fn transform(state, name, func) {
-  case func(active(state).projection) {
-    Ok(projection) -> update_projection(state, projection)
-    Error(Nil) -> fail(state, name)
+  case func(active(state)) {
+    Ok(gen) -> replace_buffer(state, gen)
+    Error(_) -> fail(state, name)
   }
 }
 
-fn nav(state, navigation: fn(p.Projection) -> Result(_, _), reason) {
-  case navigation(active(state).projection) {
-    Ok(projection) -> {
-      let buffer = buffer.update_position(state.repl, projection)
-      replace_buffer(state, buffer)
-    }
-    Error(_) -> fail(state, reason)
-  }
-}
-
-fn move_next(state) {
-  always_nav(state, navigation.next)
-}
-
-fn move_previous(state) {
-  always_nav(state, navigation.previous)
+/// pick from any value, i.e. the picker hints are empty
+fn pick_any(state, name, action) {
+  use rebuild <- try(action(active(state)), state, name)
+  let state = State(..state, mode: Picking(picker.new("", []), rebuild))
+  #(state, [FocusOnInput])
 }
 
 fn move_up(state) {
   let buffer = active(state)
-  case navigation.move_up(buffer.projection) {
+  case buffer.up(buffer) {
     Ok(new) -> {
-      let buffer = buffer.update_position(buffer, new)
-      replace_buffer(state, buffer)
+      #(set_buffer(state, new), [])
     }
     Error(Nil) ->
       case state.focused == Repl, state.previous {
@@ -329,32 +336,47 @@ fn move_up(state) {
   }
 }
 
-fn move_down(state) {
-  nav(state, navigation.move_down, "move below")
-}
-
-fn always_nav(state, navigation) {
-  nav(state, fn(p) { Ok(navigation(p)) }, "")
-}
-
-fn assign_to(state) {
+// If on something pick a field
+// If not then go for all types
+fn create_record(state) {
   let buffer = active(state)
-  let action = transformation.assign_before(buffer.projection)
-  use rebuild <- try(action, state, "assign")
-  let rebuild = fn(s) { rebuild(e.Bind(s)) }
-  let state = State(..state, mode: Picking(picker.new("", []), rebuild))
+  use rebuild <- try(buffer.create_record(buffer), state, "record")
+  let hints = case buffer.target_type(buffer) {
+    Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
+    _ -> []
+  }
+  case hints {
+    [] -> {
+      let state =
+        State(
+          ..state,
+          mode: Picking(picker.new("", []), fn(label, context) {
+            rebuild([label], context)
+          }),
+        )
+      #(state, [FocusOnInput])
+    }
+    _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
+  }
+}
+
+fn overwrite(state) {
+  let buffer = active(state)
+  use rebuild <- try(buffer.overwrite(buffer), state, "record")
+  let hints = case buffer.target_type(buffer) {
+    Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
+    _ -> []
+  }
+  let state = State(..state, mode: Picking(picker.new("", hints), rebuild))
   #(state, [FocusOnInput])
 }
 
 fn insert_tag(state) {
   let buffer = active(state)
-  let action = transformation.tag(buffer.projection)
-  use rebuild <- try(action, state, "tag")
+  use rebuild <- try(buffer.tag(buffer), state, "tag")
   let hints = case buffer.target_type(buffer) {
-    Ok(t.Union(variants)) -> {
-      analysis.rows(variants)
-      |> listx.value_map(debug.mono)
-    }
+    Ok(t.Union(variants)) ->
+      listx.value_map(analysis.rows(variants), debug.mono)
     _ -> []
   }
   let state = State(..state, mode: Picking(picker.new("", hints), rebuild))
@@ -378,13 +400,8 @@ fn copy(state) {
 
 fn paste(state) {
   let buffer = active(state)
-  case buffer.projection {
-    #(p.Exp(_expression), _) -> {
-      let state = State(..state, mode: ReadingFromClipboard)
-      #(state, [ReadFromClipboard])
-    }
-    _ -> fail(state, "paste")
-  }
+  use rebuild <- try(buffer.set_expression(buffer), state, "paste")
+  #(State(..state, mode: ReadingFromClipboard(rebuild:)), [ReadFromClipboard])
 }
 
 fn state_fail(state, action) {
@@ -396,14 +413,20 @@ fn fail(state, action) {
   #(state, [])
 }
 
+fn insert(state) {
+  let buffer = active(state)
+  use #(value, rebuild) <- try(buffer.insert(buffer), state, "insert")
+  #(State(..state, mode: Picking(picker.new(value, []), rebuild:)), [
+    FocusOnInput,
+  ])
+}
+
 // wrap in an on expression
 fn perform(state) {
   let buffer = active(state)
-  let action = transformation.perform(buffer.projection)
-  use rebuild <- try(action, state, "perform")
+  use rebuild <- try(buffer.perform(buffer), state, "perform")
   let hints =
-    browser.lookup()
-    |> list.map(fn(effect) {
+    list.map(browser.lookup(), fn(effect) {
       let #(key, #(types, _)) = effect
       #(key, snippet.render_effect(types))
     })
@@ -412,88 +435,74 @@ fn perform(state) {
 }
 
 fn insert_string(state) {
-  case transformation.string(active(state).projection) {
-    Ok(#(value, rebuild)) -> {
-      let state = State(..state, mode: EditingText(value:, rebuild:))
-      #(state, [])
-    }
-    Error(Nil) -> fail(state, "create text")
-  }
+  let action = buffer.insert_string(active(state))
+  use #(value, rebuild) <- try(action, state, "insert string")
+  #(State(..state, mode: EditingText(value:, rebuild:)), [FocusOnInput])
 }
 
 fn select_field(state) {
   let buffer = active(state)
+  use rebuild <- try(buffer.select_field(buffer), state, "select field")
   let hints = case buffer.target_type(buffer) {
     Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
     _ -> []
   }
-  // case buffer.projection {
-  //   #(p.Exp(inner), zoom) -> {
-  //     let rebuild = fn(label) { #(p.Exp(e.Select(inner, label)), zoom) }
-  //     #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
-  //   }
-  //   _ -> todo
-  // }
-
-  pick_on_expression(state, "select field", hints, fn(label, inner, zoom) {
-    #(p.Exp(e.Select(inner, label)), zoom)
-  })
-}
-
-fn insert_builtin(state) {
-  let hints = listx.value_map(infer.builtins(), snippet.render_poly)
-  pick_on_expression(state, "insert builtin", hints, fn(label, _inner, zoom) {
-    #(p.Exp(e.Builtin(label)), zoom)
-  })
-}
-
-fn pick_on_expression(state, name, hints, f) {
-  case active(state).projection {
-    #(p.Exp(inner), zoom) -> {
-      let rebuild = fn(label) { f(label, inner, zoom) }
-      #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
-    }
-    _ -> fail(state, name)
-  }
-}
-
-fn choose_release(state) {
-  let state = State(..state, mode: ChoosingPackage)
-  #(state, [FocusOnInput])
-}
-
-fn user_chose_package(state, release) {
-  let State(mode:, ..) = state
-  case mode {
-    ChoosingPackage -> {
-      let analysis.Release(package:, version:, fragment:) = release
-      let release = e.Release(package:, release: version, identifer: fragment)
-      let #(state, actions) = set_expression(state, release)
-      #(state, [FocusOnInput, ..actions])
-    }
-
-    _ -> #(state, [])
-  }
-}
-
-fn insert_reference(state) {
-  let buffer = active(state)
-  let action = action.insert_reference(buffer.projection)
-  use #(current, rebuild) <- try(action, state, "insert reference")
-  let mode = Picking(picker: picker.new(current, []), rebuild:)
+  let mode = Picking(picker: picker.new("", hints), rebuild:)
   #(State(..state, mode:), [FocusOnInput])
 }
 
+fn insert_builtin(state) {
+  let action = buffer.insert_builtin(active(state))
+  use rebuild <- try(action, state, "insert builtin")
+  let hints = listx.value_map(infer.builtins(), snippet.render_poly)
+  let mode = Picking(picker: picker.new("", hints), rebuild:)
+  #(State(..state, mode:), [FocusOnInput])
+}
+
+fn choose_module(state) {
+  let buffer = active(state)
+  use rebuild <- try(buffer.insert_release(buffer), state, "insert release")
+  let hints =
+    list.map(dict.to_list(state.modules), fn(module) {
+      let #(#(name, _ext), buffer) = module
+      #(name, snippet.render_poly(infer.poly_type(buffer.analysis)))
+    })
+
+  let picker = picker.new("", hints)
+  let state = State(..state, mode: ChoosingModule(picker:, rebuild:))
+  #(state, [FocusOnInput])
+}
+
+fn choose_release(state) {
+  let buffer = active(state)
+  use rebuild <- try(buffer.insert_release(buffer), state, "insert release")
+  let hints =
+    list.map(package_choice(state), fn(release) {
+      let analysis.Release(package:, version:, ..) = release
+      #(package, int.to_string(version))
+    })
+
+  let picker = picker.new("", hints)
+  let state = State(..state, mode: ChoosingPackage(picker:, rebuild:))
+  #(state, [FocusOnInput])
+}
+
 fn map_buffer(state, name, f) {
-  case f(active(state), ctx(state)) {
+  case f(active(state)) {
     Ok(buffer) -> replace_buffer(state, buffer)
     Error(Nil) -> fail(state, name)
   }
 }
 
-fn insert_integer(state) {
+fn call_function(state) {
   let buffer = active(state)
-  let action = transformation.integer(buffer.projection)
+  use rebuild <- try(buffer.call_many(buffer), state, "call function")
+  let arity = buffer.target_arity(buffer) |> result.unwrap(1)
+  replace_buffer(state, rebuild(arity, _))
+}
+
+fn insert_integer(state) {
+  let action = buffer.insert_integer(active(state))
   use #(value, rebuild) <- try(action, state, "insert integer")
   #(State(..state, mode: EditingInteger(value:, rebuild:)), [FocusOnInput])
 }
@@ -529,14 +538,10 @@ fn insert_case(state) {
 
 fn insert_variable(state) {
   let buffer = active(state)
+  use rebuild <- try(buffer.insert_variable(buffer), state, "insert variable")
   let scope = buffer.target_scope(buffer) |> result.unwrap([])
   let hints = listx.value_map(scope, snippet.render_poly)
-  case transformation.variable(buffer.projection) {
-    Ok(rebuild) -> {
-      #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
-    }
-    Error(Nil) -> fail(state, "insert variable")
-  }
+  #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
 }
 
 fn try(result, state, message, then) {
@@ -586,8 +591,12 @@ fn run(return, occured, state: State) {
         break.UnhandledEffect("Open", input) ->
           case cast.as_string(input) {
             Ok(filename) -> {
-              let return = block.resume(value.Record(dict.new()), env, k)
-              let state = State(..state, focused: Module(filename))
+              let reply = case string.contains(filename, ".") {
+                True -> value.error(value.String("invalid module name"))
+                False -> value.ok(value.Record(dict.new()))
+              }
+              let return = block.resume(reply, env, k)
+              let state = State(..state, focused: Module(#(filename, EygJson)))
               // let occured = [#()]
               run(return, occured, state)
             }
@@ -601,16 +610,23 @@ fn run(return, occured, state: State) {
                 Ok(effect) ->
                   case effect {
                     browser.ReadFile(file:) -> {
-                      let reply = case dict.get(state.modules, file) {
-                        Ok(buffer) ->
-                          value.ok(
-                            value.Binary(
-                              dag_json.to_block(
-                                e.to_annotated(p.rebuild(buffer.projection), []),
-                              ),
-                            ),
-                          )
-                        Error(_) -> value.error(value.String("No file"))
+                      let reply = case string.split_once(file, ".eyg.json") {
+                        Ok(#(name, "")) ->
+                          case dict.get(state.modules, #(name, EygJson)) {
+                            Ok(buffer) ->
+                              value.ok(
+                                value.Binary(
+                                  dag_json.to_block(
+                                    e.to_annotated(
+                                      p.rebuild(buffer.projection),
+                                      [],
+                                    ),
+                                  ),
+                                ),
+                              )
+                            Error(_) -> value.error(value.String("No file"))
+                          }
+                        _ -> value.error(value.String("No file"))
                       }
 
                       run(block.resume(reply, env, k), occured, state)
@@ -642,10 +658,10 @@ fn run(return, occured, state: State) {
         break.UndefinedRelease(package:, release: version, cid:) ->
           case package, version {
             "./" <> name, 0 ->
-              case dict.get(state.modules, name <> ".eyg.json") {
+              case dict.get(state.modules, #(name, EygJson)) {
                 Ok(buffer) -> {
                   let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  echo buffer.cid(buffer) == cid
+                  // echo buffer.cid(buffer) == cid
                   // evaluate is for shell and expects a block and has effects
                   // evaluate(source,[])
                   let source = source |> tree.clear_annotation()
@@ -680,10 +696,6 @@ fn runner_stoped(state, occured, debug) {
   #(State(..state, mode: RunningShell(occured:, awaiting: None, debug:)), [])
 }
 
-fn search_vacant(state) {
-  nav(state, snippet.go_to_next_vacant, "Jump to vacant")
-}
-
 fn input_message(state, message) {
   let State(mode:, ..) = state
   case mode, message {
@@ -694,7 +706,9 @@ fn input_message(state, message) {
           let state = State(..state, mode:)
           #(state, [])
         }
-        input.Confirmed(value) -> update_projection(state, rebuild(value))
+        input.Confirmed(value) ->
+          State(..state, mode: Editing)
+          |> replace_buffer(rebuild(value, _))
         input.Cancelled -> {
           let state = State(..state, mode: Editing)
           #(state, [])
@@ -707,12 +721,15 @@ fn input_message(state, message) {
           let state = State(..state, mode:)
           #(state, [])
         }
-        input.Confirmed(value) -> update_projection(state, rebuild(value))
+        input.Confirmed(value) ->
+          State(..state, mode: Editing)
+          |> replace_buffer(rebuild(value, _))
         input.Cancelled -> {
           let state = State(..state, mode: Editing)
           #(state, [])
         }
       }
+
     _, _ -> #(state, [])
   }
 }
@@ -720,12 +737,13 @@ fn input_message(state, message) {
 fn clipboard_read_complete(state, return) {
   let State(mode:, ..) = state
   case mode {
-    ReadingFromClipboard ->
+    ReadingFromClipboard(rebuild) ->
       case return {
         Ok(text) ->
           case dag_json.from_block(bit_array.from_string(text)) {
             Ok(expression) ->
-              set_expression(state, e.from_annotated(expression))
+              State(..state, mode: Editing)
+              |> replace_buffer(rebuild(e.from_annotated(expression), _))
 
             Error(_) -> fail(state, "paste")
           }
@@ -771,15 +789,43 @@ fn effect_implementation_completed(state, reference, reply) {
 fn picker_message(state, message) {
   let State(mode:, ..) = state
   case mode {
-    Picking(picker: _, rebuild:) ->
+    Picking(rebuild:, ..) ->
       case message {
         picker.Updated(picker:) -> #(
           State(..state, mode: Picking(picker:, rebuild:)),
           [],
         )
         picker.Decided(label) -> {
-          let new = rebuild(label)
-          update_projection(state, new)
+          State(..state, mode: Editing)
+          |> replace_buffer(rebuild(label, _))
+        }
+        picker.Dismissed -> #(State(..state, mode: Editing), [])
+      }
+    ChoosingPackage(rebuild:, ..) ->
+      case message {
+        picker.Updated(picker:) -> #(
+          State(..state, mode: ChoosingPackage(picker:, rebuild:)),
+          [],
+        )
+        picker.Decided(label) -> {
+          case dict.get(state.sync.cache.packages, label) {
+            Ok(cache.Release(package_id:, version:, cid:, ..)) ->
+              State(..state, mode: Editing)
+              |> replace_buffer(rebuild(#(package_id, version, cid), _))
+            Error(Nil) -> todo
+          }
+        }
+        picker.Dismissed -> #(State(..state, mode: Editing), [])
+      }
+    ChoosingModule(rebuild:, ..) ->
+      case message {
+        picker.Updated(picker:) -> #(
+          State(..state, mode: ChoosingModule(picker:, rebuild:)),
+          [],
+        )
+        picker.Decided(label) -> {
+          State(..state, mode: Editing)
+          |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }

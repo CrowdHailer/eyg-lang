@@ -330,20 +330,7 @@ pub fn insert_named_reference(projection) {
   }
 }
 
-pub fn insert_reference(projection) {
-  case projection {
-    #(p.Exp(exp), zoom) -> {
-      let current = case exp {
-        e.Reference(id) -> id
-        _ -> ""
-      }
-      Ok(#(current, fn(id) { #(p.Exp(e.Reference(id)), zoom) }))
-    }
-    _ -> Error(Nil)
-  }
-}
-
-pub fn extend_before(source, _context) {
+pub fn extend_before(source) {
   case source {
     #(p.Exp(item), [p.ListItem(pre, post, tail), ..rest]) -> {
       let zoom = [p.ListItem(pre, [item, ..post], tail), ..rest]
@@ -400,7 +387,7 @@ fn extend_pattern_before(pattern) {
   }
 }
 
-pub fn extend_after(source, _context) {
+pub fn extend_after(source) {
   case source {
     #(p.Exp(item), [p.ListItem(pre, post, tail), ..rest]) -> {
       let zoom = [p.ListItem([item, ..pre], post, tail), ..rest]
