@@ -15,9 +15,17 @@ pub fn type_() {
   #(l, #(lift, lower))
 }
 
+pub fn cast(lift) {
+  cast.as_integer(lift)
+}
+
 fn impl(lift) {
-  use max <- result.try(cast.as_integer(lift))
+  use max <- result.try(cast(lift))
   Ok(v.Integer(do(max)))
+}
+
+pub fn run(max) {
+  promise.resolve(v.Integer(do(max)))
 }
 
 pub fn blocking(lift) {

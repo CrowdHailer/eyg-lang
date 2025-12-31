@@ -34,14 +34,22 @@ pub fn type_() {
   #(l, #(lift, lower()))
 }
 
-pub fn blocking(lift) {
-  use Nil <- result.map(cast.as_unit(lift, Nil))
+pub fn cast(input) {
+  cast.as_unit(input, Nil)
+}
+
+pub fn run() {
   promise.map(do(), result_to_eyg)
 }
 
+pub fn blocking(lift) {
+  use Nil <- result.map(cast(lift))
+  run()
+}
+
 pub fn preflight(lift) {
-  use Nil <- result.map(cast.as_unit(lift, Nil))
-  fn() { promise.map(do(), result_to_eyg) }
+  use Nil <- result.map(cast(lift))
+  fn() { run() }
 }
 
 pub fn handle(lift) {

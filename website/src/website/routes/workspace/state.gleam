@@ -3,7 +3,6 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
 import eyg/interpreter/break
-import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/state as istate
 import eyg/interpreter/value
@@ -11,6 +10,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
 import gleam/dict.{type Dict}
+import gleam/http/request
 import gleam/int
 import gleam/list
 import gleam/listx
@@ -18,6 +18,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set
 import gleam/string
+import gleam/uri
 import morph/analysis
 import morph/editable as e
 import morph/input
@@ -27,7 +28,6 @@ import website/components/readonly
 import website/components/shell
 import website/components/snippet
 import website/config
-import website/harness/browser
 import website/routes/workspace/buffer.{type Buffer}
 import website/routes/workspace/effects
 import website/sync/cache
@@ -429,8 +429,8 @@ fn perform(state) {
   let buffer = active(state)
   use rebuild <- try(buffer.perform(buffer), state, "perform")
   let hints =
-    list.map(browser.lookup(), fn(effect) {
-      let #(key, #(types, _)) = effect
+    list.map(effects.types(), fn(effect) {
+      let #(key, types) = effect
       #(key, snippet.render_effect(types))
     })
 
@@ -574,6 +574,15 @@ fn evaluate(editable, scope) {
 
 pub type Effect {
   Alert(String)
+  Copy(String)
+  Download(#(String, BitArray))
+  Fetch(request.Request(BitArray))
+  Follow(uri.Uri)
+  Geolocation
+  Now
+  Paste
+  Prompt(message: String)
+  Random(max: Int)
 }
 
 type EffectImplementation {
@@ -667,6 +676,14 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
 /// This must stay in the state module as it assumes that having access to the state object is it's concurrency model
 fn run_effect(effect, state: State) {
   case effect {
+    // effects.Abort()
+    effects.Alert(message) -> External(Alert(message))
+    effects.Copy(message) -> External(Copy(message))
+    effects.Download(file) -> External(Download(file))
+    effects.Fetch(request) -> External(Fetch(request))
+    effects.Follow(uri) -> External(Follow(uri))
+    effects.Geolocation -> External(Geolocation)
+    effects.Now -> External(Now)
     effects.Open(filename) -> {
       let reply = case string.contains(filename, ".") {
         True -> value.error(value.String("invalid module name"))
@@ -676,6 +693,9 @@ fn run_effect(effect, state: State) {
 
       Internal(state:, reply:)
     }
+    effects.Paste -> External(Paste)
+    effects.Prompt(message) -> External(Prompt(message))
+    effects.Random(max) -> External(Random(max))
     effects.ReadFile(file) -> {
       let reply = case string.split_once(file, ".eyg.json") {
         Ok(#(name, "")) ->
@@ -694,7 +714,6 @@ fn run_effect(effect, state: State) {
       }
       Internal(state:, reply:)
     }
-    effects.Alert(message) -> External(Alert(message))
   }
 }
 

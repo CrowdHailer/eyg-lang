@@ -17,20 +17,25 @@ pub fn type_() {
   #(l, #(lift, reply()))
 }
 
-fn cast(lift) {
+pub fn cast(lift) {
   use name <- try(cast.field("name", cast.as_string, lift))
   use content <- try(cast.field("content", cast.as_binary, lift))
   Ok(#(name, content))
 }
 
+pub fn run(input) {
+  let #(name, content) = input
+  promise.resolve(result_to_eyg(do(name, content)))
+}
+
 pub fn blocking(lift) {
-  use #(name, content) <- try(cast(lift))
-  Ok(promise.resolve(result_to_eyg(do(name, content))))
+  use input <- try(cast(lift))
+  Ok(run(input))
 }
 
 pub fn preflight(lift) {
-  use #(name, content) <- try(cast(lift))
-  Ok(fn() { promise.resolve(result_to_eyg(do(name, content))) })
+  use input <- try(cast(lift))
+  Ok(fn() { run(input) })
 }
 
 pub fn non_blocking(lift) {

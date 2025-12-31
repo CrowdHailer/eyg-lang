@@ -755,6 +755,29 @@ pub fn cancel_running_effect_test() {
   let assert state.RunningShell(awaiting: Some(2), ..) = state.mode
 }
 
+pub fn abort_effect_test() {
+  let state = no_packages()
+  let source = ir.call(ir.perform("Abort"), [ir.string("nope")])
+  let state = set_repl(state, source)
+
+  let #(state, actions) = press_key(state, "Enter")
+  assert actions == []
+  let assert state.RunningShell(awaiting: None, ..) = state.mode
+}
+
+// pub fn bad_abort_input_effect_test() {
+//   let state = no_packages()
+//   let source = ir.call(ir.perform("Abort"), [ir.unit()])
+//   let state = set_repl(state, source)
+
+//   let message = state.UserPressedCommandKey("Enter")
+//   let #(state, actions) = state.update(state, message)
+//   assert actions == []
+//   let assert state.RunningShell(debug:, ..) = state.mode
+//   let #(reason, _, _, _) = debug
+//   assert break.IncorrectTerm("String", value.Record(dict.new())) == reason
+// }
+
 // --------------- 4. block eval -------------------------
 
 pub fn shell_scope_test() {

@@ -12,6 +12,15 @@ import plinth/browser/document
 import plinth/browser/event
 import website/config
 import website/harness/browser/alert
+import website/harness/browser/copy
+import website/harness/browser/download
+import website/harness/browser/fetch
+import website/harness/browser/follow
+import website/harness/browser/geolocation
+import website/harness/browser/now
+import website/harness/browser/paste
+import website/harness/browser/prompt
+import website/harness/browser/random
 import website/routes/common
 import website/routes/home
 import website/routes/workspace/state
@@ -113,5 +122,14 @@ fn run(action) {
 fn run_effect(effect) {
   case effect {
     state.Alert(message) -> alert.run(message)
+    state.Copy(text) -> copy.run(text)
+    state.Download(file) -> download.run(file)
+    state.Fetch(request) -> fetch.run(request)
+    state.Follow(request) -> follow.run(request)
+    state.Geolocation -> geolocation.run()
+    state.Now -> now.run()
+    state.Paste -> paste.run()
+    state.Prompt(message) -> prompt.run(message)
+    state.Random(max) -> random.run(max)
   }
 }

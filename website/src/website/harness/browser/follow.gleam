@@ -104,14 +104,20 @@ pub fn type_() {
   #(l, #(lift(), lower()))
 }
 
+pub const cast = url_to_gleam
+
+pub fn run(url) {
+  promise.map(do(url), result_to_eyg)
+}
+
 pub fn blocking(lift) {
   use url <- result.map(url_to_gleam(lift))
-  promise.map(do(url), result_to_eyg)
+  run(url)
 }
 
 pub fn preflight(lift) {
   use url <- result.try(url_to_gleam(lift))
-  Ok(fn() { promise.map(do(url), result_to_eyg) })
+  Ok(fn() { run(url) })
 }
 
 fn do(url) {

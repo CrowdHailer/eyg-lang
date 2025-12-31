@@ -17,14 +17,20 @@ pub fn lower() {
   t.result(http.response(), t.String)
 }
 
+pub const cast = http.request_to_gleam
+
+pub fn run(request) {
+  promise.map(do(request), result_to_eyg)
+}
+
 pub fn blocking(lift) {
   use request <- result.map(http.request_to_gleam(lift))
-  promise.map(do(request), result_to_eyg)
+  run(request)
 }
 
 pub fn preflight(lift) {
   use request <- result.try(http.request_to_gleam(lift))
-  Ok(fn() { promise.map(do(request), result_to_eyg) })
+  Ok(fn() { run(request) })
 }
 
 pub fn handle(lift) {

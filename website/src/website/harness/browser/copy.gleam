@@ -17,14 +17,22 @@ pub fn type_() {
   #(l, #(lift, reply()))
 }
 
+pub fn cast(input) {
+  cast.as_string(input)
+}
+
+pub fn run(text) {
+  promise.map(do(text), result_to_eyg)
+}
+
 pub fn blocking(lift) {
-  use message <- result.try(cast.as_string(lift))
-  Ok(promise.map(do(message), result_to_eyg))
+  use text <- result.try(cast(lift))
+  Ok(run(text))
 }
 
 pub fn preflight(lift) {
-  use message <- result.try(cast.as_string(lift))
-  Ok(fn() { promise.map(do(message), result_to_eyg) })
+  use text <- result.try(cast(lift))
+  Ok(fn() { run(text) })
 }
 
 pub fn non_blocking(lift) {

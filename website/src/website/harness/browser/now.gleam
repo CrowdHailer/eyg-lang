@@ -15,8 +15,16 @@ pub fn type_() {
   #(l, #(lift, reply))
 }
 
+pub fn cast(input) {
+  cast.as_unit(input, Nil)
+}
+
+pub fn run() {
+  promise.resolve(v.String(do()))
+}
+
 fn impl(lift) {
-  use Nil <- result.try(cast.as_unit(lift, Nil))
+  use Nil <- result.try(cast(lift))
   Ok(v.String(do()))
 }
 

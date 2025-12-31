@@ -17,14 +17,22 @@ pub fn type_() {
   #(l, #(lift, reply()))
 }
 
+pub fn cast(lift) {
+  cast.as_unit(lift, Nil)
+}
+
+pub fn run() {
+  promise.map(do(), result_to_eyg)
+}
+
 pub fn blocking(lift) {
-  use Nil <- result.try(cast.as_unit(lift, Nil))
-  Ok(promise.map(do(), result_to_eyg))
+  use Nil <- result.try(cast(lift))
+  Ok(run())
 }
 
 pub fn preflight(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
-  Ok(fn() { promise.map(do(), result_to_eyg) })
+  Ok(fn() { run() })
 }
 
 pub fn non_blocking(lift) {

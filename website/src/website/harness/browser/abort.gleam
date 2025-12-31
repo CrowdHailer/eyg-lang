@@ -1,5 +1,6 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
+import eyg/interpreter/cast
 
 pub const l = "Abort"
 
@@ -9,6 +10,10 @@ pub const reply = t.Never
 
 pub fn type_() {
   #(l, #(lift, reply))
+}
+
+pub fn cast(input) {
+  cast.as_string(input)
 }
 
 pub fn blocking(lift) {

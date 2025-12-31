@@ -17,8 +17,16 @@ pub fn type_() {
   #(l, #(lift, reply()))
 }
 
+pub fn cast(lift) {
+  cast.as_string(lift)
+}
+
+pub fn run(message) {
+  promise.resolve(result_to_eyg(do(message)))
+}
+
 fn impl(lift) {
-  use message <- result.try(cast.as_string(lift))
+  use message <- result.try(cast(lift))
   Ok(result_to_eyg(do(message)))
 }
 
@@ -28,7 +36,7 @@ pub fn blocking(lift) {
 }
 
 pub fn preflight(lift) {
-  use message <- result.try(cast.as_string(lift))
+  use message <- result.try(cast(lift))
   Ok(fn() { promise.resolve(result_to_eyg(do(message))) })
 }
 
