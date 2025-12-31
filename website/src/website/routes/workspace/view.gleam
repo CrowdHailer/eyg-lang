@@ -1,3 +1,6 @@
+import eyg/analysis/inference/levels_j/contextual
+import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
@@ -9,6 +12,7 @@ import morph/projection
 import website/components/simple_debug
 import website/components/snippet
 import website/routes/editor
+import website/routes/workspace/buffer
 import website/routes/workspace/state
 
 pub fn render(state: state.State) {
@@ -71,17 +75,74 @@ pub fn render(state: state.State) {
               state.PreviousMessage,
               state.UserSelectedPrevious,
             ),
-            snippet.render_projection(state.repl.projection, []),
+            snippet.render_projection(
+              state.repl.projection,
+              contextual.all_errors(state.repl.analysis),
+            ),
+            h.div(
+              [
+                a.class("cover bg-red-300 px-2"),
+                a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+              ],
+              list.map(contextual.all_errors(state.repl.analysis), fn(error) {
+                let #(path, reason) = error
+                case path, reason {
+                  // Vacant node at root or end of block are ignored.
+                  [], error.Todo | [_], error.Todo -> element.none()
+                  _, _ ->
+                    h.div(
+                      [
+                        // event.on_click(
+                      //   snippet.UserClickedPath(path)
+                      //   |> shell.CurrentMessage,
+                      // ),
+                      ],
+                      [element.text(debug.reason(reason))],
+                    )
+                }
+              }),
+            ),
           ]
           state.Module(#(filepath, _) as with_ex) -> [
             h.text(filepath),
-            {
-              let projection = case dict.get(state.modules, with_ex) {
-                Ok(buffer) -> buffer.projection
-                Error(Nil) -> projection.all(editable.Vacant)
+            ..{
+              let buffer = case dict.get(state.modules, with_ex) {
+                Ok(buffer) -> buffer
+                Error(Nil) ->
+                  buffer.from_projection(
+                    projection.all(editable.Vacant),
+                    contextual.pure(),
+                  )
               }
-              snippet.render_projection(projection, [])
-            },
+              [
+                snippet.render_projection(
+                  buffer.projection,
+                  contextual.all_errors(buffer.analysis),
+                ),
+                h.div(
+                  [
+                    a.class("cover bg-red-300 px-2"),
+                    a.styles([
+                      #("max-height", "25vh"),
+                      #("overflow-y", "scroll"),
+                    ]),
+                  ],
+                  list.map(contextual.all_errors(buffer.analysis), fn(error) {
+                    let #(_path, reason) = error
+
+                    h.div(
+                      [
+                        // event.on_click(
+                      //   snippet.UserClickedPath(path)
+                      //   |> shell.CurrentMessage,
+                      // ),
+                      ],
+                      [element.text(debug.reason(reason))],
+                    )
+                  }),
+                ),
+              ]
+            }
           ]
         }),
       ],
