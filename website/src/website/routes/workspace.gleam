@@ -11,6 +11,7 @@ import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/event
 import website/config
+import website/harness/browser/alert
 import website/routes/common
 import website/routes/home
 import website/routes/workspace/state
@@ -97,8 +98,20 @@ fn run(action) {
         })
         Nil
       })
-    state.RunEffect(..) -> todo
+    state.RunEffect(reference, effect) ->
+      effect.from(fn(dispatch) {
+        promise.map(run_effect(effect), fn(result) {
+          dispatch(state.EffectImplementationCompleted(reference, result))
+        })
+        Nil
+      })
     state.SyncAction(action) ->
       client.lustre_run_single(action, state.SyncMessage)
+  }
+}
+
+fn run_effect(effect) {
+  case effect {
+    state.Alert(message) -> alert.run(message)
   }
 }

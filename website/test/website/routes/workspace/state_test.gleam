@@ -17,7 +17,6 @@ import morph/picker
 import morph/projection as p
 import website/components/shell
 import website/components/snippet
-import website/harness/browser
 import website/routes/helpers
 import website/routes/workspace/state
 import website/sync/client
@@ -460,6 +459,12 @@ pub fn simple_edit_in_module_test() {
   assert actions == []
   assert state.Module(#("user", state.EygJson)) == state.focused
   assert state.Editing == state.mode
+  assert #(p.Exp(e.Vacant), []) == state.repl.projection
+  let assert [shell.Executed(value:, effects:, ..)] = state.previous
+  assert Some(value.ok(value.unit())) == value
+  let assert [#("Open", #(lift, reply))] = effects
+  assert value.String("user") == lift
+  assert value.ok(value.unit()) == reply
 
   let #(state, actions) = press_key(state, "R")
   assert [] == actions
@@ -690,15 +695,16 @@ pub fn multiple_effect_test() {
   let message = state.UserPressedCommandKey("Enter")
 
   let #(state, actions) = state.update(state, message)
-  assert actions == [state.RunEffect(browser.Alert("great test!"))]
-  let assert state.RunningShell(..) = state.mode
+  assert actions == [state.RunEffect(1, state.Alert("great test!"))]
+  let assert state.RunningShell(awaiting:, ..) = state.mode
+  assert Some(1) == awaiting
 
-  let message = state.EffectImplementationCompleted(123, value.unit())
+  let message = state.EffectImplementationCompleted(1, value.unit())
   let #(state, actions) = state.update(state, message)
-  assert actions == [state.RunEffect(browser.Alert("Next test"))]
+  assert actions == [state.RunEffect(2, state.Alert("Next test"))]
   let assert state.RunningShell(..) = state.mode
 
-  let message = state.EffectImplementationCompleted(123, value.unit())
+  let message = state.EffectImplementationCompleted(2, value.unit())
   let #(state, actions) = state.update(state, message)
   assert [] == actions
   let assert state.Editing = state.mode
@@ -724,19 +730,29 @@ pub fn cancel_running_effect_test() {
   let state = set_repl(state, source)
 
   let #(state, actions) = press_key(state, "Enter")
-  assert actions == [state.RunEffect(browser.Alert("annoying"))]
-  let assert state.RunningShell(..) = state.mode
+  assert actions == [state.RunEffect(1, state.Alert("annoying"))]
+  let assert state.RunningShell(awaiting: Some(1), ..) = state.mode
 
   let #(state, actions) = press_key(state, "Escape")
   assert [] == actions
   let assert state.Editing = state.mode
   // TODO move to flip and show that a subsequent request doesn't race
 
-  let message = state.EffectImplementationCompleted(123, value.unit())
+  let message = state.EffectImplementationCompleted(1, value.unit())
   let #(state, actions) = state.update(state, message)
   assert [] == actions
   let assert state.Editing = state.mode
   assert [] == state.previous
+
+  let #(state, actions) = press_key(state, "Enter")
+  assert actions == [state.RunEffect(2, state.Alert("annoying"))]
+  let assert state.RunningShell(awaiting: Some(2), ..) = state.mode
+
+  // async effect returning after cancellation and restart will be ignored
+  let message = state.EffectImplementationCompleted(1, value.unit())
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert state.RunningShell(awaiting: Some(2), ..) = state.mode
 }
 
 // --------------- 4. block eval -------------------------

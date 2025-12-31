@@ -43,7 +43,7 @@ pub type Effect {
 pub fn lookup() {
   [
     // #(abort.l, #(#(abort.lift, abort.reply), abort.cast)),
-    #(alert.l, #(#(alert.lift, alert.reply), alert.cast_to(Alert))),
+    #(alert.l, #(#(alert.lift, alert.reply), alert.cast |> cast.map(Alert))),
     // #(copy.l, #(#(copy.lift, copy.reply()), copy.cast)),
     // #(download.l, #(#(download.lift, download.reply()), download.cast)),
     // #(flip.l, #(#(flip.lift, flip.reply()), flip.cast)),

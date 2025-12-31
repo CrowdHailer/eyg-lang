@@ -15,11 +15,8 @@ pub fn type_() {
   #(l, #(lift, reply))
 }
 
-pub fn cast_to(then) {
-  fn(lift) {
-    use message <- result.try(cast.as_string(lift))
-    Ok(then(message))
-  }
+pub fn cast(lift) {
+  cast.as_string(lift)
 }
 
 pub fn run(message) {
@@ -28,7 +25,7 @@ pub fn run(message) {
 }
 
 fn impl(lift) {
-  use message <- result.try(cast.as_string(lift))
+  use message <- result.try(cast(lift))
   let Nil = do(message)
   Ok(v.unit())
 }
@@ -39,7 +36,7 @@ pub fn blocking(lift) {
 }
 
 pub fn preflight(lift) {
-  use message <- result.try(cast.as_string(lift))
+  use message <- result.try(cast(lift))
   Ok(fn() {
     let Nil = do(message)
     promise.resolve(v.unit())

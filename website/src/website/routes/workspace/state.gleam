@@ -29,6 +29,7 @@ import website/components/snippet
 import website/config
 import website/harness/browser
 import website/routes/workspace/buffer.{type Buffer}
+import website/routes/workspace/effects
 import website/sync/cache
 import website/sync/client
 
@@ -37,6 +38,7 @@ pub type State {
     mode: Mode,
     user_error: Option(snippet.Failure),
     focused: Target,
+    counter: Int,
     previous: List(shell.ShellEntry),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
@@ -159,7 +161,7 @@ pub type Action {
   FocusOnInput
   WriteToClipboard(text: String)
   ReadFromClipboard
-  RunEffect(browser.Effect)
+  RunEffect(reference: Int, effect: Effect)
   SyncAction(client.Action)
 }
 
@@ -175,6 +177,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       mode: Editing,
       user_error: None,
       focused: Repl,
+      counter: 0,
       previous: [],
       scope:,
       repl: buffer.empty(typing_context(scope, modules, sync.cache)),
@@ -569,7 +572,16 @@ fn evaluate(editable, scope) {
   |> block.execute(scope)
 }
 
-fn run(return, occured, state: State) {
+pub type Effect {
+  Alert(String)
+}
+
+type EffectImplementation {
+  Internal(state: State, reply: istate.Value(Meta))
+  External(Effect)
+}
+
+fn run(return, occured, state: State) -> #(State, List(_)) {
   case return {
     Ok(#(value, scope)) -> {
       // Type is shell entry
@@ -588,66 +600,26 @@ fn run(return, occured, state: State) {
       let #(reason, meta, env, k) = debug
       case reason {
         // internal not part of browser
-        break.UnhandledEffect("Open", input) ->
-          case cast.as_string(input) {
-            Ok(filename) -> {
-              let reply = case string.contains(filename, ".") {
-                True -> value.error(value.String("invalid module name"))
-                False -> value.ok(value.Record(dict.new()))
+        break.UnhandledEffect(label, input) ->
+          case effects.cast(label, input) {
+            Ok(effect) -> {
+              case run_effect(effect, state) {
+                Internal(state:, reply:) -> {
+                  let return = block.resume(reply, env, k)
+                  let occured = [#(label, #(input, reply))]
+                  run(return, occured, state)
+                }
+                External(effect) -> {
+                  let counter = state.counter + 1
+                  let awaiting = Some(counter)
+                  let mode = RunningShell(occured:, awaiting:, debug:)
+                  let state = State(..state, counter:, mode:)
+                  #(state, [RunEffect(counter, effect)])
+                }
               }
-              let return = block.resume(reply, env, k)
-              let state = State(..state, focused: Module(#(filename, EygJson)))
-              // let occured = [#()]
-              run(return, occured, state)
             }
             Error(reason) ->
               runner_stoped(state, occured, #(reason, meta, env, k))
-          }
-        break.UnhandledEffect(label, input) ->
-          case list.key_find(browser.lookup(), label) {
-            Ok(#(#(_, _), cast)) ->
-              case cast(input) {
-                Ok(effect) ->
-                  case effect {
-                    browser.ReadFile(file:) -> {
-                      let reply = case string.split_once(file, ".eyg.json") {
-                        Ok(#(name, "")) ->
-                          case dict.get(state.modules, #(name, EygJson)) {
-                            Ok(buffer) ->
-                              value.ok(
-                                value.Binary(
-                                  dag_json.to_block(
-                                    e.to_annotated(
-                                      p.rebuild(buffer.projection),
-                                      [],
-                                    ),
-                                  ),
-                                ),
-                              )
-                            Error(_) -> value.error(value.String("No file"))
-                          }
-                        _ -> value.error(value.String("No file"))
-                      }
-
-                      run(block.resume(reply, env, k), occured, state)
-                    }
-                    _ -> {
-                      let state =
-                        State(
-                          ..state,
-                          mode: RunningShell(
-                            occured:,
-                            awaiting: Some(-11),
-                            debug:,
-                          ),
-                        )
-                      #(state, [RunEffect(effect)])
-                    }
-                  }
-                Error(reason) ->
-                  runner_stoped(state, occured, #(reason, meta, env, k))
-              }
-            Error(Nil) -> runner_stoped(state, occured, debug)
           }
         break.UndefinedReference(cid) ->
           case dict.get(state.sync.cache.fragments, cid) {
@@ -689,6 +661,40 @@ fn run(return, occured, state: State) {
         _ -> runner_stoped(state, occured, debug)
       }
     }
+  }
+}
+
+/// This must stay in the state module as it assumes that having access to the state object is it's concurrency model
+fn run_effect(effect, state: State) {
+  case effect {
+    effects.Open(filename) -> {
+      let reply = case string.contains(filename, ".") {
+        True -> value.error(value.String("invalid module name"))
+        False -> value.ok(value.Record(dict.new()))
+      }
+      let state = State(..state, focused: Module(#(filename, EygJson)))
+
+      Internal(state:, reply:)
+    }
+    effects.ReadFile(file) -> {
+      let reply = case string.split_once(file, ".eyg.json") {
+        Ok(#(name, "")) ->
+          case dict.get(state.modules, #(name, EygJson)) {
+            Ok(buffer) ->
+              value.ok(
+                value.Binary(
+                  dag_json.to_block(
+                    e.to_annotated(p.rebuild(buffer.projection), []),
+                  ),
+                ),
+              )
+            Error(_) -> value.error(value.String("No file"))
+          }
+        _ -> value.error(value.String("No file"))
+      }
+      Internal(state:, reply:)
+    }
+    effects.Alert(message) -> External(Alert(message))
   }
 }
 
@@ -776,9 +782,9 @@ fn effect_implementation_completed(state, reference, reply) {
       occured:,
       awaiting:,
       debug: #(break.UnhandledEffect(label, lift), _meta, env, k),
-    ) -> {
-      // TODO check reference and awaiting match
-
+    )
+      if awaiting == Some(reference)
+    -> {
       let occured = [#(label, #(lift, reply)), ..occured]
       run(block.resume(reply, env, k), occured, state)
     }

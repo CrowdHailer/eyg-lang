@@ -5,6 +5,10 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result.{try}
 
+pub fn map(f, then) {
+  fn(raw) { result.map(f(raw), then) }
+}
+
 pub fn any(term) {
   Ok(term)
 }

@@ -14,8 +14,12 @@ pub fn lower() {
   t.result(t.Binary, t.String)
 }
 
+pub fn cast(input) {
+  cast.as_string(input)
+}
+
 pub fn blocking(name) {
-  use name <- result.map(cast.as_string(name))
+  use name <- result.map(cast(name))
   promise.map(do(name), result_to_eyg)
 }
 
