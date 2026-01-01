@@ -280,26 +280,6 @@ pub fn perform(source, analysis) {
   }
 }
 
-pub fn handle(source, _context) {
-  // TODO should be the type from the function in the arg
-  let effects = []
-  let #(focus, zoom) = source
-  case focus {
-    p.Exp(lift) -> {
-      let rebuild = fn(label) {
-        let zoom = [
-          p.Body([e.Bind("value"), e.Bind("resume")]),
-          p.CallArg(e.Deep(label), [], [e.Function([e.Bind("_")], e.Vacant)]),
-          ..zoom
-        ]
-        #(p.Exp(lift), zoom)
-      }
-      Ok(#("", effects, rebuild))
-    }
-    _ -> Error(Nil)
-  }
-}
-
 pub fn insert_builtin(projection, builtins) {
   case projection {
     #(p.Exp(exp), zoom) -> {

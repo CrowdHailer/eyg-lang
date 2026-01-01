@@ -550,6 +550,24 @@ pub fn perform(zip) {
   }
 }
 
+pub fn handle(source) {
+  let #(focus, zoom) = source
+  case focus {
+    p.Exp(lift) -> {
+      let rebuild = fn(label) {
+        let zoom = [
+          p.Body([e.Bind("value"), e.Bind("resume")]),
+          p.CallArg(e.Deep(label), [], [e.Function([e.Bind("_")], e.Vacant)]),
+          ..zoom
+        ]
+        #(p.Exp(lift), zoom)
+      }
+      Ok(rebuild)
+    }
+    _ -> Error(Nil)
+  }
+}
+
 pub fn builtin(zip) {
   let #(focus, zoom) = zip
   case focus {

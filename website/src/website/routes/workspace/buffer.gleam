@@ -155,7 +155,16 @@ pub fn next_vacant(buffer) {
   navigate(buffer, snippet.go_to_next_vacant)
 }
 
+pub fn toggle_open(buffer) {
+  navigate(buffer, navigation.toggle_open)
+}
+
 // ------------------------- Transformations
+
+pub type Continue {
+  Done(fn(infer.Context) -> Buffer)
+  WithString(fn(String, infer.Context) -> Buffer)
+}
 
 pub fn set_expression(buffer: Buffer) {
   case buffer.projection {
@@ -176,18 +185,26 @@ pub fn insert(buffer: Buffer) {
 }
 
 pub fn insert_before(buffer: Buffer) {
-  use new <- result.try(action.extend_before(buffer.projection))
+  use new <- result.map(action.extend_before(buffer.projection))
   case new {
-    action.Updated(new) -> Ok(fn(context) { update_code(buffer, new, context) })
-    _ -> Error(Nil)
+    action.Updated(new) ->
+      Done(fn(context) { update_code(buffer, new, context) })
+    action.Choose(rebuild:, ..) ->
+      WithString(fn(label, context) {
+        update_code(buffer, rebuild(label), context)
+      })
   }
 }
 
 pub fn insert_after(buffer: Buffer) {
-  use new <- result.try(action.extend_after(buffer.projection))
+  use new <- result.map(action.extend_after(buffer.projection))
   case new {
-    action.Updated(new) -> Ok(fn(context) { update_code(buffer, new, context) })
-    _ -> Error(Nil)
+    action.Updated(new) ->
+      Done(fn(context) { update_code(buffer, new, context) })
+    action.Choose(rebuild:, ..) ->
+      WithString(fn(label, context) {
+        update_code(buffer, rebuild(label), context)
+      })
   }
 }
 
@@ -211,9 +228,19 @@ pub fn insert_function(buffer: Buffer) {
   fn(new, context) { update_code(buffer, rebuild(new), context) }
 }
 
+pub fn call_once(buffer: Buffer) {
+  use new <- result.map(t.call(buffer.projection))
+  fn(context) { update_code(buffer, new, context) }
+}
+
 pub fn call_many(buffer: Buffer) {
   use rebuild <- result.map(t.call_many(buffer.projection))
   fn(count, context) { update_code(buffer, rebuild(count), context) }
+}
+
+pub fn call_with(buffer: Buffer) {
+  use new <- result.map(t.call_with(buffer.projection))
+  fn(context) { update_code(buffer, new, context) }
 }
 
 pub fn insert_integer(buffer: Buffer) {
@@ -278,6 +305,11 @@ pub fn tag(buffer: Buffer) {
 
 pub fn perform(buffer: Buffer) {
   use rebuild <- result.map(t.perform(buffer.projection))
+  fn(new, context) { update_code(buffer, rebuild(new), context) }
+}
+
+pub fn insert_handle(buffer: Buffer) {
+  use rebuild <- result.map(t.handle(buffer.projection))
   fn(new, context) { update_code(buffer, rebuild(new), context) }
 }
 

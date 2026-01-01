@@ -1,5 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/value
 import eyg/ir/cid
@@ -209,7 +210,7 @@ pub fn insert_function_test() {
   let #(state, actions) = press_key(state, "f")
   assert [state.FocusOnInput] == actions
   let assert state.Picking(picker:, ..) = state.mode
-  // echo picker
+  assert picker.Typing("", []) == picker
 }
 
 pub fn call_function_chooses_argument_count_test() {
@@ -218,9 +219,27 @@ pub fn call_function_chooses_argument_count_test() {
   let state = set_repl(state, source)
   let #(state, actions) = press_key(state, "c")
   assert [] == actions
-  assert #(p.Exp(e.Vacant), [
-      p.CallArg(func: e.Builtin("equal"), pre: [], post: [e.Vacant]),
-    ])
+  assert #(p.Exp(e.Vacant), [p.CallArg(e.Builtin("equal"), [], [e.Vacant])])
+    == state.repl.projection
+}
+
+pub fn call_single_argument_test() {
+  let state = no_packages()
+  let source = ir.builtin("equal")
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "C")
+  assert [] == actions
+  assert #(p.Exp(e.Vacant), [p.CallArg(e.Builtin("equal"), [], [])])
+    == state.repl.projection
+}
+
+pub fn call_with_argument_test() {
+  let state = no_packages()
+  let source = ir.integer(44)
+  let state = set_repl(state, source)
+  let #(state, actions) = press_key(state, "w")
+  assert [] == actions
+  assert #(p.Exp(e.Vacant), [p.CallFn([e.Integer(44)])])
     == state.repl.projection
 }
 
@@ -655,6 +674,8 @@ pub fn unknown_effect_test() {
   let state = no_packages()
   let source = ir.call(ir.perform("Launch"), [ir.string("All the missiles")])
   let state = set_repl(state, source)
+  assert [#([], error.MissingRow("Launch"))]
+    == contextual.all_errors(state.repl.analysis)
 
   let message = state.UserPressedCommandKey("Enter")
   let #(state, actions) = state.update(state, message)
@@ -673,6 +694,8 @@ pub fn bad_input_effect_test() {
   let state = no_packages()
   let source = ir.call(ir.perform("Alert"), [ir.unit()])
   let state = set_repl(state, source)
+  assert [#([], error.TypeMismatch(t.Record(t.Empty), t.String))]
+    == contextual.all_errors(state.repl.analysis)
 
   let message = state.UserPressedCommandKey("Enter")
   let #(state, actions) = state.update(state, message)
@@ -691,6 +714,7 @@ pub fn multiple_effect_test() {
       ir.call(ir.perform("Alert"), [ir.string("Next test")]),
     )
   let state = set_repl(state, source)
+  assert [] == contextual.all_errors(state.repl.analysis)
 
   let message = state.UserPressedCommandKey("Enter")
 
@@ -759,24 +783,37 @@ pub fn abort_effect_test() {
   let state = no_packages()
   let source = ir.call(ir.perform("Abort"), [ir.string("nope")])
   let state = set_repl(state, source)
+  assert [] == contextual.all_errors(state.repl.analysis)
 
   let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   let assert state.RunningShell(awaiting: None, ..) = state.mode
 }
 
-// pub fn bad_abort_input_effect_test() {
-//   let state = no_packages()
-//   let source = ir.call(ir.perform("Abort"), [ir.unit()])
-//   let state = set_repl(state, source)
+pub fn bad_abort_input_effect_test() {
+  let state = no_packages()
+  let source = ir.call(ir.perform("Abort"), [ir.unit()])
+  let state = set_repl(state, source)
 
-//   let message = state.UserPressedCommandKey("Enter")
-//   let #(state, actions) = state.update(state, message)
-//   assert actions == []
-//   let assert state.RunningShell(debug:, ..) = state.mode
-//   let #(reason, _, _, _) = debug
-//   assert break.IncorrectTerm("String", value.Record(dict.new())) == reason
-// }
+  let message = state.UserPressedCommandKey("Enter")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  let assert state.RunningShell(debug:, ..) = state.mode
+  let #(reason, _, _, _) = debug
+  assert break.IncorrectTerm("String", value.Record(dict.new())) == reason
+}
+
+pub fn cant_have_effects_in_modules_test() {
+  let state = no_packages()
+  let source = ir.call(ir.perform("Alert"), [ir.string("nope")])
+  let name = #("a", state.EygJson)
+  let state = set_module(state, name, source)
+  let state = state.State(..state, focused: state.Module(name))
+
+  let assert Ok(buffer) = dict.get(state.modules, name)
+  assert [#([], error.MissingRow("Alert"))]
+    == contextual.all_errors(buffer.analysis)
+}
 
 // --------------- 4. block eval -------------------------
 
@@ -946,7 +983,7 @@ pub fn read_source_file_test() {
   assert dag_json.to_block(lib) == bytes
 }
 
-// --------------- 1. Relative references -------------------------
+// --------------- 7. Relative references -------------------------
 
 // track the references in the buffer
 pub fn read_reference_from_repl_test() {

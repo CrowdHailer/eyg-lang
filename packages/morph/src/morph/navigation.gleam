@@ -759,11 +759,14 @@ fn decrease_assign(detail) {
 
 pub fn toggle_open(proj) {
   let #(focus, zoom) = proj
-  let focus = case focus {
-    p.Exp(e.Block(assigns, then, open)) -> p.Exp(e.Block(assigns, then, !open))
+  case focus {
+    p.Exp(e.Block(assigns, then, open)) ->
+      Ok(#(p.Exp(e.Block(assigns, then, !open)), zoom))
     p.Assign(label, e.Block(assigns, inner, open), pre, post, final) ->
-      p.Assign(label, e.Block(assigns, inner, !open), pre, post, final)
-    _ -> focus
+      Ok(#(
+        p.Assign(label, e.Block(assigns, inner, !open), pre, post, final),
+        zoom,
+      ))
+    _ -> Error(Nil)
   }
-  #(focus, zoom)
 }

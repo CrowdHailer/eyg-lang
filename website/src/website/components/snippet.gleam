@@ -570,8 +570,10 @@ fn do_search_vacant(proj, initial) {
 fn toggle_open(state) {
   let Snippet(projection: proj, ..) = state
 
-  let proj = navigation.toggle_open(proj)
-  navigate_source(proj, state)
+  case navigation.toggle_open(proj) {
+    Ok(proj) -> navigate_source(proj, state)
+    Error(Nil) -> action_failed(state, "open/close")
+  }
 }
 
 fn call_with(state) {
@@ -756,12 +758,11 @@ fn select_field(state) {
 }
 
 fn insert_handle(state) {
-  let Snippet(projection: proj, analysis:, ..) = state
+  let Snippet(projection: proj, ..) = state
 
-  case action.handle(proj, analysis) {
-    Ok(#(filter, hints, rebuild)) -> {
-      let hints = listx.value_map(hints, render_effect)
-      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+  case transformation.handle(proj) {
+    Ok(rebuild) -> {
+      change_mode(state, Pick(picker.new("", []), rebuild))
     }
     Error(Nil) -> action_failed(state, "perform")
   }

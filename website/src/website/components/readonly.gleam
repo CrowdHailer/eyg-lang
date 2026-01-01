@@ -135,8 +135,10 @@ pub fn update(state, message) {
 fn toggle_open(state) {
   let Readonly(projection: projection, ..) = state
 
-  let projection = navigation.toggle_open(projection)
-  #(Readonly(..state, projection: projection), Nothing)
+  case navigation.toggle_open(projection) {
+    Ok(projection) -> #(Readonly(..state, projection: projection), Nothing)
+    Error(Nil) -> #(state, Fail("open/close"))
+  }
 }
 
 fn increase(state) {

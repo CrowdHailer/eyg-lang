@@ -7,10 +7,10 @@ import eyg/interpreter/cast
 import gleam/http/request
 import gleam/list
 import gleam/uri
-
-// import website/harness/browser/abort
+import website/harness/browser/abort
 import website/harness/browser/alert
 import website/harness/browser/copy
+import website/harness/browser/decode_json
 import website/harness/browser/download
 import website/harness/browser/fetch
 import website/harness/browser/file/read as read_file
@@ -22,10 +22,11 @@ import website/harness/browser/prompt
 import website/harness/browser/random
 
 pub type Effect {
-  // Abort(String)
+  Abort(String)
   Alert(String)
   Copy(String)
   Open(String)
+  DecodeJson(BitArray)
   Download(#(String, BitArray))
   Fetch(request.Request(BitArray))
   ReadFile(file: String)
@@ -54,9 +55,13 @@ pub fn types() {
 fn lookup() {
   [
     // don't implement abort it stays as error in debug state
-    // #(abort.l, #(#(abort.lift, abort.reply), abort.cast |> cast.map(Abort))),
+    #(abort.l, #(#(abort.lift, abort.reply), abort.cast |> cast.map(Abort))),
     #(alert.l, #(#(alert.lift, alert.reply), alert.cast |> cast.map(Alert))),
     #(copy.l, #(#(copy.lift, copy.reply()), copy.cast |> cast.map(Copy))),
+    #(decode_json.l, #(
+      #(decode_json.lift, decode_json.reply()),
+      decode_json.cast |> cast.map(DecodeJson),
+    )),
     #(download.l, #(
       #(download.lift, download.reply()),
       download.cast |> cast.map(Download),

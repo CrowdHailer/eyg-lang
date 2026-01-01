@@ -43,6 +43,13 @@ pub fn with_effect(context, label, lift, lower) {
   Context(..context, eff:)
 }
 
+pub fn with_effects(context: Context, effects) {
+  list.fold_right(effects, context, fn(context, effect) {
+    let #(label, #(lift, lower)) = effect
+    with_effect(context, label, lift, lower)
+  })
+}
+
 pub type Analysis(meta) {
   Analysis(
     bindings: Dict(Int, binding.Binding),

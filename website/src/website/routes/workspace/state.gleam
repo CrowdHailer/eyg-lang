@@ -28,6 +28,7 @@ import website/components/readonly
 import website/components/shell
 import website/components/snippet
 import website/config
+import website/harness/browser/decode_json
 import website/routes/workspace/buffer.{type Buffer}
 import website/routes/workspace/effects
 import website/sync/cache
@@ -93,12 +94,25 @@ pub type Meta =
 
 /// helper to make a context from a state, when a state exists
 /// In not all cases does this exist
-fn ctx(state) {
+/// Cant take ctx from state as sync messages or other might not be focused
+fn ctx(state, target) {
   let State(modules:, scope:, sync:, ..) = state
-  typing_context(scope, modules, sync.cache)
+  case target {
+    Repl -> repl_context(scope, modules, sync.cache)
+    Module(_) -> module_context(scope, modules, sync.cache)
+  }
 }
 
-fn typing_context(
+fn repl_context(
+  scope: List(#(String, istate.Value(Meta))),
+  modules: Dict(Filename, Buffer),
+  cache: cache.Cache,
+) {
+  module_context(scope, modules, cache)
+  |> infer.with_effects(effects.types())
+}
+
+fn module_context(
   scope: List(#(String, istate.Value(Meta))),
   modules: Dict(Filename, Buffer),
   cache: cache.Cache,
@@ -137,7 +151,7 @@ fn update_projection(state, new) {
 
 /// replaces buffer in the tree
 fn replace_buffer(state: State, gen) {
-  let buffer = gen(ctx(state))
+  let buffer = gen(ctx(state, state.focused))
   let state = set_buffer(state, buffer)
   let cids = infer.missing_references(buffer.analysis)
   let #(sync, actions) = client.fetch_fragments(state.sync, cids)
@@ -180,7 +194,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       counter: 0,
       previous: [],
       scope:,
-      repl: buffer.empty(typing_context(scope, modules, sync.cache)),
+      repl: buffer.empty(repl_context(scope, modules, sync.cache)),
       modules:,
     )
   #(state, actions)
@@ -193,7 +207,7 @@ fn active(state) {
     Module(path) ->
       case dict.get(modules, path) {
         Ok(buffer) -> buffer
-        _ -> buffer.empty(ctx(state))
+        _ -> buffer.empty(ctx(state, focused))
       }
   }
 }
@@ -260,6 +274,7 @@ fn user_pressed_command_key(state, key) {
     "ArrowUp" -> move_up(state)
     "ArrowDown" -> navigate(state, "move below", buffer.down)
     "q" -> choose_module(state)
+    "w" -> transform(state, "call", buffer.call_with)
     "E" -> pick_any(state, "assign", buffer.assign_before)
     "e" -> pick_any(state, "assign", buffer.assign)
     "R" -> transform(state, "create record", buffer.create_empty_record)
@@ -276,9 +291,9 @@ fn user_pressed_command_key(state, key) {
     "d" -> transform(state, "delete", buffer.delete)
     "f" -> pick_any(state, "insert function", buffer.insert_function)
     "g" -> select_field(state)
-    // "h" -> 
+    "h" -> insert_handle(state)
     "j" -> insert_builtin(state)
-    // "k"
+    "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> transform(state, "create list", buffer.create_empty_list)
     "l" -> transform(state, "create list", buffer.create_list)
     "@" -> choose_release(state)
@@ -288,13 +303,13 @@ fn user_pressed_command_key(state, key) {
     "z" -> map_buffer(state, "undo", buffer.undo)
     "x" -> transform(state, "spread", buffer.spread)
     "c" -> call_function(state)
-    // "C" insert one
+    "C" -> transform(state, "call", buffer.call_once)
     "b" -> transform(state, "create list", buffer.insert_binary)
     "n" -> insert_integer(state)
     "m" -> insert_case(state)
     "v" -> insert_variable(state)
-    "<" -> transform(state, "insert before", buffer.insert_before)
-    ">" -> transform(state, "insert after", buffer.insert_after)
+    "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
+    ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
     "Enter" -> confirm(state)
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
@@ -315,6 +330,17 @@ fn transform(state, name, func) {
   }
 }
 
+fn transform_or_pick(state, name, func) {
+  case func(active(state)) {
+    Ok(buffer.Done(gen)) -> replace_buffer(state, gen)
+    Ok(buffer.WithString(rebuild)) -> {
+      let state = State(..state, mode: Picking(picker.new("", []), rebuild))
+      #(state, [FocusOnInput])
+    }
+    Error(_) -> fail(state, name)
+  }
+}
+
 /// pick from any value, i.e. the picker hints are empty
 fn pick_any(state, name, action) {
   use rebuild <- try(action(active(state)), state, name)
@@ -331,7 +357,8 @@ fn move_up(state) {
     Error(Nil) ->
       case state.focused == Repl, state.previous {
         True, [entry, ..] -> {
-          let repl = buffer.from_projection(entry.source.projection, ctx(state))
+          let repl =
+            buffer.from_projection(entry.source.projection, ctx(state, Repl))
           #(State(..state, repl:), [])
         }
         _, _ -> fail(state, "move above")
@@ -428,13 +455,15 @@ fn insert(state) {
 fn perform(state) {
   let buffer = active(state)
   use rebuild <- try(buffer.perform(buffer), state, "perform")
-  let hints =
-    list.map(effects.types(), fn(effect) {
-      let #(key, types) = effect
-      #(key, snippet.render_effect(types))
-    })
-
+  let hints = effect_hints()
   #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
+}
+
+fn effect_hints() {
+  list.map(effects.types(), fn(effect) {
+    let #(key, types) = effect
+    #(key, snippet.render_effect(types))
+  })
 }
 
 fn insert_string(state) {
@@ -450,6 +479,14 @@ fn select_field(state) {
     Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
     _ -> []
   }
+  let mode = Picking(picker: picker.new("", hints), rebuild:)
+  #(State(..state, mode:), [FocusOnInput])
+}
+
+fn insert_handle(state) {
+  let action = buffer.insert_handle(active(state))
+  use rebuild <- try(action, state, "insert handle")
+  let hints = effect_hints()
   let mode = Picking(picker: picker.new("", hints), rebuild:)
   #(State(..state, mode:), [FocusOnInput])
 }
@@ -586,6 +623,7 @@ pub type Effect {
 }
 
 type EffectImplementation {
+  Abort(String)
   Internal(state: State, reply: istate.Value(Meta))
   External(Effect)
 }
@@ -601,7 +639,7 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
           source: readonly.new(p.rebuild(state.repl.projection)),
         )
       let previous = [entry, ..state.previous]
-      let repl = buffer.empty(ctx(State(..state, scope:)))
+      let repl = buffer.empty(ctx(State(..state, scope:), Repl))
       let state = State(..state, mode: Editing, previous:, scope:, repl:)
       #(state, [])
     }
@@ -613,6 +651,8 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
           case effects.cast(label, input) {
             Ok(effect) -> {
               case run_effect(effect, state) {
+                Abort(_message) ->
+                  runner_stoped(state, occured, #(reason, meta, env, k))
                 Internal(state:, reply:) -> {
                   let return = block.resume(reply, env, k)
                   let occured = [#(label, #(input, reply))]
@@ -676,9 +716,10 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
 /// This must stay in the state module as it assumes that having access to the state object is it's concurrency model
 fn run_effect(effect, state: State) {
   case effect {
-    // effects.Abort()
+    effects.Abort(message) -> Abort(message)
     effects.Alert(message) -> External(Alert(message))
     effects.Copy(message) -> External(Copy(message))
+    effects.DecodeJson(raw) -> Internal(state:, reply: decode_json.sync(raw))
     effects.Download(file) -> External(Download(file))
     effects.Fetch(request) -> External(Fetch(request))
     effects.Follow(uri) -> External(Follow(uri))
@@ -860,7 +901,7 @@ fn picker_message(state, message) {
 
 /// Used for testing
 pub fn replace_repl(state: State, new) {
-  let repl = buffer.from_projection(new, ctx(state))
+  let repl = buffer.from_projection(new, ctx(state, Repl))
   State(..state, repl:)
 }
 
@@ -868,7 +909,11 @@ pub fn replace_repl(state: State, new) {
 pub fn set_module(state, name, projection) {
   let State(modules:, ..) = state
   let modules =
-    dict.insert(modules, name, buffer.from_projection(projection, infer.pure()))
+    dict.insert(
+      modules,
+      name,
+      buffer.from_projection(projection, ctx(state, Module(name))),
+    )
   State(..state, modules:)
 }
 
@@ -880,8 +925,17 @@ fn sync_message(state, message) {
   let before = set.from_list(dict.keys(before))
   let after = set.from_list(dict.keys(sync.cache.fragments))
   let diff = set.difference(after, before)
-  let repl = buffer.add_references(state.repl, diff, ctx(State(..state, sync:)))
+  let repl =
+    buffer.add_references(state.repl, diff, ctx(State(..state, sync:), Repl))
+  let modules =
+    dict.map_values(state.modules, fn(name, buffer) {
+      buffer.add_references(
+        buffer,
+        diff,
+        ctx(State(..state, sync:), Module(name)),
+      )
+    })
 
-  let state = State(..state, sync:, repl:)
+  let state = State(..state, sync:, repl:, modules:)
   #(state, actions)
 }
