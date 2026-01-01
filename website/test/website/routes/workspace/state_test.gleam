@@ -1009,6 +1009,30 @@ pub fn read_reference_from_repl_test() {
   assert value.Integer(rand + 1) == value
 }
 
+pub fn nested_reference_test() {
+  let state = no_packages()
+  let file = "lib"
+  let lib = ir.integer(25)
+  // let assert Ok(cid) = cid.from_tree(lib)
+  let state = set_module(state, #(file, state.EygJson), lib)
+
+  let ref = ir.release("./lib", 0, "./lib")
+  let top = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
+  let state = set_module(state, #("top", state.EygJson), top)
+
+  let ref = ir.release("./top", 0, "./top")
+  let top = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
+  let state = set_repl(state, top)
+  assert [] == contextual.all_errors(state.repl.analysis)
+
+  let message = state.UserPressedCommandKey("Enter")
+  let #(state, actions) = state.update(state, message)
+  assert actions == []
+  assert state.Editing == state.mode
+  let assert [shell.Executed(value: Some(value), ..)] = state.previous
+  assert value.Integer(27) == value
+}
+
 @external(javascript, "../../../website_ffi.mjs", "any")
 fn dummy_dir_handle() -> file_system.DirectoryHandle
 

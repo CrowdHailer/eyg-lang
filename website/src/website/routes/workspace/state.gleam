@@ -726,10 +726,13 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                   // evaluate is for shell and expects a block and has effects
                   // evaluate(source,[])
                   let source = source |> tree.clear_annotation()
-                  case expression.execute(source, []) {
+                  case run_module(expression.execute(source, []), state) {
                     Ok(value) ->
                       run(block.resume(value, env, k), occured, state)
-                    _ -> todo
+                    reason -> {
+                      echo reason
+                      todo
+                    }
                   }
                 }
                 Error(Nil) -> todo
@@ -748,6 +751,59 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
               }
           }
         _ -> runner_stoped(state, occured, debug)
+      }
+    }
+  }
+}
+
+/// module has no effects, it can return functions with effects so no access to state for internal effects
+fn run_module(
+  return: Result(istate.Value(Meta), _),
+  state: State,
+) -> Result(_, _) {
+  case return {
+    Ok(value) -> Ok(value)
+    Error(debug) -> {
+      let #(reason, _meta, env, k) = debug
+      case reason {
+        break.UndefinedReference(cid) ->
+          case dict.get(state.sync.cache.fragments, cid) {
+            Ok(cache.Fragment(value:, ..)) ->
+              run_module(expression.resume(value, env, k), state)
+            _ -> Error(debug)
+          }
+        break.UndefinedRelease(package:, release: version, cid:) ->
+          case package, version {
+            "./" <> name, 0 ->
+              case dict.get(state.modules, #(name, EygJson)) {
+                Ok(buffer) -> {
+                  let source = e.to_annotated(p.rebuild(buffer.projection), [])
+                  // echo buffer.cid(buffer) == cid
+                  // evaluate is for shell and expects a block and has effects
+                  // evaluate(source,[])
+                  let source = source |> tree.clear_annotation()
+                  case run_module(expression.execute(source, []), state) {
+                    Ok(value) ->
+                      run_module(expression.resume(value, env, k), state)
+                    _ -> Error(debug)
+                  }
+                }
+                Error(Nil) -> Error(debug)
+              }
+            _, _ ->
+              // These always return a value or an effect if working
+              case dict.get(state.sync.cache.releases, #(package, version)) {
+                Ok(release) if release.cid == cid ->
+                  case dict.get(state.sync.cache.fragments, cid) {
+                    Ok(cache.Fragment(value:, ..)) ->
+                      run_module(expression.resume(value, env, k), state)
+                    _ -> Error(debug)
+                  }
+                Ok(_) -> Error(debug)
+                Error(Nil) -> Error(debug)
+              }
+          }
+        _ -> Error(debug)
       }
     }
   }
