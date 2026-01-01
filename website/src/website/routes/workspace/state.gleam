@@ -1,3 +1,5 @@
+import gleam/json
+
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -24,6 +26,7 @@ import morph/editable as e
 import morph/input
 import morph/picker
 import morph/projection as p
+import plinth/browser/file_system
 import website/components/readonly
 import website/components/shell
 import website/components/snippet
@@ -39,11 +42,15 @@ pub type State {
     mode: Mode,
     user_error: Option(snippet.Failure),
     focused: Target,
-    counter: Int,
+    // The "Sequence ID" Pattern
+    effect_counter: Int,
     previous: List(shell.ShellEntry),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
     modules: Dict(Filename, Buffer),
+    mounted_directory: Option(file_system.DirectoryHandle),
+    flush_counter: Int,
+    dirty: Dict(Filename, Nil),
     sync: client.Client,
   )
 }
@@ -157,7 +164,17 @@ fn replace_buffer(state: State, gen) {
   let #(sync, actions) = client.fetch_fragments(state.sync, cids)
   let actions = list.map(actions, SyncAction)
   let state = State(..state, sync:)
-  #(state, actions)
+
+  case state.focused {
+    Repl -> #(state, actions)
+    Module(filename) -> {
+      let flush_counter = state.flush_counter + 1
+      let actions = [SetFlushTimer(flush_counter)]
+      let dirty = dict.insert(state.dirty, filename, Nil)
+      let state = State(..state, flush_counter:, dirty:)
+      #(state, actions)
+    }
+  }
 }
 
 fn set_buffer(state, buffer) {
@@ -177,6 +194,14 @@ pub type Action {
   ReadFromClipboard
   RunEffect(reference: Int, effect: Effect)
   SyncAction(client.Action)
+  ShowDirectoryPicker
+  LoadFiles(handle: file_system.DirectoryHandle)
+  SetFlushTimer(reference: Int)
+  SaveFile(
+    handle: file_system.DirectoryHandle,
+    filename: Filename,
+    projection: p.Projection,
+  )
 }
 
 pub fn init(config: config.Config) -> #(State, List(Action)) {
@@ -191,11 +216,14 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       mode: Editing,
       user_error: None,
       focused: Repl,
-      counter: 0,
+      effect_counter: 0,
       previous: [],
       scope:,
       repl: buffer.empty(repl_context(scope, modules, sync.cache)),
       modules:,
+      mounted_directory: None,
+      flush_counter: 0,
+      dirty: dict.new(),
     )
   #(state, actions)
 }
@@ -233,6 +261,13 @@ pub type Message {
   UserSelectedPrevious(Int)
   PickerMessage(picker.Message)
   SyncMessage(client.Message)
+  ShowDirectoryPickerCompleted(
+    Result(file_system.Handle(file_system.D), String),
+  )
+  LoadedFiles(
+    Result(List(#(Filename, Result(tree.Node(Nil), json.DecodeError))), String),
+  )
+  FlushTimeout(reference: Int)
 }
 
 pub fn update(state: State, message) -> #(State, List(Action)) {
@@ -247,6 +282,10 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
     UserSelectedPrevious(_) -> #(state, [])
     PickerMessage(message) -> picker_message(state, message)
     SyncMessage(message) -> sync_message(state, message)
+    ShowDirectoryPickerCompleted(result) ->
+      link_filesystem_completed(state, result)
+    LoadedFiles(results) -> loaded_files(state, results)
+    FlushTimeout(reference) -> flush_timeout(state, reference)
   }
 }
 
@@ -273,6 +312,7 @@ fn user_pressed_command_key(state, key) {
     "ArrowLeft" -> navigate(state, "move left", buffer.previous)
     "ArrowUp" -> move_up(state)
     "ArrowDown" -> navigate(state, "move below", buffer.down)
+    "Q" -> link_filesystem(state)
     "q" -> choose_module(state)
     "w" -> transform(state, "call", buffer.call_with)
     "E" -> pick_any(state, "assign", buffer.assign_before)
@@ -659,11 +699,11 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                   run(return, occured, state)
                 }
                 External(effect) -> {
-                  let counter = state.counter + 1
-                  let awaiting = Some(counter)
+                  let effect_counter = state.effect_counter + 1
+                  let awaiting = Some(effect_counter)
                   let mode = RunningShell(occured:, awaiting:, debug:)
-                  let state = State(..state, counter:, mode:)
-                  #(state, [RunEffect(counter, effect)])
+                  let state = State(..state, effect_counter:, mode:)
+                  #(state, [RunEffect(effect_counter, effect)])
                 }
               }
             }
@@ -760,6 +800,69 @@ fn run_effect(effect, state: State) {
 
 fn runner_stoped(state, occured, debug) {
   #(State(..state, mode: RunningShell(occured:, awaiting: None, debug:)), [])
+}
+
+fn link_filesystem(state) {
+  #(state, [ShowDirectoryPicker])
+}
+
+fn link_filesystem_completed(state, result) {
+  case result {
+    Ok(dir_handle) -> #(State(..state, mounted_directory: Some(dir_handle)), [
+      LoadFiles(dir_handle),
+    ])
+    Error(reason) -> {
+      echo reason
+      todo
+    }
+  }
+}
+
+fn loaded_files(state: State, result) {
+  case result {
+    Ok(files) -> {
+      let modules =
+        list.filter_map(files, fn(file) {
+          let #(name, code) = file
+          case code {
+            Ok(source) -> {
+              let buffer =
+                buffer.from_source(
+                  source,
+                  module_context(state.scope, state.modules, state.sync.cache),
+                )
+              Ok(#(name, buffer))
+            }
+            _ -> todo
+          }
+        })
+      let modules = dict.from_list(modules)
+      #(State(..state, modules:), [])
+    }
+    _ -> todo
+  }
+}
+
+fn flush_timeout(state, reference) {
+  let State(mounted_directory:, flush_counter:, ..) = state
+  case flush_counter == reference, mounted_directory {
+    True, Some(handle) -> {
+      // mark as not dirty so that if changes are made while saving they are captured.
+      // if saving fails they are returned to dirty
+      let actions =
+        list.filter_map(dict.keys(state.dirty), fn(filename) {
+          use buffer <- result.map(dict.get(state.modules, filename))
+          SaveFile(handle:, filename:, projection: buffer.projection)
+        })
+      let state = State(..state, dirty: dict.new())
+      #(state, actions)
+    }
+    True, None -> {
+      let state = State(..state, dirty: dict.new())
+      #(state, [])
+    }
+    False, _ -> #(state, [])
+  }
 }
 
 fn input_message(state, message) {

@@ -16,6 +16,7 @@ import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
+import plinth/browser/file_system
 import website/components/shell
 import website/components/snippet
 import website/routes/helpers
@@ -486,7 +487,7 @@ pub fn simple_edit_in_module_test() {
   assert value.ok(value.unit()) == reply
 
   let #(state, actions) = press_key(state, "R")
-  assert [] == actions
+  assert [state.SetFlushTimer(1)] == actions
   assert state.Module(#("user", state.EygJson)) == state.focused
   assert state.Editing == state.mode
   let assert #(p.Exp(e.Record([], None)), []) =
@@ -1006,6 +1007,48 @@ pub fn read_reference_from_repl_test() {
   assert state.Editing == state.mode
   let assert [shell.Executed(value: Some(value), ..)] = state.previous
   assert value.Integer(rand + 1) == value
+}
+
+@external(javascript, "../../../website_ffi.mjs", "any")
+fn dummy_dir_handle() -> file_system.DirectoryHandle
+
+pub fn mounting_directory_loads_modules_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "Q")
+  assert [state.ShowDirectoryPicker] == actions
+  let handle = dummy_dir_handle()
+  let message = state.ShowDirectoryPickerCompleted(Ok(handle))
+  let #(state, actions) = state.update(state, message)
+  assert [state.LoadFiles(handle:)] == actions
+  let message =
+    state.LoadedFiles(Ok([#(#("mod", state.EygJson), Ok(ir.integer(211)))]))
+  let #(state, actions) = state.update(state, message)
+  assert 1 == dict.size(state.modules)
+  assert [] == actions
+}
+
+pub fn module_edits_are_flushed_test() {
+  let state =
+    state.State(..no_packages(), mounted_directory: Some(dummy_dir_handle()))
+  let a = #("a", state.EygJson)
+  let state = state.State(..state, focused: state.Module(a))
+  let #(state, actions) = press_key(state, "L")
+  assert [state.SetFlushTimer(1)] == actions
+  assert dict.from_list([#(a, Nil)]) == state.dirty
+
+  let b = #("b", state.EygJson)
+  let state = state.State(..state, focused: state.Module(b))
+  let #(state, actions) = press_key(state, "R")
+  assert [state.SetFlushTimer(2)] == actions
+  assert dict.from_list([#(a, Nil), #(b, Nil)]) == state.dirty
+
+  let #(state, actions) = state.update(state, state.FlushTimeout(1))
+  assert [] == actions
+  assert dict.from_list([#(a, Nil), #(b, Nil)]) == state.dirty
+
+  let #(state, actions) = state.update(state, state.FlushTimeout(2))
+  assert 2 == list.length(actions)
+  assert dict.from_list([]) == state.dirty
 }
 
 // Fails for bad cid

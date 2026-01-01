@@ -1,15 +1,22 @@
+import eyg/ir/dag_json
+import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
+import gleam/string
 import lustre
 import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
+import morph/editable
+import morph/projection
 import mysig/asset
 import mysig/html
 import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/event
+import plinth/browser/file
+import plinth/browser/file_system
 import website/config
 import website/harness/browser/alert
 import website/harness/browser/copy
@@ -116,6 +123,76 @@ fn run(action) {
       })
     state.SyncAction(action) ->
       client.lustre_run_single(action, state.SyncMessage)
+    state.ShowDirectoryPicker -> {
+      effect.from(fn(dispatch) {
+        promise.map(file_system.show_directory_picker(), fn(result) {
+          dispatch(state.ShowDirectoryPickerCompleted(result))
+        })
+        Nil
+      })
+    }
+    state.LoadFiles(handle:) -> {
+      effect.from(fn(dispatch) {
+        {
+          use #(_, files) <- promise.try_await(file_system.all_entries(handle))
+          use results <- promise.await(
+            promise.await_list(
+              list.map(array.to_list(files), fn(entry) {
+                let name = file_system.name(entry)
+                let filename = case string.split_once(name, ".eyg.json") {
+                  Ok(#(name, "")) -> #(name, state.EygJson)
+                  _ -> todo
+                }
+
+                use file <- promise.await(file_system.get_file(entry))
+                let assert Ok(file) = file
+                use b <- promise.await(file.bytes(file))
+
+                promise.resolve(#(filename, dag_json.from_block(b)))
+              }),
+            ),
+          )
+          promise.resolve(Ok(results))
+        }
+        |> promise.map(fn(results) { dispatch(state.LoadedFiles(results)) })
+        Nil
+      })
+    }
+    state.SetFlushTimer(reference) ->
+      effect.from(fn(dispatch) {
+        promise.map(promise.wait(2000), fn(_: Nil) {
+          dispatch(state.FlushTimeout(reference:))
+        })
+        Nil
+      })
+    state.SaveFile(handle:, filename:, projection:) -> {
+      effect.from(fn(dispatch) {
+        {
+          let name = case filename.1 {
+            state.EygJson -> filename.0 <> ".eyg.json"
+          }
+          use file_handle <- promise.try_await(file_system.get_file_handle(
+            handle,
+            name,
+            True,
+          ))
+
+          use writable <- promise.try_await(file_system.create_writable(
+            file_handle,
+          ))
+          let content =
+            projection.rebuild(projection)
+            |> editable.to_annotated([])
+            |> dag_json.to_block()
+
+          use Nil <- promise.try_await(file_system.write(writable, content))
+          use Nil <- promise.try_await(file_system.close(writable))
+          promise.resolve(Ok(Nil))
+        }
+        |> promise.map(fn(r) { echo r })
+        Nil
+      })
+    }
   }
 }
 

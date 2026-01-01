@@ -76,6 +76,13 @@ pub fn empty(context) {
   from_projection(p.empty, context)
 }
 
+pub fn from_source(source, context) {
+  source
+  |> e.from_annotated
+  |> p.all()
+  |> from_projection(context)
+}
+
 pub fn from_projection(projection, context) {
   Buffer(
     history: snippet.empty_history,

@@ -28,3 +28,7 @@ export function selectAllInput(input) {
     input.type = type;
   }
 }
+
+export function any(){
+  
+}
