@@ -113,7 +113,7 @@ pub fn add_references(buffer, new, context) {
 pub fn target_type(buffer) {
   let Buffer(projection:, analysis:, ..) = buffer
   let path = p.path(projection)
-  infer.type_at(analysis, path)
+  infer.type_at(analysis, list.reverse(path))
 }
 
 pub fn target_scope(buffer) {
