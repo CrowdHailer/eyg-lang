@@ -895,7 +895,7 @@ fn insert_open_case(state) {
 fn spread_list(state) {
   let Snippet(projection: proj, ..) = state
 
-  case transformation.spread_list(proj) {
+  case transformation.make_extensible(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> action_failed(state, "spread list")
   }

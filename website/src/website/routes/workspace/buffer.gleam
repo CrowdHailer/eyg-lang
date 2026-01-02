@@ -293,7 +293,7 @@ pub fn create_empty_list(buffer: Buffer) {
 }
 
 pub fn spread(buffer: Buffer) {
-  use new <- result.map(t.spread_list(buffer.projection))
+  use new <- result.map(t.make_extensible(buffer.projection))
   fn(context) { update_code(buffer, new, context) }
 }
 
@@ -319,6 +319,11 @@ pub fn select_field(buffer: Buffer) {
 
 pub fn tag(buffer: Buffer) {
   use rebuild <- result.map(t.tag(buffer.projection))
+  fn(new, context) { update_code(buffer, rebuild(new), context) }
+}
+
+pub fn match(buffer: Buffer) {
+  use rebuild <- result.map(t.insert_match(buffer.projection))
   fn(new, context) { update_code(buffer, rebuild(new), context) }
 }
 

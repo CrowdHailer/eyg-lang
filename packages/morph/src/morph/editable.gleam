@@ -21,7 +21,11 @@ pub type Expression {
   Record(List(#(String, Expression)), Option(Expression))
   Select(Expression, String)
   Tag(String)
-  Case(Expression, List(#(String, Expression)), Option(Expression))
+  Case(
+    top: Expression,
+    matches: List(#(String, Expression)),
+    otherwise: Option(Expression),
+  )
   Perform(String)
   Deep(String)
   Builtin(String)

@@ -465,6 +465,44 @@ pub fn auto_match_test() {
   let #(state, actions) = press_key(state, "m")
   assert actions == []
   assert state.mode == state.Editing
+
+  let #(state, actions) = press_key(state, "x")
+  assert actions == []
+  assert state.mode == state.Editing
+
+  let assert e.Case(matches:, otherwise:, ..) = p.rebuild(state.repl.projection)
+  let assert [#("True", _), #("False", _)] = matches
+  assert Some(e.Function([e.Bind("_")], e.Vacant)) == otherwise
+}
+
+pub fn no_type_match_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "m")
+  assert [state.FocusOnInput] == actions
+  let assert state.Picking(picker:, ..) = state.mode
+  assert picker.Typing(value: "", suggestions: []) == picker
+
+  let message = state.PickerMessage(picker.Decided("First"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+
+  let #(state, actions) = press_key(state, "<")
+  assert [state.FocusOnInput] == actions
+  assert picker.Typing(value: "", suggestions: []) == picker
+
+  let message = state.PickerMessage(picker.Decided("Second"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+
+  let #(state, actions) = press_key(state, ">")
+  assert [state.FocusOnInput] == actions
+  assert picker.Typing(value: "", suggestions: []) == picker
+
+  let message = state.PickerMessage(picker.Decided("Third"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert e.Case(matches:, ..) = p.rebuild(state.repl.projection)
+  let assert [#("Second", _), #("Third", _), #("First", _)] = matches
 }
 
 pub fn cant_match_test() {
@@ -1155,6 +1193,20 @@ fn press_key_failure(state, key) {
   let assert Some(reason) = state.user_error
   reason
 }
+
+// fn user_input(state, content) {
+//   let message = state.InputMessage(input.UpdateInput(content))
+//   let #(state, actions) = state.update(state, message)
+//   assert [] == actions
+//   let assert state.EditingText(value:, ..) = state.mode
+//   assert "silly." == value
+
+//   let message = state.InputMessage(input.Submit)
+//   let #(state, actions) = state.update(state, message)
+//   assert [] == actions
+//   assert state.Editing == state.mode
+//   state
+// }
 
 fn read_module(state, path) {
   let state.State(modules:, ..) = state

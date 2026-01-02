@@ -355,12 +355,40 @@ pub fn extend(zip) {
 }
 
 /// spread list works from inside the list
-pub fn spread_list(zip) {
+pub fn make_extensible(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
     p.Exp(exp), [p.ListItem(pre, post, None), ..rest] -> {
       let elements = listx.gather_around(pre, exp, post)
       Ok(#(p.Exp(e.Vacant), [p.ListTail(elements), ..rest]))
+    }
+    p.Match(top:, label:, branch:, pre:, post:, otherwise: None), zoom -> {
+      let matches = listx.gather_around(pre, #(label, branch), post)
+      let zoom = [p.CaseTail(top:, branches: matches), ..zoom]
+      Ok(#(p.Exp(e.Vacant), [p.Body([e.Bind("_")]), ..zoom]))
+    }
+    p.FnParam(pattern:, pre: fn_pre, post: fn_post, body:),
+      [p.CaseMatch(top:, label:, pre:, post:, otherwise: None), ..rest]
+    -> {
+      let args =
+        listx.gather_around(fn_pre, p.assigned_pattern(pattern), fn_post)
+      let matches =
+        listx.gather_around(pre, #(label, e.Function(args, body)), post)
+      let zoom = [p.CaseTail(top:, branches: matches), ..rest]
+      Ok(#(p.Exp(e.Vacant), [p.Body([e.Bind("_")]), ..zoom]))
+    }
+    p.Exp(body),
+      [
+        p.Body(args),
+        p.CaseMatch(top:, label:, pre:, post:, otherwise: None),
+        ..rest
+      ]
+    -> {
+      let matches =
+        listx.gather_around(pre, #(label, e.Function(args, body)), post)
+
+      let zoom = [p.CaseTail(top:, branches: matches), ..rest]
+      Ok(#(p.Exp(e.Vacant), [p.Body([e.Bind("_")]), ..zoom]))
     }
     _, _ -> Error(Nil)
   }
@@ -501,6 +529,30 @@ pub fn tag(zip) {
     p.Exp(e.Vacant) -> Ok(fn(new) { #(p.Exp(e.Tag(new)), zoom) })
     p.Exp(inner) ->
       Ok(fn(new) { #(p.Exp(e.Tag(new)), [p.CallFn([inner]), ..zoom]) })
+    _ -> Error(Nil)
+  }
+}
+
+pub fn insert_match(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    p.Exp(top) ->
+      Ok(fn(labels: List(String)) {
+        case labels {
+          [] -> zip
+          [first, ..rest] -> {
+            let rest =
+              list.map(rest, fn(label) {
+                #(label, e.Function([e.Bind("_")], e.Vacant))
+              })
+            #(p.Exp(e.Vacant), [
+              p.Body([e.Bind("_")]),
+              p.CaseMatch(top, first, [], rest, None),
+              ..zoom
+            ])
+          }
+        }
+      })
     _ -> Error(Nil)
   }
 }

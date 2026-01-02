@@ -430,13 +430,8 @@ fn create_record(state) {
   }
   case hints {
     [] -> {
-      let state =
-        State(
-          ..state,
-          mode: Picking(picker.new("", []), fn(label, context) {
-            rebuild([label], context)
-          }),
-        )
+      let rebuild = fn(label, context) { rebuild([label], context) }
+      let state = State(..state, mode: Picking(picker.new("", []), rebuild))
       #(state, [FocusOnInput])
     }
     _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
@@ -602,30 +597,18 @@ fn insert_integer(state) {
 
 fn insert_case(state) {
   let buffer = active(state)
-  case buffer.target_type(buffer) {
-    Ok(t.Union(t.RowExtend(first, _, rest))) -> {
-      // expect there to be at least one row and for it not to be open
-      let rest =
-        list.map(analysis.rows(rest), fn(r) {
-          let #(label, _) = r
-          #(label, e.Function([e.Bind("_")], e.Vacant))
-        })
-      // Need to unpick as in some cases we just create and in others we pick.
-      // Reality is we want a pick multiple
-      let assert #(p.Exp(top), zoom) = buffer.projection
-
-      let new = #(p.Exp(e.Vacant), [
-        p.Body([e.Bind("_")]),
-        p.CaseMatch(top, first, [], rest, None),
-        ..zoom
-      ])
-      update_projection(state, new)
+  use rebuild <- try(buffer.match(buffer), state, "record")
+  let hints = case buffer.target_type(buffer) {
+    Ok(t.Union(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
+    _ -> []
+  }
+  case hints {
+    [] -> {
+      let rebuild = fn(label, context) { rebuild([label], context) }
+      let state = State(..state, mode: Picking(picker.new("", []), rebuild))
+      #(state, [FocusOnInput])
     }
-    _ ->
-      case buffer.projection {
-        #(p.Exp(_), _) -> todo
-        _ -> fail(state, "insert match")
-      }
+    _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
   }
 }
 

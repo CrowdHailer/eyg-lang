@@ -332,6 +332,20 @@ pub fn extend_before(source) {
       }
       Ok(Choose("", [], rebuild))
     }
+    #(
+      p.Exp(branch),
+      [p.Body(args), p.CaseMatch(top:, label:, pre:, post:, otherwise:)],
+    ) -> {
+      let post = [#(label, e.Function(args, branch)), ..post]
+      let rebuild = fn(label) {
+        let zoom = [
+          p.Body(args),
+          p.CaseMatch(top:, label:, pre:, post:, otherwise:),
+        ]
+        #(p.Exp(e.Vacant), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
     #(p.Assign(pattern, value, pre, post, then), zoom) -> {
       use rebuild <- try(extend_pattern_before(pattern))
       let rebuild = fn(label) {
@@ -381,6 +395,20 @@ pub fn extend_after(source) {
       let pre = [#(label, value), ..pre]
       let rebuild = fn(label) {
         let zoom = [p.RecordValue(label, pre, post, for), ..zoom]
+        #(p.Exp(e.Vacant), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    #(
+      p.Exp(branch),
+      [p.Body(args), p.CaseMatch(top:, label:, pre:, post:, otherwise:)],
+    ) -> {
+      let pre = [#(label, e.Function(args, branch)), ..pre]
+      let rebuild = fn(label) {
+        let zoom = [
+          p.Body(args),
+          p.CaseMatch(top:, label:, pre:, post:, otherwise:),
+        ]
         #(p.Exp(e.Vacant), zoom)
       }
       Ok(Choose("", [], rebuild))
