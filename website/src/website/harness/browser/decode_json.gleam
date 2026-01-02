@@ -111,7 +111,7 @@ fn result_to_eyg(parsed) {
                 )
               flat_json.Array -> v.Tagged("Array", v.unit())
               flat_json.Object -> v.Tagged("Object", v.unit())
-              flat_json.Field(f) -> v.Tagged("String", v.String(f))
+              flat_json.Field(f) -> v.Tagged("Field", v.String(f))
             }
             v.Record(
               dict.from_list([#("term", term), #("depth", v.Integer(depth))]),

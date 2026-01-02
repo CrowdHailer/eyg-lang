@@ -72,83 +72,89 @@ pub fn render(state: state.State) {
             }),
           ),
         ]),
-        h.div([a.class("expand")], case state.focused {
-          state.Repl -> [
-            h.text("Shell"),
-            editor.render_previous(
-              state.previous,
-              state.PreviousMessage,
-              state.UserSelectedPrevious,
-            ),
-            snippet.render_projection(
-              state.repl.projection,
-              contextual.all_errors(state.repl.analysis),
-            ),
-            h.div(
-              [
-                a.class("cover bg-red-300 px-2"),
-                a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
-              ],
-              list.map(contextual.all_errors(state.repl.analysis), fn(error) {
-                let #(reversed, reason) = error
-                case reversed, reason {
-                  // Vacant node at root or end of block are ignored.
-                  [], error.Todo | [_], error.Todo -> element.none()
-                  _, _ ->
-                    h.div(
-                      [
-                        event.on_click(state.UserClickedOnPathReference(
-                          reversed:,
-                        )),
-                      ],
-                      [element.text(debug.reason(reason))],
+        h.div(
+          [
+            a.class("expand"),
+            a.styles([#("max-height", "100%"), #("overflow", "scroll")]),
+          ],
+          case state.focused {
+            state.Repl -> [
+              h.text("Shell"),
+              editor.render_previous(
+                state.previous,
+                state.PreviousMessage,
+                state.UserSelectedPrevious,
+              ),
+              snippet.render_projection(
+                state.repl.projection,
+                contextual.all_errors(state.repl.analysis),
+              ),
+              h.div(
+                [
+                  a.class("cover bg-red-300 px-2"),
+                  a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+                ],
+                list.map(contextual.all_errors(state.repl.analysis), fn(error) {
+                  let #(reversed, reason) = error
+                  case reversed, reason {
+                    // Vacant node at root or end of block are ignored.
+                    [], error.Todo | [_], error.Todo -> element.none()
+                    _, _ ->
+                      h.div(
+                        [
+                          event.on_click(state.UserClickedOnPathReference(
+                            reversed:,
+                          )),
+                        ],
+                        [element.text(debug.reason(reason))],
+                      )
+                  }
+                }),
+              ),
+            ]
+            state.Module(#(filepath, _) as with_ex) -> [
+              h.text(filepath),
+              ..{
+                let buffer = case dict.get(state.modules, with_ex) {
+                  Ok(buffer) -> buffer
+                  Error(Nil) ->
+                    buffer.from_projection(
+                      projection.all(editable.Vacant),
+                      contextual.pure(),
                     )
                 }
-              }),
-            ),
-          ]
-          state.Module(#(filepath, _) as with_ex) -> [
-            h.text(filepath),
-            ..{
-              let buffer = case dict.get(state.modules, with_ex) {
-                Ok(buffer) -> buffer
-                Error(Nil) ->
-                  buffer.from_projection(
-                    projection.all(editable.Vacant),
-                    contextual.pure(),
-                  )
-              }
-              [
-                snippet.render_projection(
-                  buffer.projection,
-                  contextual.all_errors(buffer.analysis),
-                ),
-                h.div(
-                  [
-                    a.class("cover bg-red-300 px-2"),
-                    a.styles([
-                      #("max-height", "25vh"),
-                      #("overflow-y", "scroll"),
-                    ]),
-                  ],
-                  list.map(contextual.all_errors(buffer.analysis), fn(error) {
-                    let #(_path, reason) = error
+                [
+                  snippet.render_projection(
+                    buffer.projection,
+                    contextual.all_errors(buffer.analysis),
+                  ),
+                  h.div(
+                    [
+                      a.class("cover bg-red-300 px-2"),
+                      a.styles([
+                        #("max-height", "25vh"),
+                        #("overflow-y", "scroll"),
+                      ]),
+                    ],
+                    list.map(contextual.all_errors(buffer.analysis), fn(error) {
+                      let #(_path, reason) = error
 
-                    h.div(
-                      [
-                        // event.on_click(
-                      //   snippet.UserClickedPath(path)
-                      //   |> shell.CurrentMessage,
-                      // ),
-                      ],
-                      [element.text(debug.reason(reason))],
-                    )
-                  }),
-                ),
-              ]
-            }
-          ]
-        }),
+                      h.div(
+                        [
+                          // event.on_click(
+                        //   snippet.UserClickedPath(path)
+                        //   |> shell.CurrentMessage,
+                        // ),
+                        ],
+                        [element.text(debug.reason(reason))],
+                      )
+                    }),
+                  ),
+                ]
+              }
+            ]
+          },
+        ),
       ],
     ),
   ])
