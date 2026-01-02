@@ -7,6 +7,7 @@ import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/event
 import morph/editable
 import morph/projection
 import website/components/simple_debug
@@ -85,17 +86,16 @@ pub fn render(state: state.State) {
                 a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
               ],
               list.map(contextual.all_errors(state.repl.analysis), fn(error) {
-                let #(path, reason) = error
-                case path, reason {
+                let #(reversed, reason) = error
+                case reversed, reason {
                   // Vacant node at root or end of block are ignored.
                   [], error.Todo | [_], error.Todo -> element.none()
                   _, _ ->
                     h.div(
                       [
-                        // event.on_click(
-                      //   snippet.UserClickedPath(path)
-                      //   |> shell.CurrentMessage,
-                      // ),
+                        event.on_click(state.UserClickedOnPathReference(
+                          reversed:,
+                        )),
                       ],
                       [element.text(debug.reason(reason))],
                     )

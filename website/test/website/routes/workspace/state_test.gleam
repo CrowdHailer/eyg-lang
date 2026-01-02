@@ -183,6 +183,38 @@ pub fn navigate_back_to_shell_test() {
   assert state.Repl == state.focused
 }
 
+pub fn can_click_to_navigate_to_errors_test() {
+  let state = no_packages()
+  let source =
+    ir.let_(
+      "fruit",
+      ir.list([
+        ir.string("apple"),
+        ir.string("banana"),
+        ir.call(ir.builtin("int_absolute"), [ir.string("carrot")]),
+      ]),
+      ir.call(ir.builtin("equal"), [ir.vacant(), ir.integer(2)]),
+    )
+
+  let state = set_repl(state, source)
+  // path of [0] is the let statement line.
+  assert [
+      #([2, 1, 0], error.TypeMismatch(t.String, t.Integer)),
+      #([1, 1], error.Todo),
+    ]
+    == contextual.all_errors(state.repl.analysis)
+  let message = state.UserClickedOnPathReference([2, 1, 0])
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert p.Exp(e.Call(e.Builtin("int_absolute"), [e.String("carrot")]))
+    == state.repl.projection.0
+
+  let message = state.UserClickedOnPathReference([1, 1])
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert p.Exp(e.Vacant) == state.repl.projection.0
+}
+
 // --------------- 2. Editing -------------------------
 
 pub fn variable_insert_test() {

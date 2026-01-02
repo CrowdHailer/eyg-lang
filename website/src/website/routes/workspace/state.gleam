@@ -252,7 +252,8 @@ pub type Message {
   // 
   // This event assumes you are in command mode somewhere
   UserPressedCommandKey(key: String)
-
+  // This is used for when a user clicks on an error message
+  UserClickedOnPathReference(reversed: List(Int))
   InputMessage(input.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
@@ -273,6 +274,8 @@ pub type Message {
 pub fn update(state: State, message) -> #(State, List(Action)) {
   case message {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
+    UserClickedOnPathReference(reversed:) ->
+      user_clicked_on_path_reference(state, reversed)
     InputMessage(message) -> input_message(state, message)
     ClipboardReadCompleted(result) -> clipboard_read_complete(state, result)
     ClipboardWriteCompleted(result) -> clipboard_write_complete(state, result)
@@ -354,6 +357,10 @@ fn user_pressed_command_key(state, key) {
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
   }
+}
+
+fn user_clicked_on_path_reference(state, reversed) {
+  navigate(state, "jump to", buffer.focus_at_reversed(_, reversed))
 }
 
 fn navigate(state, name, func) {
@@ -668,6 +675,8 @@ type EffectImplementation {
   External(Effect)
 }
 
+/// Have tried normalise run and run_module (or extract to runner?)
+/// resume is different based on expression/block also effects are different
 fn run(return, occured, state: State) -> #(State, List(_)) {
   case return {
     Ok(#(value, scope)) -> {

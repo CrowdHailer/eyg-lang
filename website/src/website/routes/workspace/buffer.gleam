@@ -166,6 +166,18 @@ pub fn toggle_open(buffer) {
   navigate(buffer, navigation.toggle_open)
 }
 
+pub fn focus_at(buffer: Buffer, path) {
+  navigate(buffer, navigate_focus_at(_, path))
+}
+
+fn navigate_focus_at(projection, path) {
+  Ok(p.focus_at(p.rebuild(projection), path))
+}
+
+pub fn focus_at_reversed(buffer: Buffer, reversed) {
+  focus_at(buffer, list.reverse(reversed))
+}
+
 // ------------------------- Transformations
 
 pub type Continue {

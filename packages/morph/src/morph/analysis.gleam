@@ -276,7 +276,7 @@ pub fn type_errors(analysis) {
     let #(rev, #(r, _, _, _)) = r
     case r {
       Ok(_) -> Error(Nil)
-      Error(reason) -> Ok(#(list.reverse(rev), reason))
+      Error(reason) -> Ok(#(rev, reason))
     }
   })
   |> list.map(fn(pair) {

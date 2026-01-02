@@ -185,6 +185,7 @@ fn continue_space(rev) {
   frame.Inline([h.span([a.class(collapsed), exp_key(rev)], [text("...")])])
 }
 
+/// errors are identified by their reverse path
 pub fn expression(exp, rev, errors) {
   let frame = case exp {
     e.Block(_, _, False) -> frame.Inline([text("{ ... }")])
@@ -317,7 +318,7 @@ pub fn expression(exp, rev, errors) {
         ),
       ])
   }
-  case list.key_find(errors, list.reverse(rev)), exp {
+  case list.key_find(errors, rev), exp {
     _, e.Vacant -> frame
     Ok(_), _ -> highlight.frame(frame, highlight.error())
     Error(_), _ -> frame
