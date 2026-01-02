@@ -77,6 +77,17 @@ pub fn page() {
 pub fn client() {
   let app = lustre.application(do_init, do_update, view.render)
   let assert Ok(runtime) = lustre.start(app, "#app", config.load())
+  // Cant get persisted directory unless from a keypress
+  // promise.map(get_persisted_directory(), fn(result) {
+  //   case result {
+  //     Ok(handle) -> {
+  //       let message =
+  //         lustre.dispatch(state.ShowDirectoryPickerCompleted(Ok(handle)))
+  //       lustre.send(runtime, message)
+  //     }
+  //     Error(_) -> Nil
+  //   }
+  // })
   document.add_event_listener("keydown", fn(e) {
     let message = lustre.dispatch(state.UserPressedCommandKey(event.key(e)))
     lustre.send(runtime, message)
@@ -125,7 +136,7 @@ fn run(action) {
       client.lustre_run_single(action, state.SyncMessage)
     state.ShowDirectoryPicker -> {
       effect.from(fn(dispatch) {
-        promise.map(file_system.show_directory_picker(), fn(result) {
+        promise.map(show_save_directory_picker(), fn(result) {
           dispatch(state.ShowDirectoryPickerCompleted(result))
         })
         Nil
@@ -166,7 +177,7 @@ fn run(action) {
         Nil
       })
     state.SaveFile(handle:, filename:, projection:) -> {
-      effect.from(fn(dispatch) {
+      effect.from(fn(_dispatch) {
         {
           let name = case filename.1 {
             state.EygJson -> filename.0 <> ".eyg.json"
@@ -210,3 +221,13 @@ fn run_effect(effect) {
     state.Random(max) -> random.run(max)
   }
 }
+
+@external(javascript, "../../website_ffi.mjs", "show_save_directory_picker")
+fn show_save_directory_picker() -> promise.Promise(
+  Result(file_system.Handle(file_system.D), String),
+)
+
+@external(javascript, "../../website_ffi.mjs", "get_persisted_directory")
+fn get_persisted_directory() -> promise.Promise(
+  Result(file_system.Handle(file_system.D), String),
+)
