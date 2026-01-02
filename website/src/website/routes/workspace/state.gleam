@@ -45,6 +45,7 @@ pub type State {
     // The "Sequence ID" Pattern
     effect_counter: Int,
     previous: List(shell.ShellEntry),
+    after: Option(p.Projection),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
     modules: Dict(Filename, Buffer),
@@ -147,15 +148,6 @@ fn module_context(
   |> infer.with_references(references)
 }
 
-/// Always used after a change that was from a command and that changes the history
-/// The new value is the full projection, probably from a rebuild function
-fn update_projection(state, new) {
-  let gen = buffer.update_code(active(state), new, _)
-
-  State(..state, mode: Editing)
-  |> replace_buffer(gen)
-}
-
 /// replaces buffer in the tree
 fn replace_buffer(state: State, gen) {
   let buffer = gen(ctx(state, state.focused))
@@ -218,6 +210,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       focused: Repl,
       effect_counter: 0,
       previous: [],
+      after: None,
       scope:,
       repl: buffer.empty(repl_context(scope, modules, sync.cache)),
       modules:,
@@ -316,7 +309,7 @@ fn user_pressed_command_key(state, key) {
     "ArrowRight" -> navigate(state, "move right", buffer.next)
     "ArrowLeft" -> navigate(state, "move left", buffer.previous)
     "ArrowUp" -> move_up(state)
-    "ArrowDown" -> navigate(state, "move below", buffer.down)
+    "ArrowDown" -> move_down(state)
     "Q" -> link_filesystem(state)
     "q" -> choose_module(state)
     "w" -> transform(state, "call", buffer.call_with)
@@ -408,13 +401,30 @@ fn move_up(state) {
       #(set_buffer(state, new), [])
     }
     Error(Nil) ->
-      case state.focused == Repl, state.previous {
-        True, [entry, ..] -> {
+      case state.focused == Repl, state.previous, state.after {
+        True, [entry, ..], None -> {
           let repl =
             buffer.from_projection(entry.source.projection, ctx(state, Repl))
-          #(State(..state, repl:), [])
+          #(State(..state, repl:, after: Some(state.repl.projection)), [])
         }
-        _, _ -> fail(state, "move above")
+        _, _, _ -> fail(state, "move above")
+      }
+  }
+}
+
+fn move_down(state) {
+  let buffer = active(state)
+  case buffer.down(buffer) {
+    Ok(new) -> {
+      #(set_buffer(state, new), [])
+    }
+    Error(Nil) ->
+      case state.focused == Repl, state.after {
+        True, Some(projection) -> {
+          let repl = buffer.from_projection(projection, ctx(state, Repl))
+          #(State(..state, repl:, after: None), [])
+        }
+        _, _ -> fail(state, "move below")
       }
   }
 }

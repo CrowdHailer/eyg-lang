@@ -716,6 +716,10 @@ pub fn evaluate_expression_in_shell_test() {
   let #(state, actions) = press_key(state, "ArrowUp")
   assert actions == []
   assert #(p.Exp(e.Integer(187)), []) == state.repl.projection
+
+  let #(state, actions) = press_key(state, "ArrowDown")
+  assert actions == []
+  assert #(p.Exp(e.Vacant), []) == state.repl.projection
 }
 
 pub fn move_up_without_history_test() {
