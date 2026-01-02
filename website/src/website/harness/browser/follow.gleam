@@ -79,7 +79,7 @@ fn url_to_eyg(url: uri.Uri) {
                     let #(key, value) = pair
                     v.Record(
                       dict.from_list([
-                        #(key, v.String(key)),
+                        #("key", v.String(key)),
                         #("value", v.String(value)),
                       ]),
                     )
