@@ -332,15 +332,57 @@ pub fn extend_before(source) {
       }
       Ok(Choose("", [], rebuild))
     }
+    #(p.Match(top:, label:, branch:, pre:, post:, otherwise:), zoom) -> {
+      let post = [#(label, branch), ..post]
+      let rebuild = fn(label) {
+        let branch = e.Function([e.Bind("_")], e.Vacant)
+        let focus = p.Match(top:, label:, branch:, pre:, post:, otherwise:)
+        #(focus, zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    // Don't implement because need to insert args in fn
+    // #(
+    //   p.FnParam(pattern:, body:, pre: fn_pre, post: fn_post),
+    //   [p.CaseMatch(top:, label:, pre:, post:, otherwise:), ..zoom],
+    // ) -> {
+    //   let args =
+    //     listx.gather_around(fn_pre, p.assigned_pattern(pattern), fn_post)
+    //   let post = [#(label, e.Function(args, body)), ..post]
+    //   let rebuild = fn(label) {
+    //     let pattern = p.AssignPattern(e.Bind("_"))
+    //     let body = e.Vacant
+    //     let focus = p.FnParam(pattern:, body:, pre: [], post: [])
+    //     let zoom = [p.CaseMatch(top:, label:, pre:, post:, otherwise:), ..zoom]
+    //     #(focus, zoom)
+    //   }
+    //   Ok(Choose("", [], rebuild))
+    // }
     #(
       p.Exp(branch),
-      [p.Body(args), p.CaseMatch(top:, label:, pre:, post:, otherwise:)],
+      [p.CaseMatch(top:, label:, pre:, post:, otherwise:), ..zoom],
+    ) -> {
+      let post = [#(label, branch), ..post]
+      let rebuild = fn(label) {
+        let zoom = [
+          p.Body([e.Bind("_")]),
+          p.CaseMatch(top:, label:, pre:, post:, otherwise:),
+          ..zoom
+        ]
+        #(p.Exp(e.Vacant), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    #(
+      p.Exp(branch),
+      [p.Body(args), p.CaseMatch(top:, label:, pre:, post:, otherwise:), ..zoom],
     ) -> {
       let post = [#(label, e.Function(args, branch)), ..post]
       let rebuild = fn(label) {
         let zoom = [
           p.Body(args),
           p.CaseMatch(top:, label:, pre:, post:, otherwise:),
+          ..zoom
         ]
         #(p.Exp(e.Vacant), zoom)
       }
@@ -399,15 +441,40 @@ pub fn extend_after(source) {
       }
       Ok(Choose("", [], rebuild))
     }
+    #(p.Match(top:, label:, branch:, pre:, post:, otherwise:), zoom) -> {
+      let pre = [#(label, branch), ..pre]
+      let rebuild = fn(label) {
+        let branch = e.Function([e.Bind("_")], e.Vacant)
+        let focus = p.Match(top:, label:, branch:, pre:, post:, otherwise:)
+        #(focus, zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
     #(
       p.Exp(branch),
-      [p.Body(args), p.CaseMatch(top:, label:, pre:, post:, otherwise:)],
+      [p.CaseMatch(top:, label:, pre:, post:, otherwise:), ..zoom],
+    ) -> {
+      let pre = [#(label, branch), ..pre]
+      let rebuild = fn(label) {
+        let zoom = [
+          p.Body([e.Bind("_")]),
+          p.CaseMatch(top:, label:, pre:, post:, otherwise:),
+          ..zoom
+        ]
+        #(p.Exp(e.Vacant), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    #(
+      p.Exp(branch),
+      [p.Body(args), p.CaseMatch(top:, label:, pre:, post:, otherwise:), ..zoom],
     ) -> {
       let pre = [#(label, e.Function(args, branch)), ..pre]
       let rebuild = fn(label) {
         let zoom = [
           p.Body(args),
           p.CaseMatch(top:, label:, pre:, post:, otherwise:),
+          ..zoom
         ]
         #(p.Exp(e.Vacant), zoom)
       }

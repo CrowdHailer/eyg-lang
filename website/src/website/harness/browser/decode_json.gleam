@@ -8,7 +8,7 @@ import gleam/list
 
 pub const l = "DecodeJSON"
 
-pub const lift = t.String
+pub const lift = t.Binary
 
 pub fn reply() {
   t.result(

@@ -37,6 +37,16 @@ pub fn delete(zip) {
 
     p.Exp(e.Vacant), [p.CallArg(f, [], []), ..zoom] ->
       Ok(#(p.Exp(e.Call(f, [e.Vacant])), zoom))
+    p.Exp(e.Vacant), [p.CaseTail(top:, branches:), ..zoom] -> {
+      case list.reverse(branches) {
+        [#(label, branch), ..pre] -> {
+          let focus =
+            p.Match(top:, label:, branch:, pre:, post: [], otherwise: None)
+          Ok(#(focus, zoom))
+        }
+        [] -> Ok(#(p.Exp(top), zoom))
+      }
+    }
     p.Exp(x), _ if x != vacant -> Ok(#(p.Exp(e.Vacant), zoom))
     p.Assign(p.AssignStatement(_), _, pre, [#(pattern, value), ..post], then),
       zoom
