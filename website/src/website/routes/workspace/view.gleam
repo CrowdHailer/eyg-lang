@@ -64,7 +64,11 @@ pub fn render(state: state.State) {
           h.div(
             [],
             list.map(dict.to_list(state.modules), fn(module) {
-              h.div([], [h.text(module.0.0)])
+              let #(filename, _buffer) = module
+              let #(name, state.EygJson) = filename
+              h.div([event.on_click(state.UserClickedOnModule(filename:))], [
+                h.text(name),
+              ])
             }),
           ),
         ]),

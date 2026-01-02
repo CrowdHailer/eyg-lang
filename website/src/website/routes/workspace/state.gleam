@@ -254,6 +254,7 @@ pub type Message {
   UserPressedCommandKey(key: String)
   // This is used for when a user clicks on an error message
   UserClickedOnPathReference(reversed: List(Int))
+  UserClickedOnModule(filename: Filename)
   InputMessage(input.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
@@ -276,6 +277,7 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
     UserClickedOnPathReference(reversed:) ->
       user_clicked_on_path_reference(state, reversed)
+    UserClickedOnModule(filename:) -> user_clicked_on_module(state, filename)
     InputMessage(message) -> input_message(state, message)
     ClipboardReadCompleted(result) -> clipboard_read_complete(state, result)
     ClipboardWriteCompleted(result) -> clipboard_write_complete(state, result)
@@ -361,6 +363,10 @@ fn user_pressed_command_key(state, key) {
 
 fn user_clicked_on_path_reference(state, reversed) {
   navigate(state, "jump to", buffer.focus_at_reversed(_, reversed))
+}
+
+fn user_clicked_on_module(state, filename) {
+  #(State(..state, mode: Editing, focused: Module(filename)), [])
 }
 
 fn navigate(state, name, func) {
