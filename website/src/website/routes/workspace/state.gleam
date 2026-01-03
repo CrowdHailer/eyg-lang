@@ -1,4 +1,6 @@
+import gleam/http
 import gleam/json
+import snag
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
@@ -53,6 +55,7 @@ pub type State {
     flush_counter: Int,
     dirty: Dict(Filename, Nil),
     sync: client.Client,
+    tokens: dict.Dict(String, String),
   )
 }
 
@@ -194,6 +197,7 @@ pub type Action {
     filename: Filename,
     projection: p.Projection,
   )
+  SpotlessConnect(effect_counter: Int, service: String)
 }
 
 pub fn init(config: config.Config) -> #(State, List(Action)) {
@@ -217,6 +221,7 @@ pub fn init(config: config.Config) -> #(State, List(Action)) {
       mounted_directory: None,
       flush_counter: 0,
       dirty: dict.new(),
+      tokens: dict.new(),
     )
   #(state, actions)
 }
@@ -263,6 +268,11 @@ pub type Message {
     Result(List(#(Filename, Result(tree.Node(Nil), json.DecodeError))), String),
   )
   FlushTimeout(reference: Int)
+  SpotlessConnected(
+    reference: Int,
+    service: String,
+    result: Result(String, snag.Snag),
+  )
 }
 
 pub fn update(state: State, message) -> #(State, List(Action)) {
@@ -284,6 +294,8 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
       link_filesystem_completed(state, result)
     LoadedFiles(results) -> loaded_files(state, results)
     FlushTimeout(reference) -> flush_timeout(state, reference)
+    SpotlessConnected(reference:, service:, result:) ->
+      spotless_connected(state, reference, service, result)
   }
 }
 
@@ -672,6 +684,7 @@ type EffectImplementation {
   Abort(String)
   Internal(state: State, reply: istate.Value(Meta))
   External(Effect)
+  Spotless(service: String, operation: request.Request(BitArray))
 }
 
 /// Have tried normalise run and run_module (or extract to runner?)
@@ -712,6 +725,27 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                   let mode = RunningShell(occured:, awaiting:, debug:)
                   let state = State(..state, effect_counter:, mode:)
                   #(state, [RunEffect(effect_counter, effect)])
+                }
+                Spotless(service:, operation:) -> {
+                  case dict.get(state.tokens, service) {
+                    Error(Nil) -> {
+                      let effect_counter = state.effect_counter + 1
+                      let awaiting = Some(effect_counter)
+                      let mode = RunningShell(occured:, awaiting:, debug:)
+                      let state = State(..state, effect_counter:, mode:)
+                      #(state, [SpotlessConnect(effect_counter:, service:)])
+                    }
+                    Ok(token) -> {
+                      run_spotless_effect_with_token(
+                        state,
+                        occured,
+                        debug,
+                        service,
+                        token,
+                        operation,
+                      )
+                    }
+                  }
                 }
               }
             }
@@ -762,6 +796,31 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
       }
     }
   }
+}
+
+fn run_spotless_effect_with_token(
+  state: State,
+  occured,
+  debug,
+  service,
+  token: String,
+  operation: request.Request(BitArray),
+) {
+  let path = "/proxy/" <> service <> operation.path
+  let scheme = http.Https
+  let host = "spotless.run"
+  let port = None
+
+  let request =
+    request.Request(..operation, scheme:, host:, port:, path:)
+    |> request.set_header("authorization", "Bearer " <> token)
+
+  let effect = Fetch(request)
+  let effect_counter = state.effect_counter + 1
+  let awaiting = Some(effect_counter)
+  let mode = RunningShell(occured:, awaiting:, debug:)
+  let state = State(..state, effect_counter:, mode:)
+  #(state, [RunEffect(effect_counter, effect)])
 }
 
 /// module has no effects, it can return functions with effects so no access to state for internal effects
@@ -859,6 +918,7 @@ fn run_effect(effect, state: State) {
       }
       Internal(state:, reply:)
     }
+    effects.Spotless(service, operation) -> Spotless(service:, operation:)
   }
 }
 
@@ -926,6 +986,43 @@ fn flush_timeout(state, reference) {
       #(state, [])
     }
     False, _ -> #(state, [])
+  }
+}
+
+fn spotless_connected(state, reference, service, result) {
+  let State(mode:, ..) = state
+  case mode {
+    // put awaiting false for the fact it's no longer running
+    RunningShell(
+      occured:,
+      awaiting:,
+      debug: #(break.UnhandledEffect(label, lift), _meta, env, k) as debug,
+    )
+      if awaiting == Some(reference)
+    -> {
+      case result {
+        Ok(token) -> {
+          let assert Ok(effects.Spotless(service:, operation:)) =
+            effects.cast(label, lift)
+
+          let tokens = dict.insert(state.tokens, service, token)
+          let state = State(..state, tokens:)
+          run_spotless_effect_with_token(
+            state,
+            occured,
+            debug,
+            service,
+            token,
+            operation,
+          )
+        }
+        Error(reason) -> {
+          reason
+          todo
+        }
+      }
+    }
+    _ -> #(state, [])
   }
 }
 

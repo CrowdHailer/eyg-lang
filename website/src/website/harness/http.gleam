@@ -7,6 +7,7 @@ import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/list
 import gleam/result.{try}
+import spotless/origin
 
 pub fn method() {
   t.union([
@@ -157,6 +158,41 @@ pub fn headers_to_eyg(headers) {
       v.Record(dict.from_list([#("key", v.String(k)), #("value", v.String(v))]))
     }),
   )
+}
+
+pub fn operation() {
+  t.record([
+    #("method", method()),
+    #("path", t.String),
+    #("query", t.option(t.String)),
+    #("headers", headers()),
+    #("body", t.Binary),
+  ])
+}
+
+pub fn operation_to_gleam(request, origin) {
+  use method <- try(cast.field("method", method_to_gleam, request))
+  let origin.Origin(scheme:, host:, port:) = origin
+  use path <- try(cast.field("path", cast.as_string, request))
+  use query <- try(cast.field(
+    "query",
+    cast.as_option(_, cast.as_string),
+    request,
+  ))
+
+  use headers <- try(cast.field("headers", headers_to_gleam, request))
+  use body <- try(cast.field("body", cast.as_binary, request))
+
+  Ok(request.Request(
+    method: method,
+    scheme: scheme,
+    host: host,
+    port: port,
+    path: path,
+    query: query,
+    headers: headers,
+    body: body,
+  ))
 }
 
 pub fn response() {

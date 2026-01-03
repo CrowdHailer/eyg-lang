@@ -8,6 +8,7 @@ import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
+import midas/browser
 import morph/editable
 import morph/projection
 import mysig/asset
@@ -17,6 +18,7 @@ import plinth/browser/document
 import plinth/browser/event
 import plinth/browser/file
 import plinth/browser/file_system
+import spotless
 import website/config
 import website/harness/browser/alert
 import website/harness/browser/copy
@@ -201,6 +203,18 @@ fn run(action) {
           promise.resolve(Ok(Nil))
         }
         |> promise.map(fn(r) { echo r })
+        Nil
+      })
+    }
+    state.SpotlessConnect(effect_counter:, service:) -> {
+      effect.from(fn(dispatch) {
+        promise.map(browser.run_task(spotless.dnsimple(8080)), fn(result) {
+          dispatch(state.SpotlessConnected(
+            reference: effect_counter,
+            service:,
+            result:,
+          ))
+        })
         Nil
       })
     }

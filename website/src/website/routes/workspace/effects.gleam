@@ -7,6 +7,7 @@ import eyg/interpreter/cast
 import gleam/http/request
 import gleam/list
 import gleam/uri
+import spotless/origin
 import website/harness/browser/abort
 import website/harness/browser/alert
 import website/harness/browser/copy
@@ -20,6 +21,7 @@ import website/harness/browser/now
 import website/harness/browser/paste
 import website/harness/browser/prompt
 import website/harness/browser/random
+import website/harness/http
 
 pub type Effect {
   Abort(String)
@@ -36,6 +38,7 @@ pub type Effect {
   Paste
   Prompt(message: String)
   Random(max: Int)
+  Spotless(service: String, operation: request.Request(BitArray))
 }
 
 pub fn cast(label, input) {
@@ -95,6 +98,11 @@ fn lookup() {
       prompt.cast |> cast.map(Prompt),
     )),
     #(random.l, #(#(random.lift, random.lower), random.cast |> cast.map(Random))),
+    #("DNSimple", #(
+      #(http.operation(), http.response()),
+      http.operation_to_gleam(_, origin.http("dnsimple"))
+        |> cast.map(Spotless("dnsimple", _)),
+    )),
     // #(visit.l, #(#(visit.lift, visit.reply()), visit.cast |> cast.map(Visit))),
   ]
 }

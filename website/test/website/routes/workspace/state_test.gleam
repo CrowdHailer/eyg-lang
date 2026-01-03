@@ -752,8 +752,7 @@ pub fn unknown_effect_test() {
   assert [#([], error.MissingRow("Launch"))]
     == contextual.all_errors(state.repl.analysis)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
 
   assert actions == []
   // Should the error be on the shell or a key press error
@@ -772,8 +771,7 @@ pub fn bad_input_effect_test() {
   assert [#([], error.TypeMismatch(t.Record(t.Empty), t.String))]
     == contextual.all_errors(state.repl.analysis)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   let assert state.RunningShell(debug:, ..) = state.mode
   let #(reason, _, _, _) = debug
@@ -870,8 +868,7 @@ pub fn bad_abort_input_effect_test() {
   let source = ir.call(ir.perform("Abort"), [ir.unit()])
   let state = set_repl(state, source)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   let assert state.RunningShell(debug:, ..) = state.mode
   let #(reason, _, _, _) = debug
@@ -1009,8 +1006,7 @@ pub fn initial_package_sync_test() {
 
   assert [] == contextual.all_errors(state.repl.analysis)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   assert state.Editing == state.mode
 }
@@ -1020,8 +1016,7 @@ pub fn read_missing_source_file_test() {
   let source = ir.call(ir.perform("ReadFile"), [ir.string("index.eyg.json")])
   let state = set_repl(state, source)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   assert state.Editing == state.mode
   let assert [shell.Executed(value:, ..)] = state.previous
@@ -1033,8 +1028,7 @@ pub fn read_missing_file_test() {
   let source = ir.call(ir.perform("ReadFile"), [ir.string("index.txt")])
   let state = set_repl(state, source)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   assert state.Editing == state.mode
   let assert [shell.Executed(value:, ..)] = state.previous
@@ -1049,13 +1043,43 @@ pub fn read_source_file_test() {
   let source = ir.call(ir.perform("ReadFile"), [ir.string(file <> ".eyg.json")])
   let state = set_repl(state, source)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   assert state.Editing == state.mode
   let assert [shell.Executed(value:, ..)] = state.previous
   let assert Some(value.Tagged("Ok", value.Binary(bytes))) = value
   assert dag_json.to_block(lib) == bytes
+}
+
+pub fn keep_api_token_from_dnsimple_test() {
+  let state = no_packages()
+  let source =
+    ir.call(ir.perform("DNSimple"), [
+      ir.record([
+        #("method", ir.tagged("GET", ir.unit())),
+        #("path", ir.string("/v2/accounts")),
+        #("query", ir.tagged("None", ir.unit())),
+        #("headers", ir.list([])),
+        #("body", ir.binary(<<>>)),
+      ]),
+    ])
+  let state = set_repl(state, source)
+
+  let #(state, actions) = press_key(state, "Enter")
+  assert actions
+    == [state.SpotlessConnect(effect_counter: 1, service: "dnsimple")]
+  let assert state.RunningShell(awaiting: Some(1), debug:, ..) = state.mode
+  let assert break.UnhandledEffect("DNSimple", ..) = debug.0
+
+  let message = state.SpotlessConnected(1, "dnsimple", Ok("tok_dnsimple"))
+  let #(state, actions) = state.update(state, message)
+  let assert [state.RunEffect(reference: 2, effect: state.Fetch(request))] =
+    actions
+  assert request.host == "spotless.run"
+  assert request.path == "/proxy/dnsimple/v2/accounts"
+  assert request.headers == [#("authorization", "Bearer tok_dnsimple")]
+  let assert state.RunningShell(awaiting: Some(2), debug:, ..) = state.mode
+  let assert break.UnhandledEffect("DNSimple", ..) = debug.0
 }
 
 // --------------- 7. Relative references -------------------------
@@ -1075,8 +1099,7 @@ pub fn read_reference_from_repl_test() {
 
   assert [] == contextual.all_errors(state.repl.analysis)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   assert state.Editing == state.mode
   let assert [shell.Executed(value: Some(value), ..)] = state.previous
@@ -1099,8 +1122,7 @@ pub fn nested_reference_test() {
   let state = set_repl(state, top)
   assert [] == contextual.all_errors(state.repl.analysis)
 
-  let message = state.UserPressedCommandKey("Enter")
-  let #(state, actions) = state.update(state, message)
+  let #(state, actions) = press_key(state, "Enter")
   assert actions == []
   assert state.Editing == state.mode
   let assert [shell.Executed(value: Some(value), ..)] = state.previous
