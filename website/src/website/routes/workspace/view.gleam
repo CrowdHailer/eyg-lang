@@ -60,7 +60,7 @@ pub fn render(state: state.State) {
       ],
       [
         h.div([a.class("max-w-sm border cover expand")], [
-          h.div([], [h.text("modules")]),
+          h.div([], [h.text("Modules")]),
           h.div(
             [],
             list.map(dict.to_list(state.modules), fn(module) {
