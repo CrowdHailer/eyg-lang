@@ -1,3 +1,4 @@
+import filepath
 import gleam/bit_array
 import gleam/io
 import gleam/javascript/array
@@ -32,6 +33,7 @@ pub fn main() {
 fn do_main(args) {
   use result <- promise.map(case args {
     [] as args | ["develop", ..args] -> develop(args)
+    ["build"] -> build()
     ["deploy"] -> deploy(args)
     ["email"] -> email()
     ["embed"] -> embed()
@@ -46,6 +48,20 @@ fn do_main(args) {
 }
 
 const site_id = "eae24b5b-4854-4973-8a9f-8fb3b1c423c0"
+
+fn build() {
+  use files <- promise.try_await(build.to_files(routes()))
+  list.try_each(files, fn(file) {
+    let #(path, bytes) = file
+
+    use Nil <- result.try(
+      simplifile.create_directory_all(filepath.directory_name("./dist" <> path)),
+    )
+    simplifile.write_bits("./dist" <> path, bytes)
+  })
+  |> snag.map_error(simplifile.describe_error)
+  |> promise.resolve
+}
 
 fn deploy(_args) {
   use files <- promise.try_await(build.to_files(routes()))
