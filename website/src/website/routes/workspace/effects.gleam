@@ -99,7 +99,7 @@ fn lookup() {
     )),
     #(random.l, #(#(random.lift, random.lower), random.cast |> cast.map(Random))),
     #("DNSimple", #(
-      #(http.operation(), http.response()),
+      #(http.operation(), t.result(http.response(), t.String)),
       http.operation_to_gleam(_, origin.http("dnsimple"))
         |> cast.map(Spotless("dnsimple", _)),
     )),

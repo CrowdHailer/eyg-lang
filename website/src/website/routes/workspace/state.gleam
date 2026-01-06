@@ -1,6 +1,7 @@
 import gleam/http
 import gleam/json
 import snag
+import spotless/origin
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
@@ -41,6 +42,7 @@ import website/sync/client
 
 pub type State {
   State(
+    origin: origin.Origin,
     mode: Mode,
     user_error: Option(snippet.Failure),
     focused: Target,
@@ -197,17 +199,18 @@ pub type Action {
     filename: Filename,
     projection: p.Projection,
   )
-  SpotlessConnect(effect_counter: Int, service: String)
+  SpotlessConnect(effect_counter: Int, origin: origin.Origin, service: String)
 }
 
 pub fn init(config: config.Config) -> #(State, List(Action)) {
-  let config.Config(registry_origin:) = config
-  let #(sync, actions) = client.new(registry_origin) |> client.sync()
+  let config.Config(origin:) = config
+  let #(sync, actions) = client.new(origin) |> client.sync()
   let actions = list.map(actions, SyncAction)
   let scope = []
   let modules = dict.new()
   let state =
     State(
+      origin:,
       sync:,
       mode: Editing,
       user_error: None,
@@ -733,7 +736,13 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                       let awaiting = Some(effect_counter)
                       let mode = RunningShell(occured:, awaiting:, debug:)
                       let state = State(..state, effect_counter:, mode:)
-                      #(state, [SpotlessConnect(effect_counter:, service:)])
+                      #(state, [
+                        SpotlessConnect(
+                          effect_counter:,
+                          origin: state.origin,
+                          service:,
+                        ),
+                      ])
                     }
                     Ok(token) -> {
                       run_spotless_effect_with_token(

@@ -166,8 +166,8 @@ pub type Action {
 }
 
 pub fn init(config) {
-  let config.Config(registry_origin:) = config
-  let #(client, sync_task) = client.init(registry_origin)
+  let config.Config(origin:) = config
+  let #(client, sync_task) = client.init(origin)
   let actions = list.map(sync_task, SyncAction)
   let shell = shell.init(browser.lookup(), client.cache)
   let source = e.from_annotated(ir.vacant())

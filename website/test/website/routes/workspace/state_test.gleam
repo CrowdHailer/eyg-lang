@@ -7,6 +7,7 @@ import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/http
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -17,6 +18,7 @@ import morph/navigation
 import morph/picker
 import morph/projection as p
 import plinth/browser/file_system
+import spotless/origin
 import website/components/shell
 import website/components/snippet
 import website/routes/helpers
@@ -1066,8 +1068,9 @@ pub fn keep_api_token_from_dnsimple_test() {
   let state = set_repl(state, source)
 
   let #(state, actions) = press_key(state, "Enter")
+  let origin = origin.Origin(http.Https, "eyg.test", None)
   assert actions
-    == [state.SpotlessConnect(effect_counter: 1, service: "dnsimple")]
+    == [state.SpotlessConnect(effect_counter: 1, origin:, service: "dnsimple")]
   let assert state.RunningShell(awaiting: Some(1), debug:, ..) = state.mode
   let assert break.UnhandledEffect("DNSimple", ..) = debug.0
 

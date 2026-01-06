@@ -2,6 +2,7 @@ import eyg/ir/dag_json
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
+import gleam/option.{Some}
 import gleam/string
 import lustre
 import lustre/attribute as a
@@ -206,9 +207,10 @@ fn run(action) {
         Nil
       })
     }
-    state.SpotlessConnect(effect_counter:, service:) -> {
+    state.SpotlessConnect(effect_counter:, origin:, service:) -> {
+      let assert Some(port) = origin.port
       effect.from(fn(dispatch) {
-        promise.map(browser.run_task(spotless.dnsimple(8080)), fn(result) {
+        promise.map(browser.run_task(spotless.dnsimple(port)), fn(result) {
           dispatch(state.SpotlessConnected(
             reference: effect_counter,
             service:,

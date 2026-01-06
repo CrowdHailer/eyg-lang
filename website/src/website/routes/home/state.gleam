@@ -74,8 +74,8 @@ fn effects() {
 }
 
 pub fn init(config) {
-  let config.Config(registry_origin:) = config
-  let #(client, init_tasks) = client.init(registry_origin)
+  let config.Config(origin:) = config
+  let #(client, init_tasks) = client.init(origin)
   let effects = effects()
   let examples =
     [

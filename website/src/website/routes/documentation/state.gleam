@@ -235,8 +235,8 @@ fn to_bytes(editable) {
 
 // snippet failure goes at top level
 pub fn init(config) {
-  let config.Config(registry_origin:) = config
-  let #(client, init_task) = client.init(registry_origin)
+  let config.Config(origin:) = config
+  let #(client, init_task) = client.init(origin)
 
   let examples = [
     #(int_key, to_bytes(int_example)),
