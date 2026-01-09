@@ -16,10 +16,13 @@ pub fn render() {
         ]),
       ],
       [
-        card([view.render(view.Loading)]),
+        card([view.render(view.Confirm)]),
         card([view.render(view.Setup)]),
-        card([view.render(view.Loading)]),
-        card([view.render(view.Loading)]),
+        // Link via QR code
+        card([view.render(view.Link)]),
+        // Confirm link
+        card([view.render(view.Choose([]))]),
+        // Add to the account
         card([view.render(view.Loading)]),
         card([view.render(view.Loading)]),
         card([view.render(view.Loading)]),

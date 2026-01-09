@@ -1,8 +1,6 @@
-import gleam/option.{None, Some}
 import gleroglero/outline
 import lustre/attribute as a
 import lustre/element/html as h
-import lustre/event
 import website/routes/sign/state.{State}
 
 pub fn model(state) {
@@ -19,6 +17,9 @@ pub type Model {
   Failed(message: String)
   Loading
   Setup
+  Confirm
+  Choose(keys: List(String))
+  Link
 }
 
 pub fn render(model) {
@@ -27,26 +28,103 @@ pub fn render(model) {
     Loading -> layout([h.text("loading")])
     Setup ->
       layout([
-        h.div([], [
-          h.text("setup"),
+        full_row_button(outline.user_plus(), "Create new account"),
+        full_row_button(outline.qr_code(), "Sign in to account"),
+        // h.button([event.on_click(state.UserClickedCreateKey)], [
+      //   h.text("Create key"),
+      // ]),
+      ])
+    Confirm ->
+      layout([
+        h.div([a.class("cover bg-white p-2")], [
+          h.dl([], [
+            h.dt([a.class("font-bold italic")], [h.text("type")]),
+            h.dd([a.class("ml-8 mb-2")], [h.text("publish release")]),
+            h.dt([a.class("font-bold italic")], [h.text("package")]),
+            h.dd([a.class("ml-8 mb-2")], [h.text("standard")]),
+            h.dt([a.class("font-bold italic")], [h.text("version")]),
+            h.dd([a.class("ml-8 mb-2")], [h.text("2")]),
+            h.dt([a.class("font-bold italic")], [h.text("module")]),
+            h.dd([a.class("ml-8 mb-2")], [h.text("cadcdac23rgw45ur67ndfgdgw4")]),
+          ]),
         ]),
-        h.div(
-          [
-            a.class("expand"),
-            a.styles([
-              #("background", "#f6f0ffd6"),
-              #("z-index", "1"),
-              #("width", "80%"),
-              #("border-radius", "12px"),
-            ]),
-          ],
-          [outline.key()],
+        full_row_button(outline.cloud_arrow_up(), "Sign"),
+      ])
+    Choose(..) ->
+      layout([
+        full_row_button_subtext(
+          outline.key(),
+          "Personal account",
+          "ab:1s:dx:3s:27",
         ),
-        h.button([event.on_click(state.UserClickedCreateKey)], [
-          h.text("Create key"),
+        full_row_button_subtext(outline.key(), "EYG account", "ab:1s:dx:3s:27"),
+        full_row_button_subtext(outline.key(), "Peter @ work", "ab:1s:dx:3s:27"),
+      ])
+    Link ->
+      layout([
+        h.img([
+          a.src(
+            "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://example.com",
+          ),
         ]),
+        h.div([], [h.text("Scan with trusted device.")]),
       ])
   }
+}
+
+fn full_row_button(icon, text) {
+  h.div(
+    [
+      a.class(
+        "border-2 border-black border-dashed cover gap-3 hstack p-2 rounded-xl",
+      ),
+      a.styles([#("justify-content", "flex-start")]),
+    ],
+    [
+      h.span(
+        [
+          a.class("w-12 p-2 rounded"),
+          a.styles([
+            #(
+              "background",
+              "linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 25%, #34d399 50%, #10b981 75%, #059669 100%)",
+            ),
+          ]),
+        ],
+        [icon],
+      ),
+      h.span([], [h.text(text)]),
+    ],
+  )
+}
+
+fn full_row_button_subtext(icon, text, subtext) {
+  h.div(
+    [
+      a.class(
+        "border-2 border-black border-dashed cover gap-3 hstack p-2 rounded-xl",
+      ),
+      a.styles([#("justify-content", "flex-start")]),
+    ],
+    [
+      h.span(
+        [
+          a.class("w-14 p-2 rounded"),
+          a.styles([
+            #(
+              "background",
+              "linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 25%, #34d399 50%, #10b981 75%, #059669 100%)",
+            ),
+          ]),
+        ],
+        [icon],
+      ),
+      h.div([], [
+        h.div([a.class("font-bold")], [h.text(text)]),
+        h.div([a.class("text-gray-600")], [h.text(subtext)]),
+      ]),
+    ],
+  )
 }
 
 fn layout(children) {
@@ -63,7 +141,42 @@ fn layout(children) {
     // z-index: 1;
     // width: 80%;
     // border-radius: 12px;
-    h.div([a.class("vstack"), a.styles([#("height", "100%")])], children),
+    h.div(
+      [
+        a.class("vstack neo-shadow border border-black"),
+        a.styles([
+          #("position", "absolute"),
+          #("inset", "1.5em"),
+          #("background", "#f6f0ffd6"),
+          #("border-radius", "12px"),
+        ]),
+      ],
+      [
+        h.div([a.class("cover p-6 font-bold text-3xl absolute top-0")], [
+          h.span(
+            [
+              a.styles([
+                #("color", "#34d399"),
+              ]),
+            ],
+            [h.text("EYG")],
+          ),
+          h.span([], [h.text(" ID")]),
+        ]),
+        h.div(
+          [
+            a.class("expand vstack cover mx-6 gap-6"),
+            a.styles([
+              // #("background", "#f6f0ffd6"),
+            // #("z-index", "1"),
+            // #("width", "80%"),
+            // #("border-radius", "12px"),
+            ]),
+          ],
+          children,
+        ),
+      ],
+    ),
   ])
 }
 
