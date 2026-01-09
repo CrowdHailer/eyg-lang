@@ -1132,14 +1132,11 @@ pub fn nested_reference_test() {
   assert value.Integer(27) == value
 }
 
-@external(javascript, "../../../website_ffi.mjs", "any")
-fn dummy_dir_handle() -> file_system.DirectoryHandle
-
 pub fn mounting_directory_loads_modules_test() {
   let state = no_packages()
   let #(state, actions) = press_key(state, "Q")
   assert [state.ShowDirectoryPicker] == actions
-  let handle = dummy_dir_handle()
+  let handle = helpers.dummy_directory_handle()
   let message = state.ShowDirectoryPickerCompleted(Ok(handle))
   let #(state, actions) = state.update(state, message)
   assert [state.LoadFiles(handle:)] == actions
@@ -1151,8 +1148,8 @@ pub fn mounting_directory_loads_modules_test() {
 }
 
 pub fn module_edits_are_flushed_test() {
-  let state =
-    state.State(..no_packages(), mounted_directory: Some(dummy_dir_handle()))
+  let mounted_directory = Some(helpers.dummy_directory_handle())
+  let state = state.State(..no_packages(), mounted_directory:)
   let a = #("a", state.EygJson)
   let state = state.State(..state, focused: state.Module(a))
   let #(state, actions) = press_key(state, "L")
