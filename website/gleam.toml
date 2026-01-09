@@ -4,7 +4,7 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
-plinth = ">= 0.9.0 and < 1.0.0"
+plinth = ">= 0.9.1 and < 1.0.0"
 gleam_javascript = ">= 1.0.0 and < 2.0.0"
 snag = ">= 1.1.0 and < 2.0.0"
 midas_node = ">= 1.4.0 and < 2.0.0"

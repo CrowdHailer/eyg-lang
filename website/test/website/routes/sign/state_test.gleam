@@ -13,7 +13,7 @@ import website/routes/sign/view
 pub fn not_a_popup_test() {
   let #(state, actions) = state.init(None)
   assert [] == actions
-  let assert view.Failed(..) = view.model(state)
+  let assert view.Loading(..) = view.model(state)
 }
 
 // receive bad payload shows warning
@@ -40,8 +40,15 @@ pub fn sign_with_new_key_test() {
   let #(state, actions) = read_keypairs(state, [])
   assert [] == actions
   let assert view.Setup(..) = view.model(state)
-  todo
+
+  let #(state, actions) = create_key_pair(state)
+  assert [state.CreateKey] == actions
+  // State should be working again
+  let message = state.KeypairCreated(Ok(#()))
+  let #(state, actions) = state.update(state, message)
 }
+
+// sign with already loaded
 
 fn receive_payload(state, payload) {
   let message = state.WindowReceivedMessageEvent(Ok(protocol.Payload(payload)))
@@ -55,5 +62,10 @@ fn database_setup(state, database) {
 
 fn read_keypairs(state, keypairs) {
   let message = state.ReadKeypairsCompleted(Ok(keypairs))
+  state.update(state, message)
+}
+
+fn create_key_pair(state) {
+  let message = state.UserClickedCreateKey
   state.update(state, message)
 }

@@ -104,7 +104,12 @@ fn routes() {
     ),
     #("editor", Route(index: route.Page(editor.page()), items: [])),
     #("workspace", Route(index: route.Page(workspace.page()), items: [])),
-    #("sign", Route(index: route.Page(sign.page()), items: [])),
+    #(
+      "sign",
+      Route(index: route.Page(sign.page()), items: [
+        #("storybook", Route(index: route.Page(sign.storybook()), items: [])),
+      ]),
+    ),
     #("news", news.route()),
     #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),
   ])

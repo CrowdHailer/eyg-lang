@@ -84,6 +84,16 @@ export async function object_store_get_all(object_store) {
   }
 }
 
+export async function object_store_put(object_store, item, key) {
+  try {
+    const db_request = object_store.put(item, key)
+    const results = await db_request_to_promise(db_request)
+    return Result$Ok(results)
+  } catch (error) {
+    return Result$Error(`${error}`)
+  }
+}
+
 function db_request_to_promise(db_request) {
   return new Promise(function (resolve) {
     db_request.onsuccess = function (event) {

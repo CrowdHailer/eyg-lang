@@ -1,25 +1,49 @@
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
+import plinth/browser/crypto/subtle
 import plinth/browser/window_proxy
 import website/indexeddb/database
 import website/routes/sign/protocol
 
 pub type State {
-  State(opener: Option(window_proxy.WindowProxy), keypairs: List(String))
+  State(
+    opener: Option(window_proxy.WindowProxy),
+    database: Fetching(database.Database),
+    keypairs: Fetching(List(Key)),
+  )
+}
+
+pub type Key {
+  Key(id: String, public: subtle.CryptoKey, private: subtle.CryptoKey)
+}
+
+pub type Fetching(t) {
+  Fetching
+  Fetched(t)
+  Failed(String)
+}
+
+fn fetching_result(result) {
+  case result {
+    Ok(value) -> Fetched(value)
+    Error(reason) -> Failed(reason)
+  }
 }
 
 pub type Action {
   PostMessage(target: window_proxy.WindowProxy, data: protocol.OpenerBound)
   ReadKeypairs(database: database.Database)
+  CreateKey
 }
 
 pub fn init(config) {
+  let state = State(opener: None, database: Fetching, keypairs: Fetching)
   case config {
     Some(opener) -> {
       let action = PostMessage(opener, protocol.GetPayload)
-      #(State(opener: Some(opener), keypairs: []), [action])
+      #(State(..state, opener: Some(opener)), [action])
     }
-    None -> #(State(opener: None, keypairs: []), [])
+    None -> #(state, [])
   }
 }
 
@@ -28,7 +52,9 @@ pub type Message {
   WindowReceivedMessageEvent(
     payload: Result(protocol.PopupBound, List(decode.DecodeError)),
   )
-  ReadKeypairsCompleted(result: Result(List(String), String))
+  ReadKeypairsCompleted(result: Result(List(Key), String))
+  UserClickedCreateKey
+  KeypairCreated(result: Result(#(), String))
 }
 
 pub fn update(state, message) {
@@ -36,19 +62,34 @@ pub fn update(state, message) {
     IndexedDBSetup(result) -> indexeddb_setup(state, result)
     WindowReceivedMessageEvent(payload:) -> #(state, [])
     ReadKeypairsCompleted(result:) -> read_keypairs_completed(state, result)
+    UserClickedCreateKey -> user_clicked_create_key(state)
+    KeypairCreated(result:) -> keypair_created(state, result)
   }
 }
 
 fn indexeddb_setup(state, result) {
   case result {
-    Ok(database) -> #(state, [ReadKeypairs(database)])
+    Ok(database) -> {
+      let state = State(..state, database: Fetched(database))
+      #(state, [ReadKeypairs(database)])
+    }
     Error(_) -> todo
   }
 }
 
 fn read_keypairs_completed(state, result) {
+  #(State(..state, keypairs: fetching_result(result)), [])
+}
+
+fn user_clicked_create_key(state) {
+  #(state, [CreateKey])
+}
+
+fn keypair_created(state, result) {
   case result {
-    Ok(keypairs) -> #(State(..state, keypairs:), [])
-    Error(_) -> todo
+    Ok(keypair) -> {
+      todo
+    }
+    Error(reason) -> todo
   }
 }
