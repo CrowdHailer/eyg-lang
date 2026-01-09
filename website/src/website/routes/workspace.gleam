@@ -19,6 +19,9 @@ import plinth/browser/document
 import plinth/browser/event
 import plinth/browser/file
 import plinth/browser/file_system
+import plinth/browser/message_event
+import plinth/browser/window
+import plinth/browser/window_proxy
 import spotless
 import website/config
 import website/harness/browser/alert
@@ -80,6 +83,11 @@ pub fn page() {
 pub fn client() {
   let app = lustre.application(do_init, do_update, view.render)
   let assert Ok(runtime) = lustre.start(app, "#app", config.load())
+  window.on_message(window.self(), fn(event) {
+    let message = lustre.dispatch(state.WindowReceivedMessageEvent(event:))
+    lustre.send(runtime, message)
+    Nil
+  })
   // Cant get persisted directory unless from a keypress
   // promise.map(get_persisted_directory(), fn(result) {
   //   case result {
@@ -220,6 +228,17 @@ fn run(action) {
         Nil
       })
     }
+    state.OpenPopup(location) -> {
+      effect.from(fn(dispatch) {
+        dispatch(state.OpenPopupCompleted(browser.open(location, #(650, 800))))
+        Nil
+      })
+    }
+    state.PostMessage(target:, payload:) ->
+      effect.from(fn(_dispatch) {
+        window_proxy.post_message(target, payload, "*")
+        Nil
+      })
   }
 }
 

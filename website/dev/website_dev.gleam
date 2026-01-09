@@ -24,6 +24,7 @@ import website/routes/news
 import website/routes/news/archive
 import website/routes/news/edition
 import website/routes/roadmap
+import website/routes/sign
 import website/routes/workspace
 
 pub fn main() {
@@ -103,6 +104,7 @@ fn routes() {
     ),
     #("editor", Route(index: route.Page(editor.page()), items: [])),
     #("workspace", Route(index: route.Page(workspace.page()), items: [])),
+    #("sign", Route(index: route.Page(sign.page()), items: [])),
     #("news", news.route()),
     #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),
   ])

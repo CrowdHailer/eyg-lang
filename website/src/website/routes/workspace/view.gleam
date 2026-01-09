@@ -47,6 +47,7 @@ pub fn render(state: state.State) {
                 h.div([], [h.text(simple_debug.reason_to_string(debug.0))])
             },
           ])
+        state.SigningPayload(..) -> modal([h.text("signing")])
         state.Editing ->
           case state.user_error {
             Some(reason) -> top([h.text(snippet.fail_message(reason))])

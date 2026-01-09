@@ -1,8 +1,3 @@
-import gleam/http
-import gleam/json
-import snag
-import spotless/origin
-
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -15,8 +10,11 @@ import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
 import gleam/dict.{type Dict}
+import gleam/dynamic/decode
+import gleam/http
 import gleam/http/request
 import gleam/int
+import gleam/json.{type Json}
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -30,6 +28,11 @@ import morph/input
 import morph/picker
 import morph/projection as p
 import plinth/browser/file_system
+import plinth/browser/message_event
+import plinth/browser/window
+import plinth/browser/window_proxy
+import snag
+import spotless/origin
 import website/components/readonly
 import website/components/shell
 import website/components/snippet
@@ -85,6 +88,7 @@ pub type Mode {
   )
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))
+  SigningPayload(popup: Option(window_proxy.WindowProxy), payload: String)
 }
 
 pub type Rebuild(t) =
@@ -200,6 +204,8 @@ pub type Action {
     projection: p.Projection,
   )
   SpotlessConnect(effect_counter: Int, origin: origin.Origin, service: String)
+  OpenPopup(location: String)
+  PostMessage(target: window_proxy.WindowProxy, payload: Json)
 }
 
 pub fn init(config: config.Config) -> #(State, List(Action)) {
@@ -253,6 +259,9 @@ pub type Message {
   // 
   // This event assumes you are in command mode somewhere
   UserPressedCommandKey(key: String)
+  // window received message event.
+  // Could be from any source so is passed into the application as is.
+  WindowReceivedMessageEvent(event: message_event.MessageEvent)
   // This is used for when a user clicks on an error message
   UserClickedOnPathReference(reversed: List(Int))
   UserClickedOnModule(filename: Filename)
@@ -276,11 +285,14 @@ pub type Message {
     service: String,
     result: Result(String, snag.Snag),
   )
+  OpenPopupCompleted(Result(window_proxy.WindowProxy, String))
 }
 
 pub fn update(state: State, message) -> #(State, List(Action)) {
   case message {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
+    WindowReceivedMessageEvent(event:) ->
+      window_received_message_event(state, event)
     UserClickedOnPathReference(reversed:) ->
       user_clicked_on_path_reference(state, reversed)
     UserClickedOnModule(filename:) -> user_clicked_on_module(state, filename)
@@ -299,6 +311,7 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
     FlushTimeout(reference) -> flush_timeout(state, reference)
     SpotlessConnected(reference:, service:, result:) ->
       spotless_connected(state, reference, service, result)
+    OpenPopupCompleted(result) -> open_popup_completed(state, result)
   }
 }
 
@@ -335,7 +348,11 @@ fn user_pressed_command_key(state, key) {
     "t" -> insert_tag(state)
     "y" -> copy(state)
     "Y" -> paste(state)
-    // "u"
+    // TODO mode is authenticating
+    // you won't see much on the front page
+    "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
+      OpenPopup("/sign"),
+    ])
     "i" -> insert(state)
     "o" -> overwrite(state)
     "p" -> perform(state)
@@ -935,6 +952,40 @@ fn runner_stoped(state, occured, debug) {
   #(State(..state, mode: RunningShell(occured:, awaiting: None, debug:)), [])
 }
 
+// TODO test with sign effect
+fn window_received_message_event(state, event) {
+  let State(mode:, ..) = state
+  case mode {
+    SigningPayload(popup: Some(target), payload:) -> {
+      // wallet protocol
+      let assert Ok(exchange) =
+        decode.run(message_event.data(event), {
+          use type_ <- decode.field("type", decode.string)
+          case type_ {
+            "get_payload" -> {
+              use exchange <- decode.field("exchange", decode.string)
+              echo exchange
+              decode.success(exchange)
+            }
+            _ -> todo
+          }
+        })
+      echo exchange
+      #(state, [
+        PostMessage(
+          target:,
+          payload: json.object([
+            #("type", json.string("payload")),
+            #("exchange", json.string(exchange)),
+            #("payload", json.object([#("foo", json.string("123"))])),
+          ]),
+        ),
+      ])
+    }
+    _ -> todo
+  }
+}
+
 fn link_filesystem(state) {
   #(state, [ShowDirectoryPicker])
 }
@@ -1169,6 +1220,22 @@ fn picker_message(state, message) {
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
     _ -> #(state, [])
+  }
+}
+
+fn open_popup_completed(state: State, result) {
+  let State(mode:, ..) = state
+  case mode {
+    SigningPayload(payload:, ..) ->
+      case result {
+        Ok(popup) -> {
+          let mode = SigningPayload(popup: Some(popup), payload:)
+          let state = State(..state, mode:)
+          #(state, [])
+        }
+        _ -> todo
+      }
+    _ -> todo
   }
 }
 
