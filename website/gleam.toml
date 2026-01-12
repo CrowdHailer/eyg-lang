@@ -37,6 +37,7 @@ dag_json = ">= 2.0.0 and < 3.0.0"
 multiformats = ">= 2.0.3 and < 3.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
 identity = {path = "../../identity"}
+kryptos = ">= 1.0.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

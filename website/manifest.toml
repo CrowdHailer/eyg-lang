@@ -31,10 +31,11 @@ packages = [
   { name = "glen_node", version = "0.0.3", build_tools = ["gleam"], requirements = ["gleam_javascript", "glen"], otp_app = "glen_node", source = "hex", outer_checksum = "0A81302C16B9719FC47FB022A127A51EA668D4F78CE6DCCCF430A3C098395511" },
   { name = "gleroglero", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "lustre"], otp_app = "gleroglero", source = "hex", outer_checksum = "BDDAF89D983DF26A4043DD9F685AF13BC0C90A600E165AA7D0DE7DF27A160739" },
   { name = "houdini", version = "1.2.0", build_tools = ["gleam"], requirements = [], otp_app = "houdini", source = "hex", outer_checksum = "5DB1053F1AF828049C2B206D4403C18970ABEF5C18671CA3C2D2ED0DD64F6385" },
-  { name = "identity", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_json", "gleam_stdlib", "multiformats"], source = "local", path = "../../identity" },
+  { name = "identity", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_erlang", "gleam_json", "gleam_stdlib", "multiformats"], source = "local", path = "../../identity" },
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
   { name = "jot", version = "8.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "houdini", "splitter"], otp_app = "jot", source = "hex", outer_checksum = "CCE11C8904B129CC9DA3A293B645884B91C96D252183F6DBCAEFA8F2587CAEFD" },
   { name = "justin", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "justin", source = "hex", outer_checksum = "7FA0C6DB78640C6DC5FBFD59BF3456009F3F8B485BF6825E97E1EB44E9A1E2CD" },
+  { name = "kryptos", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "kryptos", source = "hex", outer_checksum = "32E59E31952123A0177A512C98A60AC8A2645B0AF7D8A83FFA18B8861477E0F1" },
   { name = "lustre", version = "5.4.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib", "houdini"], otp_app = "lustre", source = "hex", outer_checksum = "40E097BABCE65FB7C460C073078611F7F5802EB07E1A9BFB5C229F71B60F8E50" },
   { name = "marceau", version = "1.3.0", build_tools = ["gleam"], requirements = [], otp_app = "marceau", source = "hex", outer_checksum = "2D1C27504BEF45005F5DFB18591F8610FB4BFA91744878210BDC464412EC44E9" },
   { name = "midas", version = "2.0.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "E51EA1F29F91B793C70C81B5C29C2BA343EB7D5F71462542DFF6437F9F9AC4B3" },
@@ -77,6 +78,7 @@ gleroglero = { version = ">= 1.1.0 and < 2.0.0" }
 identity = { path = "../../identity" }
 jot = { version = ">= 8.0.0 and < 9.0.0" }
 justin = { version = ">= 1.0.1 and < 2.0.0" }
+kryptos = { version = ">= 1.0.0 and < 2.0.0" }
 lustre = { version = ">= 4.6.3 and < 6.0.0" }
 midas = { version = ">= 2.0.0 and < 3.0.0" }
 midas_browser = { version = ">= 1.1.0 and < 2.0.0" }
