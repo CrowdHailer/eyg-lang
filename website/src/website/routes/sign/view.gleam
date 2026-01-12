@@ -1,6 +1,7 @@
 import gleroglero/outline
 import lustre/attribute as a
 import lustre/element/html as h
+import lustre/event
 import website/routes/sign/state.{State}
 
 pub fn model(state) {
@@ -28,11 +29,16 @@ pub fn render(model) {
     Loading -> layout([h.text("loading")])
     Setup ->
       layout([
-        full_row_button(outline.user_plus(), "Create new account"),
-        full_row_button(outline.qr_code(), "Sign in to account"),
-        // h.button([event.on_click(state.UserClickedCreateKey)], [
-      //   h.text("Create key"),
-      // ]),
+        full_row_button(
+          state.UserClickedCreateNewAccount,
+          outline.user_plus(),
+          "Create new account",
+        ),
+        full_row_button(
+          state.UserClickedAddDeviceToAccount,
+          outline.qr_code(),
+          "Sign in to account",
+        ),
       ])
     Confirm ->
       layout([
@@ -48,7 +54,11 @@ pub fn render(model) {
             h.dd([a.class("ml-8 mb-2")], [h.text("cadcdac23rgw45ur67ndfgdgw4")]),
           ]),
         ]),
-        full_row_button(outline.cloud_arrow_up(), "Sign"),
+        full_row_button(
+          state.UserClickedSignPayload,
+          outline.cloud_arrow_up(),
+          "Sign",
+        ),
       ])
     Choose(..) ->
       layout([
@@ -72,9 +82,10 @@ pub fn render(model) {
   }
 }
 
-fn full_row_button(icon, text) {
+fn full_row_button(message, icon, text) {
   h.div(
     [
+      event.on_click(message),
       a.class(
         "border-2 border-black border-dashed cover gap-3 hstack p-2 rounded-xl",
       ),
@@ -143,7 +154,7 @@ fn layout(children) {
     // border-radius: 12px;
     h.div(
       [
-        a.class("vstack neo-shadow border border-black"),
+        a.class("vstack max-w-2xl mx-auto neo-shadow border border-black"),
         a.styles([
           #("position", "absolute"),
           #("inset", "1.5em"),

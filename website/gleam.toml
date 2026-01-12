@@ -4,8 +4,7 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
-# plinth = ">= 0.9.1 and < 1.0.0"
-plinth = {path = "../../../../plinth"}
+plinth = ">= 0.9.2 and < 1.0.0"
 gleam_javascript = ">= 1.0.0 and < 2.0.0"
 snag = ">= 1.1.0 and < 2.0.0"
 midas_node = ">= 1.4.0 and < 2.0.0"
@@ -36,8 +35,7 @@ spotless = ">= 3.2.0 and < 4.0.0"
 dag_json = ">= 2.0.0 and < 3.0.0"
 multiformats = ">= 2.0.3 and < 3.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
-identity = {path = "../../identity"}
-kryptos = ">= 1.0.0 and < 2.0.0"
+# identity = {path = "../../identity"}
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

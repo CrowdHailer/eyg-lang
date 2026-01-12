@@ -1,16 +1,24 @@
+import gleam/bit_array
 import gleam/dynamic/decode
+import gleam/fetch
+import gleam/http
+import gleam/http/request
 import gleam/javascript/array
 import gleam/javascript/promise
+import gleam/json
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/result
+import indentity/server
 import lustre
 import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
+import multiformats/base32
 import mysig/asset
 import mysig/html
+import plinth/browser/crypto
 import plinth/browser/crypto/subtle
 import plinth/browser/message_event
 import plinth/browser/window
@@ -184,22 +192,58 @@ fn create_key() {
       // Compact signatures: ~64 bytes vs 256+ bytes for RSA
       // Fast: Faster signing and verification than RSA
       // Standard: Used in WebAuthn, JWT (ES256), and many modern protocols
-      subtle.generate_key(
-        subtle.EcKeyGenParams(name: "ECDSA", named_curve: "P-256"),
-        False,
-        [
-          subtle.Sign,
-          subtle.Verify,
-        ],
-      ),
+      subtle.generate_key(subtle.Ed25519GenParams, False, [
+        subtle.Sign,
+        subtle.Verify,
+      ]),
       fn(result) {
         echo result
         case result {
           Ok(#(public_key, private_key)) -> {
-            use exported <- promise.await(subtle.export_jwk(public_key))
-            echo exported
-            use exported <- promise.await(subtle.export_jwk(private_key))
-            echo exported
+            let assert Ok(crypto) = window.crypto(window.self())
+            let entity = crypto.random_uuid(crypto)
+
+            use exported <- promise.await(subtle.export(public_key, subtle.Spki))
+            let assert Ok(exported) = exported
+            let key = base32.encode(exported)
+            echo entity
+
+            let content = server.AddKey(key)
+            let entry =
+              server.Entry(
+                entity:,
+                sequence: 1,
+                previous: None,
+                signatory: server.Signatory(entity:, sequence: 0, key:),
+                content:,
+              )
+            echo entry
+            let payload =
+              server.entry_encode(entry, server.authority_event_encode)
+              |> json.to_string
+              |> echo
+              |> bit_array.from_string
+            use signature <- promise.await(subtle.sign(
+              subtle.Ed25519,
+              private_key,
+              payload,
+            ))
+            let assert Ok(signature) = signature
+            let request =
+              request.new()
+              |> request.set_method(http.Post)
+              |> request.set_scheme(http.Http)
+              |> request.set_host("localhost")
+              |> request.set_port(8001)
+              |> request.set_path("/id/submit")
+              |> request.set_header("content-type", "application/json")
+              |> request.set_header(
+                "authorization",
+                "Signature " <> base32.encode(signature),
+              )
+              |> request.set_body(payload)
+            use response <- promise.await(fetch.send_bits(request))
+            echo response
             todo
           }
           _ -> todo

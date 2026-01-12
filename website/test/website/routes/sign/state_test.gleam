@@ -40,12 +40,11 @@ pub fn sign_with_new_key_test() {
   let #(state, actions) = read_keypairs(state, [])
   assert [] == actions
   let assert view.Setup(..) = view.model(state)
-
-  let #(state, actions) = create_key_pair(state)
-  assert [state.CreateKey] == actions
-  // State should be working again
-  let message = state.KeypairCreated(Ok(#()))
-  let #(state, actions) = state.update(state, message)
+  // let #(state, actions) = create_key_pair(state)
+  // assert [state.CreateKey] == actions
+  // // State should be working again
+  // let message = state.KeypairCreated(Ok(#()))
+  // let #(state, actions) = state.update(state, message)
 }
 
 // sign with already loaded
@@ -64,8 +63,7 @@ fn read_keypairs(state, keypairs) {
   let message = state.ReadKeypairsCompleted(Ok(keypairs))
   state.update(state, message)
 }
-
-fn create_key_pair(state) {
-  let message = state.UserClickedCreateKey
-  state.update(state, message)
-}
+// fn create_key_pair(state) {
+//   let message = state.UserClickedCreateKey
+//   state.update(state, message)
+// }

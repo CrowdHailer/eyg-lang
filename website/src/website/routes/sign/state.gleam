@@ -10,7 +10,13 @@ pub type State {
     opener: Option(window_proxy.WindowProxy),
     database: Fetching(database.Database),
     keypairs: Fetching(List(Key)),
+    mode: Mode,
   )
+}
+
+pub type Mode {
+  HomePage
+  CreatingAccount
 }
 
 pub type Key {
@@ -37,7 +43,8 @@ pub type Action {
 }
 
 pub fn init(config) {
-  let state = State(opener: None, database: Fetching, keypairs: Fetching)
+  let state =
+    State(opener: None, database: Fetching, keypairs: Fetching, mode: HomePage)
   case config {
     Some(opener) -> {
       let action = PostMessage(opener, protocol.GetPayload)
@@ -53,7 +60,9 @@ pub type Message {
     payload: Result(protocol.PopupBound, List(decode.DecodeError)),
   )
   ReadKeypairsCompleted(result: Result(List(Key), String))
-  UserClickedCreateKey
+  UserClickedCreateNewAccount
+  UserClickedAddDeviceToAccount
+  UserClickedSignPayload
   KeypairCreated(result: Result(#(), String))
 }
 
@@ -62,7 +71,9 @@ pub fn update(state, message) {
     IndexedDBSetup(result) -> indexeddb_setup(state, result)
     WindowReceivedMessageEvent(payload:) -> #(state, [])
     ReadKeypairsCompleted(result:) -> read_keypairs_completed(state, result)
-    UserClickedCreateKey -> user_clicked_create_key(state)
+    UserClickedCreateNewAccount -> user_clicked_create_account(state)
+    UserClickedAddDeviceToAccount -> todo
+    UserClickedSignPayload -> todo
     KeypairCreated(result:) -> keypair_created(state, result)
   }
 }
@@ -81,7 +92,8 @@ fn read_keypairs_completed(state, result) {
   #(State(..state, keypairs: fetching_result(result)), [])
 }
 
-fn user_clicked_create_key(state) {
+fn user_clicked_create_account(state) {
+  let state = State(..state, mode: CreatingAccount)
   #(state, [CreateKey])
 }
 
