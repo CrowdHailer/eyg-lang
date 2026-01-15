@@ -8,12 +8,12 @@ packages = [
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
   { name = "gleam_crypto", version = "1.5.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_crypto", source = "hex", outer_checksum = "50774BAFFF1144E7872814C566C5D653D83A3EBF23ACC3156B757A1B6819086E" },
   { name = "gleam_javascript", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_javascript", source = "hex", outer_checksum = "EF6C77A506F026C6FB37941889477CD5E4234FCD4337FF0E9384E297CB8F97EB" },
-  { name = "gleam_json", version = "3.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "874FA3C3BB6E22DD2BB111966BD40B3759E9094E05257899A7C08F5DE77EC049" },
-  { name = "gleam_stdlib", version = "0.65.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "7C69C71D8C493AE11A5184828A77110EB05A7786EBF8B25B36A72F879C3EE107" },
+  { name = "gleam_json", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "44FDAA8847BE8FC48CA7A1C089706BD54BADCC4C45B237A992EDDF9F2CDB2836" },
+  { name = "gleam_stdlib", version = "0.68.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "F7FAEBD8EF260664E86A46C8DBA23508D1D11BB3BCC6EE1B89B3BC3E5C83FF1E" },
   { name = "gleb128", version = "4.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleb128", source = "hex", outer_checksum = "152BBF9DEBABEAE8D4B743D31F7611A6AE0A1F7924B8BFCE9CECE773C5280B77" },
-  { name = "gleeunit", version = "1.7.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "CD701726CBCE5588B375D157B4391CFD0F2F134CD12D9B6998A395484DE05C58" },
+  { name = "gleeunit", version = "1.9.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "DA9553CE58B67924B3C631F96FE3370C49EB6D6DC6B384EC4862CC4AAA718F3C" },
   { name = "multiformats", version = "2.0.3", build_tools = ["gleam"], requirements = ["base32", "gleam_crypto", "gleam_javascript", "gleam_stdlib", "gleb128"], otp_app = "multiformats", source = "hex", outer_checksum = "D320381CFADD6DF40FDC3FC282C71182CECD1E24F71AE83318F8F47A264ACDE4" },
-  { name = "simplifile", version = "2.3.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "0A868DAC6063D9E983477981839810DC2E553285AB4588B87E3E9C96A7FB4CB4" },
+  { name = "simplifile", version = "2.3.2", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "E049B4DACD4D206D87843BCF4C775A50AE0F50A52031A2FFB40C9ED07D6EC70A" },
 ]
 
 [requirements]

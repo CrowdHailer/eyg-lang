@@ -58,7 +58,7 @@ fn do_capture(term, env, meta) {
       // Note captured list has variables multiple times and we need to find first only
       let captured =
         list.filter_map(vars_used(body, [arg]), fn(var) {
-          use term <- result.then(list.key_find(captured, var))
+          use term <- result.try(list.key_find(captured, var))
           Ok(#(var, term))
         })
       let #(env, wrapped) =

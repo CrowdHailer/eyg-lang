@@ -73,7 +73,7 @@ pub fn delete_at(items, i) {
 }
 
 pub fn map_at(items, i, f) {
-  use item <- result.then(at(items, i))
+  use item <- result.try(at(items, i))
   let pre = list.take(items, i)
   let post = list.drop(items, i + 1)
   Ok(list.flatten([pre, [f(item)], post]))

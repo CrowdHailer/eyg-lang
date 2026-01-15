@@ -9,7 +9,6 @@ import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import indentity/server
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -33,6 +32,7 @@ import website/routes/sign/protocol
 import website/routes/sign/state
 import website/routes/sign/storybook
 import website/routes/sign/view
+import website/trust/protocol as trust
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
@@ -208,18 +208,18 @@ fn create_key() {
             let key = base32.encode(exported)
             echo entity
 
-            let content = server.AddKey(key)
+            let content = trust.AddKey(key)
             let entry =
-              server.Entry(
+              trust.Entry(
                 entity:,
                 sequence: 1,
                 previous: None,
-                signatory: server.Signatory(entity:, sequence: 0, key:),
+                signatory: trust.Signatory(entity:, sequence: 0, key:),
                 content:,
               )
             echo entry
             let payload =
-              server.entry_encode(entry, server.authority_event_encode)
+              trust.encode(entry)
               |> json.to_string
               |> echo
               |> bit_array.from_string

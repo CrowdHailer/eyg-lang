@@ -154,17 +154,17 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
     v.Partial(switch, applied) ->
       case switch, applied {
         v.Cons, [item] -> {
-          use elements <- result.then(cast.as_list(arg))
+          use elements <- result.try(cast.as_list(arg))
           Ok(#(V(v.LinkedList([item, ..elements])), env, k))
         }
         v.Extend(label), [value] -> {
-          use fields <- result.then(cast.as_record(arg))
+          use fields <- result.try(cast.as_record(arg))
           let fields = dict.insert(fields, label, value)
           Ok(#(V(v.Record(fields)), env, k))
         }
         v.Overwrite(label), [value] -> {
-          use fields <- result.then(cast.as_record(arg))
-          use _ <- result.then(
+          use fields <- result.try(cast.as_record(arg))
+          use _ <- result.try(
             dict.get(fields, label)
             |> result.replace_error(break.MissingField(label)),
           )
@@ -172,8 +172,8 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
           Ok(#(V(v.Record(fields)), env, k))
         }
         v.Select(label), [] -> {
-          use fields <- result.then(cast.as_record(arg))
-          use value <- result.then(
+          use fields <- result.try(cast.as_record(arg))
+          use value <- result.try(
             dict.get(fields, label)
             |> result.replace_error(break.MissingField(label)),
           )
@@ -181,7 +181,7 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         }
         v.Tag(label), [] -> Ok(#(V(v.Tagged(label, arg)), env, k))
         v.Match(label), [branch, otherwise] -> {
-          use #(l, inner) <- result.then(cast.as_tagged(arg))
+          use #(l, inner) <- result.try(cast.as_tagged(arg))
           case l == label {
             True -> call(branch, inner, meta, env, k)
             False -> call(otherwise, arg, meta, env, k)
