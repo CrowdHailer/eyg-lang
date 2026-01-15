@@ -227,7 +227,7 @@ pub fn do_string_to_binary(in, _meta, env, k) {
 pub const string_from_binary = state.Arity1(do_string_from_binary)
 
 pub fn do_string_from_binary(in, _meta, env, k) {
-  use in <- result.then(cast.as_binary(in))
+  use in <- result.try(cast.as_binary(in))
   let value = case bit_array.to_string(in) {
     Ok(bytes) -> v.ok(v.String(bytes))
     Error(Nil) -> v.error(v.unit())
@@ -238,7 +238,7 @@ pub fn do_string_from_binary(in, _meta, env, k) {
 pub const list_pop = state.Arity1(do_list_pop)
 
 fn do_list_pop(term, _meta, env, k) {
-  use elements <- result.then(cast.as_list(term))
+  use elements <- result.try(cast.as_list(term))
   let return = case elements {
     [] -> v.error(v.unit())
     [head, ..tail] ->
@@ -283,7 +283,7 @@ fn do_list_fold(list, state, func, meta, env, k) {
 pub const binary_from_integers = state.Arity1(do_binary_from_integers)
 
 pub fn do_binary_from_integers(term, _meta, env, k) {
-  use parts <- result.then(cast.as_list(term))
+  use parts <- result.try(cast.as_list(term))
   let content =
     list.fold(list.reverse(parts), <<>>, fn(acc, el) {
       let assert v.Integer(i) = el
