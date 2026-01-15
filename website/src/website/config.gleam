@@ -1,3 +1,4 @@
+import plinth/browser/location
 import plinth/browser/window
 import spotless/origin
 
@@ -6,7 +7,7 @@ pub type Config {
 }
 
 pub fn load() {
-  case origin.from_string(window.origin()) {
+  case origin.from_string(location.origin(window.location(window.self()))) {
     Ok(origin) -> Config(origin)
 
     _ -> panic as "No apps configured"
