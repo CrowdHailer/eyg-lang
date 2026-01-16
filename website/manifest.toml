@@ -47,7 +47,7 @@ packages = [
   { name = "non_empty_list", version = "2.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "non_empty_list", source = "hex", outer_checksum = "1CA43D18C07E98E9ED5A60D9CB2FFE0FF40DEFFA45D58A3FF589589F05658F7B" },
   { name = "oas", version = "7.3.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "non_empty_list", "oas_generator_utils"], otp_app = "oas", source = "hex", outer_checksum = "8A2F57C457167012BAE3EE18636EF136E248EF69038AEC4D2BB37BAC9DAC97BF" },
   { name = "oas_generator_utils", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "oas_generator_utils", source = "hex", outer_checksum = "153BDDC65C28B4D1188B6686055C000013C24AF63C3FF301617854819C25F2CE" },
-  { name = "plinth", version = "0.9.2", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "A5A14C590F9820F8447E989B66C73C9DE077FAAB75618D639DFA1F3BCA45F946" },
+  { name = "plinth", version = "0.9.2", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_json", "gleam_stdlib"], source = "local", path = "../../plinth" },
   { name = "shellout", version = "1.7.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "1BDC03438FEB97A6AF3E396F4ABEB32BECF20DF2452EC9A8C0ACEB7BDDF70B14" },
   { name = "simplifile", version = "2.3.1", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "957E0E5B75927659F1D2A1B7B75D7B9BA96FAA8D0C53EA71C4AD9CD0C6B848F6" },
   { name = "snag", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "274F41D6C3ECF99F7686FDCE54183333E41D2C1CA5A3A673F9A8B2C7A4401077" },
@@ -85,7 +85,7 @@ multiformats = { version = ">= 2.0.3 and < 3.0.0" }
 mysig = { version = ">= 0.5.0 and < 1.0.0" }
 netlify = { version = ">= 1.0.0 and < 2.0.0" }
 oas = { version = ">= 7.2.0 and < 8.0.0" }
-plinth = { version = ">= 0.9.2 and < 1.0.0" }
+plinth = { path = "../../../packages/plinth" }
 simplifile = { version = ">= 2.0.0 and < 3.0.0" }
 snag = { version = ">= 1.1.0 and < 2.0.0" }
 spotless = { version = ">= 3.2.0 and < 4.0.0" }

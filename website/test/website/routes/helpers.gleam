@@ -1,8 +1,8 @@
 import plinth/browser/file_system
+import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
 import spotless/origin
 import website/config
-import website/indexeddb/database
 
 pub fn config() {
   config.Config(origin: origin.https("eyg.test"))

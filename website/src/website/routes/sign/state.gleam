@@ -1,8 +1,8 @@
 import gleam/dynamic/decode
 import gleam/option.{type Option, None, Some}
 import plinth/browser/crypto/subtle
+import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
-import website/indexeddb/database
 import website/routes/sign/protocol
 
 pub type State {

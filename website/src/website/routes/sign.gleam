@@ -19,13 +19,13 @@ import mysig/asset
 import mysig/html
 import plinth/browser/crypto
 import plinth/browser/crypto/subtle
+import plinth/browser/indexeddb/database
+import plinth/browser/indexeddb/factory
+import plinth/browser/indexeddb/object_store
+import plinth/browser/indexeddb/transaction
 import plinth/browser/message_event
 import plinth/browser/window
 import plinth/browser/window_proxy
-import website/indexeddb/database
-import website/indexeddb/factory
-import website/indexeddb/object_store
-import website/indexeddb/transaction
 import website/routes/common
 import website/routes/home
 import website/routes/sign/protocol
