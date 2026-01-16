@@ -33,6 +33,7 @@ import website/routes/sign/state
 import website/routes/sign/storybook
 import website/routes/sign/view
 import website/trust/protocol as trust
+import website/trust/substrate
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
@@ -210,11 +211,11 @@ fn create_key() {
 
             let content = trust.AddKey(key)
             let entry =
-              trust.Entry(
+              substrate.Entry(
                 entity:,
                 sequence: 1,
                 previous: None,
-                signatory: trust.Signatory(entity:, sequence: 0, key:),
+                signatory: substrate.Signatory(entity:, sequence: 0, key:),
                 content:,
               )
             echo entry
