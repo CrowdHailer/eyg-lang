@@ -1,11 +1,12 @@
 import gleam/dynamic/decode
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
+import trust/protocol as trust
+import trust/substrate
 import website/routes/sign/protocol
-import website/trust/protocol as trust
-import website/trust/substrate
 
 pub type State {
   State(
@@ -20,6 +21,7 @@ pub type State {
 
 pub type Mode {
   // The SetupKey mode is the home page if no keys
+  ViewKeys
   SetupKey
   CreatingAccount
 }
@@ -28,8 +30,8 @@ pub type Key {
   Key(
     entity_id: String,
     id: String,
-    public: subtle.CryptoKey,
-    private: subtle.CryptoKey,
+    public_key: subtle.CryptoKey,
+    private_key: subtle.CryptoKey,
   )
 }
 
@@ -51,6 +53,7 @@ pub type Action {
   PostMessage(target: window_proxy.WindowProxy, data: protocol.OpenerBound)
   ReadKeypairs(database: database.Database)
   CreateNewSignatory(database: database.Database)
+  FetchEntities(List(String))
 }
 
 pub fn init(config) {
@@ -75,7 +78,7 @@ pub type Message {
   UserClickedAddDeviceToAccount
   UserClickedSignPayload
   CreateNewSignatoryCompleted(
-    result: Result(substrate.Entry(trust.Event), String),
+    result: Result(#(substrate.Entry(trust.Event), Key), String),
   )
 }
 
@@ -103,9 +106,15 @@ fn indexeddb_setup(state, result) {
 }
 
 fn read_keypairs_completed(state, result) {
+  echo result
   case result {
-    Ok(keypairs) -> #(State(..state, keypairs:), [])
-    _ -> todo
+    Ok([]) -> #(State(..state, keypairs: []), [])
+    Ok(keypairs) -> {
+      let entities = list.map(keypairs, fn(k: Key) { k.entity_id })
+
+      #(State(..state, keypairs:, mode: ViewKeys), [FetchEntities(entities)])
+    }
+    Error(_) -> todo
   }
 }
 
@@ -117,8 +126,10 @@ fn user_clicked_create_account(state) {
 
 fn create_new_signatory_completed(state, result) {
   case result {
-    Ok(keypair) -> {
-      todo
+    Ok(#(entity, keypair)) -> {
+      echo entity
+      let state = State(..state, keypairs: [keypair])
+      #(state, [])
     }
     Error(reason) -> todo
   }

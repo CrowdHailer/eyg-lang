@@ -9,7 +9,7 @@ import gleam/json
 import multiformats/cid/v1
 import multiformats/hashes/sha256
 import spotless/origin
-import website/trust/substrate
+import trust/substrate
 
 pub fn encode(entry: substrate.Entry(Payload)) {
   substrate.entry_encode(entry, payload_encode)

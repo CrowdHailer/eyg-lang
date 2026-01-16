@@ -10,8 +10,8 @@ pub fn model(state) {
     // State(opener: None, ..) -> Failed(message: "")
     // State(keypairs: state.Fetching(..), ..) -> Loading
     // State(keypairs: state.Failed(..), ..) -> todo
-    // State(keypairs: state.Fetched(..), ..) -> Setup
-    _ -> Setup
+    State(keypairs: [], ..) -> Setup
+    State(keypairs:, ..) -> Choose(keypairs)
   }
 }
 
@@ -20,7 +20,7 @@ pub type Model {
   Loading
   Setup
   Confirm
-  Choose(keys: List(String))
+  Choose(keys: List(state.Key))
   Link
 }
 

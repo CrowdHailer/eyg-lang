@@ -10,8 +10,8 @@ import gleam/dict.{type Dict}
 import gleam/list
 import morph/analysis
 import multiformats/cid/v1
+import trust/substrate
 import website/registry/protocol
-import website/trust/substrate
 
 pub type Cache {
   Cache(

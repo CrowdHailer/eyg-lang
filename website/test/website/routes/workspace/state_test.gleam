@@ -19,6 +19,7 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import spotless/origin
+import trust/substrate
 import website/components/shell
 import website/components/snippet
 import website/registry/protocol
@@ -26,7 +27,6 @@ import website/routes/editor_test
 import website/routes/helpers
 import website/routes/workspace/state
 import website/sync/client
-import website/trust/substrate
 
 // contents
 // 1. navigation 

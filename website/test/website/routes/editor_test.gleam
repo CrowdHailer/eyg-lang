@@ -10,13 +10,13 @@ import morph/analysis
 import morph/editable
 import morph/picker
 import multiformats/cid/v1
+import trust/substrate
 import website/components/shell
 import website/components/snippet
 import website/registry/protocol
 import website/routes/editor
 import website/routes/helpers
 import website/sync/client
-import website/trust/substrate
 
 pub const signatory = substrate.Signatory(
   entity: "any",

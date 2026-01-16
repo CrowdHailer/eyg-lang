@@ -54,6 +54,7 @@ packages = [
   { name = "splitter", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "3DFD6B6C49E61EDAF6F7B27A42054A17CFF6CA2135FF553D0CB61C234D281DD0" },
   { name = "spotless", version = "3.3.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "spotless", source = "hex", outer_checksum = "5F279011C520D4F70456D38D51CAAB659081CC03F304F879DBCC5E4603607EFE" },
   { name = "supa", version = "2.0.1", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "supa", source = "hex", outer_checksum = "B3440BC43016CC487D31D434968E2BFA252903B12E42F77F6CB32C67730BB6A4" },
+  { name = "trust", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_stdlib", "multiformats", "spotless"], source = "local", path = "../packages/trust" },
 ]
 
 [requirements]
@@ -90,3 +91,4 @@ simplifile = { version = ">= 2.0.0 and < 3.0.0" }
 snag = { version = ">= 1.1.0 and < 2.0.0" }
 spotless = { version = ">= 3.3.0 and < 4.0.0" }
 supa = { version = ">= 2.0.0 and < 3.0.0" }
+trust = { path = "../packages/trust" }

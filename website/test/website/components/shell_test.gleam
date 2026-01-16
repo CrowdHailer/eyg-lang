@@ -12,6 +12,7 @@ import morph/editable as e
 import morph/input
 import multiformats/cid/v1
 import spotless/origin
+import trust/substrate
 import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
@@ -20,7 +21,6 @@ import website/registry/protocol
 import website/routes/editor_test
 import website/sync/cache
 import website/sync/client
-import website/trust/substrate
 
 fn new(effects) {
   let #(client, _) =

@@ -1,5 +1,6 @@
 import gleam/bit_array
 import gleam/dynamic/decode
+import gleam/dynamicx
 import gleam/fetch
 import gleam/http
 import gleam/javascript/array
@@ -27,15 +28,15 @@ import plinth/browser/message_event
 import plinth/browser/window
 import plinth/browser/window_proxy
 import spotless/origin
+import trust/client as wat
+import trust/protocol as trust
+import trust/substrate
 import website/routes/common
 import website/routes/home
 import website/routes/sign/protocol
 import website/routes/sign/state
 import website/routes/sign/storybook
 import website/routes/sign/view
-import website/trust/client
-import website/trust/protocol as trust
-import website/trust/substrate
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
@@ -115,23 +116,24 @@ pub fn client() {
 
 fn do_init(config) {
   let #(state, actions) = state.init(config)
-  #(state, effect.batch(list.map(actions, do_it)))
+  #(state, effect.batch(list.map(actions, run)))
 }
 
 fn do_update(state, message) {
   let #(state, actions) = state.update(state, message)
-  #(state, effect.batch(list.map(actions, do_it)))
+  #(state, effect.batch(list.map(actions, run)))
 }
 
 fn do_render(state) {
   view.render(view.model(state))
 }
 
-pub fn do_it(action) {
+pub fn run(action) {
   case action {
     state.PostMessage(target:, data:) -> post_message(target, data)
     state.ReadKeypairs(database:) -> read_keypairs(database)
     state.CreateNewSignatory(database:) -> create_new_signatory(database)
+    state.FetchEntities(entities) -> fetch_entities(entities)
   }
 }
 
@@ -158,11 +160,35 @@ fn read_keypairs(database) {
       let result =
         result.map(result, fn(keys) {
           let keys = array.to_list(keys)
-          list.map(keys, fn(key) { todo })
+          list.filter_map(keys, fn(key) {
+            echo key
+            let decoder = {
+              use entity_id <- decode.field("entityId", decode.string)
+              use id <- decode.field("keyId", decode.string)
+              use public_key <- decode.field("publicKey", crypto_key_decoder())
+              use private_key <- decode.field(
+                "privateKey",
+                crypto_key_decoder(),
+              )
+              decode.success(state.Key(
+                entity_id:,
+                id:,
+                public_key:,
+                private_key:,
+              ))
+            }
+            decode.run(key, decoder) |> echo
+          })
         })
       dispatch(state.ReadKeypairsCompleted(result))
     })
     Nil
+  })
+}
+
+fn crypto_key_decoder() {
+  decode.new_primitive_decoder("CryptoKey", fn(x) -> Result(subtle.CryptoKey, _) {
+    Ok(dynamicx.unsafe_coerce(x))
   })
 }
 
@@ -175,12 +201,11 @@ fn create_new_signatory(database) {
   })
 }
 
+const origin = origin.Origin(http.Http, "localhost", Some(8001))
+
 // returns a string error
 fn do_create_new_signatory(database) {
-  let endpoint = #(
-    origin.Origin(http.Http, "localhost", Some(8001)),
-    "/id/submit",
-  )
+  let endpoint = #(origin, "/id/submit")
   let usages = [subtle.Sign, subtle.Verify]
   use #(public_key, private_key) <- promise.try_await(subtle.generate_key(
     subtle.Ed25519GenParams,
@@ -208,16 +233,51 @@ fn do_create_new_signatory(database) {
     private_key,
     payload,
   ))
-  let request = client.submit_request(endpoint, payload, signature)
+
+  let request = wat.submit_request(endpoint, payload, signature)
   use response <- promise.try_await(send_bits(request))
   case response.status {
     200 -> {
-      put_keypair(database, Ok(""))
-      Ok(entry)
+      // can't use dynamic properties because it creates a map
+      // need a js dynamic object
+      let native =
+        json.object([
+          #("entityId", json.string(entity)),
+          #("keyId", json.string(key)),
+          #("publicKey", dynamicx.unsafe_coerce(dynamicx.from(public_key))),
+          #("privateKey", dynamicx.unsafe_coerce(dynamicx.from(private_key))),
+        ])
+      use result <- promise.await(put_keypair(database, dynamicx.from(native)))
+      echo result
+      Ok(#(
+        entry,
+        state.Key(entity_id: entity, id: key, public_key:, private_key:),
+      ))
+      |> promise.resolve()
     }
-    _ -> Error("bad response")
+    _ ->
+      Error("bad response")
+      |> promise.resolve()
   }
-  |> promise.resolve()
+}
+
+fn fetch_entities(entities) {
+  effect.from(fn(dispatch) {
+    promise.map(do_fetch_entities(entities), fn(result) {
+      dispatch(state.CreateNewSignatoryCompleted(result))
+    })
+    Nil
+  })
+}
+
+// returns a string error
+fn do_fetch_entities(entities) {
+  let endpoint = #(origin, "/id/events")
+  let assert [entity] = entities
+  let request = wat.pull_events_request(endpoint, entity)
+  use response <- promise.try_await(send_bits(request))
+  echo wat.pull_events_response(response)
+  todo
 }
 
 fn try_sync(result, then) {
@@ -244,6 +304,5 @@ fn put_keypair(database, k) {
       database.Strict,
     )
   let assert Ok(store) = transaction.object_store(transaction, store_name)
-  echo object_store.put(store, k, None)
-  todo
+  object_store.put(store, k, None)
 }

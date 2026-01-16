@@ -1,6 +1,7 @@
 import dag_json
 import gleam/dynamic/decode
-import website/trust/substrate
+import gleam/json
+import trust/substrate
 
 pub fn encode(entry: substrate.Entry(Event)) {
   substrate.entry_encode(entry, event_encode)
@@ -33,4 +34,21 @@ fn event_decoders() {
     ],
     AddKey(""),
   )
+}
+
+pub type PullEventsResponse {
+  PullEventsResponse(events: List(substrate.Entry(Event)), cursor: Int)
+}
+
+pub fn pull_events_response_decoder() {
+  use events <- decode.field("events", decode.list(decoder()))
+  use cursor <- decode.field("cursor", decode.int)
+  decode.success(PullEventsResponse(events:, cursor:))
+}
+
+pub fn pull_events_response_encode(events, cursor) {
+  json.object([
+    #("cursor", json.int(cursor)),
+    #("events", json.array(events, encode)),
+  ])
 }
