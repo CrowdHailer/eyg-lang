@@ -24,10 +24,13 @@ pub fn event_encode(event: Event) {
 }
 
 fn event_decoders() {
-  [
-    #("add_key", {
-      use key <- decode.field("key", decode.string)
-      decode.success(AddKey(key))
-    }),
-  ]
+  substrate.DecoderSet(
+    [
+      #("add_key", {
+        use key <- decode.field("key", decode.string)
+        decode.success(AddKey(key))
+      }),
+    ],
+    AddKey(""),
+  )
 }

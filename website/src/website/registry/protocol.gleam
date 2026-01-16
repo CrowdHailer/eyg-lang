@@ -7,31 +7,49 @@ import gleam/http/response.{Response}
 import gleam/int
 import gleam/json
 import multiformats/cid/v1
+import multiformats/hashes/sha256
 import spotless/origin
+import website/trust/substrate
 
-pub const release_published = "release_published"
+pub fn encode(entry: substrate.Entry(Payload)) {
+  substrate.entry_encode(entry, payload_encode)
+}
 
+pub fn decoder() {
+  substrate.entry_decoder(payload_decoders())
+}
+
+// TODO call Event or Content or something else
 pub type Payload {
-  ReleasePublished(package_id: String, version: Int, fragment: String)
+  Release(version: Int, module: v1.Cid)
 }
 
-pub fn payload_decoder() {
-  use package_id <- decode.field("package_id", decode.string)
+// content decoders
+pub fn payload_decoders() {
+  substrate.DecoderSet(
+    [#("release", release_decoder())],
+    Release(0, v1.Cid(dag_json.code(), sha256.digest(<<>>))),
+  )
+}
+
+fn release_decoder() {
   use version <- decode.field("version", decode.int)
-  use fragment <- decode.field("fragment", dag_json.decode_cid())
-  let assert Ok(fragment) = v1.to_string(fragment)
-  decode.success(ReleasePublished(package_id:, version:, fragment:))
+  use module <- decode.field("module", dag_json.decode_cid())
+  decode.success(Release(version:, module:))
 }
 
-pub fn payload_encode(payload) {
+fn payload_encode(payload) {
   case payload {
-    ReleasePublished(package_id:, version:, fragment:) -> {
-      dag_json.object([
-        #("type", dag_json.string(release_published)),
-        #("package_id", dag_json.string(package_id)),
-        #("version", dag_json.int(version)),
-        #("fragment", dag_json.cid(fragment)),
-      ])
+    Release(version:, module:) -> {
+      let assert Ok(cid) = v1.to_string(module)
+
+      #(
+        "release",
+        dag_json.object([
+          #("version", dag_json.int(version)),
+          #("module", dag_json.cid(cid)),
+        ]),
+      )
     }
   }
 }
@@ -44,27 +62,28 @@ pub fn pull_events_request(origin, since) {
 }
 
 pub type PullEventsResponse {
-  PullEventsResponse(events: List(Payload), cursor: Int)
+  PullEventsResponse(events: List(substrate.Entry(Payload)), cursor: Int)
+}
+
+fn pull_events_response_decoder() {
+  use events <- decode.field("events", decode.list(decoder()))
+  use cursor <- decode.field("cursor", decode.int)
+  decode.success(PullEventsResponse(events:, cursor:))
+}
+
+pub fn pull_events_response_encode(events, cursor) {
+  json.object([
+    #("cursor", json.int(cursor)),
+    #("events", json.array(events, encode)),
+  ])
 }
 
 pub fn pull_events_response(response) {
   let Response(status:, body:, ..) = response
   case status {
-    200 ->
-      json.parse_bits(body, {
-        use events <- decode.field("events", decode.list(payload_decoder()))
-        use cursor <- decode.field("cursor", decode.int)
-        decode.success(PullEventsResponse(events:, cursor:))
-      })
+    200 -> json.parse_bits(body, pull_events_response_decoder())
     _ -> todo
   }
-}
-
-pub fn decode_events(body) {
-  json.parse(body, {
-    use events <- decode.field("events", decode.list(payload_decoder()))
-    decode.success(events)
-  })
 }
 
 pub fn fetch_fragment_request(origin, cid) {
@@ -93,8 +112,8 @@ pub fn share_response(response) {
 }
 
 pub fn publish_request(origin, package_id, version, fragment) {
-  let payload = ReleasePublished(package_id:, version:, fragment:)
-  let json = payload_encode(payload)
+  // let payload = Release(package_id:, version:, fragment:)
+  let json = encode(todo)
   origin_to_request(origin)
   |> request.set_method(http.Post)
   |> request.set_path("/registry/submit")

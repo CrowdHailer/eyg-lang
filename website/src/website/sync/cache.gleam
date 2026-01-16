@@ -9,7 +9,9 @@ import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import morph/analysis
-import website/sync/protocol
+import multiformats/cid/v1
+import website/registry/protocol
+import website/trust/substrate
 
 pub type Cache {
   Cache(
@@ -44,11 +46,12 @@ pub fn has_fragment(cache, key) {
   dict.has_key(fragments, key)
 }
 
-pub fn apply(cache: Cache, event: protocol.Payload) -> Cache {
-  case event {
-    protocol.ReleasePublished(package_id:, version:, fragment:) -> {
-      let release =
-        Release(package_id:, version:, created_at: "todo", cid: fragment)
+pub fn apply(cache: Cache, entry) -> Cache {
+  let substrate.Entry(entity: package_id, content:, ..) = entry
+  case content {
+    protocol.Release(version:, module:) -> {
+      let assert Ok(cid) = v1.to_string(module)
+      let release = Release(package_id:, version:, created_at: "todo", cid:)
       let packages = dict.insert(cache.packages, package_id, release)
       let releases =
         dict.insert(cache.releases, #(package_id, version), release)

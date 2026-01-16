@@ -17,15 +17,16 @@ import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
-import plinth/browser/file_system
+import multiformats/cid/v1
 import spotless/origin
 import website/components/shell
 import website/components/snippet
+import website/registry/protocol
+import website/routes/editor_test
 import website/routes/helpers
 import website/routes/workspace/state
 import website/sync/client
-import website/sync/protocol
-import website/sync/protocol/server
+import website/trust/substrate
 
 // contents
 // 1. navigation 
@@ -939,7 +940,7 @@ pub fn run_anonymous_reference_test() {
   let assert [err] = contextual.all_errors(state.repl.analysis)
   assert #([], error.MissingReference(cid)) == err
 
-  let response = server.fetch_fragment_response(source)
+  let response = editor_test.fetch_fragment_response(source)
   let message = state.SyncMessage(client.FragmentFetched(cid, Ok(response)))
   let #(state, actions) = state.update(state, message)
   assert [] == actions
@@ -976,18 +977,23 @@ pub fn initial_package_sync_test() {
   let assert [state.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1) = cid.from_tree(source)
-  let p1 = protocol.ReleasePublished("foo", 1, cid1)
-  let response = server.pull_events_response([p1], 1)
+  let assert Ok(cid1_string) = cid.from_tree(source)
+  let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
+  let entity = "foo"
+  let content = protocol.Release(version: 1, module: cid1)
+  let p1 = substrate.first(entity:, signatory: editor_test.signatory, content:)
+
+  let response = editor_test.pull_events_response_encode([p1], 1)
 
   let message = state.SyncMessage(client.ReleasesFetched(Ok(response)))
   let #(state, actions) = state.update(state, message)
   assert client.syncing(state.sync) == True
   let assert [state.SyncAction(client.FetchFragments(cids:, ..))] = actions
-  assert cids == [cid1]
+  assert cids == [cid1_string]
 
-  let response = server.fetch_fragment_response(source)
-  let message = state.SyncMessage(client.FragmentFetched(cid1, Ok(response)))
+  let response = editor_test.fetch_fragment_response(source)
+  let message =
+    state.SyncMessage(client.FragmentFetched(cid1_string, Ok(response)))
   let #(state, actions) = state.update(state, message)
   assert actions == []
 
@@ -1179,7 +1185,7 @@ pub fn module_edits_are_flushed_test() {
 fn no_packages() {
   let #(state, actions) = state.init(helpers.config())
   let assert [state.SyncAction(client.SyncFrom(since: 0, ..))] = actions
-  let response = server.pull_events_response([], 0)
+  let response = editor_test.pull_events_response_encode([], 0)
   let message = state.SyncMessage(client.ReleasesFetched(Ok(response)))
   let #(state, actions) = state.update(state, message)
   assert actions == []

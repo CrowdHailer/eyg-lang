@@ -2,17 +2,27 @@ import eyg/interpreter/value
 import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/option.{Some}
+import gleam/bit_array
+import gleam/http/response
+import gleam/json
+import gleam/option.{None, Some}
 import morph/analysis
 import morph/editable
 import morph/picker
+import multiformats/cid/v1
 import website/components/shell
 import website/components/snippet
+import website/registry/protocol
 import website/routes/editor
 import website/routes/helpers
 import website/sync/client
-import website/sync/protocol
-import website/sync/protocol/server
+import website/trust/substrate
+
+pub const signatory = substrate.Signatory(
+  entity: "any",
+  sequence: 1,
+  key: "unknown",
+)
 
 pub fn initial_package_sync_test() {
   let #(state, actions) = editor.init(helpers.config())
@@ -20,18 +30,23 @@ pub fn initial_package_sync_test() {
   let assert [editor.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1) = cid.from_tree(source)
-  let p1 = protocol.ReleasePublished("foo", 1, cid1)
-  let response = server.pull_events_response([p1], 1)
+  let assert Ok(cid1_string) = cid.from_tree(source)
+  let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
+  let entity = "foo"
+  let content = protocol.Release(version: 1, module: cid1)
+  let p1 = substrate.first(entity:, signatory:, content:)
+
+  let response = pull_events_response_encode([p1], 1)
 
   let message = editor.SyncMessage(client.ReleasesFetched(Ok(response)))
   let #(state, actions) = editor.update(state, message)
   assert client.syncing(state.sync) == True
   let assert [editor.SyncAction(client.FetchFragments(cids:, ..))] = actions
-  assert cids == [cid1]
+  assert cids == [cid1_string]
 
-  let response = server.fetch_fragment_response(source)
-  let message = editor.SyncMessage(client.FragmentFetched(cid1, Ok(response)))
+  let response = fetch_fragment_response(source)
+  let message =
+    editor.SyncMessage(client.FragmentFetched(cid1_string, Ok(response)))
   let #(state, actions) = editor.update(state, message)
   assert actions == []
 
@@ -47,6 +62,19 @@ pub fn initial_package_sync_test() {
   let assert [analysis.Release(package: "foo", version: 1, ..)] =
     autocomplete.items
   // TODO test type and run
+}
+
+pub fn pull_events_response_encode(history, cursor) {
+  let body =
+    protocol.pull_events_response_encode(history, cursor)
+    |> json.to_string
+    |> bit_array.from_string
+  response.new(200) |> response.set_body(body)
+}
+
+pub fn fetch_fragment_response(source) {
+  response.new(200)
+  |> response.set_body(dag_json.to_block(source))
 }
 
 // test network error fetching packages
@@ -106,7 +134,7 @@ pub fn read_from_scratch_test() {
 fn no_packages() {
   let #(state, actions) = editor.init(helpers.config())
   let assert [editor.SyncAction(client.SyncFrom(since: 0, ..))] = actions
-  let response = server.pull_events_response([], 0)
+  let response = pull_events_response_encode([], 0)
   let message = editor.SyncMessage(client.ReleasesFetched(Ok(response)))
   let #(state, actions) = editor.update(state, message)
   assert actions == []

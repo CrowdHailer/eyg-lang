@@ -1,7 +1,7 @@
 import dag_json
-import gleam/dynamic/decode
+import gleam/dynamic/decode.{type Decoder}
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None}
 import multiformats/cid/v1
 
 pub type Entry(t) {
@@ -14,10 +14,17 @@ pub type Entry(t) {
   )
 }
 
-pub fn entry_decoder(
-  content_decoders: List(#(String, decode.Decoder(t))),
-) -> decode.Decoder(Entry(t)) {
-  // content_decoders List(String -> decoder)
+pub fn first(entity entity, signatory signatory, content content) {
+  let sequence = 1
+  let previous = None
+  Entry(entity:, sequence:, previous:, signatory:, content:)
+}
+
+pub type DecoderSet(t) {
+  DecoderSet(decoders: List(#(String, Decoder(t))), zero: t)
+}
+
+pub fn entry_decoder(inner: DecoderSet(t)) -> Decoder(Entry(t)) {
   use entity <- decode.field("entity", decode.string)
   use sequence <- decode.field("sequence", decode.int)
   use previous <- decode.field(
@@ -26,12 +33,9 @@ pub fn entry_decoder(
   )
   use signatory <- decode.field("signatory", signatory_decoder())
   use type_ <- decode.field("type", decode.string)
-  use content <- decode.then(case list.key_find(content_decoders, type_) {
+  use content <- decode.then(case list.key_find(inner.decoders, type_) {
     Ok(decoder) -> decode.field("content", decoder, decode.success)
-    Error(Nil) -> {
-      echo type_
-      todo
-    }
+    Error(Nil) -> decode.failure(inner.zero, "known type")
   })
   decode.success(Entry(entity:, sequence:, previous:, signatory:, content:))
 }

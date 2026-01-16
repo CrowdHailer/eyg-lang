@@ -5,9 +5,10 @@ import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/list
 import lustre/effect
+import multiformats/cid/v1
 import spotless/origin
+import website/registry/protocol
 import website/sync/cache
-import website/sync/protocol
 
 pub type Client {
   Client(status: Status, origin: origin.Origin, cursor: Int, cache: cache.Cache)
@@ -90,13 +91,15 @@ pub fn update(client: Client, message) -> #(Client, _) {
             Ok(protocol.PullEventsResponse(events:, cursor:)) -> {
               let cache = list.fold(events, client.cache, cache.apply)
               let new =
-                list.filter_map(events, fn(event) {
-                  case event {
-                    protocol.ReleasePublished(fragment:, ..) ->
-                      case cache.has_fragment(cache, fragment) {
+                list.filter_map(events, fn(entry) {
+                  case entry.content {
+                    protocol.Release(module:, ..) -> {
+                      let assert Ok(cid) = v1.to_string(module)
+                      case cache.has_fragment(cache, cid) {
                         True -> Error(Nil)
-                        False -> Ok(fragment)
+                        False -> Ok(cid)
                       }
+                    }
                   }
                 })
               let actions = case new {
