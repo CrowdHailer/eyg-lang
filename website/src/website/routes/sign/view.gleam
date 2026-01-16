@@ -8,9 +8,10 @@ pub fn model(state) {
   case state {
     // Look at the keys
     // State(opener: None, ..) -> Failed(message: "")
-    State(keypairs: state.Fetching(..), ..) -> Loading
-    State(keypairs: state.Failed(..), ..) -> todo
-    State(keypairs: state.Fetched(..), ..) -> Setup
+    // State(keypairs: state.Fetching(..), ..) -> Loading
+    // State(keypairs: state.Failed(..), ..) -> todo
+    // State(keypairs: state.Fetched(..), ..) -> Setup
+    _ -> Setup
   }
 }
 

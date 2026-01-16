@@ -2,13 +2,13 @@ import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/fetch
 import gleam/http
-import gleam/http/request
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import gleam/string
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -26,12 +26,14 @@ import plinth/browser/indexeddb/transaction
 import plinth/browser/message_event
 import plinth/browser/window
 import plinth/browser/window_proxy
+import spotless/origin
 import website/routes/common
 import website/routes/home
 import website/routes/sign/protocol
 import website/routes/sign/state
 import website/routes/sign/storybook
 import website/routes/sign/view
+import website/trust/client
 import website/trust/protocol as trust
 import website/trust/substrate
 
@@ -113,23 +115,23 @@ pub fn client() {
 
 fn do_init(config) {
   let #(state, actions) = state.init(config)
-  #(state, effect.batch(list.map(actions, run)))
+  #(state, effect.batch(list.map(actions, do_it)))
 }
 
 fn do_update(state, message) {
   let #(state, actions) = state.update(state, message)
-  #(state, effect.batch(list.map(actions, run)))
+  #(state, effect.batch(list.map(actions, do_it)))
 }
 
 fn do_render(state) {
   view.render(view.model(state))
 }
 
-fn run(action) {
+pub fn do_it(action) {
   case action {
     state.PostMessage(target:, data:) -> post_message(target, data)
     state.ReadKeypairs(database:) -> read_keypairs(database)
-    state.CreateKey -> create_key()
+    state.CreateNewSignatory(database:) -> create_new_signatory(database)
   }
 }
 
@@ -164,95 +166,73 @@ fn read_keypairs(database) {
   })
 }
 
-// Sign with an id:highwatermark/
-// Generate a key, create a document that has a version
-// Pairing is always session and code confirmation
-// Add key
-// reads profiles, 
-
-// So I guess EYG is the controller of the package document
-
-// After signing you need to post it somewhere
-// You need to register the key as something that the server will reach for
-// key should end up as a certain tmp status
-// load profiles. 
-// Add to some other profile
-// I have a key I want to scan
-// It's easiest to setup keys on a device with a camera
-// Make sure you have the device with the other account
-// Share
-// whatsapp count code
-// Let's do the key API first
-
-fn create_key() {
+fn create_new_signatory(database) {
   effect.from(fn(dispatch) {
-    promise.map(
-      // For signing keys in the browser, ECDSA with the P-256 curve is generally the best choice for most applications. Here's the breakdown:
-      // Wide browser support: Supported in all modern browsers
-      // Good security: 128-bit security level, equivalent to 3072-bit RSA
-      // Compact signatures: ~64 bytes vs 256+ bytes for RSA
-      // Fast: Faster signing and verification than RSA
-      // Standard: Used in WebAuthn, JWT (ES256), and many modern protocols
-      subtle.generate_key(subtle.Ed25519GenParams, False, [
-        subtle.Sign,
-        subtle.Verify,
-      ]),
-      fn(result) {
-        echo result
-        case result {
-          Ok(#(public_key, private_key)) -> {
-            let assert Ok(crypto) = window.crypto(window.self())
-            let entity = crypto.random_uuid(crypto)
-
-            use exported <- promise.await(subtle.export(public_key, subtle.Spki))
-            let assert Ok(exported) = exported
-            let key = base32.encode(exported)
-            echo entity
-
-            let content = trust.AddKey(key)
-            let entry =
-              substrate.Entry(
-                entity:,
-                sequence: 1,
-                previous: None,
-                signatory: substrate.Signatory(entity:, sequence: 0, key:),
-                content:,
-              )
-            echo entry
-            let payload =
-              trust.encode(entry)
-              |> json.to_string
-              |> echo
-              |> bit_array.from_string
-            use signature <- promise.await(subtle.sign(
-              subtle.Ed25519,
-              private_key,
-              payload,
-            ))
-            let assert Ok(signature) = signature
-            let request =
-              request.new()
-              |> request.set_method(http.Post)
-              |> request.set_scheme(http.Http)
-              |> request.set_host("localhost")
-              |> request.set_port(8001)
-              |> request.set_path("/id/submit")
-              |> request.set_header("content-type", "application/json")
-              |> request.set_header(
-                "authorization",
-                "Signature " <> base32.encode(signature),
-              )
-              |> request.set_body(payload)
-            use response <- promise.await(fetch.send_bits(request))
-            echo response
-            todo
-          }
-          _ -> todo
-        }
-      },
-    )
+    promise.map(do_create_new_signatory(database), fn(result) {
+      dispatch(state.CreateNewSignatoryCompleted(result))
+    })
     Nil
   })
+}
+
+// returns a string error
+fn do_create_new_signatory(database) {
+  let endpoint = #(
+    origin.Origin(http.Http, "localhost", Some(8001)),
+    "/id/submit",
+  )
+  let usages = [subtle.Sign, subtle.Verify]
+  use #(public_key, private_key) <- promise.try_await(subtle.generate_key(
+    subtle.Ed25519GenParams,
+    False,
+    usages,
+  ))
+  use crypto <- try_sync(
+    window.crypto(window.self()) |> result.replace_error("no crypo available"),
+  )
+  let entity = crypto.random_uuid(crypto)
+
+  use exported <- promise.try_await(subtle.export(public_key, subtle.Spki))
+  let key = base32.encode(exported)
+
+  let content = trust.AddKey(key)
+  let signatory = substrate.Signatory(entity:, sequence: 0, key:)
+  let entry = substrate.first(entity:, signatory:, content:)
+
+  let payload =
+    trust.encode(entry)
+    |> json.to_string
+    |> bit_array.from_string
+  use signature <- promise.try_await(subtle.sign(
+    subtle.Ed25519,
+    private_key,
+    payload,
+  ))
+  let request = client.submit_request(endpoint, payload, signature)
+  use response <- promise.try_await(send_bits(request))
+  case response.status {
+    200 -> {
+      put_keypair(database, Ok(""))
+      Ok(entry)
+    }
+    _ -> Error("bad response")
+  }
+  |> promise.resolve()
+}
+
+fn try_sync(result, then) {
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> promise.resolve(Error(reason))
+  }
+}
+
+fn send_bits(request) {
+  use response <- promise.await(fetch.send_bits(request))
+  use response <- try_sync(result.map_error(response, string.inspect))
+  use response <- promise.await(fetch.read_bytes_body(response))
+  use response <- try_sync(result.map_error(response, string.inspect))
+  promise.resolve(Ok(response))
 }
 
 fn put_keypair(database, k) {
@@ -264,5 +244,6 @@ fn put_keypair(database, k) {
       database.Strict,
     )
   let assert Ok(store) = transaction.object_store(transaction, store_name)
+  echo object_store.put(store, k, None)
   todo
 }

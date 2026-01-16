@@ -4,23 +4,33 @@ import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
 import website/routes/sign/protocol
+import website/trust/protocol as trust
+import website/trust/substrate
 
 pub type State {
   State(
     opener: Option(window_proxy.WindowProxy),
     database: Fetching(database.Database),
-    keypairs: Fetching(List(Key)),
+    // fetching is not the best way to model
+    // state and loading mode is better
+    keypairs: List(Key),
     mode: Mode,
   )
 }
 
 pub type Mode {
-  HomePage
+  // The SetupKey mode is the home page if no keys
+  SetupKey
   CreatingAccount
 }
 
 pub type Key {
-  Key(id: String, public: subtle.CryptoKey, private: subtle.CryptoKey)
+  Key(
+    entity_id: String,
+    id: String,
+    public: subtle.CryptoKey,
+    private: subtle.CryptoKey,
+  )
 }
 
 pub type Fetching(t) {
@@ -37,14 +47,15 @@ fn fetching_result(result) {
 }
 
 pub type Action {
+  // OpenDatabase 
   PostMessage(target: window_proxy.WindowProxy, data: protocol.OpenerBound)
   ReadKeypairs(database: database.Database)
-  CreateKey
+  CreateNewSignatory(database: database.Database)
 }
 
 pub fn init(config) {
   let state =
-    State(opener: None, database: Fetching, keypairs: Fetching, mode: HomePage)
+    State(opener: None, database: Fetching, keypairs: [], mode: SetupKey)
   case config {
     Some(opener) -> {
       let action = PostMessage(opener, protocol.GetPayload)
@@ -63,7 +74,9 @@ pub type Message {
   UserClickedCreateNewAccount
   UserClickedAddDeviceToAccount
   UserClickedSignPayload
-  KeypairCreated(result: Result(#(), String))
+  CreateNewSignatoryCompleted(
+    result: Result(substrate.Entry(trust.Event), String),
+  )
 }
 
 pub fn update(state, message) {
@@ -74,7 +87,8 @@ pub fn update(state, message) {
     UserClickedCreateNewAccount -> user_clicked_create_account(state)
     UserClickedAddDeviceToAccount -> todo
     UserClickedSignPayload -> todo
-    KeypairCreated(result:) -> keypair_created(state, result)
+    CreateNewSignatoryCompleted(result:) ->
+      create_new_signatory_completed(state, result)
   }
 }
 
@@ -89,15 +103,19 @@ fn indexeddb_setup(state, result) {
 }
 
 fn read_keypairs_completed(state, result) {
-  #(State(..state, keypairs: fetching_result(result)), [])
+  case result {
+    Ok(keypairs) -> #(State(..state, keypairs:), [])
+    _ -> todo
+  }
 }
 
 fn user_clicked_create_account(state) {
   let state = State(..state, mode: CreatingAccount)
-  #(state, [CreateKey])
+  let assert Fetched(database) = state.database
+  #(state, [CreateNewSignatory(database)])
 }
 
-fn keypair_created(state, result) {
+fn create_new_signatory_completed(state, result) {
   case result {
     Ok(keypair) -> {
       todo

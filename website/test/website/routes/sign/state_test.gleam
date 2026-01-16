@@ -4,17 +4,35 @@ import website/routes/sign/protocol
 import website/routes/sign/state
 import website/routes/sign/view
 
+fn initialized(keys) {
+  let #(state, actions) = state.init(None)
+  // Open database is an assumed effect
+  assert [] == actions
+  let #(state, actions) = database_setup(state, helpers.dummy_db())
+  let assert [state.ReadKeypairs(_)] = actions
+  let #(state, actions) = read_keypairs_completed(state, keys)
+  #(state, actions)
+}
+
+// The wallet keeps the entity id's in the key information
+// Keys might not have an entity but if so they are deleted or filtered
+
+pub fn not_a_popup_test() {
+  let #(state, actions) = initialized([])
+  assert [] == actions
+  let #(state, actions) = state.update(state, state.UserClickedCreateNewAccount)
+  // stays on the same page
+  echo actions
+  // let assert view.Loading(..) = view.model(state)
+  todo
+}
+
 // Test in the workspace that if it's signed then it's signed returns
 // state.view(state)
 // manage keys if no opener
 // Show QR code
 // new persona key is only once per 
 //
-pub fn not_a_popup_test() {
-  let #(state, actions) = state.init(None)
-  assert [] == actions
-  let assert view.Loading(..) = view.model(state)
-}
 
 // receive bad payload shows warning
 // Lookup keys Ok(List)/Error
@@ -37,7 +55,7 @@ pub fn sign_with_new_key_test() {
   assert [state.ReadKeypairs(database:)] == actions
   let assert view.Loading(..) = view.model(state)
 
-  let #(state, actions) = read_keypairs(state, [])
+  let #(state, actions) = read_keypairs_completed(state, [])
   assert [] == actions
   let assert view.Setup(..) = view.model(state)
   // let #(state, actions) = create_key_pair(state)
@@ -59,7 +77,7 @@ fn database_setup(state, database) {
   state.update(state, message)
 }
 
-fn read_keypairs(state, keypairs) {
+fn read_keypairs_completed(state, keypairs) {
   let message = state.ReadKeypairsCompleted(Ok(keypairs))
   state.update(state, message)
 }
