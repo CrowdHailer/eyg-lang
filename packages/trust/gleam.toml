@@ -16,7 +16,7 @@ version = "1.0.0"
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"
 spotless = ">= 3.3.0 and < 4.0.0"
-multiformats = ">= 2.0.3 and < 3.0.0"
+multiformats = ">= 3.0.0 and < 4.0.0"
 dag_json = ">= 2.0.0 and < 3.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 
