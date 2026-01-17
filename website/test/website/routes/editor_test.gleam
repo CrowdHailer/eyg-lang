@@ -13,6 +13,7 @@ import multiformats/cid/v1
 import trust/substrate
 import website/components/shell
 import website/components/snippet
+import website/helpers.{cid_from_tree} as _
 import website/registry/protocol
 import website/routes/editor
 import website/routes/helpers
@@ -30,7 +31,7 @@ pub fn initial_package_sync_test() {
   let assert [editor.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1_string) = cid.from_tree(source)
+  let assert Ok(cid1_string) = cid_from_tree(source)
   let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
   let entity = "foo"
   let content = protocol.Release(version: 1, module: cid1)
@@ -93,7 +94,7 @@ pub fn run_anonymous_reference_test() {
   let assert snippet.Pick(picker.Typing(..), ..) = mode
 
   let source = ir.unit()
-  let assert Ok(cid) = cid.from_tree(source)
+  let assert Ok(cid) = cid_from_tree(source)
 
   let message =
     editor.ShellMessage(

@@ -7,7 +7,7 @@ import gleam/http/response.{Response}
 import gleam/int
 import gleam/json
 import multiformats/cid/v1
-import multiformats/hashes/sha256
+import multiformats/hashes
 import spotless/origin
 import trust/substrate
 
@@ -28,7 +28,7 @@ pub type Payload {
 pub fn payload_decoders() {
   substrate.DecoderSet(
     [#("release", release_decoder())],
-    Release(0, v1.Cid(dag_json.code(), sha256.digest(<<>>))),
+    Release(0, v1.Cid(dag_json.code(), hashes.Multihash(hashes.Sha256, <<>>))),
   )
 }
 

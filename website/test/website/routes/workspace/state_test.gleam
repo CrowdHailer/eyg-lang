@@ -3,7 +3,6 @@ import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/value
-import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict
@@ -22,6 +21,7 @@ import spotless/origin
 import trust/substrate
 import website/components/shell
 import website/components/snippet
+import website/helpers.{cid_from_tree} as _
 import website/registry/protocol
 import website/routes/editor_test
 import website/routes/helpers
@@ -929,7 +929,7 @@ pub fn run_anonymous_reference_test() {
 
   let rand = int.random(1_000_000)
   let source = ir.integer(rand)
-  let assert Ok(cid) = cid.from_tree(source)
+  let assert Ok(cid) = cid_from_tree(source)
   let message = state.PickerMessage(picker.Decided(cid))
 
   let #(state, actions) = state.update(state, message)
@@ -959,7 +959,7 @@ pub fn fails_on_unknown_reference_test() {
   // Don't make this available
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
-  let assert Ok(cid) = cid.from_tree(lib)
+  let assert Ok(cid) = cid_from_tree(lib)
 
   let state = set_repl(state, ir.reference(cid))
   let #(state, actions) = press_key(state, "Enter")
@@ -977,7 +977,7 @@ pub fn initial_package_sync_test() {
   let assert [state.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1_string) = cid.from_tree(source)
+  let assert Ok(cid1_string) = cid_from_tree(source)
   let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
   let entity = "foo"
   let content = protocol.Release(version: 1, module: cid1)
@@ -1099,7 +1099,7 @@ pub fn read_reference_from_repl_test() {
   let file = "index"
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
-  let assert Ok(cid) = cid.from_tree(lib)
+  let assert Ok(cid) = cid_from_tree(lib)
   let state = set_module(state, #(file, state.EygJson), lib)
 
   let ref = ir.release("./index", 0, "./index")
@@ -1119,7 +1119,7 @@ pub fn nested_reference_test() {
   let state = no_packages()
   let file = "lib"
   let lib = ir.integer(25)
-  // let assert Ok(cid) = cid.from_tree(lib)
+  // let assert Ok(cid) = cid_from_tree(lib)
   let state = set_module(state, #(file, state.EygJson), lib)
 
   let ref = ir.release("./lib", 0, "./lib")
