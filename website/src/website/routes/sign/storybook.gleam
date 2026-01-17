@@ -1,5 +1,8 @@
+import gleam/option.{None}
 import lustre/attribute as a
 import lustre/element/html as h
+import website/routes/helpers
+import website/routes/sign/state.{State}
 import website/routes/sign/view
 
 pub fn render() {
@@ -16,17 +19,65 @@ pub fn render() {
         ]),
       ],
       [
-        card([view.render(view.Confirm)]),
-        card([view.render(view.Setup)]),
-        // Link via QR code
-        card([view.render(view.Link)]),
-        // Confirm link
-        card([view.render(view.Choose([]))]),
-        // Add to the account
-        card([view.render(view.Loading)]),
-        card([view.render(view.Loading)]),
-        card([view.render(view.Loading)]),
-        card([view.render(view.Loading)]),
+        // Page has been opened without any payload to sign.
+        // 1. Database is loading
+        card([
+          view.render(
+            view.model(State(
+              opener: None,
+              database: state.Fetching,
+              keypairs: [],
+              mode: state.ViewKeys,
+            )),
+          ),
+        ]),
+        card([
+          view.render(
+            view.model(State(
+              opener: None,
+              database: state.Fetched(helpers.dummy_db()),
+              keypairs: [],
+              mode: state.ViewKeys,
+            )),
+          ),
+        ]),
+        card([
+          view.render(
+            view.model(State(
+              opener: None,
+              database: state.Fetched(helpers.dummy_db()),
+              keypairs: [],
+              mode: state.SetupKey,
+            )),
+          ),
+        ]),
+        card([
+          view.render(
+            view.model(State(
+              opener: None,
+              database: state.Fetched(helpers.dummy_db()),
+              keypairs: [],
+              mode: state.CreatingAccount,
+            )),
+          ),
+        ]),
+        card([
+          view.render(
+            view.model(State(
+              opener: None,
+              database: state.Fetched(helpers.dummy_db()),
+              keypairs: [
+                state.Key(
+                  entity_id: "foo",
+                  id: "abcdefgh",
+                  public_key: helpers.dummy_crypto_key(),
+                  private_key: helpers.dummy_crypto_key(),
+                ),
+              ],
+              mode: state.ViewKeys,
+            )),
+          ),
+        ]),
       ],
     ),
   ]

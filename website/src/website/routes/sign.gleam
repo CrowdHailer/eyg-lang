@@ -264,7 +264,7 @@ fn do_create_new_signatory(database) {
 fn fetch_entities(entities) {
   effect.from(fn(dispatch) {
     promise.map(do_fetch_entities(entities), fn(result) {
-      dispatch(state.CreateNewSignatoryCompleted(result))
+      dispatch(state.FetchEntitiesCompleted(result))
     })
     Nil
   })
@@ -273,11 +273,17 @@ fn fetch_entities(entities) {
 // returns a string error
 fn do_fetch_entities(entities) {
   let endpoint = #(origin, "/id/events")
+  echo entities
   let assert [entity] = entities
-  let request = wat.pull_events_request(endpoint, entity)
+
+  let request = wat.pull_events_request(endpoint, "entity")
   use response <- promise.try_await(send_bits(request))
-  echo wat.pull_events_response(response)
-  todo
+  use response <- try_sync(
+    wat.pull_events_response(response)
+    |> result.map_error(string.inspect),
+  )
+
+  promise.resolve(Ok(response.events))
 }
 
 fn try_sync(result, then) {

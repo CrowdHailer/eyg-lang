@@ -1,3 +1,4 @@
+import plinth/browser/crypto/subtle
 import plinth/browser/file_system
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
@@ -20,5 +21,9 @@ pub fn dummy_opener() -> window_proxy.WindowProxy {
 }
 
 pub fn dummy_db() -> database.Database {
+  any()
+}
+
+pub fn dummy_crypto_key() -> subtle.CryptoKey {
   any()
 }

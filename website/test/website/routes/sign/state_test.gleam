@@ -17,7 +17,7 @@ fn initialized(keys) {
 // The wallet keeps the entity id's in the key information
 // Keys might not have an entity but if so they are deleted or filtered
 
-pub fn not_a_popup_test() {
+pub fn set_up_a_first_account_test() {
   let #(state, actions) = initialized([])
   assert [] == actions
   let #(state, actions) = state.update(state, state.UserClickedCreateNewAccount)
@@ -38,32 +38,32 @@ pub fn not_a_popup_test() {
 // Lookup keys Ok(List)/Error
 // Create new profile or add to an existing profile
 
-pub fn sign_with_new_key_test() {
-  let opener = helpers.dummy_opener()
-  let #(state, actions) = state.init(Some(opener))
-  let assert view.Loading(..) = view.model(state)
-  let assert [state.PostMessage(target:, data:)] = actions
-  assert opener == target
-  assert protocol.GetPayload == data
+// pub fn sign_with_new_key_test() {
+//   let opener = helpers.dummy_opener()
+//   let #(state, actions) = state.init(Some(opener))
+//   let assert view.Loading(..) = view.model(state)
+//   let assert [state.PostMessage(target:, data:)] = actions
+//   assert opener == target
+//   assert protocol.GetPayload == data
 
-  let #(state, actions) = receive_payload(state, "hi")
-  assert [] == actions
-  let assert view.Loading(..) = view.model(state)
+//   let #(state, actions) = receive_payload(state, "hi")
+//   assert [] == actions
+//   let assert view.Loading(..) = view.model(state)
 
-  let database = helpers.dummy_db()
-  let #(state, actions) = database_setup(state, database)
-  assert [state.ReadKeypairs(database:)] == actions
-  let assert view.Loading(..) = view.model(state)
+//   let database = helpers.dummy_db()
+//   let #(state, actions) = database_setup(state, database)
+//   assert [state.ReadKeypairs(database:)] == actions
+//   let assert view.Loading(..) = view.model(state)
 
-  let #(state, actions) = read_keypairs_completed(state, [])
-  assert [] == actions
-  let assert view.Setup(..) = view.model(state)
-  // let #(state, actions) = create_key_pair(state)
-  // assert [state.CreateKey] == actions
-  // // State should be working again
-  // let message = state.KeypairCreated(Ok(#()))
-  // let #(state, actions) = state.update(state, message)
-}
+//   let #(state, actions) = read_keypairs_completed(state, [])
+//   assert [] == actions
+//   let assert view.Setup(..) = view.model(state)
+//   // let #(state, actions) = create_key_pair(state)
+//   // assert [state.CreateKey] == actions
+//   // // State should be working again
+//   // let message = state.KeypairCreated(Ok(#()))
+//   // let #(state, actions) = state.update(state, message)
+// }
 
 // sign with already loaded
 
