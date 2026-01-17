@@ -65,8 +65,9 @@ pub fn render(model) {
           h.form(
             [
               event.on_submit(fn(input) {
+                let assert [#("name", name)] = input
                 echo input
-                todo
+                state.UserConfirmAccountCreation(name)
               }),
             ],
             [

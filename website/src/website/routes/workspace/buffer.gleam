@@ -10,6 +10,7 @@ import morph/editable as e
 import morph/navigation
 import morph/projection as p
 import morph/transformation as t
+import multiformats/cid/v1
 import plinth/browser/crypto/subtle
 import website/components/snippet
 
@@ -63,7 +64,7 @@ pub fn cid(buffer) {
   let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
   use result <- promise.map(subtle.digest(subtle.SHA256, bytes))
   let assert Ok(hash) = result
-  let assert Ok(cid) = resume(hash)
+  let assert Ok(cid) = resume(hash) |> v1.to_string
   cid
 }
 

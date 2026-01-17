@@ -17,6 +17,5 @@ pub fn from_block(bytes) {
   Sha256(bytes:, resume: fn(digest) {
     let multihash = hashes.Multihash(hashes.Sha256, digest)
     v1.Cid(codec.code(), multihash)
-    |> v1.to_string
   })
 }

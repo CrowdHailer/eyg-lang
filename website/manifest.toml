@@ -22,7 +22,7 @@ packages = [
   { name = "gleam_json", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "44FDAA8847BE8FC48CA7A1C089706BD54BADCC4C45B237A992EDDF9F2CDB2836" },
   { name = "gleam_otp", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib"], otp_app = "gleam_otp", source = "hex", outer_checksum = "BA6A294E295E428EC1562DC1C11EA7530DCB981E8359134BEABC8493B7B2258E" },
   { name = "gleam_regexp", version = "1.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_regexp", source = "hex", outer_checksum = "9C215C6CA84A5B35BB934A9B61A9A306EC743153BE2B0425A0D032E477B062A9" },
-  { name = "gleam_stdlib", version = "0.68.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "F7FAEBD8EF260664E86A46C8DBA23508D1D11BB3BCC6EE1B89B3BC3E5C83FF1E" },
+  { name = "gleam_stdlib", version = "0.67.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "6CE3E4189A8B8EC2F73AB61A2FBDE49F159D6C9C61C49E3B3082E439F260D3D0" },
   { name = "gleam_time", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_time", source = "hex", outer_checksum = "0DF3834D20193F0A38D0EB21F0A78D48F2EC276C285969131B86DF8D4EF9E762" },
   { name = "gleamx", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_stdlib"], source = "local", path = "../packages/gleamx" },
   { name = "gleb128", version = "4.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleb128", source = "hex", outer_checksum = "152BBF9DEBABEAE8D4B743D31F7611A6AE0A1F7924B8BFCE9CECE773C5280B77" },
@@ -70,7 +70,7 @@ gleam_fetch = { version = ">= 1.1.1 and < 2.0.0" }
 gleam_http = { version = ">= 3.7.2 and < 5.0.0" }
 gleam_javascript = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_json = { version = ">= 2.1.0 and < 4.0.0" }
-gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
+gleam_stdlib = { version = ">= 0.34.0 and <= 0.67.1" }
 gleam_time = { version = ">= 0.0.0 and < 2.0.0" }
 gleamx = { path = "../packages/gleamx" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }

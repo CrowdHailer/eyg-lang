@@ -1,8 +1,11 @@
 import dag_json
+import gleam/bit_array
 import gleam/dynamic/decode.{type Decoder}
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None}
 import multiformats/cid/v1
+import multiformats/hashes
 
 pub type Entry(t) {
   Entry(
@@ -56,6 +59,24 @@ pub fn entry_encode(entry: Entry(t), content_encode) {
     #("type", dag_json.string(type_)),
     #("content", content),
   ])
+}
+
+/// To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation
+pub type Effect(t) {
+  Sha256(bytes: BitArray, resume: fn(BitArray) -> t)
+}
+
+pub fn cid_from_entry(entry, encode) {
+  let bytes =
+    entry_encode(entry, encode) |> json.to_string |> bit_array.from_string
+  from_block(bytes)
+}
+
+fn from_block(bytes) {
+  Sha256(bytes:, resume: fn(digest) {
+    let multihash = hashes.Multihash(hashes.Sha256, digest)
+    v1.Cid(dag_json.code(), multihash)
+  })
 }
 
 pub type Signatory {

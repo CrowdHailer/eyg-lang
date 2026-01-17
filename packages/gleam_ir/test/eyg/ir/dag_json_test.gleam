@@ -7,6 +7,7 @@ import gleam/io
 import gleam/json
 import gleam/list
 import gleeunit/should
+import multiformats/cid/v1
 import simplifile
 
 type Fixture {
@@ -40,7 +41,7 @@ pub fn ir_suite_test() {
       |> should.be_ok
     let cid.Sha256(bytes, resume) = cid.from_tree(source)
     let hash = crypto.hash(crypto.Sha256, bytes)
-    let assert Ok(calculated) = resume(hash)
+    let assert Ok(calculated) = resume(hash) |> v1.to_string
 
     case calculated == expected {
       True -> Nil
