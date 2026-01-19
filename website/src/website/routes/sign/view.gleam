@@ -146,7 +146,7 @@ pub fn render(model) {
             list.map(keypairs, fn(keypair) {
               full_row_button_subtext(
                 outline.key(),
-                h.text("Personal account"),
+                h.text(keypair.entity_nickname),
                 h.text(keypair.id),
                 Some(state.UserClickedViewAccount),
               )
@@ -237,7 +237,7 @@ fn full_row_button_subtext(icon, text, subtext, action) {
     [
       h.span(
         [
-          a.class("w-14 p-2 rounded"),
+          a.class("w-14 p-2 rounded flex-shrink-0"),
           a.styles([
             #(
               "background",
@@ -247,9 +247,11 @@ fn full_row_button_subtext(icon, text, subtext, action) {
         ],
         [icon],
       ),
-      h.div([a.class("expand")], [
+      h.div([a.class("expand min-w-0")], [
         h.div([a.class("font-bold")], [text]),
-        h.div([a.class("text-gray-600")], [subtext]),
+        h.div([a.class("text-gray-600 overflow-hidden overflow-ellipsis")], [
+          subtext,
+        ]),
       ]),
     ],
   )

@@ -68,10 +68,11 @@ pub fn render() {
               database: state.Fetched(helpers.dummy_db()),
               keypairs: [
                 state.Key(
-                  entity_id: "foo",
                   id: "abcdefgh",
                   public_key: helpers.dummy_crypto_key(),
                   private_key: helpers.dummy_crypto_key(),
+                  entity_id: "foo",
+                  entity_nickname: "Personal",
                 ),
               ],
               mode: state.ViewKeys,

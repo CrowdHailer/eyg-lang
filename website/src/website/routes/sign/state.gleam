@@ -28,10 +28,11 @@ pub type Mode {
 
 pub type Key {
   Key(
-    entity_id: String,
     id: String,
     public_key: subtle.CryptoKey,
     private_key: subtle.CryptoKey,
+    entity_id: String,
+    entity_nickname: String,
   )
 }
 
@@ -52,7 +53,7 @@ pub type Action {
   // OpenDatabase 
   PostMessage(target: window_proxy.WindowProxy, data: protocol.OpenerBound)
   ReadKeypairs(database: database.Database)
-  CreateNewSignatory(database: database.Database)
+  CreateNewSignatory(database: database.Database, nickname: String)
   FetchEntities(List(String))
 }
 
@@ -143,10 +144,10 @@ fn user_clicked_create_account(state) {
 
 // Don't generate the key async needs GC and saves time only when http also being done
 // Is label a better name than name
-fn user_confirmed_account_creation(state, name) {
+fn user_confirmed_account_creation(state, nickname) {
   let state = State(..state, mode: CreatingAccount)
   let assert Fetched(database) = state.database
-  #(state, [CreateNewSignatory(database:)])
+  #(state, [CreateNewSignatory(database:, nickname:)])
 }
 
 fn fetch_entities_completed(state, result) {
@@ -163,7 +164,9 @@ fn create_new_signatory_completed(state, result) {
   case result {
     Ok(#(entity, keypair)) -> {
       echo entity
-      let state = State(..state, keypairs: [keypair])
+
+      let state =
+        State(..state, mode: ViewKeys, keypairs: [keypair, ..state.keypairs])
       #(state, [])
     }
     Error(reason) -> todo

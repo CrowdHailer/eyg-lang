@@ -132,7 +132,8 @@ pub fn run(action) {
   case action {
     state.PostMessage(target:, data:) -> post_message(target, data)
     state.ReadKeypairs(database:) -> read_keypairs(database)
-    state.CreateNewSignatory(database:) -> create_new_signatory(database)
+    state.CreateNewSignatory(database:, nickname:) ->
+      create_new_signatory(database, nickname)
     state.FetchEntities(entities) -> fetch_entities(entities)
   }
 }
@@ -163,18 +164,23 @@ fn read_keypairs(database) {
           list.filter_map(keys, fn(key) {
             echo key
             let decoder = {
-              use entity_id <- decode.field("entityId", decode.string)
               use id <- decode.field("keyId", decode.string)
               use public_key <- decode.field("publicKey", crypto_key_decoder())
               use private_key <- decode.field(
                 "privateKey",
                 crypto_key_decoder(),
               )
+              use entity_id <- decode.field("entityId", decode.string)
+              use entity_nickname <- decode.field(
+                "entityNickname",
+                decode.string,
+              )
               decode.success(state.Key(
-                entity_id:,
                 id:,
                 public_key:,
                 private_key:,
+                entity_id:,
+                entity_nickname:,
               ))
             }
             decode.run(key, decoder) |> echo
@@ -192,9 +198,9 @@ fn crypto_key_decoder() {
   })
 }
 
-fn create_new_signatory(database) {
+fn create_new_signatory(database, nickname) {
   effect.from(fn(dispatch) {
-    promise.map(do_create_new_signatory(database), fn(result) {
+    promise.map(do_create_new_signatory(database, nickname), fn(result) {
       dispatch(state.CreateNewSignatoryCompleted(result))
     })
     Nil
@@ -204,7 +210,7 @@ fn create_new_signatory(database) {
 const origin = origin.Origin(http.Http, "localhost", Some(8001))
 
 // returns a string error
-fn do_create_new_signatory(database) {
+fn do_create_new_signatory(database, nickname) {
   let endpoint = #(origin, "/id/submit")
   let usages = [subtle.Sign, subtle.Verify]
   use #(public_key, private_key) <- promise.try_await(subtle.generate_key(
@@ -242,16 +248,23 @@ fn do_create_new_signatory(database) {
       // need a js dynamic object
       let native =
         json.object([
-          #("entityId", json.string(entity)),
           #("keyId", json.string(key)),
           #("publicKey", dynamicx.unsafe_coerce(dynamicx.from(public_key))),
           #("privateKey", dynamicx.unsafe_coerce(dynamicx.from(private_key))),
+          #("entityId", json.string(entity)),
+          #("entityNickname", json.string(nickname)),
         ])
       use result <- promise.await(put_keypair(database, dynamicx.from(native)))
-      echo result
+      let assert Ok(_) = result
       Ok(#(
         entry,
-        state.Key(entity_id: entity, id: key, public_key:, private_key:),
+        state.Key(
+          entity_id: entity,
+          id: key,
+          public_key:,
+          private_key:,
+          entity_nickname: nickname,
+        ),
       ))
       |> promise.resolve()
     }
@@ -274,9 +287,10 @@ fn fetch_entities(entities) {
 fn do_fetch_entities(entities) {
   let endpoint = #(origin, "/id/events")
   echo entities
-  let assert [entity] = entities
+  // TODO get all the entities
+  let assert [entity, ..] = entities
 
-  let request = wat.pull_events_request(endpoint, "entity")
+  let request = wat.pull_events_request(endpoint, entity)
   use response <- promise.try_await(send_bits(request))
   use response <- try_sync(
     wat.pull_events_response(response)
