@@ -13,12 +13,17 @@ pub fn decoder() {
 
 pub type Event {
   AddKey(String)
+  RemoveKey(String)
 }
 
 pub fn event_encode(event: Event) {
   case event {
     AddKey(key) -> #(
       "add_key",
+      dag_json.object([#("key", dag_json.string(key))]),
+    )
+    RemoveKey(key) -> #(
+      "remove_key",
       dag_json.object([#("key", dag_json.string(key))]),
     )
   }
@@ -30,6 +35,10 @@ fn event_decoders() {
       #("add_key", {
         use key <- decode.field("key", decode.string)
         decode.success(AddKey(key))
+      }),
+      #("remove_key", {
+        use key <- decode.field("key", decode.string)
+        decode.success(RemoveKey(key))
       }),
     ],
     AddKey(""),

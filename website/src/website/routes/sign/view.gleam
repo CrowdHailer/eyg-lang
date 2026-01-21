@@ -1,47 +1,58 @@
+import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
+import gleam/string
 import gleroglero/outline
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/event
+import trust/protocol as trust
+import trust/substrate
 import website/routes/sign/state.{State}
 
-pub fn model(state) {
-  case state {
-    // Look at the keys
-    State(mode: state.ViewKeys, database: state.Fetching, ..) ->
-      SelectKeyAndProfile(state.Fetching)
-    State(mode: state.ViewKeys, database: state.Fetched(_), ..) ->
-      SelectKeyAndProfile(state.Fetched(state.keypairs))
-    // State(keypairs: state.Fetching(..), ..) -> Loading
-    // State(keypairs: state.Failed(..), ..) -> todo
-    State(mode: state.SetupKey, ..) -> Setup
-    State(mode: state.CreatingAccount, ..) -> CreateNewAccount
-    State(keypairs:, ..) -> todo as "SelectKeyAndProfile(keypairs)"
+fn apply_trust_event(acc, entry) {
+  let substrate.Entry(entity:, content:, ..) = entry
+  let keys = dict.get(acc, entity) |> result.unwrap(dict.new())
+  let current = case content {
+    trust.AddKey(key) -> dict.insert(keys, key, Nil)
+    trust.RemoveKey(key) -> dict.delete(keys, key)
   }
+  dict.insert(acc, entity, current)
 }
 
-pub type Model {
-  // Failed(message: String)
-  // This is the overview mode, if no keys then highlight the setup button
-  SelectKeyAndProfile(keys: state.Fetching(List(state.Key)))
-  // Choose to setup a key in a new or existing account
-  Setup
-  CreateNewAccount
-  // Loading
-  Confirm
-  Link
+pub type Status {
+  Active
+  Revoked
+  Syncing
 }
 
-pub fn render(model) {
-  case model {
+pub fn signatories(state) {
+  let State(keypairs:, signatories:, ..) = state
+  let signatories = list.fold(signatories, dict.new(), apply_trust_event)
+
+  list.map(keypairs, fn(keypair) {
+    case dict.get(signatories, keypair.entity_id) {
+      Ok(signatory) ->
+        case dict.get(signatory, keypair.keypair.id) {
+          Ok(Nil) -> #(keypair, Active)
+          Error(Nil) -> #(keypair, Revoked)
+        }
+      _ -> #(keypair, Syncing)
+    }
+  })
+}
+
+pub fn render(state) {
+  let State(mode:, ..) = state
+  case mode {
     // Failed(message:) -> layout([h.text("failed " <> message)], [])
     // Loading -> layout([h.text("loading")], [])
-    Setup ->
+    state.SetupDevice ->
       layout(
         [
           full_row_button(
-            state.UserClickedCreateNewAccount,
+            state.UserClickedCreateSignatory,
             outline.user_plus(),
             "Create new account",
           ),
@@ -59,7 +70,7 @@ pub fn render(model) {
           ),
         ],
       )
-    CreateNewAccount ->
+    state.CreatingSignatory(..) ->
       layout(
         [
           h.form(
@@ -67,7 +78,7 @@ pub fn render(model) {
               event.on_submit(fn(input) {
                 let assert [#("name", name)] = input
                 echo input
-                state.UserConfirmAccountCreation(name)
+                state.UserSubmittedSignatoryAlias(name)
               }),
             ],
             [
@@ -97,35 +108,35 @@ pub fn render(model) {
           ),
         ],
       )
-    Confirm ->
+    // Confirm ->
+    //   layout(
+    //     [
+    //       h.div([a.class("cover bg-white p-2")], [
+    //         h.dl([], [
+    //           h.dt([a.class("font-bold italic")], [h.text("type")]),
+    //           h.dd([a.class("ml-8 mb-2")], [h.text("publish release")]),
+    //           h.dt([a.class("font-bold italic")], [h.text("package")]),
+    //           h.dd([a.class("ml-8 mb-2")], [h.text("standard")]),
+    //           h.dt([a.class("font-bold italic")], [h.text("version")]),
+    //           h.dd([a.class("ml-8 mb-2")], [h.text("2")]),
+    //           h.dt([a.class("font-bold italic")], [h.text("module")]),
+    //           h.dd([a.class("ml-8 mb-2")], [
+    //             h.text("cadcdac23rgw45ur67ndfgdgw4"),
+    //           ]),
+    //         ]),
+    //       ]),
+    //       full_row_button(
+    //         state.UserClickedSignPayload,
+    //         outline.cloud_arrow_up(),
+    //         "Sign",
+    //       ),
+    //     ],
+    //     [],
+    //   )
+    state.ViewKeys ->
       layout(
-        [
-          h.div([a.class("cover bg-white p-2")], [
-            h.dl([], [
-              h.dt([a.class("font-bold italic")], [h.text("type")]),
-              h.dd([a.class("ml-8 mb-2")], [h.text("publish release")]),
-              h.dt([a.class("font-bold italic")], [h.text("package")]),
-              h.dd([a.class("ml-8 mb-2")], [h.text("standard")]),
-              h.dt([a.class("font-bold italic")], [h.text("version")]),
-              h.dd([a.class("ml-8 mb-2")], [h.text("2")]),
-              h.dt([a.class("font-bold italic")], [h.text("module")]),
-              h.dd([a.class("ml-8 mb-2")], [
-                h.text("cadcdac23rgw45ur67ndfgdgw4"),
-              ]),
-            ]),
-          ]),
-          full_row_button(
-            state.UserClickedSignPayload,
-            outline.cloud_arrow_up(),
-            "Sign",
-          ),
-        ],
-        [],
-      )
-    SelectKeyAndProfile(keypairs) ->
-      layout(
-        case keypairs {
-          state.Fetching -> [
+        case state.database, signatories(state) {
+          state.Fetching, _ -> [
             full_row_button_subtext(
               outline.key(),
               h.div([a.class("shimmer skeleton-line")], []),
@@ -139,16 +150,21 @@ pub fn render(model) {
               None,
             ),
           ]
-          state.Fetched([]) -> [
+          state.Fetched(_), [] -> [
             h.div([], [h.text("click below to setup your first key")]),
           ]
-          state.Fetched(keypairs) ->
+          state.Fetched(_), keypairs ->
             list.map(keypairs, fn(keypair) {
+              let #(keypair, mode) = keypair
               full_row_button_subtext(
-                outline.key(),
+                case mode {
+                  Active -> outline.key()
+                  Revoked -> outline.lock_closed()
+                  Syncing -> outline.circle_stack()
+                },
                 h.text(keypair.entity_nickname),
-                h.text(keypair.id),
-                Some(state.UserClickedViewAccount),
+                h.text(keypair.keypair.id),
+                Some(state.UserClickedViewSignatory(keypair.keypair.id)),
               )
             })
           // [
@@ -163,7 +179,7 @@ pub fn render(model) {
           // //   "ab:1s:dx:3s:27",
           // // ),
           // ]
-          state.Failed(..) -> todo
+          state.Failed(..), _ -> todo
         },
         [
           full_row_button_subtext(
@@ -174,15 +190,29 @@ pub fn render(model) {
           ),
         ],
       )
-    Link ->
+    // Link ->
+    //   layout(
+    //     [
+    //       h.img([
+    //         a.src(
+    //           "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://example.com",
+    //         ),
+    //       ]),
+    //       h.div([], [h.text("Scan with trusted device.")]),
+    //     ],
+    //     [],
+    //   )
+    state.ViewSignatory(keypair) ->
       layout(
         [
-          h.img([
-            a.src(
-              "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://example.com",
-            ),
-          ]),
-          h.div([], [h.text("Scan with trusted device.")]),
+          h.text(keypair.entity_id),
+          {
+            list.filter(state.signatories, fn(entry) {
+              entry.entity == keypair.entity_id
+            })
+            |> list.map(fn(entry) { h.text(string.inspect(entry)) })
+            |> h.div([], _)
+          },
         ],
         [],
       )

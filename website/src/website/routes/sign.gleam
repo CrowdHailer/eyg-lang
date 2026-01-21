@@ -125,19 +125,21 @@ fn do_update(state, message) {
 }
 
 fn do_render(state) {
-  view.render(view.model(state))
+  view.render(state)
 }
 
 pub fn run(action) {
   case action {
     state.PostMessage(target:, data:) -> post_message(target, data)
     state.ReadKeypairs(database:) -> read_keypairs(database)
-    state.CreateNewSignatory(database:, nickname:) ->
-      create_new_signatory(database, nickname)
-    state.FetchEntities(entities) -> fetch_entities(entities)
+    state.CreateKeypair -> create_keypair()
+    state.CreateSignatory(database:, nickname:, keypair:) ->
+      create_signatory(database, nickname, keypair)
+    state.FetchSignatories(entities) -> fetch_signatories(entities)
   }
 }
 
+/// this assumes that the action returns a promise that should be dispatched
 fn post_message(target, data) {
   effect.from(fn(_dispatch) {
     let data = protocol.opener_bound_encode(data)
@@ -175,10 +177,8 @@ fn read_keypairs(database) {
                 "entityNickname",
                 decode.string,
               )
-              decode.success(state.Key(
-                id:,
-                public_key:,
-                private_key:,
+              decode.success(state.SignatoryKeypair(
+                state.Keypair(id:, public_key:, private_key:),
                 entity_id:,
                 entity_nickname:,
               ))
@@ -192,17 +192,43 @@ fn read_keypairs(database) {
   })
 }
 
+fn create_keypair() {
+  effect.from(fn(dispatch) {
+    promise.map(do_create_keypair(), fn(result) {
+      dispatch(state.CreateKeypairCompleted(result))
+    })
+    Nil
+  })
+}
+
+fn do_create_keypair() {
+  let usages = [subtle.Sign, subtle.Verify]
+  use #(public_key, private_key) <- promise.try_await(subtle.generate_key(
+    subtle.Ed25519GenParams,
+    False,
+    usages,
+  ))
+
+  use exported <- promise.try_await(subtle.export(public_key, subtle.Spki))
+  let id = base32.encode(exported)
+  promise.resolve(Ok(state.Keypair(id:, public_key:, private_key:)))
+}
+
 fn crypto_key_decoder() {
   decode.new_primitive_decoder("CryptoKey", fn(x) -> Result(subtle.CryptoKey, _) {
     Ok(dynamicx.unsafe_coerce(x))
   })
 }
 
-fn create_new_signatory(database, nickname) {
+fn create_signatory(database, nickname, keypair) {
   effect.from(fn(dispatch) {
-    promise.map(do_create_new_signatory(database, nickname), fn(result) {
-      dispatch(state.CreateNewSignatoryCompleted(result))
-    })
+    promise.map(
+      do_create_new_signatory(database, nickname, keypair),
+      fn(result) {
+        todo
+        // dispatch(state.CreateNewSignatoryCompleted(result))
+      },
+    )
     Nil
   })
 }
@@ -210,22 +236,14 @@ fn create_new_signatory(database, nickname) {
 const origin = origin.Origin(http.Http, "localhost", Some(8001))
 
 // returns a string error
-fn do_create_new_signatory(database, nickname) {
+fn do_create_new_signatory(database, nickname, keypair) {
   let endpoint = #(origin, "/id/submit")
-  let usages = [subtle.Sign, subtle.Verify]
-  use #(public_key, private_key) <- promise.try_await(subtle.generate_key(
-    subtle.Ed25519GenParams,
-    False,
-    usages,
-  ))
+
   use crypto <- try_sync(
     window.crypto(window.self()) |> result.replace_error("no crypo available"),
   )
   let entity = crypto.random_uuid(crypto)
-
-  use exported <- promise.try_await(subtle.export(public_key, subtle.Spki))
-  let key = base32.encode(exported)
-
+  let state.Keypair(id: key, public_key:, private_key:) = keypair
   let content = trust.AddKey(key)
   let signatory = substrate.Signatory(entity:, sequence: 0, key:)
   let entry = substrate.first(entity:, signatory:, content:)
@@ -258,11 +276,9 @@ fn do_create_new_signatory(database, nickname) {
       let assert Ok(_) = result
       Ok(#(
         entry,
-        state.Key(
+        state.SignatoryKeypair(
+          state.Keypair(id: key, public_key:, private_key:),
           entity_id: entity,
-          id: key,
-          public_key:,
-          private_key:,
           entity_nickname: nickname,
         ),
       ))
@@ -274,10 +290,10 @@ fn do_create_new_signatory(database, nickname) {
   }
 }
 
-fn fetch_entities(entities) {
+fn fetch_signatories(entities) {
   effect.from(fn(dispatch) {
     promise.map(do_fetch_entities(entities), fn(result) {
-      dispatch(state.FetchEntitiesCompleted(result))
+      dispatch(state.FetchSignatoriesCompleted(result))
     })
     Nil
   })

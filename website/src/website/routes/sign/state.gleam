@@ -12,28 +12,30 @@ pub type State {
   State(
     opener: Option(window_proxy.WindowProxy),
     database: Fetching(database.Database),
-    // fetching is not the best way to model
-    // state and loading mode is better
-    keypairs: List(Key),
+    keypairs: List(SignatoryKeypair),
+    signatories: List(substrate.Entry(trust.Event)),
     mode: Mode,
   )
 }
 
 pub type Mode {
-  // The SetupKey mode is the home page if no keys
   ViewKeys
-  SetupKey
-  CreatingAccount
+  SetupDevice
+  CreatingSignatory(keypair: Fetching(Keypair))
+  ViewSignatory(keypair: SignatoryKeypair)
 }
 
-pub type Key {
-  Key(
+/// An unbound keypair,
+pub type Keypair {
+  Keypair(
     id: String,
     public_key: subtle.CryptoKey,
     private_key: subtle.CryptoKey,
-    entity_id: String,
-    entity_nickname: String,
   )
+}
+
+pub type SignatoryKeypair {
+  SignatoryKeypair(keypair: Keypair, entity_id: String, entity_nickname: String)
 }
 
 pub type Fetching(t) {
@@ -42,24 +44,28 @@ pub type Fetching(t) {
   Failed(String)
 }
 
-fn fetching_result(result) {
-  case result {
-    Ok(value) -> Fetched(value)
-    Error(reason) -> Failed(reason)
-  }
-}
-
 pub type Action {
   // OpenDatabase 
   PostMessage(target: window_proxy.WindowProxy, data: protocol.OpenerBound)
   ReadKeypairs(database: database.Database)
-  CreateNewSignatory(database: database.Database, nickname: String)
-  FetchEntities(List(String))
+  CreateKeypair
+  CreateSignatory(
+    database: database.Database,
+    nickname: String,
+    keypair: Keypair,
+  )
+  FetchSignatories(List(String))
 }
 
 pub fn init(config) {
   let state =
-    State(opener: None, database: Fetching, keypairs: [], mode: ViewKeys)
+    State(
+      opener: None,
+      database: Fetching,
+      keypairs: [],
+      signatories: [],
+      mode: ViewKeys,
+    )
   case config {
     Some(opener) -> {
       let action = PostMessage(opener, protocol.GetPayload)
@@ -74,18 +80,19 @@ pub type Message {
   WindowReceivedMessageEvent(
     payload: Result(protocol.PopupBound, List(decode.DecodeError)),
   )
-  ReadKeypairsCompleted(result: Result(List(Key), String))
+  ReadKeypairsCompleted(result: Result(List(SignatoryKeypair), String))
   UserClickedSetupDevice
-  UserClickedCreateNewAccount
-  UserConfirmAccountCreation(name: String)
+  UserClickedCreateSignatory
+  UserSubmittedSignatoryAlias(name: String)
   UserClickedAddDeviceToAccount
-  UserClickedViewAccount
+  UserClickedViewSignatory(key_id: String)
   UserClickedSignPayload
-  FetchEntitiesCompleted(
+  CreateKeypairCompleted(Result(Keypair, String))
+  FetchSignatoriesCompleted(
     result: Result(List(substrate.Entry(trust.Event)), String),
   )
-  CreateNewSignatoryCompleted(
-    result: Result(#(substrate.Entry(trust.Event), Key), String),
+  CreateSignatoryCompleted(
+    result: Result(#(substrate.Entry(trust.Event), SignatoryKeypair), String),
   )
 }
 
@@ -95,14 +102,17 @@ pub fn update(state, message) {
     WindowReceivedMessageEvent(payload:) -> #(state, [])
     ReadKeypairsCompleted(result:) -> read_keypairs_completed(state, result)
     UserClickedSetupDevice -> user_clicked_setup_device(state)
-    UserClickedCreateNewAccount -> user_clicked_create_account(state)
-    UserConfirmAccountCreation(name:) ->
+    UserClickedCreateSignatory -> user_clicked_create_signatory(state)
+    UserSubmittedSignatoryAlias(name:) ->
       user_confirmed_account_creation(state, name)
     UserClickedAddDeviceToAccount -> todo
-    UserClickedViewAccount -> todo
+    UserClickedViewSignatory(key_id:) ->
+      user_clicked_view_signatory(state, key_id)
     UserClickedSignPayload -> todo
-    FetchEntitiesCompleted(result:) -> fetch_entities_completed(state, result)
-    CreateNewSignatoryCompleted(result:) ->
+    CreateKeypairCompleted(result) -> create_keypair_completed(state, result)
+    FetchSignatoriesCompleted(result:) ->
+      fetch_signatories_completed(state, result)
+    CreateSignatoryCompleted(result:) ->
       create_new_signatory_completed(state, result)
   }
 }
@@ -118,42 +128,64 @@ fn indexeddb_setup(state, result) {
 }
 
 fn read_keypairs_completed(state, result) {
-  echo result
   case result {
     Ok([]) -> #(State(..state, keypairs: []), [])
     Ok(keypairs) -> {
-      let entities = list.map(keypairs, fn(k: Key) { k.entity_id })
-
-      #(State(..state, keypairs:, mode: ViewKeys), [FetchEntities(entities)])
+      let entities = list.map(keypairs, fn(k: SignatoryKeypair) { k.entity_id })
+      #(State(..state, keypairs:, mode: ViewKeys), [FetchSignatories(entities)])
     }
     Error(_) -> todo
   }
 }
 
 fn user_clicked_setup_device(state) {
-  let state = State(..state, mode: SetupKey)
-  let assert Fetched(database) = state.database
+  let state = State(..state, mode: SetupDevice)
   #(state, [])
 }
 
-fn user_clicked_create_account(state) {
-  let state = State(..state, mode: CreatingAccount)
-  let assert Fetched(database) = state.database
-  #(state, [])
+fn user_clicked_create_signatory(state) {
+  let state = State(..state, mode: CreatingSignatory(Fetching))
+  #(state, [CreateKeypair])
 }
 
 // Don't generate the key async needs GC and saves time only when http also being done
 // Is label a better name than name
-fn user_confirmed_account_creation(state, nickname) {
-  let state = State(..state, mode: CreatingAccount)
-  let assert Fetched(database) = state.database
-  #(state, [CreateNewSignatory(database:, nickname:)])
+fn user_confirmed_account_creation(state: State, nickname) {
+  let State(mode:, database:, ..) = state
+  let assert CreatingSignatory(Fetched(keypair)) = mode
+  let assert Fetched(database) = database
+  #(state, [CreateSignatory(database:, nickname:, keypair:)])
 }
 
-fn fetch_entities_completed(state, result) {
+fn user_clicked_view_signatory(state, key_id) {
+  let State(keypairs:, ..) = state
+  case list.find(keypairs, fn(keypair) { keypair.keypair.id == key_id }) {
+    Ok(keypair) -> {
+      let mode = ViewSignatory(keypair)
+      #(State(..state, mode:), [])
+    }
+    _ -> todo
+  }
+}
+
+fn create_keypair_completed(state, result) {
+  let State(mode:, ..) = state
+  case mode {
+    CreatingSignatory(Fetching) -> {
+      let mode = case result {
+        Ok(keypair) -> CreatingSignatory(Fetched(keypair))
+        _ -> todo
+      }
+      #(State(..state, mode:), [])
+    }
+    _ -> todo
+  }
+}
+
+fn fetch_signatories_completed(state, result) {
   case result {
-    Ok(entries) -> {
-      echo entries
+    Ok(signatories) -> {
+      let state = State(..state, signatories:)
       #(state, [])
     }
     Error(reason) -> todo
@@ -163,8 +195,6 @@ fn fetch_entities_completed(state, result) {
 fn create_new_signatory_completed(state, result) {
   case result {
     Ok(#(entity, keypair)) -> {
-      echo entity
-
       let state =
         State(..state, mode: ViewKeys, keypairs: [keypair, ..state.keypairs])
       #(state, [])
