@@ -12,6 +12,7 @@ import plinth/browser/indexeddb/database.{type Database}
 import plinth/browser/indexeddb/factory
 import plinth/browser/indexeddb/object_store
 import plinth/browser/indexeddb/transaction
+import trust/keypair
 import website/routes/sign/state
 
 const db_name = "SignatoryKeypairStore"
@@ -65,13 +66,13 @@ pub fn read_signatories(
 }
 
 fn signatory_keypair_decoder() {
-  use id <- decode.field("keyId", decode.string)
+  use key_id <- decode.field("keyId", decode.string)
   use public_key <- decode.field("publicKey", crypto_key_decoder())
   use private_key <- decode.field("privateKey", crypto_key_decoder())
   use entity_id <- decode.field("entityId", decode.string)
   use entity_nickname <- decode.field("entityNickname", decode.string)
   decode.success(state.SignatoryKeypair(
-    state.Keypair(id:, public_key:, private_key:),
+    keypair.Keypair(key_id:, public_key:, private_key:),
     entity_id:,
     entity_nickname:,
   ))
@@ -88,10 +89,10 @@ fn crypto_key_decoder() {
 fn signatory_keypair_encode(signatory_keypair) {
   let state.SignatoryKeypair(keypair:, entity_id:, entity_nickname:) =
     signatory_keypair
-  let state.Keypair(id:, public_key:, private_key:) = keypair
+  let keypair.Keypair(key_id:, public_key:, private_key:) = keypair
 
   json.object([
-    #("keyId", json.string(id)),
+    #("keyId", json.string(key_id)),
     #("publicKey", dynamicx.unsafe_coerce(dynamicx.from(public_key))),
     #("privateKey", dynamicx.unsafe_coerce(dynamicx.from(private_key))),
     #("entityId", json.string(entity_id)),

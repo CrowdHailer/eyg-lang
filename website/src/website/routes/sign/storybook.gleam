@@ -5,6 +5,7 @@ import lustre/attribute as a
 import lustre/element/html as h
 import multiformats/cid/v1
 import multiformats/hashes
+import trust/keypair
 import trust/protocol
 import trust/substrate
 import website/routes/helpers
@@ -91,14 +92,14 @@ pub fn render() {
               signatories: [
                 work_entry,
                 substrate.Entry(
-                  entity: work_sig.entity_id,
+                  // entity: work_sig.entity_id,
                   sequence: 1,
                   previous: Some(v1.Cid(
                     dag_json.code(),
                     hashes.Multihash(hashes.Sha256, <<>>),
                   )),
-                  signatory: substrate.Signatory(work_sig.keypair.id, 0, ""),
-                  content: protocol.RemoveKey(work_sig.keypair.id),
+                  signatory: substrate.Signatory(work_sig.keypair.key_id, 0, ""),
+                  content: protocol.RemoveKey(work_sig.keypair.key_id),
                 ),
                 personal_entry,
               ],
@@ -146,16 +147,16 @@ pub fn generate_signatory_keypair(entity_nickname) {
   let initial_entry =
     substrate.first(
       entity_id,
-      signatory: substrate.Signatory(entity_id, 0, keypair.id),
-      content: protocol.AddKey(keypair.id),
+      signatory: substrate.Signatory(entity_id, 0, keypair.key_id),
+      content: protocol.AddKey(keypair.key_id),
     )
   #(signatory_keypair, initial_entry)
 }
 
-pub fn generate_keypair(id) {
+pub fn generate_keypair(key_id) {
   let public_key = helpers.dummy_crypto_key()
   let private_key = helpers.dummy_crypto_key()
-  state.Keypair(id:, public_key:, private_key:)
+  keypair.Keypair(key_id:, public_key:, private_key:)
 }
 
 fn card(contents) {

@@ -5,6 +5,7 @@ import gleam/string
 import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
+import trust/keypair
 import trust/protocol as trust
 import trust/substrate
 import website/registry/protocol
@@ -21,21 +22,15 @@ pub type State {
   )
 }
 
+pub type Keypair =
+  keypair.Keypair(subtle.CryptoKey, subtle.CryptoKey)
+
 pub type Mode {
   ViewKeys
   SetupDevice
   CreatingSignatory(keypair: Fetching(Keypair))
   ViewSignatory(keypair: SignatoryKeypair)
   SignEntry(entry: Fetching(substrate.Entry(protocol.Payload)))
-}
-
-/// An unbound keypair,
-pub type Keypair {
-  Keypair(
-    id: String,
-    public_key: subtle.CryptoKey,
-    private_key: subtle.CryptoKey,
-  )
 }
 
 pub type SignatoryKeypair {
@@ -188,7 +183,7 @@ fn user_confirmed_account_creation(state: State, nickname) {
 
 fn user_clicked_view_signatory(state, key_id) {
   let State(keypairs:, ..) = state
-  case list.find(keypairs, fn(keypair) { keypair.keypair.id == key_id }) {
+  case list.find(keypairs, fn(keypair) { keypair.keypair.key_id == key_id }) {
     Ok(keypair) -> {
       let mode = ViewSignatory(keypair)
       #(State(..state, mode:), [])

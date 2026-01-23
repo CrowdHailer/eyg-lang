@@ -9,18 +9,12 @@ import multiformats/hashes
 
 pub type Entry(t) {
   Entry(
-    entity: String,
     sequence: Int,
     previous: Option(v1.Cid),
-    signatory: Signatory,
+    signatory: v1.Cid,
+    key: String,
     content: t,
   )
-}
-
-pub fn first(entity entity, signatory signatory, content content) {
-  let sequence = 1
-  let previous = None
-  Entry(entity:, sequence:, previous:, signatory:, content:)
 }
 
 pub type DecoderSet(t) {
@@ -36,34 +30,34 @@ pub fn decode_set(set, type_) {
 }
 
 pub fn entry_decoder(inner: fn(String) -> Decoder(t)) -> Decoder(Entry(t)) {
-  use entity <- decode.field("entity", decode.string)
   use sequence <- decode.field("sequence", decode.int)
   use previous <- decode.field(
     "previous",
     decode.optional(dag_json.decode_cid()),
   )
-  use signatory <- decode.field("signatory", signatory_decoder())
+  use signatory <- decode.field("signatory", dag_json.decode_cid())
+  use key <- decode.field("key", decode.string)
   use type_ <- decode.field("type", decode.string)
   use content <- decode.field("content", inner(type_))
-  decode.success(Entry(entity:, sequence:, previous:, signatory:, content:))
+
+  decode.success(Entry(sequence:, previous:, signatory:, key:, content:))
 }
 
 pub fn entry_encode(entry: Entry(t), content_encode) {
   let #(type_, content) = content_encode(entry.content)
   dag_json.object([
-    #("entity", dag_json.string(entry.entity)),
     #("sequence", dag_json.int(entry.sequence)),
-    #(
-      "previous",
-      dag_json.nullable(entry.previous, fn(cid) {
-        let assert Ok(cid) = v1.to_string(cid)
-        dag_json.cid(cid)
-      }),
-    ),
-    #("signatory", signatory_encode(entry.signatory)),
+    #("previous", dag_json.nullable(entry.previous, cid_encode)),
+    #("signatory", cid_encode(entry.signatory)),
+    #("key", dag_json.string(entry.key)),
     #("type", dag_json.string(type_)),
     #("content", content),
   ])
+}
+
+fn cid_encode(cid) {
+  let assert Ok(cid) = v1.to_string(cid)
+  dag_json.cid(cid)
 }
 
 /// To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation

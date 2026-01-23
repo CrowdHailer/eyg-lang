@@ -1,7 +1,23 @@
 import dag_json
 import gleam/dynamic/decode
 import gleam/json
-import trust/substrate
+import gleam/option.{None}
+import multiformats/cid/v1
+import multiformats/hashes
+import trust/substrate.{Entry}
+
+pub fn first(key) {
+  let sequence = 1
+  let previous = None
+  let content = AddKey(key)
+  Entry(
+    sequence:,
+    previous:,
+    signatory: v1.Cid(dag_json.code(), hashes.Multihash(hashes.Sha256, <<>>)),
+    key:,
+    content:,
+  )
+}
 
 pub fn encode(entry: substrate.Entry(Event)) {
   substrate.entry_encode(entry, event_encode)
@@ -27,6 +43,10 @@ pub fn event_encode(event: Event) {
       dag_json.object([#("key", dag_json.string(key))]),
     )
   }
+}
+
+pub fn event_decoder() {
+  substrate.decode_set(event_decoders(), _)
 }
 
 fn event_decoders() {

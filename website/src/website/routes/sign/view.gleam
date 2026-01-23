@@ -12,7 +12,8 @@ import trust/substrate
 import website/routes/sign/state.{State}
 
 fn apply_trust_event(acc, entry) {
-  let substrate.Entry(entity:, content:, ..) = entry
+  let substrate.Entry(content:, ..) = entry
+  let entity = todo
   let keys = dict.get(acc, entity) |> result.unwrap(dict.new())
   let current = case content {
     trust.AddKey(key) -> dict.insert(keys, key, Nil)
@@ -32,9 +33,9 @@ pub fn signatories(state) {
   let signatories = list.fold(signatories, dict.new(), apply_trust_event)
 
   list.map(keypairs, fn(keypair) {
-    case dict.get(signatories, keypair.entity_id) {
+    case todo as "dict.get(signatories, keypair.entity_id)" {
       Ok(signatory) ->
-        case dict.get(signatory, keypair.keypair.id) {
+        case dict.get(signatory, keypair.keypair.key_id) {
           Ok(Nil) -> #(keypair, Active)
           Error(Nil) -> #(keypair, Revoked)
         }
@@ -167,8 +168,8 @@ pub fn render(state) {
                   Syncing -> outline.circle_stack()
                 },
                 h.text(keypair.entity_nickname),
-                h.text(keypair.keypair.id),
-                Some(state.UserClickedViewSignatory(keypair.keypair.id)),
+                h.text(keypair.keypair.key_id),
+                Some(state.UserClickedViewSignatory(keypair.keypair.key_id)),
               )
             })
           // This error is not dismissable because you can't fall back to the no keys view
@@ -220,7 +221,8 @@ pub fn render(state) {
           h.text(keypair.entity_id),
           {
             list.filter(state.signatories, fn(entry) {
-              entry.entity == keypair.entity_id
+              todo
+              // entry.entity == keypair.entity_id
             })
             |> list.map(fn(entry) { h.text(string.inspect(entry)) })
             |> h.div([], _)

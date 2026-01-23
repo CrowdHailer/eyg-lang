@@ -47,7 +47,12 @@ pub fn has_fragment(cache, key) {
 }
 
 pub fn apply(cache: Cache, entry) -> Cache {
-  let substrate.Entry(entity: package_id, content:, ..) = entry
+  let substrate.Entry(
+    // entity: package_id,
+    content:,
+    ..,
+  ) = entry
+  let package_id = todo
   case content {
     protocol.Release(version:, module:) -> {
       let assert Ok(cid) = v1.to_string(module)

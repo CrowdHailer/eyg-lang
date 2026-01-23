@@ -24,6 +24,7 @@ import plinth/browser/window
 import plinth/browser/window_proxy
 import spotless/origin
 import trust/client as wat
+import trust/keypair
 import trust/protocol as trust
 import trust/substrate
 import website/routes/common
@@ -157,8 +158,8 @@ fn do_create_keypair() {
   ))
 
   use exported <- promise.try_await(subtle.export(public_key, subtle.Spki))
-  let id = base32.encode(exported)
-  promise.resolve(Ok(state.Keypair(id:, public_key:, private_key:)))
+  let key_id = base32.encode(exported)
+  promise.resolve(Ok(keypair.Keypair(key_id:, public_key:, private_key:)))
 }
 
 fn create_signatory(database, nickname, keypair) {
@@ -184,7 +185,7 @@ fn do_create_new_signatory(database, nickname, keypair) {
     window.crypto(window.self()) |> result.replace_error("no crypo available"),
   )
   let entity = crypto.random_uuid(crypto)
-  let state.Keypair(id: key, public_key:, private_key:) = keypair
+  let keypair.Keypair(key_id: key, public_key:, private_key:) = keypair
   let content = trust.AddKey(key)
   let signatory = substrate.Signatory(entity:, sequence: 0, key:)
   let entry = substrate.first(entity:, signatory:, content:)
@@ -207,7 +208,7 @@ fn do_create_new_signatory(database, nickname, keypair) {
       // need a js dynamic object
       let signatory_keypair =
         state.SignatoryKeypair(
-          state.Keypair(id: key, public_key:, private_key:),
+          keypair.Keypair(key_id: key, public_key:, private_key:),
           entity_id: entity,
           entity_nickname: nickname,
         )

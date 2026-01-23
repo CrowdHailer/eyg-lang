@@ -1,3 +1,4 @@
+import gleam/bit_array
 import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
@@ -35,4 +36,10 @@ pub fn pull_events_response(response) {
     200 -> json.parse_bits(body, protocol.pull_events_response_decoder())
     _ -> todo
   }
+}
+
+pub fn to_bytes(entity) {
+  protocol.encode(entity)
+  |> json.to_string
+  |> bit_array.from_string
 }
