@@ -1,6 +1,6 @@
 import gleam/bit_array
 import gleam/dynamic/decode
-import gleam/fetch
+import gleam/fetchx
 import gleam/http
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -84,8 +84,7 @@ pub fn client() {
   let opener = window.opener(window.self()) |> option.from_result
   let assert Ok(runtime) = lustre.start(app, "#app", opener)
 
-  let p = todo
-  promise.map(p, fn(result) {
+  promise.map(storage.start(window.self()), fn(result) {
     let message = lustre.dispatch(state.IndexedDBSetup(result:))
     lustre.send(runtime, message)
   })
@@ -250,9 +249,6 @@ fn do_fetch_entities(entities) {
 }
 
 fn send_bits(request) {
-  use response <- promise.await(fetch.send_bits(request))
-  use response <- promisex.try_sync(result.map_error(response, string.inspect))
-  use response <- promise.await(fetch.read_bytes_body(response))
-  use response <- promisex.try_sync(result.map_error(response, string.inspect))
-  promise.resolve(Ok(response))
+  use response <- promise.await(fetchx.send_bits(request))
+  promise.resolve(result.map_error(response, string.inspect))
 }

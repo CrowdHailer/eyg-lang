@@ -1,6 +1,7 @@
 import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/fetch
+import gleam/fetchx
 import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/list
@@ -174,7 +175,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {
       let request = protocol.pull_events_request(origin, since)
-      promise.map(fetch(request), fn(response) {
+      promise.map(fetchx.send_bits(request), fn(response) {
         [dispatch(ReleasesFetched(response))]
       })
     }
@@ -182,7 +183,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
       promise.await_list(
         list.map(cids, fn(cid) {
           let request = protocol.fetch_fragment_request(origin, cid)
-          promise.map(fetch(request), fn(result) {
+          promise.map(fetchx.send_bits(request), fn(result) {
             dispatch(FragmentFetched(cid:, result:))
           })
         }),
@@ -191,14 +192,9 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
     Share(origin:, block:) -> {
       let request = protocol.share_request(origin, block)
 
-      promise.map(fetch(request), fn(response) {
+      promise.map(fetchx.send_bits(request), fn(response) {
         [dispatch(FragmentShared(response))]
       })
     }
   }
-}
-
-fn fetch(request) {
-  use response <- promise.try_await(fetch.send_bits(request))
-  fetch.read_bytes_body(response)
 }
