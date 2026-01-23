@@ -108,31 +108,35 @@ pub fn render(state) {
           ),
         ],
       )
-    // Confirm ->
-    //   layout(
-    //     [
-    //       h.div([a.class("cover bg-white p-2")], [
-    //         h.dl([], [
-    //           h.dt([a.class("font-bold italic")], [h.text("type")]),
-    //           h.dd([a.class("ml-8 mb-2")], [h.text("publish release")]),
-    //           h.dt([a.class("font-bold italic")], [h.text("package")]),
-    //           h.dd([a.class("ml-8 mb-2")], [h.text("standard")]),
-    //           h.dt([a.class("font-bold italic")], [h.text("version")]),
-    //           h.dd([a.class("ml-8 mb-2")], [h.text("2")]),
-    //           h.dt([a.class("font-bold italic")], [h.text("module")]),
-    //           h.dd([a.class("ml-8 mb-2")], [
-    //             h.text("cadcdac23rgw45ur67ndfgdgw4"),
-    //           ]),
-    //         ]),
-    //       ]),
-    //       full_row_button(
-    //         state.UserClickedSignPayload,
-    //         outline.cloud_arrow_up(),
-    //         "Sign",
-    //       ),
-    //     ],
-    //     [],
-    //   )
+    state.SignEntry(payload) ->
+      layout(
+        [
+          h.div([a.class("cover bg-white expand p-2")], [
+            case payload {
+              state.Fetching -> h.div([a.class("shimmer skeleton-line")], [])
+              _ -> todo
+            },
+            // h.dl([], [
+          //   h.dt([a.class("font-bold italic")], [h.text("type")]),
+          //   h.dd([a.class("ml-8 mb-2")], [h.text("publish release")]),
+          //   h.dt([a.class("font-bold italic")], [h.text("package")]),
+          //   h.dd([a.class("ml-8 mb-2")], [h.text("standard")]),
+          //   h.dt([a.class("font-bold italic")], [h.text("version")]),
+          //   h.dd([a.class("ml-8 mb-2")], [h.text("2")]),
+          //   h.dt([a.class("font-bold italic")], [h.text("module")]),
+          //   h.dd([a.class("ml-8 mb-2")], [
+          //     h.text("cadcdac23rgw45ur67ndfgdgw4"),
+          //   ]),
+          // ]),
+          ]),
+          full_row_button(
+            state.UserClickedSignPayload,
+            outline.cloud_arrow_up(),
+            "Sign",
+          ),
+        ],
+        [],
+      )
     state.ViewKeys ->
       layout(
         case state.database, signatories(state) {

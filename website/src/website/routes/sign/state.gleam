@@ -1,12 +1,14 @@
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
 import trust/protocol as trust
 import trust/substrate
-import website/routes/sign/protocol
+import website/registry/protocol
+import website/routes/sign/opener_protocol
 
 pub type State {
   State(
@@ -24,6 +26,7 @@ pub type Mode {
   SetupDevice
   CreatingSignatory(keypair: Fetching(Keypair))
   ViewSignatory(keypair: SignatoryKeypair)
+  SignEntry(entry: Fetching(substrate.Entry(protocol.Payload)))
 }
 
 /// An unbound keypair,
@@ -47,7 +50,10 @@ pub type Fetching(t) {
 
 pub type Action {
   // OpenDatabase 
-  PostMessage(target: window_proxy.WindowProxy, data: protocol.OpenerBound)
+  PostMessage(
+    target: window_proxy.WindowProxy,
+    data: opener_protocol.OpenerBound,
+  )
   ReadKeypairs(database: database.Database)
   CreateKeypair
   CreateSignatory(
@@ -70,8 +76,10 @@ pub fn init(config) {
     )
   case config {
     Some(opener) -> {
-      let action = PostMessage(opener, protocol.GetPayload)
-      #(State(..state, opener: Some(opener)), [action])
+      let action = PostMessage(opener, opener_protocol.GetPayload)
+      #(State(..state, mode: SignEntry(Fetching), opener: Some(opener)), [
+        action,
+      ])
     }
     None -> #(state, [])
   }
@@ -80,7 +88,7 @@ pub fn init(config) {
 pub type Message {
   IndexedDBSetup(result: Result(database.Database, String))
   WindowReceivedMessageEvent(
-    payload: Result(protocol.PopupBound, List(decode.DecodeError)),
+    payload: Result(opener_protocol.PopupBound, List(decode.DecodeError)),
   )
   ReadKeypairsCompleted(result: Result(List(SignatoryKeypair), String))
   UserClickedSetupDevice
@@ -101,7 +109,8 @@ pub type Message {
 pub fn update(state, message) {
   case message {
     IndexedDBSetup(result) -> indexeddb_setup(state, result)
-    WindowReceivedMessageEvent(payload:) -> #(state, [])
+    WindowReceivedMessageEvent(payload:) ->
+      window_received_message_event(state, payload)
     ReadKeypairsCompleted(result:) -> read_keypairs_completed(state, result)
     UserClickedSetupDevice -> user_clicked_setup_device(state)
     UserClickedCreateSignatory -> user_clicked_create_signatory(state)
@@ -129,12 +138,30 @@ fn indexeddb_setup(state, result) {
   }
 }
 
+fn window_received_message_event(state, result) {
+  let State(mode:, ..) = state
+  case mode {
+    SignEntry(Fetching) ->
+      case result {
+        Ok(opener_protocol.Payload(payload)) -> #(
+          State(..state, mode: SignEntry(Fetched(payload))),
+          [],
+        )
+        Error(reason) -> #(
+          State(..state, mode: SignEntry(Failed(string.inspect(reason)))),
+          [],
+        )
+      }
+    _ -> #(state, [])
+  }
+}
+
 fn read_keypairs_completed(state, result) {
   case result {
     Ok([]) -> #(State(..state, keypairs: []), [])
     Ok(keypairs) -> {
       let entities = list.map(keypairs, fn(k: SignatoryKeypair) { k.entity_id })
-      #(State(..state, keypairs:, mode: ViewKeys), [FetchSignatories(entities)])
+      #(State(..state, keypairs:), [FetchSignatories(entities)])
     }
     Error(_) -> todo
   }

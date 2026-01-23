@@ -5,6 +5,7 @@ import multiformats/hashes
 import trust/protocol
 import trust/substrate
 import website/routes/helpers
+import website/routes/sign/opener_protocol
 import website/routes/sign/state
 import website/routes/sign/storybook
 import website/routes/sign/view
@@ -129,12 +130,40 @@ pub fn view_inactive_key_test() {
   assert [#(record, view.Revoked)] == view.signatories(state)
 }
 
-// Test in the workspace that if it's signed then it's signed returns
-// state.view(state)
-// manage keys if no opener
-// Show QR code
-// new persona key is only once per 
-//
+// errors is a function where some are not dismissable
+pub fn get_payload_test() {
+  let opener = helpers.dummy_opener()
+  let #(state, actions) = state.init(Some(opener))
+  assert state.SignEntry(state.Fetching) == state.mode
+  let assert [state.PostMessage(target:, data:)] = actions
+  assert opener == target
+  assert opener_protocol.GetPayload == data
+
+  let #(state, actions) = database_setup(state, helpers.dummy_db())
+  assert state.SignEntry(state.Fetching) == state.mode
+  let assert [state.ReadKeypairs(_)] = actions
+
+  let keypair = storybook.generate_keypair("only key")
+  let entity_id = "sdvfborf"
+  let entity_nickname = "Me"
+  let record = state.SignatoryKeypair(keypair:, entity_id:, entity_nickname:)
+  let keys = [record]
+  let #(state, actions) = read_keypairs_completed(state, keys)
+  assert state.SignEntry(state.Fetching) == state.mode
+  assert [state.FetchSignatories([entity_id])] == actions
+
+  let payload = todo
+
+  let #(state, actions) =
+    state.update(
+      state,
+      state.WindowReceivedMessageEvent(Ok(opener_protocol.Payload(payload))),
+    )
+  assert state.SignEntry(state.Fetched(payload)) == state.mode
+  assert [] == actions
+
+  todo
+}
 
 // receive bad payload shows warning
 // Lookup keys Ok(List)/Error

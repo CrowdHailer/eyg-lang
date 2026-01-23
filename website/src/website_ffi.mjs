@@ -31,8 +31,8 @@ export function selectAllInput(input) {
   }
 }
 
-export function any() {
-
+export function any(value) {
+  return value
 }
 
 const DB_NAME = "fs-db"

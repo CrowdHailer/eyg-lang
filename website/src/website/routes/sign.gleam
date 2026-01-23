@@ -28,7 +28,7 @@ import trust/protocol as trust
 import trust/substrate
 import website/routes/common
 import website/routes/home
-import website/routes/sign/protocol
+import website/routes/sign/opener_protocol
 import website/routes/sign/state
 import website/routes/sign/storage
 import website/routes/sign/storybook
@@ -90,7 +90,10 @@ pub fn client() {
   })
   window.on_message(window.self(), fn(event) {
     let payload =
-      decode.run(message_event.data(event), protocol.popup_bound_decoder())
+      decode.run(
+        message_event.data(event),
+        opener_protocol.popup_bound_decoder(),
+      )
 
     let message = lustre.dispatch(state.WindowReceivedMessageEvent(payload:))
     lustre.send(runtime, message)
@@ -126,7 +129,7 @@ pub fn run(action) {
 /// this assumes that the action returns a promise that should be dispatched
 fn post_message(target, data) {
   effect.from(fn(_dispatch) {
-    let data = protocol.opener_bound_encode(data)
+    let data = opener_protocol.opener_bound_encode(data)
     window_proxy.post_message(target, data, "/")
     Nil
   })

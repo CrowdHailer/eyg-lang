@@ -1,6 +1,10 @@
+import dag_json
+import gleam/int
 import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element/html as h
+import multiformats/cid/v1
+import multiformats/hashes
 import trust/protocol
 import trust/substrate
 import website/routes/helpers
@@ -75,49 +79,28 @@ pub fn render() {
         ]),
         card([
           view.render({
-            let keypair = generate_keypair("abcdefgh")
+            let #(work_sig, work_entry) = generate_signatory_keypair("Work")
+            let #(personal_sig, personal_entry) =
+              generate_signatory_keypair("Personal")
+            let #(new_sig, _new_entry) = generate_signatory_keypair("New")
+
             State(
               opener: None,
               database: state.Fetched(helpers.dummy_db()),
-              keypairs: [
-                state.SignatoryKeypair(
-                  keypair:,
-                  entity_id: "foo",
-                  entity_nickname: "Work",
-                ),
-                state.SignatoryKeypair(
-                  keypair:,
-                  entity_id: "bar",
-                  entity_nickname: "Personal",
-                ),
-                state.SignatoryKeypair(
-                  keypair:,
-                  entity_id: "baz",
-                  entity_nickname: "New",
-                ),
-              ],
+              keypairs: [work_sig, personal_sig, new_sig],
               signatories: [
+                work_entry,
                 substrate.Entry(
-                  entity: "foo",
-                  sequence: 0,
-                  previous: None,
-                  signatory: substrate.Signatory("abc", 0, ""),
-                  content: protocol.AddKey(keypair.id),
+                  entity: work_sig.entity_id,
+                  sequence: 1,
+                  previous: Some(v1.Cid(
+                    dag_json.code(),
+                    hashes.Multihash(hashes.Sha256, <<>>),
+                  )),
+                  signatory: substrate.Signatory(work_sig.keypair.id, 0, ""),
+                  content: protocol.RemoveKey(work_sig.keypair.id),
                 ),
-                substrate.Entry(
-                  entity: "foo",
-                  sequence: 0,
-                  previous: None,
-                  signatory: substrate.Signatory(keypair.id, 0, ""),
-                  content: protocol.RemoveKey(keypair.id),
-                ),
-                substrate.Entry(
-                  entity: "bar",
-                  sequence: 0,
-                  previous: None,
-                  signatory: substrate.Signatory("abc", 0, ""),
-                  content: protocol.AddKey(keypair.id),
-                ),
+                personal_entry,
               ],
               mode: state.ViewKeys,
               error: None,
@@ -126,31 +109,26 @@ pub fn render() {
         ]),
         card([
           view.render({
-            let keypair = generate_keypair("abcdefgh")
+            let #(sig, entry) = generate_signatory_keypair("Personal")
             State(
               opener: None,
               database: state.Fetched(helpers.dummy_db()),
-              keypairs: [
-                state.SignatoryKeypair(
-                  keypair:,
-                  entity_id: "id47",
-                  entity_nickname: "Personal",
-                ),
-              ],
-              signatories: [
-                substrate.Entry(
-                  entity: "id47",
-                  sequence: 0,
-                  previous: None,
-                  signatory: substrate.Signatory("abc", 0, ""),
-                  content: protocol.AddKey("abc"),
-                ),
-              ],
-              mode: state.ViewSignatory(state.SignatoryKeypair(
-                keypair:,
-                entity_id: "id47",
-                entity_nickname: "Personal",
-              )),
+              keypairs: [sig],
+              signatories: [entry],
+              mode: state.ViewSignatory(sig),
+              error: None,
+            )
+          }),
+        ]),
+        card([
+          view.render({
+            let #(sig, entry) = generate_signatory_keypair("Personal")
+            State(
+              opener: Some(helpers.dummy_opener()),
+              database: state.Fetched(helpers.dummy_db()),
+              keypairs: [sig],
+              signatories: [entry],
+              mode: state.SignEntry(state.Fetching),
               error: None,
             )
           }),
@@ -158,6 +136,20 @@ pub fn render() {
       ],
     ),
   ]
+}
+
+pub fn generate_signatory_keypair(entity_nickname) {
+  let keypair = generate_keypair(int.to_string(int.random(100_000)))
+  let entity_id = int.to_string(int.random(100_000))
+  let signatory_keypair =
+    state.SignatoryKeypair(keypair:, entity_id:, entity_nickname:)
+  let initial_entry =
+    substrate.first(
+      entity_id,
+      signatory: substrate.Signatory(entity_id, 0, keypair.id),
+      content: protocol.AddKey(keypair.id),
+    )
+  #(signatory_keypair, initial_entry)
 }
 
 pub fn generate_keypair(id) {

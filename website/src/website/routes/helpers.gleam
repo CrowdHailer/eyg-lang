@@ -1,3 +1,4 @@
+import gleam/int
 import plinth/browser/crypto/subtle
 import plinth/browser/file_system
 import plinth/browser/indexeddb/database
@@ -10,20 +11,20 @@ pub fn config() {
 }
 
 @external(javascript, "../../website_ffi.mjs", "any")
-fn any() -> a
+fn any(string: String) -> a
 
 pub fn dummy_directory_handle() -> file_system.DirectoryHandle {
-  any()
+  any(int.to_string(int.random(10_000)))
 }
 
 pub fn dummy_opener() -> window_proxy.WindowProxy {
-  any()
+  any(int.to_string(int.random(10_000)))
 }
 
 pub fn dummy_db() -> database.Database {
-  any()
+  any(int.to_string(int.random(10_000)))
 }
 
 pub fn dummy_crypto_key() -> subtle.CryptoKey {
-  any()
+  any(int.to_string(int.random(10_000)))
 }
