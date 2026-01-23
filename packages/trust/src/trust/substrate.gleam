@@ -3,7 +3,7 @@ import gleam/bit_array
 import gleam/dynamic/decode.{type Decoder}
 import gleam/json
 import gleam/list
-import gleam/option.{type Option, None}
+import gleam/option.{type Option}
 import multiformats/cid/v1
 import multiformats/hashes
 
@@ -76,24 +76,4 @@ fn from_block(bytes) {
     let multihash = hashes.Multihash(hashes.Sha256, digest)
     v1.Cid(dag_json.code(), multihash)
   })
-}
-
-pub type Signatory {
-  Signatory(entity: String, sequence: Int, key: String)
-}
-
-fn signatory_decoder() {
-  use entity <- decode.field("entity", decode.string)
-  use sequence <- decode.field("sequence", decode.int)
-  use key <- decode.field("key", decode.string)
-  decode.success(Signatory(entity, sequence, key))
-}
-
-fn signatory_encode(signatory) {
-  let Signatory(entity, sequence, key) = signatory
-  dag_json.object([
-    #("entity", dag_json.string(entity)),
-    #("sequence", dag_json.int(sequence)),
-    #("key", dag_json.string(key)),
-  ])
 }

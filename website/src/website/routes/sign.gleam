@@ -187,8 +187,9 @@ fn do_create_new_signatory(database, nickname, keypair) {
   let entity = crypto.random_uuid(crypto)
   let keypair.Keypair(key_id: key, public_key:, private_key:) = keypair
   let content = trust.AddKey(key)
-  let signatory = substrate.Signatory(entity:, sequence: 0, key:)
-  let entry = substrate.first(entity:, signatory:, content:)
+  // let signatory = substrate.Signatory(entity:, sequence: 0, key:)
+  // let entry = substrate.first(entity:, signatory:, content:)
+  let entry = todo
 
   let payload =
     trust.encode(entry)

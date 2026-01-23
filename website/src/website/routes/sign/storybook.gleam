@@ -94,11 +94,9 @@ pub fn render() {
                 substrate.Entry(
                   // entity: work_sig.entity_id,
                   sequence: 1,
-                  previous: Some(v1.Cid(
-                    dag_json.code(),
-                    hashes.Multihash(hashes.Sha256, <<>>),
-                  )),
-                  signatory: substrate.Signatory(work_sig.keypair.key_id, 0, ""),
+                  previous: Some(random_cid()),
+                  signatory: random_cid(),
+                  key: "",
                   content: protocol.RemoveKey(work_sig.keypair.key_id),
                 ),
                 personal_entry,
@@ -144,12 +142,7 @@ pub fn generate_signatory_keypair(entity_nickname) {
   let entity_id = int.to_string(int.random(100_000))
   let signatory_keypair =
     state.SignatoryKeypair(keypair:, entity_id:, entity_nickname:)
-  let initial_entry =
-    substrate.first(
-      entity_id,
-      signatory: substrate.Signatory(entity_id, 0, keypair.key_id),
-      content: protocol.AddKey(keypair.key_id),
-    )
+  let initial_entry = protocol.first(keypair.key_id)
   #(signatory_keypair, initial_entry)
 }
 
@@ -169,4 +162,8 @@ fn card(contents) {
     ],
     contents,
   )
+}
+
+fn random_cid() {
+  v1.Cid(dag_json.code(), hashes.Multihash(hashes.Sha256, <<>>))
 }

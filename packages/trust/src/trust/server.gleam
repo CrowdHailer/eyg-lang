@@ -1,7 +1,9 @@
+import gleam/dict
 import gleam/json
 import gleam/option.{None, Some}
 import gleam/result
-import trust/substrate
+import trust/protocol
+import trust/substrate.{type Entry}
 
 pub type Denied {
   DecodeError(json.DecodeError)
@@ -55,4 +57,32 @@ pub fn validate_payload(bytes, decoder) {
     _sequence, None -> Error(MissingPrevious)
   })
   Ok(entry)
+}
+
+/// Checks that the entry is consistent with the previous entry
+/// Pass in previous entry looked up by the proposed entry's previous cid.
+/// 
+pub fn validate_integrity(proposed, previous: Entry(_)) {
+  let substrate.Entry(sequence:, ..) = proposed
+  use Nil <- result.try(case previous.sequence + 1 == sequence {
+    True -> Ok(Nil)
+    False -> Error(WrongSequence)
+  })
+  Ok(Nil)
+}
+
+pub type Policy {
+  AddSelf(key: String)
+  Admin
+}
+
+pub fn fetch_permissions(key, history) {
+  let keys = protocol.state(history)
+  case history, dict.get(keys, key) {
+    [], Error(Nil) -> Ok(AddSelf(key))
+    [], Ok(_) -> panic
+    // All keys have the same permissions
+    _, Ok(Nil) -> Ok(Admin)
+    _, Error(Nil) -> Error(UnauthorizedKey)
+  }
 }

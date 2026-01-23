@@ -1,6 +1,8 @@
 import dag_json
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option.{None}
 import multiformats/cid/v1
 import multiformats/hashes
@@ -63,6 +65,15 @@ fn event_decoders() {
     ],
     AddKey(""),
   )
+}
+
+pub fn state(history) {
+  list.fold(history, dict.new(), fn(acc, event) {
+    case event {
+      AddKey(key) -> dict.insert(acc, key, Nil)
+      RemoveKey(key) -> dict.delete(acc, key)
+    }
+  })
 }
 
 pub type PullEventsResponse {

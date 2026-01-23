@@ -1,6 +1,6 @@
 import dag_json
 import gleam/json
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import multiformats/cid/v1
 import multiformats/hashes
 import trust/client
@@ -49,6 +49,33 @@ pub fn cant_submit_with_unexpected_previous_test() {
   let entry = Entry(..protocol.first("key_abc"), previous: Some(random_cid()))
   let assert Error(reason) = validate_payload(client.to_bytes(entry))
   assert server.UnexpectedPrevious == reason
+}
+
+pub fn validate_integrity_test() {
+  let previous = protocol.first("key_abc")
+  let proposed =
+    Entry(
+      sequence: 2,
+      previous: Some(random_cid()),
+      signatory: random_cid(),
+      key: "key_abc",
+      content: protocol.AddKey("key_aa"),
+    )
+  let assert Ok(Nil) = server.validate_integrity(proposed, previous)
+}
+
+pub fn must_step_sequence_test() {
+  let previous = protocol.first("key_abc")
+  let proposed =
+    Entry(
+      sequence: 7,
+      previous: Some(random_cid()),
+      signatory: random_cid(),
+      key: "key_abc",
+      content: protocol.AddKey("key_aa"),
+    )
+  let assert Error(reason) = server.validate_integrity(proposed, previous)
+  assert server.WrongSequence == reason
 }
 
 // TODO move to signatory/archive
