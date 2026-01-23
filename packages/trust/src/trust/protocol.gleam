@@ -8,7 +8,7 @@ pub fn encode(entry: substrate.Entry(Event)) {
 }
 
 pub fn decoder() {
-  substrate.entry_decoder(event_decoders())
+  substrate.entry_decoder(substrate.decode_set(event_decoders(), _))
 }
 
 pub type Event {

@@ -16,7 +16,7 @@ pub fn encode(entry: substrate.Entry(Payload)) {
 }
 
 pub fn decoder() {
-  substrate.entry_decoder(payload_decoders())
+  substrate.entry_decoder(substrate.decode_set(payload_decoders(), _))
 }
 
 // TODO call Event or Content or something else

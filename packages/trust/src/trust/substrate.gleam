@@ -27,7 +27,15 @@ pub type DecoderSet(t) {
   DecoderSet(decoders: List(#(String, Decoder(t))), zero: t)
 }
 
-pub fn entry_decoder(inner: DecoderSet(t)) -> Decoder(Entry(t)) {
+pub fn decode_set(set, type_) {
+  let DecoderSet(decoders:, zero:) = set
+  case list.key_find(decoders, type_) {
+    Ok(decoder) -> decoder
+    Error(Nil) -> decode.failure(zero, "known type")
+  }
+}
+
+pub fn entry_decoder(inner: fn(String) -> Decoder(t)) -> Decoder(Entry(t)) {
   use entity <- decode.field("entity", decode.string)
   use sequence <- decode.field("sequence", decode.int)
   use previous <- decode.field(
@@ -36,10 +44,7 @@ pub fn entry_decoder(inner: DecoderSet(t)) -> Decoder(Entry(t)) {
   )
   use signatory <- decode.field("signatory", signatory_decoder())
   use type_ <- decode.field("type", decode.string)
-  use content <- decode.then(case list.key_find(inner.decoders, type_) {
-    Ok(decoder) -> decode.field("content", decoder, decode.success)
-    Error(Nil) -> decode.failure(inner.zero, "known type")
-  })
+  use content <- decode.field("content", inner(type_))
   decode.success(Entry(entity:, sequence:, previous:, signatory:, content:))
 }
 
