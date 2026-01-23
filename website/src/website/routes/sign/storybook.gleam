@@ -1,4 +1,4 @@
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element/html as h
 import trust/protocol
@@ -30,6 +30,17 @@ pub fn render() {
             keypairs: [],
             signatories: [],
             mode: state.ViewKeys,
+            error: None,
+          )),
+        ]),
+        card([
+          view.render(State(
+            opener: None,
+            database: state.Failed("no db"),
+            keypairs: [],
+            signatories: [],
+            mode: state.ViewKeys,
+            error: Some("no db"),
           )),
         ]),
         card([
@@ -39,6 +50,7 @@ pub fn render() {
             keypairs: [],
             signatories: [],
             mode: state.ViewKeys,
+            error: None,
           )),
         ]),
         card([
@@ -48,6 +60,7 @@ pub fn render() {
             keypairs: [],
             signatories: [],
             mode: state.SetupDevice,
+            error: None,
           )),
         ]),
         card([
@@ -57,6 +70,7 @@ pub fn render() {
             keypairs: [],
             signatories: [],
             mode: state.CreatingSignatory(state.Fetching),
+            error: None,
           )),
         ]),
         card([
@@ -106,6 +120,7 @@ pub fn render() {
                 ),
               ],
               mode: state.ViewKeys,
+              error: None,
             )
           }),
         ]),
@@ -136,6 +151,7 @@ pub fn render() {
                 entity_id: "id47",
                 entity_nickname: "Personal",
               )),
+              error: None,
             )
           }),
         ]),

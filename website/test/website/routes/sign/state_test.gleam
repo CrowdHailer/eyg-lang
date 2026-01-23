@@ -19,8 +19,14 @@ fn initialized(keys) {
   #(state, actions)
 }
 
-// The wallet keeps the entity id's in the key information
-// Keys might not have an entity but if so they are deleted or filtered
+pub fn failed_to_start_database_test() {
+  let #(state, actions) = state.init(None)
+  assert [] == actions
+  let #(state, actions) =
+    state.update(state, state.IndexedDBSetup(Error("oh no DB!")))
+  assert [] == actions
+  assert state.Failed("oh no DB!") == state.database
+}
 
 pub fn fresh_signatory_on_fresh_device_test() {
   let #(state, actions) = initialized([])
@@ -44,7 +50,7 @@ pub fn fresh_signatory_on_fresh_device_test() {
   let name = "My first signatory"
   let #(state, actions) =
     state.update(state, state.UserSubmittedSignatoryAlias(name:))
-  let assert [state.CreateSignatory(database:, nickname:, keypair: kp)] =
+  let assert [state.CreateSignatory(database: _, nickname:, keypair: kp)] =
     actions
   assert name == nickname
   assert kp == keypair

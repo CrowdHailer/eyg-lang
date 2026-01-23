@@ -15,6 +15,7 @@ pub type State {
     keypairs: List(SignatoryKeypair),
     signatories: List(substrate.Entry(trust.Event)),
     mode: Mode,
+    error: Option(String),
   )
 }
 
@@ -65,6 +66,7 @@ pub fn init(config) {
       keypairs: [],
       signatories: [],
       mode: ViewKeys,
+      error: None,
     )
   case config {
     Some(opener) -> {
@@ -123,7 +125,7 @@ fn indexeddb_setup(state, result) {
       let state = State(..state, database: Fetched(database))
       #(state, [ReadKeypairs(database)])
     }
-    Error(_) -> todo
+    Error(reason) -> #(State(..state, database: Failed(reason)), [])
   }
 }
 

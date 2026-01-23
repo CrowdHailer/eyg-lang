@@ -1,13 +1,12 @@
 import gleam/bit_array
 import gleam/dynamic/decode
-import gleam/dynamicx
 import gleam/fetch
 import gleam/http
-import gleam/javascript/array
 import gleam/javascript/promise
+import gleam/javascript/promisex
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import gleam/result
 import gleam/string
 import lustre
@@ -20,10 +19,6 @@ import mysig/asset
 import mysig/html
 import plinth/browser/crypto
 import plinth/browser/crypto/subtle
-import plinth/browser/indexeddb/database
-import plinth/browser/indexeddb/factory
-import plinth/browser/indexeddb/object_store
-import plinth/browser/indexeddb/transaction
 import plinth/browser/message_event
 import plinth/browser/window
 import plinth/browser/window_proxy
@@ -35,6 +30,7 @@ import website/routes/common
 import website/routes/home
 import website/routes/sign/protocol
 import website/routes/sign/state
+import website/routes/sign/storage
 import website/routes/sign/storybook
 import website/routes/sign/view
 
@@ -83,23 +79,12 @@ pub fn storybook() {
   asset.done(element.to_document_string(content))
 }
 
-const db_name = "KeyStore"
-
-const db_version = 1
-
-const store_name = "keypairs"
-
 pub fn client() {
   let app = lustre.application(do_init, do_update, do_render)
   let opener = window.opener(window.self()) |> option.from_result
   let assert Ok(runtime) = lustre.start(app, "#app", opener)
-  let assert Ok(indexeddb) = factory.from_window(window.self())
-  let p =
-    factory.opendb(indexeddb, db_name, db_version, fn(database) {
-      let assert Ok(_) =
-        database.create_object_store(database, store_name, Some("keyId"), False)
-      Nil
-    })
+
+  let p = todo
   promise.map(p, fn(result) {
     let message = lustre.dispatch(state.IndexedDBSetup(result:))
     lustre.send(runtime, message)
@@ -149,47 +134,7 @@ fn post_message(target, data) {
 }
 
 fn read_keypairs(database) {
-  effect.from(fn(dispatch) {
-    let assert Ok(transaction) =
-      database.transaction(
-        database,
-        [store_name],
-        database.ReadOnly,
-        database.Default,
-      )
-
-    let assert Ok(store) = transaction.object_store(transaction, store_name)
-    promise.map(object_store.get_all(store), fn(result) {
-      let result =
-        result.map(result, fn(keys) {
-          let keys = array.to_list(keys)
-          list.filter_map(keys, fn(key) {
-            echo key
-            let decoder = {
-              use id <- decode.field("keyId", decode.string)
-              use public_key <- decode.field("publicKey", crypto_key_decoder())
-              use private_key <- decode.field(
-                "privateKey",
-                crypto_key_decoder(),
-              )
-              use entity_id <- decode.field("entityId", decode.string)
-              use entity_nickname <- decode.field(
-                "entityNickname",
-                decode.string,
-              )
-              decode.success(state.SignatoryKeypair(
-                state.Keypair(id:, public_key:, private_key:),
-                entity_id:,
-                entity_nickname:,
-              ))
-            }
-            decode.run(key, decoder) |> echo
-          })
-        })
-      dispatch(state.ReadKeypairsCompleted(result))
-    })
-    Nil
-  })
+  effect.from(fn(dispatch) { Nil })
 }
 
 fn create_keypair() {
@@ -214,12 +159,6 @@ fn do_create_keypair() {
   promise.resolve(Ok(state.Keypair(id:, public_key:, private_key:)))
 }
 
-fn crypto_key_decoder() {
-  decode.new_primitive_decoder("CryptoKey", fn(x) -> Result(subtle.CryptoKey, _) {
-    Ok(dynamicx.unsafe_coerce(x))
-  })
-}
-
 fn create_signatory(database, nickname, keypair) {
   effect.from(fn(dispatch) {
     promise.map(
@@ -239,7 +178,7 @@ const origin = origin.Origin(http.Http, "localhost", Some(8001))
 fn do_create_new_signatory(database, nickname, keypair) {
   let endpoint = #(origin, "/id/submit")
 
-  use crypto <- try_sync(
+  use crypto <- promisex.try_sync(
     window.crypto(window.self()) |> result.replace_error("no crypo available"),
   )
   let entity = crypto.random_uuid(crypto)
@@ -264,24 +203,18 @@ fn do_create_new_signatory(database, nickname, keypair) {
     200 -> {
       // can't use dynamic properties because it creates a map
       // need a js dynamic object
-      let native =
-        json.object([
-          #("keyId", json.string(key)),
-          #("publicKey", dynamicx.unsafe_coerce(dynamicx.from(public_key))),
-          #("privateKey", dynamicx.unsafe_coerce(dynamicx.from(private_key))),
-          #("entityId", json.string(entity)),
-          #("entityNickname", json.string(nickname)),
-        ])
-      use result <- promise.await(put_keypair(database, dynamicx.from(native)))
-      let assert Ok(_) = result
-      Ok(#(
-        entry,
+      let signatory_keypair =
         state.SignatoryKeypair(
           state.Keypair(id: key, public_key:, private_key:),
           entity_id: entity,
           entity_nickname: nickname,
-        ),
+        )
+      use result <- promise.await(storage.put_keypair(
+        database,
+        signatory_keypair,
       ))
+      let assert Ok(_) = result
+      Ok(#(entry, signatory_keypair))
       |> promise.resolve()
     }
     _ ->
@@ -308,7 +241,7 @@ fn do_fetch_entities(entities) {
 
   let request = wat.pull_events_request(endpoint, entity)
   use response <- promise.try_await(send_bits(request))
-  use response <- try_sync(
+  use response <- promisex.try_sync(
     wat.pull_events_response(response)
     |> result.map_error(string.inspect),
   )
@@ -316,29 +249,10 @@ fn do_fetch_entities(entities) {
   promise.resolve(Ok(response.events))
 }
 
-fn try_sync(result, then) {
-  case result {
-    Ok(value) -> then(value)
-    Error(reason) -> promise.resolve(Error(reason))
-  }
-}
-
 fn send_bits(request) {
   use response <- promise.await(fetch.send_bits(request))
-  use response <- try_sync(result.map_error(response, string.inspect))
+  use response <- promisex.try_sync(result.map_error(response, string.inspect))
   use response <- promise.await(fetch.read_bytes_body(response))
-  use response <- try_sync(result.map_error(response, string.inspect))
+  use response <- promisex.try_sync(result.map_error(response, string.inspect))
   promise.resolve(Ok(response))
-}
-
-fn put_keypair(database, k) {
-  let assert Ok(transaction) =
-    database.transaction(
-      database,
-      [store_name],
-      database.ReadWrite,
-      database.Strict,
-    )
-  let assert Ok(store) = transaction.object_store(transaction, store_name)
-  object_store.put(store, k, None)
 }

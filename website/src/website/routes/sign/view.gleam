@@ -167,19 +167,27 @@ pub fn render(state) {
                 Some(state.UserClickedViewSignatory(keypair.keypair.id)),
               )
             })
-          // [
-          //   // full_row_button_subtext(
-          // //   outline.key(),
-          // //   "EYG account",
-          // //   "ab:1s:dx:3s:27",
-          // // ),
-          // // full_row_button_subtext(
-          // //   outline.key(),
-          // //   "Peter @ work",
-          // //   "ab:1s:dx:3s:27",
-          // // ),
-          // ]
-          state.Failed(..), _ -> todo
+          // This error is not dismissable because you can't fall back to the no keys view
+          state.Failed(reason), _ -> [
+            h.div(
+              [
+                a.class("cover gap-3 hstack p-2 rounded-xl bg-red-300"),
+                a.styles([
+                  #("justify-content", "flex-start"),
+                  #("min-height", "auto"),
+                ]),
+              ],
+              [
+                h.span(
+                  [
+                    a.class("w-12 p-2 rounded"),
+                  ],
+                  [outline.exclamation_triangle()],
+                ),
+                h.span([], [h.text(reason)]),
+              ],
+            ),
+          ]
         },
         [
           full_row_button_subtext(
@@ -226,7 +234,10 @@ fn full_row_button(message, icon, text) {
       a.class(
         "border-2 border-black border-dashed cover gap-3 hstack p-2 rounded-xl",
       ),
-      a.styles([#("justify-content", "flex-start")]),
+      a.styles([
+        #("justify-content", "flex-start"),
+        #("min-height", "auto"),
+      ]),
     ],
     [
       h.span(
