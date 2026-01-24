@@ -4,29 +4,25 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option.{None}
-import multiformats/cid/v1
-import multiformats/hashes
-import trust/substrate.{Entry}
+import trust/decoder_set
+import trust/substrate
 
-pub fn first(key) {
+pub type Entry =
+  substrate.Intrinsic(Event)
+
+pub fn first(key) -> Entry {
   let sequence = 1
   let previous = None
   let content = AddKey(key)
-  Entry(
-    sequence:,
-    previous:,
-    signatory: v1.Cid(dag_json.code(), hashes.Multihash(hashes.Sha256, <<>>)),
-    key:,
-    content:,
-  )
+  substrate.Entry(sequence:, previous:, signatory: Nil, key:, content:)
 }
 
-pub fn encode(entry: substrate.Entry(Event)) {
-  substrate.entry_encode(entry, event_encode)
+pub fn encode(entry: Entry) {
+  substrate.intrinsic_encode(entry, event_encode)
 }
 
 pub fn decoder() {
-  substrate.entry_decoder(substrate.decode_set(event_decoders(), _))
+  substrate.intrinsic_decoder(event_decoder())
 }
 
 pub type Event {
@@ -48,11 +44,11 @@ pub fn event_encode(event: Event) {
 }
 
 pub fn event_decoder() {
-  substrate.decode_set(event_decoders(), _)
+  decoder_set.to_decoder(event_decoders(), _)
 }
 
 fn event_decoders() {
-  substrate.DecoderSet(
+  decoder_set.DecoderSet(
     [
       #("add_key", {
         use key <- decode.field("key", decode.string)
@@ -77,7 +73,7 @@ pub fn state(history) {
 }
 
 pub type PullEventsResponse {
-  PullEventsResponse(events: List(substrate.Entry(Event)), cursor: Int)
+  PullEventsResponse(events: List(Entry), cursor: Int)
 }
 
 pub fn pull_events_response_decoder() {

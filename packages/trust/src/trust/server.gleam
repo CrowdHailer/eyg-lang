@@ -2,7 +2,7 @@ import gleam/dict
 import gleam/json
 import gleam/option.{None, Some}
 import gleam/result
-import trust/protocol
+import trust/protocol/signatory
 import trust/substrate.{type Entry}
 
 pub type Denied {
@@ -41,12 +41,10 @@ pub fn denied_status_code(reason) {
 /// 2. Checks sequence is 1 and previous is null.
 /// 3. Checks sequence is > 1 and previous is not null.
 pub fn validate_payload(bytes, decoder) {
-  use entry <- result.try(
-    case json.parse_bits(bytes, substrate.entry_decoder(decoder)) {
-      Ok(entry) -> Ok(entry)
-      Error(reason) -> Error(DecodeError(reason))
-    },
-  )
+  use entry <- result.try(case json.parse_bits(bytes, decoder) {
+    Ok(entry) -> Ok(entry)
+    Error(reason) -> Error(DecodeError(reason))
+  })
 
   let substrate.Entry(sequence:, previous:, ..) = entry
   use Nil <- result.try(case sequence, previous {
@@ -62,7 +60,7 @@ pub fn validate_payload(bytes, decoder) {
 /// Checks that the entry is consistent with the previous entry
 /// Pass in previous entry looked up by the proposed entry's previous cid.
 /// 
-pub fn validate_integrity(proposed, previous: Entry(_)) {
+pub fn validate_integrity(proposed, previous: Entry(_, _)) {
   let substrate.Entry(sequence:, ..) = proposed
   use Nil <- result.try(case previous.sequence + 1 == sequence {
     True -> Ok(Nil)
@@ -77,7 +75,7 @@ pub type Policy {
 }
 
 pub fn fetch_permissions(key, history) {
-  let keys = protocol.state(history)
+  let keys = signatory.state(history)
   case history, dict.get(keys, key) {
     [], Error(Nil) -> Ok(AddSelf(key))
     [], Ok(_) -> panic
