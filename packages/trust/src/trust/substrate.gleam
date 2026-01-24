@@ -1,10 +1,7 @@
 import dag_json
-import gleam/bit_array
 import gleam/dynamic/decode.{type Decoder}
-import gleam/json
 import gleam/option.{type Option}
 import multiformats/cid/v1
-import multiformats/hashes
 
 pub type Entry(sig, content) {
   Entry(
