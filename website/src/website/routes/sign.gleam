@@ -201,7 +201,8 @@ fn do_create_new_signatory(database, nickname, keypair) {
     payload,
   ))
 
-  let request = wat.submit_request(endpoint, payload, signature)
+  let request = todo
+  //  wat.submit_request(endpoint, payload, signature)
   use response <- promise.try_await(send_bits(request))
   case response.status {
     200 -> {
@@ -245,12 +246,13 @@ fn do_fetch_entities(entities) {
 
   let request = wat.pull_events_request(endpoint, entity)
   use response <- promise.try_await(send_bits(request))
-  use response <- promisex.try_sync(
-    wat.pull_events_response(response)
-    |> result.map_error(string.inspect),
-  )
+  todo
+  // use response <- promisex.try_sync(
+  //   wat.events_response(response)
+  //   |> result.map_error(string.inspect),
+  // )
 
-  promise.resolve(Ok(response.events))
+  // promise.resolve(Ok(response.events))
 }
 
 fn send_bits(request) {

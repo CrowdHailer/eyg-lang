@@ -60,9 +60,9 @@ pub fn validate_payload(bytes, decoder) {
 /// Checks that the entry is consistent with the previous entry
 /// Pass in previous entry looked up by the proposed entry's previous cid.
 /// 
-pub fn validate_integrity(proposed, previous: Entry(_, _)) {
+pub fn validate_integrity(proposed, previous_sequence) {
   let substrate.Entry(sequence:, ..) = proposed
-  use Nil <- result.try(case previous.sequence + 1 == sequence {
+  use Nil <- result.try(case previous_sequence + 1 == sequence {
     True -> Ok(Nil)
     False -> Error(WrongSequence)
   })

@@ -10,7 +10,7 @@ import trust/substrate.{Entry}
 
 pub fn validate_first_payload_test() {
   let entry = signatory.first("key_abc")
-  let assert Ok(parsed) = validate_payload(client.to_bytes(entry))
+  let assert Ok(parsed) = validate_payload(signatory.to_bytes(entry))
   assert entry == parsed
 }
 
@@ -23,7 +23,7 @@ pub fn validate_subsequent_payload_test() {
       key: "key_aa",
       content: signatory.AddKey("key_aa"),
     )
-  let assert Ok(parsed) = validate_payload(client.to_bytes(entry))
+  let assert Ok(parsed) = validate_payload(signatory.to_bytes(entry))
   assert entry == parsed
 }
 
@@ -34,20 +34,20 @@ pub fn invalid_json_payload_test() {
 
 pub fn cant_submit_zero_sequence_entry_test() {
   let entry = Entry(..signatory.first("key_abc"), sequence: 0)
-  let assert Error(reason) = validate_payload(client.to_bytes(entry))
+  let assert Error(reason) = validate_payload(signatory.to_bytes(entry))
 
   assert server.InvalidSequence == reason
 }
 
 pub fn first_sequence_must_be_1_test() {
   let entry = Entry(..signatory.first("key_abc"), sequence: 2)
-  let assert Error(reason) = validate_payload(client.to_bytes(entry))
+  let assert Error(reason) = validate_payload(signatory.to_bytes(entry))
   assert server.MissingPrevious == reason
 }
 
 pub fn cant_submit_with_unexpected_previous_test() {
   let entry = Entry(..signatory.first("key_abc"), previous: Some(random_cid()))
-  let assert Error(reason) = validate_payload(client.to_bytes(entry))
+  let assert Error(reason) = validate_payload(signatory.to_bytes(entry))
   assert server.UnexpectedPrevious == reason
 }
 

@@ -1,5 +1,7 @@
 import dag_json
+import gleam/bit_array
 import gleam/dynamic/decode.{type Decoder}
+import gleam/json
 import gleam/option.{type Option}
 import multiformats/cid/v1
 
@@ -77,7 +79,8 @@ fn cid_encode(cid) {
   let assert Ok(cid) = v1.to_string(cid)
   dag_json.cid(cid)
 }
-/// To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation
+
+// To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation
 // pub type Effect(t) {
 //   Sha256(bytes: BitArray, resume: fn(BitArray) -> t)
 // }
@@ -88,6 +91,9 @@ fn cid_encode(cid) {
 //   from_block(bytes)
 // }
 
+pub fn to_bytes(data) {
+  data |> json.to_string |> bit_array.from_string
+}
 // fn from_block(bytes) {
 //   Sha256(bytes:, resume: fn(digest) {
 //     let multihash = hashes.Multihash(hashes.Sha256, digest)

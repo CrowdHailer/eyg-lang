@@ -25,6 +25,10 @@ pub fn decoder() {
   substrate.intrinsic_decoder(event_decoder())
 }
 
+pub fn to_bytes(entry) {
+  substrate.to_bytes(encode(entry))
+}
+
 pub type Event {
   AddKey(String)
   RemoveKey(String)
@@ -70,21 +74,4 @@ pub fn state(history) {
       RemoveKey(key) -> dict.delete(acc, key)
     }
   })
-}
-
-pub type PullEventsResponse {
-  PullEventsResponse(events: List(Entry), cursor: Int)
-}
-
-pub fn pull_events_response_decoder() {
-  use events <- decode.field("events", decode.list(decoder()))
-  use cursor <- decode.field("cursor", decode.int)
-  decode.success(PullEventsResponse(events:, cursor:))
-}
-
-pub fn pull_events_response_encode(events, cursor) {
-  json.object([
-    #("cursor", json.int(cursor)),
-    #("events", json.array(events, encode)),
-  ])
 }
