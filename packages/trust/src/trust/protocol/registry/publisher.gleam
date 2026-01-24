@@ -9,43 +9,53 @@ import gleam/json
 import multiformats/cid/v1
 import multiformats/hashes
 import spotless/origin
+import trust/decoder_set
 import trust/substrate
 
-pub fn encode(entry: substrate.Entry(Payload)) {
-  substrate.entry_encode(entry, payload_encode)
+pub type Entry =
+  substrate.Delegated(Event)
+
+pub fn encode(entry: Entry) {
+  substrate.delegated_encode(entry, payload_encode)
 }
 
 pub fn decoder() {
-  substrate.entry_decoder(substrate.decode_set(payload_decoders(), _))
+  substrate.delegated_decoder(event_decoder())
 }
 
-// TODO call Event or Content or something else
-pub type Payload {
-  Release(version: Int, module: v1.Cid)
+pub type Event {
+  Release(package: String, version: Int, module: v1.Cid)
 }
 
-// content decoders
-pub fn payload_decoders() {
-  substrate.DecoderSet(
-    [#("release", release_decoder())],
-    Release(0, v1.Cid(dag_json.code(), hashes.Multihash(hashes.Sha256, <<>>))),
-  )
+pub fn event_decoder() {
+  let set =
+    decoder_set.DecoderSet(
+      [#("release", release_decoder())],
+      Release(
+        "",
+        0,
+        v1.Cid(dag_json.code(), hashes.Multihash(hashes.Sha256, <<>>)),
+      ),
+    )
+  decoder_set.to_decoder(set, _)
 }
 
 fn release_decoder() {
+  use package <- decode.field("package", decode.string)
   use version <- decode.field("version", decode.int)
   use module <- decode.field("module", dag_json.decode_cid())
-  decode.success(Release(version:, module:))
+  decode.success(Release(package:, version:, module:))
 }
 
 fn payload_encode(payload) {
   case payload {
-    Release(version:, module:) -> {
+    Release(package:, version:, module:) -> {
       let assert Ok(cid) = v1.to_string(module)
 
       #(
         "release",
         dag_json.object([
+          #("package", dag_json.string(package)),
           #("version", dag_json.int(version)),
           #("module", dag_json.cid(cid)),
         ]),
@@ -61,8 +71,9 @@ pub fn pull_events_request(origin, since) {
   |> request.set_body(<<>>)
 }
 
+// This belongs in ledger
 pub type PullEventsResponse {
-  PullEventsResponse(events: List(substrate.Entry(Payload)), cursor: Int)
+  PullEventsResponse(events: List(Entry), cursor: Int)
 }
 
 fn pull_events_response_decoder() {

@@ -1199,9 +1199,9 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           case dict.get(state.sync.cache.packages, label) {
-            Ok(cache.Release(package_id:, version:, cid:, ..)) ->
+            Ok(cache.Release(package:, version:, cid:)) ->
               State(..state, mode: Editing)
-              |> replace_buffer(rebuild(#(package_id, version, cid), _))
+              |> replace_buffer(rebuild(#(package, version, cid), _))
             Error(Nil) -> todo
           }
         }

@@ -7,7 +7,7 @@ import gleroglero/outline
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/event
-import trust/protocol as trust
+import trust/protocol/signatory
 import trust/substrate
 import website/routes/sign/state.{State}
 
@@ -16,8 +16,8 @@ fn apply_trust_event(acc, entry) {
   let entity = todo
   let keys = dict.get(acc, entity) |> result.unwrap(dict.new())
   let current = case content {
-    trust.AddKey(key) -> dict.insert(keys, key, Nil)
-    trust.RemoveKey(key) -> dict.delete(keys, key)
+    signatory.AddKey(key) -> dict.insert(keys, key, Nil)
+    signatory.RemoveKey(key) -> dict.delete(keys, key)
   }
   dict.insert(acc, entity, current)
 }

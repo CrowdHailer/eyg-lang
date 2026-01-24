@@ -10,8 +10,8 @@ import gleam/dict.{type Dict}
 import gleam/list
 import morph/analysis
 import multiformats/cid/v1
+import trust/protocol/registry/publisher
 import trust/substrate
-import website/registry/protocol
 
 pub type Cache {
   Cache(
@@ -27,8 +27,10 @@ pub type Fragment {
   Fragment(source: ir.Node(Nil), value: Value, type_: binding.Poly)
 }
 
+/// This is the cache version of a release record, it's not the same as the protocol event.
+/// The protocol event includes no-op for signature upgrades and redaction events
 pub type Release {
-  Release(package_id: String, version: Int, created_at: String, cid: String)
+  Release(package: String, version: Int, cid: String)
 }
 
 pub type Meta =
@@ -52,14 +54,13 @@ pub fn apply(cache: Cache, entry) -> Cache {
     content:,
     ..,
   ) = entry
-  let package_id = todo
+
   case content {
-    protocol.Release(version:, module:) -> {
+    publisher.Release(package:, version:, module:) -> {
       let assert Ok(cid) = v1.to_string(module)
-      let release = Release(package_id:, version:, created_at: "todo", cid:)
-      let packages = dict.insert(cache.packages, package_id, release)
-      let releases =
-        dict.insert(cache.releases, #(package_id, version), release)
+      let release = Release(package:, version:, cid:)
+      let packages = dict.insert(cache.packages, package, release)
+      let releases = dict.insert(cache.releases, #(package, version), release)
       Cache(..cache, packages:, releases:)
     }
   }
@@ -200,7 +201,7 @@ pub fn package_index(cache) {
   // There is no order to this listing 
   dict.values(packages)
   |> list.map(fn(r) {
-    let Release(package_id: package, version:, cid: fragment, ..) = r
+    let Release(package:, version:, cid: fragment) = r
     analysis.Release(package:, version:, fragment:)
   })
 }

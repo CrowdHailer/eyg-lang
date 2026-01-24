@@ -8,7 +8,7 @@ import gleam/list
 import lustre/effect
 import multiformats/cid/v1
 import spotless/origin
-import website/registry/protocol
+import trust/protocol/registry/publisher
 import website/sync/cache
 
 pub type Client {
@@ -88,13 +88,13 @@ pub fn update(client: Client, message) -> #(Client, _) {
     ReleasesFetched(result) -> {
       case result {
         Ok(response) ->
-          case protocol.pull_events_response(response) {
-            Ok(protocol.PullEventsResponse(events:, cursor:)) -> {
+          case publisher.pull_events_response(response) {
+            Ok(publisher.PullEventsResponse(events:, cursor:)) -> {
               let cache = list.fold(events, client.cache, cache.apply)
               let new =
                 list.filter_map(events, fn(entry) {
                   case entry.content {
-                    protocol.Release(module:, ..) -> {
+                    publisher.Release(module:, ..) -> {
                       let assert Ok(cid) = v1.to_string(module)
                       case cache.has_fragment(cache, cid) {
                         True -> Error(Nil)
@@ -174,7 +174,7 @@ pub fn lustre_run_single(task: Action, wrapper: fn(Message) -> t) {
 fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {
-      let request = protocol.pull_events_request(origin, since)
+      let request = publisher.pull_events_request(origin, since)
       promise.map(fetchx.send_bits(request), fn(response) {
         [dispatch(ReleasesFetched(response))]
       })
@@ -182,7 +182,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
     FetchFragments(origin:, cids:) -> {
       promise.await_list(
         list.map(cids, fn(cid) {
-          let request = protocol.fetch_fragment_request(origin, cid)
+          let request = publisher.fetch_fragment_request(origin, cid)
           promise.map(fetchx.send_bits(request), fn(result) {
             dispatch(FragmentFetched(cid:, result:))
           })
@@ -190,7 +190,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
       )
     }
     Share(origin:, block:) -> {
-      let request = protocol.share_request(origin, block)
+      let request = publisher.share_request(origin, block)
 
       promise.map(fetchx.send_bits(request), fn(response) {
         [dispatch(FragmentShared(response))]

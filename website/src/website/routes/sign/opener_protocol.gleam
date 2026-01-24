@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
+import trust/protocol/registry/publisher
 import trust/substrate
-import website/registry/protocol
 
 pub type OpenerBound {
   GetPayload
@@ -15,14 +15,14 @@ pub fn opener_bound_encode(message) {
 }
 
 pub type PopupBound {
-  Payload(payload: substrate.Entry(protocol.Payload))
+  Payload(payload: publisher.Entry)
 }
 
 pub fn popup_bound_decoder() {
   use type_ <- decode.field("type", decode.string)
   case type_ {
     "payload" -> {
-      use payload <- decode.field("payload", protocol.decoder())
+      use payload <- decode.field("payload", publisher.decoder())
       decode.success(Payload(payload:))
     }
     _ -> todo

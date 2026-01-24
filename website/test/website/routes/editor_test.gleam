@@ -19,8 +19,6 @@ import website/routes/editor
 import website/routes/helpers
 import website/sync/client
 
-pub const signatory = todo
-
 pub fn initial_package_sync_test() {
   let #(state, actions) = editor.init(helpers.config())
   assert client.syncing(state.sync) == True

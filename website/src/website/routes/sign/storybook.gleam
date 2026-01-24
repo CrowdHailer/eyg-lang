@@ -6,7 +6,7 @@ import lustre/element/html as h
 import multiformats/cid/v1
 import multiformats/hashes
 import trust/keypair
-import trust/protocol
+import trust/protocol/signatory
 import trust/substrate
 import website/routes/helpers
 import website/routes/sign/state.{State}
@@ -95,9 +95,9 @@ pub fn render() {
                   // entity: work_sig.entity_id,
                   sequence: 1,
                   previous: Some(random_cid()),
-                  signatory: random_cid(),
+                  signatory: Nil,
                   key: "",
-                  content: protocol.RemoveKey(work_sig.keypair.key_id),
+                  content: signatory.RemoveKey(work_sig.keypair.key_id),
                 ),
                 personal_entry,
               ],
@@ -142,7 +142,7 @@ pub fn generate_signatory_keypair(entity_nickname) {
   let entity_id = int.to_string(int.random(100_000))
   let signatory_keypair =
     state.SignatoryKeypair(keypair:, entity_id:, entity_nickname:)
-  let initial_entry = protocol.first(keypair.key_id)
+  let initial_entry = signatory.first(keypair.key_id)
   #(signatory_keypair, initial_entry)
 }
 

@@ -25,7 +25,7 @@ import plinth/browser/window_proxy
 import spotless/origin
 import trust/client as wat
 import trust/keypair
-import trust/protocol as trust
+import trust/protocol/signatory
 import trust/substrate
 import website/routes/common
 import website/routes/home
@@ -186,13 +186,13 @@ fn do_create_new_signatory(database, nickname, keypair) {
   )
   let entity = crypto.random_uuid(crypto)
   let keypair.Keypair(key_id: key, public_key:, private_key:) = keypair
-  let content = trust.AddKey(key)
+  let content = signatory.AddKey(key)
   // let signatory = substrate.Signatory(entity:, sequence: 0, key:)
   // let entry = substrate.first(entity:, signatory:, content:)
   let entry = todo
 
   let payload =
-    trust.encode(entry)
+    signatory.encode(entry)
     |> json.to_string
     |> bit_array.from_string
   use signature <- promise.try_await(subtle.sign(

@@ -6,9 +6,9 @@ import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
 import trust/keypair
-import trust/protocol as trust
+import trust/protocol/registry/publisher
+import trust/protocol/signatory
 import trust/substrate
-import website/registry/protocol
 import website/routes/sign/opener_protocol
 
 pub type State {
@@ -16,7 +16,7 @@ pub type State {
     opener: Option(window_proxy.WindowProxy),
     database: Fetching(database.Database),
     keypairs: List(SignatoryKeypair),
-    signatories: List(substrate.Entry(trust.Event)),
+    signatories: List(signatory.Entry),
     mode: Mode,
     error: Option(String),
   )
@@ -30,7 +30,7 @@ pub type Mode {
   SetupDevice
   CreatingSignatory(keypair: Fetching(Keypair))
   ViewSignatory(keypair: SignatoryKeypair)
-  SignEntry(entry: Fetching(substrate.Entry(protocol.Payload)))
+  SignEntry(entry: Fetching(publisher.Entry))
 }
 
 pub type SignatoryKeypair {
@@ -93,11 +93,9 @@ pub type Message {
   UserClickedViewSignatory(key_id: String)
   UserClickedSignPayload
   CreateKeypairCompleted(Result(Keypair, String))
-  FetchSignatoriesCompleted(
-    result: Result(List(substrate.Entry(trust.Event)), String),
-  )
+  FetchSignatoriesCompleted(result: Result(List(signatory.Entry), String))
   CreateSignatoryCompleted(
-    result: Result(#(substrate.Entry(trust.Event), SignatoryKeypair), String),
+    result: Result(#(signatory.Entry, SignatoryKeypair), String),
   )
 }
 
