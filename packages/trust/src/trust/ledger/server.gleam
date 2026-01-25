@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
@@ -9,6 +10,7 @@ import trust/protocol/signatory
 import trust/substrate
 
 pub type Denied {
+  MissingSignature
   DecodeError(json.DecodeError)
   InvalidSequence
   MissingPrevious
@@ -17,13 +19,14 @@ pub type Denied {
   IncorrectPrevious
   UnauthorizedKey
   IncorrectSignature
-  DoesNotHaveAccess
+  DoesNotHavePermission
   // UnknownSignatory
   InvalidSignatorySequence
 }
 
 pub fn denied_status_code(reason) {
   case reason {
+    MissingSignature -> 401
     DecodeError(_) -> 400
     InvalidSequence -> 400
     MissingPrevious -> 400
@@ -32,7 +35,7 @@ pub fn denied_status_code(reason) {
     IncorrectPrevious -> 422
     UnauthorizedKey -> 403
     IncorrectSignature -> 403
-    DoesNotHaveAccess -> 403
+    DoesNotHavePermission -> 403
     InvalidSignatorySequence -> 403
   }
 }
@@ -58,6 +61,14 @@ pub fn validate_payload(bytes, decoder) {
     _sequence, None -> Error(MissingPrevious)
   })
   Ok(entry)
+}
+
+pub fn read_signature(request) {
+  case request.get_header(request, "authorization") {
+    Ok("Signature " <> sig) -> Ok(sig)
+    Ok(_) -> Error(MissingSignature)
+    Error(Nil) -> Error(MissingSignature)
+  }
 }
 
 /// Checks that the entry is consistent with the previous entry

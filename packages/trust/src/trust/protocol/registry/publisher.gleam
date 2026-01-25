@@ -4,7 +4,6 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
-import gleam/int
 import gleam/json
 import multiformats/cid/v1
 import multiformats/hashes
@@ -62,13 +61,6 @@ fn payload_encode(payload) {
       )
     }
   }
-}
-
-pub fn pull_events_request(origin, since) {
-  origin.to_request(origin)
-  |> request.set_path("/registry/events")
-  |> request.set_query([#("since", int.to_string(since))])
-  |> request.set_body(<<>>)
 }
 
 // This belongs in ledger

@@ -8,6 +8,7 @@ import gleam/list
 import lustre/effect
 import multiformats/cid/v1
 import spotless/origin
+import trust/ledger/client
 import trust/protocol/registry/publisher
 import website/sync/cache
 
@@ -174,7 +175,9 @@ pub fn lustre_run_single(task: Action, wrapper: fn(Message) -> t) {
 fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {
-      let request = publisher.pull_events_request(origin, since)
+      let endpoint = #(origin, "/registry/entries")
+      let parameters = todo
+      let request = client.entries_request(endpoint, parameters)
       promise.map(fetchx.send_bits(request), fn(response) {
         [dispatch(ReleasesFetched(response))]
       })
