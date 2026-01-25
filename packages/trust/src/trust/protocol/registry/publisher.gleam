@@ -5,11 +5,22 @@ import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
 import gleam/json
+import gleam/option.{None}
 import multiformats/cid/v1
 import multiformats/hashes
 import spotless/origin
 import trust/decoder_set
 import trust/substrate
+
+pub fn first(signatory, key, package, module) -> Entry {
+  substrate.Entry(
+    sequence: 1,
+    previous: None,
+    signatory:,
+    key:,
+    content: Release(package:, version: 1, module:),
+  )
+}
 
 pub type Entry =
   substrate.Delegated(Event)
@@ -20,6 +31,10 @@ pub fn encode(entry: Entry) {
 
 pub fn decoder() {
   substrate.delegated_decoder(event_decoder())
+}
+
+pub fn to_bytes(entry) {
+  substrate.to_bytes(encode(entry))
 }
 
 pub type Event {
@@ -63,32 +78,6 @@ fn payload_encode(payload) {
   }
 }
 
-// This belongs in ledger
-pub type PullEventsResponse {
-  PullEventsResponse(events: List(Entry), cursor: Int)
-}
-
-fn pull_events_response_decoder() {
-  use events <- decode.field("events", decode.list(decoder()))
-  use cursor <- decode.field("cursor", decode.int)
-  decode.success(PullEventsResponse(events:, cursor:))
-}
-
-pub fn pull_events_response_encode(events, cursor) {
-  json.object([
-    #("cursor", json.int(cursor)),
-    #("events", json.array(events, encode)),
-  ])
-}
-
-pub fn pull_events_response(response) {
-  let Response(status:, body:, ..) = response
-  case status {
-    200 -> json.parse_bits(body, pull_events_response_decoder())
-    _ -> todo
-  }
-}
-
 pub fn fetch_fragment_request(origin, cid) {
   origin.to_request(origin)
   |> request.set_path("/registry/f/" <> cid)
@@ -111,24 +100,5 @@ pub fn share_response(response) {
       echo response
       todo
     }
-  }
-}
-
-pub fn publish_request(origin, package_id, version, fragment) {
-  // let payload = Release(package_id:, version:, fragment:)
-  let json = encode(todo)
-  origin.to_request(origin)
-  |> request.set_method(http.Post)
-  |> request.set_path("/registry/submit")
-  |> request.set_header("content-type", "application/json")
-  |> request.set_body(<<json.to_string(json):utf8>>)
-}
-
-pub fn publish_response(response) {
-  let Response(status:, body: _, ..) = response
-  case status {
-    // event number is probably the thing to pull
-    200 -> Ok(Nil)
-    _ -> todo
   }
 }

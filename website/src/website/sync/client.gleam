@@ -88,34 +88,34 @@ pub fn update(client: Client, message) -> #(Client, _) {
   case message {
     ReleasesFetched(result) -> {
       case result {
-        Ok(response) ->
-          case publisher.pull_events_response(response) {
-            Ok(publisher.PullEventsResponse(events:, cursor:)) -> {
-              let cache = list.fold(events, client.cache, cache.apply)
-              let new =
-                list.filter_map(events, fn(entry) {
-                  case entry.content {
-                    publisher.Release(module:, ..) -> {
-                      let assert Ok(cid) = v1.to_string(module)
-                      case cache.has_fragment(cache, cid) {
-                        True -> Error(Nil)
-                        False -> Ok(cid)
-                      }
-                    }
-                  }
-                })
-              let actions = case new {
-                [] -> []
-                _ -> [FetchFragments(client.origin, new)]
-              }
-              let client = Client(..client, cursor:, cache:)
-              #(client, actions)
-            }
-            Error(reason) -> {
-              echo #("protocol error", reason)
-              #(client, [])
-            }
-          }
+        Ok(response) -> todo
+        // case publisher.pull_events_response(response) {
+        //   Ok(publisher.PullEventsResponse(events:, cursor:)) -> {
+        //     let cache = list.fold(events, client.cache, cache.apply)
+        //     let new =
+        //       list.filter_map(events, fn(entry) {
+        //         case entry.content {
+        //           publisher.Release(module:, ..) -> {
+        //             let assert Ok(cid) = v1.to_string(module)
+        //             case cache.has_fragment(cache, cid) {
+        //               True -> Error(Nil)
+        //               False -> Ok(cid)
+        //             }
+        //           }
+        //         }
+        //       })
+        //     let actions = case new {
+        //       [] -> []
+        //       _ -> [FetchFragments(client.origin, new)]
+        //     }
+        //     let client = Client(..client, cursor:, cache:)
+        //     #(client, actions)
+        //   }
+        //   Error(reason) -> {
+        //     echo #("protocol error", reason)
+        //     #(client, [])
+        //   }
+        // }
         // TODO I can test network error by restarting and not accepting certificate warning
         Error(reason) -> {
           echo #("network error", reason)
