@@ -23,8 +23,8 @@ import plinth/browser/message_event
 import plinth/browser/window
 import plinth/browser/window_proxy
 import spotless/origin
-import trust/client as wat
 import trust/keypair
+import trust/ledger/client as wat
 import trust/protocol/signatory
 import trust/substrate
 import website/routes/common
@@ -244,7 +244,7 @@ fn do_fetch_entities(entities) {
   // TODO get all the entities
   let assert [entity, ..] = entities
 
-  let request = wat.pull_events_request(endpoint, entity)
+  let request = wat.entries_request(endpoint, entity)
   use response <- promise.try_await(send_bits(request))
   todo
   // use response <- promisex.try_sync(

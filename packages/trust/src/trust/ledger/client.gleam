@@ -23,3 +23,12 @@ pub fn submit_response(response) {
     _ -> todo
   }
 }
+
+pub fn entries_request(endpoint, parameters) {
+  let #(origin, path) = endpoint
+
+  origin.to_request(origin)
+  |> request.set_path(path)
+  |> request.set_query(todo)
+  |> request.set_body(<<>>)
+}

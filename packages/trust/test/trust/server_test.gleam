@@ -3,9 +3,8 @@ import gleam/json
 import gleam/option.{Some}
 import multiformats/cid/v1
 import multiformats/hashes
-import trust/client
+import trust/ledger/server
 import trust/protocol/signatory
-import trust/server
 import trust/substrate.{Entry}
 
 pub fn validate_first_payload_test() {
@@ -61,7 +60,7 @@ pub fn validate_integrity_test() {
       key: "key_abc",
       content: signatory.AddKey("key_aa"),
     )
-  let assert Ok(Nil) = server.validate_integrity(proposed, previous)
+  let assert Ok(Nil) = server.validate_integrity(proposed, previous.sequence)
 }
 
 pub fn must_step_sequence_test() {
@@ -74,7 +73,8 @@ pub fn must_step_sequence_test() {
       key: "key_abc",
       content: signatory.AddKey("key_aa"),
     )
-  let assert Error(reason) = server.validate_integrity(proposed, previous)
+  let assert Error(reason) =
+    server.validate_integrity(proposed, previous.sequence)
   assert server.WrongSequence == reason
 }
 
