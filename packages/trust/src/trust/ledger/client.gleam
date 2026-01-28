@@ -2,6 +2,7 @@ import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
 import gleam/json
+import gleam/list
 import spotless/origin
 import trust/ledger/schema
 
@@ -29,6 +30,19 @@ pub fn entries_request(endpoint, parameters) {
 
   origin.to_request(origin)
   |> request.set_path(path)
-  |> request.set_query(todo)
+  |> request.set_query(schema.pull_parameters_to_query(parameters))
   |> request.set_body(<<>>)
+}
+
+pub fn entries_response(response) {
+  let Response(status:, body:, ..) = response
+  case status {
+    200 -> {
+      json.parse_bits(body, schema.entries_response_decoder())
+    }
+    _ -> {
+      echo response
+      todo
+    }
+  }
 }

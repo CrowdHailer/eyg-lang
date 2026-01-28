@@ -242,9 +242,9 @@ fn do_fetch_entities(entities) {
   let endpoint = #(origin, "/id/events")
   echo entities
   // TODO get all the entities
-  let assert [entity, ..] = entities
+  // let assert [entity, ..] = entities
 
-  let request = wat.entries_request(endpoint, entity)
+  let request = wat.entries_request(endpoint, todo as "parameters")
   use response <- promise.try_await(send_bits(request))
   todo
   // use response <- promisex.try_sync(

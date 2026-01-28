@@ -5,11 +5,14 @@ import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
 import gleam/json
+import gleam/list
 import gleam/option.{None}
 import multiformats/cid/v1
 import multiformats/hashes
 import spotless/origin
 import trust/decoder_set
+import trust/ledger/client
+import trust/ledger/schema
 import trust/substrate
 
 pub fn first(signatory, key, package, module) -> Entry {
@@ -75,6 +78,22 @@ fn payload_encode(payload) {
         ]),
       )
     }
+  }
+}
+
+pub fn entries_request(origin: origin.Origin, parameters: schema.PullParameters) {
+  client.entries_request(#(origin, "/registry/entries"), parameters)
+}
+
+pub fn entries_response(response) {
+  case client.entries_response(response) {
+    Ok(schema.EntriesResponse(entries:)) ->
+      list.try_map(entries, fn(entry) {
+        let assert Ok(event) = json.parse(entry.payload, decoder())
+        echo entry
+        Ok(#(entry.cursor, event.content))
+      })
+    _ -> todo
   }
 }
 

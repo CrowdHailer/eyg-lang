@@ -48,13 +48,7 @@ pub fn has_fragment(cache, key) {
   dict.has_key(fragments, key)
 }
 
-pub fn apply(cache: Cache, entry) -> Cache {
-  let substrate.Entry(
-    // entity: package_id,
-    content:,
-    ..,
-  ) = entry
-
+pub fn apply(cache: Cache, content) -> Cache {
   case content {
     publisher.Release(package:, version:, module:) -> {
       let assert Ok(cid) = v1.to_string(module)

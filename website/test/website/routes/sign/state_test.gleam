@@ -2,7 +2,7 @@ import dag_json
 import gleam/option.{None, Some}
 import multiformats/cid/v1
 import multiformats/hashes
-import trust/protocol
+import trust/protocol/signatory
 import trust/substrate
 import website/routes/helpers
 import website/routes/sign/opener_protocol
@@ -59,11 +59,9 @@ pub fn fresh_signatory_on_fresh_device_test() {
   assert state.CreatingSignatory(state.Fetched(keypair)) == state.mode
 
   let entity_id = "wqhserpbq"
-  let event = protocol.AddKey(keypair.id)
-  let signatory = substrate.Signatory(entity_id, 0, keypair.id)
   let result =
     Ok(#(
-      substrate.first(entity_id, signatory, event),
+      signatory.first(keypair.key_id),
       state.SignatoryKeypair(keypair:, entity_id:, entity_nickname: name),
     ))
   let #(state, actions) =
@@ -85,8 +83,7 @@ pub fn view_key_test() {
 
   assert [#(record, view.Syncing)] == view.signatories(state)
 
-  let signatory = substrate.Signatory(entity_id, 0, keypair.id)
-  let first = substrate.first(entity_id, signatory, protocol.AddKey(keypair.id))
+  let first = signatory.first(keypair.key_id)
   let result = Ok([first])
   let #(state, actions) =
     state.update(state, state.FetchSignatoriesCompleted(result))
@@ -95,7 +92,7 @@ pub fn view_key_test() {
   assert [#(record, view.Active)] == view.signatories(state)
 
   let #(state, actions) =
-    state.update(state, state.UserClickedViewSignatory(keypair.id))
+    state.update(state, state.UserClickedViewSignatory(keypair.key_id))
   assert [] == actions
   assert state.ViewSignatory(record) == state.mode
 }
@@ -109,18 +106,17 @@ pub fn view_inactive_key_test() {
   assert [state.FetchSignatories([entity_id])] == actions
   assert state.ViewKeys == state.mode
 
-  let signatory = substrate.Signatory(entity_id, 0, keypair.id)
-  let first = substrate.first(entity_id, signatory, protocol.AddKey(keypair.id))
+  let first = signatory.first(keypair.key_id)
   let second =
     substrate.Entry(
-      entity: entity_id,
       sequence: 2,
       previous: Some(v1.Cid(
         dag_json.code(),
         hashes.Multihash(hashes.Sha256, <<>>),
       )),
-      signatory: substrate.Signatory(..signatory, sequence: 1),
-      content: protocol.RemoveKey(keypair.id),
+      signatory: Nil,
+      key: keypair.key_id,
+      content: signatory.RemoveKey(keypair.key_id),
     )
   let result = Ok([first, second])
   let #(state, actions) =

@@ -12,12 +12,12 @@ import morph/editable as e
 import morph/input
 import multiformats/cid/v1
 import spotless/origin
+import trust/protocol/registry/publisher
 import trust/substrate
 import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
-import website/registry/protocol
 import website/routes/editor_test
 import website/sync/cache
 import website/sync/client
@@ -279,11 +279,7 @@ fn cache() -> cache.Cache {
   let assert Ok(#(cid, _)) = v1.from_string(foo_cid())
   cache.init()
   |> cache.add(foo_cid(), dag_json.to_block(foo_src()))
-  |> cache.apply(substrate.first(
-    "foo",
-    editor_test.signatory,
-    protocol.Release(1, cid),
-  ))
+  |> cache.apply(publisher.Release("foo", 1, cid))
 }
 
 pub fn run_a_reference_test() {

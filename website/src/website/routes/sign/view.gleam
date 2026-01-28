@@ -13,7 +13,8 @@ import website/routes/sign/state.{State}
 
 fn apply_trust_event(acc, entry) {
   let substrate.Entry(content:, ..) = entry
-  let entity = todo
+  echo "cheating"
+  let entity = "todo"
   let keys = dict.get(acc, entity) |> result.unwrap(dict.new())
   let current = case content {
     signatory.AddKey(key) -> dict.insert(keys, key, Nil)
@@ -32,16 +33,17 @@ pub fn signatories(state) {
   let State(keypairs:, signatories:, ..) = state
   let signatories = list.fold(signatories, dict.new(), apply_trust_event)
 
-  list.map(keypairs, fn(keypair) {
-    case todo as "dict.get(signatories, keypair.entity_id)" {
-      Ok(signatory) ->
-        case dict.get(signatory, keypair.keypair.key_id) {
-          Ok(Nil) -> #(keypair, Active)
-          Error(Nil) -> #(keypair, Revoked)
-        }
-      _ -> #(keypair, Syncing)
-    }
-  })
+  []
+  // list.map(keypairs, fn(keypair) {
+  //   case todo as "dict.get(signatories, keypair.entity_id)" {
+  //     Ok(signatory) ->
+  //       case dict.get(signatory, keypair.keypair.key_id) {
+  //         Ok(Nil) -> #(keypair, Active)
+  //         Error(Nil) -> #(keypair, Revoked)
+  //       }
+  //     _ -> #(keypair, Syncing)
+  //   }
+  // })
 }
 
 pub fn render(state) {
@@ -159,7 +161,7 @@ pub fn render(state) {
             h.div([], [h.text("click below to setup your first key")]),
           ]
           state.Fetched(_), keypairs ->
-            list.map(keypairs, fn(keypair) {
+            list.map(keypairs, fn(keypair: #(state.SignatoryKeypair, _)) {
               let #(keypair, mode) = keypair
               full_row_button_subtext(
                 case mode {
@@ -221,7 +223,9 @@ pub fn render(state) {
           h.text(keypair.entity_id),
           {
             list.filter(state.signatories, fn(entry) {
-              todo
+              echo entry
+              False
+              // todo
               // entry.entity == keypair.entity_id
             })
             |> list.map(fn(entry) { h.text(string.inspect(entry)) })

@@ -1,6 +1,10 @@
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
+import gleam/string
 
 pub type Archived {
   Archived(cursor: Int, entity: String, sequence: Int, entry: String)
@@ -24,7 +28,48 @@ pub fn archived_decoder() {
   decode.success(Archived(cursor:, entity:, sequence:, entry:))
 }
 
-pub type EntriesResponse(sig, t) {
+pub type PullParameters {
+  PullParameters(since: Int, limit: Int, entities: List(String))
+}
+
+pub fn pull_parameters_from_query(query) {
+  let since =
+    list.key_find(query, "since")
+    |> result.try(int.parse)
+    |> result.unwrap(0)
+
+  let limit =
+    list.key_find(query, "limit")
+    |> result.try(int.parse)
+    |> result.unwrap(1000)
+
+  let entities =
+    list.key_find(query, "entities")
+    |> result.map(string.split(_, ","))
+    |> result.unwrap([])
+  PullParameters(since:, limit:, entities:)
+}
+
+pub fn pull_parameters_to_query(parameters) {
+  let PullParameters(since:, limit:, entities:) = parameters
+  [
+    case since {
+      0 -> []
+      n -> [#("since", int.to_string(n))]
+    },
+    case limit {
+      1000 -> []
+      n -> [#("limit", int.to_string(n))]
+    },
+    case entities {
+      [] -> []
+      _ -> [#("entities", string.join(entities, ","))]
+    },
+  ]
+  |> list.flatten()
+}
+
+pub type EntriesResponse {
   EntriesResponse(entries: List(Entry))
 }
 

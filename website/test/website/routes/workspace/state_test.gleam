@@ -18,11 +18,10 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import spotless/origin
-import trust/substrate
+import trust/protocol/registry/publisher
 import website/components/shell
 import website/components/snippet
 import website/helpers.{cid_from_tree} as _
-import website/registry/protocol
 import website/routes/editor_test
 import website/routes/helpers
 import website/routes/workspace/state
@@ -392,7 +391,7 @@ pub fn insert_record_test() {
   let state = no_packages()
   let source = ir.call(ir.select("location"), [ir.vacant()])
   let state = set_repl(state, source)
-  let #(state, actions) = press_key(state, "r")
+  let #(_state, _actions) = press_key(state, "r")
   // Type infor not working properly
   // assert [] == actions
   // echo state.mode
@@ -979,11 +978,9 @@ pub fn initial_package_sync_test() {
   let source = ir.integer(100)
   let assert Ok(cid1_string) = cid_from_tree(source)
   let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
-  let entity = "foo"
-  let content = protocol.Release(version: 1, module: cid1)
-  let p1 = substrate.first(entity:, signatory: editor_test.signatory, content:)
 
-  let response = editor_test.pull_events_response_encode([p1], 1)
+  let content = publisher.Release(package: "foo", version: 1, module: cid1)
+  let response = [#(1, content)]
 
   let message = state.SyncMessage(client.ReleasesFetched(Ok(response)))
   let #(state, actions) = state.update(state, message)
@@ -1099,7 +1096,6 @@ pub fn read_reference_from_repl_test() {
   let file = "index"
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
-  let assert Ok(cid) = cid_from_tree(lib)
   let state = set_module(state, #(file, state.EygJson), lib)
 
   let ref = ir.release("./index", 0, "./index")
@@ -1185,7 +1181,7 @@ pub fn module_edits_are_flushed_test() {
 fn no_packages() {
   let #(state, actions) = state.init(helpers.config())
   let assert [state.SyncAction(client.SyncFrom(since: 0, ..))] = actions
-  let response = editor_test.pull_events_response_encode([], 0)
+  let response = []
   let message = state.SyncMessage(client.ReleasesFetched(Ok(response)))
   let #(state, actions) = state.update(state, message)
   assert actions == []

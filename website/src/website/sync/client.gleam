@@ -8,7 +8,7 @@ import gleam/list
 import lustre/effect
 import multiformats/cid/v1
 import spotless/origin
-import trust/ledger/client
+import trust/ledger/schema
 import trust/protocol/registry/publisher
 import website/sync/cache
 
@@ -71,7 +71,7 @@ pub fn share(client, source) {
 }
 
 pub type Message {
-  ReleasesFetched(Result(Response(BitArray), fetch.FetchError))
+  ReleasesFetched(Result(List(#(Int, publisher.Event)), fetch.FetchError))
   FragmentFetched(
     cid: String,
     result: Result(Response(BitArray), fetch.FetchError),
@@ -88,34 +88,27 @@ pub fn update(client: Client, message) -> #(Client, _) {
   case message {
     ReleasesFetched(result) -> {
       case result {
-        Ok(response) -> todo
-        // case publisher.pull_events_response(response) {
-        //   Ok(publisher.PullEventsResponse(events:, cursor:)) -> {
-        //     let cache = list.fold(events, client.cache, cache.apply)
-        //     let new =
-        //       list.filter_map(events, fn(entry) {
-        //         case entry.content {
-        //           publisher.Release(module:, ..) -> {
-        //             let assert Ok(cid) = v1.to_string(module)
-        //             case cache.has_fragment(cache, cid) {
-        //               True -> Error(Nil)
-        //               False -> Ok(cid)
-        //             }
-        //           }
-        //         }
-        //       })
-        //     let actions = case new {
-        //       [] -> []
-        //       _ -> [FetchFragments(client.origin, new)]
-        //     }
-        //     let client = Client(..client, cursor:, cache:)
-        //     #(client, actions)
-        //   }
-        //   Error(reason) -> {
-        //     echo #("protocol error", reason)
-        //     #(client, [])
-        //   }
-        // }
+        Ok(entries) -> {
+          let #(cache, cursor, new) =
+            list.fold(entries, #(client.cache, client.cursor, []), fn(acc, e) {
+              let #(cache, _, new) = acc
+              let #(cursor, event) = e
+              let cache = cache.apply(cache, event)
+              let assert Ok(cid) = v1.to_string(event.module)
+              let new = case cache.has_fragment(cache, cid) {
+                True -> new
+                False -> [cid, ..new]
+              }
+              #(cache, cursor, new)
+            })
+
+          let actions = case new {
+            [] -> []
+            _ -> [FetchFragments(client.origin, new)]
+          }
+          let client = Client(..client, cursor:, cache:)
+          #(client, actions)
+        }
         // TODO I can test network error by restarting and not accepting certificate warning
         Error(reason) -> {
           echo #("network error", reason)
@@ -175,11 +168,12 @@ pub fn lustre_run_single(task: Action, wrapper: fn(Message) -> t) {
 fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {
-      let endpoint = #(origin, "/registry/entries")
-      let parameters = todo
-      let request = client.entries_request(endpoint, parameters)
+      let parameters = schema.PullParameters(since:, limit: 1000, entities: [])
+      let request = publisher.entries_request(origin, parameters)
       promise.map(fetchx.send_bits(request), fn(response) {
-        [dispatch(ReleasesFetched(response))]
+        let assert Ok(response) = response
+        let assert Ok(response) = publisher.entries_response(response)
+        [dispatch(ReleasesFetched(Ok(response)))]
       })
     }
     FetchFragments(origin:, cids:) -> {
