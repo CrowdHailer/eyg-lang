@@ -137,3 +137,7 @@ pub fn map_cleave(cleave, f) {
   let post = list.map(post, f)
   #(pre, value, post)
 }
+
+pub fn repeatedly(generator: fn() -> a, times: Int) -> List(a) {
+  list.map(list.range(1, times), fn(_) { generator() })
+}
