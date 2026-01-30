@@ -20,7 +20,7 @@ pub fn submit_request(endpoint, payload, signature) {
 pub fn submit_response(response) {
   let Response(status:, body:, ..) = response
   case status {
-    200 -> json.parse_bits(body, schema.archived_decoder())
+    200 -> json.parse_bits(body, schema.archived_entry_decoder())
     _ -> todo
   }
 }
