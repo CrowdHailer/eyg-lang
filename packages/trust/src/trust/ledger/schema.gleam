@@ -1,4 +1,5 @@
 import gleam/dynamic/decode
+import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
@@ -69,6 +70,12 @@ pub fn archived_entry_encode(entry) {
 
 pub type PullParameters {
   PullParameters(since: Int, limit: Int, entities: List(String))
+}
+
+pub fn pull_parameters_from_request(request) {
+  request.get_query(request)
+  |> result.unwrap([])
+  |> pull_parameters_from_query()
 }
 
 pub fn pull_parameters_from_query(query) {
