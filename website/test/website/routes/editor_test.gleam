@@ -7,7 +7,7 @@ import morph/analysis
 import morph/editable
 import morph/picker
 import multiformats/cid/v1
-import trust/protocol/registry/publisher
+import untethered/protocol/registry/publisher
 import website/components/shell
 import website/components/snippet
 import website/helpers.{cid_from_tree} as _

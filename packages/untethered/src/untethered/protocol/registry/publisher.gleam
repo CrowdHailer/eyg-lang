@@ -10,10 +10,10 @@ import gleam/option.{None}
 import multiformats/cid/v1
 import multiformats/hashes
 import spotless/origin
-import trust/decoder_set
-import trust/ledger/client
-import trust/ledger/schema
-import trust/substrate
+import untethered/decoder_set
+import untethered/ledger/client
+import untethered/ledger/schema
+import untethered/substrate
 
 pub fn first(signatory, key, package, module) -> Entry {
   substrate.Entry(

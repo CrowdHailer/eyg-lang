@@ -8,8 +8,8 @@ import gleam/list
 import lustre/effect
 import multiformats/cid/v1
 import spotless/origin
-import trust/ledger/schema
-import trust/protocol/registry/publisher
+import untethered/ledger/schema
+import untethered/protocol/registry/publisher
 import website/sync/cache
 
 pub type Client {

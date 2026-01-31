@@ -4,7 +4,7 @@ import gleam/http/response.{Response}
 import gleam/json
 import gleam/list
 import spotless/origin
-import trust/ledger/schema
+import untethered/ledger/schema
 
 pub fn submit_request(endpoint, payload, signature) {
   let #(origin, path) = endpoint

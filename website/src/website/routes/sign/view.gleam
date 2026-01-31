@@ -7,8 +7,8 @@ import gleroglero/outline
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/event
-import trust/protocol/signatory
-import trust/substrate
+import untethered/protocol/signatory
+import untethered/substrate
 import website/routes/sign/state.{State}
 
 fn apply_trust_event(acc, entry) {

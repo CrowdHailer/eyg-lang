@@ -5,10 +5,10 @@ import gleam/string
 import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
-import trust/keypair
-import trust/protocol/registry/publisher
-import trust/protocol/signatory
-import trust/substrate
+import untethered/keypair
+import untethered/protocol/registry/publisher
+import untethered/protocol/signatory
+import untethered/substrate
 import website/routes/sign/opener_protocol
 
 pub type State {

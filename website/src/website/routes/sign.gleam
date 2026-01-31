@@ -23,10 +23,10 @@ import plinth/browser/message_event
 import plinth/browser/window
 import plinth/browser/window_proxy
 import spotless/origin
-import trust/keypair
-import trust/ledger/client as wat
-import trust/protocol/signatory
-import trust/substrate
+import untethered/keypair
+import untethered/ledger/client as wat
+import untethered/protocol/signatory
+import untethered/substrate
 import website/routes/common
 import website/routes/home
 import website/routes/sign/opener_protocol

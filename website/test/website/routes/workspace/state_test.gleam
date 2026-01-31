@@ -18,7 +18,7 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import spotless/origin
-import trust/protocol/registry/publisher
+import untethered/protocol/registry/publisher
 import website/components/shell
 import website/components/snippet
 import website/helpers.{cid_from_tree} as _

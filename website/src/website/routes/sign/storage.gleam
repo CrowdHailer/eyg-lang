@@ -12,7 +12,7 @@ import plinth/browser/indexeddb/database.{type Database}
 import plinth/browser/indexeddb/factory
 import plinth/browser/indexeddb/object_store
 import plinth/browser/indexeddb/transaction
-import trust/keypair
+import untethered/keypair
 import website/routes/sign/state
 
 const db_name = "SignatoryKeypairStore"

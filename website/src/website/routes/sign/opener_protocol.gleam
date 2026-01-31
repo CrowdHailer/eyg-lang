@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
-import trust/protocol/registry/publisher
-import trust/substrate
+import untethered/protocol/registry/publisher
+import untethered/substrate
 
 pub type OpenerBound {
   GetPayload

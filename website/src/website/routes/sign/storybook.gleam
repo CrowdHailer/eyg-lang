@@ -5,9 +5,9 @@ import lustre/attribute as a
 import lustre/element/html as h
 import multiformats/cid/v1
 import multiformats/hashes
-import trust/keypair
-import trust/protocol/signatory
-import trust/substrate
+import untethered/keypair
+import untethered/protocol/signatory
+import untethered/substrate
 import website/routes/helpers
 import website/routes/sign/state.{State}
 import website/routes/sign/view

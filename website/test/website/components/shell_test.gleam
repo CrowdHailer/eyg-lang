@@ -12,8 +12,8 @@ import morph/editable as e
 import morph/input
 import multiformats/cid/v1
 import spotless/origin
-import trust/protocol/registry/publisher
-import trust/substrate
+import untethered/protocol/registry/publisher
+import untethered/substrate
 import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet

@@ -4,8 +4,8 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option.{None}
-import trust/decoder_set
-import trust/substrate
+import untethered/decoder_set
+import untethered/substrate
 
 pub type Entry =
   substrate.Intrinsic(Event)

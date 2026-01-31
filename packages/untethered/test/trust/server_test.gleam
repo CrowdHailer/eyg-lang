@@ -3,9 +3,9 @@ import gleam/json
 import gleam/option.{Some}
 import multiformats/cid/v1
 import multiformats/hashes
-import trust/ledger/server
-import trust/protocol/signatory
-import trust/substrate.{Entry}
+import untethered/ledger/server
+import untethered/protocol/signatory
+import untethered/substrate.{Entry}
 
 pub fn validate_first_payload_test() {
   let entry = signatory.first("key_abc")

@@ -3,8 +3,8 @@ import gleam/http/request
 import gleam/json
 import gleam/option.{None, Some}
 import gleam/result
-import trust/protocol/signatory
-import trust/substrate
+import untethered/protocol/signatory
+import untethered/substrate
 
 pub type Denied {
   MissingSignature
