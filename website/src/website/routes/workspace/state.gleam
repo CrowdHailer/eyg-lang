@@ -1,3 +1,4 @@
+import dag_json as codec
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -28,6 +29,7 @@ import morph/input
 import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
+import multiformats/hashes
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window
@@ -143,10 +145,13 @@ fn module_context(
 
       case ext {
         EygJson -> {
-          // name is only when we check the refs
-          // "./" <> name
-          todo as "I think we need the references to use real cid of their content"
-          // Ok(#("./" <> name, infer.poly_type(buffer.analysis)))
+          Ok(#(
+            v1.Cid(
+              codec.code(),
+              hashes.Multihash(hashes.Sha256, <<{ "./" <> name }:utf8>>),
+            ),
+            infer.poly_type(buffer.analysis),
+          ))
         }
       }
     })
