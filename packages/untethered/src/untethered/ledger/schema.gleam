@@ -1,3 +1,4 @@
+import dag_json
 import gleam/dynamic/decode
 import gleam/http/request
 import gleam/int
@@ -6,31 +7,32 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import multiformats/cid/v1
 
 /// A ledger entry is the full record indexed in a ledger,
 /// including the entity and sequence
 pub type ArchivedEntry {
   ArchivedEntry(
     cursor: Int,
-    cid: String,
+    cid: v1.Cid,
     payload: String,
-    entity: String,
+    entity: v1.Cid,
     sequence: Int,
-    previous: Option(String),
+    previous: Option(v1.Cid),
     type_: String,
   )
 }
 
 pub fn archived_entry_decoder() {
   use cursor <- decode.field("cursor", decode.int)
-  use cid <- decode.field("cid", decode.string)
+  use cid <- decode.field("cid", dag_json.decode_cid())
   use payload <- decode.field("payload", decode.string)
-  use entity <- decode.field("entity", decode.string)
+  use entity <- decode.field("entity", dag_json.decode_cid())
   use sequence <- decode.field("sequence", decode.int)
   use previous <- decode.optional_field(
     "previous",
     None,
-    decode.map(decode.string, Some),
+    decode.map(dag_json.decode_cid(), Some),
   )
   use type_ <- decode.field("type", decode.string)
   decode.success(ArchivedEntry(
@@ -56,13 +58,13 @@ pub fn archived_entry_encode(entry) {
   ) = entry
   json.object([
     #("cursor", json.int(cursor)),
-    #("cid", json.string(cid)),
+    #("cid", dag_json.cid(cid)),
     #("payload", json.string(payload)),
-    #("entity", json.string(entity)),
+    #("entity", dag_json.cid(entity)),
     #("sequence", json.int(sequence)),
     #("type", json.string(type_)),
     ..case previous {
-      Some(previous) -> [#("previous", json.string(previous))]
+      Some(previous) -> [#("previous", dag_json.cid(previous))]
       None -> []
     }
   ])
