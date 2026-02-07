@@ -64,7 +64,7 @@ pub fn cid(buffer) {
   let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
   use result <- promise.map(subtle.digest(subtle.SHA256, bytes))
   let assert Ok(hash) = result
-  let assert Ok(cid) = resume(hash) |> v1.to_string
+  let cid = resume(hash) |> v1.to_string
   cid
 }
 

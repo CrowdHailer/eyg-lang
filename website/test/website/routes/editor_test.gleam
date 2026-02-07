@@ -21,8 +21,7 @@ pub fn initial_package_sync_test() {
   let assert [editor.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1_string) = cid_from_tree(source)
-  let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
+  let cid1 = cid_from_tree(source)
 
   let release = publisher.Release(package: "foo", version: 1, module: cid1)
   let response = [#(1, release)]
@@ -31,11 +30,10 @@ pub fn initial_package_sync_test() {
   let #(state, actions) = editor.update(state, message)
   assert client.syncing(state.sync) == True
   let assert [editor.SyncAction(client.FetchFragments(cids:, ..))] = actions
-  assert cids == [cid1_string]
+  assert cids == [cid1]
 
   let response = fetch_fragment_response(source)
-  let message =
-    editor.SyncMessage(client.FragmentFetched(cid1_string, Ok(response)))
+  let message = editor.SyncMessage(client.FragmentFetched(cid1, Ok(response)))
   let #(state, actions) = editor.update(state, message)
   assert actions == []
 
@@ -74,11 +72,13 @@ pub fn run_anonymous_reference_test() {
   let assert snippet.Pick(picker.Typing(..), ..) = mode
 
   let source = ir.unit()
-  let assert Ok(cid) = cid_from_tree(source)
+  let assert cid = cid_from_tree(source)
 
   let message =
     editor.ShellMessage(
-      shell.CurrentMessage(snippet.MessageFromPicker(picker.Decided(cid))),
+      shell.CurrentMessage(
+        snippet.MessageFromPicker(picker.Decided(v1.to_string(cid))),
+      ),
     )
   let #(state, actions) = editor.update(state, message)
   let assert snippet.Editing(snippet.Command) = state.shell.source.status

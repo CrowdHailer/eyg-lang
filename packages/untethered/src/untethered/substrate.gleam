@@ -40,7 +40,7 @@ pub fn intrinsic_encode(entry: Intrinsic(t), content_encode) {
   let #(type_, content) = content_encode(entry.content)
   dag_json.object([
     #("sequence", dag_json.int(entry.sequence)),
-    #("previous", dag_json.nullable(entry.previous, cid_encode)),
+    #("previous", dag_json.nullable(entry.previous, dag_json.cid)),
     #("key", dag_json.string(entry.key)),
     #("type", dag_json.string(type_)),
     #("content", content),
@@ -67,17 +67,12 @@ pub fn delegated_encode(entry: Delegated(t), content_encode) {
   let #(type_, content) = content_encode(entry.content)
   dag_json.object([
     #("sequence", dag_json.int(entry.sequence)),
-    #("previous", dag_json.nullable(entry.previous, cid_encode)),
-    #("signatory", cid_encode(entry.signatory)),
+    #("previous", dag_json.nullable(entry.previous, dag_json.cid)),
+    #("signatory", dag_json.cid(entry.signatory)),
     #("key", dag_json.string(entry.key)),
     #("type", dag_json.string(type_)),
     #("content", content),
   ])
-}
-
-fn cid_encode(cid) {
-  let assert Ok(cid) = v1.to_string(cid)
-  dag_json.cid(cid)
 }
 
 // To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation

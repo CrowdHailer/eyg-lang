@@ -27,6 +27,7 @@ import morph/editable as e
 import morph/input
 import morph/picker
 import morph/projection as p
+import multiformats/cid/v1
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window
@@ -73,11 +74,11 @@ pub type Mode {
   EditingInteger(value: Int, rebuild: Rebuild(Int))
   ChoosingPackage(
     picker: picker.Picker,
-    rebuild: Rebuild(#(String, Int, String)),
+    rebuild: Rebuild(#(String, Int, v1.Cid)),
   )
   ChoosingModule(
     picker: picker.Picker,
-    rebuild: Rebuild(#(String, Int, String)),
+    rebuild: Rebuild(#(String, Int, v1.Cid)),
   )
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
@@ -144,7 +145,8 @@ fn module_context(
         EygJson -> {
           // name is only when we check the refs
           // "./" <> name
-          Ok(#("./" <> name, infer.poly_type(buffer.analysis)))
+          todo as "I think we need the references to use real cid of their content"
+          // Ok(#("./" <> name, infer.poly_type(buffer.analysis)))
         }
       }
     })
@@ -367,7 +369,8 @@ fn user_pressed_command_key(state, key) {
     "L" -> transform(state, "create list", buffer.create_empty_list)
     "l" -> transform(state, "create list", buffer.create_list)
     "@" -> choose_release(state)
-    "#" -> pick_any(state, "insert reference", buffer.insert_reference)
+    // TODO put back pick reference
+    // "#" -> pick_any(state, "insert reference", buffer.insert_reference)
     // choose release just checks is expression
     "Z" -> map_buffer(state, "redo", buffer.redo)
     "z" -> map_buffer(state, "undo", buffer.undo)
@@ -784,7 +787,7 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
               run(block.resume(value, env, k), occured, state)
             _ -> runner_stoped(state, occured, debug)
           }
-        break.UndefinedRelease(package:, release: version, cid:) ->
+        break.UndefinedRelease(package:, release: version, module:) ->
           case package, version {
             "./" <> name, 0 ->
               case dict.get(state.modules, #(name, EygJson)) {
@@ -808,8 +811,8 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
             _, _ ->
               // These always return a value or an effect if working
               case dict.get(state.sync.cache.releases, #(package, version)) {
-                Ok(release) if release.cid == cid ->
-                  case dict.get(state.sync.cache.fragments, cid) {
+                Ok(release) if release.module == module ->
+                  case dict.get(state.sync.cache.fragments, module) {
                     Ok(cache.Fragment(value:, ..)) ->
                       run(block.resume(value, env, k), occured, state)
                     _ -> runner_stoped(state, occured, debug)
@@ -865,7 +868,7 @@ fn run_module(
               run_module(expression.resume(value, env, k), state)
             _ -> Error(debug)
           }
-        break.UndefinedRelease(package:, release: version, cid:) ->
+        break.UndefinedRelease(package:, release: version, module:) ->
           case package, version {
             "./" <> name, 0 ->
               case dict.get(state.modules, #(name, EygJson)) {
@@ -886,8 +889,8 @@ fn run_module(
             _, _ ->
               // These always return a value or an effect if working
               case dict.get(state.sync.cache.releases, #(package, version)) {
-                Ok(release) if release.cid == cid ->
-                  case dict.get(state.sync.cache.fragments, cid) {
+                Ok(release) if release.module == module ->
+                  case dict.get(state.sync.cache.fragments, module) {
                     Ok(cache.Fragment(value:, ..)) ->
                       run_module(expression.resume(value, env, k), state)
                     _ -> Error(debug)
@@ -1199,9 +1202,9 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           case dict.get(state.sync.cache.packages, label) {
-            Ok(cache.Release(package:, version:, cid:)) ->
+            Ok(cache.Release(package:, version:, module:)) ->
               State(..state, mode: Editing)
-              |> replace_buffer(rebuild(#(package, version, cid), _))
+              |> replace_buffer(rebuild(#(package, version, module), _))
             Error(Nil) -> todo
           }
         }
@@ -1215,7 +1218,8 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           State(..state, mode: Editing)
-          |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
+          todo as "need vacant cid"
+          // |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }

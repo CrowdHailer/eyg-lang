@@ -10,6 +10,7 @@ import morph/editable as e
 import morph/lustre/frame
 import morph/lustre/highlight
 import morph/projection as t
+import multiformats/cid/v1
 
 // Prism tokens https://prismjs.com/tokens.html
 
@@ -293,7 +294,9 @@ pub fn expression(exp, rev, errors) {
       ])
     e.Reference(identifier) ->
       frame.Inline([
-        h.span([a.class(reference), exp_key(rev)], [text(identifier)]),
+        h.span([a.class(reference), exp_key(rev)], [
+          text(v1.to_string(identifier)),
+        ]),
       ])
     e.Release("./" <> name, release, _) ->
       frame.Inline([

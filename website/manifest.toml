@@ -4,7 +4,7 @@
 packages = [
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
   { name = "conversation", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "conversation", source = "hex", outer_checksum = "60AFB424A723D5B29925487BCA66FF09EB157FD3EF72AF072714FEC903701226" },
-  { name = "dag_json", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "715E589127B50D3B0AE4030BE040876E4AF0327F57EF61E86A5058873F065276" },
+  { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "eyg_analysis", version = "1.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "gleam_stdlib"], source = "local", path = "../packages/gleam_analysis" },
   { name = "eyg_client", version = "1.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag", "supa"], source = "local", path = "../packages/gleam_client" },
   { name = "eyg_interpreter", version = "1.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_javascript", "gleam_json", "gleam_stdlib"], source = "local", path = "../packages/gleam_interpreter" },
@@ -41,7 +41,7 @@ packages = [
   { name = "midas_node", version = "1.4.0", build_tools = ["gleam"], requirements = ["conversation", "filepath", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "midas", "plinth", "shellout", "simplifile", "snag"], otp_app = "midas_node", source = "hex", outer_checksum = "F19D552A87F0C7119B6BF855AA1FE08E8DC7042480B0B054C4B6FB9C22E47A6A" },
   { name = "midas_sdk", version = "0.6.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "0D2BEA82F2ED6400831CA2CB3EC7C563AF37FB41BD4B7F1EDC200724916CCD4F" },
   { name = "morph", version = "1.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_stdlib", "gleamx", "lustre", "plinth"], source = "local", path = "../packages/morph" },
-  { name = "multiformats", version = "3.0.0", build_tools = ["gleam"], requirements = ["base32", "gleam_javascript", "gleam_stdlib", "gleb128"], otp_app = "multiformats", source = "hex", outer_checksum = "4380087F4AD7BEE581DA5C64E625B1EEE3E8C2DF96C750A07EBE8B39B64886F4" },
+  { name = "multiformats", version = "4.0.0", build_tools = ["gleam"], requirements = ["base32", "gleam_javascript", "gleam_stdlib", "gleb128"], otp_app = "multiformats", source = "hex", outer_checksum = "48D290956A6F21086EE9C0C2B69ACAF5DC0067EE7E4605990445E5BDC85B7AAE" },
   { name = "mysig", version = "0.5.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "simplifile", "snag"], otp_app = "mysig", source = "hex", outer_checksum = "8DC5F8A32CC81B07C6197AA5A179AB1825D83F13BC0DEF81954D3BB1A1D17825" },
   { name = "netlify", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "midas", "oas_generator_utils", "snag"], otp_app = "netlify", source = "hex", outer_checksum = "A6BFE288D9BD0C5B6FDC5A5E8196E1819788BADE0F5D5732BD7F0AE001DA1A30" },
   { name = "non_empty_list", version = "2.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "non_empty_list", source = "hex", outer_checksum = "1CA43D18C07E98E9ED5A60D9CB2FFE0FF40DEFFA45D58A3FF589589F05658F7B" },
@@ -58,7 +58,7 @@ packages = [
 ]
 
 [requirements]
-dag_json = { version = ">= 2.0.0 and < 3.0.0" }
+dag_json = { version = ">= 3.0.0 and < 4.0.0" }
 eyg_analysis = { path = "../packages/gleam_analysis" }
 eyg_client = { path = "../packages/gleam_client" }
 eyg_interpreter = { path = "../packages/gleam_interpreter" }
@@ -83,7 +83,7 @@ midas_browser = { version = ">= 1.1.0 and < 2.0.0" }
 midas_node = { version = ">= 1.4.0 and < 2.0.0" }
 midas_sdk = { version = ">= 0.6.0 and < 1.0.0" }
 morph = { path = "../packages/morph" }
-multiformats = { version = ">= 3.0.0 and < 4.0.0" }
+multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 mysig = { version = ">= 0.5.0 and < 1.0.0" }
 netlify = { version = ">= 1.0.0 and < 2.0.0" }
 oas = { version = ">= 7.2.0 and < 8.0.0" }

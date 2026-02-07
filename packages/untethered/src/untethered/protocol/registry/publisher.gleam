@@ -67,14 +67,12 @@ fn release_decoder() {
 fn payload_encode(payload) {
   case payload {
     Release(package:, version:, module:) -> {
-      let assert Ok(cid) = v1.to_string(module)
-
       #(
         "release",
         dag_json.object([
           #("package", dag_json.string(package)),
           #("version", dag_json.int(version)),
-          #("module", dag_json.cid(cid)),
+          #("module", dag_json.cid(module)),
         ]),
       )
     }
@@ -97,9 +95,9 @@ pub fn entries_response(response) {
   }
 }
 
-pub fn fetch_fragment_request(origin, cid) {
+pub fn fetch_fragment_request(origin, cid: v1.Cid) {
   origin.to_request(origin)
-  |> request.set_path("/registry/f/" <> cid)
+  |> request.set_path("/registry/f/" <> v1.to_string(cid))
   |> request.set_body(<<>>)
 }
 
@@ -114,7 +112,7 @@ pub fn share_request(origin, block: BitArray) {
 pub fn share_response(response) {
   let Response(status:, body:, ..) = response
   case status {
-    200 -> bit_array.to_string(body)
+    200 -> Ok(bit_array.to_string(body))
     _ -> {
       echo response
       todo

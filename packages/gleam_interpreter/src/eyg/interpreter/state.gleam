@@ -5,6 +5,7 @@ import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
+import multiformats/cid/v1
 
 pub type Context(m) =
   #(List(#(Kontinue(m), m)), Env(m))
@@ -32,7 +33,7 @@ pub type Next(m) {
 pub type Env(m) {
   Env(
     scope: List(#(String, Value(m))),
-    references: dict.Dict(String, Value(m)),
+    references: dict.Dict(v1.Cid, Value(m)),
     builtins: dict.Dict(String, Builtin(m)),
   )
 }

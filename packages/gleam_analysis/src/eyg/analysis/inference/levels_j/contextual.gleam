@@ -7,13 +7,14 @@ import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result.{try}
 import gleam/set
+import multiformats/cid/v1
 
 // None of context is tested
 pub type Context {
   Context(
     env: List(#(String, binding.Poly)),
     eff: binding.Mono,
-    refs: Dict(String, binding.Poly),
+    refs: Dict(v1.Cid, binding.Poly),
     level: Int,
     bindings: Dict(Int, binding.Binding),
   )
@@ -74,14 +75,7 @@ pub fn check(context, source) -> Analysis(_) {
 }
 
 pub fn missing_references(inference) {
-  all_errors(inference)
-  |> list.filter_map(fn(error) {
-    let #(_, reason) = error
-    case reason {
-      error.MissingReference(ref) -> Ok(ref)
-      _ -> Error(Nil)
-    }
-  })
+  error.missing_references(all_errors(inference))
 }
 
 pub fn all_errors(inference) {

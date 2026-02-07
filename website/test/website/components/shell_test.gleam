@@ -272,14 +272,15 @@ pub fn foo_src() {
 }
 
 pub fn foo_cid() {
-  "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
+  let encoded = "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
+  let assert Ok(#(cid, _)) = v1.from_string(encoded)
+  cid
 }
 
 fn cache() -> cache.Cache {
-  let assert Ok(#(cid, _)) = v1.from_string(foo_cid())
   cache.init()
   |> cache.add(foo_cid(), dag_json.to_block(foo_src()))
-  |> cache.apply(publisher.Release("foo", 1, cid))
+  |> cache.apply(publisher.Release("foo", 1, foo_cid()))
 }
 
 pub fn run_a_reference_test() {
@@ -288,7 +289,7 @@ pub fn run_a_reference_test() {
   |> command("#")
   |> pick_from(fn(options) {
     should.equal(options, [])
-    Ok(foo_cid())
+    Ok(foo_cid() |> v1.to_string)
   })
   |> command("g")
   |> pick_from(fn(options) {
@@ -305,7 +306,7 @@ pub fn run_a_late_reference_test() {
   |> command("#")
   |> pick_from(fn(options) {
     should.equal(options, [])
-    Ok(foo_cid())
+    Ok(foo_cid() |> v1.to_string)
   })
   |> command("g")
   |> pick_from(fn(options) {

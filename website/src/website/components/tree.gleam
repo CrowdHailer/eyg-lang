@@ -2,6 +2,7 @@ import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
 import gleam/string
+import multiformats/cid/v1
 
 // this is recursive the tree in eyg is linear what the readability vs efficiency differenct
 pub fn lines(source) {
@@ -76,7 +77,7 @@ fn do_print(source) {
       [],
     )
     ir.Reference(identifier) -> #(
-      string.concat(["reference(", identifier, ")"]),
+      string.concat(["reference(", v1.to_string(identifier), ")"]),
       [],
     )
     ir.Release(package, release, identifier) -> #(
@@ -86,7 +87,7 @@ fn do_print(source) {
         ", ",
         int.to_string(release),
         ", ",
-        identifier,
+        v1.to_string(identifier),
         ")",
       ]),
       [],

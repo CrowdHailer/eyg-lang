@@ -1,3 +1,4 @@
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser/token as t
 import gleam/int
@@ -5,6 +6,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
+import multiformats/cid/v1
 
 pub type Reason {
   UnexpectEnd
@@ -267,7 +269,8 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(ir.Reference(label), span), rest))
+          let assert Ok(#(cid, _)) = v1.from_string(label)
+          Ok(#(#(ir.Reference(cid), span), rest))
         }
         _ -> fail(rest)
       }
@@ -275,7 +278,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(ir.Release(label, 0, ""), span), rest))
+          Ok(#(#(ir.Release(label, 0, dag_json.vacant_cid), span), rest))
         }
         _ -> fail(rest)
       }

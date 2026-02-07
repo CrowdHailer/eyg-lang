@@ -4,6 +4,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/string
+import multiformats/cid/v1
 
 pub fn mono(type_) {
   render_type(type_)
@@ -71,7 +72,8 @@ pub fn render_reason(reason) {
     error.Todo -> "code incomplete"
     error.MissingVariable(label) -> "missing variable '" <> label <> "'"
     error.MissingBuiltin(label) -> "missing variable '!" <> label <> "'"
-    error.MissingReference(label) -> "missing reference #" <> label
+    error.MissingReference(label) ->
+      "missing reference #" <> v1.to_string(label)
     error.UndefinedRelease(package, release, _cid) ->
       "release undefined: @" <> package <> ":" <> int.to_string(release)
     error.MissingRow(label) -> "missing row '" <> label <> "'"

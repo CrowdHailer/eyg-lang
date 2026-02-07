@@ -32,8 +32,8 @@ justin = ">= 1.0.1 and < 2.0.0"
 oas = ">= 7.2.0 and < 8.0.0"
 netlify = ">= 1.0.0 and < 2.0.0"
 spotless = ">= 3.3.0 and < 4.0.0"
-dag_json = ">= 2.0.0 and < 3.0.0"
-multiformats = ">= 3.0.0 and < 4.0.0"
+dag_json = ">= 3.0.0 and < 4.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
 untethered = {path = "../packages/untethered"}
 

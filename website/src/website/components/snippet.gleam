@@ -57,6 +57,7 @@ import morph/picker
 import morph/projection as p
 import morph/transformation
 import morph/utils
+import multiformats/cid/v1
 import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/element as dom_element
@@ -138,7 +139,7 @@ pub type Mode {
   Pick(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
   SelectRelease(
     autocomplete: autocomplete.State(analysis.Release),
-    rebuild: fn(String, Int, String) -> p.Projection,
+    rebuild: fn(String, Int, v1.Cid) -> p.Projection,
   )
   EditText(String, fn(String) -> p.Projection)
   EditInteger(Int, fn(Int) -> p.Projection)
@@ -822,6 +823,10 @@ fn insert_reference(state) {
 
   case transformation.insert_reference(proj) {
     Ok(#(filter, rebuild)) -> {
+      let rebuild = fn(raw) {
+        let assert Ok(#(cid, _)) = v1.from_string(raw)
+        rebuild(cid)
+      }
       change_mode(state, Pick(picker.new(filter, []), rebuild))
     }
     Error(Nil) -> action_failed(state, "insert named reference")

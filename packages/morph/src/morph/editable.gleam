@@ -2,6 +2,7 @@ import eyg/ir/tree as ir
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import multiformats/cid/v1
 
 pub type Pattern {
   Bind(String)
@@ -29,8 +30,8 @@ pub type Expression {
   Perform(String)
   Deep(String)
   Builtin(String)
-  Reference(String)
-  Release(package: String, release: Int, identifer: String)
+  Reference(v1.Cid)
+  Release(package: String, release: Int, identifer: v1.Cid)
 }
 
 pub type Assignments =

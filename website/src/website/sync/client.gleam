@@ -28,7 +28,7 @@ pub type Status {
 /// this is easier than working with Option when we might want to compose output from multiple calls to the sync.client
 pub type Action {
   SyncFrom(origin: origin.Origin, since: Int)
-  FetchFragments(origin: origin.Origin, cids: List(String))
+  FetchFragments(origin: origin.Origin, cids: List(v1.Cid))
   Share(origin: origin.Origin, block: BitArray)
 }
 
@@ -73,7 +73,7 @@ pub fn share(client, source) {
 pub type Message {
   ReleasesFetched(Result(List(#(Int, publisher.Event)), fetch.FetchError))
   FragmentFetched(
-    cid: String,
+    cid: v1.Cid,
     result: Result(Response(BitArray), fetch.FetchError),
   )
   FragmentShared(Result(Response(BitArray), fetch.FetchError))
@@ -94,7 +94,7 @@ pub fn update(client: Client, message) -> #(Client, _) {
               let #(cache, _, new) = acc
               let #(cursor, event) = e
               let cache = cache.apply(cache, event)
-              let assert Ok(cid) = v1.to_string(event.module)
+              let cid = event.module
               let new = case cache.has_fragment(cache, cid) {
                 True -> new
                 False -> [cid, ..new]
