@@ -928,8 +928,8 @@ pub fn run_anonymous_reference_test() {
 
   let rand = int.random(1_000_000)
   let source = ir.integer(rand)
-  let assert Ok(cid) = cid_from_tree(source)
-  let message = state.PickerMessage(picker.Decided(cid))
+  let cid = cid_from_tree(source)
+  let message = state.PickerMessage(picker.Decided(v1.to_string(cid)))
 
   let #(state, actions) = state.update(state, message)
   let assert [state.SyncAction(client.FetchFragments(cids:, ..))] = actions
@@ -958,7 +958,7 @@ pub fn fails_on_unknown_reference_test() {
   // Don't make this available
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
-  let assert Ok(cid) = cid_from_tree(lib)
+  let cid = cid_from_tree(lib)
 
   let state = set_repl(state, ir.reference(cid))
   let #(state, actions) = press_key(state, "Enter")
@@ -976,8 +976,7 @@ pub fn initial_package_sync_test() {
   let assert [state.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1_string) = cid_from_tree(source)
-  let assert Ok(#(cid1, _)) = v1.from_string(cid1_string)
+  let cid1 = cid_from_tree(source)
 
   let content = publisher.Release(package: "foo", version: 1, module: cid1)
   let response = [#(1, content)]
@@ -986,11 +985,10 @@ pub fn initial_package_sync_test() {
   let #(state, actions) = state.update(state, message)
   assert client.syncing(state.sync) == True
   let assert [state.SyncAction(client.FetchFragments(cids:, ..))] = actions
-  assert cids == [cid1_string]
+  assert cids == [cid1]
 
   let response = editor_test.fetch_fragment_response(source)
-  let message =
-    state.SyncMessage(client.FragmentFetched(cid1_string, Ok(response)))
+  let message = state.SyncMessage(client.FragmentFetched(cid1, Ok(response)))
   let #(state, actions) = state.update(state, message)
   assert actions == []
 
@@ -1098,7 +1096,7 @@ pub fn read_reference_from_repl_test() {
   let lib = ir.integer(rand)
   let state = set_module(state, #(file, state.EygJson), lib)
 
-  let ref = ir.release("./index", 0, "./index")
+  let ref = ir.release("./index", 0, dag_json.vacant_cid)
   let source = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
   let state = set_repl(state, source)
 
@@ -1118,11 +1116,11 @@ pub fn nested_reference_test() {
   // let assert Ok(cid) = cid_from_tree(lib)
   let state = set_module(state, #(file, state.EygJson), lib)
 
-  let ref = ir.release("./lib", 0, "./lib")
+  let ref = ir.release("./lib", 0, dag_json.vacant_cid)
   let top = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
   let state = set_module(state, #("top", state.EygJson), top)
 
-  let ref = ir.release("./top", 0, "./top")
+  let ref = ir.release("./top", 0, dag_json.vacant_cid)
   let top = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
   let state = set_repl(state, top)
   assert [] == contextual.all_errors(state.repl.analysis)
