@@ -798,7 +798,7 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
               case dict.get(state.modules, #(name, EygJson)) {
                 Ok(buffer) -> {
                   let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  // echo buffer.cid(buffer) == cid
+                  // echo buffer.module(buffer) == module
                   // evaluate is for shell and expects a block and has effects
                   // evaluate(source,[])
                   let source = source |> tree.clear_annotation()
@@ -879,7 +879,7 @@ fn run_module(
               case dict.get(state.modules, #(name, EygJson)) {
                 Ok(buffer) -> {
                   let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  // echo buffer.cid(buffer) == cid
+                  // echo buffer.module(buffer) == module
                   // evaluate is for shell and expects a block and has effects
                   // evaluate(source,[])
                   let source = source |> tree.clear_annotation()
