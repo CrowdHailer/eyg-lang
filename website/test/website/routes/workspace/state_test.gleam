@@ -18,6 +18,7 @@ import morph/navigation
 import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
+import snag
 import spotless/origin
 import website/components/shell
 import website/components/snippet
@@ -532,6 +533,32 @@ pub fn suggest_shell_effects_test() {
   let assert state.Picking(picker:, ..) = state.mode
   let assert picker.Typing(suggestions:, ..) = picker
   assert list.key_find(suggestions, "Alert") == Ok("String : {}")
+}
+
+pub fn insert_new_module_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "q")
+  assert [state.FocusOnInput] == actions
+  let assert state.ChoosingModule(picker:, ..) = state.mode
+  assert picker.Typing("", []) == picker
+
+  let message = state.PickerMessage(picker.Decided("lib"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+}
+
+pub fn insert_non_existant_package_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "@")
+  assert [state.FocusOnInput] == actions
+  let assert state.ChoosingPackage(picker:, ..) = state.mode
+  assert picker.Typing("", []) == picker
+
+  let message = state.PickerMessage(picker.Decided("bad"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.user_error == Some(snippet.ActionFailed("choose package"))
 }
 
 pub fn cant_set_expression_on_assignment_test() {
@@ -1056,6 +1083,7 @@ pub fn read_source_file_test() {
 pub fn keep_api_token_from_dnsimple_test() {
   let state = no_packages()
   let source =
+    // Can extract operation to a helper in builders irx
     ir.call(ir.perform("DNSimple"), [
       ir.record([
         #("method", ir.tagged("GET", ir.unit())),
@@ -1085,6 +1113,35 @@ pub fn keep_api_token_from_dnsimple_test() {
   let assert break.UnhandledEffect("DNSimple", ..) = debug.0
 }
 
+pub fn fail_to_connect_api_test() {
+  let state = no_packages()
+  let source =
+    // Can extract operation to a helper in builders irx
+    ir.call(ir.perform("DNSimple"), [
+      ir.record([
+        #("method", ir.tagged("GET", ir.unit())),
+        #("path", ir.string("/v2/accounts")),
+        #("query", ir.tagged("None", ir.unit())),
+        #("headers", ir.list([])),
+        #("body", ir.binary(<<>>)),
+      ]),
+    ])
+  let state = set_repl(state, source)
+
+  let #(state, actions) = press_key(state, "Enter")
+  let origin = origin.Origin(http.Https, "eyg.test", None)
+  assert actions
+    == [state.SpotlessConnect(effect_counter: 1, origin:, service: "dnsimple")]
+  let assert state.RunningShell(awaiting: Some(1), debug:, ..) = state.mode
+  let assert break.UnhandledEffect("DNSimple", ..) = debug.0
+
+  let message = state.SpotlessConnected(1, "dnsimple", snag.error("declined"))
+  let #(state, actions) = state.update(state, message)
+  let assert [] = actions
+  assert Some(snippet.ActionFailed("run effect: error: declined"))
+    == state.user_error
+}
+
 // --------------- 7. Relative references -------------------------
 
 // track the references in the buffer
@@ -1093,12 +1150,8 @@ pub fn read_reference_from_repl_test() {
   let name = "index"
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
-<<<<<<< HEAD
-  let state = set_module(state, #(file, state.EygJson), lib)
-=======
   let cid = state.relative_cid(name)
   let state = set_module(state, #(name, state.EygJson), lib)
->>>>>>> main
 
   let ref = ir.release("./index", 0, cid)
   let source = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
@@ -1117,13 +1170,8 @@ pub fn nested_reference_test() {
   let state = no_packages()
   let lib_name = "lib"
   let lib = ir.integer(25)
-<<<<<<< HEAD
-  // let assert Ok(cid) = cid_from_tree(lib)
-  let state = set_module(state, #(file, state.EygJson), lib)
-=======
   let lib_cid = state.relative_cid(lib_name)
   let state = set_module(state, #(lib_name, state.EygJson), lib)
->>>>>>> main
 
   let lib_ref = ir.release("./" <> lib_name, 0, lib_cid)
   let top_name = "top"

@@ -819,13 +819,10 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                   case run_module(expression.execute(source, []), state) {
                     Ok(value) ->
                       run(block.resume(value, env, k), occured, state)
-                    reason -> {
-                      echo reason
-                      todo
-                    }
+                    Error(debug) -> runner_stoped(state, occured, debug)
                   }
                 }
-                Error(Nil) -> todo
+                Error(Nil) -> runner_stoped(state, occured, debug)
               }
             _, _ ->
               // These always return a value or an effect if working
@@ -836,8 +833,8 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                       run(block.resume(value, env, k), occured, state)
                     _ -> runner_stoped(state, occured, debug)
                   }
-                Ok(_) -> todo
-                Error(Nil) -> todo
+                Ok(_) -> runner_stoped(state, occured, debug)
+                Error(Nil) -> runner_stoped(state, occured, debug)
               }
           }
         _ -> runner_stoped(state, occured, debug)
@@ -1013,40 +1010,27 @@ fn link_filesystem(state) {
 }
 
 fn link_filesystem_completed(state, result) {
-  case result {
-    Ok(dir_handle) -> #(State(..state, mounted_directory: Some(dir_handle)), [
-      LoadFiles(dir_handle),
-    ])
-    Error(reason) -> {
-      echo reason
-      todo
-    }
-  }
+  use dir_handle <- try(result, state, "link filesystem")
+  #(State(..state, mounted_directory: Some(dir_handle)), [LoadFiles(dir_handle)])
 }
 
 fn loaded_files(state: State, result) {
-  case result {
-    Ok(files) -> {
-      let modules =
-        list.filter_map(files, fn(file) {
-          let #(name, code) = file
-          case code {
-            Ok(source) -> {
-              let buffer =
-                buffer.from_source(
-                  source,
-                  module_context(state.scope, state.modules, state.sync.cache),
-                )
-              Ok(#(name, buffer))
-            }
-            _ -> todo
-          }
-        })
-      let modules = dict.from_list(modules)
-      #(State(..state, modules:), [])
-    }
-    _ -> todo
-  }
+  use files <- try(result, state, "load files")
+
+  let modules =
+    list.filter_map(files, fn(file) {
+      let #(name, code) = file
+      use source <- result.map(code)
+
+      let buffer =
+        buffer.from_source(
+          source,
+          module_context(state.scope, state.modules, state.sync.cache),
+        )
+      #(name, buffer)
+    })
+  let modules = dict.from_list(modules)
+  #(State(..state, modules:), [])
 }
 
 fn flush_timeout(state, reference) {
@@ -1078,14 +1062,15 @@ fn spotless_connected(state, reference, service, result) {
     RunningShell(
       occured:,
       awaiting:,
-      debug: #(break.UnhandledEffect(label, lift), _meta, env, k) as debug,
+      debug: #(break.UnhandledEffect(label, lift), _meta, _env, _k) as debug,
     )
       if awaiting == Some(reference)
     -> {
       case result {
         Ok(token) -> {
-          let assert Ok(effects.Spotless(service:, operation:)) =
+          let assert Ok(effects.Spotless(service: expected, operation:)) =
             effects.cast(label, lift)
+          assert expected == service
 
           let tokens = dict.insert(state.tokens, service, token)
           let state = State(..state, tokens:)
@@ -1099,8 +1084,17 @@ fn spotless_connected(state, reference, service, result) {
           )
         }
         Error(reason) -> {
-          reason
-          todo
+          let mode = RunningShell(occured:, awaiting:, debug:)
+          #(
+            State(
+              ..state,
+              mode:,
+              user_error: Some(snippet.ActionFailed(
+                "run effect: " <> snag.line_print(reason),
+              )),
+            ),
+            [],
+          )
         }
       }
     }
@@ -1224,7 +1218,13 @@ fn picker_message(state, message) {
             Ok(cache.Release(package:, version:, module:)) ->
               State(..state, mode: Editing)
               |> replace_buffer(rebuild(#(package, version, module), _))
-            Error(Nil) -> todo
+            Error(Nil) -> #(
+              State(
+                ..state,
+                user_error: Some(snippet.ActionFailed("choose package")),
+              ),
+              [],
+            )
           }
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
@@ -1237,8 +1237,7 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           State(..state, mode: Editing)
-          todo as "need vacant cid"
-          // |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
+          |> replace_buffer(rebuild(#("./" <> label, 0, relative_cid(label)), _))
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
