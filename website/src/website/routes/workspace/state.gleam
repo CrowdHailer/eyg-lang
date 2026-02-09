@@ -1186,8 +1186,7 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           State(..state, mode: Editing)
-          todo as "need vacant cid"
-          // |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
+          |> replace_buffer(rebuild(#("./" <> label, 0, relative_cid(label)), _))
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }

@@ -534,6 +534,19 @@ pub fn suggest_shell_effects_test() {
   assert list.key_find(suggestions, "Alert") == Ok("String : {}")
 }
 
+pub fn insert_new_module_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "q")
+  assert [state.FocusOnInput] == actions
+  let assert state.ChoosingModule(picker:, ..) = state.mode
+  assert picker.Typing("", []) == picker
+
+  let message = state.PickerMessage(picker.Decided("lib"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.Editing == state.mode
+}
+
 pub fn cant_set_expression_on_assignment_test() {
   let state = no_packages()
   let source = ir.let_("here", ir.vacant(), ir.vacant())
