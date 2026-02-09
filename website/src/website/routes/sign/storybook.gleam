@@ -1,12 +1,12 @@
 import dag_json
 import gleam/int
 import gleam/option.{None, Some}
+import hub/signatory
 import lustre/attribute as a
 import lustre/element/html as h
 import multiformats/cid/v1
 import multiformats/hashes
 import untethered/keypair
-import untethered/protocol/signatory
 import untethered/substrate
 import website/routes/helpers
 import website/routes/sign/state.{State}

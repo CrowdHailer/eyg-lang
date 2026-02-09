@@ -4,10 +4,10 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleroglero/outline
+import hub/signatory
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/event
-import untethered/protocol/signatory
 import untethered/substrate
 import website/routes/sign/state.{State}
 

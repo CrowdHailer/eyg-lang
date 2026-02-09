@@ -8,10 +8,9 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
+import hub/publisher
 import morph/analysis
 import multiformats/cid/v1
-import untethered/protocol/registry/publisher
-import untethered/substrate
 
 pub type Cache {
   Cache(

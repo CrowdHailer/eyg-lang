@@ -1,6 +1,5 @@
 import eyg/ir/cid
 import gleam/crypto
-import multiformats/cid/v1
 
 pub fn cid_from_tree(source) {
   let cid.Sha256(bytes:, resume:) = cid.from_tree(source)

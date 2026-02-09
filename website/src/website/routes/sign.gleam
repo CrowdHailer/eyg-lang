@@ -9,6 +9,7 @@ import gleam/list
 import gleam/option.{Some}
 import gleam/result
 import gleam/string
+import hub/signatory
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -25,7 +26,6 @@ import plinth/browser/window_proxy
 import spotless/origin
 import untethered/keypair
 import untethered/ledger/client as wat
-import untethered/protocol/signatory
 import untethered/substrate
 import website/routes/common
 import website/routes/home

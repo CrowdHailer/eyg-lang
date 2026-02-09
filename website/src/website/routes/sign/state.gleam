@@ -2,13 +2,12 @@ import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import hub/publisher
+import hub/signatory
 import plinth/browser/crypto/subtle
 import plinth/browser/indexeddb/database
 import plinth/browser/window_proxy
 import untethered/keypair
-import untethered/protocol/registry/publisher
-import untethered/protocol/signatory
-import untethered/substrate
 import website/routes/sign/opener_protocol
 
 pub type State {

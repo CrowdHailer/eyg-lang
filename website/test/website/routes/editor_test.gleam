@@ -3,11 +3,11 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http/response
 import gleam/option.{Some}
+import hub/publisher
 import morph/analysis
 import morph/editable
 import morph/picker
 import multiformats/cid/v1
-import untethered/protocol/registry/publisher
 import website/components/shell
 import website/components/snippet
 import website/helpers.{cid_from_tree} as _
@@ -72,7 +72,7 @@ pub fn run_anonymous_reference_test() {
   let assert snippet.Pick(picker.Typing(..), ..) = mode
 
   let source = ir.unit()
-  let assert cid = cid_from_tree(source)
+  let cid = cid_from_tree(source)
 
   let message =
     editor.ShellMessage(

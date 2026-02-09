@@ -1,9 +1,7 @@
-import gleam/dict
 import gleam/http/request
 import gleam/json
 import gleam/option.{None, Some}
 import gleam/result
-import untethered/protocol/signatory
 import untethered/substrate
 
 pub type Denied {
@@ -78,20 +76,4 @@ pub fn validate_integrity(proposed, previous_sequence) {
     False -> Error(WrongSequence)
   })
   Ok(Nil)
-}
-
-pub type Policy {
-  AddSelf(key: String)
-  Admin
-}
-
-pub fn fetch_permissions(key, history) {
-  let keys = signatory.state(history)
-  case history, dict.get(keys, key) {
-    [], Error(Nil) -> Ok(AddSelf(key))
-    [], Ok(_) -> panic
-    // All keys have the same permissions
-    _, Ok(Nil) -> Ok(Admin)
-    _, Error(Nil) -> Error(UnauthorizedKey)
-  }
 }

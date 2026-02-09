@@ -10,6 +10,7 @@ import gleam/http
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import hub/publisher
 import morph/analysis
 import morph/editable as e
 import morph/input
@@ -18,7 +19,6 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import spotless/origin
-import untethered/protocol/registry/publisher
 import website/components/shell
 import website/components/snippet
 import website/helpers.{cid_from_tree} as _

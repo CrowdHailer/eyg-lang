@@ -8,17 +8,15 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
+import hub/publisher
 import morph/editable as e
 import morph/input
 import multiformats/cid/v1
 import spotless/origin
-import untethered/protocol/registry/publisher
-import untethered/substrate
 import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
-import website/routes/editor_test
 import website/sync/cache
 import website/sync/client
 

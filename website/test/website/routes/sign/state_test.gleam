@@ -1,8 +1,8 @@
 import dag_json
 import gleam/option.{None, Some}
+import hub/signatory
 import multiformats/cid/v1
 import multiformats/hashes
-import untethered/protocol/signatory
 import untethered/substrate
 import website/routes/helpers
 import website/routes/sign/opener_protocol

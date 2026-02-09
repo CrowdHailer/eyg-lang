@@ -5,11 +5,12 @@ import gleam/fetchx
 import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/list
+import hub/client
+import hub/publisher
 import lustre/effect
 import multiformats/cid/v1
 import spotless/origin
 import untethered/ledger/schema
-import untethered/protocol/registry/publisher
 import website/sync/cache
 
 pub type Client {
@@ -169,17 +170,17 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
   case task {
     SyncFrom(origin:, since:) -> {
       let parameters = schema.PullParameters(since:, limit: 1000, entities: [])
-      let request = publisher.entries_request(origin, parameters)
+      let request = client.entries_request(origin, parameters)
       promise.map(fetchx.send_bits(request), fn(response) {
         let assert Ok(response) = response
-        let assert Ok(response) = publisher.entries_response(response)
+        let assert Ok(response) = client.entries_response(response)
         [dispatch(ReleasesFetched(Ok(response)))]
       })
     }
     FetchFragments(origin:, cids:) -> {
       promise.await_list(
         list.map(cids, fn(cid) {
-          let request = publisher.fetch_fragment_request(origin, cid)
+          let request = client.fetch_fragment_request(origin, cid)
           promise.map(fetchx.send_bits(request), fn(result) {
             dispatch(FragmentFetched(cid:, result:))
           })
@@ -187,7 +188,7 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
       )
     }
     Share(origin:, block:) -> {
-      let request = publisher.share_request(origin, block)
+      let request = client.share_request(origin, block)
 
       promise.map(fetchx.send_bits(request), fn(response) {
         [dispatch(FragmentShared(response))]

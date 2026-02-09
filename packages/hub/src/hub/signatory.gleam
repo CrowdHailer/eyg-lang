@@ -75,3 +75,19 @@ pub fn state(history) {
     }
   })
 }
+
+pub type Policy {
+  AddSelf(key: String)
+  Admin
+}
+
+pub fn fetch_permissions(key, history) {
+  let keys = state(history)
+  case history, dict.get(keys, key) {
+    [], Error(Nil) -> Ok(AddSelf(key))
+    [], Ok(_) -> panic
+    // All keys have the same permissions
+    _, Ok(Nil) -> Ok(Admin)
+    _, Error(Nil) -> Error(Nil)
+  }
+}
