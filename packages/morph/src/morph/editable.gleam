@@ -154,7 +154,6 @@ pub fn from_annotated(node) {
         Call(func, args) -> Call(func, list.append(args, [arg]))
         other -> Call(other, [arg])
       }
-      // gather_arguments(func, [from_annotated(arg)])
     }
 
     ir.Vacant -> Vacant
@@ -270,15 +269,6 @@ pub fn gather_assignments(node, acc, open) {
     _ -> {
       Block(list.reverse(acc), from_annotated(node), open)
     }
-  }
-}
-
-fn gather_arguments(func, args) {
-  case func {
-    #(ir.Apply(func, arg), _) ->
-      gather_arguments(func, [from_annotated(arg), ..args])
-    // don't reverse args as gathers from the outside in
-    _ -> Call(from_annotated(func), args)
   }
 }
 

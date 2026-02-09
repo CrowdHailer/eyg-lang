@@ -391,12 +391,11 @@ pub fn insert_record_test() {
   let state = no_packages()
   let source = ir.call(ir.select("location"), [ir.vacant()])
   let state = set_repl(state, source)
-  let #(_state, _actions) = press_key(state, "r")
-  // Type infor not working properly
-  // assert [] == actions
-  // echo state.mode
+  let #(state, actions) = press_key(state, "r")
 
-  // todo
+  // Type infor not working properly
+  assert [state.FocusOnInput] == actions
+  let assert state.Picking(..) = state.mode
 }
 
 // insert record on assignment
@@ -1091,12 +1090,17 @@ pub fn keep_api_token_from_dnsimple_test() {
 // track the references in the buffer
 pub fn read_reference_from_repl_test() {
   let state = no_packages()
-  let file = "index"
+  let name = "index"
   let rand = int.random(1_000_000)
   let lib = ir.integer(rand)
+<<<<<<< HEAD
   let state = set_module(state, #(file, state.EygJson), lib)
+=======
+  let cid = state.relative_cid(name)
+  let state = set_module(state, #(name, state.EygJson), lib)
+>>>>>>> main
 
-  let ref = ir.release("./index", 0, dag_json.vacant_cid)
+  let ref = ir.release("./index", 0, cid)
   let source = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
   let state = set_repl(state, source)
 
@@ -1111,17 +1115,24 @@ pub fn read_reference_from_repl_test() {
 
 pub fn nested_reference_test() {
   let state = no_packages()
-  let file = "lib"
+  let lib_name = "lib"
   let lib = ir.integer(25)
+<<<<<<< HEAD
   // let assert Ok(cid) = cid_from_tree(lib)
   let state = set_module(state, #(file, state.EygJson), lib)
+=======
+  let lib_cid = state.relative_cid(lib_name)
+  let state = set_module(state, #(lib_name, state.EygJson), lib)
+>>>>>>> main
 
-  let ref = ir.release("./lib", 0, dag_json.vacant_cid)
-  let top = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
-  let state = set_module(state, #("top", state.EygJson), top)
+  let lib_ref = ir.release("./" <> lib_name, 0, lib_cid)
+  let top_name = "top"
+  let top = ir.call(ir.builtin("int_add"), [lib_ref, ir.integer(1)])
+  let top_cid = state.relative_cid(top_name)
+  let state = set_module(state, #(top_name, state.EygJson), top)
 
-  let ref = ir.release("./top", 0, dag_json.vacant_cid)
-  let top = ir.call(ir.builtin("int_add"), [ref, ir.integer(1)])
+  let top_ref = ir.release("./" <> top_name, 0, top_cid)
+  let top = ir.call(ir.builtin("int_add"), [top_ref, ir.integer(1)])
   let state = set_repl(state, top)
   assert [] == contextual.all_errors(state.repl.analysis)
 
