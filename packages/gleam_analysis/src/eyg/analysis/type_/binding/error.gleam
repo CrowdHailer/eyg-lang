@@ -1,12 +1,13 @@
 import eyg/analysis/type_/binding
 import gleam/list
+import multiformats/cid/v1
 
 pub type Reason {
   Todo
   MissingVariable(String)
   MissingBuiltin(String)
-  MissingReference(String)
-  UndefinedRelease(package: String, release: Int, cid: String)
+  MissingReference(v1.Cid)
+  UndefinedRelease(package: String, release: Int, module: v1.Cid)
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
   Recursive

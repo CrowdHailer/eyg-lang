@@ -1,6 +1,8 @@
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
 import gleeunit/should
+import multiformats/cid/v1
 
 pub fn literal_test() {
   "x"
@@ -704,17 +706,17 @@ pub fn perform_test() {
 }
 
 pub fn reference_test() {
-  "#abcdes"
+  { "#" <> dag_json.vacant_cid |> v1.to_string }
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(ir.Reference("abcdes"), #(0, 7)))
+  |> should.equal(#(ir.Reference(dag_json.vacant_cid), #(0, 62)))
 }
 
 pub fn named_reference_test() {
   "@std"
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(ir.Release("std", 0, ""), #(0, 4)))
+  |> should.equal(#(ir.Release("std", 0, dag_json.vacant_cid), #(0, 4)))
 }
 
 pub fn comment_test() {
