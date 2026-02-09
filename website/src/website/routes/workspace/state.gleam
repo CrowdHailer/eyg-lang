@@ -140,15 +140,7 @@ fn module_context(
       let #(#(name, ext), buffer) = entry
 
       case ext {
-        EygJson -> {
-          Ok(#(
-            v1.Cid(
-              codec.code(),
-              hashes.Multihash(hashes.Sha256, <<{ "./" <> name }:utf8>>),
-            ),
-            infer.poly_type(buffer.analysis),
-          ))
-        }
+        EygJson -> Ok(#(relative_cid(name), infer.poly_type(buffer.analysis)))
       }
     })
     |> dict.from_list()
@@ -158,6 +150,15 @@ fn module_context(
   // infer.pure()
   infer.Context(tenv, t.Empty, dict.new(), 1, bindings)
   |> infer.with_references(references)
+}
+
+/// This is a fake hash that is used to lookup specifically in the case of relative dependencies.
+/// Publishing code with this reference will fail
+pub fn relative_cid(name) {
+  v1.Cid(
+    codec.code(),
+    hashes.Multihash(hashes.Sha256, <<{ "./" <> name }:utf8>>),
+  )
 }
 
 /// replaces buffer in the tree
@@ -357,8 +358,7 @@ fn user_pressed_command_key(state, key) {
     "L" -> transform(state, "create list", buffer.create_empty_list)
     "l" -> transform(state, "create list", buffer.create_list)
     "@" -> choose_release(state)
-    // TODO put back pick reference
-    // "#" -> pick_any(state, "insert reference", buffer.insert_reference)
+    "#" -> insert_reference(state)
     // choose release just checks is expression
     "Z" -> map_buffer(state, "redo", buffer.redo)
     "z" -> map_buffer(state, "undo", buffer.undo)
@@ -605,6 +605,20 @@ fn choose_release(state) {
 
   let picker = picker.new("", hints)
   let state = State(..state, mode: ChoosingPackage(picker:, rebuild:))
+  #(state, [FocusOnInput])
+}
+
+fn insert_reference(state) {
+  use rebuild <- try(
+    buffer.insert_reference(active(state)),
+    state,
+    "insert reference",
+  )
+  let rebuild = fn(cid, context) {
+    let assert Ok(#(cid, _)) = v1.from_string(cid)
+    rebuild(cid, context)
+  }
+  let state = State(..state, mode: Picking(picker.new("", []), rebuild))
   #(state, [FocusOnInput])
 }
 

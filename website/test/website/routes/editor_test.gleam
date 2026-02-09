@@ -1,5 +1,4 @@
 import eyg/interpreter/value
-import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/option.{Some}
