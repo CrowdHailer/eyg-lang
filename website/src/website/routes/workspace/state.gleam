@@ -1,11 +1,4 @@
 import dag_json as codec
-import gleam/http
-import gleam/json
-import multiformats/cid/v1
-import multiformats/hashes
-import snag
-import spotless/origin
-
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -18,8 +11,10 @@ import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
 import gleam/dict.{type Dict}
+import gleam/http
 import gleam/http/request
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -32,7 +27,11 @@ import morph/editable as e
 import morph/input
 import morph/picker
 import morph/projection as p
+import multiformats/cid/v1
+import multiformats/hashes
 import plinth/browser/file_system
+import snag
+import spotless/origin
 import website/components/readonly
 import website/components/shell
 import website/components/snippet
@@ -962,40 +961,27 @@ fn link_filesystem(state) {
 }
 
 fn link_filesystem_completed(state, result) {
-  case result {
-    Ok(dir_handle) -> #(State(..state, mounted_directory: Some(dir_handle)), [
-      LoadFiles(dir_handle),
-    ])
-    Error(reason) -> {
-      echo reason
-      todo
-    }
-  }
+  use dir_handle <- try(result, state, "link filesystem")
+  #(State(..state, mounted_directory: Some(dir_handle)), [LoadFiles(dir_handle)])
 }
 
 fn loaded_files(state: State, result) {
-  case result {
-    Ok(files) -> {
-      let modules =
-        list.filter_map(files, fn(file) {
-          let #(name, code) = file
-          case code {
-            Ok(source) -> {
-              let buffer =
-                buffer.from_source(
-                  source,
-                  module_context(state.scope, state.modules, state.sync.cache),
-                )
-              Ok(#(name, buffer))
-            }
-            _ -> todo
-          }
-        })
-      let modules = dict.from_list(modules)
-      #(State(..state, modules:), [])
-    }
-    _ -> todo
-  }
+  use files <- try(result, state, "load files")
+
+  let modules =
+    list.filter_map(files, fn(file) {
+      let #(name, code) = file
+      use source <- result.map(code)
+
+      let buffer =
+        buffer.from_source(
+          source,
+          module_context(state.scope, state.modules, state.sync.cache),
+        )
+      #(name, buffer)
+    })
+  let modules = dict.from_list(modules)
+  #(State(..state, modules:), [])
 }
 
 fn flush_timeout(state, reference) {
@@ -1027,14 +1013,15 @@ fn spotless_connected(state, reference, service, result) {
     RunningShell(
       occured:,
       awaiting:,
-      debug: #(break.UnhandledEffect(label, lift), _meta, env, k) as debug,
+      debug: #(break.UnhandledEffect(label, lift), _meta, _env, _k) as debug,
     )
       if awaiting == Some(reference)
     -> {
       case result {
         Ok(token) -> {
-          let assert Ok(effects.Spotless(service:, operation:)) =
+          let assert Ok(effects.Spotless(service: expected, operation:)) =
             effects.cast(label, lift)
+          assert expected == service
 
           let tokens = dict.insert(state.tokens, service, token)
           let state = State(..state, tokens:)
@@ -1048,8 +1035,17 @@ fn spotless_connected(state, reference, service, result) {
           )
         }
         Error(reason) -> {
-          reason
-          todo
+          let mode = RunningShell(occured:, awaiting:, debug:)
+          #(
+            State(
+              ..state,
+              mode:,
+              user_error: Some(snippet.ActionFailed(
+                "run effect: " <> snag.line_print(reason),
+              )),
+            ),
+            [],
+          )
         }
       }
     }
@@ -1173,7 +1169,13 @@ fn picker_message(state, message) {
             Ok(cache.Release(package_id:, version:, module:, ..)) ->
               State(..state, mode: Editing)
               |> replace_buffer(rebuild(#(package_id, version, module), _))
-            Error(Nil) -> todo
+            Error(Nil) -> #(
+              State(
+                ..state,
+                user_error: Some(snippet.ActionFailed("choose package")),
+              ),
+              [],
+            )
           }
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])

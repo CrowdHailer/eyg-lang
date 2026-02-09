@@ -17,6 +17,7 @@ import morph/navigation
 import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
+import snag
 import spotless/origin
 import website/components/shell
 import website/components/snippet
@@ -547,6 +548,19 @@ pub fn insert_new_module_test() {
   assert state.Editing == state.mode
 }
 
+pub fn insert_non_existant_package_test() {
+  let state = no_packages()
+  let #(state, actions) = press_key(state, "@")
+  assert [state.FocusOnInput] == actions
+  let assert state.ChoosingPackage(picker:, ..) = state.mode
+  assert picker.Typing("", []) == picker
+
+  let message = state.PickerMessage(picker.Decided("bad"))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert state.user_error == Some(snippet.ActionFailed("choose package"))
+}
+
 pub fn cant_set_expression_on_assignment_test() {
   let state = no_packages()
   let source = ir.let_("here", ir.vacant(), ir.vacant())
@@ -1068,6 +1082,7 @@ pub fn read_source_file_test() {
 pub fn keep_api_token_from_dnsimple_test() {
   let state = no_packages()
   let source =
+    // Can extract operation to a helper in builders irx
     ir.call(ir.perform("DNSimple"), [
       ir.record([
         #("method", ir.tagged("GET", ir.unit())),
@@ -1095,6 +1110,35 @@ pub fn keep_api_token_from_dnsimple_test() {
   assert request.headers == [#("authorization", "Bearer tok_dnsimple")]
   let assert state.RunningShell(awaiting: Some(2), debug:, ..) = state.mode
   let assert break.UnhandledEffect("DNSimple", ..) = debug.0
+}
+
+pub fn fail_to_connect_api_test() {
+  let state = no_packages()
+  let source =
+    // Can extract operation to a helper in builders irx
+    ir.call(ir.perform("DNSimple"), [
+      ir.record([
+        #("method", ir.tagged("GET", ir.unit())),
+        #("path", ir.string("/v2/accounts")),
+        #("query", ir.tagged("None", ir.unit())),
+        #("headers", ir.list([])),
+        #("body", ir.binary(<<>>)),
+      ]),
+    ])
+  let state = set_repl(state, source)
+
+  let #(state, actions) = press_key(state, "Enter")
+  let origin = origin.Origin(http.Https, "eyg.test", None)
+  assert actions
+    == [state.SpotlessConnect(effect_counter: 1, origin:, service: "dnsimple")]
+  let assert state.RunningShell(awaiting: Some(1), debug:, ..) = state.mode
+  let assert break.UnhandledEffect("DNSimple", ..) = debug.0
+
+  let message = state.SpotlessConnected(1, "dnsimple", snag.error("declined"))
+  let #(state, actions) = state.update(state, message)
+  let assert [] = actions
+  assert Some(snippet.ActionFailed("run effect: error: declined"))
+    == state.user_error
 }
 
 // --------------- 7. Relative references -------------------------
