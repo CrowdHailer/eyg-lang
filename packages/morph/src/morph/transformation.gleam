@@ -4,6 +4,7 @@ import gleam/option.{None, Some}
 import gleam/result.{try}
 import morph/editable as e
 import morph/projection as p
+import multiformats/cid/v1
 
 pub type MaybeString {
   NeedString(fn(String) -> p.Projection)
@@ -644,7 +645,7 @@ pub fn insert_reference(projection) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let current = case exp {
-        e.Reference(id) -> id
+        e.Reference(id) -> v1.to_string(id)
         _ -> ""
       }
       Ok(#(current, fn(id) { #(p.Exp(e.Reference(id)), zoom) }))

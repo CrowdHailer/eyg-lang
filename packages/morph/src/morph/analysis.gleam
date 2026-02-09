@@ -12,12 +12,13 @@ import gleam/list
 import gleam/string
 import morph/editable as e
 import morph/projection
+import multiformats/cid/v1
 
 pub type References =
-  Dict(String, binding.Poly)
+  Dict(v1.Cid, binding.Poly)
 
 pub type Release {
-  Release(package: String, version: Int, fragment: String)
+  Release(package: String, version: Int, module: v1.Cid)
 }
 
 pub type Index =
