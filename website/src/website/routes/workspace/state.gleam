@@ -801,13 +801,10 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                   case run_module(expression.execute(source, []), state) {
                     Ok(value) ->
                       run(block.resume(value, env, k), occured, state)
-                    reason -> {
-                      echo reason
-                      todo
-                    }
+                    Error(debug) -> runner_stoped(state, occured, debug)
                   }
                 }
-                Error(Nil) -> todo
+                Error(Nil) -> runner_stoped(state, occured, debug)
               }
             _, _ ->
               // These always return a value or an effect if working
@@ -818,8 +815,8 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                       run(block.resume(value, env, k), occured, state)
                     _ -> runner_stoped(state, occured, debug)
                   }
-                Ok(_) -> todo
-                Error(Nil) -> todo
+                Ok(_) -> runner_stoped(state, occured, debug)
+                Error(Nil) -> runner_stoped(state, occured, debug)
               }
           }
         _ -> runner_stoped(state, occured, debug)
