@@ -1,9 +1,12 @@
 import dag_json as codec
 import eyg/ir/dag_json
-import eyg/ir/promise
 import multiformats/cid/v1
-import multiformats/hashes/sha256
-import multiformats/hashes/sha256_browser
+import multiformats/hashes
+
+/// To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation
+pub type Effect(t) {
+  Sha256(bytes: BitArray, resume: fn(BitArray) -> t)
+}
 
 pub fn from_tree(source) {
   let bytes = dag_json.to_block(source)
@@ -11,21 +14,8 @@ pub fn from_tree(source) {
 }
 
 pub fn from_block(bytes) {
-  let multihash = sha256.digest(bytes)
-
-  v1.Cid(codec.code(), multihash)
-  |> v1.to_string
-}
-
-pub fn from_tree_async(source) {
-  let bytes = dag_json.to_block(source)
-  from_block_async(bytes)
-}
-
-pub fn from_block_async(bytes) {
-  let multihash = sha256_browser.digest(bytes)
-  use multihash <- promise.map(multihash)
-
-  v1.Cid(codec.code(), multihash)
-  |> v1.to_string
+  Sha256(bytes:, resume: fn(digest) {
+    let multihash = hashes.Multihash(hashes.Sha256, digest)
+    v1.Cid(codec.code(), multihash)
+  })
 }

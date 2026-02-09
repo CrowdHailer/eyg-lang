@@ -2,13 +2,54 @@ import dag_json as codec
 import eyg/ir/tree as ir
 import gleam/dynamic/decode
 import gleam/json
+import multiformats/cid/v1
+import multiformats/hashes
 
 fn label_decoder(for, meta) {
   use label <- decode.field("l", decode.string)
   decode.success(#(for(label), meta))
 }
 
-pub const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
+pub const vacant_cid = v1.Cid(
+  297,
+  hashes.Multihash(
+    hashes.Sha256,
+    <<
+      143,
+      171,
+      132,
+      193,
+      178,
+      239,
+      11,
+      237,
+      187,
+      22,
+      81,
+      164,
+      153,
+      54,
+      34,
+      109,
+      16,
+      139,
+      216,
+      209,
+      66,
+      180,
+      135,
+      86,
+      79,
+      251,
+      7,
+      31,
+      89,
+      235,
+      100,
+      152,
+    >>,
+  ),
+)
 
 pub fn decoder(meta) {
   use switch <- decode.field("0", decode.string)
@@ -56,22 +97,13 @@ pub fn decoder(meta) {
     "h" -> label_decoder(ir.Handle, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
-      use cid <- decode.field(
-        "l",
-        decode.field("/", decode.string, decode.success),
-      )
-      // let assert Ok(cid) = v1.to_string(cid)
+      use cid <- decode.field("l", codec.decode_cid())
       decode.success(#(ir.Reference(cid), meta))
     }
     "@" -> {
       use package <- decode.field("p", decode.string)
       use release <- decode.field("r", decode.int)
-      use cid <- decode.field(
-        "l",
-        decode.field("/", decode.string, decode.success),
-      )
-      // Need a cid type if going to decode here
-      // let assert Ok(cid) = v1.to_string(cid)
+      use cid <- decode.field("l", codec.decode_cid())
       decode.success(#(ir.Release(package, release, cid), meta))
     }
     _ -> {

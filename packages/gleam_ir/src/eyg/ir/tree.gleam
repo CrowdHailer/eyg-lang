@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/string
+import multiformats/cid/v1
 
 pub type Node(m) =
   #(Expression(m), m)
@@ -32,8 +33,8 @@ pub type Expression(m) {
   Handle(label: String)
 
   Builtin(identifier: String)
-  Reference(identifier: String)
-  Release(package: String, release: Int, identifier: String)
+  Reference(identifier: v1.Cid)
+  Release(package: String, release: Int, identifier: v1.Cid)
 }
 
 pub fn variable(label) {
