@@ -10,6 +10,8 @@ import morph/editable as e
 import morph/navigation
 import morph/projection as p
 import morph/transformation as t
+import multiformats/cid/v1
+import plinth/browser/crypto/subtle
 import website/components/snippet
 
 pub type Buffer {
@@ -59,9 +61,10 @@ pub fn redo(buffer) {
 pub fn cid(buffer) {
   let Buffer(projection:, ..) = buffer
   let source = e.to_annotated(p.rebuild(projection), [])
-  // let assert Ok(current) = cid.from_tree(source)
-  use result <- promise.map(cid.from_tree_async(source))
-  let assert Ok(cid) = result
+  let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
+  use result <- promise.map(subtle.digest(subtle.SHA256, bytes))
+  let assert Ok(hash) = result
+  let cid = resume(hash) |> v1.to_string
   cid
 }
 

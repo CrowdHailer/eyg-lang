@@ -1,5 +1,8 @@
+import dag_json as codec
 import gleam/http
 import gleam/json
+import multiformats/cid/v1
+import multiformats/hashes
 import snag
 import spotless/origin
 
@@ -70,11 +73,11 @@ pub type Mode {
   EditingInteger(value: Int, rebuild: Rebuild(Int))
   ChoosingPackage(
     picker: picker.Picker,
-    rebuild: Rebuild(#(String, Int, String)),
+    rebuild: Rebuild(#(String, Int, v1.Cid)),
   )
   ChoosingModule(
     picker: picker.Picker,
-    rebuild: Rebuild(#(String, Int, String)),
+    rebuild: Rebuild(#(String, Int, v1.Cid)),
   )
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
@@ -138,9 +141,13 @@ fn module_context(
 
       case ext {
         EygJson -> {
-          // name is only when we check the refs
-          // "./" <> name
-          Ok(#("./" <> name, infer.poly_type(buffer.analysis)))
+          Ok(#(
+            v1.Cid(
+              codec.code(),
+              hashes.Multihash(hashes.Sha256, <<{ "./" <> name }:utf8>>),
+            ),
+            infer.poly_type(buffer.analysis),
+          ))
         }
       }
     })
@@ -350,7 +357,8 @@ fn user_pressed_command_key(state, key) {
     "L" -> transform(state, "create list", buffer.create_empty_list)
     "l" -> transform(state, "create list", buffer.create_list)
     "@" -> choose_release(state)
-    "#" -> pick_any(state, "insert reference", buffer.insert_reference)
+    // TODO put back pick reference
+    // "#" -> pick_any(state, "insert reference", buffer.insert_reference)
     // choose release just checks is expression
     "Z" -> map_buffer(state, "redo", buffer.redo)
     "z" -> map_buffer(state, "undo", buffer.undo)
@@ -767,13 +775,13 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
               run(block.resume(value, env, k), occured, state)
             _ -> runner_stoped(state, occured, debug)
           }
-        break.UndefinedRelease(package:, release: version, cid:) ->
+        break.UndefinedRelease(package:, release: version, module:) ->
           case package, version {
             "./" <> name, 0 ->
               case dict.get(state.modules, #(name, EygJson)) {
                 Ok(buffer) -> {
                   let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  // echo buffer.cid(buffer) == cid
+                  // echo buffer.module(buffer) == module
                   // evaluate is for shell and expects a block and has effects
                   // evaluate(source,[])
                   let source = source |> tree.clear_annotation()
@@ -791,8 +799,8 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
             _, _ ->
               // These always return a value or an effect if working
               case dict.get(state.sync.cache.releases, #(package, version)) {
-                Ok(release) if release.cid == cid ->
-                  case dict.get(state.sync.cache.fragments, cid) {
+                Ok(release) if release.module == module ->
+                  case dict.get(state.sync.cache.fragments, module) {
                     Ok(cache.Fragment(value:, ..)) ->
                       run(block.resume(value, env, k), occured, state)
                     _ -> runner_stoped(state, occured, debug)
@@ -848,13 +856,13 @@ fn run_module(
               run_module(expression.resume(value, env, k), state)
             _ -> Error(debug)
           }
-        break.UndefinedRelease(package:, release: version, cid:) ->
+        break.UndefinedRelease(package:, release: version, module:) ->
           case package, version {
             "./" <> name, 0 ->
               case dict.get(state.modules, #(name, EygJson)) {
                 Ok(buffer) -> {
                   let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  // echo buffer.cid(buffer) == cid
+                  // echo buffer.module(buffer) == module
                   // evaluate is for shell and expects a block and has effects
                   // evaluate(source,[])
                   let source = source |> tree.clear_annotation()
@@ -869,8 +877,8 @@ fn run_module(
             _, _ ->
               // These always return a value or an effect if working
               case dict.get(state.sync.cache.releases, #(package, version)) {
-                Ok(release) if release.cid == cid ->
-                  case dict.get(state.sync.cache.fragments, cid) {
+                Ok(release) if release.module == module ->
+                  case dict.get(state.sync.cache.fragments, module) {
                     Ok(cache.Fragment(value:, ..)) ->
                       run_module(expression.resume(value, env, k), state)
                     _ -> Error(debug)
@@ -1148,9 +1156,9 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           case dict.get(state.sync.cache.packages, label) {
-            Ok(cache.Release(package_id:, version:, cid:, ..)) ->
+            Ok(cache.Release(package_id:, version:, module:, ..)) ->
               State(..state, mode: Editing)
-              |> replace_buffer(rebuild(#(package_id, version, cid), _))
+              |> replace_buffer(rebuild(#(package_id, version, module), _))
             Error(Nil) -> todo
           }
         }
@@ -1164,7 +1172,8 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           State(..state, mode: Editing)
-          |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
+          todo as "need vacant cid"
+          // |> replace_buffer(rebuild(#("./" <> label, 0, "./" <> label), _))
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }

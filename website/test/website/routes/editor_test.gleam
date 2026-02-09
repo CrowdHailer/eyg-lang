@@ -6,8 +6,10 @@ import gleam/option.{Some}
 import morph/analysis
 import morph/editable
 import morph/picker
+import multiformats/cid/v1
 import website/components/shell
 import website/components/snippet
+import website/helpers.{cid_from_tree} as _
 import website/routes/editor
 import website/routes/helpers
 import website/sync/client
@@ -20,7 +22,7 @@ pub fn initial_package_sync_test() {
   let assert [editor.SyncAction(client.SyncFrom(since: 0, ..))] = actions
 
   let source = ir.integer(100)
-  let assert Ok(cid1) = cid.from_tree(source)
+  let cid1 = cid_from_tree(source)
   let p1 = protocol.ReleasePublished("foo", 1, cid1)
   let response = server.pull_events_response([p1], 1)
 
@@ -65,11 +67,13 @@ pub fn run_anonymous_reference_test() {
   let assert snippet.Pick(picker.Typing(..), ..) = mode
 
   let source = ir.unit()
-  let assert Ok(cid) = cid.from_tree(source)
+  let cid = cid_from_tree(source)
 
   let message =
     editor.ShellMessage(
-      shell.CurrentMessage(snippet.MessageFromPicker(picker.Decided(cid))),
+      shell.CurrentMessage(
+        snippet.MessageFromPicker(picker.Decided(v1.to_string(cid))),
+      ),
     )
   let #(state, actions) = editor.update(state, message)
   let assert snippet.Editing(snippet.Command) = state.shell.source.status

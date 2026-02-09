@@ -9,6 +9,7 @@ import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import morph/analysis
+import multiformats/cid/v1
 import website/sync/protocol
 
 pub type Cache {
@@ -17,7 +18,7 @@ pub type Cache {
     packages: Dict(String, Release),
     // All releases
     releases: Dict(#(String, Int), Release),
-    fragments: Dict(String, Fragment),
+    fragments: Dict(v1.Cid, Fragment),
   )
 }
 
@@ -26,7 +27,7 @@ pub type Fragment {
 }
 
 pub type Release {
-  Release(package_id: String, version: Int, created_at: String, cid: String)
+  Release(package_id: String, version: Int, created_at: String, module: v1.Cid)
 }
 
 pub type Meta =
@@ -48,7 +49,7 @@ pub fn apply(cache: Cache, event: protocol.Payload) -> Cache {
   case event {
     protocol.ReleasePublished(package_id:, version:, fragment:) -> {
       let release =
-        Release(package_id:, version:, created_at: "todo", cid: fragment)
+        Release(package_id:, version:, created_at: "todo", module: fragment)
       let packages = dict.insert(cache.packages, package_id, release)
       let releases =
         dict.insert(cache.releases, #(package_id, version), release)
@@ -57,7 +58,7 @@ pub fn apply(cache: Cache, event: protocol.Payload) -> Cache {
   }
 }
 
-pub fn add(cache: Cache, cid: String, block: BitArray) {
+pub fn add(cache: Cache, cid: v1.Cid, block: BitArray) {
   let assert Ok(source) = dag_json.from_block(block)
   let inference = infer.pure() |> infer.check(source)
   let scope = []
@@ -73,17 +74,17 @@ pub fn add(cache: Cache, cid: String, block: BitArray) {
 pub fn run(return, cache, resume) {
   let Cache(releases:, fragments:, ..) = cache
   case return {
-    Error(#(break.UndefinedRelease(package, version, cid), _meta, env, k)) ->
+    Error(#(break.UndefinedRelease(package, version, module), _meta, env, k)) ->
       case dict.get(releases, #(package, version)) {
-        Ok(release) if release.cid == cid ->
-          case dict.get(fragments, cid) {
+        Ok(release) if release.module == module ->
+          case dict.get(fragments, module) {
             Ok(Fragment(value:, ..)) -> resume(value, env, k)
             _ -> return
           }
         _ -> return
       }
-    Error(#(break.UndefinedReference(cid), _meta, env, k)) ->
-      case dict.get(fragments, cid) {
+    Error(#(break.UndefinedReference(module), _meta, env, k)) ->
+      case dict.get(fragments, module) {
         Ok(Fragment(value:, ..)) -> resume(value, env, k)
         _ -> return
       }
@@ -177,10 +178,10 @@ pub fn type_map(cache) {
   do_type_map(fragments)
 }
 
-fn do_type_map(fragments) {
+fn do_type_map(fragments: Dict(v1.Cid, _)) {
   fragments
   |> dict.to_list()
-  |> list.map(fn(e: #(String, Fragment)) {
+  |> list.map(fn(e: #(v1.Cid, Fragment)) {
     let #(k, fragment) = e
     #(k, fragment.type_)
   })
@@ -192,7 +193,7 @@ pub fn package_index(cache) {
   // There is no order to this listing 
   dict.values(packages)
   |> list.map(fn(r) {
-    let Release(package_id: package, version:, cid: fragment, ..) = r
-    analysis.Release(package:, version:, fragment:)
+    let Release(package_id: package, version:, module:, ..) = r
+    analysis.Release(package:, version:, module:)
   })
 }

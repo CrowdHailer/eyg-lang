@@ -5,6 +5,7 @@ import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/list
 import lustre/effect
+import multiformats/cid/v1
 import spotless/origin
 import website/sync/cache
 import website/sync/protocol
@@ -25,7 +26,7 @@ pub type Status {
 /// this is easier than working with Option when we might want to compose output from multiple calls to the sync.client
 pub type Action {
   SyncFrom(origin: origin.Origin, since: Int)
-  FetchFragments(origin: origin.Origin, cids: List(String))
+  FetchFragments(origin: origin.Origin, cids: List(v1.Cid))
   Share(origin: origin.Origin, block: BitArray)
 }
 
@@ -70,7 +71,7 @@ pub fn share(client, source) {
 pub type Message {
   ReleasesFetched(Result(Response(BitArray), fetch.FetchError))
   FragmentFetched(
-    cid: String,
+    cid: v1.Cid,
     result: Result(Response(BitArray), fetch.FetchError),
   )
   FragmentShared(Result(Response(BitArray), fetch.FetchError))
@@ -178,7 +179,8 @@ fn do_run(task, dispatch: fn(Message) -> Nil) {
     FetchFragments(origin:, cids:) -> {
       promise.await_list(
         list.map(cids, fn(cid) {
-          let request = protocol.fetch_fragment_request(origin, cid)
+          let request =
+            protocol.fetch_fragment_request(origin, v1.to_string(cid))
           promise.map(fetch(request), fn(result) {
             dispatch(FragmentFetched(cid:, result:))
           })

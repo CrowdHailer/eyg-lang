@@ -12,14 +12,14 @@ import spotless/origin
 pub const release_published = "release_published"
 
 pub type Payload {
-  ReleasePublished(package_id: String, version: Int, fragment: String)
+  ReleasePublished(package_id: String, version: Int, fragment: v1.Cid)
 }
 
 pub fn payload_decoder() {
   use package_id <- decode.field("package_id", decode.string)
   use version <- decode.field("version", decode.int)
   use fragment <- decode.field("fragment", dag_json.decode_cid())
-  let assert Ok(fragment) = v1.to_string(fragment)
+
   decode.success(ReleasePublished(package_id:, version:, fragment:))
 }
 

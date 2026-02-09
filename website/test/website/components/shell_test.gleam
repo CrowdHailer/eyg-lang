@@ -10,6 +10,7 @@ import gleam/string
 import gleeunit/should
 import morph/editable as e
 import morph/input
+import multiformats/cid/v1
 import spotless/origin
 import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
@@ -269,7 +270,9 @@ pub fn foo_src() {
 }
 
 pub fn foo_cid() {
-  "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
+  let encoded = "baguqeera5ot4b6mgodu27ckwty7eyr25lsqjke44drztct4w7cwvs77vkmca"
+  let assert Ok(#(cid, _)) = v1.from_string(encoded)
+  cid
 }
 
 fn cache() -> cache.Cache {
@@ -284,7 +287,7 @@ pub fn run_a_reference_test() {
   |> command("#")
   |> pick_from(fn(options) {
     should.equal(options, [])
-    Ok(foo_cid())
+    Ok(foo_cid() |> v1.to_string)
   })
   |> command("g")
   |> pick_from(fn(options) {
@@ -301,7 +304,7 @@ pub fn run_a_late_reference_test() {
   |> command("#")
   |> pick_from(fn(options) {
     should.equal(options, [])
-    Ok(foo_cid())
+    Ok(foo_cid() |> v1.to_string)
   })
   |> command("g")
   |> pick_from(fn(options) {
