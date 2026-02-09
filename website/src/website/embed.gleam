@@ -1,22 +1,18 @@
 import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/int
-import gleam/io
 import gleam/javascript/array
-import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre
 import lustre/effect
-import midas/browser
 import morph/editable as e
 import plinth/browser/document
 import plinth/browser/element
 import plinth/javascript/console
 import website/components/snippet
-import website/harness/browser as harness
 import website/sync/cache
 
 pub fn run() {
@@ -33,11 +29,12 @@ pub fn run() {
     let id = "eyg" <> int.to_string(i)
     let json = element.inner_text(script)
 
-    element.insert_adjacent_html(
-      script,
-      element.AfterEnd,
-      "<div id=\"" <> id <> "\"></div>",
-    )
+    let assert Ok(_) =
+      element.insert_adjacent_html(
+        script,
+        element.AfterEnd,
+        "<div id=\"" <> id <> "\"></div>",
+      )
     let json = string.replace(json, "&quot;", "\"")
     let assert Ok(source) = dag_json.from_block(bit_array.from_string(json))
     // ORIGIN is not used when pulling from supabase
@@ -51,15 +48,11 @@ pub fn run() {
 }
 
 fn init(config) {
-  let #(source, cache) = config
+  let #(source, _cache) = config
   let source =
     e.from_annotated(source)
     |> e.open_all
-  let snippet =
-    snippet.init(
-      source,
-      // , [], effects(), cache
-    )
+  let snippet = snippet.init(source)
   #(snippet, effect.none())
 }
 
@@ -94,27 +87,4 @@ fn update(snippet, message) {
   }
   echo failure
   #(snippet, snippet_effect)
-}
-
-fn effects() {
-  harness.effects()
-  // |> list.append([
-  //   #(
-  //     netlify_deploy_site.l,
-  //     #(
-  //       netlify_deploy_site.lift(),
-  //       netlify_deploy_site.reply(),
-  //       netlify_deploy_site.blocking(netlify.local, _),
-  //     ),
-  //   ),
-  //   #(
-  //     tweet.l,
-  //     #(tweet.lift(), tweet.reply(), tweet.blocking(
-  //       twitter.client_id,
-  //       twitter.redirect_uri,
-  //       True,
-  //       _,
-  //     )),
-  //   ),
-  // ])
 }

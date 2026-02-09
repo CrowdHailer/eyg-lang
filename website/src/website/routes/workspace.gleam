@@ -3,6 +3,7 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
 import gleam/option.{Some}
+import gleam/result
 import gleam/string
 import lustre
 import lustre/attribute as a
@@ -151,12 +152,14 @@ fn run(action) {
           use #(_, files) <- promise.try_await(file_system.all_entries(handle))
           use results <- promise.await(
             promise.await_list(
-              list.map(array.to_list(files), fn(entry) {
+              list.filter_map(array.to_list(files), fn(entry) {
                 let name = file_system.name(entry)
-                let filename = case string.split_once(name, ".eyg.json") {
-                  Ok(#(name, "")) -> #(name, state.EygJson)
-                  _ -> todo
-                }
+                use filename <- result.map(
+                  case string.split_once(name, ".eyg.json") {
+                    Ok(#(name, "")) -> Ok(#(name, state.EygJson))
+                    _ -> Error(Nil)
+                  },
+                )
 
                 use file <- promise.await(file_system.get_file(entry))
                 let assert Ok(file) = file
@@ -242,8 +245,7 @@ fn run_effect(effect) {
 fn show_save_directory_picker() -> promise.Promise(
   Result(file_system.Handle(file_system.D), String),
 )
-
-@external(javascript, "../../website_ffi.mjs", "get_persisted_directory")
-fn get_persisted_directory() -> promise.Promise(
-  Result(file_system.Handle(file_system.D), String),
-)
+// @external(javascript, "../../website_ffi.mjs", "get_persisted_directory")
+// fn get_persisted_directory() -> promise.Promise(
+//   Result(file_system.Handle(file_system.D), String),
+// )
