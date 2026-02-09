@@ -1,31 +1,11 @@
-import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import lustre/event
 
 const secondary_button_classes = "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 
 fn header_link(target, text) {
   h.a([a.class(secondary_button_classes), a.href(target)], [element.text(text)])
-}
-
-fn header_button(event, text) {
-  h.button([a.class(secondary_button_classes), event.on_click(event)], [
-    element.text(text),
-  ])
-}
-
-fn action_button(event, text) {
-  h.button(
-    [
-      a.class(
-        "inline-block py-2 px-3 rounded-xl text-white font-bold bg-gray-900 border-2 border-gray-900 whitespace-nowrap",
-      ),
-      event.on_click(event),
-    ],
-    [element.text(text)],
-  )
 }
 
 pub fn header() {
