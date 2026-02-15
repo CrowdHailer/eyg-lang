@@ -6,11 +6,11 @@
 
 "Eat Your Greens" is a reference to the idea that eating vegetables is good for you, however the benefit is only realised at some later time.
 
-Projects in this repo introduce extra contraints, over regular programming languages and tools. By doing so more guarantees about the system can be given.
+Projects in this repo introduce extra constraints over regular programming languages and tools. By doing so, more guarantees about the system can be given.
 
 For example; EYG the language has only managed effects which gives the guarantee a program will never crash.
 
-I have experimented with this priciple to build actor systems, datalog engines and others.
+I have experimented with this principle to build actor systems, datalog engines and others.
 For more context on these experiments you can view my devlog, short videos of experiments as they develop https://petersaxton.uk/log/.
 
 However most work in this repository is now focused on EYG the language.
