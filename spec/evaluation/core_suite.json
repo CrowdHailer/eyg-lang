@@ -1,0 +1,755 @@
+[
+  {
+    "name": "missing variable",
+    "source": {
+      "0": "v",
+      "l": "x"
+    },
+    "break": {
+      "UndefinedVariable": "x"
+    }
+  },
+  {
+    "name": "incomplete code",
+    "source": {
+      "0": "z"
+    },
+    "break": {
+      "NotImplemented": ""
+    }
+  },
+  {
+    "name": "binary primitive",
+    "source": {
+      "0": "x",
+      "v": {
+        "/": {
+          "bytes": "AQ"
+        }
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": "AQ"
+        }
+      }
+    }
+  },
+  {
+    "name": "empty binary",
+    "source": {
+      "0": "x",
+      "v": {
+        "/": {
+          "bytes": ""
+        }
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "integer primitive",
+    "source": {
+      "0": "i",
+      "v": 42
+    },
+    "value": {
+      "integer": 42
+    }
+  },
+  {
+    "name": "empty string",
+    "source": {
+      "0": "s",
+      "v": "hello"
+    },
+    "value": {
+      "string": "hello"
+    }
+  },
+  {
+    "name": "empty list",
+    "source": {
+      "0": "ta"
+    },
+    "value": {
+      "list": []
+    }
+  },
+  {
+    "name": "list",
+    "source": {
+      "0": "a",
+      "f": {
+        "0": "a",
+        "f": {
+          "0": "c"
+        },
+        "a": {
+          "0": "i",
+          "v": 101
+        }
+      },
+      "a": {
+        "0": "a",
+        "f": {
+          "0": "a",
+          "f": {
+            "0": "c"
+          },
+          "a": {
+            "0": "i",
+            "v": 102
+          }
+        },
+        "a": {
+          "0": "ta"
+        }
+      }
+    },
+    "value": {
+      "list": [
+        {
+          "integer": 101
+        },
+        {
+          "integer": 102
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty record",
+    "source": {
+      "0": "u"
+    },
+    "value": {
+      "record": {}
+    }
+  },
+  {
+    "name": "select first",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "u"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "s",
+              "v": "Burnley"
+            },
+            "f": {
+              "0": "e",
+              "l": "place"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Alice"
+          },
+          "f": {
+            "0": "e",
+            "l": "name"
+          }
+        }
+      },
+      "f": {
+        "0": "g",
+        "l": "name"
+      }
+    },
+    "value": {
+      "string": "Alice"
+    }
+  },
+  {
+    "name": "select second",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "u"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "s",
+              "v": "Burnley"
+            },
+            "f": {
+              "0": "e",
+              "l": "place"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Alice"
+          },
+          "f": {
+            "0": "e",
+            "l": "name"
+          }
+        }
+      },
+      "f": {
+        "0": "g",
+        "l": "place"
+      }
+    },
+    "value": {
+      "string": "Burnley"
+    }
+  },
+  {
+    "name": "overwrite first",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "u"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "s",
+              "v": "Burnley"
+            },
+            "f": {
+              "0": "e",
+              "l": "place"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Alice"
+          },
+          "f": {
+            "0": "e",
+            "l": "person"
+          }
+        }
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "new"
+        },
+        "f": {
+          "0": "o",
+          "l": "person"
+        }
+      }
+    },
+    "value": {
+      "record": {
+        "person": {
+          "string": "new"
+        },
+        "place": {
+          "string": "Burnley"
+        }
+      }
+    }
+  },
+  {
+    "name": "overwrite second",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "u"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "s",
+              "v": "Burnley"
+            },
+            "f": {
+              "0": "e",
+              "l": "place"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Alice"
+          },
+          "f": {
+            "0": "e",
+            "l": "person"
+          }
+        }
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "new"
+        },
+        "f": {
+          "0": "o",
+          "l": "place"
+        }
+      }
+    },
+    "value": {
+      "record": {
+        "person": {
+          "string": "Alice"
+        },
+        "place": {
+          "string": "new"
+        }
+      }
+    }
+  },
+  {
+    "name": "match first",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "good"
+        },
+        "f": {
+          "0": "t",
+          "l": "Ok"
+        }
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "n"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "f",
+              "b": {
+                "0": "v",
+                "l": "reason"
+              },
+              "l": "reason"
+            },
+            "f": {
+              "0": "m",
+              "l": "Error"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "value"
+            },
+            "l": "value"
+          },
+          "f": {
+            "0": "m",
+            "l": "Ok"
+          }
+        }
+      }
+    },
+    "value": {
+      "string": "good"
+    }
+  },
+  {
+    "name": "match second",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "u"
+        },
+        "f": {
+          "0": "t",
+          "l": "Error"
+        }
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "n"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "f",
+              "b": {
+                "0": "v",
+                "l": "reason"
+              },
+              "l": "reason"
+            },
+            "f": {
+              "0": "m",
+              "l": "Error"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "value"
+            },
+            "l": "value"
+          },
+          "f": {
+            "0": "m",
+            "l": "Ok"
+          }
+        }
+      }
+    },
+    "value": {
+      "record": {}
+    }
+  },
+  {
+    "name": "match otherwise",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 255
+        },
+        "f": {
+          "0": "t",
+          "l": "Green"
+        }
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "v",
+            "l": "other"
+          },
+          "l": "other"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "value"
+            },
+            "l": "value"
+          },
+          "f": {
+            "0": "m",
+            "l": "Red"
+          }
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Green",
+        "value": {
+          "integer": 255
+        }
+      }
+    }
+  },
+  {
+    "name": "let assignment",
+    "source": {
+      "0": "l",
+      "l": "assigned",
+      "t": {
+        "0": "v",
+        "l": "assigned"
+      },
+      "v": {
+        "0": "i",
+        "v": 10
+      }
+    },
+    "value": {
+      "integer": 10
+    }
+  },
+  {
+    "name": "let shadowing",
+    "source": {
+      "0": "l",
+      "l": "shadowed",
+      "t": {
+        "0": "l",
+        "l": "shadowed",
+        "t": {
+          "0": "v",
+          "l": "shadowed"
+        },
+        "v": {
+          "0": "i",
+          "v": 8
+        }
+      },
+      "v": {
+        "0": "i",
+        "v": 7
+      }
+    },
+    "value": {
+      "integer": 8
+    }
+  },
+  {
+    "name": "nested let",
+    "source": {
+      "0": "l",
+      "l": "a",
+      "t": {
+        "0": "v",
+        "l": "a"
+      },
+      "v": {
+        "0": "l",
+        "l": "a",
+        "t": {
+          "0": "i",
+          "v": 147
+        },
+        "v": {
+          "0": "i",
+          "v": 35
+        }
+      }
+    },
+    "value": {
+      "integer": 147
+    }
+  },
+  {
+    "name": "identity function",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 107
+      },
+      "f": {
+        "0": "f",
+        "b": {
+          "0": "v",
+          "l": "x"
+        },
+        "l": "x"
+      }
+    },
+    "value": {
+      "integer": 107
+    }
+  },
+  {
+    "name": "ignore function parameter",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 101
+      },
+      "f": {
+        "0": "f",
+        "b": {
+          "0": "s",
+          "v": "body"
+        },
+        "l": "x"
+      }
+    },
+    "value": {
+      "string": "body"
+    }
+  },
+  {
+    "name": "multi parameter function",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 22
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 21
+        },
+        "f": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "y"
+            },
+            "l": "y"
+          },
+          "l": "x"
+        }
+      }
+    },
+    "value": {
+      "integer": 22
+    }
+  },
+  {
+    "name": "environment capture",
+    "source": {
+      "0": "l",
+      "l": "a",
+      "v": {
+        "0": "i",
+        "v": 1
+      },
+      "t": {
+        "0": "l",
+        "l": "f",
+        "v": {
+          "0": "f",
+          "l": "_",
+          "b": {
+            "0": "v",
+            "l": "a"
+          }
+        },
+        "t": {
+          "0": "l",
+          "l": "a",
+          "v": {
+            "0": "i",
+            "v": 2
+          },
+          "t": {
+            "0": "a",
+            "f": {
+              "0": "v",
+              "l": "f"
+            },
+            "a": {
+              "0": "u"
+            }
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 1
+    }
+  },
+  {
+    "name": "function variable is contained",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "v",
+        "l": "inner"
+      },
+      "f": {
+        "0": "f",
+        "b": {
+          "0": "u"
+        },
+        "l": "inner"
+      }
+    },
+    "break": {
+      "UndefinedVariable": "inner"
+    }
+  },
+  {
+    "name": "param in scope",
+    "source": {
+      "0": "l",
+      "l": "a",
+      "v": {
+        "0": "i",
+        "v": 1
+      },
+      "t": {
+        "0": "l",
+        "l": "f",
+        "v": {
+          "0": "f",
+          "l": "a",
+          "b": {
+            "0": "v",
+            "l": "a"
+          }
+        },
+        "t": {
+          "0": "a",
+          "f": {
+            "0": "v",
+            "l": "f"
+          },
+          "a": {
+            "0": "i",
+            "v": 2
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 2
+    }
+    
+  }
+]

@@ -1,0 +1,1858 @@
+[
+  {
+    "name": "missing builtin",
+    "source": {
+      "0": "b",
+      "l": "not_a_real_builtin"
+    },
+    "break": {
+      "UndefinedBuiltin": "not_a_real_builtin"
+    }
+  },
+  {
+    "name": "equal values",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 19
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 19
+        },
+        "f": {
+          "0": "b",
+          "l": "equal"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "True",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "unequal values",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 19
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 99
+        },
+        "f": {
+          "0": "b",
+          "l": "equal"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "False",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "fix not recursive no argument",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "i",
+          "v": 8
+        },
+        "l": "self"
+      },
+      "f": {
+        "0": "b",
+        "l": "fix"
+      }
+    },
+    "value": {
+      "integer": 8
+    }
+  },
+  {
+    "name": "fix but not recursive",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 55
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "x"
+            },
+            "l": "x"
+          },
+          "l": "self"
+        },
+        "f": {
+          "0": "b",
+          "l": "fix"
+        }
+      }
+    },
+    "value": {
+      "integer": 55
+    }
+  },
+  {
+    "name": "fix for recursive factorial fn",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 6
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "a",
+              "a": {
+                "0": "a",
+                "a": {
+                  "0": "i",
+                  "v": 0
+                },
+                "f": {
+                  "0": "a",
+                  "a": {
+                    "0": "v",
+                    "l": "n"
+                  },
+                  "f": {
+                    "0": "b",
+                    "l": "int_compare"
+                  }
+                }
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "f",
+                  "b": {
+                    "0": "i",
+                    "v": 1
+                  },
+                  "l": "_"
+                },
+                "f": {
+                  "0": "a",
+                  "a": {
+                    "0": "f",
+                    "b": {
+                      "0": "a",
+                      "a": {
+                        "0": "a",
+                        "a": {
+                          "0": "a",
+                          "a": {
+                            "0": "i",
+                            "v": 1
+                          },
+                          "f": {
+                            "0": "a",
+                            "a": {
+                              "0": "v",
+                              "l": "n"
+                            },
+                            "f": {
+                              "0": "b",
+                              "l": "int_subtract"
+                            }
+                          }
+                        },
+                        "f": {
+                          "0": "v",
+                          "l": "fact"
+                        }
+                      },
+                      "f": {
+                        "0": "a",
+                        "a": {
+                          "0": "v",
+                          "l": "n"
+                        },
+                        "f": {
+                          "0": "b",
+                          "l": "int_multiply"
+                        }
+                      }
+                    },
+                    "l": "_"
+                  },
+                  "f": {
+                    "0": "m",
+                    "l": "Gt"
+                  }
+                }
+              }
+            },
+            "l": "n"
+          },
+          "l": "fact"
+        },
+        "f": {
+          "0": "b",
+          "l": "fix"
+        }
+      }
+    },
+    "value": {
+      "integer": 720
+    }
+  },
+  {
+    "name": "integer comparison equal",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 1
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 1
+        },
+        "f": {
+          "0": "b",
+          "l": "int_compare"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Eq",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "integer comparison equal",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 1
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 10
+        },
+        "f": {
+          "0": "b",
+          "l": "int_compare"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Gt",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "integer comparison equal",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 2
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 1
+        },
+        "f": {
+          "0": "b",
+          "l": "int_compare"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Lt",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "integer addition",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 9
+        },
+        "f": {
+          "0": "b",
+          "l": "int_add"
+        }
+      }
+    },
+    "value": {
+      "integer": 14
+    }
+  },
+  {
+    "name": "integer add zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "b",
+          "l": "int_add"
+        }
+      }
+    },
+    "value": {
+      "integer": 5
+    }
+  },
+  {
+    "name": "integer subtract",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 9
+        },
+        "f": {
+          "0": "b",
+          "l": "int_subtract"
+        }
+      }
+    },
+    "value": {
+      "integer": 4
+    }
+  },
+  {
+    "name": "integer subtract from zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 7
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "b",
+          "l": "int_subtract"
+        }
+      }
+    },
+    "value": {
+      "integer": -7
+    }
+  },
+  {
+    "name": "integer multiply",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 9
+        },
+        "f": {
+          "0": "b",
+          "l": "int_multiply"
+        }
+      }
+    },
+    "value": {
+      "integer": 45
+    }
+  },
+  {
+    "name": "integer multiple with zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 7
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "b",
+          "l": "int_multiply"
+        }
+      }
+    },
+    "value": {
+      "integer": 0
+    }
+  },
+  {
+    "name": "integer division",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 2
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 8
+        },
+        "f": {
+          "0": "b",
+          "l": "int_divide"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "integer": 4
+        }
+      }
+    }
+  },
+  {
+    "name": "integer division rounds down",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 3
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 8
+        },
+        "f": {
+          "0": "b",
+          "l": "int_divide"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "integer": 2
+        }
+      }
+    }
+  },
+  {
+    "name": "integer division with zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 0
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 8
+        },
+        "f": {
+          "0": "b",
+          "l": "int_divide"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "absolute value",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": -11
+      },
+      "f": {
+        "0": "b",
+        "l": "int_absolute"
+      }
+    },
+    "value": {
+      "integer": 11
+    }
+  },
+  {
+    "name": "absolute value no change",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 13
+      },
+      "f": {
+        "0": "b",
+        "l": "int_absolute"
+      }
+    },
+    "value": {
+      "integer": 13
+    }
+  },
+  {
+    "name": "zero to string",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 0
+      },
+      "f": {
+        "0": "b",
+        "l": "int_to_string"
+      }
+    },
+    "value": {
+      "string": "0"
+    }
+  },
+  {
+    "name": "parse negative integer",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "-10"
+      },
+      "f": {
+        "0": "b",
+        "l": "int_parse"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "integer": -10
+        }
+      }
+    }
+  },
+  {
+    "name": "parse fails for extra",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "2 "
+      },
+      "f": {
+        "0": "b",
+        "l": "int_parse"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "parse fails for float",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "2.0"
+      },
+      "f": {
+        "0": "b",
+        "l": "int_parse"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "large integer to string",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 1000000
+      },
+      "f": {
+        "0": "b",
+        "l": "int_to_string"
+      }
+    },
+    "value": {
+      "string": "1000000"
+    }
+  },
+  {
+    "name": "negative integer to string",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": -77
+      },
+      "f": {
+        "0": "b",
+        "l": "int_to_string"
+      }
+    },
+    "value": {
+      "string": "-77"
+    }
+  },
+  {
+    "name": "string append",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "buzz"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "fizz"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_append"
+        }
+      }
+    },
+    "value": {
+      "string": "fizzbuzz"
+    }
+  },
+  {
+    "name": "string append empty strings",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": ""
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": ""
+        },
+        "f": {
+          "0": "b",
+          "l": "string_append"
+        }
+      }
+    },
+    "value": {
+      "string": ""
+    }
+  },
+  {
+    "name": "string split",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "bc"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "abc"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_split"
+        }
+      }
+    },
+    "value": {
+      "record": {
+        "head": {
+          "string": "a"
+        },
+        "tail": {
+          "list": [
+            {
+              "string": ""
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "string split not at all",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "xy"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "abc"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_split"
+        }
+      }
+    },
+    "value": {
+      "record": {
+        "head": {
+          "string": "abc"
+        },
+        "tail": {
+          "list": []
+        }
+      }
+    }
+  },
+  {
+    "name": "string split on empty strings",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": ""
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "abc"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_split"
+        }
+      }
+    },
+    "value": {
+      "record": {
+        "head": {
+          "string": "a"
+        },
+        "tail": {
+          "list": [
+            {
+              "string": "b"
+            },
+            {
+              "string": "c"
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "string split once",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": ","
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "a,b,c"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_split_once"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "record": {
+            "pre": {
+              "string": "a"
+            },
+            "post": {
+              "string": "b,c"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "string split once, no split",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "x"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "abc"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_split_once"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "string split once empty string",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": ""
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "abc"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_split_once"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "record": {
+            "pre": {
+              "string": ""
+            },
+            "post": {
+              "string": "abc"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "string replace",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "aa"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "e"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Hey there"
+          },
+          "f": {
+            "0": "b",
+            "l": "string_replace"
+          }
+        }
+      }
+    },
+    "value": {
+      "string": "Haay thaaraa"
+    }
+  },
+  {
+    "name": "string replace blank",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "aa"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": ""
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "Go"
+          },
+          "f": {
+            "0": "b",
+            "l": "string_replace"
+          }
+        }
+      }
+    },
+    "value": {
+      "string": "aaGaaoaa"
+    }
+  },
+  {
+    "name": "string uppercase",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "what"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_uppercase"
+      }
+    },
+    "value": {
+      "string": "WHAT"
+    }
+  },
+  {
+    "name": "string lowercase",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "SSH"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_lowercase"
+      }
+    },
+    "value": {
+      "string": "ssh"
+    }
+  },
+  {
+    "name": "string starts with fail",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "y"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "Why"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_starts_with"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "False",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "string starts with",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "Why"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "Why"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_starts_with"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "True",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "string ends with fail",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "T"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "Why"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_ends_with"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "False",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "string ends with",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "y"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "Why"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_ends_with"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "True",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "string length",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "four"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_length"
+      }
+    },
+    "value": {
+      "integer": 4
+    }
+  },
+  {
+    "name": "string length grapheme",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "ß↑e̊"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_length"
+      }
+    },
+    "value": {
+      "integer": 3
+    }
+  },
+  {
+    "name": "string to binary",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "bits"
+      },
+      "f": {
+        "0": "b",
+        "l": "string_to_binary"
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": "Yml0cw"
+        }
+      }
+    }
+  },
+  {
+    "name": "string to binary, empty string",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": ""
+      },
+      "f": {
+        "0": "b",
+        "l": "string_to_binary"
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "string from binary",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "x",
+        "v": {
+          "/": {
+            "bytes": "Yml0cw"
+          }
+        }
+      },
+      "f": {
+        "0": "b",
+        "l": "string_from_binary"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "string": "bits"
+        }
+      }
+    }
+  },
+  {
+    "name": "string from binary, empty string",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "x",
+        "v": {
+          "/": {
+            "bytes": ""
+          }
+        }
+      },
+      "f": {
+        "0": "b",
+        "l": "string_from_binary"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "string": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "string from binary, invalid bytes",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "x",
+        "v": {
+          "/": {
+            "bytes": "/w"
+          }
+        }
+      },
+      "f": {
+        "0": "b",
+        "l": "string_from_binary"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "binary from integers",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "ta"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "i",
+              "v": 10
+            },
+            "f": {
+              "0": "c"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "i",
+            "v": 1
+          },
+          "f": {
+            "0": "c"
+          }
+        }
+      },
+      "f": {
+        "0": "b",
+        "l": "binary_from_integers"
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": "AQo"
+        }
+      }
+    }
+  },
+  {
+    "name": "binary from integers, empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "ta"
+      },
+      "f": {
+        "0": "b",
+        "l": "binary_from_integers"
+      }
+    },
+    "value": {
+      "binary": {
+        "/": {
+          "bytes": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "binary fold, empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "b",
+        "l": "int_add"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "x",
+            "v": {
+              "/": {
+                "bytes": "AQo"
+              }
+            }
+          },
+          "f": {
+            "0": "b",
+            "l": "binary_fold"
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 11
+    }
+  },
+  {
+    "name": "binary fold, empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "b",
+        "l": "int_add"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "x",
+            "v": {
+              "/": {
+                "bytes": ""
+              }
+            }
+          },
+          "f": {
+            "0": "b",
+            "l": "binary_fold"
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 0
+    }
+  },
+  {
+    "name": "pop from empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "ta"
+      },
+      "f": {
+        "0": "b",
+        "l": "list_pop"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "pop from list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "a",
+          "a": {
+            "0": "ta"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "i",
+              "v": 2
+            },
+            "f": {
+              "0": "c"
+            }
+          }
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "i",
+            "v": 1
+          },
+          "f": {
+            "0": "c"
+          }
+        }
+      },
+      "f": {
+        "0": "b",
+        "l": "list_pop"
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "Ok",
+        "value": {
+          "record": {
+            "head": {
+              "integer": 1
+            },
+            "tail": {
+              "list": [
+                {
+                  "integer": 2
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "fold a list with builtin",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "b",
+        "l": "int_add"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 2
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "a",
+            "a": {
+              "0": "a",
+              "a": {
+                "0": "ta"
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "i",
+                  "v": 7
+                },
+                "f": {
+                  "0": "c"
+                }
+              }
+            },
+            "f": {
+              "0": "a",
+              "a": {
+                "0": "i",
+                "v": 3
+              },
+              "f": {
+                "0": "c"
+              }
+            }
+          },
+          "f": {
+            "0": "b",
+            "l": "list_fold"
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 12
+    }
+  },
+  {
+    "name": "fold over an empty list",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "b",
+        "l": "int_add"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "ta"
+          },
+          "f": {
+            "0": "b",
+            "l": "list_fold"
+          }
+        }
+      }
+    },
+    "value": {
+      "integer": 0
+    }
+  },
+  {
+    "name": "env is correctly passed to a builtin",
+    "source": {
+      "0": "l",
+      "l": "always",
+      "t": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "always"
+            },
+            "l": "elem"
+          },
+          "l": "acc"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "start"
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "a",
+              "a": {
+                "0": "ta"
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "i",
+                  "v": 1
+                },
+                "f": {
+                  "0": "c"
+                }
+              }
+            },
+            "f": {
+              "0": "b",
+              "l": "list_fold"
+            }
+          }
+        }
+      },
+      "v": {
+        "0": "s",
+        "v": "smile"
+      }
+    },
+    "value": {
+      "string": "smile"
+    }
+  },
+  {
+    "name": "effects are used correctly in builtin",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "f",
+          "b": {
+            "0": "a",
+            "a": {
+              "0": "a",
+              "a": {
+                "0": "v",
+                "l": "elem"
+              },
+              "f": {
+                "0": "p",
+                "l": "Ask"
+              }
+            },
+            "f": {
+              "0": "a",
+              "a": {
+                "0": "v",
+                "l": "acc"
+              },
+              "f": {
+                "0": "b",
+                "l": "string_append"
+              }
+            }
+          },
+          "l": "acc"
+        },
+        "l": "elem"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": ""
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "a",
+            "a": {
+              "0": "a",
+              "a": {
+                "0": "ta"
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "i",
+                  "v": 2
+                },
+                "f": {
+                  "0": "c"
+                }
+              }
+            },
+            "f": {
+              "0": "a",
+              "a": {
+                "0": "i",
+                "v": 1
+              },
+              "f": {
+                "0": "c"
+              }
+            }
+          },
+          "f": {
+            "0": "b",
+            "l": "list_fold"
+          }
+        }
+      }
+    },
+    "effects": [
+      {
+        "label": "Ask",
+        "lift": {
+          "integer": 1
+        },
+        "reply": {
+          "string": "hi,"
+        }
+      },
+      {
+        "label": "Ask",
+        "lift": {
+          "integer": 2
+        },
+        "reply": {
+          "string": " wurld!"
+        }
+      }
+    ],
+    "value": {
+      "string": "hi, wurld!"
+    }
+  },
+  {
+    "name": "env does not escape a builtin",
+    "source": {
+      "0": "l",
+      "l": "total",
+      "t": {
+        "0": "v",
+        "l": "acc"
+      },
+      "v": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "v",
+              "l": "acc"
+            },
+            "l": "acc"
+          },
+          "l": "elem"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": ""
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "a",
+              "a": {
+                "0": "a",
+                "a": {
+                  "0": "ta"
+                },
+                "f": {
+                  "0": "a",
+                  "a": {
+                    "0": "i",
+                    "v": 2
+                  },
+                  "f": {
+                    "0": "c"
+                  }
+                }
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "i",
+                  "v": 1
+                },
+                "f": {
+                  "0": "c"
+                }
+              }
+            },
+            "f": {
+              "0": "b",
+              "l": "list_fold"
+            }
+          }
+        }
+      }
+    },
+    "break": {
+      "UndefinedVariable": "acc"
+    }
+  }
+]
