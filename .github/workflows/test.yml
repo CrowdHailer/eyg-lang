@@ -14,7 +14,7 @@ jobs:
         gleam: ["1.14", "1.15.2"]
         otp: ["28.3", "28.4"]
         rebar3: ["3.25"]
-        package: ["gleam_ir"]
+        package: ["gleam_ir", "gleam_parser"]
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -37,9 +37,9 @@ jobs:
       fail-fast: false
       matrix:
         gleam: ["1.15.2"]
-        otp: ["28.3", "28.4"]
+        otp: ["28.4"]
         bun: ["1.3.10", "1.3.9"]
-        package: ["gleam_ir", "gleam_interpreter"]
+        package: ["gleam_ir", "gleam_interpreter","gleam_parser"]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -52,7 +52,7 @@ jobs:
       - run: gleam deps download
         shell: bash # Required for git deps
         working-directory: packages/${{matrix.package}}
-      - run: gleam build --warnings-as-errors
+      - run: gleam build --target javascript --warnings-as-errors
         working-directory: packages/${{matrix.package}}
       - run: gleam test --target javascript --runtime bun
         working-directory: packages/${{matrix.package}}

@@ -1,0 +1,16 @@
+name = "eyg_parser"
+version = "0.1.0"
+
+description = "A JavaScript inspired textual syntax for EYG."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang" }
+links = [{ title = "Website", href = "https://eyg.run" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+# https://github.com/gleam-lang/gleam/issues/4556
+eyg_ir = {path= "../gleam_ir"}
+multiformats = ">= 4.0.0 and < 5.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
