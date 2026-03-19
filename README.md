@@ -9,6 +9,7 @@ The intermediate representation (IR) of EYG is a minimal tree and is the stable 
 
 - [spec](./spec) A JSON spec of all evaluation rules. Compiler and interpreter implementations should use this as their test suite.
 - [gleam_ir](./packages/gleam_ir) Data structures for the EYG IR. This is the original implementation of EYG.
+- [gleam_interpreter](./packages/gleam_interpreter) A Gleam interpreter for EYG targeting JavaScript. Runs in the browser and on the server.
 
 ## Philosophy
 
