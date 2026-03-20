@@ -4,12 +4,12 @@ target = "javascript"
 
 description = "EYG interpreter for the JavaScript runtime for server and browser."
 licences = ["Apache-2.0"]
-repository = { type = "github", user = "crowdhailer", repo = "eyg-lang" }
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/gleam_interpreter", tag_prefix = "gleam_interpreter-" }
 links = [{ title = "Website", href = "https://eyg.run" }]
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-eyg_ir = {path = "../gleam_ir"}
+eyg_ir = ">= 1.0.0 and < 2.0.0"
 gleam_javascript = ">= 0.13.0 and < 2.0.0"
 gleam_json = ">= 3.0.2 and < 4.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"

@@ -4,7 +4,7 @@ target = "javascript"
 
 description = "Data structures for the EYG IR"
 licences = ["Apache-2.0"]
-repository = { type = "github", user = "crowdhailer", repo = "eyg-lang" }
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/gleam_ir", tag_prefix = "gleam_ir-" }
 links = [{ title = "Website", href = "https://eyg.run" }]
 
 [dependencies]
