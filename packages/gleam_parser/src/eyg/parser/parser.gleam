@@ -541,3 +541,15 @@ fn pop(tokens) {
     [] -> Error(UnexpectEnd)
   }
 }
+
+pub fn describe_reason(reason) {
+  case reason {
+    UnexpectedToken(token:, position:) -> {
+      "unexpected token '"
+      <> t.to_string(token)
+      <> "' at position: "
+      <> int.to_string(position)
+    }
+    UnexpectEnd -> "Unexpected end of program"
+  }
+}
