@@ -83,7 +83,7 @@ pub fn as_varient(value, decoders) {
   case list.key_find(decoders, tag) {
     Ok(decoder) -> decoder(inner)
     Error(Nil) ->
-      Error(break.IncorrectTerm("Variant bbetter error needed", value))
+      Error(break.IncorrectTerm("Variant better error needed", value))
   }
 }
 

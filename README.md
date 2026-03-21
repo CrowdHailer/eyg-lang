@@ -11,6 +11,7 @@ The intermediate representation (IR) of EYG is a minimal tree and is the stable 
 - [gleam_ir](./packages/gleam_ir/) Data structures for the EYG IR. This is the original implementation of EYG.
 - [gleam_interpreter](./packages/gleam_interpreter/) A Gleam interpreter for EYG targeting JavaScript. Runs in the browser and on the server.
 - [gleam_parser](./packages/gleam_parser/) Parser for a curly braces syntax for EYG IR.
+- [touch_grass](./packages/touch_grass/) Common effect definitions (types, decoders and encoders) for your Eat Your Greens (EYG) runtime.
 
 ## Philosophy
 

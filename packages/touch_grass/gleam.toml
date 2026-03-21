@@ -1,0 +1,17 @@
+name = "touch_grass"
+version = "0.1.0"
+
+description = "Common effect types, decoders and encoders for your Eat Your Greens (EYG) runtime."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/touch_grass", tag_prefix = "touch_grass-" }
+links = [{ title = "Website", href = "https://eyg.run" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+gleam_http = ">= 4.3.0 and < 5.0.0"
+eyg_interpreter = ">= 1.1.0 and < 2.0.0"
+julienne = ">= 1.0.0 and < 2.0.0"
+ogre = ">= 1.0.0 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

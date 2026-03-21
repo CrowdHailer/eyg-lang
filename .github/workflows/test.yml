@@ -11,10 +11,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gleam: ["1.14", "1.15.2"]
-        otp: ["28.3", "28.4"]
+        gleam: ["1.15.2"]
+        otp: ["28.4"]
         rebar3: ["3.25"]
-        package: ["gleam_ir", "gleam_parser"]
+        package: ["gleam_ir", "gleam_parser", "touch_grass"]
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -38,8 +38,8 @@ jobs:
       matrix:
         gleam: ["1.15.2"]
         otp: ["28.4"]
-        bun: ["1.3.10", "1.3.9"]
-        package: ["gleam_ir", "gleam_interpreter","gleam_parser"]
+        bun: ["1.3.10",]
+        package: ["gleam_ir", "gleam_interpreter", "gleam_parser", "touch_grass"]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
