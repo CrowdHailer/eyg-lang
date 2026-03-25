@@ -69,6 +69,10 @@ make lint    # cargo clippy --workspace -- -D warnings
 
 Tests cover:
 - **evaluation_suite** — shared spec suites from `spec/evaluation/` (core, builtins, effects)
-- **ir_suite** — IR round-trip from `spec/ir_suite.json`
-- **builtin_tests** — unit tests for built-in functions
-- **cli_tests** — end-to-end CLI integration tests
+- **ir_suite** — shared spec suites for IR deserialization from `spec/ir_suite.json`
+- **behavior_tests** — end-to-end success scenarios for core language features (closures, records, etc.)
+- **error_tests** — failure scenarios and error message quality
+- **serialization_tests** — round-trip and invariant tests for IR and Value JSON
+- **api_tests** — unit tests for the public Rust API (`expression::call`)
+- **builtin_tests** — low-level unit tests for built-in functions
+- **cli_tests** — end-to-end CLI behavior tests
