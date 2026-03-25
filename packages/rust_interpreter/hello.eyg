@@ -1,0 +1,4 @@
+let _ = perform Log("Hello, World!")
+let x = 5
+let y = 7
+!int_add(x,y)

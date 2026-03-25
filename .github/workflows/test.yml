@@ -58,3 +58,13 @@ jobs:
         working-directory: packages/${{matrix.package}}
       - run: gleam format --check src test
         working-directory: packages/${{matrix.package}}
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --workspace
+        working-directory: packages/rust_interpreter
+      - run: cargo clippy --workspace -- -D warnings
+        working-directory: packages/rust_interpreter
+
