@@ -64,55 +64,39 @@ fn load_effects(path: &str) -> Vec<EffectHandler> {
 /// Execute a node, handling Log effects automatically and explicit effect handlers.
 fn run(node: Node, effect_handlers: &[EffectHandler]) {
     let mut result = expression::execute(node, im::Vector::new());
+    let mut handler_idx = 0;
 
-    for handler in effect_handlers {
-        match &result {
-            Err(debug) => {
-                let (reason, _meta, env, stack) = &**debug;
-                match reason {
-                    BreakReason::UnhandledEffect(label, _lift_value) => {
-                        if label != &handler.label {
-                            eprintln!(
-                                "Error: Expected effect '{}', but got '{}'",
-                                handler.label, label
-                            );
-                            process::exit(1);
-                        }
-                        let reply = Rc::new(value_json::deserialize_value(&handler.reply));
-                        result = expression::resume(reply, env.clone(), stack.clone());
-                    }
-                    _ => {
-                        eprintln!("Error: Expected UnhandledEffect, got: {}", reason);
-                        process::exit(1);
-                    }
-                }
-            }
-            Ok(_) => {
-                eprintln!(
-                    "Error: Expected UnhandledEffect for '{}', but execution succeeded",
-                    handler.label
-                );
-                process::exit(1);
-            }
-        }
-    }
-
-    // Handle Log effects in a loop (built-in extrinsic)
     while let Err(debug) = &result {
         let (reason, _meta, env, stack) = &**debug;
-        if let BreakReason::UnhandledEffect(label, lift_value) = reason
-            && label == "Log"
-        {
-            eprintln!("{}", lift_value);
-            let reply = Rc::new(value::unit());
-            result = expression::resume(reply, env.clone(), stack.clone());
-        } else {
-            break;
+        if let BreakReason::UnhandledEffect(label, lift_value) = reason {
+            if label == "Log" {
+                eprintln!("{}", lift_value);
+                let reply = Rc::new(value::unit());
+                result = expression::resume(reply, env.clone(), stack.clone());
+                continue;
+            }
+            if handler_idx < effect_handlers.len() {
+                let handler = &effect_handlers[handler_idx];
+                if label == &handler.label {
+                    let reply = Rc::new(value_json::deserialize_value(&handler.reply));
+                    result = expression::resume(reply, env.clone(), stack.clone());
+                    handler_idx += 1;
+                    continue;
+                }
+            }
         }
+        break;
     }
 
     match result {
         Ok(val) => {
+            if handler_idx < effect_handlers.len() {
+                eprintln!(
+                    "Error: Expected UnhandledEffect for '{}', but execution succeeded",
+                    effect_handlers[handler_idx].label
+                );
+                process::exit(1);
+            }
             println!("{}", val);
         }
         Err(debug) => {

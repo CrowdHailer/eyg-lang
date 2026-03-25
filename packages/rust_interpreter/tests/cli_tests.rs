@@ -233,4 +233,62 @@ fn test_cli_unhandled_effect() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("Unhandled effect 'Foo'"));
 }
 
+#[test]
+fn test_cli_interleaved_log_and_effects() {
+    // Program: Log("start") -> Foo(1) -> Log("mid") -> Bar(2) -> Log("done") -> 34
+    let program_json = r#"{
+  "0": "l",
+  "l": "_",
+  "v": { "0": "a", "f": { "0": "p", "l": "Log" }, "a": { "0": "s", "v": "start" } },
+  "t": {
+    "0": "l",
+    "l": "a",
+    "v": { "0": "a", "f": { "0": "p", "l": "Foo" }, "a": { "0": "i", "v": 1 } },
+    "t": {
+      "0": "l",
+      "l": "_",
+      "v": { "0": "a", "f": { "0": "p", "l": "Log" }, "a": { "0": "s", "v": "mid" } },
+      "t": {
+        "0": "l",
+        "l": "b",
+        "v": { "0": "a", "f": { "0": "p", "l": "Bar" }, "a": { "0": "v", "l": "a" } },
+        "t": {
+          "0": "l",
+          "l": "_",
+          "v": { "0": "a", "f": { "0": "p", "l": "Log" }, "a": { "0": "s", "v": "done" } },
+          "t": { "0": "v", "l": "b" }
+        }
+      }
+    }
+  }
+}"#;
+
+    let effects_json = r#"[
+  { "label": "Foo", "lift": {}, "reply": { "integer": 2 } },
+  { "label": "Bar", "lift": {}, "reply": { "integer": 34 } }
+]"#;
+
+    let program_file = temp_file("interleaved_program");
+    let effects_file = temp_file("interleaved_handlers");
+    fs::write(&program_file, program_json).unwrap();
+    fs::write(&effects_file, effects_json).unwrap();
+
+    let output = eyg_run()
+        .args([&program_file, "--effects", &effects_file])
+        .output()
+        .expect("Failed to execute command");
+
+    let _ = fs::remove_file(&program_file);
+    let _ = fs::remove_file(&effects_file);
+
+    assert!(output.status.success(), "Stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "34");
+    
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("\"start\""));
+    assert!(stderr.contains("\"mid\""));
+    assert!(stderr.contains("\"done\""));
+}
+
+
 
