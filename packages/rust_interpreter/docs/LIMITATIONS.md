@@ -15,14 +15,10 @@ In the CLI runner (`main.rs`), the `Log` effect handler is only executed *after*
 - **Bug**: If a program performs a `Log` effect *before* or *interspersed* with other effects that have handlers provided via `--effects`, the runner will encounter the `Log` effect while expecting a different label, causing it to exit with an "unexpected effect" error.
 - **Fix Needed**: The effect handling loop in `main.rs` should handle `Log` natively and resume immediately, while keeping track of the current position in the explicit `effect_handlers` list.
 
-## Development Issues (Severity: Medium)
+## Resolved Development Issues
 
-### Brittle Test binary Path
-Integration tests in `tests/cli_tests.rs` hard-code the path to `./target/debug/eyg-run`. 
-- **Issue**: This assumes the binary has been built in debug mode and the current working directory is the package root. 
-- **Fix Needed**: Use the `env!("CARGO_BIN_EXE_eyg-run")` macro provided by Cargo to locate the binary correctly during `cargo test`.
+### Brittle Test binary Path (Fixed)
+Integration tests in `tests/cli_tests.rs` now use the `CARGO_BIN_EXE_eyg-run` environment variable (with a fallback) to locate the interpreter binary, making tests more portable across build configurations.
 
-### Flaky Concurrent Tests (Fixed Tmp Files)
-CLI tests write to fixed file paths like `/tmp/eyg_test_integer.json`.
-- **Issue**: Since Rust runs tests in parallel by default, multiple tests can overwrite the same file simultaneously, leading to non-deterministic test failures.
-- **Fix Needed**: Use a crate like `tempfile` to create unique temporary files for each test case.
+### Flaky Concurrent Tests (Fixed)
+CLI tests now use unique temporary file paths based on process and thread IDs and ensure cleanup after execution, preventing race conditions during parallel test runs.
