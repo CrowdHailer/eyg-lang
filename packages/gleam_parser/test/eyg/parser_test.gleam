@@ -1,6 +1,8 @@
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
+import eyg/parser/parser.{UnexpectedToken} as _
+import eyg/parser/token as t
 import gleeunit/should
 import multiformats/cid/v1
 
@@ -712,11 +714,34 @@ pub fn reference_test() {
   |> should.equal(#(ir.Reference(dag_json.vacant_cid), #(0, 62)))
 }
 
+pub fn invalid_reference_test() {
+  { "#foobar" }
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(UnexpectedToken(t.Name("foobar"), 1))
+}
+
 pub fn named_reference_test() {
   "@std"
   |> parser.all_from_string()
   |> should.be_ok()
   |> should.equal(#(ir.Release("std", 0, dag_json.vacant_cid), #(0, 4)))
+}
+
+pub fn unpublished_import_test() {
+  { "import \"./index.eyg.json\"" }
+  |> parser.all_from_string()
+  |> should.be_ok()
+  |> should.equal(
+    #(ir.Release("./index.eyg.json", 0, dag_json.vacant_cid), #(0, 25)),
+  )
+}
+
+pub fn invalid_unpublished_import_test() {
+  { "import foobar" }
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(UnexpectedToken(t.Name("foobar"), 7))
 }
 
 pub fn comment_test() {

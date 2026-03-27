@@ -267,10 +267,13 @@ pub fn expression(tokens) {
       }
     t.Hash ->
       case rest {
-        [#(t.Name(label), end), ..rest] -> {
+        [#(t.Name(label), end), ..rest] as all -> {
           let span = #(start, end + string.length(label))
-          let assert Ok(#(cid, _)) = v1.from_string(label)
-          Ok(#(#(ir.Reference(cid), span), rest))
+
+          case v1.from_string(label) {
+            Ok(#(cid, _)) -> Ok(#(#(ir.Reference(cid), span), rest))
+            Error(_) -> fail(all)
+          }
         }
         _ -> fail(rest)
       }
@@ -282,7 +285,14 @@ pub fn expression(tokens) {
         }
         _ -> fail(rest)
       }
-
+    t.Import ->
+      case rest {
+        [#(t.String(value), end), ..rest] -> {
+          let span = #(start, end + string.length(value) + 2)
+          Ok(#(#(ir.Release(value, 0, dag_json.vacant_cid), span), rest))
+        }
+        _ -> fail(rest)
+      }
     _ -> Error(UnexpectedToken(token, start))
   })
 

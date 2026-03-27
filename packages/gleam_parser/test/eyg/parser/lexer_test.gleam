@@ -28,7 +28,7 @@ pub fn punctuation_test() {
 }
 
 pub fn keyword_test() {
-  "let match perform deep handle"
+  "let match perform deep handle import"
   |> lexer.lex
   |> should.equal([
     #(t.Let, 0),
@@ -40,6 +40,8 @@ pub fn keyword_test() {
     #(t.Deep, 18),
     #(t.Whitespace(" "), 22),
     #(t.Handle, 23),
+    #(t.Whitespace(" "), 29),
+    #(t.Import, 30),
   ])
 }
 

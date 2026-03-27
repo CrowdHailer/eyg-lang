@@ -1,5 +1,5 @@
 name = "eyg_parser"
-version = "0.2.0"
+version = "0.3.0"
 
 description = "A JavaScript inspired textual syntax for EYG."
 licences = ["Apache-2.0"]

@@ -53,6 +53,7 @@ fn pop(raw, start) {
     "perform" <> rest -> done(t.Perform, 7, rest)
     "deep" <> rest -> done(t.Deep, 4, rest)
     "handle" <> rest -> done(t.Handle, 6, rest)
+    "import" <> rest -> done(t.Import, 6, rest)
 
     "\"" <> rest -> string("", 1, rest, done)
 
