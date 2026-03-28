@@ -1,0 +1,14 @@
+name = "hub"
+version = "1.0.0"
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+gleam_http = ">= 4.3.0 and < 5.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+spotless = ">= 3.3.0 and < 4.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+dag_json = ">= 3.0.0 and < 4.0.0"
+untethered = { path = "../untethered" }
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
