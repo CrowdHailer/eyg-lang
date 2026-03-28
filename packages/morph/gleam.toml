@@ -1,0 +1,16 @@
+name = "morph"
+version = "1.0.0"
+target = "javascript"
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+eyg_analysis = ">= 1.0.0 and < 2.0.0"
+eyg_ir = ">= 1.0.0 and < 2.0.0"
+eyg_interpreter = ">= 1.0.0 and < 2.0.0"
+gleam_x = {path = "../gleam_x"}
+lustre = ">= 5.0.0 and < 6.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+plinth = ">= 0.5.8 and < 1.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
