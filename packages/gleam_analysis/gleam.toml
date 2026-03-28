@@ -1,0 +1,17 @@
+name = "eyg_analysis"
+version = "1.0.0"
+target = "javascript"
+
+description = "Infers types for expressions, effects and scope variables of EYG programs."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/gleam_analysis", tag_prefix = "gleam_analysis-" }
+links = [{ title = "Website", href = "https://eyg.run" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+eyg_ir = ">= 1.0.0 and < 2.0.0"
+eyg_parser = ">= 0.1.0 and < 2.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
