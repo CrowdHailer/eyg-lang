@@ -1,0 +1,55 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: ./hub/Dockerfile
+    env_file: .env
+    # depends_on:
+    #   - db
+    volumes:
+      # app-build must be remounted after (on top of) the mytools host dir.
+      # This is so any host build artifacts are not copied
+      - ..:/opt/packages
+      # only the build dir for hub is used for building the hub project
+      - hub-build:/opt/packages/hub/build
+  # db:
+  frontend:
+    build:
+      context: ..
+      dockerfile: ./website/Dockerfile
+    command: dev build
+    volumes:
+      # app-build must be remounted after (on top of) the mytools host dir.
+      # This is so any host build artifacts are not copied
+      - ..:/opt/packages
+      # only the build dir for server is used for building the server project
+      - website-build:/opt/packages/website/build
+      - website-node_modules:/opt/packages/website/node_modules
+      - website-dist:/opt/packages/website/dist
+    ports:
+      - "8080:8080"
+  proxy:  
+    image: docker.io/library/caddy:2-alpine
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      # - frontend-dist:/var/eyg
+    depends_on:
+      backend:
+        condition: service_started
+      # frontend:
+      #   condition: service_completed_successfully
+
+volumes:
+  hub-build:
+  # postgres-data:
+  caddy-data:
+  caddy-config:
+  website-build:
+  website-node_modules:
+  website-dist:

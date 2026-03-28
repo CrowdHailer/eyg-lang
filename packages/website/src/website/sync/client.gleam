@@ -1,3 +1,5 @@
+import eyg/hub/client
+import eyg/hub/publisher
 import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/fetch
@@ -5,8 +7,6 @@ import gleam/fetchx
 import gleam/http/response.{type Response, Response}
 import gleam/javascript/promise
 import gleam/list
-import hub/client
-import hub/publisher
 import lustre/effect
 import multiformats/cid/v1
 import ogre/origin

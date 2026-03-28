@@ -1,5 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
+import eyg/hub/publisher
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
@@ -8,7 +9,6 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
-import hub/publisher
 import morph/analysis
 import multiformats/cid/v1
 

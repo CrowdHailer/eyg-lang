@@ -1,4 +1,5 @@
 import eyg/analysis/type_/isomorphic as t
+import eyg/hub/publisher
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -8,7 +9,6 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import gleeunit/should
-import hub/publisher
 import morph/editable as e
 import morph/input
 import multiformats/cid/v1
