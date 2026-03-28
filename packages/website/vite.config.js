@@ -1,3 +1,6 @@
+// emitting assets adds a file that is considered complete, vite does no translation of it.
+// emitting a chunk is looked at as an entrypoint for rollup, but rollup assumes it is a JS module.
+// Rollup/Rolldown use files as entry points and then treeshake. Use a thin wrapper that calles just the needed functions for a individual entrypoint.
 import { defineConfig } from 'vite'
 import { readFileSync, readdirSync } from "fs";
 import { execSync } from "child_process";
