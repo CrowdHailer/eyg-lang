@@ -1,7 +1,6 @@
 import dag_json
 import gleam/dict
 import gleam/dynamic/decode
-import gleam/json
 import gleam/list
 import gleam/option.{None}
 import untethered/decoder_set

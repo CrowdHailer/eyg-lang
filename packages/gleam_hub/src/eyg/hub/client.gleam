@@ -1,10 +1,10 @@
+import eyg/hub/publisher
 import gleam/bit_array
 import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
 import gleam/json
 import gleam/list
-import hub/publisher
 import multiformats/cid/v1
 import ogre/origin
 import untethered/ledger/client

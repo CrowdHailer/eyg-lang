@@ -7,6 +7,7 @@ packages = [
   { name = "conversation", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "conversation", source = "hex", outer_checksum = "60AFB424A723D5B29925487BCA66FF09EB157FD3EF72AF072714FEC903701226" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "eyg_analysis", version = "1.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "08693AD95F1EA1ADF78CF72784297FE77F239DD52337B932D3CF8C9476A5830C" },
+  { name = "eyg_hub", version = "0.1.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "spotless", "untethered"], source = "local", path = "../gleam_hub" },
   { name = "eyg_interpreter", version = "1.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_interpreter", source = "hex", outer_checksum = "2550BE77781136DA8F333811C6E722B9470D8E71DFA5D47B081FA7A5390FAE8B" },
   { name = "eyg_ir", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "D61C51AB7B88B76B77867F10CA0C9A7C960C46A1C287543B1B1A8EA4B6F3524C" },
   { name = "eyg_parser", version = "0.3.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "44E500516D752FAA66A1BCD83976F2D8CC960E9513F5AE2CC57670F40FC8DE83" },
@@ -30,7 +31,6 @@ packages = [
   { name = "glen_node", version = "0.0.3", build_tools = ["gleam"], requirements = ["gleam_javascript", "glen"], otp_app = "glen_node", source = "hex", outer_checksum = "0A81302C16B9719FC47FB022A127A51EA668D4F78CE6DCCCF430A3C098395511" },
   { name = "gleroglero", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "lustre"], otp_app = "gleroglero", source = "hex", outer_checksum = "BDDAF89D983DF26A4043DD9F685AF13BC0C90A600E165AA7D0DE7DF27A160739" },
   { name = "houdini", version = "1.2.0", build_tools = ["gleam"], requirements = [], otp_app = "houdini", source = "hex", outer_checksum = "5DB1053F1AF828049C2B206D4403C18970ABEF5C18671CA3C2D2ED0DD64F6385" },
-  { name = "hub", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "spotless", "untethered"], source = "local", path = "../hub" },
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
   { name = "jot", version = "8.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "houdini", "splitter"], otp_app = "jot", source = "hex", outer_checksum = "CCE11C8904B129CC9DA3A293B645884B91C96D252183F6DBCAEFA8F2587CAEFD" },
   { name = "lustre", version = "5.6.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib", "houdini"], otp_app = "lustre", source = "hex", outer_checksum = "EE558CD4DB9F09FCC16417ADF0183A3C2DAC3E4B21ED3AC0CAE859792AB810CA" },
@@ -53,6 +53,7 @@ packages = [
 [requirements]
 argv = { version = ">= 1.0.2 and < 2.0.0" }
 eyg_analysis = { version = ">= 1.0.0 and < 2.0.0" }
+eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 1.1.0 and < 2.0.0" }
 eyg_ir = { version = ">= 1.0.0 and < 2.0.0" }
 filepath = { version = ">= 1.1.2 and < 2.0.0" }
@@ -64,7 +65,6 @@ gleam_time = { version = ">= 1.8.0 and < 2.0.0" }
 gleam_x = { path = "../gleam_x" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 gleroglero = { version = ">= 1.2.0 and < 2.0.0" }
-hub = { path = "../hub" }
 jot = { version = ">= 8.0.0 and < 9.0.0" }
 lustre = { version = ">= 5.6.0 and < 6.0.0" }
 morph = { path = "../morph" }
