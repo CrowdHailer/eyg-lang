@@ -2,9 +2,14 @@ import gleam/http
 import gleam/http/request
 import gleam/http/response.{Response}
 import gleam/json
-import gleam/list
 import ogre/origin
 import untethered/ledger/schema
+
+pub type Failure {
+  // Protocol Errors
+  UnexpectedStatus(status: Int)
+  UnableToDecode(reason: json.DecodeError)
+}
 
 pub fn submit_request(endpoint, payload, signature) {
   let #(origin, path) = endpoint
@@ -20,8 +25,12 @@ pub fn submit_request(endpoint, payload, signature) {
 pub fn submit_response(response) {
   let Response(status:, body:, ..) = response
   case status {
-    200 -> json.parse_bits(body, schema.archived_entry_decoder())
-    _ -> todo
+    200 ->
+      case json.parse_bits(body, schema.archived_entry_decoder()) {
+        Ok(response) -> Ok(response)
+        Error(reason) -> Error(UnableToDecode(reason:))
+      }
+    _ -> Error(UnexpectedStatus(status:))
   }
 }
 
@@ -37,12 +46,11 @@ pub fn entries_request(endpoint, parameters) {
 pub fn entries_response(response) {
   let Response(status:, body:, ..) = response
   case status {
-    200 -> {
-      json.parse_bits(body, schema.entries_response_decoder())
-    }
-    _ -> {
-      echo response
-      todo
-    }
+    200 ->
+      case json.parse_bits(body, schema.entries_response_decoder()) {
+        Ok(response) -> Ok(response)
+        Error(reason) -> Error(UnableToDecode(reason:))
+      }
+    _ -> Error(UnexpectedStatus(status:))
   }
 }
