@@ -1,5 +1,21 @@
+import gleam/http
+import gleam/http/request.{Request}
+import hub/registry/controller as registry
 import wisp
 
-pub fn route(_request, _context) {
-  wisp.html_response("Ok", 200)
+pub fn route(request, context) {
+  let Request(method:, ..) = request
+  case request.path_segments(request) {
+    ["registry", ..rest] -> {
+      case rest, method {
+        ["share"], http.Post -> registry.share(request, context)
+        // ["f", cid], http.Get -> registry.fragment(cid, context)
+        // ["submit"], http.Post -> registry.submit(request, context)
+        // ["entries"], http.Get -> registry.entries(request, context)
+        // ["packages"], http.Get -> registry.packages(context)
+        _, _ -> wisp.html_response("Nothing", 404)
+      }
+    }
+    _ -> wisp.html_response("Nothing", 404)
+  }
 }
