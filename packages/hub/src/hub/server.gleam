@@ -5,21 +5,21 @@ import mist
 import wisp
 import wisp/wisp_mist
 
-pub fn start(config, wrap_reload) {
-  build(config, wrap_reload)
+pub fn start(config, db, wrap_reload) {
+  build(config, db, wrap_reload)
   |> mist.start
 }
 
-pub fn supervised(config, wrap_reload) {
-  build(config, wrap_reload)
+pub fn supervised(config, db, wrap_reload) {
+  build(config, db, wrap_reload)
   |> mist.supervised
 }
 
-fn build(config, wrap_reload) {
+fn build(config, db, wrap_reload) {
   wisp.configure_logger()
-  let Config(secret_key_base:) = config
+  let Config(secret_key_base:, ..) = config
 
-  let context = context.from_config(config)
+  let context = context.from_config(config, db)
 
   router.route(_, context)
   |> wisp_mist.handler(secret_key_base)

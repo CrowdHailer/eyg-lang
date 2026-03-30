@@ -3,6 +3,8 @@ version = "0.1.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+argv = ">= 1.0.2 and < 2.0.0"
+cigogne = ">= 5.0.5 and < 6.0.0"
 dag_json = ">= 3.0.0 and < 4.0.0"
 envoy = ">= 1.1.0 and < 2.0.0"
 eyg_analysis = ">= 1.0.0 and < 2.0.0"
@@ -17,6 +19,7 @@ mist = ">= 6.0.2 and < 7.0.0"
 mist_reload = ">= 1.0.1 and < 2.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
+pog = ">= 4.1.0 and < 5.0.0"
 wisp = ">= 2.2.2 and < 3.0.0"
 
 [dev_dependencies]

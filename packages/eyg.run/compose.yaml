@@ -12,7 +12,13 @@ services:
       - ..:/opt/packages
       # only the build dir for hub is used for building the hub project
       - hub-build:/opt/packages/hub/build
-  # db:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    # Environment variables are only processed on first initialization.
+    # To create a new role the volume must be removed.
+    env_file: .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
   frontend:
     build:
       context: ..
@@ -26,8 +32,6 @@ services:
       - website-build:/opt/packages/website/build
       - website-node_modules:/opt/packages/website/node_modules
       - website-dist:/opt/packages/website/dist
-    ports:
-      - "8080:8080"
   proxy:  
     image: docker.io/library/caddy:2-alpine
     env_file: .env
@@ -46,10 +50,10 @@ services:
       #   condition: service_completed_successfully
 
 volumes:
-  hub-build:
-  # postgres-data:
   caddy-data:
   caddy-config:
+  hub-build:
+  postgres-data:
   website-build:
   website-node_modules:
   website-dist:

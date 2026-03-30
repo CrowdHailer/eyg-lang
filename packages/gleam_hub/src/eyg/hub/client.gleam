@@ -30,10 +30,9 @@ import untethered/ledger/client
 //   }
 // }
 
-pub fn fetch_fragment_request(origin, cid: v1.Cid) {
-  origin.to_request(origin)
-  |> request.set_path("/registry/f/" <> v1.to_string(cid))
-  |> request.set_body(<<>>)
+pub fn module(cid: v1.Cid) {
+  operation.get("/registry/modules/" <> v1.to_string(cid))
+  |> operation.set_body(<<>>)
 }
 
 // pub fn share_request(origin, block: BitArray) {
@@ -43,14 +42,16 @@ pub fn fetch_fragment_request(origin, cid: v1.Cid) {
 
 // }
 
-pub fn share(module: tree.Node(_)) {
+pub fn share(module: tree.Node(_)) -> operation.Operation(BitArray) {
   let body = dag_json.to_block(module)
   operation.post("/registry/share")
   |> operation.set_header("content-type", "application/json")
   |> operation.set_body(body)
 }
 
-pub fn share_response(response) {
+pub fn share_response(
+  response: response.Response(BitArray),
+) -> Result(v1.Cid, client.Failure) {
   let Response(status:, body:, ..) = response
   case status {
     200 ->

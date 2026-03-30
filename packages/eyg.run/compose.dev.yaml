@@ -2,6 +2,9 @@ services:
   backend:
     # TODO put back to dev after gleam build issue is resolved https://github.com/gleam-lang/gleam/issues/5132
     command: dev
+  db:
+    ports:
+      - "5432:5432"
   frontend:
     command: dev
   proxy:

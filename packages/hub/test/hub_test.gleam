@@ -1,13 +1,7 @@
 import gleeunit
+import hub/helpers
 
 pub fn main() -> Nil {
+  let Nil = helpers.start_db()
   gleeunit.main()
-}
-
-// gleeunit test functions end in `_test`
-pub fn hello_world_test() {
-  let name = "Joe"
-  let greeting = "Hello, " <> name <> "!"
-
-  assert greeting == "Hello, Joe!"
 }

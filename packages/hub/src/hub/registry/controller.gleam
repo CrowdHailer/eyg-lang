@@ -3,13 +3,16 @@ import eyg/hub/publisher
 import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/dag_json
+import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import hub/server/context
 import hub/web/utils
 import multiformats/cid/v1
+import pog
 
 // import pog
 // import server/apex/context
@@ -58,5 +61,35 @@ fn check_purity(source, then) {
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()
+  }
+}
+
+pub fn module(cid, context) {
+  use _cid <- decode_cid(cid)
+
+  let context.Context(db:, ..) = context
+  let query =
+    pog.query("SELECT 42;")
+    |> pog.returning({
+      use number <- decode.field(0, decode.int)
+      decode.success(number)
+    })
+  let assert Ok(returned) = pog.execute(query, db)
+  assert [42] == returned.rows
+  echo 42
+  // use fragment <- utils.db_call(data.get_fragment(db, cid))
+  // case fragment {
+  //   Some(fragment) ->
+  //     wisp.response(200)
+  //     |> wisp.string_body(fragment.source)
+  //   None -> wisp.not_found()
+  // }
+  wisp.not_found()
+}
+
+fn decode_cid(cid, then) {
+  case v1.from_string(cid) {
+    Ok(#(cid, <<>>)) -> then(cid)
+    _ -> wisp.bad_request("invalid CID")
   }
 }

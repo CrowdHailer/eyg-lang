@@ -1,10 +1,12 @@
 // import eyg/ir/dag_json
 import eyg/hub/client
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/string
+import hub/helpers
 import hub/router
 import hub/web/utils
 import multiformats/cid/v1
@@ -39,6 +41,10 @@ pub fn share_valid_fragment_test() {
   assert response.status == 200
   let assert Ok(cid) = client.share_response(response)
   assert utils.cid_from_tree(source) == cid
+
+  let response = dispatch(client.module(cid), context)
+  assert response.status == 200
+  assert dag_json.from_block(response.body) == Ok(source)
 }
 
 pub fn share_fragment_is_idempotent_test() {
@@ -100,7 +106,21 @@ pub fn accept_large_fragment_test() {
   assert response.status == 200
 }
 
+pub fn fetch_nonexistant_fragment_test() {
+  use context <- test_context()
+  let response = dispatch(client.module(dag_json.vacant_cid), context)
+  assert response.status == 404
+}
+
+pub fn fetch_with_invalid_cid_test() {
+  use context <- test_context()
+  let operation = operation.get("/registry/modules/xyz")
+  let response = dispatch(operation, context)
+  assert response.status == 400
+}
+
 fn test_context(then) {
+  use conn <- helpers.with_transaction()
   // use context, _ai <- test_helpers.test_context()
-  then(context.Context(secret_key_base: "123"))
+  then(context.Context(secret_key_base: "123", db: conn))
 }

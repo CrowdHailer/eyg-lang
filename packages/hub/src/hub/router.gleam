@@ -9,7 +9,7 @@ pub fn route(request, context) {
     ["registry", ..rest] -> {
       case rest, method {
         ["share"], http.Post -> registry.share(request, context)
-        // ["f", cid], http.Get -> registry.fragment(cid, context)
+        ["modules", cid], http.Get -> registry.module(cid, context)
         // ["submit"], http.Post -> registry.submit(request, context)
         // ["entries"], http.Get -> registry.entries(request, context)
         // ["packages"], http.Get -> registry.packages(context)
