@@ -1,0 +1,21 @@
+[
+  {
+    "label": "Foo",
+    "lift": {
+      "integer": 1
+    },
+    "reply": {
+      "integer": 2
+    }
+  },
+  {
+    "label": "Bar",
+    "lift": {
+      "integer": 2
+    },
+    "reply": {
+      "integer": 34
+    }
+  }
+]
+

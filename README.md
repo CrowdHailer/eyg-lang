@@ -14,6 +14,7 @@ The intermediate representation (IR) of EYG is a minimal tree and is the stable 
 - [gleam_parser](./packages/gleam_parser/) Parser for a curly braces syntax for EYG IR.
 - [morph](./packages/morph/) Higher level AST and transformation functions for structural edits. (Unpublished)
 - [touch_grass](./packages/touch_grass/) Common effect definitions (types, decoders and encoders) for your Eat Your Greens (EYG) runtime.
+- [rust_interpreter](./packages/rust_interpreter/) A Rust interpreter for EYG.
 
 ## Philosophy
 
