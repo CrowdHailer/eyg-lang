@@ -2,12 +2,24 @@
 
 Backend application to store packages and signatories.
 
+
+
 ## Development
 
 ```sh
-gleam run   # Run the project
-gleam test  # Run the tests
+(set -a; source ../eyg.run/.env; set +a; gleam test)
 ```
+
+### Database
+
+```sh
+gleam run -m cigogne new --name NAME
+
+gleam dev migrations up
+```
+
+A separate data package makes some sense because of the migrations BUT I want db in server tests
+
 
 http://localhost:8080/registry/modules/baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma
 

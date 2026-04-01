@@ -21,7 +21,7 @@ pub fn config(conn) {
     ..cc.default_config,
     database: cc.ConnectionDbConfig(conn),
     migrations: cc.MigrationsConfig(
-      application_name: "server",
+      application_name: "hub",
       migration_folder: None,
       dependencies: [],
       no_hash_check: Some(True),

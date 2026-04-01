@@ -4,12 +4,15 @@ import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/dag_json
 import gleam/dynamic/decode
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
-import hub/server/context
+import hub/registry/data
+import hub/server/context.{type Context}
 import hub/web/utils
 import multiformats/cid/v1
 import pog
@@ -25,20 +28,28 @@ import pog
 import untethered/ledger/server
 import wisp
 
-pub fn share(request, context) {
+pub fn share(
+  request: Request(wisp.Connection),
+  context: Context,
+) -> Response(wisp.Body) {
   use <- wisp.require_content_type(request, "application/json")
   use data <- wisp.require_string_body(request)
   use <- check_size(data, 50_000)
   use source <- utils.do_decode(data, dag_json.decoder(Nil))
   use <- check_soundness(source)
   use <- check_purity(source)
+  echo request
+  let ip = ""
+  wisp.accepted
 
   let cid = utils.cid_from_tree(source)
-  // let context.Context(db:, ..) = context
-  // let serialized = dag_json.to_string(source)
-  // use fragment <- utils.db_call(data.insert_fragment(db, serialized, cid))
-  wisp.ok()
-  |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
+  case pog.execute(data.insert_module(cid, source, ip), context.db) {
+    Ok(_) ->
+      wisp.ok()
+      |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
+
+    Error(_) -> todo
+  }
 }
 
 fn check_size(data, max, then) {

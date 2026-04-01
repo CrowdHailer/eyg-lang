@@ -57,7 +57,6 @@ packages = [
 [requirements]
 argv = { version = ">= 1.0.2 and < 2.0.0" }
 cigogne = { version = ">= 5.0.5 and < 6.0.0" }
-dag_json = { version = ">= 3.0.0 and < 4.0.0" }
 envoy = { version = ">= 1.1.0 and < 2.0.0" }
 eyg_analysis = { version = ">= 1.0.0 and < 2.0.0" }
 eyg_hub = { path = "../gleam_hub" }
@@ -68,6 +67,7 @@ gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_json = { version = ">= 3.1.0 and < 4.0.0" }
 gleam_otp = { version = ">= 1.2.0 and < 2.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
+gleam_time = { version = ">= 1.8.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 mist = { version = ">= 6.0.2 and < 7.0.0" }
 mist_reload = { version = ">= 1.0.1 and < 2.0.0" }
