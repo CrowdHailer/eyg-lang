@@ -1,5 +1,6 @@
 import gleam/http
 import gleam/http/request.{Request}
+import hub/packages/controller as packages
 import hub/registry/controller as registry
 import hub/signatories/controller as signatories
 import wisp
@@ -16,8 +17,8 @@ pub fn route(request, context) {
     }
     ["packages", ..rest] -> {
       case rest, method {
-        // ["submit"], http.Post -> packages.submit_release(request, context)
-        // ["pull"], http.Get -> packages.pull_release(request, context)
+        ["submit"], http.Post -> packages.submit(request, context)
+        ["pull"], http.Get -> packages.pull(request, context)
         // List packes
         // [], http.Get -> packages.packages(context)
         _, _ -> wisp.html_response("Nothing", 404)
@@ -25,7 +26,7 @@ pub fn route(request, context) {
     }
     ["signatories", ..rest] -> {
       case rest, method {
-        ["submit"], http.Post -> signatories.submit_entry(request, context)
+        ["submit"], http.Post -> signatories.submit(request, context)
         ["pull"], http.Get -> signatories.pull(request, context)
         _, _ -> wisp.html_response("Nothing", 404)
       }

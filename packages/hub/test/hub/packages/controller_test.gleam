@@ -1,52 +1,29 @@
+import eyg/hub/client
 import eyg/hub/publisher
-import gleam/http
-import gleam/http/request
-import gleam/option.{None, Some}
-import multiformats/base32
+import gleam/option.{None}
+import hub/crypto
+import hub/fixtures
+import hub/helpers.{dispatch}
 
-// import server/apex/router
-// import server/crypto
-// import server/test_helpers as th
-import untethered/ledger/client
-import untethered/substrate
-import wisp/simulate
-// fn submit_request(payload, signature) {
-//   let endpoint = #(th.origin, "/registry/submit")
-//   client.submit_request(endpoint, payload, signature)
-// }
+pub fn submit_first_release_test() {
+  use context <- helpers.web_context()
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(context.db)
 
-// fn send_bits(request, context) {
-//   th.send_bits(request, router.route(_, context))
-// }
+  let assert Ok(module) = fixtures.module(context.db)
+  let first = publisher.first(signatory.cid, keypair.key_id, "foo", module)
+  let payload = publisher.to_bytes(first)
+  let signature = crypto.sign(payload, keypair)
 
-// pub fn submit_first_release_test() {
-//   use context <- test_context()
-//   let #(signatory, keypair) = th.signatory_fixture(context)
+  let request = client.submit_package(first, signature)
+  let response = dispatch(request, context)
 
-//   let module = th.fragment_fixture(context.db)
-//   let first = publisher.first(signatory, keypair.key_id, "foo", module)
-//   let payload = publisher.to_bytes(first)
-//   let signature = crypto.sign(payload, keypair)
-
-//   let request = submit_request(payload, signature)
-//   let response = send_bits(request, context)
-
-//   let assert Ok(response) = client.submit_response(response)
-//   // echo response
-//   //  cursor: Int,
-//   let cid = response.cid
-//   //   cid: String,
-//   // TODO payload should stay the same it's the signed bytes
-//   //   payload: String,
-//   // assert payload == response.payload |> bit_array.from_string
-//   assert cid == response.entity
-//   assert 1 == response.sequence
-//   assert None == response.previous
-//   assert "release" == response.type_
-// }
-
-// // list packages this is sorta testable by dint of being used at every startup
-
+  let assert Ok(response) = client.submit_package_response(response)
+  let cid = response.cid
+  assert cid == response.entity
+  assert 1 == response.sequence
+  assert None == response.previous
+  assert "release" == response.type_
+}
 // pub fn reject_not_first_release_test() {
 //   use context <- test_context()
 //   let #(signatory, keypair) = th.signatory_fixture(context)

@@ -15,7 +15,7 @@ pub type Module {
   )
 }
 
-fn fragment_decoder() {
+fn module_decoder() {
   use cid <- decode.field(0, utils.cid_decoder())
   use source <- decode.field(1, decode.string)
   use inserted_at <- decode.field(2, utils.datetime_decoder())
@@ -55,13 +55,13 @@ WHERE cid = $1
 --);"
   |> pog.query()
   |> pog.parameter(pog.text(cid))
-  |> pog.returning(fragment_decoder())
+  |> pog.returning(module_decoder())
 }
 
 // pub fn list_fragments(conn) {
 //   "SELECT source, cid, inserted_at FROM fragments"
 //   |> pog.query()
-//   |> pog.returning(fragment_decoder())
+//   |> pog.returning(module_decoder())
 //   |> pog.execute(conn)
 //   |> result.map(fn(returned) { returned.rows })
 // }

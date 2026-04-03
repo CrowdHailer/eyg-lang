@@ -14,7 +14,7 @@ import untethered/ledger/schema
 import untethered/ledger/server
 import wisp
 
-pub fn submit_entry(request, context: context.Context) {
+pub fn submit(request, context: context.Context) {
   use payload <- wisp.require_bit_array_body(request)
   use signature <- utils.try_untethered(server.read_signature(request))
   use entry <- utils.try_untethered(server.validate_payload(

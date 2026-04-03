@@ -1,31 +1,15 @@
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/hub/publisher
 import eyg/hub/schema
-import eyg/hub/signatory
 import eyg/ir/dag_json
-import gleam/dynamic/decode
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
-import gleam/list
-import gleam/option.{None, Some}
-import gleam/result
 import gleam/string
 import hub/registry/data
 import hub/server/context.{type Context}
 import hub/web/utils
 import multiformats/cid/v1
 import pog
-
-// import pog
-// import server/apex/context
-// import server/crypto
-// import server/helpers.{cid_from_tree}
-// import server/registry/data
-// import server/signatory/data as sig_data
-// import server/web/utils
-// import untethered/ledger/schema
-import untethered/ledger/server
 import wisp
 
 pub fn share(

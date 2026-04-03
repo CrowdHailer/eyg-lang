@@ -1,3 +1,4 @@
+import eyg/hub/publisher
 import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/dag_json
@@ -73,6 +74,29 @@ pub fn share_response(
   case status {
     200 ->
       case json.parse_bits(body, schema.share_response_decoder()) {
+        Ok(response) -> Ok(response)
+        Error(reason) -> Error(client.UnableToDecode(reason:))
+      }
+    _ -> Error(client.UnexpectedStatus(status:))
+  }
+}
+
+pub fn submit_package(
+  revision: publisher.Entry,
+  signature: String,
+) -> Operation(BitArray) {
+  let payload = publisher.to_bytes(revision)
+  let path = "/packages/submit"
+  client.submit_request(path, payload, signature)
+}
+
+pub fn submit_package_response(
+  response: response.Response(BitArray),
+) -> Result(schema.ArchivedEntry, client.Failure) {
+  let Response(status:, body:, ..) = response
+  case status {
+    200 ->
+      case json.parse_bits(body, schema.archived_entry_decoder()) {
         Ok(response) -> Ok(response)
         Error(reason) -> Error(client.UnableToDecode(reason:))
       }
