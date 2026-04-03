@@ -1,9 +1,11 @@
 import envoy
+import gleam/crypto
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Name}
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
+import hub/cid
 import hub/db/pool
 import hub/router
 import hub/server/context
@@ -11,6 +13,10 @@ import ogre/operation
 import ogre/origin
 import pog
 import wisp/simulate
+
+pub fn random_cid() {
+  cid.from_block(crypto.strong_random_bytes(40))
+}
 
 @external(erlang, "hub_ffi", "identity")
 fn unsafe_global_name(atom: Atom) -> Name(a)

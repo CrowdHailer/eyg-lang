@@ -3,7 +3,10 @@ import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import hub/cid
+import hub/crypto
 import hub/server/context
+import hub/signatories/data
 import hub/web/utils
 import multiformats/cid/v1
 import pog
@@ -11,13 +14,14 @@ import untethered/ledger/schema
 import untethered/ledger/server
 import wisp
 
-pub fn submit(request, context: context.Context) {
+pub fn submit_entry(request, context: context.Context) {
   use payload <- wisp.require_bit_array_body(request)
   use signature <- utils.try_untethered(server.read_signature(request))
   use entry <- utils.try_untethered(server.validate_payload(
     payload,
     signatory.decoder(),
   ))
+
   let assert Ok(history) = case entry.previous {
     Some(cid) -> {
       let cid = v1.to_string(cid)
@@ -47,9 +51,9 @@ pub fn submit(request, context: context.Context) {
   )
   use Nil <- utils.try_untethered(authorize(entry.content, permission))
 
-  let cid = helpers.cid_from_block(payload)
+  let cid = cid.from_block(payload)
   let query = data.insert_entry(cid, signatory.encode(entry))
-  use pog.Returned(rows:, ..) <- utils.db_call(pog.execute(query, context.db))
+  use pog.Returned(rows:, ..) <- utils.db_result(pog.execute(query, context.db))
   let assert [entry] = rows
 
   entry
@@ -65,15 +69,16 @@ fn authorize(content, permission) {
     _, _ -> Error(server.DoesNotHavePermission)
   }
 }
-// pub fn entries(request, context: context.Context) {
-//   let query = wisp.get_query(request)
-//   let parameters = schema.pull_parameters_from_query(query)
 
-//   echo parameters
-//   let query = data.list_entries(parameters)
-//   use pog.Returned(rows:, ..) <- utils.db_call(pog.execute(query, context.db))
+pub fn pull(request, context: context.Context) {
+  let query = wisp.get_query(request)
+  let parameters = schema.pull_parameters_from_query(query)
 
-//   schema.entries_response_encode(rows)
-//   |> json.to_string()
-//   |> wisp.json_response(200)
-// }
+  echo parameters
+  let query = data.list_entries(parameters)
+  use pog.Returned(rows:, ..) <- utils.db_result(pog.execute(query, context.db))
+
+  schema.entries_response_encode(rows)
+  |> json.to_string()
+  |> wisp.json_response(200)
+}

@@ -25,8 +25,8 @@ pub fn route(request, context) {
     }
     ["signatories", ..rest] -> {
       case rest, method {
-        ["submit"], http.Post -> signatories.submit_release(request, context)
-        // ["pull"], http.Get -> packages.pull_release(request, context)
+        ["submit"], http.Post -> signatories.submit_entry(request, context)
+        ["pull"], http.Get -> signatories.pull(request, context)
         _, _ -> wisp.html_response("Nothing", 404)
       }
     }
