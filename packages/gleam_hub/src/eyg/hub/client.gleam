@@ -35,13 +35,6 @@ pub fn module(cid: v1.Cid) {
   |> operation.set_body(<<>>)
 }
 
-// pub fn share_request(origin, block: BitArray) {
-//   origin.to_request(origin)
-//   |> request.set_method(http.Post)
-//   |> request.set_path("/registry/share")
-
-// }
-
 pub fn share(module: tree.Node(_)) -> operation.Operation(BitArray) {
   let body = dag_json.to_block(module)
   operation.post("/registry/share")

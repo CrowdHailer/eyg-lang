@@ -1,4 +1,3 @@
-// import eyg/ir/dag_json
 import eyg/hub/client
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -8,17 +7,10 @@ import gleam/http/response.{Response}
 import gleam/string
 import hub/helpers
 import hub/router
+import hub/server/context
 import hub/web/utils
-import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
-
-// import gleam/string
-// import multiformats/cid/v1
-// import server/apex/router
-// import server/helpers.{cid_from_tree}
-// import server/test_helpers
-import hub/server/context
 import wisp/simulate
 
 pub fn dispatch(operation, context) {
@@ -109,7 +101,7 @@ pub fn accept_large_fragment_test() {
 pub fn fetch_nonexistant_fragment_test() {
   use context <- test_context()
   let response = dispatch(client.module(dag_json.vacant_cid), context)
-  assert response.status == 404
+  assert response.status == 204
 }
 
 pub fn fetch_with_invalid_cid_test() {

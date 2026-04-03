@@ -12,6 +12,7 @@ pub fn route(request, context) {
         ["modules", cid], http.Get -> registry.module(cid, context)
         // ["submit"], http.Post -> registry.submit(request, context)
         // ["entries"], http.Get -> registry.entries(request, context)
+        // List packes
         // ["packages"], http.Get -> registry.packages(context)
         _, _ -> wisp.html_response("Nothing", 404)
       }

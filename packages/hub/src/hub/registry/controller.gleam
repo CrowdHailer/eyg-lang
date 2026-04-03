@@ -38,9 +38,9 @@ pub fn share(
   use source <- utils.do_decode(data, dag_json.decoder(Nil))
   use <- check_soundness(source)
   use <- check_purity(source)
-  echo request
-  let ip = ""
-  wisp.accepted
+  // echo request
+  let ip = "123.1.1.1"
+  // wisp.accepted
 
   let cid = utils.cid_from_tree(source)
   case pog.execute(data.insert_module(cid, source, ip), context.db) {
@@ -48,7 +48,10 @@ pub fn share(
       wisp.ok()
       |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
 
-    Error(_) -> todo
+    Error(reason) -> {
+      echo reason
+      todo
+    }
   }
 }
 
@@ -75,27 +78,19 @@ fn check_purity(source, then) {
   }
 }
 
-pub fn module(cid, context) {
+pub fn module(cid: String, context: Context) -> Response(wisp.Body) {
   use _cid <- decode_cid(cid)
-
-  let context.Context(db:, ..) = context
-  let query =
-    pog.query("SELECT 42;")
-    |> pog.returning({
-      use number <- decode.field(0, decode.int)
-      decode.success(number)
-    })
-  let assert Ok(returned) = pog.execute(query, db)
-  assert [42] == returned.rows
-  echo 42
-  // use fragment <- utils.db_call(data.get_fragment(db, cid))
-  // case fragment {
-  //   Some(fragment) ->
-  //     wisp.response(200)
-  //     |> wisp.string_body(fragment.source)
-  //   None -> wisp.not_found()
-  // }
-  wisp.not_found()
+  case pog.execute(data.get_module(cid), context.db) {
+    Ok(pog.Returned(rows: [module], ..)) ->
+      wisp.ok()
+      |> wisp.json_body(module.source)
+    Ok(pog.Returned(rows: [], ..)) -> wisp.no_content()
+    Ok(_) -> todo
+    Error(reason) -> {
+      echo reason
+      todo
+    }
+  }
 }
 
 fn decode_cid(cid, then) {
