@@ -5,6 +5,7 @@ import gleam/json
 import gleam/string
 import multiformats/cid/v1
 import multiformats/hashes
+import untethered/ledger/server
 import wisp
 
 pub fn do_decode(data, decoder, then) {
@@ -38,4 +39,11 @@ pub fn cid_from_block(bytes) {
     dag_json.code(),
     hashes.Multihash(hashes.Sha256, crypto.hash(crypto.Sha256, bytes)),
   )
+}
+
+pub fn try_untethered(result, then) {
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> wisp.response(server.denied_status_code(reason))
+  }
 }

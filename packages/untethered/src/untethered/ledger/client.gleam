@@ -1,8 +1,6 @@
-import gleam/http
-import gleam/http/request
 import gleam/http/response.{Response}
 import gleam/json
-import ogre/origin
+import ogre/operation
 import untethered/ledger/schema
 
 pub type Failure {
@@ -11,15 +9,11 @@ pub type Failure {
   UnableToDecode(reason: json.DecodeError)
 }
 
-pub fn submit_request(endpoint, payload, signature) {
-  let #(origin, path) = endpoint
-
-  origin.to_request(origin)
-  |> request.set_method(http.Post)
-  |> request.set_path(path)
-  |> request.set_header("content-type", "application/json")
-  |> request.set_header("authorization", "Signature " <> signature)
-  |> request.set_body(payload)
+pub fn submit_request(path, payload, signature) {
+  operation.post(path)
+  |> operation.set_header("content-type", "application/json")
+  |> operation.set_header("authorization", "Signature " <> signature)
+  |> operation.set_body(payload)
 }
 
 pub fn submit_response(response) {
@@ -34,20 +28,17 @@ pub fn submit_response(response) {
   }
 }
 
-pub fn entries_request(endpoint, parameters) {
-  let #(origin, path) = endpoint
-
-  origin.to_request(origin)
-  |> request.set_path(path)
-  |> request.set_query(schema.pull_parameters_to_query(parameters))
-  |> request.set_body(<<>>)
+pub fn pull_request(path, parameters) {
+  operation.get(path)
+  |> operation.set_query(schema.pull_parameters_to_query(parameters))
+  |> operation.set_body(<<>>)
 }
 
-pub fn entries_response(response) {
+pub fn pull_response(response) {
   let Response(status:, body:, ..) = response
   case status {
     200 ->
-      case json.parse_bits(body, schema.entries_response_decoder()) {
+      case json.parse_bits(body, schema.pull_response_decoder()) {
         Ok(response) -> Ok(response)
         Error(reason) -> Error(UnableToDecode(reason:))
       }

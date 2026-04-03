@@ -74,6 +74,10 @@ pub type PullParameters {
   PullParameters(since: Int, limit: Int, entities: List(String))
 }
 
+pub fn pull_parameters() {
+  PullParameters(0, 1000, [])
+}
+
 pub fn pull_parameters_from_request(request) {
   request.get_query(request)
   |> result.unwrap([])
@@ -117,14 +121,14 @@ pub fn pull_parameters_to_query(parameters) {
   |> list.flatten()
 }
 
-pub type EntriesResponse {
-  EntriesResponse(entries: List(ArchivedEntry))
+pub type PullResponse {
+  PullResponse(entries: List(ArchivedEntry))
 }
 
-pub fn entries_response_decoder() {
+pub fn pull_response_decoder() {
   use entries <- decode.field("entries", decode.list(archived_entry_decoder()))
   // use cursor <- decode.field("cursor", decode.int)
-  decode.success(EntriesResponse(entries:))
+  decode.success(PullResponse(entries:))
 }
 
 pub fn entries_response_encode(entries) {

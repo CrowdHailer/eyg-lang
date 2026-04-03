@@ -2,6 +2,7 @@ import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/json
 import multiformats/cid/v1
+import untethered/ledger/schema
 
 fn cid_decoder() {
   use encoded <- decode.then(decode.string)
@@ -10,6 +11,19 @@ fn cid_decoder() {
     Error(_) -> decode.failure(dag_json.vacant_cid, "CID")
   }
 }
+
+pub type ArchivedEntry =
+  schema.ArchivedEntry
+
+pub type PullParameters =
+  schema.PullParameters
+
+pub type PullResponse =
+  schema.PullResponse
+
+pub const archived_entry_decoder = schema.archived_entry_decoder
+
+pub const pull_response_decoder = schema.pull_response_decoder
 
 pub type ShareResponse =
   v1.Cid

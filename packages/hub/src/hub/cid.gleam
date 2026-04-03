@@ -7,3 +7,8 @@ pub fn from_tree(source: #(tree.Expression(a), a)) -> v1.Cid {
   let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
   resume(crypto.hash(crypto.Sha256, bytes))
 }
+
+pub fn from_block(block: BitArray) -> v1.Cid {
+  let cid.Sha256(bytes:, resume:) = cid.from_block(block)
+  resume(crypto.hash(crypto.Sha256, bytes))
+}

@@ -14,13 +14,15 @@ gleam_erlang = ">= 1.3.0 and < 2.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"
 gleam_otp = ">= 1.2.0 and < 2.0.0"
+gleam_time = ">= 1.8.0 and < 2.0.0"
+kryptos = ">= 1.3.0 and < 2.0.0"
 mist = ">= 6.0.2 and < 7.0.0"
 mist_reload = ">= 1.0.1 and < 2.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 pog = ">= 4.1.0 and < 5.0.0"
 wisp = ">= 2.2.2 and < 3.0.0"
-gleam_time = ">= 1.8.0 and < 2.0.0"
+untethered = { path = "../untethered" }
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

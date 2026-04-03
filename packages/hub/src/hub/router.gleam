@@ -1,6 +1,7 @@
 import gleam/http
 import gleam/http/request.{Request}
 import hub/registry/controller as registry
+import hub/signatories/controller as signatories
 import wisp
 
 pub fn route(request, context) {
@@ -10,10 +11,22 @@ pub fn route(request, context) {
       case rest, method {
         ["share"], http.Post -> registry.share(request, context)
         ["modules", cid], http.Get -> registry.module(cid, context)
-        // ["submit"], http.Post -> registry.submit(request, context)
-        // ["entries"], http.Get -> registry.entries(request, context)
+        _, _ -> wisp.html_response("Nothing", 404)
+      }
+    }
+    ["packages", ..rest] -> {
+      case rest, method {
+        // ["submit"], http.Post -> packages.submit_release(request, context)
+        // ["pull"], http.Get -> packages.pull_release(request, context)
         // List packes
-        // ["packages"], http.Get -> registry.packages(context)
+        // [], http.Get -> packages.packages(context)
+        _, _ -> wisp.html_response("Nothing", 404)
+      }
+    }
+    ["signatories", ..rest] -> {
+      case rest, method {
+        ["submit"], http.Post -> signatories.submit_release(request, context)
+        // ["pull"], http.Get -> packages.pull_release(request, context)
         _, _ -> wisp.html_response("Nothing", 404)
       }
     }
