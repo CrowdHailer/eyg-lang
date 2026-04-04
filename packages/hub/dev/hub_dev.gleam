@@ -12,14 +12,11 @@ pub fn main() {
   case argv.load().arguments {
     [] -> hub.start("development", reload.wrap)
     ["migrate"] -> {
-      let assert Ok(config) = config.from_env()
-      let assert Ok(started) =
-        pool.start(process.new_name("db_pool"), config.postgres_password)
-      migrations.apply_all(started.data)
+      migrations.apply_all(db_config())
     }
     ["rollback", count] -> {
       let assert Ok(count) = int.parse(count)
-      migrations.rollback_n(todo, count)
+      migrations.rollback_n(db_config(), count)
       Nil
     }
     _ ->
@@ -32,4 +29,11 @@ pub fn main() {
       ",
       )
   }
+}
+
+fn db_config() {
+  let assert Ok(config) = config.from_env()
+  let assert Ok(started) =
+    pool.start(process.new_name("db_pool"), config.postgres_password)
+  started.data
 }

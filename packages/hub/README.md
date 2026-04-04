@@ -1,50 +1,30 @@
 # hub
 
-Backend application to store packages and signatories.
-
-
+Backend application for [eyg.run](https://eyg.run). Stores modules, packages and signatories.
 
 ## Development
 
+Requires the following environment variables to be set
+
+- `POSTGRES_PASSWORD`
+- `SECRET_KEY_BASE`
+
+I use the following script to temporarity set environment variables
+
 ```sh
-(set -a; source ../eyg.run/.env; set +a; gleam test)
+(set -a; source .env; set +a; gleam test)
 ```
 
 ### Database
 
+Create a new migration.
+
 ```sh
 gleam run -m cigogne new --name NAME
-
-gleam dev migrations up
 ```
 
-A separate data package makes some sense because of the migrations BUT I want db in server tests
+### Notes
 
-
-http://localhost:8080/registry/modules/baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma
-
-```
-URI=""
-
-echo "Connecting: $URI"
-
-harlequin -a postgres postgres://postgres:abchdo1mcLqP@127.0.0.1:5432/postgres
-```
-
-Use a subshell:
-bash(source .env && your-command)
-The parentheses create a subshell — variables are set inside it, your command runs with them, and when it exits nothing leaks back to your parent shell.
-
-source .env won't work they become shell variables not environment variables and therefore not available to the erlang shell.
-
-(set -a; source ../eyg.run/.env; set +a; gleam test)
-
-```sh
-#!/bin/bash
-# run_with_env.sh
-set -a
-source "$1"
-set +a
-shift
-"$@"
-```
+All database management is in the server package.
+A separate data package makes some sense because migrations might be for tables not directly used by the server.
+The decision to manage the db in this application was decided by making it as easy as possible to use the real db setup in server tests.
