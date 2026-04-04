@@ -39,7 +39,7 @@ jobs:
         gleam: ["1.15.2"]
         otp: ["28.4"]
         bun: ["1.3.10",]
-        package: ["gleam_analysis", "gleam_hub", "gleam_ir", "gleam_interpreter", "gleam_parser", "gleam_x", "morph", "touch_grass", "untethered"]
+        package: ["gleam_analysis", "gleam_cli", "gleam_hub", "gleam_ir", "gleam_interpreter", "gleam_parser", "gleam_x", "morph", "touch_grass", "untethered"]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

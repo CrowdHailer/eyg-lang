@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+ 
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/compile"
+echo "installing"
+sudo mv "$SCRIPT_DIR/../dist/eyg" /usr/local/bin/eyg

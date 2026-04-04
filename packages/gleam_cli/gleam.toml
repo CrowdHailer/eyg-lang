@@ -1,0 +1,24 @@
+name = "eyg_cli"
+version = "0.0.0"
+target = "javascript"
+
+description = "CLI for running EYG programs and interacting with the EYG hub."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/gleam_cli", tag_prefix = "gleam_cli-" }
+links = [{ title = "Website", href = "https://eyg.run" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+argv = ">= 1.0.2 and < 2.0.0"
+eyg_interpreter = ">= 1.1.0 and < 2.0.0"
+eyg_ir = ">= 1.0.0 and < 2.0.0"
+eyg_parser = ">= 0.3.0 and < 1.0.0"
+gleam_fetch = ">= 1.4.0 and < 2.0.0"
+gleam_x = { path = "../gleam_x" }
+simplifile = ">= 2.4.0 and < 3.0.0"
+touch_grass = ">= 0.1.0 and < 1.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+filepath = ">= 1.1.2 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

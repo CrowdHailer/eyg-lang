@@ -1,0 +1,14 @@
+let request = {
+  method: GET({}),
+  scheme: HTTP({}),
+  host: "example.com",
+  port: None({}),
+  path: "",
+  query: None({}),
+  headers: [],
+  body: !string_to_binary("")
+}
+match perform Fetch(request) {
+  Ok({status: status}) -> { status }
+  Error(reason) -> { !never(Abort(reason)) }
+}
