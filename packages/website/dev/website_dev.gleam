@@ -14,6 +14,7 @@ import website/routes/documentation
 import website/routes/home
 import website/routes/news
 import website/routes/roadmap
+import website/routes/workspace
 
 pub fn main() {
   do_main(argv.load().arguments)
@@ -53,19 +54,20 @@ fn build() {
 }
 
 fn routes() {
-  // let assert Ok(share) = simplifile.read_bits("src/website/share.png")
-  // let assert Ok(pea) = simplifile.read_bits("src/website/images/pea.webp")
+  let assert Ok(share) = simplifile.read_bits("src/website/share.png")
+  let assert Ok(pea) = simplifile.read_bits("src/website/images/pea.webp")
 
   Route(index: route.Page(home.page()), items: [
-    // #("share.png", Route(route.Static(share), [])),
-    // // Keep for old emails
-    // #("pea.webp", Route(route.Static(pea), [])),
+    #("share.png", Route(route.Static(share), [])),
+    // Keep for old emails
+    #("pea.webp", Route(route.Static(pea), [])),
     #(
       "documentation",
       Route(index: route.Page(documentation.page()), items: []),
     ),
+    // This old editor was a shell only
     // #("editor", Route(index: route.Page(editor.page()), items: [])),
-    // #("workspace", Route(index: route.Page(workspace.page()), items: [])),
+    #("editor", Route(index: route.Page(workspace.page()), items: [])),
     #("news", news.route()),
     #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),
   ])

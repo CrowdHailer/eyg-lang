@@ -24,7 +24,9 @@ mysig = ">= 0.5.0 and < 1.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 simplifile = ">= 2.4.0 and < 3.0.0"
 snag = ">= 1.2.0 and < 2.0.0"
+touch_grass = ">= 0.1.0 and < 1.0.0"
 untethered = { path = "../untethered" }
+midas_browser = ">= 1.1.2 and < 2.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
