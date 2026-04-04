@@ -1,9 +1,10 @@
 import dag_json
 import gleam/dynamic/decode
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import multiformats/cid/v1
 import multiformats/hashes
 import untethered/decoder_set
+import untethered/ledger/schema
 import untethered/substrate
 
 pub fn first(signatory, key, package, module) -> Entry {
@@ -13,6 +14,17 @@ pub fn first(signatory, key, package, module) -> Entry {
     signatory:,
     key:,
     content: Release(package:, version: 1, module:),
+  )
+}
+
+pub fn follow(signatory, key, package, module, previous) -> Entry {
+  let schema.ArchivedEntry(cid: previous, sequence:, ..) = previous
+  substrate.Entry(
+    sequence: sequence + 1,
+    previous: Some(previous),
+    signatory:,
+    key:,
+    content: Release(package:, version: sequence + 1, module:),
   )
 }
 
