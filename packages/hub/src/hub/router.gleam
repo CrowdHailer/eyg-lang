@@ -6,6 +6,7 @@ import hub/signatories/controller as signatories
 import wisp
 
 pub fn route(request, context) {
+  use <- wisp.log_request(request)
   let Request(method:, ..) = request
   case request.path_segments(request) {
     ["modules", ..rest] -> {
