@@ -32,6 +32,12 @@ Another reason could be to imagine your own syntax, or even visual editor, and r
 - [touch_grass](./packages/touch_grass/) Common effect definitions (types, decoders and encoders) for your Eat Your Greens (EYG) runtime.
 - [untethered](./packages/untethered/) Location independent datastructures to immutably record decisions. Foundation of EYG hub package signing. (Unpublished)
 
+## EYG packages
+[eyg_packages](./eyg_packages/)
+
+The source for packages maintained as a standard library i.e. `standard` and `json`.
+Other packages in this collection are for demo purposes i.e. `catfact`
+
 ## Philosophy
 
 **Building better languages and tools; for some measure of better.**
