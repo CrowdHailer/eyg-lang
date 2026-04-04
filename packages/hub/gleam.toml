@@ -24,10 +24,7 @@ ogre = ">= 1.1.0 and < 2.0.0"
 pog = ">= 4.1.0 and < 5.0.0"
 wisp = ">= 2.2.2 and < 3.0.0"
 untethered = { path = "../untethered" }
-<<<<<<< HEAD
-=======
 dag_json = ">= 3.0.0 and < 4.0.0"
->>>>>>> main
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
