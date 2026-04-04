@@ -64,8 +64,10 @@ pub fn submit(request, context: context.Context) {
   use Nil <- utils.try_untethered(authorize(entry.content, permission))
 
   // TODO test writing permissions
-  use archived <- utils.db_result(data.insert_release(entry, context.db))
-  archived
+  let query = data.insert_release(entry)
+  use archived <- utils.db_result(pog.execute(query, context.db))
+  let assert pog.Returned(rows: [entry], ..) = archived
+  entry
   |> schema.archived_entry_encode()
   |> json.to_string
   |> wisp.json_response(200)

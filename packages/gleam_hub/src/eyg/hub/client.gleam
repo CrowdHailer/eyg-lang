@@ -55,7 +55,7 @@ pub fn pull_signatories_response(
 
 // Create a get module operation
 pub fn get_module(cid: v1.Cid) -> Operation(BitArray) {
-  operation.get("/modules/modules/" <> v1.to_string(cid))
+  operation.get("/modules/" <> v1.to_string(cid))
   |> operation.set_body(<<>>)
 }
 

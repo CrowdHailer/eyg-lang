@@ -5,7 +5,10 @@ import multiformats/cid/v1
 import pog
 import untethered/ledger/schema
 
-pub fn insert_entry(cid, entity) -> pog.Query(schema.ArchivedEntry) {
+pub fn insert_entry(
+  cid: v1.Cid,
+  entity: json.Json,
+) -> pog.Query(schema.ArchivedEntry) {
   let cid = v1.to_string(cid)
   "INSERT INTO signatory_entries (cid, payload) VALUES ($1, $2)
   RETURNING id, cid, payload, recorded_at, entity, seq, previous, type_"

@@ -11,7 +11,7 @@ pub fn route(request, context) {
     ["modules", ..rest] -> {
       case rest, method {
         ["share"], http.Post -> modules.share(request, context)
-        ["modules", cid], http.Get -> modules.get(cid, context)
+        [cid], http.Get -> modules.get(cid, context)
         _, _ -> wisp.html_response("Nothing", 404)
       }
     }
