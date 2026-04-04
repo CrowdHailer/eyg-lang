@@ -1,6 +1,10 @@
 import eyg/hub/publisher
 import eyg/ir/tree as ir
 import gleam/int
+<<<<<<< HEAD
+=======
+import gleam/list
+>>>>>>> main
 import hub/cid
 import hub/fixtures
 import hub/generators as g
@@ -58,7 +62,9 @@ pub fn insert_multiple_packages_test() {
   let query = data.list_packages()
   let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, conn)
 
-  let assert [p2, p1] = rows
+  // packages are inserted simultaneously because of transaction
+  let assert Ok(p1) = list.find(rows, fn(p) { p.id == package1 })
+  let assert Ok(p2) = list.find(rows, fn(p) { p.id == package2 })
   assert p2.id == package2
   assert p2.version == 1
   assert p2.module == cid2 |> v1.to_string

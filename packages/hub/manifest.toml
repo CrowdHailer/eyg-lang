@@ -61,6 +61,7 @@ packages = [
 [requirements]
 argv = { version = ">= 1.0.2 and < 2.0.0" }
 cigogne = { version = ">= 5.0.5 and < 6.0.0" }
+dag_json = { version = ">= 3.0.0 and < 4.0.0" }
 envoy = { version = ">= 1.1.0 and < 2.0.0" }
 eyg_analysis = { version = ">= 1.0.0 and < 2.0.0" }
 eyg_hub = { path = "../gleam_hub" }

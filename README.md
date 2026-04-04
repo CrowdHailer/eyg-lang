@@ -28,6 +28,7 @@ Another reason could be to imagine your own syntax, or even visual editor, and r
 - [gleam_ir](./packages/gleam_ir/) Data structures for the EYG IR. This is the original implementation of EYG.
 - [gleam_interpreter](./packages/gleam_interpreter/) A Gleam interpreter for EYG targeting JavaScript. Runs in the browser and on the server.
 - [gleam_parser](./packages/gleam_parser/) Parser for a curly braces syntax for EYG IR.
+- [hub](./packages/hub/) Backend application for [eyg.run](https://eyg.run). Stores modules, packages and signatories.
 - [morph](./packages/morph/) Higher level AST and transformation functions for structural edits. (Unpublished)
 - [touch_grass](./packages/touch_grass/) Common effect definitions (types, decoders and encoders) for your Eat Your Greens (EYG) runtime.
 - [untethered](./packages/untethered/) Location independent datastructures to immutably record decisions. Foundation of EYG hub package signing. (Unpublished)

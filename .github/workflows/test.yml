@@ -5,6 +5,10 @@ on:
     branches:
   pull_request:
 
+env:
+  POSTGRES_PASSWORD: banana-penguin-truck
+  SECRET_KEY_BASE: word-button-noodle
+
 jobs:
   test-beam:
     runs-on: ubuntu-latest
@@ -31,6 +35,45 @@ jobs:
         working-directory: packages/${{matrix.package}}
       - run: gleam format --check src test
         working-directory: packages/${{matrix.package}}
+  test-db:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gleam: ["1.15.2"]
+        otp: ["28.4"]
+        rebar3: ["3.25"]
+    services:
+      postgres:
+        image: postgres:17
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          gleam-version: ${{matrix.gleam}}
+          rebar3-version: ${{matrix.rebar3}}
+      - run: gleam build --warnings-as-errors
+        working-directory: packages/hub  
+      - run: gleam dev migrate
+        working-directory: packages/hub  
+        env:
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          SECRET_KEY_BASE: ${{ env.POSTGRES_PASSWORD }}
+      - run: gleam test
+        working-directory: packages/hub  
+        env:
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          SECRET_KEY_BASE: ${{ env.SECRET_KEY_BASE }}
   test-bun:
     runs-on: ubuntu-latest
     strategy:
