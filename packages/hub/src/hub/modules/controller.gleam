@@ -5,7 +5,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/string
-import hub/registry/data
+import hub/modules/data
 import hub/server/context.{type Context}
 import hub/web/utils
 import multiformats/cid/v1
@@ -27,7 +27,7 @@ pub fn share(
   // wisp.accepted
 
   let cid = utils.cid_from_tree(source)
-  case pog.execute(data.insert_module(cid, source, ip), context.db) {
+  case pog.execute(data.insert(cid, source, ip), context.db) {
     Ok(_) ->
       wisp.ok()
       |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
@@ -62,9 +62,9 @@ fn check_purity(source, then) {
   }
 }
 
-pub fn module(cid: String, context: Context) -> Response(wisp.Body) {
+pub fn get(cid: String, context: Context) -> Response(wisp.Body) {
   use _cid <- decode_cid(cid)
-  case pog.execute(data.get_module(cid), context.db) {
+  case pog.execute(data.get(cid), context.db) {
     Ok(pog.Returned(rows: [module], ..)) ->
       wisp.ok()
       |> wisp.json_body(module.source)

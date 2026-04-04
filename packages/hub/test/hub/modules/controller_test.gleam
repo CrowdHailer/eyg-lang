@@ -36,7 +36,7 @@ pub fn reject_invalid_json_test() {
   use context <- helpers.web_context()
   let block = <<"not json!">>
   let request =
-    simulate.request(http.Post, "/registry/share")
+    simulate.request(http.Post, "/modules/share")
     |> simulate.bit_array_body(block)
     |> request.set_header("content-type", "application/json")
   let response = router.route(request, context)
@@ -47,7 +47,7 @@ pub fn reject_invalid_ast_test() {
   use context <- helpers.web_context()
   let block = <<"{}">>
   let request =
-    simulate.request(http.Post, "/registry/share")
+    simulate.request(http.Post, "/modules/share")
     |> simulate.bit_array_body(block)
     |> request.set_header("content-type", "application/json")
   let response = router.route(request, context)
@@ -90,7 +90,7 @@ pub fn fetch_nonexistant_fragment_test() {
 
 pub fn fetch_with_invalid_cid_test() {
   use context <- helpers.web_context()
-  let operation = operation.get("/registry/modules/xyz")
+  let operation = operation.get("/modules/xyz")
   let response = dispatch(operation, context)
   assert response.status == 400
 }

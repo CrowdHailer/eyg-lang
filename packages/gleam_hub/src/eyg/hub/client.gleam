@@ -55,14 +55,14 @@ pub fn pull_signatories_response(
 
 // Create a get module operation
 pub fn get_module(cid: v1.Cid) -> Operation(BitArray) {
-  operation.get("/registry/modules/" <> v1.to_string(cid))
+  operation.get("/modules/modules/" <> v1.to_string(cid))
   |> operation.set_body(<<>>)
 }
 
 /// Create a share module operation
 pub fn share_module(module: tree.Node(_)) -> Operation(BitArray) {
   let body = dag_json.to_block(module)
-  operation.post("/registry/share")
+  operation.post("/modules/share")
   |> operation.set_header("content-type", "application/json")
   |> operation.set_body(body)
 }

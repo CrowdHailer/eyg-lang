@@ -22,7 +22,7 @@ fn module_decoder() {
   decode.success(Module(cid:, source:, inserted_at:))
 }
 
-pub fn insert_module(
+pub fn insert(
   cid: v1.Cid,
   source: #(ir.Expression(a), a),
   ip: String,
@@ -45,7 +45,7 @@ VALUES (($3::text)::inet, $1);"
 }
 
 /// query by string because url parameters arrive as string an it needs reserializing for the query
-pub fn get_module(cid: String) -> pog.Query(Module) {
+pub fn get(cid: String) -> pog.Query(Module) {
   "SELECT cid, source, inserted_at
 FROM modules
 WHERE cid = $1

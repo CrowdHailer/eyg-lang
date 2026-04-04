@@ -4,14 +4,14 @@ import gleam/int
 import gleam/result
 import hub/cid
 import hub/crypto
-import hub/registry/data as registry
+import hub/modules/data as modules
 import hub/signatories/data as signatories
 import pog
 
 pub fn module(conn) {
   let source = ir.integer(int.random(1_000_000))
   let cid = cid.from_tree(source)
-  let query = registry.insert_module(cid, source, "0.0.0.0")
+  let query = modules.insert(cid, source, "0.0.0.0")
   use _ <- result.map(pog.execute(query, conn))
   cid
 }
