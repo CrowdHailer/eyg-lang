@@ -1,10 +1,8 @@
+import eyg/cli/internal/source
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
-import eyg/ir/tree as ir
-import eyg/parser
-import eyg/parser/parser.{describe_reason} as _
 import filepath
 import gleam/fetchx
 import gleam/io
@@ -19,13 +17,7 @@ import touch_grass/fetch
 import touch_grass/read
 
 pub fn execute(file) {
-  use code <- promisex.try_sync(
-    simplifile.read(file) |> result.map_error(simplifile.describe_error),
-  )
-  use source <- promisex.try_sync(
-    parser.all_from_string(code) |> result.map_error(describe_reason),
-  )
-  let source = ir.clear_annotation(source)
+  use source <- promisex.try_sync(source.read(file))
 
   use cwd <- promisex.try_sync(
     simplifile.current_directory()
@@ -79,21 +71,14 @@ fn lookup_release(package, release, module, cwd) {
     "./" <> _ | "/" <> _ | "../" <> _ -> {
       case resolve_relative(cwd, package) {
         Ok(path) -> {
-          let code = case simplifile.read(path) {
-            Ok(code) -> code
-            Error(reason) -> {
-              io.println(simplifile.describe_error(reason) <> " " <> path)
-              panic
-            }
-          }
-          let source = case parser.all_from_string(code) {
+          let source = case source.read(path) {
             Ok(source) -> source
             Error(reason) -> {
-              io.println(describe_reason(reason))
+              io.println(reason <> " " <> path)
               panic
             }
           }
-          let source = ir.clear_annotation(source)
+
           pure_loop(
             expression.execute(source, []),
             filepath.directory_name(path),
