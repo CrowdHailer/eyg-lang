@@ -1,0 +1,2 @@
+let foo = import "./relative/foo.eyg"
+foo
