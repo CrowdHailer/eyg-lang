@@ -1,10 +1,7 @@
 import eyg/hub/publisher
 import eyg/ir/tree as ir
 import gleam/int
-<<<<<<< HEAD
-=======
 import gleam/list
->>>>>>> main
 import hub/cid
 import hub/fixtures
 import hub/generators as g
