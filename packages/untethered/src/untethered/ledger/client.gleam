@@ -7,6 +7,7 @@ pub type Failure {
   // Protocol Errors
   UnexpectedStatus(status: Int)
   UnableToDecode(reason: json.DecodeError)
+  NetworkError(reason: String)
 }
 
 pub fn submit_request(path, payload, signature) {

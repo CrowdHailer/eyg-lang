@@ -2,9 +2,10 @@ import eyg/hub/publisher
 import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/dag_json
-import eyg/ir/tree
+import eyg/ir/tree as ir
 import gleam/http/response.{Response}
 import gleam/json
+import gleam/option.{None, Some}
 import multiformats/cid/v1
 import ogre/operation.{type Operation}
 import untethered/ledger/client
@@ -55,14 +56,29 @@ pub fn pull_signatories_response(
 
 // Create a get module operation
 pub fn get_module(cid: v1.Cid) -> Operation(BitArray) {
-  operation.get("/registry/modules/" <> v1.to_string(cid))
+  operation.get("/modules/" <> v1.to_string(cid))
   |> operation.set_body(<<>>)
 }
 
+pub fn get_module_response(
+  response: response.Response(BitArray),
+) -> Result(option.Option(ir.Node(Nil)), client.Failure) {
+  let Response(status:, body:, ..) = response
+  case status {
+    200 ->
+      case json.parse_bits(body, dag_json.decoder(Nil)) {
+        Ok(response) -> Ok(Some(response))
+        Error(reason) -> Error(client.UnableToDecode(reason:))
+      }
+    204 -> Ok(None)
+    _ -> Error(client.UnexpectedStatus(status:))
+  }
+}
+
 /// Create a share module operation
-pub fn share_module(module: tree.Node(_)) -> Operation(BitArray) {
+pub fn share_module(module: ir.Node(_)) -> Operation(BitArray) {
   let body = dag_json.to_block(module)
-  operation.post("/registry/share")
+  operation.post("/modules/share")
   |> operation.set_header("content-type", "application/json")
   |> operation.set_body(body)
 }
