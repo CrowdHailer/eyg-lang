@@ -32,10 +32,7 @@ pub fn share(
       wisp.ok()
       |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
 
-    Error(reason) -> {
-      echo reason
-      todo
-    }
+    Error(_reason) -> wisp.internal_server_error()
   }
 }
 
@@ -69,11 +66,8 @@ pub fn get(cid: String, context: Context) -> Response(wisp.Body) {
       wisp.ok()
       |> wisp.json_body(module.source)
     Ok(pog.Returned(rows: [], ..)) -> wisp.no_content()
-    Ok(_) -> todo
-    Error(reason) -> {
-      echo reason
-      todo
-    }
+    Ok(_) -> wisp.internal_server_error()
+    Error(_reason) -> wisp.internal_server_error()
   }
 }
 

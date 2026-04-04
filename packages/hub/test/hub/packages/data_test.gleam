@@ -6,65 +6,66 @@ import hub/fixtures
 import hub/generators as g
 import hub/helpers
 import hub/packages/data
+import multiformats/cid/v1
 import pog
 import untethered/substrate
 
-// insert multiple packages
-// insert multiple releases
-pub fn insert_release_test() {
+pub fn insert_multiple_releases_test() {
   use conn <- helpers.with_transaction()
   let assert Ok(#(signatory, keypair)) = fixtures.signatory(conn)
 
-  let assert Ok(cid1) = fixtures.module(conn)
   let package1 = g.package()
+  let assert Ok(cid1) = fixtures.module(conn)
   let entry = publisher.first(signatory.entity, keypair.key_id, package1, cid1)
   let query = data.insert_release(entry)
-  let assert Ok(_) = pog.execute(query, conn)
-  // let cid2 = fixture_fragment(db)
-  // let assert Ok(_) = data.write_release(db, "pgr", 1, todo as cid2)
-  // let cid3 = fixture_fragment(db)
-  // let assert Ok(_) = data.write_release(db, "abc", 2, todo as cid3)
+  let assert Ok(pog.Returned(rows: [archived], ..)) = pog.execute(query, conn)
 
-  // let package2 = g.package()
-  // let mod1 = th.fragment_fixture(db)
-  // let archived = th.release_fixture(access, package1, mod1, db)
-  // let cid1 = archived.cid
-  // let mod2 = th.fragment_fixture(db)
-  // let _ = th.release_fixture(access, package2, mod2, db)
-  // let mod3 = th.fragment_fixture(db)
-  // let next_release =
-  //   substrate.Entry(
-  //     sequence: 2,
-  //     previous: Some(cid1),
-  //     signatory: access.0,
-  //     key: { access.1 }.key_id,
-  //     content: publisher.Release(package: package1, version: 2, module: mod3),
-  //   )
-  // let assert Ok(_) = data.insert_release(next_release, db)
+  let assert Ok(cid2) = fixtures.module(conn)
+  let entry =
+    publisher.follow(signatory.entity, keypair.key_id, package1, cid2, archived)
+  let query = data.insert_release(entry)
+  let assert Ok(_archived) = pog.execute(query, conn)
 
-  // // TODO test cant insert same twice
-  // // pass in previous
-  // let assert Ok([p2, p1]) = data.list_packages(db)
+  let query = data.list_releases(package1)
+  let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, conn)
 
-  // assert p2.id == package1
-  // assert p2.version == 2
-  // // assert p2.fragment == mod3
+  let assert [r2, r1] = rows
+  assert r2.package == package1
+  assert r2.version == 2
+  assert r2.module == cid2 |> v1.to_string
 
-  // assert p1.id == package2
-  // assert p1.version == 1
-  // // assert p1.fragment == mod2
+  assert r1.package == package1
+  assert r1.version == 1
+  assert r1.module == cid1 |> v1.to_string
+}
 
-  // let assert Ok([r2, r1]) = data.list_releases(db, package1)
-  // assert r2.package == package1
-  // assert r2.version == 2
-  // // assert r2.fragment == mod3
+pub fn insert_multiple_packages_test() {
+  use conn <- helpers.with_transaction()
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(conn)
 
-  // assert r1.package == package1
-  // assert r1.version == 1
-  // // assert r1.fragment == mod1
+  let package1 = g.package()
+  let assert Ok(cid1) = fixtures.module(conn)
+  let entry = publisher.first(signatory.entity, keypair.key_id, package1, cid1)
+  let query = data.insert_release(entry)
+  let assert Ok(pog.Returned(rows: [_archived], ..)) = pog.execute(query, conn)
 
-  // data.list_entries_from_entry(db, archived.cid)
-  // |> echo
+  let package2 = g.package()
+  let assert Ok(cid2) = fixtures.module(conn)
+  let entry = publisher.first(signatory.entity, keypair.key_id, package2, cid2)
+  let query = data.insert_release(entry)
+  let assert Ok(_archived) = pog.execute(query, conn)
+
+  let query = data.list_packages()
+  let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, conn)
+
+  let assert [p2, p1] = rows
+  assert p2.id == package2
+  assert p2.version == 1
+  assert p2.module == cid2 |> v1.to_string
+
+  assert p1.id == package1
+  assert p1.version == 1
+  assert p1.module == cid1 |> v1.to_string
 }
 
 pub fn reject_release_with_nonexistant_fragment_test() {
@@ -82,7 +83,25 @@ pub fn reject_release_with_nonexistant_fragment_test() {
   ) = reason
 }
 
-pub fn first_release_version_must_be_one_test() {
+pub fn first_version_cant_be_less_than_one_test() {
+  use conn <- helpers.with_transaction()
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(conn)
+
+  let assert Ok(cid1) = fixtures.module(conn)
+  let package1 = g.package()
+  let entry = publisher.first(signatory.entity, keypair.key_id, package1, cid1)
+  let entry = substrate.Entry(..entry, sequence: 0)
+  let query = data.insert_release(entry)
+  let assert Error(reason) = pog.execute(query, conn)
+  assert pog.PostgresqlError(
+      "P0001",
+      "raise_exception",
+      "Root event (no previous) must have sequence 1, got 0",
+    )
+    == reason
+}
+
+pub fn first_version_cant_be_greater_than_one_test() {
   use conn <- helpers.with_transaction()
   let assert Ok(#(signatory, keypair)) = fixtures.signatory(conn)
 
@@ -99,25 +118,23 @@ pub fn first_release_version_must_be_one_test() {
     )
     == reason
 }
-// hash must match
 
-// // pub fn cant_insert_out_of_order_version_test() {
-// //   use context.Context(db:, ..) <- test_context()
-// //   let cid1 = fixture_fragment(db)
-// //   let assert Ok(_) = data.write_release(db, "abc", 1, todo as cid1)
-// //   let cid2 = fixture_fragment(db)
-// //   let assert Error(reason) = data.write_release(db, "abc", 1, todo as cid2)
-// //   let assert pog.ConstraintViolated(constraint: "unique_package_version", ..) =
-// //     reason
-// // }
+pub fn cant_republish_release_test() {
+  use conn <- helpers.with_transaction()
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(conn)
 
-// //   let package = "package"
-// //   let cid1 = th.fragment_fixture(db)
-// //   let _ = th.release_fixture(access, package, cid1, db)
+  let package = g.package()
+  let assert Ok(cid1) = fixtures.module(conn)
+  let entry = publisher.first(signatory.entity, keypair.key_id, package, cid1)
 
-// //   let cid1 = th.fragment_fixture(db)
-// //   let assert Error(pog.ConstraintViolated(constraint:, ..)) =
-// //     publisher.first(access.0, { access.1 }.key_id, package, cid1)
-// //     |> data.insert_release(db)
-// //   assert "registry_events_unique_release_version" == constraint
-// // }
+  let query = data.insert_release(entry)
+  let assert Ok(_) = pog.execute(query, conn)
+
+  let assert Ok(cid2) = fixtures.module(conn)
+  let entry = publisher.first(signatory.entity, keypair.key_id, package, cid2)
+
+  let query = data.insert_release(entry)
+  let assert Error(reason) = pog.execute(query, conn)
+  let assert pog.ConstraintViolated(constraint:, ..) = reason
+  assert "package_entries_unique_release_version" == constraint
+}

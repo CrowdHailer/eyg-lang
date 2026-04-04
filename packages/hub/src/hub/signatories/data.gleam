@@ -18,11 +18,17 @@ pub fn insert_entry(
   |> pog.returning(entry_decoder())
 }
 
-// TODO data test 
-pub fn list_entries(parameters) -> pog.Query(schema.ArchivedEntry) {
-  "SELECT id, cid, payload, recorded_at, entity, seq, previous, type_ FROM signatory_entries ORDER BY id ASC"
-  |> pog.query
-  // |> pog.parameter(pog.text(entity))
+pub fn list_entries(
+  parameters: schema.PullParameters,
+) -> pog.Query(schema.ArchivedEntry) {
+  "SELECT id, cid, payload, recorded_at, entity, seq, previous, type_
+  FROM signatory_entries
+  WHERE id > $1
+  ORDER BY id ASC
+  LIMIT $2"
+  |> pog.query()
+  |> pog.parameter(pog.int(parameters.since))
+  |> pog.parameter(pog.int(parameters.limit))
   |> pog.returning(entry_decoder())
 }
 

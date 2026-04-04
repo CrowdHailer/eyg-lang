@@ -1,12 +1,9 @@
-import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/publisher
 import eyg/hub/signatory
-import eyg/ir/dag_json
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import gleam/string
 import hub/crypto
 import hub/packages/data
 import hub/server/context
@@ -23,20 +20,19 @@ pub fn submit(request, context: context.Context) {
   use signature <- utils.try_untethered(server.read_signature(request))
   use entry <- utils.try_untethered(validate_payload(payload))
 
-  let assert Ok(history) = case entry.previous {
+  let assert Ok(_history) = case entry.previous {
     Some(cid) -> {
-      todo
-      // let assert Ok(rows) = data.list_entries_from_entry(context.db, cid)
+      let query = data.list_entries_from_entry(cid)
+      let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, context.db)
 
-      // let assert [previous, ..] = list.reverse(rows)
+      let assert [previous, ..] = list.reverse(rows)
+      let assert Ok(Nil) = server.validate_integrity(entry, previous.sequence)
+      list.map(rows, fn(row) {
+        let assert Ok(entry) = json.parse(row.payload, publisher.decoder())
 
-      // let assert Ok(Nil) = server.validate_integrity(entry, previous.sequence)
-      // list.map(rows, fn(row) {
-      //   let assert Ok(entry) = json.parse(row.payload, signatory.decoder())
-
-      //   entry.content
-      // })
-      // |> Ok
+        entry.content
+      })
+      |> Ok
     }
     None -> Ok([])
   }
@@ -54,7 +50,7 @@ pub fn submit(request, context: context.Context) {
 
       entry.content
     })
-  // let assert [previous, ..] = list.reverse(rows)
+
   use permission <- utils.try_untethered(
     signatory.fetch_permissions(entry.key, signatory_history)
     |> result.replace_error(server.DoesNotHavePermission),
@@ -85,8 +81,9 @@ fn authorize(_content, _permission) {
 pub fn pull(request, context) {
   let context.Context(db:, ..) = context
   let parameters = schema.pull_parameters_from_request(request)
-  use entries <- utils.db_result(data.list_events(db, parameters))
-  schema.entries_response_encode(entries)
+  let query = data.list_events(parameters)
+  use pog.Returned(rows:, ..) <- utils.db_result(pog.execute(query, db))
+  schema.entries_response_encode(rows)
   |> json.to_string
   |> wisp.json_response(200)
 }
