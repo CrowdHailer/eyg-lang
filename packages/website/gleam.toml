@@ -1,0 +1,35 @@
+name = "website"
+version = "0.0.0"
+target = "javascript"
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+argv = ">= 1.0.2 and < 2.0.0"
+eyg_analysis = ">= 1.0.0 and < 2.0.0"
+eyg_hub = { path = "../gleam_hub" }
+eyg_interpreter = ">= 1.1.0 and < 2.0.0"
+eyg_ir = ">= 1.0.0 and < 2.0.0"
+filepath = ">= 1.1.2 and < 2.0.0"
+gleam_fetch = ">= 1.3.1 and < 2.0.0"
+gleam_http = ">= 4.3.0 and < 5.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+gleam_time = ">= 1.8.0 and < 2.0.0"
+gleam_x = { path = "../gleam_x" }
+gleroglero = ">= 1.2.0 and < 2.0.0"
+jot = ">= 8.0.0 and < 9.0.0"
+lustre = ">= 5.6.0 and < 6.0.0"
+midas_browser = ">= 1.1.2 and < 2.0.0"
+morph = { path = "../morph" }
+multiformats = ">= 4.0.0 and < 5.0.0"
+mysig = ">= 0.5.0 and < 1.0.0"
+ogre = ">= 1.1.0 and < 2.0.0"
+plinth = ">= 0.10.2 and < 1.0.0"
+simplifile = ">= 2.4.0 and < 3.0.0"
+snag = ">= 1.2.0 and < 2.0.0"
+spotless = ">= 3.4.0 and < 4.0.0"
+touch_grass = ">= 0.1.0 and < 1.0.0"
+untethered = { path = "../untethered" }
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

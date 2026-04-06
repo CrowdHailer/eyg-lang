@@ -93,7 +93,7 @@ pub fn list_events(
   parameters: schema.PullParameters,
 ) -> pog.Query(schema.ArchivedEntry) {
   "SELECT id, cid, payload, recorded_at, entity, seq, previous, type_
-  FROM registry_events
+  FROM package_entries
   WHERE id > $1
   ORDER BY id ASC
   LIMIT $2"

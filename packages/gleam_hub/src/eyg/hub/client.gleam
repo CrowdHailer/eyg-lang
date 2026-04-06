@@ -119,3 +119,21 @@ pub fn submit_package_response(
     _ -> Error(client.UnexpectedStatus(status:))
   }
 }
+
+pub fn pull_packages(parameters: schema.PullParameters) -> Operation(BitArray) {
+  client.pull_request("/packages/pull", parameters)
+}
+
+pub fn pull_packages_response(
+  response: response.Response(BitArray),
+) -> Result(schema.PullResponse, client.Failure) {
+  let Response(status:, body:, ..) = response
+  case status {
+    200 ->
+      case json.parse_bits(body, schema.pull_response_decoder()) {
+        Ok(response) -> Ok(response)
+        Error(reason) -> Error(client.UnableToDecode(reason:))
+      }
+    _ -> Error(client.UnexpectedStatus(status:))
+  }
+}

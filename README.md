@@ -32,6 +32,7 @@ Another reason could be to imagine your own syntax, or even visual editor, and r
 - [morph](./packages/morph/) Higher level AST and transformation functions for structural edits. (Unpublished)
 - [touch_grass](./packages/touch_grass/) Common effect definitions (types, decoders and encoders) for your Eat Your Greens (EYG) runtime.
 - [untethered](./packages/untethered/) Location independent datastructures to immutably record decisions. Foundation of EYG hub package signing. (Unpublished)
+- [website](./packages/website/) Website for documentation, guides and introduction on [eyg.run](https://eyg.run).
 
 ## EYG packages
 [eyg_packages](./eyg_packages/)
