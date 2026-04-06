@@ -6,13 +6,14 @@ Backend application for [eyg.run](https://eyg.run). Stores modules, packages and
 
 Requires the following environment variables to be set
 
+- `POSTGRES_HOST`
 - `POSTGRES_PASSWORD`
 - `SECRET_KEY_BASE`
 
 I use the following script to temporarity set environment variables
 
 ```sh
-(set -a; source .env; set +a; gleam test)
+(set -a; source ../eyg.run/.env; POSTGRES_HOST=localhost; set +a; gleam test)
 ```
 
 ### Database

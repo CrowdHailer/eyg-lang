@@ -34,6 +34,6 @@ pub fn main() {
 fn db_config() {
   let assert Ok(config) = config.from_env()
   let assert Ok(started) =
-    pool.start(process.new_name("db_pool"), config.postgres_password)
+    pool.start(process.new_name("db_pool"), config.postgres)
   started.data
 }

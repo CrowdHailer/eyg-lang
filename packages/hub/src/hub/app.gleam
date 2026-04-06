@@ -8,7 +8,7 @@ import pog
 pub fn start(config: config.Config, reload) {
   let pool_name = process.new_name("db_pool")
   supervisor.new(supervisor.OneForOne)
-  |> supervisor.add(pool.supervised(pool_name, config.postgres_password))
+  |> supervisor.add(pool.supervised(pool_name, config.postgres))
   |> supervisor.add(server.supervised(
     config,
     pog.named_connection(pool_name),

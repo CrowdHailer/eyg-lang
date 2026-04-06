@@ -67,11 +67,13 @@ jobs:
       - run: gleam dev migrate
         working-directory: packages/hub  
         env:
+          POSTGRES_HOST: localhost
           POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          SECRET_KEY_BASE: ${{ env.POSTGRES_PASSWORD }}
+          SECRET_KEY_BASE: ${{ env.SECRET_KEY_BASE }}
       - run: gleam test
         working-directory: packages/hub  
         env:
+          POSTGRES_HOST: localhost
           POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
           SECRET_KEY_BASE: ${{ env.SECRET_KEY_BASE }}
   test-bun:

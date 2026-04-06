@@ -6,6 +6,7 @@ import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import hub/cid
+import hub/config
 import hub/db/pool
 import hub/router
 import hub/server/context
@@ -37,8 +38,12 @@ pub fn with_transaction(then) {
 }
 
 pub fn start_db() {
+  let assert Ok(postgres_host) = envoy.get("POSTGRES_HOST")
+  echo postgres_host
   let assert Ok(postgres_password) = envoy.get("POSTGRES_PASSWORD")
-  let assert Ok(_started) = pool.start(test_pool_name(), postgres_password)
+  let postgres =
+    config.Postgres(host: postgres_host, password: postgres_password)
+  let assert Ok(_started) = pool.start(test_pool_name(), postgres)
   Nil
 }
 
