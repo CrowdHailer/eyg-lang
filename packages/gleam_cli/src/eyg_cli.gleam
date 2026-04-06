@@ -12,7 +12,7 @@ import ogre/origin
 
 pub fn main() {
   use result <- promise.map(case args.parse(argv.load().arguments) {
-    args.Run(file) -> run.execute(file)
+    args.Run(file) -> run.execute(file, config())
     args.Share(file:) -> share.execute(file, config())
     args.Fetch(cid:) -> fetch.execute(cid, config())
     args.Fail -> promise.resolve(Error("bad arguments"))

@@ -1,8 +1,10 @@
+import eyg/cli/internal/client
 import eyg/cli/internal/source
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
+import eyg/interpreter/value
 import filepath
 import gleam/fetchx
 import gleam/io
@@ -11,12 +13,13 @@ import gleam/javascript/promisex
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import multiformats/cid/v1
 import simplifile
 import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/read
 
-pub fn execute(file) {
+pub fn execute(file, config) {
   use source <- promisex.try_sync(source.read(file))
 
   use cwd <- promisex.try_sync(
@@ -25,12 +28,16 @@ pub fn execute(file) {
   )
   use path <- promisex.try_sync(resolve_relative(cwd, file))
   let dir = filepath.directory_name(path)
-  use result <- promise.map(loop(block.execute(source, []), dir))
+  use result <- promise.map(loop(block.execute(source, []), dir, config))
   result
   |> result.map_error(simple_debug.describe)
 }
 
-fn loop(return, cwd) {
+fn loop(
+  return,
+  cwd,
+  config: client.Client,
+) -> promise.Promise(Result(String, _)) {
   case return {
     Ok(#(Some(value), _)) -> promise.resolve(Ok(simple_debug.inspect(value)))
     Ok(#(None, _)) -> promise.resolve(Ok(""))
@@ -38,19 +45,23 @@ fn loop(return, cwd) {
       case reason {
         break.UnhandledEffect("DecodeJSON", lift) -> {
           use encoded <- promisex.try_sync(decode_json.decode(lift))
-          loop(block.resume(decode_json.sync(encoded), env, k), cwd)
+          loop(block.resume(decode_json.sync(encoded), env, k), cwd, config)
         }
         break.UnhandledEffect("Fetch", lift) -> {
           use request <- promisex.try_sync(fetch.decode(lift))
           use result <- promise.await(fetchx.send_bits(request))
           let result = result.map_error(result, string.inspect)
-          loop(block.resume(fetch.encode(result), env, k), cwd)
+          loop(block.resume(fetch.encode(result), env, k), cwd, config)
         }
         break.UnhandledEffect("Read", lift) -> {
           use path <- promisex.try_sync(read.decode(lift))
           let result = simplifile.read_bits(path)
           let result = result.map_error(result, string.inspect)
-          loop(block.resume(read.encode(result), env, k), cwd)
+          loop(block.resume(read.encode(result), env, k), cwd, config)
+        }
+        break.UndefinedReference(cid) -> {
+          use value <- promise.try_await(lookup_reference(cid, cwd, config))
+          loop(block.resume(value, env, k), cwd, config)
         }
         break.UndefinedRelease(package:, release:, module:) -> {
           use value <- promise.try_await(lookup_release(
@@ -58,15 +69,42 @@ fn loop(return, cwd) {
             release,
             module,
             cwd,
+            config,
           ))
-          loop(block.resume(value, env, k), cwd)
+          loop(block.resume(value, env, k), cwd, config)
         }
         _ -> promise.resolve(Error(reason))
       }
   }
 }
 
-fn lookup_release(package, release, module, cwd) {
+fn lookup_reference(
+  cid,
+  cwd,
+  config,
+) -> promise.Promise(Result(value.Value(_, _), _)) {
+  use result <- promise.await(client.get_module(cid, config))
+  case result {
+    Ok(Some(source)) -> {
+      use value <- promise.try_await(pure_loop(
+        expression.execute(source, []),
+        cwd,
+        config,
+      ))
+      promise.resolve(Ok(value))
+    }
+    Ok(None) -> {
+      io.println("no module for #" <> v1.to_string(cid))
+      panic
+    }
+    Error(_) -> {
+      io.println("failed to fetch #" <> v1.to_string(cid))
+      panic
+    }
+  }
+}
+
+fn lookup_release(package, release, module, cwd, config) {
   case package {
     "./" <> _ | "/" <> _ | "../" <> _ -> {
       case resolve_relative(cwd, package) {
@@ -82,6 +120,7 @@ fn lookup_release(package, release, module, cwd) {
           pure_loop(
             expression.execute(source, []),
             filepath.directory_name(path),
+            config,
           )
         }
         Error(_) ->
@@ -97,20 +136,26 @@ fn lookup_release(package, release, module, cwd) {
   }
 }
 
-fn pure_loop(return, cwd) {
+fn pure_loop(return, cwd, config) {
   case return {
     Ok(value) -> promise.resolve(Ok(value))
     Error(#(reason, _meta, env, k)) ->
       case reason {
+        break.UndefinedReference(cid) -> {
+          use value <- promise.try_await(lookup_reference(cid, cwd, config))
+          pure_loop(expression.resume(value, env, k), cwd, config)
+        }
         break.UndefinedRelease(package:, release:, module:) -> {
           use result <- promise.await(lookup_release(
             package,
             release,
             module,
             cwd,
+            config,
           ))
           case result {
-            Ok(value) -> pure_loop(expression.resume(value, env, k), cwd)
+            Ok(value) ->
+              pure_loop(expression.resume(value, env, k), cwd, config)
             Error(reason) -> promise.resolve(Error(reason))
           }
         }
