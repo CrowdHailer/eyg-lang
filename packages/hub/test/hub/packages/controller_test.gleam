@@ -5,7 +5,7 @@ import hub/crypto
 import hub/fixtures
 import hub/generators as g
 import hub/helpers.{dispatch}
-import untethered/ledger/client as ledger_client
+import untethered/ledger/server
 import untethered/substrate
 
 pub fn submit_first_release_test() {
@@ -20,7 +20,7 @@ pub fn submit_first_release_test() {
   let request = client.submit_package(first, signature)
   let response = dispatch(request, context)
 
-  let assert Ok(response) = client.submit_package_response(response)
+  let assert Ok(Ok(response)) = client.submit_package_response(response)
   let cid = response.cid
   assert cid == response.entity
   assert 1 == response.sequence
@@ -41,8 +41,8 @@ pub fn reject_not_first_release_test() {
   let request = client.submit_package(first, signature)
   let response = dispatch(request, context)
 
-  let assert Error(reason) = client.submit_package_response(response)
-  assert ledger_client.UnexpectedStatus(400) == reason
+  let assert Ok(Error(reason)) = client.submit_package_response(response)
+  assert server.denied_reason(server.MissingPrevious) == reason
 }
 
 pub fn reject_publish_with_nonexistant_fragment_test() {
@@ -56,8 +56,8 @@ pub fn reject_publish_with_nonexistant_fragment_test() {
   let request = client.submit_package(first, signature)
   let response = dispatch(request, context)
 
-  let assert Error(reason) = client.submit_package_response(response)
-  assert ledger_client.UnexpectedStatus(422) == reason
+  let assert Ok(Error(reason)) = client.submit_package_response(response)
+  assert "package_entries_module_fkey" == reason
 }
 
 pub fn second_release_test() {
@@ -72,7 +72,7 @@ pub fn second_release_test() {
 
   let request = client.submit_package(first, signature)
   let response = dispatch(request, context)
-  let assert Ok(response) = client.submit_package_response(response)
+  let assert Ok(Ok(response)) = client.submit_package_response(response)
   let entity_cid = response.cid
 
   let entry =
@@ -82,7 +82,7 @@ pub fn second_release_test() {
 
   let request = client.submit_package(entry, signature)
   let response = dispatch(request, context)
-  let assert Ok(response) = client.submit_package_response(response)
+  let assert Ok(Ok(response)) = client.submit_package_response(response)
 
   assert entity_cid == response.entity
   assert 2 == response.sequence

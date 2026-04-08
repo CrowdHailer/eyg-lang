@@ -1,5 +1,7 @@
 import eyg/cli/internal/client
+import eyg/cli/internal/config
 import eyg/cli/internal/source
+import eyg/hub/publisher
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -10,6 +12,8 @@ import gleam/fetchx
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
+import gleam/json
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
@@ -18,8 +22,9 @@ import simplifile
 import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/read
+import untethered/ledger/schema
 
-pub fn execute(file, config) {
+pub fn execute(file, config: config.Config) {
   use source <- promisex.try_sync(source.read(file))
 
   use cwd <- promisex.try_sync(
@@ -28,7 +33,7 @@ pub fn execute(file, config) {
   )
   use path <- promisex.try_sync(resolve_relative(cwd, file))
   let dir = filepath.directory_name(path)
-  use result <- promise.map(loop(block.execute(source, []), dir, config))
+  use result <- promise.map(loop(block.execute(source, []), dir, config.client))
   result
   |> result.map_error(simple_debug.describe)
 }
@@ -105,8 +110,8 @@ fn lookup_reference(
 }
 
 fn lookup_release(package, release, module, cwd, config) {
-  case package {
-    "./" <> _ | "/" <> _ | "../" <> _ -> {
+  case package, release {
+    "./" <> _, 0 | "/" <> _, 0 | "../" <> _, 0 -> {
       case resolve_relative(cwd, package) {
         Ok(path) -> {
           let source = case source.read(path) {
@@ -129,7 +134,23 @@ fn lookup_release(package, release, module, cwd, config) {
           )
       }
     }
-    _ ->
+    _, 0 -> {
+      use response <- promise.await(client.pull_package(config, package))
+      let assert Ok(response) = response
+      case list.reverse(response.entries) {
+        [] ->
+          promise.resolve(
+            Error(break.UndefinedRelease(package:, release:, module:)),
+          )
+        [schema.ArchivedEntry(payload:, ..), ..] -> {
+          let assert Ok(entry) = json.parse(payload, publisher.decoder())
+          let cid = entry.content.module
+          use value <- promise.try_await(lookup_reference(cid, cwd, config))
+          promise.resolve(Ok(value))
+        }
+      }
+    }
+    _, _ ->
       promise.resolve(
         Error(break.UndefinedRelease(package:, release:, module:)),
       )

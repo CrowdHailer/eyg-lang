@@ -12,6 +12,7 @@ import website/components/reload
 import website/components/runner
 import website/components/snippet
 import website/config
+import website/harness/browser
 import website/sync/client
 
 pub type Meta =
@@ -65,12 +66,7 @@ fn init_example(json, cache, extrinsic) {
 }
 
 fn effects() {
-  []
-  // list.append(
-  //   // harness.effects(),
-  //   // todo as "spotless.effects(config)"
-  //   [],
-  // )
+  browser.effects()
 }
 
 pub fn init(config) {

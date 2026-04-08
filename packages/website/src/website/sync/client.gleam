@@ -98,10 +98,9 @@ pub fn update(client: Client, message) -> #(Client, _) {
             list.fold(entries, #(client.cache, client.cursor, []), fn(acc, e) {
               let #(cache, _, new) = acc
               let schema.ArchivedEntry(cursor:, payload:, ..) = e
-              let assert Ok(event) =
-                json.parse(payload, publisher.event_decoder()("release"))
-              let cache = cache.apply(cache, event)
-              let cid = event.module
+              let assert Ok(entry) = json.parse(payload, publisher.decoder())
+              let cache = cache.apply(cache, entry.content)
+              let cid = entry.content.module
               let new = case cache.has_fragment(cache, cid) {
                 True -> new
                 False -> [cid, ..new]

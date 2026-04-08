@@ -22,12 +22,17 @@ pub fn submit_signatory(
 
 pub fn submit_signatory_response(
   response: response.Response(BitArray),
-) -> Result(schema.ArchivedEntry, client.Failure) {
+) -> Result(Result(schema.ArchivedEntry, String), client.Failure) {
   let Response(status:, body:, ..) = response
   case status {
     200 ->
       case json.parse_bits(body, schema.archived_entry_decoder()) {
-        Ok(response) -> Ok(response)
+        Ok(response) -> Ok(Ok(response))
+        Error(reason) -> Error(client.UnableToDecode(reason:))
+      }
+    400 | 401 | 403 | 422 ->
+      case json.parse_bits(body, schema.failure_decoder()) {
+        Ok(reason) -> Ok(Error(reason))
         Error(reason) -> Error(client.UnableToDecode(reason:))
       }
     _ -> Error(client.UnexpectedStatus(status:))
@@ -108,12 +113,17 @@ pub fn submit_package(
 
 pub fn submit_package_response(
   response: response.Response(BitArray),
-) -> Result(schema.ArchivedEntry, client.Failure) {
+) -> Result(Result(schema.ArchivedEntry, String), client.Failure) {
   let Response(status:, body:, ..) = response
   case status {
     200 ->
       case json.parse_bits(body, schema.archived_entry_decoder()) {
-        Ok(response) -> Ok(response)
+        Ok(response) -> Ok(Ok(response))
+        Error(reason) -> Error(client.UnableToDecode(reason:))
+      }
+    400 | 401 | 403 | 422 ->
+      case json.parse_bits(body, schema.failure_decoder()) {
+        Ok(reason) -> Ok(Error(reason))
         Error(reason) -> Error(client.UnableToDecode(reason:))
       }
     _ -> Error(client.UnexpectedStatus(status:))

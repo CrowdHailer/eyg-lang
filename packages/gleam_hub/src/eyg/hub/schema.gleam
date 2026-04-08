@@ -4,7 +4,7 @@ import gleam/json
 import multiformats/cid/v1
 import untethered/ledger/schema
 
-fn cid_decoder() {
+pub fn cid_decoder() {
   use encoded <- decode.then(decode.string)
   case v1.from_string(encoded) {
     Ok(#(cid, _)) -> decode.success(cid)
@@ -35,4 +35,9 @@ pub fn share_response_decoder() -> decode.Decoder(ShareResponse) {
 
 pub fn share_response_encode(cid: ShareResponse) {
   json.object([#("cid", json.string(v1.to_string(cid)))])
+}
+
+pub fn failure_decoder() {
+  use reason <- decode.field("reason", decode.string)
+  decode.success(reason)
 }

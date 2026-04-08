@@ -21,7 +21,7 @@ pub fn db_result(result, then) {
     Ok(value) -> then(value)
     Error(pog.ConstraintViolated(constraint:, ..)) -> {
       wisp.log_warning("violated constraint " <> constraint)
-      wisp.html_response("", 422)
+      api_reason(422, constraint)
     }
     Error(reason) -> {
       wisp.log_warning(string.inspect(reason))
@@ -45,6 +45,17 @@ pub fn cid_from_block(bytes) {
 pub fn try_untethered(result, then) {
   case result {
     Ok(value) -> then(value)
-    Error(reason) -> wisp.response(server.denied_status_code(reason))
+    Error(reason) ->
+      api_reason(
+        server.denied_status_code(reason),
+        server.denied_reason(reason),
+      )
   }
+}
+
+fn api_reason(status, reason) {
+  wisp.json_response(
+    json.to_string(json.object([#("reason", json.string(reason))])),
+    status,
+  )
 }

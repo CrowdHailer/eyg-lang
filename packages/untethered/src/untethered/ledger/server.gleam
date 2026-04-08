@@ -36,6 +36,22 @@ pub fn denied_status_code(reason: Denied) -> Int {
   }
 }
 
+pub fn denied_reason(reason) {
+  case reason {
+    MissingSignature -> "missing_signature"
+    DecodeError(_) -> "decode_error"
+    InvalidSequence -> "invalid_sequence"
+    MissingPrevious -> "missing_previous"
+    UnexpectedPrevious -> "unexpected_previous"
+    WrongSequence -> "wrong_sequence"
+    IncorrectPrevious -> "incorrect_previous"
+    UnauthorizedKey -> "unauthorized_key"
+    IncorrectSignature -> "incorrect_signature"
+    DoesNotHavePermission -> "does_not_have_permission"
+    InvalidSignatorySequence -> "invalid_signatory_sequence"
+  }
+}
+
 /// Check that the bytes represent a valid entry.
 /// Pass in the content decoder for your protocol
 /// 

@@ -39,7 +39,6 @@ pub fn with_transaction(then) {
 
 pub fn start_db() {
   let assert Ok(postgres_host) = envoy.get("POSTGRES_HOST")
-  echo postgres_host
   let assert Ok(postgres_password) = envoy.get("POSTGRES_PASSWORD")
   let postgres =
     config.Postgres(host: postgres_host, password: postgres_password)

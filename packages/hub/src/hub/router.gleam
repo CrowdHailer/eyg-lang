@@ -20,8 +20,6 @@ pub fn route(request, context) {
       case rest, method {
         ["submit"], http.Post -> packages.submit(request, context)
         ["pull"], http.Get -> packages.pull(request, context)
-        // List packes
-        // [], http.Get -> packages.packages(context)
         _, _ -> wisp.html_response("Nothing", 404)
       }
     }

@@ -87,9 +87,3 @@ pub fn pull(request, context) {
   |> json.to_string
   |> wisp.json_response(200)
 }
-// pub fn packages(context) {
-//   let context.Context(db:, ..) = context
-//   use packages <- utils.db_call(data.list_packages(db))
-//   wisp.response(200)
-//   |> wisp.string_body(string.inspect(packages))
-// }
