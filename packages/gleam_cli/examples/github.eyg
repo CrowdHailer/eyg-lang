@@ -1,0 +1,23 @@
+let list_accounts = (_) -> {
+  let operation = {
+    method: GET({}),
+    path: "/user",
+    query: None({}),
+    headers: [],
+    body: !string_to_binary("")
+  }
+  perform GitHub(operation)
+}
+
+let body = match list_accounts({}) {
+  Ok({body: body}) -> { body }
+}
+
+let {decode: decode} = import "../../../eyg_packages/json/index.eyg.json"
+match perform DecodeJSON(body) {
+  Ok(flat) -> { decode.object((fields) -> {
+    let login = decode.field("login",decode.string,fields)
+    login
+  })(flat) }
+  Error(reason) -> { perform Abort("bad json") }
+}.value

@@ -25,6 +25,8 @@ import ogre/origin
 import simplifile
 import snag
 import spotless
+import spotless/oauth_2_1/token
+import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/http
@@ -63,16 +65,7 @@ fn loop(
           loop(block.resume(decode_json.sync(encoded), env, k), cwd, config)
         }
         break.UnhandledEffect("DNSimple", lift) -> {
-          use operation <- promisex.try_sync(http.operation_to_gleam(lift))
-          use result <- promise.await(midas_bun.run(spotless.dnsimple(8080)))
-          use result <- promise.await(case result {
-            Ok(token) -> {
-              let request = service_request("dnsimple", operation, token)
-              use result <- promise.map(fetchx.send_bits(request))
-              result.map_error(result, string.inspect)
-            }
-            Error(reason) -> promise.resolve(Error(snag.line_print(reason)))
-          })
+          use result <- promise.try_await(service_fetch("dnsimple", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), cwd, config)
         }
         break.UnhandledEffect("Fetch", lift) -> {
@@ -81,11 +74,23 @@ fn loop(
           let result = result.map_error(result, string.inspect)
           loop(block.resume(fetch.encode(result), env, k), cwd, config)
         }
+        break.UnhandledEffect("GitHub", lift) -> {
+          use result <- promise.try_await(service_fetch("github", lift, 8080))
+          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+        }
         break.UnhandledEffect("Read", lift) -> {
           use path <- promisex.try_sync(read.decode(lift))
           let result = simplifile.read_bits(path)
           let result = result.map_error(result, string.inspect)
           loop(block.resume(read.encode(result), env, k), cwd, config)
+        }
+        break.UnhandledEffect("Netlify", lift) -> {
+          use result <- promise.try_await(service_fetch("netlify", lift, 8080))
+          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+        }
+        break.UnhandledEffect("Vimeo", lift) -> {
+          use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
+          loop(block.resume(fetch.encode(result), env, k), cwd, config)
         }
         break.UndefinedReference(cid) -> {
           use value <- promise.try_await(lookup_reference(cid, cwd, config))
@@ -215,6 +220,22 @@ fn resolve_relative(root, relative) {
   }
 
   filepath.expand(joined) |> result.replace_error("invalid relative directory")
+}
+
+fn service_fetch(service, lift, port) {
+  use operation <- promisex.try_sync(http.operation_to_gleam(lift))
+  use result <- promise.await(
+    midas_bun.run(spotless.authenticate(service, [], "", port, pkce.S256)),
+  )
+  use result <- promise.await(case result {
+    Ok(token.Response(access_token:, ..)) -> {
+      let request = service_request(service, operation, access_token)
+      use result <- promise.map(fetchx.send_bits(request))
+      result.map_error(result, string.inspect)
+    }
+    Error(reason) -> promise.resolve(Error(snag.line_print(reason)))
+  })
+  promise.resolve(Ok(result))
 }
 
 fn service_request(service, operation, token) {
