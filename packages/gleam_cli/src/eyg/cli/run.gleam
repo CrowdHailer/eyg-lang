@@ -1,5 +1,6 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
+import eyg/cli/internal/midas_bun
 import eyg/cli/internal/source
 import eyg/hub/publisher
 import eyg/interpreter/block
@@ -9,6 +10,7 @@ import eyg/interpreter/simple_debug
 import eyg/interpreter/value
 import filepath
 import gleam/fetchx
+import gleam/http/request
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -18,13 +20,21 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
+import ogre/operation
+import ogre/origin
 import simplifile
+import snag
+import spotless
 import touch_grass/decode_json
 import touch_grass/fetch
+import touch_grass/http
 import touch_grass/read
 import untethered/ledger/schema
 
-pub fn execute(file, config: config.Config) {
+pub fn execute(
+  file: String,
+  config: config.Config,
+) -> promise.Promise(Result(String, String)) {
   use source <- promisex.try_sync(source.read(file))
 
   use cwd <- promisex.try_sync(
@@ -51,6 +61,19 @@ fn loop(
         break.UnhandledEffect("DecodeJSON", lift) -> {
           use encoded <- promisex.try_sync(decode_json.decode(lift))
           loop(block.resume(decode_json.sync(encoded), env, k), cwd, config)
+        }
+        break.UnhandledEffect("DNSimple", lift) -> {
+          use operation <- promisex.try_sync(http.operation_to_gleam(lift))
+          use result <- promise.await(midas_bun.run(spotless.dnsimple(8080)))
+          use result <- promise.await(case result {
+            Ok(token) -> {
+              let request = service_request("dnsimple", operation, token)
+              use result <- promise.map(fetchx.send_bits(request))
+              result.map_error(result, string.inspect)
+            }
+            Error(reason) -> promise.resolve(Error(snag.line_print(reason)))
+          })
+          loop(block.resume(fetch.encode(result), env, k), cwd, config)
         }
         break.UnhandledEffect("Fetch", lift) -> {
           use request <- promisex.try_sync(fetch.decode(lift))
@@ -192,4 +215,17 @@ fn resolve_relative(root, relative) {
   }
 
   filepath.expand(joined) |> result.replace_error("invalid relative directory")
+}
+
+fn service_request(service, operation, token) {
+  let origin = case service {
+    "dnsimple" -> origin.https("api.dnsimple.com")
+    "github" -> origin.https("api.github.com")
+    "netlify" -> origin.https("api.netlify.com")
+    "tavily" -> origin.https("api.tavily.com")
+    "vimeo" -> origin.https("api.vimeo.com")
+    _ -> panic
+  }
+  operation.to_request(operation, origin)
+  |> request.set_header("authorization", "Bearer " <> token)
 }

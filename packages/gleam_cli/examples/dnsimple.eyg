@@ -1,0 +1,16 @@
+let list_accounts = (_) -> {
+  let operation = {
+    method: GET({}),
+    path: "/v2/accounts",
+    query: None({}),
+    headers: [],
+    body: !string_to_binary("")
+  }
+  perform DNSimple(operation)
+}
+
+let body = match list_accounts({}) {
+  Ok({body: body}) -> { body }
+}
+
+perform DecodeJSON(body)
