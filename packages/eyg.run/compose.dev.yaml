@@ -1,0 +1,21 @@
+services:
+  backend:
+    # TODO put back to dev after gleam build issue is resolved https://github.com/gleam-lang/gleam/issues/5132
+    command: dev
+  db:
+    ports:
+      - "5432:5432"
+  frontend:
+    command: dev
+  proxy:
+    environment:
+      - FRONTEND=development
+    volumes:
+      - ./caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+    ports:
+      - "8001:8001"
+      - "8002:8002"
+    depends_on:
+      frontend:
+        condition: service_started
+  

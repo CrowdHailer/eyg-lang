@@ -4,8 +4,10 @@ CLI for running EYG programs and interacting with the EYG hub.
 
 ## Usage
 
-Check out the [EYG documentation](https://eyg.run/documentation) for language guide.
+For writing EYG source code check the [documentation](https://eyg.run/documentation) for language guide.
 There are script examples available in this repo in [example](./examples/)
+*The CLI supports running EYG IR files, saved as `.eyg.json` and textual code file, saved as `.eyg`.*
+
 
 ## Installation
 

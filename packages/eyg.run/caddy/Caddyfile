@@ -1,0 +1,24 @@
+{$EYG_AUTHORITY} {
+	handle /modules/* {
+		reverse_proxy backend:8080
+	}
+	handle /packages/* {
+		reverse_proxy backend:8080
+	}
+	handle /signatories/* {
+		reverse_proxy backend:8080
+	}
+	
+	handle {
+		root * /var/eyg
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format console
+		level {$LOG_LEVEL:INFO}
+	}
+}
+
