@@ -22,7 +22,7 @@ import eyg/interpreter/expression
 import eyg/ir/tree as ir
 
 pub fn main() {
-  let source = ir.Let("x", ir.Integer(5), ir.Variable("x"))
+  let source = ir.let_("x", ir.integer(5), ir.variable("x"))
   let scope = []
   expression.execute(source, scope)
   // => value.Integer(5)

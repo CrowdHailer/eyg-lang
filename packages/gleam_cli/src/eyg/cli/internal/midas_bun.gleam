@@ -35,14 +35,13 @@ pub fn run(effect) {
     e.Hash(bytes:, algorithm:, resume:) -> {
       let algorithm = case algorithm {
         e.Sha256 -> crypto.Sha256
-        _ -> panic as "unsupported"
+        _ -> panic as "unsupported algorithm"
       }
       run(resume(Ok(crypto.hash(algorithm, bytes))))
     }
 
     _ -> {
-      echo effect
-      panic as "unsupported"
+      panic as "unsupported effect"
     }
   }
 }

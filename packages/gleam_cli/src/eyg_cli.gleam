@@ -1,5 +1,6 @@
 import argv
 import eyg/cli/args
+import eyg/cli/compile
 import eyg/cli/fetch
 import eyg/cli/internal/config
 import eyg/cli/publish
@@ -18,6 +19,7 @@ pub fn main() {
     )
     case args.parse(argv.load().arguments) {
       args.Run(file) -> run.execute(file, config)
+      args.Compile(file) -> compile.execute(file, config)
       args.Share(file:) -> share.execute(file, config)
       args.Fetch(cid:) -> fetch.execute(cid, config)
       args.Publish(package:, file:) -> publish.execute(package, file, config)
