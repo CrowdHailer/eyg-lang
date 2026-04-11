@@ -1,4 +1,4 @@
-FROM ghcr.io/gleam-lang/gleam:v1.15.2-erlang-alpine
+FROM ghcr.io/gleam-lang/gleam:v1.15.3-erlang-alpine
 RUN apk update \
 # git for git dependencies of the project
 # inotify-tools for code reloading in dev

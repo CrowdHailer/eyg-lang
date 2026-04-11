@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gleam: ["1.15.2"]
+        gleam: ["1.15.3"]
         otp: ["28.4"]
         rebar3: ["3.25"]
         package: ["gleam_analysis", "gleam_hub", "gleam_ir", "gleam_parser", "touch_grass", "untethered"]
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gleam: ["1.15.2"]
+        gleam: ["1.15.3"]
         otp: ["28.4"]
         rebar3: ["3.25"]
     services:
@@ -81,7 +81,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gleam: ["1.15.2"]
+        gleam: ["1.15.3"]
         otp: ["28.4"]
         bun: ["1.3.10",]
         package: [
