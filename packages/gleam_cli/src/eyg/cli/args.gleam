@@ -1,4 +1,5 @@
 pub type Args {
+  Repl
   Run(file: String)
   Compile(file: String)
   Share(file: String)
@@ -10,6 +11,7 @@ pub type Args {
 
 pub fn parse(args) {
   case args {
+    [] -> Repl
     ["run", file] -> Run(file:)
     ["compile", file] -> Compile(file:)
     ["share", file] -> Share(file:)

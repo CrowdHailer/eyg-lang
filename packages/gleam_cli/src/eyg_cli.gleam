@@ -4,6 +4,7 @@ import eyg/cli/compile
 import eyg/cli/fetch
 import eyg/cli/internal/config
 import eyg/cli/publish
+import eyg/cli/repl
 import eyg/cli/run
 import eyg/cli/share
 import eyg/cli/signatory
@@ -18,6 +19,7 @@ pub fn main() {
       config.load() |> result.replace_error("failed to load config"),
     )
     case args.parse(argv.load().arguments) {
+      args.Repl -> repl.execute(config)
       args.Run(file) -> run.execute(file, config)
       args.Compile(file) -> compile.execute(file, config)
       args.Share(file:) -> share.execute(file, config)

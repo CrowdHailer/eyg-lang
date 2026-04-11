@@ -23,6 +23,7 @@ gleam_http = ">= 4.3.0 and < 5.0.0"
 gleam_javascript = ">= 1.0.0 and < 2.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_x = { path = "../gleam_x" }
+input = ">= 1.0.1 and < 2.0.0"
 kryptos = ">= 1.3.0 and < 2.0.0"
 midas = ">= 2.0.0 and < 3.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
