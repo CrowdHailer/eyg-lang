@@ -1,0 +1,39 @@
+#!/bin/bash
+set -e
+
+DOMAIN=eyg.run
+
+echo "=== Syncing code ==="
+
+rsync -avz \
+--exclude 'node_modules' \
+--exclude '.git' \
+--exclude '.env' \
+--exclude 'build' \
+../gleam_hub ../gleam_x ../hub ../morph ../untethered ../website ../eyg.run \
+root@$DOMAIN:/opt/
+
+echo "=== Setting config ==="
+
+scp .production.env root@eyg.run:/opt/eyg.run/.env
+
+echo "=== Restarting containers ==="
+
+ssh root@$DOMAIN "cd /opt/eyg.run && docker compose build && docker compose up -d"
+
+echo "=== Waiting for responsive service ==="
+
+URL="https://$DOMAIN"
+
+while true; do
+  STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$URL" || true)
+
+  if [ "$STATUS" -eq 200 ]; then
+    echo "Service is healthy with status 200 OK!"
+    break
+  else
+    echo "Waiting for service... Current status: $STATUS"
+  fi
+  
+  sleep 2
+done

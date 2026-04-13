@@ -1,4 +1,4 @@
-{$EYG_AUTHORITY} {
+{$AUTHORITY} {
 	handle /modules/* {
 		reverse_proxy backend:8080
 	}

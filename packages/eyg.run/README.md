@@ -16,3 +16,22 @@ docker compose -f compose.yaml -f compose.dev.yaml up -d
 docker compose -f compose.yaml -f compose.dev.yaml down
 # add `-v` flag to remove database
 ```
+
+## Setup
+
+### Set up VPS
+
+Create an Ubuntu VPS with your ssh keys installed.
+
+Run the install script
+
+```sh
+ssh root@$DOMAIN 'bash -s' < ./bin/remote_install
+```
+
+## Deploy
+
+```sh
+DOMAIN=...
+./bin/deploy
+```

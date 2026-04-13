@@ -1,11 +1,8 @@
-{$EYG_AUTHORITY} {
+{$AUTHORITY} {
 	handle /modules/* {
 		reverse_proxy backend:8080
 	}
 	handle /packages/* {
-		reverse_proxy backend:8080
-	}
-	handle /proxy/* {
 		reverse_proxy backend:8080
 	}
 	handle /signatories/* {
