@@ -5,6 +5,7 @@ import eyg/cli/internal/source
 import eyg/hub/publisher
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/value
 import filepath
@@ -68,6 +69,11 @@ fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
         break.UnhandledEffect("Netlify", lift) -> {
           use result <- promise.try_await(service_fetch("netlify", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), cwd, config)
+        }
+        break.UnhandledEffect("Print", lift) -> {
+          use message <- promisex.try_sync(cast.as_string(lift))
+          io.print(message)
+          loop(block.resume(value.unit(), env, k), cwd, config)
         }
         break.UnhandledEffect("Vimeo", lift) -> {
           use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
