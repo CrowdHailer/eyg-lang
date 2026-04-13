@@ -33,3 +33,5 @@ untethered = { path = "../untethered" }
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+midas = ">= 2.0.0 and < 3.0.0"
+midas_node = ">= 1.4.0 and < 2.0.0"

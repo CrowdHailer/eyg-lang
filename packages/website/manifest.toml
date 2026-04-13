@@ -71,7 +71,9 @@ gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 gleroglero = { version = ">= 1.2.0 and < 2.0.0" }
 jot = { version = ">= 8.0.0 and < 9.0.0" }
 lustre = { version = ">= 5.6.0 and < 6.0.0" }
+midas = { version = ">= 2.0.0 and < 3.0.0" }
 midas_browser = { version = ">= 1.1.2 and < 2.0.0" }
+midas_node = { version = ">= 1.4.0 and < 2.0.0" }
 morph = { path = "../morph" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 mysig = { version = ">= 0.5.0 and < 1.0.0" }

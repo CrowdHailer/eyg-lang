@@ -2,6 +2,61 @@ import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(
+    "2025-04-13",
+    "An interpreter, a compiler, a REPL or your own runtime.",
+    "
+Run EYG in your shell. Technically you always could via node and npx but it's a lot easier now.
+This edition introduces the new CLI where you can interpret or compile EYG code, or start a REPL.
+
+EYG semantics make it easy to run in lots of environments and there is also a [guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/embedding_in_gleam.md) to build a runner for your own environment.
+
+## Building a CLI
+
+The EYG CLI is implemented in [Gleam](https://gleam.run/) which can compile to JavaScript or the BEAM.
+A nice thing about the JavaScript ecosystem is the choice of runtimes.
+Several of these runtimes make it trivial to create a single binary from your project.
+In my opinion [Bun](https://bun.sh/) is the best of these.
+
+Building a single binary from a Gleam project with Bun is very simple.
+Essentially these two lines are the build process:
+
+```sh
+gleam build
+bun build build/dev/javascript/eyg_cli/eyg_cli.mjs \\
+--compile \\
+--footer=\"main();\" \\
+--outfile ./dist/eyg
+```
+
+The [CLI](https://github.com/CrowdHailer/eyg-lang/tree/main/packages/gleam_cli) package has instructions to get started with the CLI.
+
+## Embedding EYG in a Gleam program
+
+Want your own runtime and tight control over side effects? This [guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/embedding_in_gleam.md) explains how to build your own EYG runner within a Gleam program.
+Implementing your own effects is a great reason to look at building your own EYG runner.
+Don't forget because Gleam targets JavaScript and BEAM, your effects could describe a program:
+
+- running in the browser
+- a large distributed system on the BEAM
+- a CLI tool built with Bun
+- a tiny system running on [AtomVM](https://atomvm.org/)
+
+## A few more updates
+
+Since last time, the package for type checking EYG programs has been published.
+This can easily be added to your projects from [hex](https://hex.pm/packages/eyg_analysis)
+
+Work on the large program editor is still ongoing.
+The new editor is available on the website, keybindings are the same as the previous iteration.
+
+New functionality includes syncing a directory to the editor.
+This is only available in Chrome and triggered by pressing `Q`.
+
+A better tutorial on using the editor will come after a few more iterations, and when I am happy using it.
+
+",
+  ),
+  Edition(
     "2025-03-23",
     "A year of EYG development and proper open source",
     "
