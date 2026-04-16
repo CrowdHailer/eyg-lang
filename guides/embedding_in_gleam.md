@@ -224,8 +224,8 @@ The runners so far have all returned a result to handle the case of the program 
 
 EYG implements sound structural type inference including inference of all effect types.
 
-Running this type checker is optional
-For a script that is intended to run and finish type checking before running the script doesn't add much.
+Running this type checker is optional.
+For a script that is intended to run and finish, type checking before running the script doesn't add much.
 In most other circumstances asserting that the EYG program has no runtime errors is invaluable.
 
 ```gleam
