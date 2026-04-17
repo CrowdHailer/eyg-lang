@@ -1,0 +1,53 @@
+let {write_text, append_text, patch} = import "./index.eyg"
+
+let print_line = (line) -> {
+  perform Print(!string_append(line, "\n"))
+}
+
+let assert_true = (condition, name) -> {
+  match condition {
+    True(_) -> { print_line(!string_append("PASS: ", name)) }
+    False(_) -> { print_line(!string_append("FAIL: ", name)) }
+  }
+}
+
+let assert_eq = (expected, actual, name) -> {
+  match !equal(expected, actual) {
+    True(_) -> { print_line(!string_append("PASS: ", name)) }
+    False(_) -> { print_line(!string_append("FAIL: ", name)) }
+  }
+}
+
+let test_suite = ({}) -> {
+  let _ = print_line("\n--- Running Tests for edit/index.eyg ---")
+
+  // Test write_text: write a string and read it back
+  let _ = match write_text({path: "fixtures/write_output.txt", text: "Hello from write_text"}) {
+    Ok(_) -> { assert_true(True({}), "write_text returns ok") }
+    Error(_) -> { assert_true(False({}), "write_text returns ok") }
+  }
+  let contents = perform ReadFile({path: "fixtures/write_output.txt", offset: 0, limit: 1000000})
+  let _ = assert_eq(Ok(!string_to_binary("Hello from write_text")), contents, "write_text content is correct")
+
+  // Test append_text: always start from a known state, then append
+  let _ = write_text({path: "fixtures/append_output.txt", text: "first"})
+  let _ = match append_text({path: "fixtures/append_output.txt", text: " second"}) {
+    Ok(_) -> { assert_true(True({}), "append_text returns ok") }
+    Error(_) -> { assert_true(False({}), "append_text returns ok") }
+  }
+  let appended = perform ReadFile({path: "fixtures/append_output.txt", offset: 0, limit: 1000000})
+  let _ = assert_eq(Ok(!string_to_binary("first second")), appended, "append_text accumulates content")
+
+  // Test patch: find and replace within a file
+  let _ = write_text({path: "fixtures/patch_output.txt", text: "Hello, World!"})
+  let _ = match patch({path: "fixtures/patch_output.txt", find: "World", replace: "EYG"}) {
+    Ok(_) -> { assert_true(True({}), "patch returns ok") }
+    Error(_) -> { assert_true(False({}), "patch returns ok") }
+  }
+  let patched = perform ReadFile({path: "fixtures/patch_output.txt", offset: 0, limit: 1000000})
+  let _ = assert_eq(Ok(!string_to_binary("Hello, EYG!")), patched, "patch replaces content correctly")
+
+  print_line("--- Tests Complete ---\n")
+}
+
+test_suite({})

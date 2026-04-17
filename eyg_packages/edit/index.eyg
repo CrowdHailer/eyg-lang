@@ -1,0 +1,29 @@
+let fs = import "../fs/index.eyg"
+let write_text = ({path, text}) -> {
+  perform WriteFile({path, contents: !string_to_binary(text)})
+}
+
+let append_text = ({path, text}) -> {
+  perform AppendFile({path, contents: !string_to_binary(text)})
+}
+
+let append_line = ({path, line}) -> {
+  let text = !string_append(line, "\n")
+  append_text({path, text})
+}
+
+let patch = ({path, find, replace}) -> {
+  match fs.read(path) {
+    Ok(contents) -> {
+      match !string_from_binary(contents) {
+        Ok(text) -> {
+          perform WriteFile({path, contents: !string_to_binary(!string_replace(text, find, replace))})
+        }
+        Error(_) -> { Error("file is not valid utf-8") }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+{write_text, append_text, patch}

@@ -1,4 +1,4 @@
-let {list, list_files, read, read_range} = import "./index.eyg"
+let {list, list_files, read, read_range, write} = import "./index.eyg"
 
 // --- Simplistic Test Harness ---
 
@@ -88,7 +88,18 @@ let test_suite = ({}) -> {
 
   // Test 6: reads file ranges
   let _ = assert_true(!equal(Ok(!string_to_binary("Wo")), read_range({path: "fixtures/hello.txt", offset: 7, limit: 2})), "read returns ok for a file")
-  
+
+  // Test 7: writes files
+  let _ = match write({path: "fixtures/write.txt", contents: !string_to_binary("written by test")}) {
+    Ok(_) -> { assert_true(True({}), "write returns ok") }
+    Error(_) -> { assert_true(False({}), "write returns ok") }
+  }
+  let _ = assert_true(!equal(Ok(!string_to_binary("written by test")), read("fixtures/write.txt")), "read back written file")
+  let _ = match write({path: "fixtures/write.txt", contents: !string_to_binary("")}) {
+    Ok(_) -> { assert_true(True({}), "write returns ok") }
+    Error(_) -> { assert_true(False({}), "write returns ok") }
+  }
+
   print_line("--- Tests Complete ---\n")
 }
 

@@ -72,13 +72,30 @@ let read_range = ({path, offset, limit}) -> {
 }
 
 let read = (path) -> {
-  // TODO return error if file is larger than 1M0b
-  read_range({path, offset: 0, limit: 1000000})
+  let chunk = 65536
+  !fix((self, offset, acc) -> {
+    match perform ReadFile({path, offset, limit: chunk}) {
+      Ok(bytes) -> {
+        let len = !binary_size(bytes)
+        let combined = !binary_concat(acc, bytes)
+        match !int_compare(len, chunk) {
+          Lt(_) -> { Ok(combined) }
+          Eq(_) -> { self(!int_add(offset, chunk), combined) }
+        }
+      }
+      Error(reason) -> { Error(reason) }
+    }
+  })(0, !string_to_binary(""))
 }
 
-{ 
+let write = ({path, contents}) -> {
+  perform WriteFile({path, contents})
+}
+
+{
   list,
   list_files,
   read,
-  read_range
+  read_range,
+  write
 }
