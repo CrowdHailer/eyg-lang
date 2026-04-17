@@ -17,7 +17,7 @@ import gleam/javascript/promisex
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/result
+import gleam/result.{try}
 import gleam/string
 import multiformats/cid/v1
 import ogre/operation
@@ -29,8 +29,9 @@ import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/decode_json
 import touch_grass/fetch
+import touch_grass/file_system/read_directory
+import touch_grass/file_system/read_file
 import touch_grass/http
-import touch_grass/read
 import untethered/ledger/schema
 
 pub fn block(source, scope, dir, config: config.Config) {
@@ -60,12 +61,6 @@ fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
           use result <- promise.try_await(service_fetch("github", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), cwd, config)
         }
-        break.UnhandledEffect("Read", lift) -> {
-          use path <- promisex.try_sync(read.decode(lift))
-          let result = simplifile.read_bits(path)
-          let result = result.map_error(result, string.inspect)
-          loop(block.resume(read.encode(result), env, k), cwd, config)
-        }
         break.UnhandledEffect("Netlify", lift) -> {
           use result <- promise.try_await(service_fetch("netlify", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), cwd, config)
@@ -74,6 +69,16 @@ fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
           use message <- promisex.try_sync(cast.as_string(lift))
           io.print(message)
           loop(block.resume(value.unit(), env, k), cwd, config)
+        }
+        break.UnhandledEffect("ReadDirectory", lift) -> {
+          use input <- promisex.try_sync(read_directory.decode(lift))
+          let output = read_directory(cwd, input)
+          loop(block.resume(read_directory.encode(output), env, k), cwd, config)
+        }
+        break.UnhandledEffect("ReadFile", lift) -> {
+          use input <- promisex.try_sync(read_file.decode(lift))
+          let output = read_file(cwd, input)
+          loop(block.resume(read_file.encode(output), env, k), cwd, config)
         }
         break.UnhandledEffect("Vimeo", lift) -> {
           use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
@@ -207,6 +212,51 @@ pub fn resolve_relative(root, relative) {
   }
 
   filepath.expand(joined) |> result.replace_error("invalid relative directory")
+}
+
+pub fn read_directory(
+  cwd cwd: String,
+  path path: String,
+) -> read_directory.Output {
+  {
+    use path <- try(
+      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
+    )
+    use children <- try(simplifile.read_directory(path))
+    let children =
+      list.filter_map(children, fn(child) {
+        let path = path <> "/" <> child
+
+        use info <- try(simplifile.file_info(path))
+        case simplifile.file_info_type(info) {
+          simplifile.File -> Ok(#(child, read_directory.File(size: info.size)))
+          simplifile.Directory -> Ok(#(child, read_directory.Directory))
+          simplifile.Symlink -> Error(simplifile.Unknown(""))
+          simplifile.Other -> Error(simplifile.Unknown(""))
+        }
+      })
+    Ok(children)
+  }
+  |> result.map_error(simplifile.describe_error)
+}
+
+@external(javascript, "./execute_ffi.mjs", "readAtOffset")
+fn read_at_offset(
+  path path: String,
+  offset offset: Int,
+  limit limit: Int,
+) -> Result(BitArray, simplifile.FileError)
+
+pub fn read_file(cwd, input: read_file.Input) {
+  {
+    let read_file.Input(path:, limit:, offset:) = input
+    use path <- try(
+      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
+    )
+
+    read_at_offset(path:, limit:, offset:)
+  }
+  |> result.map_error(simplifile.describe_error)
 }
 
 fn service_fetch(service, lift, port) {
