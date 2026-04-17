@@ -79,6 +79,8 @@ fn builtins() {
   |> dict.insert("string_from_binary", builtin.string_from_binary)
   // Binary
   |> dict.insert("binary_from_integers", builtin.binary_from_integers)
+  |> dict.insert("binary_size", builtin.binary_size)
+  |> dict.insert("binary_concat", builtin.binary_concat)
   |> dict.insert("binary_fold", builtin.binary_fold)
   // List
   |> dict.insert("list_pop", builtin.list_pop)

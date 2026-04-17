@@ -580,6 +580,8 @@ pub fn builtins() {
     #("string_from_binary", pure1(t.Binary, t.result(t.String, t.unit))),
     // This should be literals
     #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
+    #("binary_size", pure1(t.Binary, t.Integer)),
+    #("binary_concat", pure2(t.Binary, t.Binary, t.Binary)),
     #("binary_fold", {
       let acc = q(1)
       // eff only thrown by reduce when last argument given

@@ -292,6 +292,21 @@ pub fn do_binary_from_integers(term, _meta, env, k) {
   Ok(#(state.V(v.Binary(content)), env, k))
 }
 
+pub const binary_size = state.Arity1(do_binary_size)
+
+pub fn do_binary_size(term, _meta, env, k) {
+  use bytes <- try(cast.as_binary(term))
+  Ok(#(state.V(v.Integer(bit_array.byte_size(bytes))), env, k))
+}
+
+pub const binary_concat = state.Arity2(do_binary_concat)
+
+pub fn do_binary_concat(left, right, _meta, env, k) {
+  use left <- try(cast.as_binary(left))
+  use right <- try(cast.as_binary(right))
+  Ok(#(state.V(v.Binary(bit_array.append(left, right))), env, k))
+}
+
 pub const binary_fold = state.Arity3(do_binary_fold)
 
 fn do_binary_fold(bytes, state, func, meta, env, k) {
