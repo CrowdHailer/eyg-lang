@@ -29,8 +29,10 @@ import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/decode_json
 import touch_grass/fetch
+import touch_grass/file_system/append_file
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
+import touch_grass/file_system/write_file
 import touch_grass/http
 import untethered/ledger/schema
 
@@ -47,6 +49,11 @@ fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
     Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, _meta, env, k)) ->
       case reason {
+        break.UnhandledEffect("AppendFile", lift) -> {
+          use input <- promisex.try_sync(append_file.decode(lift))
+          let output = append_file(cwd, input)
+          loop(block.resume(append_file.encode(output), env, k), cwd, config)
+        }
         break.UnhandledEffect("DecodeJSON", lift) -> {
           use encoded <- promisex.try_sync(decode_json.decode(lift))
           loop(block.resume(decode_json.sync(encoded), env, k), cwd, config)
@@ -87,6 +94,11 @@ fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
         break.UnhandledEffect("Vimeo", lift) -> {
           use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), cwd, config)
+        }
+        break.UnhandledEffect("WriteFile", lift) -> {
+          use input <- promisex.try_sync(write_file.decode(lift))
+          let output = write_file(cwd, input)
+          loop(block.resume(write_file.encode(output), env, k), cwd, config)
         }
         break.UndefinedReference(cid) -> {
           use value <- promise.try_await(lookup_reference(cid, cwd, config))
@@ -214,6 +226,17 @@ pub fn resolve_relative(root, relative) {
   filepath.expand(joined) |> result.replace_error("invalid relative directory")
 }
 
+pub fn append_file(cwd, input: append_file.Input) {
+  {
+    let append_file.Input(path:, contents:) = input
+    use path <- try(
+      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
+    )
+    simplifile.append_bits(path, contents)
+  }
+  |> result.map_error(simplifile.describe_error)
+}
+
 pub fn read_directory(
   cwd cwd: String,
   path path: String,
@@ -255,6 +278,17 @@ pub fn read_file(cwd, input: read_file.Input) {
     )
 
     read_at_offset(path:, limit:, offset:)
+  }
+  |> result.map_error(simplifile.describe_error)
+}
+
+pub fn write_file(cwd, input: write_file.Input) {
+  {
+    let write_file.Input(path:, contents:) = input
+    use path <- try(
+      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
+    )
+    simplifile.write_bits(path, contents)
   }
   |> result.map_error(simplifile.describe_error)
 }
