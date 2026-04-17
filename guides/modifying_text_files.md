@@ -20,6 +20,39 @@ match edit.write_text({path: "./notes.txt", text: "first draft\n"}) {
 }
 ```
 
+## Patch a file
+
+Find and replace all occurances of a string within a file.
+
+```eyg
+let edit = import "../eyg_packages/edit/index.eyg"
+
+match edit.patch({path: "./config.json", find: "\"debug\": false", replace: "\"debug\": true"}) {
+  Ok(_) -> { perform Print("config updated\n") }
+  Error(reason) -> { !never(Abort(reason)) }
+}
+```
+
+## Grep file content
+
+Return the lines of a file which contain at least one of the provided patterns.
+
+```eyg
+let edit = import "../../eyg_packages/edit/index.eyg"
+let fs = import "../../eyg_packages/fs/index.eyg"
+
+let text = match fs.read("README.md") {
+  Ok(text) -> {
+    match !string_from_binary(text) {
+      Ok(text) -> { text }
+      Error(_) -> { todo }
+    }
+  }
+  Error(_) -> { todo }
+}
+edit.grep({text, patterns: ["example"]})
+```
+
 ## Append text to a file
 
 Add text to the end of an existing file.
@@ -42,18 +75,6 @@ let _ = edit.append_line({path: "./log.txt", text: "step one complete"})
 let _ = edit.append_line({path: "./log.txt", text: "step two complete"})
 ```
 
-## Patch a file
-
-Find and replace all occurances of a string within a file.
-
-```eyg
-let edit = import "../eyg_packages/edit/index.eyg"
-
-match edit.patch({path: "./config.json", find: "\"debug\": false", replace: "\"debug\": true"}) {
-  Ok(_) -> { perform Print("config updated\n") }
-  Error(reason) -> { !never(Abort(reason)) }
-}
-```
 ## Composing edits
 
 Because `write_text`, `append_text`, and `patch` are ordinary functions they compose freely.

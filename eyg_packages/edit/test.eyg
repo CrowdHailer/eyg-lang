@@ -1,4 +1,4 @@
-let {write_text, append_text, patch} = import "./index.eyg"
+let {write_text, append_text, patch, grep} = import "./index.eyg"
 
 let print_line = (line) -> {
   perform Print(!string_append(line, "\n"))
@@ -47,6 +47,30 @@ let test_suite = ({}) -> {
   let patched = perform ReadFile({path: "fixtures/patch_output.txt", offset: 0, limit: 1000000})
   let _ = assert_eq(Ok(!string_to_binary("Hello, EYG!")), patched, "patch replaces content correctly")
 
+  // Test grep: create a test file with multiple lines
+  let text = "apple pie\nbanana split\ncherry tart\napple juice\ngrape soda"
+  
+  // Test grep with single pattern that matches multiple lines
+  let _ = assert_eq(
+    [{content: "apple pie", line: 1}, {content: "apple juice", line: 4}],
+    grep({text, patterns: ["apple"]}),
+    "grep finds correct number of ms"
+  )
+
+  // Test grep with multiple patterns
+  let _ = assert_eq(
+    [{content: "banana split", line: 2}, {content: "cherry tart", line: 3}],
+    grep({text, patterns: ["split", "tart"]}),
+    "grep finds correct number of ms"
+  )
+  
+  // Test grep with no matches
+  let _ = assert_eq(
+    [],
+    grep({text, patterns: ["trampoline"]}),
+    "grep finds correct number of ms"
+  )
+  
   print_line("--- Tests Complete ---\n")
 }
 

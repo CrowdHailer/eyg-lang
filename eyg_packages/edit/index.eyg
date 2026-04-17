@@ -26,4 +26,37 @@ let patch = ({path, find, replace}) -> {
   }
 }
 
-{write_text, append_text, patch}
+let reverse = (list) -> {!list_fold(list, [], (el, acc) -> {[el, ..acc]})}
+
+let grep = ({text, patterns}) -> {
+  let {head, tail} = !string_split(text, "\n")
+  let lines = [head, ..tail]
+
+  let contains_any_pattern = !fix((self, line, patterns) -> {
+    match !list_pop(patterns) {
+      Ok({head, tail}) -> {
+        // Check if pattern is in line by trying to split
+        match !string_split_once(line, head) {
+          Ok(_) -> { True({}) }
+          Error(_) -> { self(line, tail) }
+        }
+      }
+      Error(_) -> { False({}) }
+    }
+  })
+
+  !fix((self, line, remaining, found) -> {
+    match !list_pop(remaining) {
+      Ok({head, tail}) -> {
+        match contains_any_pattern(head, patterns) {
+          True(_) -> { self(!int_add(line, 1), tail, [{line, content: head}, ..found]) }
+          False(_) -> { self(!int_add(line, 1), tail, found) }
+        }
+      }
+      Error(_) -> { reverse(found) }
+    }
+  })(1, lines, [])
+  
+}
+
+{write_text, append_text, patch, grep}
