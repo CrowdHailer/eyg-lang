@@ -1,0 +1,84 @@
+let print_line = (line) -> {
+  perform Print(!string_append(line, "\n"))
+}
+
+let path_join = (before, after) -> {
+  !string_append(before, !string_append("/", after))
+}
+
+let contains = !fix((self,items,value) -> { 
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      match !equal(head, value) {
+        True({}) -> { True({}) }
+        False({}) -> { self(tail, value) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+let reverse = (list) -> {!list_fold(list, [], (el, acc) -> {[el, ..acc]})}
+
+
+let list = ({root, ignore}) -> {
+  let dirs = [""]
+  !fix((self, dirs, found) -> { match !list_pop(dirs) {
+    Ok ({head, tail}) -> { 
+      let path = path_join(root, head)
+      // let _ = perform Log(path)
+      match perform ReadDirectory(path) {
+        Ok(children) -> { 
+          let {dirs, found} = !list_fold(children, {dirs: tail, found}, ({type, name}, {dirs, found}) -> {
+            // head is the current dir
+            // 
+            let relative = match !equal("", head) {
+              True(_) -> { name }
+              False(_) -> { path_join(head, name) }
+            }
+            let found = [{type,path: relative}, ..found]
+            let dirs = match type {
+              Directory(_) -> { 
+                match contains(ignore, name) {
+                  True(_) -> { dirs }
+                  False(_) -> { [relative,..dirs] }
+                }
+              }
+              File(_) -> { dirs }
+            }
+            {dirs, found}
+          })
+          self(dirs, found)
+        }
+        Error(_) -> { self(tail, found) }
+      }
+    }
+    Error (_) -> {reverse(found)}
+  }},dirs,[])
+}
+
+let list_files = ({root, ignore}) -> {
+  let found=!list_fold(list({root, ignore}), [], ({type, path}, acc) -> {
+    match type {
+      Directory(_) -> { acc }
+      File(_) -> { [path,..acc] }
+    }
+  })
+  reverse(found)
+}
+
+let read_range = ({path, offset, limit}) -> {
+  perform ReadFile({path, offset, limit})
+}
+
+let read = (path) -> {
+  // TODO return error if file is larger than 1M0b
+  read_range({path, offset: 0, limit: 1000000})
+}
+
+{ 
+  list,
+  list_files,
+  read,
+  read_range
+}

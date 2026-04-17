@@ -38,6 +38,10 @@ pub fn block(source, scope, dir, config: config.Config) {
   loop(block.execute(source, scope), dir, config.client)
 }
 
+pub fn pure(source, dir, config: client.Client) {
+  pure_loop(expression.execute(source, []), dir, config)
+}
+
 fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
   case return {
     Ok(return) -> promise.resolve(Ok(return))
@@ -111,11 +115,7 @@ fn lookup_reference(
   use result <- promise.await(client.get_module(cid, config))
   case result {
     Ok(Some(source)) -> {
-      use value <- promise.try_await(pure_loop(
-        expression.execute(source, []),
-        cwd,
-        config,
-      ))
+      use value <- promise.try_await(pure(source, cwd, config))
       promise.resolve(Ok(value))
     }
     Ok(None) -> {

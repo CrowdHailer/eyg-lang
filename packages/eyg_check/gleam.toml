@@ -1,0 +1,20 @@
+name = "eyg_check"
+version = "0.0.0"
+target = "javascript"
+runtime = "bun"
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+eyg_cli = { path = "../gleam_cli" }
+eyg_ir = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+simplifile = ">= 2.4.0 and < 3.0.0"
+ogre = ">= 1.1.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_http = ">= 4.3.0 and < 5.0.0"
+eyg_interpreter = ">= 1.1.0 and < 2.0.0"
+eyg_parser = ">= 0.3.0 and < 1.0.0"
+filepath = ">= 1.1.2 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

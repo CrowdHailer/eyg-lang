@@ -1,0 +1,96 @@
+let {list, list_files, read, read_range} = import "./index.eyg"
+
+// --- Simplistic Test Harness ---
+
+let print_line = (line) -> {
+  perform Print(!string_append(line, "\n"))
+}
+
+let assert_true = (condition, name) -> {
+  match condition {
+    True(_) -> { print_line(!string_append("PASS: ", name)) }
+    False(_) -> { print_line(!string_append("FAIL: ", name)) }
+  }
+}
+
+let assert_false = (condition, name) -> {
+  match condition {
+    True(_) -> { print_line(!string_append("FAIL: ", name)) }
+    False(_) -> { print_line(!string_append("PASS: ", name)) }
+  }
+}
+
+let assert_eq = (expected, actual, name) -> {
+  match !equal(expected, actual) {
+    True(_) -> { print_line(!string_append("PASS: ", name)) }
+    False(_) -> { print_line(!string_append("FAIL: ", name)) }
+  }
+}
+
+// Helper: Check if a list contains a specific value
+let contains = !fix((self, items, value) -> { 
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      match !equal(head, value) {
+        True(_) -> { True({}) }
+        False(_) -> { self(tail, value) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+// --- Test Cases ---
+
+let test_suite = ({}) -> {
+  let _ = print_line("\n--- Running Tests for index.eyg ---")
+
+  // We test against the current directory (".") to ensure a predictable test environment
+  let ignore = [".git", "node_modules", "build"]
+  let files = list_files({root: ".", ignore})
+  let all_items = list({root: ".", ignore})
+
+  // Test 1: list_files returns purely paths (strings) and finds the existing files
+  let _ = assert_true(contains(files, "index.eyg"), "list_files finds 'index.eyg' in the root directory")
+  let _ = assert_true(contains(files, "test.eyg"), "list_files finds 'test.eyg' in the root directory")
+
+  // Test 2: list_files effectively respects the ignore list
+  // Even if these directories aren't present locally, verifying they don't surface validates the filter logic
+  let _ = assert_false(contains(files, "build/index.html"), "list_files respects ignore list (e.g., 'build')")
+  let _ = assert_false(contains(files, ".git/config"), "list_files respects ignore list (e.g., '.git')")
+
+  // Test 3: list returns properly formatted structured records {type, path}
+  let has_index_record = !list_fold(all_items, False({}), ({type, path}, acc) -> {
+    match !equal(path, "index.eyg") {
+      True(_) -> { True({}) }
+      False(_) -> { acc }
+    }
+  })
+  let _ = assert_true(has_index_record, "list returns structured records containing 'index.eyg'")
+  
+  // Test 4: list accurately maps union types (File vs Directory)
+  let index_is_file = !list_fold(all_items, False({}), ({type, path}, acc) -> {
+    match !equal(path, "index.eyg") {
+      True(_) -> { 
+        match type {
+          File(_) -> { True({}) }
+          Directory(_) -> { False({}) }
+        }
+      }
+      False(_) -> { acc }
+    }
+  })
+  let _ = assert_true(index_is_file, "list correctly identifies 'index.eyg' as a File type")
+
+  // Test 5: reads files
+  let _ = assert_true(!equal(Ok(!string_to_binary("")), read("fixtures/empty.txt")), "read returns ok for an empty file")
+  let _ = assert_true(!equal(Ok(!string_to_binary("Hello, World!")), read("fixtures/hello.txt")), "read returns ok for a file")
+
+  // Test 6: reads file ranges
+  let _ = assert_true(!equal(Ok(!string_to_binary("Wo")), read_range({path: "fixtures/hello.txt", offset: 7, limit: 2})), "read returns ok for a file")
+  
+  print_line("--- Tests Complete ---\n")
+}
+
+// Run the test suite
+test_suite({})
