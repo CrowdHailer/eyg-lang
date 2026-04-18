@@ -3,6 +3,8 @@ import eyg/ir/tree as ir
 import eyg/parser
 import eyg/parser/parser.{describe_reason} as _
 import gleam/json
+import gleam/list
+import gleam/option
 import gleam/result.{try}
 import simplifile
 
@@ -19,4 +21,15 @@ pub fn read(file: String) -> Result(#(ir.Expression(Nil), Nil), String) {
         Error(reason) -> Error(describe_reason(reason))
       }
   }
+}
+
+pub fn block_expression(code) {
+  use #(#(assignments, tail), _) <- result.map(parser.block_from_string(code))
+  let tail = option.unwrap(tail, #(ir.Vacant, #(0, 0)))
+  let source =
+    list.fold_right(assignments, tail, fn(acc, assignment) {
+      let #(label, value, at) = assignment
+      #(ir.Let(label, value, acc), at)
+    })
+  ir.clear_annotation(source)
 }
