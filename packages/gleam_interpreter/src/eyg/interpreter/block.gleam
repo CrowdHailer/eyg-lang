@@ -27,11 +27,14 @@ fn loop(next, env) {
   }
 }
 
-pub fn inject(exp, acc) {
+pub fn inject(
+  exp: ir.Node(t),
+  acc: List(#(String, t, ir.Node(t))),
+) -> ir.Node(t) {
   case exp {
     #(ir.Let(l, v, t), m) -> inject(t, [#(l, m, v), ..acc])
-    _ -> {
-      let acc = [#(special, Nil, #(ir.Empty, Nil)), ..acc]
+    #(_, m) -> {
+      let acc = [#(special, m, #(ir.Empty, m)), ..acc]
       list.fold(acc, exp, fn(exp, assign) {
         let #(l, m, v) = assign
         #(ir.Let(l, v, exp), m)
@@ -40,7 +43,7 @@ pub fn inject(exp, acc) {
   }
 }
 
-pub fn execute(exp, scope) {
+pub fn execute(exp: ir.Node(t), scope) {
   let exp = inject(exp, [])
   let env = expression.new_env(scope)
   let h = dict.new()

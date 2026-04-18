@@ -8,7 +8,7 @@ import gleam/option
 import gleam/result.{try}
 import simplifile
 
-pub fn read(file: String) -> Result(#(ir.Expression(Nil), Nil), String) {
+pub fn read(file: String) -> Result(ir.Node(Nil), String) {
   use code <- try(
     simplifile.read(file) |> result.map_error(simplifile.describe_error),
   )
@@ -26,10 +26,9 @@ pub fn read(file: String) -> Result(#(ir.Expression(Nil), Nil), String) {
 pub fn block_expression(code) {
   use #(#(assignments, tail), _) <- result.map(parser.block_from_string(code))
   let tail = option.unwrap(tail, #(ir.Vacant, #(0, 0)))
-  let source =
-    list.fold_right(assignments, tail, fn(acc, assignment) {
-      let #(label, value, at) = assignment
-      #(ir.Let(label, value, acc), at)
-    })
-  ir.clear_annotation(source)
+
+  list.fold_right(assignments, tail, fn(acc, assignment) {
+    let #(label, value, at) = assignment
+    #(ir.Let(label, value, acc), at)
+  })
 }

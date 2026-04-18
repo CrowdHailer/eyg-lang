@@ -33,7 +33,6 @@ fn loop(buffer, scope, cwd, config) {
               let #(label, value, at) = assignment
               #(ir.Let(label, value, acc), at)
             })
-          let source = ir.clear_annotation(source)
           use result <- promise.await(execute.block(source, scope, cwd, config))
           case result {
             Ok(#(Some(value), scope)) -> {

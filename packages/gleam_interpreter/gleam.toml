@@ -1,5 +1,5 @@
 name = "eyg_interpreter"
-version = "1.2.0"
+version = "1.2.1"
 target = "javascript"
 
 description = "EYG interpreter for the JavaScript runtime for server and browser."

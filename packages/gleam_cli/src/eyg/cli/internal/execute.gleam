@@ -8,6 +8,7 @@ import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/value
+import eyg/ir/tree as ir
 import filepath
 import gleam/fetchx
 import gleam/http/request
@@ -40,7 +41,7 @@ pub fn block(source, scope, dir, config: config.Config) {
   loop(block.execute(source, scope), dir, config.client)
 }
 
-pub fn pure(source, dir, config: client.Client) {
+pub fn pure(source: ir.Node(t), dir, config: client.Client) {
   pure_loop(expression.execute(source, []), dir, config)
 }
 

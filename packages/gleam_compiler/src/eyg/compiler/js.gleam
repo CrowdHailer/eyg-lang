@@ -5,6 +5,7 @@ import gleam/string
 
 // can't wrap program in `()` because js assumes expression and breaks with let
 // but also cant wrap in `{}` because in brackets is assuemd to be object
+// label is the name of a function that is passed to the runner.
 fn assign_to(source: ir.Node(Nil), label) {
   let #(exp, _meta) = source
   case exp {

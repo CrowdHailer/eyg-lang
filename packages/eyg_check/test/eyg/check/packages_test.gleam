@@ -4,7 +4,6 @@ import eyg/cli/internal/execute
 import eyg/cli/internal/platform
 import eyg/interpreter/simple_debug
 import eyg/ir/dag_json
-import eyg/ir/tree
 import eyg/parser
 import filepath
 import gleam/http
@@ -87,7 +86,6 @@ fn check_index(package) {
   let index_path = dir <> "/" <> index
   let assert Ok(code) = simplifile.read(index_path)
   let assert Ok(source) = parser.all_from_string(code)
-  let source = tree.clear_annotation(source)
 
   use return <- promise.await(execute.pure(source, dir, eyg_origin))
   case return {
@@ -106,7 +104,6 @@ fn check_test(package) {
   let test_path = dir <> "/" <> test_eyg
   let assert Ok(code) = simplifile.read(test_path)
   let assert Ok(source) = parser.all_from_string(code)
-  let source = tree.clear_annotation(source)
 
   use return <- promise.await(execute.block(source, [], dir, config))
   case return {
