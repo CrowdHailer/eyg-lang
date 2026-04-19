@@ -157,7 +157,7 @@ fn string(buffer, length, rest, done) {
         "t" <> rest -> string(buffer <> "\t", length + 2, rest, done)
         "r" <> rest -> string(buffer <> "\r", length + 2, rest, done)
         "n" <> rest -> string(buffer <> "\n", length + 2, rest, done)
-        "" -> done(t.UnterminatedString(buffer <> "\\"), length, "")
+        "" -> done(t.UnterminatedString(buffer <> "\\"), length + 1, "")
         _ -> done(t.InvalidEscape(buffer <> "\\" <> rest), length, "")
       }
     "" -> done(t.UnterminatedString(buffer), length, "")
