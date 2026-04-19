@@ -135,3 +135,43 @@ pub fn invalid_escape_test() {
   |> lexer.lex
   |> should.equal([#(t.InvalidEscape("\\q\""), 0)])
 }
+
+pub fn name_with_keyword_prefix_test() {
+  "letter matching performance deeper handler imported"
+  |> lexer.lex
+  |> should.equal([
+    #(t.Name("letter"), 0),
+    #(t.Whitespace(" "), 6),
+    #(t.Name("matching"), 7),
+    #(t.Whitespace(" "), 15),
+    #(t.Name("performance"), 16),
+    #(t.Whitespace(" "), 27),
+    #(t.Name("deeper"), 28),
+    #(t.Whitespace(" "), 34),
+    #(t.Name("handler"), 35),
+    #(t.Whitespace(" "), 42),
+    #(t.Name("imported"), 43),
+  ])
+}
+
+pub fn name_with_keyword_and_underscore_test() {
+  "let_value match_arm perform_side_effect"
+  |> lexer.lex
+  |> should.equal([
+    #(t.Name("let_value"), 0),
+    #(t.Whitespace(" "), 9),
+    #(t.Name("match_arm"), 10),
+    #(t.Whitespace(" "), 19),
+    #(t.Name("perform_side_effect"), 20),
+  ])
+}
+
+pub fn name_with_keyword_and_digits_test() {
+  "let1 match2"
+  |> lexer.lex
+  |> should.equal([
+    #(t.Name("let1"), 0),
+    #(t.Whitespace(" "), 4),
+    #(t.Name("match2"), 5),
+  ])
+}

@@ -48,13 +48,6 @@ fn pop(raw, start) {
     "#" <> rest -> done(t.Hash, 1, rest)
     "@" <> rest -> done(t.At, 1, rest)
 
-    "let" <> rest -> done(t.Let, 3, rest)
-    "match" <> rest -> done(t.Match, 5, rest)
-    "perform" <> rest -> done(t.Perform, 7, rest)
-    "deep" <> rest -> done(t.Deep, 4, rest)
-    "handle" <> rest -> done(t.Handle, 6, rest)
-    "import" <> rest -> done(t.Import, 6, rest)
-
     "\"" <> rest -> string("", 1, rest, done)
 
     "1" <> rest -> integer("1", rest, done)
@@ -185,7 +178,19 @@ fn name(buffer, raw, done) {
     || next_byte == "_"
   {
     True -> name(buffer <> next_byte, rest, done)
-    False -> done(t.Name(buffer), string.byte_size(buffer), raw)
+    False -> done(keyword_or_name(buffer), string.byte_size(buffer), raw)
+  }
+}
+
+fn keyword_or_name(buffer) {
+  case buffer {
+    "let" -> t.Let
+    "match" -> t.Match
+    "perform" -> t.Perform
+    "deep" -> t.Deep
+    "handle" -> t.Handle
+    "import" -> t.Import
+    _ -> t.Name(buffer)
   }
 }
 
