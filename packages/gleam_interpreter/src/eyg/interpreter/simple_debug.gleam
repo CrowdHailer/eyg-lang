@@ -55,14 +55,19 @@ fn do_inspect(value: v.Value(_, _), indent: Int) -> String {
       label <> "(" <> do_inspect(inner, indent) <> ")"
     }
     v.Record(fields) -> {
-      let items =
-        dict.to_list(fields)
-        |> list.map(fn(pair) {
-          let #(key, val) = pair
-          indent_str <> "  " <> key <> ": " <> do_inspect(val, indent + 1)
-        })
-        |> string.join("\n")
-      "{\n" <> items <> "\n" <> indent_str <> "}"
+      case dict.to_list(fields) {
+        [] -> "{}"
+        pairs -> {
+          let items =
+            pairs
+            |> list.map(fn(pair) {
+              let #(key, val) = pair
+              indent_str <> "  " <> key <> ": " <> do_inspect(val, indent + 1)
+            })
+            |> string.join("\n")
+          "{\n" <> items <> "\n" <> indent_str <> "}"
+        }
+      }
     }
     v.LinkedList(items) -> {
       case items {
