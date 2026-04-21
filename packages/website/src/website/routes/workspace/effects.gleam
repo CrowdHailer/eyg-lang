@@ -11,14 +11,12 @@ import ogre/operation
 import touch_grass/decode_json as tg_decode_json
 import touch_grass/fetch as tg_fetch
 import touch_grass/http as tg_http
-import touch_grass/read
 import website/harness/browser/abort
 import website/harness/browser/alert
 import website/harness/browser/copy
 import website/harness/browser/decode_json
 import website/harness/browser/download
 import website/harness/browser/fetch
-import website/harness/browser/file/read as read_file
 import website/harness/browser/follow
 import website/harness/browser/geolocation as geo
 import website/harness/browser/now
@@ -87,10 +85,10 @@ fn lookup() {
       #(t.String, t.result(t.unit, t.unit)),
       cast.as_string |> cast.map(Open),
     )),
-    #(read_file.l, #(
-      #(read_file.lift, read_file.lower()),
-      read.decode |> cast.map(ReadFile),
-    )),
+    // #(read_file.l, #(
+    //   #(read_file.lift, read_file.lower()),
+    //   read_file.decode |> cast.map(ReadFile),
+    // )),
     #(geo.l, #(
       #(geo.lift, geo.lower()),
       geo.cast |> cast.map(fn(_) { Geolocation }),

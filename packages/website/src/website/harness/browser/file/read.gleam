@@ -4,7 +4,7 @@ import gleam/javascript/promise
 import gleam/result
 import plinth/browser/file
 import plinth/browser/file_system
-import touch_grass/read
+import touch_grass/file_system/read_file
 
 pub const l = "ReadFile"
 
@@ -15,8 +15,8 @@ pub fn lower() {
 }
 
 pub fn blocking(name) {
-  use name <- result.map(read.decode(name))
-  promise.map(do(name), read.encode)
+  use input <- result.map(read_file.decode(name))
+  promise.map(do(input.path), read_file.encode)
 }
 
 pub fn handle(lift) {
@@ -35,6 +35,6 @@ pub fn do(name) {
 pub fn task_to_eyg(task) {
   v.Promise({
     use result <- promise.map(task)
-    read.encode(result)
+    read_file.encode(result)
   })
 }
