@@ -14,11 +14,6 @@ pub fn blocking(lift) {
   promise.resolve(value)
 }
 
-pub fn preflight(lift) {
-  use url <- try(cast.as_string(lift))
-  Ok(fn() { promise.resolve(do(url)) })
-}
-
 fn do(url) {
   let frame = #(600, 700)
   case browser.open(url, frame) {

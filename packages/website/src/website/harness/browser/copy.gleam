@@ -13,11 +13,6 @@ pub fn blocking(lift) {
   Ok(run(text))
 }
 
-pub fn preflight(lift) {
-  use text <- result.try(copy.decode(lift))
-  Ok(fn() { run(text) })
-}
-
 pub fn non_blocking(lift) {
   use p <- result.try(blocking(lift))
   Ok(v.Promise(p))

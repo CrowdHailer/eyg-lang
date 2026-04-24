@@ -14,11 +14,6 @@ pub fn blocking(lift) {
   Ok(run(input))
 }
 
-pub fn preflight(lift) {
-  use input <- try(download.decode(lift))
-  Ok(fn() { run(input) })
-}
-
 pub fn non_blocking(lift) {
   use download.Input(name:, content:) <- try(download.decode(lift))
 

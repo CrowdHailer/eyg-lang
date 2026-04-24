@@ -20,14 +20,6 @@ pub fn blocking(lift) {
   promise.resolve(value)
 }
 
-pub fn preflight(lift) {
-  use message <- result.try(print.decode(lift))
-  Ok(fn() {
-    let Nil = do(message)
-    promise.resolve(v.unit())
-  })
-}
-
 pub fn do(message) {
   window.alert(message)
 }

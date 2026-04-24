@@ -18,11 +18,6 @@ pub fn blocking(lift) {
   promise.resolve(value)
 }
 
-pub fn preflight(lift) {
-  use message <- result.try(prompt.decode(lift))
-  Ok(fn() { promise.resolve(result_to_eyg(do(message))) })
-}
-
 pub fn do(message) {
   window.prompt(message)
 }

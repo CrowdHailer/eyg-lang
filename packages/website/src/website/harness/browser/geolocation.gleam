@@ -47,11 +47,6 @@ pub fn blocking(lift) {
   run()
 }
 
-pub fn preflight(lift) {
-  use Nil <- result.map(cast(lift))
-  fn() { run() }
-}
-
 pub fn handle(lift) {
   use p <- result.map(blocking(lift))
   v.Promise(p)

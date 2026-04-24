@@ -19,11 +19,6 @@ pub fn blocking(lift) {
   run(request)
 }
 
-pub fn preflight(lift) {
-  use request <- result.try(fetch.decode(lift))
-  Ok(fn() { run(request) })
-}
-
 pub fn handle(lift) {
   use p <- result.map(blocking(lift))
   v.Promise(p)

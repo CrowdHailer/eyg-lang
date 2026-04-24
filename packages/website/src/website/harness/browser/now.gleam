@@ -33,11 +33,6 @@ pub fn blocking(lift) {
   promise.resolve(value)
 }
 
-pub fn preflight(lift) {
-  use value <- result.map(impl(lift))
-  fn() { promise.resolve(value) }
-}
-
 pub fn do() {
   let now = date.now()
   date.to_iso_string(now)
