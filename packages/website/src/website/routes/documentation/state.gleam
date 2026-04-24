@@ -1,13 +1,13 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import morph/editable as e
 import morph/navigation
-import morph/projection as p
 import website/config
 import website/harness/browser
 import website/routes/documentation/examples
@@ -22,8 +22,12 @@ pub type Example {
   Example(buffer: buffer.Buffer)
 }
 
+pub type Rebuild(t) =
+  fn(t, infer.Context) -> buffer.Buffer
+
 pub type Mode {
   Editing(id: String, failure: Option(Failure))
+  ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   Nothing
 }
 
@@ -46,6 +50,7 @@ pub type Message {
   UserClickedCode(id: String, path: List(Int))
   UserPressedKey(key: String)
   SyncMessage(client.Message)
+  ClipboardReadCompleted(Result(String, String))
   Ignore
 }
 
@@ -98,6 +103,28 @@ pub fn update(state: State, message) {
       // let effects = [, ..effects]
       #(state, todo as "client.lustre_run(effect, SyncMessage)")
     }
+    ClipboardReadCompleted(return) -> {
+      case state.mode {
+        ReadingFromClipboard(id, rebuild) ->
+          case return {
+            Ok(text) ->
+              case json.parse(text, dag_json.decoder(Nil)) {
+                Ok(expression) -> {
+                  let buffer =
+                    rebuild(e.from_annotated(expression), infer.pure())
+                  let example = Example(buffer:)
+                  let state = set_example(state, id, example)
+                  let state = State(..state, mode: Editing(id, None))
+                  #(state, [])
+                }
+
+                Error(_) -> action_failed(state, id, "paste")
+              }
+            Error(_) -> action_failed(state, id, "paste")
+          }
+        _ -> #(state, [])
+      }
+    }
     Ignore -> #(state, [])
   }
 }
@@ -109,18 +136,18 @@ fn user_pressed_key(state, key) {
     // "Escape" -> #(State(..state, mode: Nothing), [])
     _, "ArrowRight" -> navigate(state, "move right", buffer.next)
     _, "ArrowLeft" -> navigate(state, "move left", buffer.previous)
-    // "ArrowUp" -> move_up(state)
-    // "ArrowDown" -> move_down(state)
+    _, "ArrowUp" -> navigate(state, "move up", buffer.up)
+    _, "ArrowDown" -> navigate(state, "move down", buffer.down)
     // "Q" -> link_filesystem(state)
     // "q" -> choose_module(state)
-    // "w" -> transform(state, "call", buffer.call_with)
+    _, "w" -> transform(state, "call", buffer.call_with)
     // "E" -> pick_any(state, "assign", buffer.assign_before)
     // "e" -> pick_any(state, "assign", buffer.assign)
     // "R" -> transform(state, "create record", buffer.create_empty_record)
     // "r" -> create_record(state)
     // "t" -> insert_tag(state)
     _, "y" -> copy(state)
-    // "Y" -> paste(state)
+    _, "Y" -> paste(state)
     // // TODO mode is authenticating
     // // you won't see much on the front page
     // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
@@ -161,6 +188,7 @@ fn user_pressed_key(state, key) {
       #(State(..state, mode:), [])
     }
     Nothing, _ -> #(state, [])
+    ReadingFromClipboard(id:, rebuild: _), _ -> #(state, [])
   }
 }
 
@@ -177,20 +205,41 @@ fn navigate(state: State, name, func) {
   }
 }
 
+fn transform(state: State, name, func) {
+  use id, Example(buffer:) <- is_editing(state)
+
+  // this returns a generator that will only complete with the typing context. 
+  // Where do we look for updated ref's
+  // type checking could return them later
+  case func(buffer) {
+    Ok(gen) -> {
+      let state = set_example(state, id, Example(buffer: gen(infer.pure())))
+      let state = State(..state, mode: Editing(id:, failure: None))
+      #(state, [])
+    }
+    Error(_reason) -> action_failed(state, id, name)
+  }
+}
+
 /// don't do key press under a mode switch
 fn copy(state: State) {
   use id, Example(buffer:) <- is_editing(state)
+  case buffer.copy_source(buffer) {
+    Ok(text) -> #(state, [
+      browser.WriteToClipboard(text:, resume: fn(_) { Ignore }),
+    ])
+    Error(Nil) -> action_failed(state, id, "copy")
+  }
+}
 
-  case buffer.projection {
-    #(p.Exp(expression), _) -> {
-      let text =
-        e.to_annotated(expression, [])
-        |> dag_json.to_string
-
-      // let state = State(..state, mode: WritingToClipboard)
-      #(state, [browser.WriteToClipboard(text:, resume: fn(_) { Ignore })])
+fn paste(state: State) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.set_expression(buffer) {
+    Ok(rebuild) -> {
+      let state = State(..state, mode: ReadingFromClipboard(id:, rebuild:))
+      #(state, [browser.ReadFromClipboard(ClipboardReadCompleted)])
     }
-    _ -> action_failed(state, id, "copy")
+    Error(Nil) -> action_failed(state, id, "copy")
   }
 }
 
@@ -198,6 +247,7 @@ fn is_editing(state: State, then) {
   case state.mode {
     Editing(id:, failure: _) -> then(id, get_example(state, id))
     Nothing -> #(state, [])
+    ReadingFromClipboard(..) -> #(state, [])
   }
 }
 

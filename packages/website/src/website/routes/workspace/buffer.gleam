@@ -1,5 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/ir/cid
+import eyg/ir/dag_json
 import gleam/javascript/promise
 import gleam/list
 import gleam/option.{None}
@@ -263,6 +264,16 @@ pub fn call_many(buffer: Buffer) {
 pub fn call_with(buffer: Buffer) {
   use new <- result.map(t.call_with(buffer.projection))
   fn(context) { update_code(buffer, new, context) }
+}
+
+pub fn copy_source(buffer: Buffer) {
+  case buffer.projection {
+    #(p.Exp(expression), _) ->
+      e.to_annotated(expression, [])
+      |> dag_json.to_string
+      |> Ok
+    _ -> Error(Nil)
+  }
 }
 
 pub fn insert_integer(buffer: Buffer) {
