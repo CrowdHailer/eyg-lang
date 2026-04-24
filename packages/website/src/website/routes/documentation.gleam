@@ -1,3 +1,5 @@
+import eyg/analysis/inference/levels_j/contextual as infer
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -5,14 +7,16 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import morph/editable as e
+import lustre/event
 import mysig/asset
 import mysig/html
+import plinth/browser/document
+import plinth/browser/event as browser_event
 import website/components
-import website/components/example/view
-import website/components/tree
+import website/components/snippet
 import website/config
 import website/routes/common
+import website/routes/documentation/examples
 import website/routes/documentation/state
 import website/routes/home
 
@@ -51,7 +55,11 @@ pub fn page() {
 
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)
-  let assert Ok(_) = lustre.start(app, "#app", config.load())
+  let assert Ok(runtime) = lustre.start(app, "#app", config.load())
+  document.add_event_listener("keydown", fn(e) {
+    let message = lustre.dispatch(state.UserPressedKey(browser_event.key(e)))
+    lustre.send(runtime, message)
+  })
   Nil
 }
 
@@ -192,7 +200,7 @@ fn render(state) {
           "2",
           "Numbers",
           [
-            example(state, state.int_key),
+            example(state, examples.int_key),
             p("Numbers are a positive or negative whole number, of any size."),
             p(
               "Several builtin functions are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
@@ -208,7 +216,7 @@ fn render(state) {
           "3",
           "Text",
           [
-            example(state, state.text_key),
+            example(state, examples.text_key),
             p(
               "Text segment of any length made up of characters, whitespace and special characters",
             ),
@@ -226,7 +234,7 @@ fn render(state) {
           "4",
           "Lists",
           [
-            example(state, state.lists_key),
+            example(state, examples.lists_key),
             p(
               "Lists are an ordered collection of value.
           All the values in a list must be of the same type, for example only Numbers or only Text.
@@ -251,7 +259,7 @@ fn render(state) {
           "5",
           "Records",
           [
-            example(state, state.records_key),
+            example(state, examples.records_key),
             p(
               "Records gather related values with each value having a name in the record.
               Different names can store values of different types.",
@@ -261,7 +269,7 @@ fn render(state) {
             ),
             // Here the greet function accepts any record with a name field,
             // we can pass the alice or bob record to this function, the extra height field on bob will be ignored.",
-            example(state, state.overwrite_key),
+            example(state, examples.overwrite_key),
             p(
               "New records can be created with a subset of their fields overwritten.",
             ),
@@ -279,7 +287,7 @@ fn render(state) {
           "6",
           "Unions",
           [
-            example(state, state.unions_key),
+            example(state, examples.unions_key),
             p(
               "Unions are used when a value is one of a selection of possibilities.
             For example when parsing a number from some text, the result might be ok and we have a number or there is no number and so we have a value representing the error.",
@@ -290,7 +298,7 @@ fn render(state) {
             p(
               "Case statements are used to match on each of the tags that are in the union.",
             ),
-            example(state, state.open_case_key),
+            example(state, examples.open_case_key),
             p(
               "Case statements can be open and if so, they have a final fallback that is called if none of the previous ones match the tag of the value.",
             ),
@@ -309,7 +317,7 @@ fn render(state) {
           "7",
           "Functions",
           [
-            example(state, state.functions_key),
+            example(state, examples.functions_key),
             p(
               "Functions allow you to create reusable behaviour in your application.",
             ),
@@ -317,7 +325,7 @@ fn render(state) {
               "All functions, including builtins, can be called with only some of the arguments and will return a function that accepts the remaining arguments.",
             ),
             p("All functions can be passed to other functions"),
-            example(state, state.fix_key),
+            example(state, examples.fix_key),
             p(
               "fix is a fixpoint operator, use it to write recursive functions.",
             ),
@@ -332,7 +340,7 @@ fn render(state) {
           "8",
           "Builtins",
           [
-            example(state, state.builtins_key),
+            example(state, examples.builtins_key),
             p(
               "Builtins are the base functions that your program is built up from.",
             ),
@@ -355,7 +363,7 @@ fn render(state) {
           "9",
           "Named references",
           [
-            example(state, state.references_key),
+            example(state, examples.references_key),
             p(
               "Rely on packages directly in your program with immutable references. No need for any package manifest or lockfile.",
             ),
@@ -390,7 +398,7 @@ fn render(state) {
           "8",
           "Perform effect",
           [
-            example(state, state.perform_key),
+            example(state, examples.perform_key),
             p(
               "A useful program must eventally interact with the world outside the computer.
             Running the example above will prompt the user for there name.
@@ -418,7 +426,7 @@ fn render(state) {
           "9",
           "Handle effect",
           [
-            example(state, state.handle_key),
+            example(state, examples.handle_key),
             p(
               "Handlers are a mechanism to intercept effects performed within a function.
               In this example, running the code will show that the inner function performs two alerts, without us having to dismiss the two alerts manually.",
@@ -437,7 +445,7 @@ fn render(state) {
           "10",
           "Multiple resumptions",
           [
-            example(state, state.multiple_resume_key),
+            example(state, examples.multiple_resume_key),
             p(
               "Handlers give the ability to resume code multiple times.
               In this example the function resumes the remaining code with both True and False values.
@@ -452,7 +460,7 @@ fn render(state) {
         //   "11",
         //   "Closure serialization",
         //   [
-        //     example(state, state.capture_key),
+        //     example(state, examples.capture_key),
         //     p(
         //       "In EYG any value can be captured, and transformed to EYG source code.
         //       This includes functions and their environments and effect handlers applicable at that time.",
@@ -511,20 +519,51 @@ fn render(state) {
   ])
 }
 
-fn example(state: state.State, identifier) {
-  let example = state.get_example(state, identifier)
-  element.fragment([
-    example
-      |> view.render
-      |> element.map(state.ExampleMessage(identifier, _)),
-    case state.show_help {
-      True ->
-        h.pre(
-          [a.class("leading-none p-2 bg-gray-200")],
-          tree.lines(example.snippet.editable |> e.to_annotated([]))
-            |> list.map(fn(line) { element.text(line <> "\n") }),
-        )
-      False -> element.none()
+// TODO remove render projection to the projection library
+fn example(state: state.State, id) {
+  let state.Example(buffer:) = state.get_example(state, id)
+
+  h.div([a.styles(snippet.embed_area_styles)], [
+    h.pre(
+      [
+        a.class("language-eyg"),
+        a.styles(snippet.code_area_styles),
+        event.on(
+          "click",
+          snippet.code_path_click_decoder()
+            |> decode.map(fn(path) { state.UserClickedCode(id:, path:) }),
+        ),
+      ],
+      [
+        snippet.render_projection(
+          buffer.projection,
+          infer.all_errors(buffer.analysis),
+        ),
+      ],
+    ),
+    case state.mode {
+      state.Editing(id: focused, failure: Some(failure)) if focused == id -> {
+        h.div([a.class("p-2 leading-none bg-red-300")], [
+          h.text(state.fail_message(failure)),
+        ])
+      }
+      _ -> {
+        element.none()
+      }
     },
   ])
+  // element.fragment([
+  //   example
+  //     |> view.render
+  //     |> element.map(state.ExampleMessage(identifier, _)),
+  //   case state.show_help {
+  //     True ->
+  //       h.pre(
+  //         [a.class("leading-none p-2 bg-gray-200")],
+  //         tree.lines(example.snippet.editable |> e.to_annotated([]))
+  //           |> list.map(fn(line) { element.text(line <> "\n") }),
+  //       )
+  //     False -> element.none()
+  //   },
+  // ])
 }

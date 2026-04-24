@@ -74,7 +74,7 @@ pub const neo_green_3 = "#90ee90"
 
 pub const neo_orange_4 = "#ff6b6b"
 
-const embed_area_styles = [
+pub const embed_area_styles = [
   #("box-shadow", "6px 6px black"),
   #("border-style", "solid"),
   #(
@@ -90,7 +90,7 @@ const embed_area_styles = [
   #("margin-top", ".5rem"),
 ]
 
-const code_area_styles = [
+pub const code_area_styles = [
   #("outline", "2px solid transparent"),
   #("outline-offset", "2px"),
   #("padding", ".5rem"),
@@ -1107,6 +1107,29 @@ pub fn render_just_projection(state, autofocus) {
   }
 }
 
+pub fn code_path_click_decoder() {
+  decode.new_primitive_decoder("click", fn(event) {
+    let assert Ok(e) = pevent.cast_event(event)
+    let target = pevent.target(e)
+    let rev =
+      target
+      |> dynamicx.unsafe_coerce
+      |> dom_element.dataset_get("rev")
+    case rev {
+      Ok(rev) -> {
+        let assert Ok(rev) = case rev {
+          "" -> Ok([])
+          _ ->
+            string.split(rev, ",")
+            |> list.try_map(int.parse)
+        }
+        Ok(list.reverse(rev))
+      }
+      Error(Nil) -> Error([])
+    }
+  })
+}
+
 fn actual_render_projection(proj, autofocus, errors) {
   h.pre(
     [
@@ -1119,29 +1142,7 @@ fn actual_render_projection(proj, autofocus, errors) {
           // a.autofocus(True),
           event.on(
             "click",
-            decode.new_primitive_decoder("click", fn(event) {
-              let assert Ok(e) = pevent.cast_event(event)
-              let target = pevent.target(e)
-              let rev =
-                target
-                |> dynamicx.unsafe_coerce
-                |> dom_element.dataset_get("rev")
-              case rev {
-                Ok(rev) -> {
-                  let assert Ok(rev) = case rev {
-                    "" -> Ok([])
-                    _ ->
-                      string.split(rev, ",")
-                      |> list.try_map(int.parse)
-                  }
-                  Ok(UserClickedCode(list.reverse(rev)))
-                }
-                Error(_) -> {
-                  console.log(target)
-                  Error(UserClickedPath([]))
-                }
-              }
-            }),
+            code_path_click_decoder() |> decode.map(UserClickedCode),
           ),
           utils.on_hotkey(UserPressedCommandKey, UserFocusedOnCode),
         ]

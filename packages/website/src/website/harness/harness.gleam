@@ -60,6 +60,7 @@ pub fn effect_label(service: Service) -> String {
 // Prompt should work as a Readline in the cli
 // OAuth 2.0 + MCP can be another effect if no server registration is required
 
+/// The harness types concretly implementing the browser harness effect types
 pub type Harness(a, b) =
   List(interface.Interface(Effect, a, b))
 
