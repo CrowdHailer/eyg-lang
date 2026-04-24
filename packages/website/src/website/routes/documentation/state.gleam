@@ -293,7 +293,8 @@ fn confirm(state: State) {
   #(State(..state, mode:), effects)
 }
 
-fn loop(return: Return) {
+// This could be something not called a runner. loop function in this module would reuse it.
+fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
   case return {
     Ok(value) -> #(Concluded(value), [])
     Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) ->
@@ -313,7 +314,9 @@ fn loop(return: Return) {
         Ok(harness.Fetch(_)) -> todo
         Ok(harness.Flip) ->
           loop(expression.resume(flip.encode(flip.sync()), env, k))
-        Ok(harness.Paste) -> todo
+        Ok(harness.Paste) -> #(Handling(label, env, k), [
+          browser.ReadFromClipboard(ClipboardReadCompleted),
+        ])
         Ok(harness.Print(message)) ->
           loop(expression.resume(print.encode(print.sync(message)), env, k))
         Ok(harness.Prompt(_)) -> todo
