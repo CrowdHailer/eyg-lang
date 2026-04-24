@@ -41,6 +41,7 @@ import website/components/readonly
 import website/components/shell
 import website/components/snippet
 import website/config
+import website/harness/browser
 import website/harness/harness
 import website/routes/workspace/buffer.{type Buffer}
 import website/sync/cache
@@ -168,14 +169,19 @@ fn replace_buffer(state: State, gen) {
   let state = set_buffer(state, buffer)
   let cids = infer.missing_references(buffer.analysis)
   let #(sync, actions) = client.fetch_fragments(state.sync, cids)
-  let actions = list.map(actions, SyncAction)
+  // let actions = list.map(actions, SyncAction)
+  echo "todo "
+  let actions = []
   let state = State(..state, sync:)
 
   case state.focused {
     Repl -> #(state, actions)
     Module(filename) -> {
       let flush_counter = state.flush_counter + 1
-      let actions = [SetFlushTimer(flush_counter)]
+      let actions = [
+        todo as "set timer",
+        // SetFlushTimer(flush_counter)
+      ]
       let dirty = dict.insert(state.dirty, filename, Nil)
       let state = State(..state, flush_counter:, dirty:)
       #(state, actions)
@@ -194,33 +200,12 @@ fn set_buffer(state, buffer) {
   }
 }
 
-pub type Action {
-  FocusOnInput
-  WriteToClipboard(text: String)
-  ReadFromClipboard
-  RunEffect(reference: Int, effect: Effect)
-  SyncAction(client.Action)
-  ShowDirectoryPicker
-  LoadFiles(handle: file_system.DirectoryHandle)
-  SetFlushTimer(reference: Int)
-  SaveFile(
-    handle: file_system.DirectoryHandle,
-    filename: Filename,
-    projection: p.Projection,
-  )
-  SpotlessConnect(
-    effect_counter: Int,
-    origin: origin.Origin,
-    service: harness.Service,
-  )
-  OpenPopup(location: String)
-  PostMessage(target: window_proxy.WindowProxy, payload: Json)
-}
-
-pub fn init(config: config.Config) -> #(State, List(Action)) {
+pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
   let config.Config(origin:) = config
   let #(sync, actions) = client.new(origin) |> client.sync()
-  let actions = list.map(actions, SyncAction)
+  // let actions = list.map(actions, SyncAction)
+  echo "todo need the sync actions"
+  let actions = []
   let scope = []
   let modules = dict.new()
   let state =
@@ -295,9 +280,10 @@ pub type Message {
     result: Result(String, snag.Snag),
   )
   OpenPopupCompleted(Result(window_proxy.WindowProxy, String))
+  Ignore
 }
 
-pub fn update(state: State, message) -> #(State, List(Action)) {
+pub fn update(state: State, message) -> #(State, List(browser.Effect(Message))) {
   case message {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
     WindowReceivedMessageEvent(event:) ->
@@ -321,6 +307,7 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
     SpotlessConnected(reference:, service:, result:) ->
       spotless_connected(state, reference, service, result)
     OpenPopupCompleted(result) -> open_popup_completed(state, result)
+    Ignore -> #(state, [])
   }
 }
 
@@ -360,7 +347,7 @@ fn user_pressed_command_key(state, key) {
     // TODO mode is authenticating
     // you won't see much on the front page
     "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
-      OpenPopup("/sign"),
+      browser.OpenPopup("/sign", resume: OpenPopupCompleted),
     ])
     "i" -> insert(state)
     "o" -> overwrite(state)
@@ -422,7 +409,7 @@ fn transform_or_pick(state, name, func) {
     Ok(buffer.Done(gen)) -> replace_buffer(state, gen)
     Ok(buffer.WithString(rebuild)) -> {
       let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-      #(state, [FocusOnInput])
+      #(state, [])
     }
     Error(_) -> fail(state, name)
   }
@@ -432,7 +419,7 @@ fn transform_or_pick(state, name, func) {
 fn pick_any(state, name, action) {
   use rebuild <- try(action(active(state)), state, name)
   let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-  #(state, [FocusOnInput])
+  #(state, [])
 }
 
 fn move_up(state) {
@@ -483,7 +470,7 @@ fn create_record(state) {
     [] -> {
       let rebuild = fn(label, context) { rebuild([label], context) }
       let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-      #(state, [FocusOnInput])
+      #(state, [])
     }
     _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
   }
@@ -497,7 +484,7 @@ fn overwrite(state) {
     _ -> []
   }
   let state = State(..state, mode: Picking(picker.new("", hints), rebuild))
-  #(state, [FocusOnInput])
+  #(state, [])
 }
 
 fn insert_tag(state) {
@@ -509,7 +496,7 @@ fn insert_tag(state) {
     _ -> []
   }
   let state = State(..state, mode: Picking(picker.new("", hints), rebuild))
-  #(state, [FocusOnInput])
+  #(state, [])
 }
 
 fn copy(state) {
@@ -521,7 +508,9 @@ fn copy(state) {
         |> dag_json.to_string
 
       let state = State(..state, mode: WritingToClipboard)
-      #(state, [WriteToClipboard(text:)])
+      #(state, [
+        browser.WriteToClipboard(text:, resume: ClipboardWriteCompleted),
+      ])
     }
     _ -> fail(state, "copy")
   }
@@ -530,7 +519,9 @@ fn copy(state) {
 fn paste(state) {
   let buffer = active(state)
   use rebuild <- try(buffer.set_expression(buffer), state, "paste")
-  #(State(..state, mode: ReadingFromClipboard(rebuild:)), [ReadFromClipboard])
+  #(State(..state, mode: ReadingFromClipboard(rebuild:)), [
+    browser.ReadFromClipboard(resume: ClipboardReadCompleted),
+  ])
 }
 
 fn state_fail(state, action) {
@@ -545,9 +536,7 @@ fn fail(state, action) {
 fn insert(state) {
   let buffer = active(state)
   use #(value, rebuild) <- try(buffer.insert(buffer), state, "insert")
-  #(State(..state, mode: Picking(picker.new(value, []), rebuild:)), [
-    FocusOnInput,
-  ])
+  #(State(..state, mode: Picking(picker.new(value, []), rebuild:)), [])
 }
 
 // wrap in an on expression
@@ -568,7 +557,7 @@ fn effect_hints() {
 fn insert_string(state) {
   let action = buffer.insert_string(active(state))
   use #(value, rebuild) <- try(action, state, "insert string")
-  #(State(..state, mode: EditingText(value:, rebuild:)), [FocusOnInput])
+  #(State(..state, mode: EditingText(value:, rebuild:)), [])
 }
 
 fn select_field(state) {
@@ -579,7 +568,7 @@ fn select_field(state) {
     _ -> []
   }
   let mode = Picking(picker: picker.new("", hints), rebuild:)
-  #(State(..state, mode:), [FocusOnInput])
+  #(State(..state, mode:), [])
 }
 
 fn insert_handle(state) {
@@ -587,7 +576,7 @@ fn insert_handle(state) {
   use rebuild <- try(action, state, "insert handle")
   let hints = effect_hints()
   let mode = Picking(picker: picker.new("", hints), rebuild:)
-  #(State(..state, mode:), [FocusOnInput])
+  #(State(..state, mode:), [])
 }
 
 fn insert_builtin(state) {
@@ -595,7 +584,7 @@ fn insert_builtin(state) {
   use rebuild <- try(action, state, "insert builtin")
   let hints = listx.value_map(infer.builtins(), snippet.render_poly)
   let mode = Picking(picker: picker.new("", hints), rebuild:)
-  #(State(..state, mode:), [FocusOnInput])
+  #(State(..state, mode:), [])
 }
 
 fn choose_module(state) {
@@ -609,7 +598,7 @@ fn choose_module(state) {
 
   let picker = picker.new("", hints)
   let state = State(..state, mode: ChoosingModule(picker:, rebuild:))
-  #(state, [FocusOnInput])
+  #(state, [])
 }
 
 fn choose_release(state) {
@@ -623,7 +612,7 @@ fn choose_release(state) {
 
   let picker = picker.new("", hints)
   let state = State(..state, mode: ChoosingPackage(picker:, rebuild:))
-  #(state, [FocusOnInput])
+  #(state, [])
 }
 
 fn insert_reference(state) {
@@ -637,7 +626,7 @@ fn insert_reference(state) {
     rebuild(cid, context)
   }
   let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-  #(state, [FocusOnInput])
+  #(state, [])
 }
 
 fn map_buffer(state, name, f) {
@@ -657,7 +646,7 @@ fn call_function(state) {
 fn insert_integer(state) {
   let action = buffer.insert_integer(active(state))
   use #(value, rebuild) <- try(action, state, "insert integer")
-  #(State(..state, mode: EditingInteger(value:, rebuild:)), [FocusOnInput])
+  #(State(..state, mode: EditingInteger(value:, rebuild:)), [])
 }
 
 fn insert_case(state) {
@@ -671,7 +660,7 @@ fn insert_case(state) {
     [] -> {
       let rebuild = fn(label, context) { rebuild([label], context) }
       let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-      #(state, [FocusOnInput])
+      #(state, [])
     }
     _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
   }
@@ -768,7 +757,10 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                   let awaiting = Some(effect_counter)
                   let mode = RunningShell(occured:, awaiting:, debug:)
                   let state = State(..state, effect_counter:, mode:)
-                  #(state, [RunEffect(effect_counter, effect)])
+                  #(state, [
+                    todo as "need run effect",
+                    // RunEffect(effect_counter, effect)
+                  ])
                 }
                 Spotless(service:, operation:) -> {
                   case dict.get(state.tokens, service) {
@@ -778,11 +770,12 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
                       let mode = RunningShell(occured:, awaiting:, debug:)
                       let state = State(..state, effect_counter:, mode:)
                       #(state, [
-                        SpotlessConnect(
-                          effect_counter:,
-                          origin: state.origin,
-                          service:,
-                        ),
+                        todo as "needs to be follow",
+                        // SpotlessConnect(
+                      //   effect_counter:,
+                      //   origin: state.origin,
+                      //   service:,
+                      // ),
                       ])
                     }
                     Ok(token) -> {
@@ -867,7 +860,10 @@ fn run_spotless_effect_with_token(
   let awaiting = Some(effect_counter)
   let mode = RunningShell(occured:, awaiting:, debug:)
   let state = State(..state, effect_counter:, mode:)
-  #(state, [RunEffect(effect_counter, effect)])
+  #(state, [
+    todo as "need run effect",
+    // RunEffect(effect_counter, effect)
+  ])
 }
 
 /// module has no effects, it can return functions with effects so no access to state for internal effects
@@ -997,13 +993,14 @@ fn window_received_message_event(state, event) {
         })
       echo exchange
       #(state, [
-        PostMessage(
+        browser.PostMessage(
           target:,
           payload: json.object([
             #("type", json.string("payload")),
             #("exchange", json.string(exchange)),
             #("payload", json.object([#("foo", json.string("123"))])),
           ]),
+          resume: fn(_: Nil) { Ignore },
         ),
       ])
     }
@@ -1015,12 +1012,14 @@ fn window_received_message_event(state, event) {
 }
 
 fn link_filesystem(state) {
-  #(state, [ShowDirectoryPicker])
+  #(state, [browser.ShowDirectoryPicker(resume: ShowDirectoryPickerCompleted)])
 }
 
 fn link_filesystem_completed(state, result) {
   use dir_handle <- try(result, state, "link filesystem")
-  #(State(..state, mounted_directory: Some(dir_handle)), [LoadFiles(dir_handle)])
+  #(State(..state, mounted_directory: Some(dir_handle)), [
+    browser.LoadFiles(dir_handle),
+  ])
 }
 
 fn loaded_files(state: State, result) {
@@ -1051,7 +1050,11 @@ fn flush_timeout(state, reference) {
       let actions =
         list.filter_map(dict.keys(state.dirty), fn(filename) {
           use buffer <- result.map(dict.get(state.modules, filename))
-          SaveFile(handle:, filename:, projection: buffer.projection)
+          let filename = todo
+          let content = todo
+          browser.SaveFile(handle:, filename:, content:, resume: fn(_) {
+            Ignore
+          })
         })
       let state = State(..state, dirty: dict.new())
       #(state, actions)
@@ -1298,7 +1301,7 @@ fn sync_message(state, message) {
   let State(sync:, ..) = state
   let before = sync.cache.fragments
   let #(sync, actions) = client.update(sync, message)
-  let actions = list.map(actions, SyncAction)
+  let actions = list.map(actions, todo)
   let before = set.from_list(dict.keys(before))
   let after = set.from_list(dict.keys(sync.cache.fragments))
   let diff = set.difference(after, before)
