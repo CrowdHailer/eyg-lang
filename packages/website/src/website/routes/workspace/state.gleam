@@ -12,7 +12,7 @@ import gleam/dict.{type Dict}
 import gleam/dynamic/decode
 import gleam/http/request
 import gleam/int
-import gleam/json.{type Json}
+import gleam/json
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
