@@ -5,14 +5,19 @@ import gleam/javascript/promise
 import gleam/json.{type Json}
 import midas/browser
 import plinth/browser/clipboard
+import plinth/browser/file
 import plinth/browser/file_system
+import plinth/browser/window
 import plinth/browser/window_proxy
+import touch_grass/download
 
 /// The browser platform effect
 ///
 /// - `FocusOnInput` focus on the first input on the page.
 ///   This seems to be unnecessary if only one autofocused input, and the code doesn't have a tabindex
 pub type Effect(m) {
+  Alert(message: String, resume: fn() -> m)
+  Download(input: download.Input, resume: fn() -> m)
   // FocusOnInput(resume:)
   LoadFiles(handle: file_system.DirectoryHandle)
   OpenPopup(
@@ -60,6 +65,14 @@ pub type Effect(m) {
 // Use an ignore event if we don't want a message
 pub fn run(effect: Effect(m)) -> promise.Promise(m) {
   case effect {
+    Alert(message:, resume:) -> {
+      window.alert(message)
+      promise.resolve(resume())
+    }
+    Download(input:, resume:) -> {
+      download_file(input)
+      promise.resolve(resume())
+    }
     LoadFiles(handle:) -> {
       todo as "this shouldn't read every file"
       // use #(_, files) <- promise.await(file_system.all_entries(handle))
@@ -182,7 +195,16 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
 fn show_save_directory_picker() -> promise.Promise(
   Result(file_system.Handle(file_system.D), String),
 )
+
 // // @external(javascript, "../../website_ffi.mjs", "get_persisted_directory")
 // // fn get_persisted_directory() -> promise.Promise(
 // //   Result(file_system.Handle(file_system.D), String),
 // // )
+@external(javascript, "../../website_ffi.mjs", "downloadFile")
+fn do_download_file(file: file.File) -> Nil
+
+pub fn download_file(input) {
+  let download.Input(name:, content:) = input
+  let file = file.new(content, name)
+  do_download_file(file)
+}

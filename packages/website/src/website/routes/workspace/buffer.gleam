@@ -266,6 +266,13 @@ pub fn call_with(buffer: Buffer) {
   fn(context) { update_code(buffer, new, context) }
 }
 
+pub fn source(buffer: Buffer) {
+  buffer.projection
+  |> p.rebuild
+  |> e.to_annotated([])
+}
+
+// maybe this should be copy_focus
 pub fn copy_source(buffer: Buffer) {
   case buffer.projection {
     #(p.Exp(expression), _) ->

@@ -1,4 +1,7 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/interpreter/break
+import eyg/interpreter/expression
+import eyg/interpreter/state
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
 import gleam/json
@@ -8,9 +11,16 @@ import gleam/result
 import gleam/string
 import morph/editable as e
 import morph/navigation
+import touch_grass/copy
+import touch_grass/decode_json
+import touch_grass/flip
+import touch_grass/print
+import touch_grass/random
 import website/config
 import website/harness/browser
+import website/harness/harness
 import website/routes/documentation/examples
+
 import website/routes/workspace/buffer
 import website/sync/client
 
@@ -28,8 +38,28 @@ pub type Rebuild(t) =
 pub type Mode {
   Editing(id: String, failure: Option(Failure))
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
+  Running(id: String, status: Status)
   Nothing
 }
+
+/// Run Status
+pub type Status {
+  Concluded(Value)
+  Handling(label: String, env: state.Env(Meta), k: state.Stack(Meta))
+  Failed(String)
+}
+
+pub type Meta =
+  List(Int)
+
+pub type Value =
+  state.Value(Meta)
+
+pub type Debug =
+  state.Debug(Meta)
+
+pub type Return =
+  Result(Value, Debug)
 
 pub type Failure {
   NoKeyBinding(key: String)
@@ -51,6 +81,7 @@ pub type Message {
   UserPressedKey(key: String)
   SyncMessage(client.Message)
   ClipboardReadCompleted(Result(String, String))
+  ClipboardWriteCompleted(Result(Nil, String))
   Ignore
 }
 
@@ -125,6 +156,17 @@ pub fn update(state: State, message) {
         _ -> #(state, [])
       }
     }
+    ClipboardWriteCompleted(result) -> {
+      case state.mode {
+        Running(id, Handling(label: "Copy", env:, k:)) -> {
+          let #(mode, effects) =
+            loop(expression.resume(copy.encode(result), env, k))
+          let mode = Running(id, mode)
+          #(State(..state, mode:), effects)
+        }
+        _ -> #(state, [])
+      }
+    }
     Ignore -> #(state, [])
   }
 }
@@ -180,7 +222,7 @@ fn user_pressed_key(state, key) {
     // "v" -> insert_variable(state)
     // "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
     // ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
-    // "Enter" -> confirm(state)
+    _, "Enter" -> confirm(state)
     // " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     // _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
     Editing(id, _error), _ -> {
@@ -189,6 +231,7 @@ fn user_pressed_key(state, key) {
     }
     Nothing, _ -> #(state, [])
     ReadingFromClipboard(id:, rebuild: _), _ -> #(state, [])
+    Running(id:, status:), _ -> todo
   }
 }
 
@@ -243,11 +286,53 @@ fn paste(state: State) {
   }
 }
 
+fn confirm(state: State) {
+  use id, Example(buffer:) <- is_editing(state)
+  let #(mode, effects) = loop(expression.execute(buffer.source(buffer), []))
+  let mode = Running(id, mode)
+  #(State(..state, mode:), effects)
+}
+
+fn loop(return: Return) {
+  case return {
+    Ok(value) -> #(Concluded(value), [])
+    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) ->
+      case harness.cast(label, lift) {
+        Ok(harness.Abort(reason)) -> #(Failed(reason), [])
+        Ok(harness.Alert(message)) -> #(Handling(label, env, k), [
+          browser.Alert(message, fn() { Ignore }),
+        ])
+        Ok(harness.Copy(text)) -> #(Handling(label, env, k), [
+          browser.WriteToClipboard(text, ClipboardWriteCompleted),
+        ])
+        Ok(harness.DecodeJson(raw)) ->
+          loop(expression.resume(decode_json.sync(raw), env, k))
+        Ok(harness.Download(input)) -> #(Handling(label, env, k), [
+          browser.Download(input, fn() { Ignore }),
+        ])
+        Ok(harness.Fetch(_)) -> todo
+        Ok(harness.Flip) ->
+          loop(expression.resume(flip.encode(flip.sync()), env, k))
+        Ok(harness.Paste) -> todo
+        Ok(harness.Print(message)) ->
+          loop(expression.resume(print.encode(print.sync(message)), env, k))
+        Ok(harness.Prompt(_)) -> todo
+        Ok(harness.Random(max)) ->
+          loop(expression.resume(random.encode(random.sync(max)), env, k))
+        Ok(harness.Visit(_)) -> todo
+        Ok(harness.Spotless(service:, operation:)) -> todo
+        Error(_) -> todo
+      }
+    Error(_) -> todo
+  }
+}
+
 fn is_editing(state: State, then) {
   case state.mode {
     Editing(id:, failure: _) -> then(id, get_example(state, id))
     Nothing -> #(state, [])
     ReadingFromClipboard(..) -> #(state, [])
+    Running(id:, status:) -> todo
   }
 }
 
