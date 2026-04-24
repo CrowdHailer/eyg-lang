@@ -4,6 +4,6 @@
 ## Development
 
 ```sh
-gleam run   # Run the project
+gleam dev
 gleam test  # Run the tests
 ```

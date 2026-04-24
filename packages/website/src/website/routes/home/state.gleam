@@ -12,7 +12,7 @@ import website/components/reload
 import website/components/runner
 import website/components/snippet
 import website/config
-import website/harness/browser
+import website/harness/harness
 import website/sync/client
 
 pub type Meta =
@@ -65,14 +65,10 @@ fn init_example(json, cache, extrinsic) {
   |> Simple
 }
 
-fn effects() {
-  browser.effects()
-}
-
 pub fn init(config) {
   let config.Config(origin:) = config
   let #(client, init_tasks) = client.init(origin)
-  let effects = effects()
+  let effects = harness.effects()
   let examples =
     [
       #(

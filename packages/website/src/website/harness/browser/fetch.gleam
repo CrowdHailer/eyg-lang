@@ -1,22 +1,10 @@
 // Harness components merge type and runtime so cannot be put in either of those libraries
-import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
 import gleam/fetch as gfetch
 import gleam/javascript/promise
 import gleam/result
 import gleam/string
 import touch_grass/fetch
-import website/harness/http
-
-pub const l = "Fetch"
-
-pub fn lift() {
-  http.request()
-}
-
-pub fn lower() {
-  t.result(http.response(), t.String)
-}
 
 pub fn run(request) {
   promise.map(do(request), fn(result) {

@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option.{Some}
 import gleam/result
 import gleam/string
+import gleam/uri
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -23,17 +24,17 @@ import plinth/browser/file_system
 import plinth/browser/window
 import plinth/browser/window_proxy
 import spotless
+import touch_grass/random
+import touch_grass/visit
 import website/config
 import website/harness/browser/alert
 import website/harness/browser/copy
 import website/harness/browser/download
 import website/harness/browser/fetch
-import website/harness/browser/follow
 import website/harness/browser/geolocation
 import website/harness/browser/now
 import website/harness/browser/paste
 import website/harness/browser/prompt
-import website/harness/browser/random
 import website/routes/common
 import website/routes/home
 import website/routes/workspace/state
@@ -250,12 +251,17 @@ fn run_effect(effect) {
     state.Copy(text) -> copy.run(text)
     state.Download(file) -> download.run(file)
     state.Fetch(request) -> fetch.run(request)
-    state.Follow(request) -> follow.run(request)
     state.Geolocation -> geolocation.run()
     state.Now -> now.run()
     state.Paste -> paste.run()
     state.Prompt(message) -> prompt.run(message)
-    state.Random(max) -> random.run(max)
+    state.Random(max) -> promise.resolve(random.encode(random.sync(max)))
+    state.Visit(uri) -> {
+      let result =
+        browser.open(uri.to_string(uri), #(800, 400))
+        |> result.replace(Nil)
+      promise.resolve(visit.encode(result))
+    }
   }
 }
 

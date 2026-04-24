@@ -1,37 +1,20 @@
-import eyg/analysis/type_/isomorphic as t
-import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/javascript/promise
 import gleam/result
 import plinth/browser/clipboard
-
-pub const l = "Copy"
-
-pub const lift = t.String
-
-pub fn reply() {
-  t.result(t.unit, t.String)
-}
-
-pub fn type_() {
-  #(l, #(lift, reply()))
-}
-
-pub fn cast(input) {
-  cast.as_string(input)
-}
+import touch_grass/copy
 
 pub fn run(text) {
   promise.map(do(text), result_to_eyg)
 }
 
 pub fn blocking(lift) {
-  use text <- result.try(cast(lift))
+  use text <- result.try(copy.decode(lift))
   Ok(run(text))
 }
 
 pub fn preflight(lift) {
-  use text <- result.try(cast(lift))
+  use text <- result.try(copy.decode(lift))
   Ok(fn() { run(text) })
 }
 

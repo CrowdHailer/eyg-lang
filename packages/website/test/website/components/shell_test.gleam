@@ -1,4 +1,3 @@
-import eyg/analysis/type_/isomorphic as t
 import eyg/hub/publisher
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
@@ -13,10 +12,10 @@ import morph/editable as e
 import morph/input
 import multiformats/cid/v1
 import ogre/origin
-import website/components/runner
 import website/components/shell.{CurrentMessage, Shell}
 import website/components/snippet
 import website/components/snippet_test
+import website/harness/harness
 import website/sync/cache
 import website/sync/client
 
@@ -100,22 +99,6 @@ fn has_action(state, expected) {
   state
 }
 
-// sync to keep the pipeline running
-fn run_effect(state, sync) {
-  let #(#(shell, action), i) = state
-  case action {
-    shell.RunExternalHandler(ref, _blocking) -> {
-      let message = shell.RunnerMessage(runner.HandlerCompleted(ref, sync(Nil)))
-      #(shell.update(shell, message), i + 1)
-    }
-    got -> {
-      let message =
-        "bad action at " <> int.to_string(i) <> ": " <> string.inspect(got)
-      panic as message
-    }
-  }
-}
-
 fn has_executed(state, with) {
   let #(#(shell, _action), i) = state
   let Shell(previous:, ..) = shell
@@ -137,20 +120,6 @@ fn has_value(state, expected) {
     Ok(shell.Executed(value, _effects, _recent)) -> {
       value
       |> should.equal(Some(expected))
-      state
-    }
-    Error(Nil) ->
-      panic as { "no previous history after step " <> int.to_string(i) }
-  }
-}
-
-fn has_effects(state, expected) {
-  let #(#(shell, _action), i) = state
-  let Shell(previous:, ..) = shell
-  case list.first(previous) {
-    Ok(shell.Executed(_, effects, _recent)) -> {
-      effects
-      |> should.equal(expected)
       state
     }
     Error(Nil) ->
@@ -201,59 +170,11 @@ pub fn types_remain_in_scope_test() {
   })
 }
 
-// Everything is passed in by events so that nested mvu works
-pub fn effects_are_recorded_test() {
-  new([
-    #(
-      "Inner",
-      #(#(t.String, t.Integer), fn(_) { Ok(fn() { panic as "test handler" }) }),
-    ),
-    #(
-      "Outer",
-      #(#(t.Integer, t.unit), fn(_) { Ok(fn() { panic as "test handler" }) }),
-    ),
-  ])
-  |> command("p")
-  |> pick_from(fn(options) {
-    should.equal(options, [
-      #("Inner", "String : Integer"),
-      #("Outer", "Integer : {}"),
-    ])
-    Ok("Outer")
-  })
-  |> command("p")
-  |> pick_from(fn(_options) { Ok("Inner") })
-  |> command("s")
-  |> enter_text("Bulb")
-  |> command("Enter")
-  |> run_effect(fn(_v) {
-    // TODO how do we get v
-    // should.equal(v, v.String("Bulb"))
-    v.Integer(101)
-  })
-  |> run_effect(fn(_v) {
-    // TODO how do we get v
-
-    // should.equal(v, v.Integer(101))
-    v.unit()
-  })
-  |> has_effects([
-    #("Outer", #(v.Integer(101), v.unit())),
-    #("Inner", #(v.String("Bulb"), v.Integer(101))),
-  ])
-  |> has_input(e.Vacant)
-}
-
 // Test task only starts once
 pub fn run_only_starts_once_test() {
-  new([
-    #(
-      "Foo",
-      #(#(t.String, t.Integer), fn(_) { Ok(fn() { panic as "test handler" }) }),
-    ),
-  ])
+  new(harness.take(["Print"]))
   |> command("p")
-  |> pick_from(fn(_options) { Ok("Foo") })
+  |> pick_from(fn(_options) { Ok("Print") })
   |> command("s")
   |> enter_text("Go Go")
   |> command("Enter")

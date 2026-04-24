@@ -42,12 +42,12 @@ import eyg/analysis/type_/binding
 import eyg/interpreter/expression
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/listx
 import gleam/option.{Some}
 import morph/analysis
 import morph/editable as e
 import website/components/runner
 import website/components/snippet.{type Snippet, Snippet}
+import website/harness/harness
 import website/sync/cache
 
 pub type Example {
@@ -59,13 +59,15 @@ pub type Example {
   )
 }
 
-pub fn from_block(bytes, cache, extrinsic) {
+pub fn from_block(bytes, cache, extrinsic: harness.Harness(_, _)) {
   let assert Ok(source) = dag_json.from_block(bytes)
   init(source, cache, extrinsic)
 }
 
-pub fn init(source, cache, extrinsic) {
-  let #(effects, handlers) = listx.key_unzip(extrinsic)
+pub fn init(source, cache, extrinsic: harness.Harness(_, _)) {
+  let effects = harness.types(extrinsic)
+  echo "needs handlers"
+  let handlers = []
 
   let snippet =
     e.from_annotated(source)

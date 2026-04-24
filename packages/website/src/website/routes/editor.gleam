@@ -1,8 +1,6 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/interpreter/simple_debug
-import eyg/interpreter/value
-import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/javascript/promise
@@ -34,7 +32,7 @@ import website/components/shell
 import website/components/snippet
 import website/components/vertical_menu
 import website/config
-import website/harness/browser
+import website/harness/harness
 import website/routes/common
 import website/routes/home
 import website/sync/client
@@ -146,7 +144,7 @@ pub type State {
   State(
     sync: client.Client,
     source: snippet.Snippet,
-    shell: shell.Shell(browser.Effect),
+    shell: shell.Shell(harness.Effect),
     display_help: Bool,
   )
 }
@@ -169,7 +167,7 @@ pub fn init(config) {
   let config.Config(origin:) = config
   let #(client, sync_task) = client.init(origin)
   let actions = list.map(sync_task, SyncAction)
-  let shell = shell.init(browser.lookup(), client.cache)
+  let shell = shell.init(harness.effects(), client.cache)
   let source = e.from_annotated(ir.vacant())
   let snippet = snippet.init(source)
   let state = State(client, snippet, shell, False)
@@ -269,27 +267,29 @@ fn shell_update(state: State, message) {
   let state = State(..state, shell:)
   case shell_effect {
     shell.Nothing -> #(state, [])
-    shell.RunExternalHandler(ref, thunk) ->
+    shell.RunExternalHandler(_ref, thunk) -> {
+      echo "no effects supported here"
       case thunk {
-        browser.Alert(_message) -> #(state, [
-          RunExternalHandler(ref, fn() { browser.run(thunk) }),
-        ])
-        browser.ReadFile(file:) -> {
-          let reply = case file {
-            "index.eyg.json" -> {
-              let bytes =
-                dag_json.to_block(e.to_annotated(state.source.editable, []))
-              value.ok(value.Binary(bytes))
-            }
-            _ -> value.error(value.String("unknown file: " <> file))
-          }
-
-          shell_update(
-            state,
-            shell.RunnerMessage(runner.HandlerCompleted(ref, reply)),
-          )
-        }
+        // harness.Alert(_message) -> #(state, [
+        //   RunExternalHandler(ref, fn() { browser.run(thunk) }),
+        // ])
+        // browser.ReadFile(file:) -> {
+        //   let reply = case file {
+        //     "index.eyg.json" -> {
+        //       let bytes =
+        //         dag_json.to_block(e.to_annotated(state.source.editable, []))
+        //       value.ok(value.Binary(bytes))
+        //     }
+        //     _ -> value.error(value.String("unknown file: " <> file))
+        //   }
+        //   shell_update(
+        //     state,
+        //     shell.RunnerMessage(runner.HandlerCompleted(ref, reply)),
+        //   )
+        // }
+        _ -> panic as "need the correct handlers"
       }
+    }
     shell.WriteToClipboard(text) -> #(state, [WriteToClipboad(text:)])
     shell.ReadFromClipboard -> #(state, [ReadShellFromClipboard])
     shell.FocusOnCode -> #(state, [FocusOnBuffer])

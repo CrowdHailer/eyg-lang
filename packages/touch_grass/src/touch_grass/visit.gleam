@@ -1,22 +1,22 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
-import touch_grass/http
+import touch_grass/uri
 
-pub const label = "Fetch"
+pub const label = "Visit"
 
 pub fn lift() {
-  http.request()
+  uri.uri()
 }
 
 pub fn lower() {
-  t.result(http.response(), t.String)
+  t.result(t.unit, t.String)
 }
 
-pub const decode = http.request_to_gleam
+pub const decode = uri.uri_to_gleam
 
 pub fn encode(result) {
   case result {
-    Ok(response) -> v.ok(http.response_to_eyg(response))
+    Ok(Nil) -> v.ok(v.unit())
     Error(reason) -> v.error(v.String(reason))
   }
 }

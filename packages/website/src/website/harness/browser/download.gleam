@@ -1,46 +1,27 @@
-import eyg/analysis/type_/isomorphic as t
-import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/javascript/promise
 import gleam/result.{try}
 import plinth/browser/file
-
-pub const l = "Download"
-
-pub const lift = t.file
-
-pub fn reply() {
-  t.unit
-}
-
-pub fn type_() {
-  #(l, #(lift, reply()))
-}
-
-pub fn cast(lift) {
-  use name <- try(cast.field("name", cast.as_string, lift))
-  use content <- try(cast.field("content", cast.as_binary, lift))
-  Ok(#(name, content))
-}
+import touch_grass/download
 
 pub fn run(input) {
-  let #(name, content) = input
+  let download.Input(name, content) = input
   promise.resolve(result_to_eyg(do(name, content)))
 }
 
 pub fn blocking(lift) {
-  use input <- try(cast(lift))
+  use input <- try(download.decode(lift))
   Ok(run(input))
 }
 
 pub fn preflight(lift) {
-  use input <- try(cast(lift))
+  use input <- try(download.decode(lift))
   Ok(fn() { run(input) })
 }
 
 pub fn non_blocking(lift) {
-  use name <- try(cast.field("name", cast.as_string, lift))
-  use content <- try(cast.field("content", cast.as_binary, lift))
+  use download.Input(name:, content:) <- try(download.decode(lift))
+
   Ok(result_to_eyg(do(name, content)))
 }
 

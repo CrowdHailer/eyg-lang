@@ -11,6 +11,7 @@ import plinth/browser/clipboard
 import website/components/readonly
 import website/components/runner
 import website/components/snippet
+import website/harness/harness
 import website/sync/cache
 
 pub type ShellEntry {
@@ -46,18 +47,20 @@ pub type Shell(ready) {
 }
 
 // could just be given a snippet
-pub fn init(effects, cache) {
+pub fn init(harness: harness.Harness(_, _), cache) {
   let source = e.from_annotated(ir.vacant())
   let scope = []
-  let #(effect_types, effect_handlers) = listx.key_unzip(effects)
+
   let snippet = snippet.active(source)
 
   let context =
     analysis.context()
-    |> analysis.with_effects(effect_types)
+    |> harness.analysis_with_harness(harness)
     |> update_context(cache)
 
   let source = snippet.editable |> e.to_annotated([]) |> ir.clear_annotation
+
+  let effect_handlers = harness.decode_list(harness)
 
   let runner =
     runner.init(block.execute(source, []), cache, effect_handlers, block.resume)

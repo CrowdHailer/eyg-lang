@@ -1,3 +1,5 @@
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
@@ -8,6 +10,20 @@ import gleam/http/response.{type Response, Response}
 import gleam/list
 import gleam/result.{try}
 import ogre/operation
+
+pub fn method() -> binding.Mono {
+  t.union([
+    #("CONNECT", t.unit),
+    #("DELETE", t.unit),
+    #("GET", t.unit),
+    #("HEAD", t.unit),
+    #("OPTIONS", t.unit),
+    #("PATCH", t.unit),
+    #("POST", t.unit),
+    #("PUT", t.unit),
+    #("TRACE", t.unit),
+  ])
+}
 
 pub fn method_to_gleam(
   value: v.Value(a, b),
@@ -41,6 +57,10 @@ pub fn method_to_eyg(method: http.Method) -> v.Value(a, b) {
   }
 }
 
+pub fn scheme() -> binding.Mono {
+  t.union([#("HTTP", t.unit), #("HTTPS", t.unit)])
+}
+
 pub fn scheme_to_gleam(
   value: v.Value(a, b),
 ) -> Result(http.Scheme, break.Reason(a, b)) {
@@ -55,6 +75,10 @@ pub fn scheme_to_eyg(scheme: http.Scheme) -> v.Value(a, b) {
     http.Http -> v.Tagged("HTTP", v.unit())
     http.Https -> v.Tagged("HTTPS", v.unit())
   }
+}
+
+pub fn headers() -> binding.Mono {
+  t.List(t.record([#("key", t.String), #("value", t.String)]))
 }
 
 pub fn headers_to_gleam(
@@ -74,6 +98,19 @@ pub fn headers_to_eyg(headers: List(#(String, String))) -> v.Value(a, b) {
       v.Record(dict.from_list([#("key", v.String(k)), #("value", v.String(v))]))
     }),
   )
+}
+
+pub fn request() -> binding.Mono {
+  t.record([
+    #("method", method()),
+    #("scheme", scheme()),
+    #("host", t.String),
+    #("port", t.option(t.Integer)),
+    #("path", t.String),
+    #("query", t.option(t.String)),
+    #("headers", headers()),
+    #("body", t.Binary),
+  ])
 }
 
 pub fn request_to_gleam(
@@ -134,6 +171,14 @@ pub fn request_to_eyg(request: Request(BitArray)) -> v.Value(a, b) {
   )
 }
 
+pub fn response() -> binding.Mono {
+  t.record([
+    #("status", t.Integer),
+    #("headers", headers()),
+    #("body", t.Binary),
+  ])
+}
+
 pub fn response_to_gleam(
   response: v.Value(a, b),
 ) -> Result(Response(BitArray), break.Reason(a, b)) {
@@ -154,7 +199,19 @@ pub fn response_to_eyg(response: Response(BitArray)) -> v.Value(a, b) {
   )
 }
 
-pub fn operation_to_gleam(request) {
+pub fn operation() -> binding.Mono {
+  t.record([
+    #("method", method()),
+    #("path", t.String),
+    #("query", t.option(t.String)),
+    #("headers", headers()),
+    #("body", t.Binary),
+  ])
+}
+
+pub fn operation_to_gleam(
+  request: v.Value(a, b),
+) -> Result(operation.Operation(BitArray), break.Reason(a, b)) {
   use method <- try(cast.field("method", method_to_gleam, request))
   use path <- try(cast.field("path", cast.as_string, request))
   use query <- try(cast.field(

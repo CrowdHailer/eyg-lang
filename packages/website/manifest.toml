@@ -49,7 +49,7 @@ packages = [
   { name = "snag", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "274F41D6C3ECF99F7686FDCE54183333E41D2C1CA5A3A673F9A8B2C7A4401077" },
   { name = "splitter", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "3DFD6B6C49E61EDAF6F7B27A42054A17CFF6CA2135FF553D0CB61C234D281DD0" },
   { name = "spotless", version = "3.4.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "ogre", "snag"], otp_app = "spotless", source = "hex", outer_checksum = "2415656D874FD03ED6FF7007B17F41A314277C75E80277E6BE1B7C5033D91444" },
-  { name = "touch_grass", version = "0.2.1", build_tools = ["gleam"], requirements = ["eyg_interpreter", "gleam_http", "gleam_stdlib", "julienne", "ogre"], otp_app = "touch_grass", source = "hex", outer_checksum = "8935F98D892E5BE8738D1BE2EDA9E9D2AFD65D95B84F92B0581DFE6AD73BBF28" },
+  { name = "touch_grass", version = "0.2.2", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "gleam_http", "gleam_stdlib", "julienne", "ogre"], otp_app = "touch_grass", source = "hex", outer_checksum = "D27E361B38F30BB17A24F10F3B6A77939AB1D8B8B797B104101ECEAD42F071F1" },
   { name = "untethered", version = "0.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "ogre", "spotless"], source = "local", path = "../untethered" },
 ]
 
@@ -82,5 +82,5 @@ plinth = { version = ">= 0.10.2 and < 1.0.0" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 snag = { version = ">= 1.2.0 and < 2.0.0" }
 spotless = { version = ">= 3.4.0 and < 4.0.0" }
-touch_grass = { version = ">= 0.1.0 and < 1.0.0" }
+touch_grass = { version = ">= 0.2.2 and < 1.0.0" }
 untethered = { path = "../untethered" }

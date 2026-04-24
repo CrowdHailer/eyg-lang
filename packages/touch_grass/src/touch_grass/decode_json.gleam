@@ -1,9 +1,40 @@
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/dict
 import gleam/list
 import gleam/result
 import julienne
+
+pub const label = "DecodeJSON"
+
+pub fn lift() {
+  t.Binary
+}
+
+pub fn lower() {
+  t.result(
+    t.List(
+      t.record([
+        #(
+          "term",
+          t.union([
+            #("True", t.unit),
+            #("False", t.unit),
+            #("Null", t.unit),
+            #("Integer", t.Integer),
+            #("String", t.String),
+            #("Array", t.unit),
+            #("Object", t.unit),
+            #("Field", t.String),
+          ]),
+        ),
+        #("depth", t.Integer),
+      ]),
+    ),
+    t.String,
+  )
+}
 
 pub const decode = cast.as_binary
 

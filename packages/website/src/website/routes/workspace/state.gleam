@@ -5,7 +5,6 @@ import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state as istate
-import eyg/interpreter/value
 import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/bit_array
@@ -35,12 +34,15 @@ import plinth/browser/message_event
 import plinth/browser/window_proxy
 import snag
 import touch_grass/decode_json
+import touch_grass/download
+import touch_grass/flip
+import touch_grass/print
 import website/components/readonly
 import website/components/shell
 import website/components/snippet
 import website/config
+import website/harness/harness
 import website/routes/workspace/buffer.{type Buffer}
-import website/routes/workspace/effects
 import website/sync/cache
 import website/sync/client
 
@@ -61,7 +63,7 @@ pub type State {
     flush_counter: Int,
     dirty: Dict(Filename, Nil),
     sync: client.Client,
-    tokens: dict.Dict(String, String),
+    tokens: dict.Dict(harness.Service, String),
   )
 }
 
@@ -127,7 +129,7 @@ fn repl_context(
   cache: cache.Cache,
 ) {
   module_context(scope, modules, cache)
-  |> infer.with_effects(effects.types())
+  |> infer.with_effects(harness.types(harness.effects()))
 }
 
 fn module_context(
@@ -206,7 +208,11 @@ pub type Action {
     filename: Filename,
     projection: p.Projection,
   )
-  SpotlessConnect(effect_counter: Int, origin: origin.Origin, service: String)
+  SpotlessConnect(
+    effect_counter: Int,
+    origin: origin.Origin,
+    service: harness.Service,
+  )
   OpenPopup(location: String)
   PostMessage(target: window_proxy.WindowProxy, payload: Json)
 }
@@ -285,7 +291,7 @@ pub type Message {
   FlushTimeout(reference: Int)
   SpotlessConnected(
     reference: Int,
-    service: String,
+    service: harness.Service,
     result: Result(String, snag.Snag),
   )
   OpenPopupCompleted(Result(window_proxy.WindowProxy, String))
@@ -553,7 +559,7 @@ fn perform(state) {
 }
 
 fn effect_hints() {
-  list.map(effects.types(), fn(effect) {
+  list.map(harness.types(harness.effects()), fn(effect) {
     let #(key, types) = effect
     #(key, snippet.render_effect(types))
   })
@@ -707,21 +713,22 @@ fn evaluate(editable, scope) {
 pub type Effect {
   Alert(String)
   Copy(String)
-  Download(#(String, BitArray))
+  Download(download.Input)
   Fetch(request.Request(BitArray))
-  Follow(uri.Uri)
+
   Geolocation
   Now
   Paste
   Prompt(message: String)
   Random(max: Int)
+  Visit(uri.Uri)
 }
 
 type EffectImplementation {
   Abort(String)
   Internal(state: State, reply: istate.Value(Meta))
   External(Effect)
-  Spotless(service: String, operation: operation.Operation(BitArray))
+  Spotless(service: harness.Service, operation: operation.Operation(BitArray))
 }
 
 /// Have tried normalise run and run_module (or extract to runner?)
@@ -746,7 +753,7 @@ fn run(return, occured, state: State) -> #(State, List(_)) {
       case reason {
         // internal not part of browser
         break.UnhandledEffect(label, input) ->
-          case effects.cast(label, input) {
+          case harness.cast(label, input) {
             Ok(effect) -> {
               case run_effect(effect, state) {
                 Abort(_message) ->
@@ -842,10 +849,11 @@ fn run_spotless_effect_with_token(
   state: State,
   occured,
   debug,
-  service,
+  service: harness.Service,
   token: String,
   operation: operation.Operation(BitArray),
 ) {
+  let service = harness.effect_label(service) |> string.lowercase
   let path = "/proxy/" <> service <> operation.path
   let origin = origin.https("spotless.run")
 
@@ -918,46 +926,50 @@ fn run_module(
 /// This must stay in the state module as it assumes that having access to the state object is it's concurrency model
 fn run_effect(effect, state: State) {
   case effect {
-    effects.Abort(message) -> Abort(message)
-    effects.Alert(message) -> External(Alert(message))
-    effects.Copy(message) -> External(Copy(message))
-    effects.DecodeJson(raw) -> Internal(state:, reply: decode_json.sync(raw))
-    effects.Download(file) -> External(Download(file))
-    effects.Fetch(request) -> External(Fetch(request))
-    effects.Follow(uri) -> External(Follow(uri))
-    effects.Geolocation -> External(Geolocation)
-    effects.Now -> External(Now)
-    effects.Open(filename) -> {
-      let reply = case string.contains(filename, ".") {
-        True -> value.error(value.String("invalid module name"))
-        False -> value.ok(value.Record(dict.new()))
-      }
-      let state = State(..state, focused: Module(#(filename, EygJson)))
+    harness.Abort(message) -> Abort(message)
+    harness.Alert(message) -> External(Alert(message))
+    harness.Copy(message) -> External(Copy(message))
+    harness.DecodeJson(raw) -> Internal(state:, reply: decode_json.sync(raw))
+    harness.Download(file) -> External(Download(file))
+    harness.Fetch(request) -> External(Fetch(request))
+    harness.Flip -> Internal(state:, reply: flip.encode(flip.sync()))
 
-      Internal(state:, reply:)
-    }
-    effects.Paste -> External(Paste)
-    effects.Prompt(message) -> External(Prompt(message))
-    effects.Random(max) -> External(Random(max))
-    effects.ReadFile(file) -> {
-      let reply = case string.split_once(file, ".eyg.json") {
-        Ok(#(name, "")) ->
-          case dict.get(state.modules, #(name, EygJson)) {
-            Ok(buffer) ->
-              value.ok(
-                value.Binary(
-                  dag_json.to_block(
-                    e.to_annotated(p.rebuild(buffer.projection), []),
-                  ),
-                ),
-              )
-            Error(_) -> value.error(value.String("No file"))
-          }
-        _ -> value.error(value.String("No file"))
-      }
-      Internal(state:, reply:)
-    }
-    effects.Spotless(service, operation) -> Spotless(service:, operation:)
+    // harness.Follow(uri) -> External(Follow(uri))
+    // harness.Geolocation -> External(Geolocation)
+    // harness.Now -> External(Now)
+    // harness.Open(filename) -> {
+    //   let reply = case string.contains(filename, ".") {
+    //     True -> value.error(value.String("invalid module name"))
+    //     False -> value.ok(value.Record(dict.new()))
+    //   }
+    //   let state = State(..state, focused: Module(#(filename, EygJson)))
+    //   Internal(state:, reply:)
+    // }
+    harness.Paste -> External(Paste)
+    harness.Print(message) ->
+      Internal(state:, reply: print.encode(print.sync(message)))
+    harness.Prompt(message) -> External(Prompt(message))
+    harness.Random(max) -> External(Random(max))
+    // harness.ReadFile(file) -> {
+    //   let reply = case string.split_once(file, ".eyg.json") {
+    //     Ok(#(name, "")) ->
+    //       case dict.get(state.modules, #(name, EygJson)) {
+    //         Ok(buffer) ->
+    //           value.ok(
+    //             value.Binary(
+    //               dag_json.to_block(
+    //                 e.to_annotated(p.rebuild(buffer.projection), []),
+    //               ),
+    //             ),
+    //           )
+    //         Error(_) -> value.error(value.String("No file"))
+    //       }
+    //     _ -> value.error(value.String("No file"))
+    //   }
+    //   Internal(state:, reply:)
+    // }
+    harness.Visit(uri) -> External(Visit(uri))
+    harness.Spotless(service, operation) -> Spotless(service:, operation:)
   }
 }
 
@@ -1065,8 +1077,8 @@ fn spotless_connected(state, reference, service, result) {
     -> {
       case result {
         Ok(token) -> {
-          let assert Ok(effects.Spotless(service: expected, operation:)) =
-            effects.cast(label, lift)
+          let assert Ok(harness.Spotless(service: expected, operation:)) =
+            harness.cast(label, lift)
           assert expected == service
 
           let tokens = dict.insert(state.tokens, service, token)
