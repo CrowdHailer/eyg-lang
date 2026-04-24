@@ -1,12 +1,15 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/ir/dag_json
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import lustre/effect
+import morph/editable as e
 import morph/navigation
+import morph/projection as p
 import website/config
+import website/harness/browser
 import website/routes/documentation/examples
 import website/routes/workspace/buffer
 import website/sync/client
@@ -39,6 +42,13 @@ pub fn fail_message(reason) {
   }
 }
 
+pub type Message {
+  UserClickedCode(id: String, path: List(Int))
+  UserPressedKey(key: String)
+  SyncMessage(client.Message)
+  Ignore
+}
+
 pub fn get_example(state: State, id) {
   let assert Ok(snippet) = dict.get(state.examples, id)
   snippet
@@ -67,18 +77,7 @@ pub fn init(config) {
   // let missing_cids = missing_refs(examples)
   let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
   let state = State(client, Nothing, examples)
-  #(
-    state,
-    effect.batch([
-      client.lustre_run(list.append(init_task, sync_task), SyncMessage),
-    ]),
-  )
-}
-
-pub type Message {
-  UserClickedCode(id: String, path: List(Int))
-  UserPressedKey(key: String)
-  SyncMessage(client.Message)
+  #(state, [])
 }
 
 pub fn update(state: State, message) {
@@ -88,7 +87,7 @@ pub fn update(state: State, message) {
       let buffer = buffer.focus_at(buffer, path) |> result.unwrap(buffer)
       let state = set_example(state, id, Example(buffer:))
       let state = State(..state, mode: Editing(id:, failure: None))
-      #(state, effect.none())
+      #(state, [])
     }
     UserPressedKey(key:) -> user_pressed_key(state, key)
     SyncMessage(message) -> {
@@ -97,8 +96,9 @@ pub fn update(state: State, message) {
 
       let state = State(..state, cache: sync_client)
       // let effects = [, ..effects]
-      #(state, client.lustre_run(effect, SyncMessage))
+      #(state, todo as "client.lustre_run(effect, SyncMessage)")
     }
+    Ignore -> #(state, [])
   }
 }
 
@@ -119,7 +119,7 @@ fn user_pressed_key(state, key) {
     // "R" -> transform(state, "create record", buffer.create_empty_record)
     // "r" -> create_record(state)
     // "t" -> insert_tag(state)
-    // "y" -> copy(state)
+    _, "y" -> copy(state)
     // "Y" -> paste(state)
     // // TODO mode is authenticating
     // // you won't see much on the front page
@@ -158,32 +158,51 @@ fn user_pressed_key(state, key) {
     // _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
     Editing(id, _error), _ -> {
       let mode = Editing(id, Some(NoKeyBinding(key)))
-      #(State(..state, mode:), effect.none())
+      #(State(..state, mode:), [])
     }
-    Nothing, _ -> #(state, effect.none())
+    Nothing, _ -> #(state, [])
   }
 }
 
 fn navigate(state: State, name, func) {
-  case state.mode {
-    Editing(id:, failure: _) -> {
-      let Example(buffer:) = get_example(state, id)
-      case func(buffer) {
-        Ok(buffer) -> {
-          let state = set_example(state, id, Example(buffer:))
-          let state = State(..state, mode: Editing(id:, failure: None))
-          #(state, effect.none())
-        }
-        Error(_reason) -> {
-          let state =
-            State(
-              ..state,
-              mode: Editing(id:, failure: Some(ActionFailed(name))),
-            )
-          #(state, effect.none())
-        }
-      }
+  use id, Example(buffer:) <- is_editing(state)
+
+  case func(buffer) {
+    Ok(buffer) -> {
+      let state = set_example(state, id, Example(buffer:))
+      let state = State(..state, mode: Editing(id:, failure: None))
+      #(state, [])
     }
-    Nothing -> #(state, effect.none())
+    Error(_reason) -> action_failed(state, id, name)
   }
+}
+
+/// don't do key press under a mode switch
+fn copy(state: State) {
+  use id, Example(buffer:) <- is_editing(state)
+
+  case buffer.projection {
+    #(p.Exp(expression), _) -> {
+      let text =
+        e.to_annotated(expression, [])
+        |> dag_json.to_string
+
+      // let state = State(..state, mode: WritingToClipboard)
+      #(state, [browser.WriteToClipboard(text:, resume: fn(_) { Ignore })])
+    }
+    _ -> action_failed(state, id, "copy")
+  }
+}
+
+fn is_editing(state: State, then) {
+  case state.mode {
+    Editing(id:, failure: _) -> then(id, get_example(state, id))
+    Nothing -> #(state, [])
+  }
+}
+
+fn action_failed(state, id, name) {
+  let state =
+    State(..state, mode: Editing(id:, failure: Some(ActionFailed(name))))
+  #(state, [])
 }
