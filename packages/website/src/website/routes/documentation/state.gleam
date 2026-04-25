@@ -1,4 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
@@ -8,11 +10,14 @@ import gleam/dict.{type Dict}
 import gleam/http/response
 import gleam/json
 import gleam/list
+import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import morph/analysis
 import morph/editable as e
 import morph/navigation
+import morph/picker
 import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/fetch
@@ -40,6 +45,7 @@ pub type Rebuild(t) =
 
 pub type Mode {
   Editing(id: String, failure: Option(Failure))
+  Picking(id: String, picker: picker.Picker, rebuild: Rebuild(String))
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   Running(id: String, status: Status)
   Nothing
@@ -111,6 +117,7 @@ pub fn init(config) {
     list.map(examples, fn(example) {
       let #(key, editable) = example
       let projection = navigation.first(editable)
+      // keep evaluation on example, if it runs don't print type errors. but show them in the code
       let example = Example(buffer.from_projection(projection, infer.pure()))
       #(key, example)
     })
@@ -202,8 +209,8 @@ fn user_pressed_key(state, key) {
     _, "w" -> transform(state, "call", buffer.call_with)
     // "E" -> pick_any(state, "assign", buffer.assign_before)
     // "e" -> pick_any(state, "assign", buffer.assign)
-    // "R" -> transform(state, "create record", buffer.create_empty_record)
-    // "r" -> create_record(state)
+    _, "R" -> transform(state, "create record", buffer.create_empty_record)
+    _, "r" -> create_record(state)
     // "t" -> insert_tag(state)
     _, "y" -> copy(state)
     _, "Y" -> paste(state)
@@ -215,32 +222,32 @@ fn user_pressed_key(state, key) {
     // "i" -> insert(state)
     // "o" -> overwrite(state)
     // "p" -> perform(state)
-    // "a" -> navigate(state, "increase selection", buffer.increase)
+    _, "a" -> navigate(state, "increase selection", buffer.increase)
     // "s" -> insert_string(state)
-    // "d" -> transform(state, "delete", buffer.delete)
+    _, "d" -> transform(state, "delete", buffer.delete)
     // "f" -> pick_any(state, "insert function", buffer.insert_function)
     // "g" -> select_field(state)
     // "h" -> insert_handle(state)
     // "j" -> insert_builtin(state)
-    // "k" -> navigate(state, "toggle", buffer.toggle_open)
-    // "L" -> transform(state, "create list", buffer.create_empty_list)
-    // "l" -> transform(state, "create list", buffer.create_list)
+    _, "k" -> navigate(state, "toggle", buffer.toggle_open)
+    _, "L" -> transform(state, "create list", buffer.create_empty_list)
+    _, "l" -> transform(state, "create list", buffer.create_list)
     // "@" -> choose_release(state)
     // "#" -> insert_reference(state)
     // // choose release just checks is expression
     // "Z" -> map_buffer(state, "redo", buffer.redo)
     // "z" -> map_buffer(state, "undo", buffer.undo)
-    // "x" -> transform(state, "spread", buffer.spread)
+    _, "x" -> transform(state, "spread", buffer.spread)
     // "c" -> call_function(state)
-    // "C" -> transform(state, "call", buffer.call_once)
-    // "b" -> transform(state, "create list", buffer.insert_binary)
+    _, "C" -> transform(state, "call", buffer.call_once)
+    _, "b" -> transform(state, "create list", buffer.insert_binary)
     // "n" -> insert_integer(state)
     // "m" -> insert_case(state)
     // "v" -> insert_variable(state)
     // "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
     // ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
     _, "Enter" -> confirm(state)
-    // " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
+    _, " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     // _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
     Editing(id, _error), _ -> {
       let mode = Editing(id, Some(NoKeyBinding(key)))
@@ -249,6 +256,7 @@ fn user_pressed_key(state, key) {
     Nothing, _ -> #(state, [])
     ReadingFromClipboard(id: _, rebuild: _), _ -> #(state, [])
     Running(id: _, status: _), _ -> #(state, [])
+    Picking(id: _, picker: _, rebuild: _), _ -> #(state, [])
   }
 }
 
@@ -278,6 +286,33 @@ fn transform(state: State, name, func) {
       #(state, [])
     }
     Error(_reason) -> action_failed(state, id, name)
+  }
+}
+
+fn create_record(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.create_record(buffer) {
+    Ok(rebuild) -> {
+      let hints = case buffer.target_type(buffer) {
+        Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
+        _ -> []
+      }
+      case hints {
+        [] -> {
+          let rebuild = fn(label, context) { rebuild([label], context) }
+          let state =
+            State(..state, mode: Picking(id, picker.new("", []), rebuild))
+          #(state, [])
+        }
+        _ -> {
+          let buffer = rebuild(listx.keys(hints), _)(infer.pure())
+          let state = set_example(state, id, Example(buffer:))
+          let state = State(..state, mode: Editing(id:, failure: None))
+          #(state, [])
+        }
+      }
+    }
+    Error(_) -> todo
   }
 }
 
@@ -317,6 +352,9 @@ fn resume(value, env, k, state, id) {
 }
 
 // This could be something not called a runner. loop function in this module would reuse it.
+// This cant be reused by workspace as the shell keeps history of effects
+// if cast takes a list of interfaces we can have runners with a subset of effects
+// Normally it is best to copy paste this function
 fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
   case return {
     Ok(value) -> #(Concluded(value), [])
@@ -365,6 +403,7 @@ fn is_editing(state: State, then) {
     Nothing -> #(state, [])
     ReadingFromClipboard(..) -> #(state, [])
     Running(id: _, status: _) -> #(state, [])
+    Picking(id: _, picker: _, rebuild: _) -> #(state, [])
   }
 }
 
