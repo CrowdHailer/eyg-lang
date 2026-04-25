@@ -1,9 +1,11 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/interpreter/break
 import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/ir/dag_json
 import gleam/dict.{type Dict}
+import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -13,14 +15,15 @@ import morph/editable as e
 import morph/navigation
 import touch_grass/copy
 import touch_grass/decode_json
+import touch_grass/fetch
 import touch_grass/flip
 import touch_grass/print
+import touch_grass/prompt
 import touch_grass/random
 import website/config
 import website/harness/browser
 import website/harness/harness
 import website/routes/documentation/examples
-
 import website/routes/workspace/buffer
 import website/sync/client
 
@@ -82,6 +85,8 @@ pub type Message {
   SyncMessage(client.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
+  PromptCompleted(Result(String, Nil))
+  FetchCompleted(Result(response.Response(BitArray), String))
   Ignore
 }
 
@@ -158,11 +163,23 @@ pub fn update(state: State, message) {
     }
     ClipboardWriteCompleted(result) -> {
       case state.mode {
-        Running(id, Handling(label: "Copy", env:, k:)) -> {
-          let #(mode, effects) =
-            loop(expression.resume(copy.encode(result), env, k))
-          let mode = Running(id, mode)
-          #(State(..state, mode:), effects)
+        Running(id, Handling(label: "Copy", env:, k:)) ->
+          resume(copy.encode(result), env, k, state, id)
+        _ -> #(state, [])
+      }
+    }
+    PromptCompleted(result) -> {
+      case state.mode {
+        Running(id, Handling(label: "Prompt", env:, k:)) ->
+          resume(prompt.encode(result), env, k, state, id)
+        _ -> #(state, [])
+      }
+    }
+    FetchCompleted(result) -> {
+      case state.mode {
+        Running(id, Handling(label: "Fetch", env:, k:)) -> {
+          let result = result.map_error(result, string.inspect)
+          resume(fetch.encode(result), env, k, state, id)
         }
         _ -> #(state, [])
       }
@@ -230,8 +247,8 @@ fn user_pressed_key(state, key) {
       #(State(..state, mode:), [])
     }
     Nothing, _ -> #(state, [])
-    ReadingFromClipboard(id:, rebuild: _), _ -> #(state, [])
-    Running(id:, status:), _ -> todo
+    ReadingFromClipboard(id: _, rebuild: _), _ -> #(state, [])
+    Running(id: _, status: _), _ -> #(state, [])
   }
 }
 
@@ -293,6 +310,12 @@ fn confirm(state: State) {
   #(State(..state, mode:), effects)
 }
 
+fn resume(value, env, k, state, id) {
+  let #(mode, effects) = loop(expression.resume(value, env, k))
+  let mode = Running(id, mode)
+  #(State(..state, mode:), effects)
+}
+
 // This could be something not called a runner. loop function in this module would reuse it.
 fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
   case return {
@@ -311,7 +334,9 @@ fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
         Ok(harness.Download(input)) -> #(Handling(label, env, k), [
           browser.Download(input, fn() { Ignore }),
         ])
-        Ok(harness.Fetch(_)) -> todo
+        Ok(harness.Fetch(request)) -> #(Handling(label, env, k), [
+          browser.fetch(request, FetchCompleted),
+        ])
         Ok(harness.Flip) ->
           loop(expression.resume(flip.encode(flip.sync()), env, k))
         Ok(harness.Paste) -> #(Handling(label, env, k), [
@@ -319,14 +344,18 @@ fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
         ])
         Ok(harness.Print(message)) ->
           loop(expression.resume(print.encode(print.sync(message)), env, k))
-        Ok(harness.Prompt(_)) -> todo
+        Ok(harness.Prompt(question)) -> #(Handling(label, env, k), [
+          browser.Prompt(question, PromptCompleted),
+        ])
         Ok(harness.Random(max)) ->
           loop(expression.resume(random.encode(random.sync(max)), env, k))
-        Ok(harness.Visit(_)) -> todo
+        Ok(harness.Visit(uri)) -> #(Handling(label, env, k), [
+          browser.Visit(uri:, resume: fn(_) { Ignore }),
+        ])
         Ok(harness.Spotless(service:, operation:)) -> todo
-        Error(_) -> todo
+        Error(break) -> #(Failed(simple_debug.describe(break)), [])
       }
-    Error(_) -> todo
+    Error(#(break, _, _, _)) -> #(Failed(simple_debug.describe(break)), [])
   }
 }
 
@@ -335,7 +364,7 @@ fn is_editing(state: State, then) {
     Editing(id:, failure: _) -> then(id, get_example(state, id))
     Nothing -> #(state, [])
     ReadingFromClipboard(..) -> #(state, [])
-    Running(id:, status:) -> todo
+    Running(id: _, status: _) -> #(state, [])
   }
 }
 

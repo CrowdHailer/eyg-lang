@@ -1,8 +1,15 @@
 //// Browser is the API to the platform
 //// It might make sense to implement a version of the effect interface built on this
 
+import gleam/fetch
+import gleam/fetchx
+import gleam/http/request
+import gleam/http/response
 import gleam/javascript/promise
 import gleam/json.{type Json}
+import gleam/result
+import gleam/string
+import gleam/uri
 import midas/browser
 import plinth/browser/clipboard
 import plinth/browser/file
@@ -15,9 +22,15 @@ import touch_grass/download
 ///
 /// - `FocusOnInput` focus on the first input on the page.
 ///   This seems to be unnecessary if only one autofocused input, and the code doesn't have a tabindex
+/// 
+/// This could return a list of effects for asynchrony or a Done(m) to allow serial effects
 pub type Effect(m) {
   Alert(message: String, resume: fn() -> m)
   Download(input: download.Input, resume: fn() -> m)
+  Fetch(
+    request: request.Request(BitArray),
+    resume: fn(Result(response.Response(BitArray), fetch.FetchError)) -> m,
+  )
   // FocusOnInput(resume:)
   LoadFiles(handle: file_system.DirectoryHandle)
   OpenPopup(
@@ -29,6 +42,7 @@ pub type Effect(m) {
     payload: Json,
     resume: fn(Nil) -> m,
   )
+  Prompt(question: String, resume: fn(Result(String, Nil)) -> m)
   ReadFromClipboard(resume: fn(Result(String, String)) -> m)
   SaveFile(
     handle: file_system.DirectoryHandle,
@@ -39,7 +53,14 @@ pub type Effect(m) {
   ShowDirectoryPicker(
     resume: fn(Result(file_system.Handle(file_system.D), String)) -> m,
   )
+  Visit(uri: uri.Uri, resume: fn(Result(window_proxy.WindowProxy, String)) -> m)
   WriteToClipboard(text: String, resume: fn(Result(Nil, String)) -> m)
+}
+
+pub fn fetch(request, resume) {
+  Fetch(request:, resume: fn(result) {
+    resume(result.map_error(result, string.inspect))
+  })
 }
 
 // helpers like save_buffer
@@ -73,6 +94,10 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
       download_file(input)
       promise.resolve(resume())
     }
+    Fetch(request:, resume:) -> {
+      use result <- promise.map(fetchx.send_bits(request))
+      resume(result)
+    }
     LoadFiles(handle:) -> {
       todo as "this shouldn't read every file"
       // use #(_, files) <- promise.await(file_system.all_entries(handle))
@@ -101,6 +126,9 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
     OpenPopup(location:, resume:) -> {
       promise.resolve(resume(browser.open(location, #(650, 800))))
     }
+    Prompt(question:, resume:) ->
+      promise.resolve(resume(window.prompt(question)))
+
     PostMessage(target:, payload:, resume:) ->
       promise.resolve(resume(window_proxy.post_message(target, payload, "*")))
     ReadFromClipboard(resume) -> {
@@ -112,6 +140,9 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
       use result <- promise.map(show_save_directory_picker())
       resume(result)
     }
+    Visit(uri:, resume:) -> {
+      promise.resolve(resume(browser.open(uri.to_string(uri), #(800, 400))))
+    }
     WriteToClipboard(text:, resume:) -> {
       use result <- promise.map(clipboard.write_text(text))
       resume(result)
@@ -119,6 +150,18 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
   }
 }
 
+// pub fn read(name) {
+//   use dir <- promise.try_await(file_system.show_directory_picker())
+//   use file <- promise.try_await(file_system.get_file_handle(dir, name, True))
+//   use file <- promise.try_await(file_system.get_file(file))
+//   use text <- promise.map(file.bytes(file))
+//   Ok(text)
+// }
+// pub fn list() {
+//   use dir <- promise.try_await(file_system.show_directory_picker())
+//   use #(entries, _) <- promise.try_await(file_system.all_entries(dir))
+//   promise.resolve(Ok(list.map(array.to_list(entries), string.inspect)))
+// }
 //     state.SetFlushTimer(reference) ->
 //       effect.from(fn(dispatch) {
 //         promise.map(promise.wait(2000), fn(_: Nil) {
@@ -173,21 +216,10 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
 
 // fn run_effect(effect) {
 //   case effect {
-//     state.Alert(message) -> alert.run(message)
-//     state.Copy(text) -> copy.run(text)
-//     state.Download(file) -> download.run(file)
 //     state.Fetch(request) -> fetch.run(request)
 //     state.Geolocation -> geolocation.run()
 //     state.Now -> now.run()
-//     state.Paste -> paste.run()
-//     state.Prompt(message) -> prompt.run(message)
-//     state.Random(max) -> promise.resolve(random.encode(random.sync(max)))
-//     state.Visit(uri) -> {
-//       let result =
-//         browser.open(uri.to_string(uri), #(800, 400))
-//         |> result.replace(Nil)
-//       promise.resolve(visit.encode(result))
-//     }
+
 //   }
 // }
 
