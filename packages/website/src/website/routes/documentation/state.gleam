@@ -16,6 +16,7 @@ import gleam/result
 import gleam/string
 import morph/analysis
 import morph/editable as e
+import morph/input
 import morph/navigation
 import morph/picker
 import touch_grass/copy
@@ -25,6 +26,7 @@ import touch_grass/flip
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
+import website/components/snippet
 import website/config
 import website/harness/browser
 import website/harness/harness
@@ -45,6 +47,8 @@ pub type Rebuild(t) =
 
 pub type Mode {
   Editing(id: String, failure: Option(Failure))
+  EditingInteger(id: String, value: Int, rebuild: Rebuild(Int))
+  EditingText(id: String, value: String, rebuild: Rebuild(String))
   Picking(id: String, picker: picker.Picker, rebuild: Rebuild(String))
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   Running(id: String, status: Status)
@@ -88,6 +92,8 @@ pub fn fail_message(reason) {
 pub type Message {
   UserClickedCode(id: String, path: List(Int))
   UserPressedKey(key: String)
+  InputMessage(input.Message)
+  PickerMessage(picker.Message)
   SyncMessage(client.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
@@ -138,6 +144,71 @@ pub fn update(state: State, message) {
       #(state, [])
     }
     UserPressedKey(key:) -> user_pressed_key(state, key)
+    InputMessage(message) -> {
+      let State(mode:, ..) = state
+      case mode, message {
+        EditingInteger(id:, value:, rebuild:), _ ->
+          case input.update_number(value, message) {
+            input.Continue(new) -> {
+              let mode = EditingInteger(..mode, value: new)
+              let state = State(..state, mode:)
+              #(state, [])
+            }
+            input.Confirmed(value) -> {
+              let state =
+                set_example(state, id, Example(rebuild(value, infer.pure())))
+              let state = State(..state, mode: Editing(id:, failure: None))
+              #(state, [])
+            }
+            input.Cancelled -> {
+              let state = State(..state, mode: Editing(id:, failure: None))
+              #(state, [])
+            }
+          }
+        EditingText(id:, value:, rebuild:), _ ->
+          case input.update_text(value, message) {
+            input.Continue(new) -> {
+              let mode = EditingText(..mode, value: new)
+              let state = State(..state, mode:)
+              #(state, [])
+            }
+            input.Confirmed(value) -> {
+              let state =
+                set_example(state, id, Example(rebuild(value, infer.pure())))
+              let state = State(..state, mode: Editing(id:, failure: None))
+              #(state, [])
+            }
+            input.Cancelled -> {
+              let state = State(..state, mode: Editing(id:, failure: None))
+              #(state, [])
+            }
+          }
+        _, _ -> #(state, [])
+      }
+    }
+    PickerMessage(message) -> {
+      let State(mode:, ..) = state
+      case mode {
+        Picking(id:, rebuild:, ..) ->
+          case message {
+            picker.Updated(picker:) -> #(
+              State(..state, mode: Picking(id:, picker:, rebuild:)),
+              [],
+            )
+            picker.Decided(label) -> {
+              let state =
+                set_example(state, id, Example(rebuild(label, infer.pure())))
+              let state = State(..state, mode: Editing(id:, failure: None))
+              #(state, [])
+            }
+            picker.Dismissed -> #(
+              State(..state, mode: Editing(id:, failure: None)),
+              [],
+            )
+          }
+        _ -> todo
+      }
+    }
     SyncMessage(message) -> {
       let State(cache: sync_client, ..) = state
       let #(sync_client, effect) = client.update(sync_client, message)
@@ -207,11 +278,11 @@ fn user_pressed_key(state, key) {
     // "Q" -> link_filesystem(state)
     // "q" -> choose_module(state)
     _, "w" -> transform(state, "call", buffer.call_with)
-    // "E" -> pick_any(state, "assign", buffer.assign_before)
-    // "e" -> pick_any(state, "assign", buffer.assign)
+    _, "E" -> pick_any(state, "assign", buffer.assign_before)
+    _, "e" -> pick_any(state, "assign", buffer.assign)
     _, "R" -> transform(state, "create record", buffer.create_empty_record)
     _, "r" -> create_record(state)
-    // "t" -> insert_tag(state)
+    _, "t" -> insert_tag(state)
     _, "y" -> copy(state)
     _, "Y" -> paste(state)
     // // TODO mode is authenticating
@@ -219,33 +290,33 @@ fn user_pressed_key(state, key) {
     // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
     //   OpenPopup("/sign"),
     // ])
-    // "i" -> insert(state)
-    // "o" -> overwrite(state)
-    // "p" -> perform(state)
+    _, "i" -> insert(state)
+    _, "o" -> overwrite(state)
+    _, "p" -> perform(state)
     _, "a" -> navigate(state, "increase selection", buffer.increase)
-    // "s" -> insert_string(state)
+    _, "s" -> insert_string(state)
     _, "d" -> transform(state, "delete", buffer.delete)
-    // "f" -> pick_any(state, "insert function", buffer.insert_function)
-    // "g" -> select_field(state)
-    // "h" -> insert_handle(state)
-    // "j" -> insert_builtin(state)
+    _, "f" -> pick_any(state, "insert function", buffer.insert_function)
+    // _, "g" -> select_field(state)
+    // _, "h" -> insert_handle(state)
+    // _, "j" -> insert_builtin(state)
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
     _, "L" -> transform(state, "create list", buffer.create_empty_list)
     _, "l" -> transform(state, "create list", buffer.create_list)
-    // "@" -> choose_release(state)
-    // "#" -> insert_reference(state)
-    // // choose release just checks is expression
-    // "Z" -> map_buffer(state, "redo", buffer.redo)
-    // "z" -> map_buffer(state, "undo", buffer.undo)
+    // _, "@" -> choose_release(state)
+    // _, "#" -> insert_reference(state)
+    // _, // _, choose release just checks is expression
+    // _, "Z" -> map_buffer(state, "redo", buffer.redo)
+    // _, "z" -> map_buffer(state, "undo", buffer.undo)
     _, "x" -> transform(state, "spread", buffer.spread)
-    // "c" -> call_function(state)
+    // _, "c" -> call_function(state)
     _, "C" -> transform(state, "call", buffer.call_once)
     _, "b" -> transform(state, "create list", buffer.insert_binary)
-    // "n" -> insert_integer(state)
-    // "m" -> insert_case(state)
-    // "v" -> insert_variable(state)
-    // "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
-    // ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
+    _, "n" -> insert_integer(state)
+    // _, "m" -> insert_case(state)
+    // _, "v" -> insert_variable(state)
+    // _, "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
+    // _, ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
     _, "Enter" -> confirm(state)
     _, " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     // _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
@@ -257,6 +328,8 @@ fn user_pressed_key(state, key) {
     ReadingFromClipboard(id: _, rebuild: _), _ -> #(state, [])
     Running(id: _, status: _), _ -> #(state, [])
     Picking(id: _, picker: _, rebuild: _), _ -> #(state, [])
+    EditingInteger(id: _, value: _, rebuild: _), _ -> #(state, [])
+    EditingText(id: _, value: _, rebuild: _), _ -> #(state, [])
   }
 }
 
@@ -289,6 +362,17 @@ fn transform(state: State, name, func) {
   }
 }
 
+fn pick_any(state, name, func) {
+  use id, Example(buffer:) <- is_editing(state)
+  case func(buffer) {
+    Ok(rebuild) -> {
+      let state = State(..state, mode: Picking(id, picker.new("", []), rebuild))
+      #(state, [])
+    }
+    Error(_) -> action_failed(state, id, name)
+  }
+}
+
 fn create_record(state) {
   use id, Example(buffer:) <- is_editing(state)
   case buffer.create_record(buffer) {
@@ -316,6 +400,23 @@ fn create_record(state) {
   }
 }
 
+fn insert_tag(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.tag(buffer) {
+    Ok(rebuild) -> {
+      let hints = case buffer.target_type(buffer) {
+        Ok(t.Union(variants)) ->
+          listx.value_map(analysis.rows(variants), debug.mono)
+        _ -> []
+      }
+      let state =
+        State(..state, mode: Picking(id, picker.new("", hints), rebuild))
+      #(state, [])
+    }
+    Error(_) -> action_failed(state, id, "tag")
+  }
+}
+
 /// don't do key press under a mode switch
 fn copy(state: State) {
   use id, Example(buffer:) <- is_editing(state)
@@ -335,6 +436,72 @@ fn paste(state: State) {
       #(state, [browser.ReadFromClipboard(ClipboardReadCompleted)])
     }
     Error(Nil) -> action_failed(state, id, "copy")
+  }
+}
+
+fn insert(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.insert(buffer) {
+    Ok(#(value, rebuild)) -> #(
+      State(..state, mode: Picking(id, picker.new(value, []), rebuild:)),
+      [],
+    )
+    Error(Nil) -> action_failed(state, id, "insert")
+  }
+}
+
+fn overwrite(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.overwrite(buffer) {
+    Ok(rebuild) -> {
+      let hints = case buffer.target_type(buffer) {
+        Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
+        _ -> []
+      }
+      let state =
+        State(..state, mode: Picking(id, picker.new("", hints), rebuild))
+      #(state, [])
+    }
+    Error(_) -> action_failed(state, id, "record")
+  }
+}
+
+fn perform(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.perform(buffer) {
+    Ok(rebuild) -> {
+      let hints = effect_hints()
+      #(State(..state, mode: Picking(id, picker.new("", hints), rebuild:)), [])
+    }
+    Error(Nil) -> action_failed(state, id, "perform")
+  }
+}
+
+fn effect_hints() {
+  list.map(harness.types(harness.effects()), fn(effect) {
+    let #(key, types) = effect
+    #(key, snippet.render_effect(types))
+  })
+}
+
+fn insert_string(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.insert_string(buffer) {
+    Ok(#(value, rebuild)) -> #(
+      State(..state, mode: EditingText(id, value:, rebuild:)),
+      [],
+    )
+    Error(_) -> action_failed(state, id, "insert string")
+  }
+}
+
+fn insert_integer(state) {
+  use id, Example(buffer:) <- is_editing(state)
+  case buffer.insert_integer(buffer) {
+    Ok(#(value, rebuild)) -> {
+      #(State(..state, mode: EditingInteger(id:, value:, rebuild:)), [])
+    }
+    Error(Nil) -> action_failed(state, id, "insert integer")
   }
 }
 
@@ -404,6 +571,7 @@ fn is_editing(state: State, then) {
     ReadingFromClipboard(..) -> #(state, [])
     Running(id: _, status: _) -> #(state, [])
     Picking(id: _, picker: _, rebuild: _) -> #(state, [])
+    _ -> #(state, [])
   }
 }
 

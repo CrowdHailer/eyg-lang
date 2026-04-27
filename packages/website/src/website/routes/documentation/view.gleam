@@ -7,6 +7,8 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import morph/input
+import morph/picker
 import website/components
 import website/components/snippet
 import website/routes/documentation/examples
@@ -496,9 +498,19 @@ fn example(state: state.State, id) {
           h.text(state.fail_message(failure)),
         ])
       }
-      _ -> {
-        element.none()
-      }
+      state.Editing(id: _, failure: Some(message)) ->
+        element.text(state.fail_message(message))
+      state.Editing(id: _, failure: None) -> element.none()
+      state.EditingInteger(id: focused, value:, rebuild: _) if focused == id ->
+        input.render_number(value) |> element.map(state.InputMessage)
+      state.EditingText(id: focused, value:, rebuild: _) if focused == id ->
+        input.render_text(value) |> element.map(state.InputMessage)
+      state.Picking(id: focused, picker:, rebuild: _) if focused == id ->
+        picker.render(picker) |> element.map(state.PickerMessage)
+      state.ReadingFromClipboard(id: _, rebuild: _) -> element.none()
+      state.Running(id: _, status: _) -> element.none()
+      state.Nothing -> element.none()
+      _ -> element.none()
     },
   ])
   // element.fragment([
