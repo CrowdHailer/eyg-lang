@@ -45,6 +45,9 @@ pub type Example {
 pub type Rebuild(t) =
   fn(t, infer.Context) -> buffer.Buffer
 
+// An edit status could be reused over the applications but viewing it would be separate
+// Change Editing -> Focused/Navigating
+// Manipulating is called editing, EditingStatus is there
 pub type Mode {
   Editing(id: String, failure: Option(Failure))
   EditingInteger(id: String, value: Int, rebuild: Rebuild(Int))
@@ -282,7 +285,7 @@ fn user_pressed_key(state, key) {
     _, "e" -> pick_any(state, "assign", buffer.assign)
     _, "R" -> transform(state, "create record", buffer.create_empty_record)
     _, "r" -> create_record(state)
-    _, "t" -> insert_tag(state)
+    _, "t" -> pick_from(state, insert_tag())
     _, "y" -> copy(state)
     _, "Y" -> paste(state)
     // // TODO mode is authenticating
@@ -292,17 +295,18 @@ fn user_pressed_key(state, key) {
     // ])
     _, "i" -> insert(state)
     _, "o" -> overwrite(state)
-    _, "p" -> perform(state)
+    _, "p" -> pick_from(state, perform())
     _, "a" -> navigate(state, "increase selection", buffer.increase)
     _, "s" -> insert_string(state)
     _, "d" -> transform(state, "delete", buffer.delete)
     _, "f" -> pick_any(state, "insert function", buffer.insert_function)
-    // _, "g" -> select_field(state)
-    // _, "h" -> insert_handle(state)
-    // _, "j" -> insert_builtin(state)
+    _, "g" -> pick_from(state, select_field())
+    _, "h" -> pick_from(state, insert_handle())
+    _, "j" -> pick_from(state, insert_builtin())
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
     _, "L" -> transform(state, "create list", buffer.create_empty_list)
     _, "l" -> transform(state, "create list", buffer.create_list)
+    // choose release is different type returned i.e. cid
     // _, "@" -> choose_release(state)
     // _, "#" -> insert_reference(state)
     // _, // _, choose release just checks is expression
@@ -313,8 +317,9 @@ fn user_pressed_key(state, key) {
     _, "C" -> transform(state, "call", buffer.call_once)
     _, "b" -> transform(state, "create list", buffer.insert_binary)
     _, "n" -> insert_integer(state)
+    // pick_multi
     // _, "m" -> insert_case(state)
-    // _, "v" -> insert_variable(state)
+    _, "v" -> pick_from(state, insert_variable())
     // _, "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
     // _, ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
     _, "Enter" -> confirm(state)
@@ -373,6 +378,29 @@ fn pick_any(state, name, func) {
   }
 }
 
+/// pick a value from a list of suggestions
+fn pick_from(state, action) {
+  use id, Example(buffer:) <- is_editing(state)
+  let PickFrom(name:, start:) = action
+  case start(buffer) {
+    Ok(#(current, hints, rebuild)) -> {
+      let mode = Picking(id, picker.new(current, hints), rebuild:)
+      #(State(..state, mode:), [])
+    }
+    Error(_) -> action_failed(state, id, name)
+  }
+}
+
+/// These actions are defined at the level of the UI, not the buffer.Buffer
+/// They could be tied to a picker implementation
+pub type PickFrom {
+  PickFrom(
+    name: String,
+    start: fn(buffer.Buffer) ->
+      Result(#(String, List(#(String, String)), Rebuild(String)), Nil),
+  )
+}
+
 fn create_record(state) {
   use id, Example(buffer:) <- is_editing(state)
   case buffer.create_record(buffer) {
@@ -400,21 +428,12 @@ fn create_record(state) {
   }
 }
 
-fn insert_tag(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.tag(buffer) {
-    Ok(rebuild) -> {
-      let hints = case buffer.target_type(buffer) {
-        Ok(t.Union(variants)) ->
-          listx.value_map(analysis.rows(variants), debug.mono)
-        _ -> []
-      }
-      let state =
-        State(..state, mode: Picking(id, picker.new("", hints), rebuild))
-      #(state, [])
-    }
-    Error(_) -> action_failed(state, id, "tag")
-  }
+fn insert_tag() {
+  PickFrom(name: "tag", start: fn(buffer) {
+    use rebuild <- result.map(buffer.tag(buffer))
+    let hints = listx.value_map(buffer.varients(buffer), debug.mono)
+    #("", hints, rebuild)
+  })
 }
 
 /// don't do key press under a mode switch
@@ -466,15 +485,12 @@ fn overwrite(state) {
   }
 }
 
-fn perform(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.perform(buffer) {
-    Ok(rebuild) -> {
-      let hints = effect_hints()
-      #(State(..state, mode: Picking(id, picker.new("", hints), rebuild:)), [])
-    }
-    Error(Nil) -> action_failed(state, id, "perform")
-  }
+fn perform() -> PickFrom {
+  PickFrom(name: "perform", start: fn(buffer) {
+    use rebuild <- result.map(buffer.perform(buffer))
+    let hints = effect_hints()
+    #("", hints, rebuild)
+  })
 }
 
 fn effect_hints() {
@@ -495,6 +511,30 @@ fn insert_string(state) {
   }
 }
 
+fn select_field() -> PickFrom {
+  PickFrom(name: "select field", start: fn(buffer) {
+    use rebuild <- result.map(buffer.select_field(buffer))
+    let hints = listx.value_map(buffer.fields(buffer), debug.mono)
+    #("", hints, rebuild)
+  })
+}
+
+fn insert_handle() -> PickFrom {
+  PickFrom(name: "insert handle", start: fn(buffer) {
+    use rebuild <- result.map(buffer.insert_handle(buffer))
+    let hints = effect_hints()
+    #("", hints, rebuild)
+  })
+}
+
+fn insert_builtin() -> PickFrom {
+  PickFrom(name: "insert builtin", start: fn(buffer) {
+    use rebuild <- result.map(buffer.insert_builtin(buffer))
+    let hints = listx.value_map(infer.builtins(), snippet.render_poly)
+    #("", hints, rebuild)
+  })
+}
+
 fn insert_integer(state) {
   use id, Example(buffer:) <- is_editing(state)
   case buffer.insert_integer(buffer) {
@@ -503,6 +543,15 @@ fn insert_integer(state) {
     }
     Error(Nil) -> action_failed(state, id, "insert integer")
   }
+}
+
+fn insert_variable() -> PickFrom {
+  PickFrom(name: "insert variable", start: fn(buffer) {
+    use rebuild <- result.map(buffer.insert_variable(buffer))
+    let scope = buffer.target_scope(buffer) |> result.unwrap([])
+    let hints = listx.value_map(scope, snippet.render_poly)
+    #("", hints, rebuild)
+  })
 }
 
 fn confirm(state: State) {

@@ -1,4 +1,12 @@
+//// buffer doesn't define UI components, or grouping of actions.
+//// All actions might be presented differently in different UI
+//// 
+//// Return types from the buffer actions are not enough to know how to present choices
+//// 
+//// A top level application might create an enum of editing modes
+
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/isomorphic as iso
 import eyg/ir/cid
 import eyg/ir/dag_json
 import gleam/javascript/promise
@@ -7,6 +15,7 @@ import gleam/option.{None}
 import gleam/result
 import gleam/set
 import morph/action
+import morph/analysis
 import morph/editable as e
 import morph/navigation
 import morph/projection as p
@@ -118,6 +127,20 @@ pub fn target_type(buffer) {
   let Buffer(projection:, analysis:, ..) = buffer
   let path = p.path(projection)
   infer.type_at(analysis, list.reverse(path))
+}
+
+pub fn fields(buffer) {
+  case target_type(buffer) {
+    Ok(iso.Record(rows)) -> analysis.rows(rows)
+    _ -> []
+  }
+}
+
+pub fn varients(buffer) {
+  case target_type(buffer) {
+    Ok(iso.Union(rows)) -> analysis.rows(rows)
+    _ -> []
+  }
 }
 
 pub fn target_scope(buffer) {
