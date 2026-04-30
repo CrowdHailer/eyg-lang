@@ -1,41 +1,44 @@
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/isomorphic as t
+import eyg/hub/client
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/http/response
 import gleam/json
 import gleam/list
-import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import morph/analysis
 import morph/editable as e
 import morph/input
 import morph/navigation
 import morph/picker
+import multiformats/cid/v1
+import ogre/operation
+import ogre/origin
 import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/flip
+import touch_grass/paste
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
-import website/components/snippet
+import untethered/ledger/client.{NetworkError} as _
 import website/config
 import website/harness/browser
 import website/harness/harness
+import website/manipulation
 import website/routes/documentation/examples
 import website/routes/workspace/buffer
-import website/sync/client
 
 pub type State {
-  State(cache: client.Client, mode: Mode, examples: Dict(String, Example))
+  State(mode: Mode, examples: Dict(String, Example))
 }
 
 pub type Example {
@@ -55,13 +58,14 @@ pub type Mode {
   Picking(id: String, picker: picker.Picker, rebuild: Rebuild(String))
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   Running(id: String, status: Status)
-  Nothing
+  UnFocused
 }
 
 /// Run Status
 pub type Status {
   Concluded(Value)
-  Handling(label: String, env: state.Env(Meta), k: state.Stack(Meta))
+  Handling(ref: Int, env: state.Env(Meta), k: state.Stack(Meta))
+  Fetching(env: state.Env(Meta), k: state.Stack(Meta))
   Failed(String)
 }
 
@@ -97,11 +101,10 @@ pub type Message {
   UserPressedKey(key: String)
   InputMessage(input.Message)
   PickerMessage(picker.Message)
-  SyncMessage(client.Message)
+
   ClipboardReadCompleted(Result(String, String))
-  ClipboardWriteCompleted(Result(Nil, String))
-  PromptCompleted(Result(String, Nil))
-  FetchCompleted(Result(response.Response(BitArray), String))
+  EffectHandled(ref: Int, value: Value)
+  ModuleFetched(v1.Cid, ir.Node(List(Int)))
   Ignore
 }
 
@@ -117,7 +120,7 @@ pub fn set_example(state: State, id, snippet) {
 // snippet failure goes at top level
 pub fn init(config) {
   let config.Config(origin:) = config
-  let #(client, init_task) = client.init(origin)
+  // let #(client, init_task) = client.init(origin)
 
   let examples = examples.all()
 
@@ -132,8 +135,8 @@ pub fn init(config) {
     })
   let examples = dict.from_list(examples)
   // let missing_cids = missing_refs(examples)
-  let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
-  let state = State(client, Nothing, examples)
+  // let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
+  let state = State(UnFocused, examples)
   #(state, [])
 }
 
@@ -212,14 +215,14 @@ pub fn update(state: State, message) {
         _ -> todo
       }
     }
-    SyncMessage(message) -> {
-      let State(cache: sync_client, ..) = state
-      let #(sync_client, effect) = client.update(sync_client, message)
 
-      let state = State(..state, cache: sync_client)
-      // let effects = [, ..effects]
-      #(state, todo as "client.lustre_run(effect, SyncMessage)")
-    }
+    // SyncMessage(message) -> {
+    //   let State(cache: sync_client, ..) = state
+    //   let #(sync_client, effect) = client.update(sync_client, message)
+    //   let state = State(..state, cache: sync_client)
+    //   // let effects = [, ..effects]
+    //   #(state, todo as "client.lustre_run(effect, SyncMessage)")
+    // }
     ClipboardReadCompleted(return) -> {
       case state.mode {
         ReadingFromClipboard(id, rebuild) ->
@@ -242,29 +245,14 @@ pub fn update(state: State, message) {
         _ -> #(state, [])
       }
     }
-    ClipboardWriteCompleted(result) -> {
+    EffectHandled(ref:, value:) -> {
       case state.mode {
-        Running(id, Handling(label: "Copy", env:, k:)) ->
-          resume(copy.encode(result), env, k, state, id)
+        Running(id, Handling(ref: r, env:, k:)) if r == ref ->
+          resume(ref, value, env, k, state, id)
         _ -> #(state, [])
       }
     }
-    PromptCompleted(result) -> {
-      case state.mode {
-        Running(id, Handling(label: "Prompt", env:, k:)) ->
-          resume(prompt.encode(result), env, k, state, id)
-        _ -> #(state, [])
-      }
-    }
-    FetchCompleted(result) -> {
-      case state.mode {
-        Running(id, Handling(label: "Fetch", env:, k:)) -> {
-          let result = result.map_error(result, string.inspect)
-          resume(fetch.encode(result), env, k, state, id)
-        }
-        _ -> #(state, [])
-      }
-    }
+    ModuleFetched(cid, value) -> todo
     Ignore -> #(state, [])
   }
 }
@@ -273,19 +261,19 @@ fn user_pressed_key(state, key) {
   let State(mode:, ..) = state
   // set error to nothing
   case mode, key {
-    // "Escape" -> #(State(..state, mode: Nothing), [])
+    _, "Escape" -> #(State(..state, mode: UnFocused), [])
     _, "ArrowRight" -> navigate(state, "move right", buffer.next)
     _, "ArrowLeft" -> navigate(state, "move left", buffer.previous)
     _, "ArrowUp" -> navigate(state, "move up", buffer.up)
     _, "ArrowDown" -> navigate(state, "move down", buffer.down)
     // "Q" -> link_filesystem(state)
     // "q" -> choose_module(state)
-    _, "w" -> transform(state, "call", buffer.call_with)
-    _, "E" -> pick_any(state, "assign", buffer.assign_before)
-    _, "e" -> pick_any(state, "assign", buffer.assign)
-    _, "R" -> transform(state, "create record", buffer.create_empty_record)
-    _, "r" -> create_record(state)
-    _, "t" -> pick_from(state, insert_tag())
+    _, "w" -> edit(state, manipulation.call_with())
+    _, "E" -> edit(state, manipulation.assign_before())
+    _, "e" -> edit(state, manipulation.assign())
+    _, "R" -> edit(state, manipulation.create_empty_record())
+    _, "r" -> edit(state, manipulation.create_record())
+    _, "t" -> edit(state, manipulation.insert_tag())
     _, "y" -> copy(state)
     _, "Y" -> paste(state)
     // // TODO mode is authenticating
@@ -293,43 +281,41 @@ fn user_pressed_key(state, key) {
     // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
     //   OpenPopup("/sign"),
     // ])
-    _, "i" -> insert(state)
-    _, "o" -> overwrite(state)
-    _, "p" -> pick_from(state, perform())
+    _, "i" -> edit(state, manipulation.insert())
+    _, "o" -> edit(state, manipulation.overwrite())
+    _, "p" -> edit(state, manipulation.perform())
     _, "a" -> navigate(state, "increase selection", buffer.increase)
-    _, "s" -> insert_string(state)
-    _, "d" -> transform(state, "delete", buffer.delete)
-    _, "f" -> pick_any(state, "insert function", buffer.insert_function)
-    _, "g" -> pick_from(state, select_field())
-    _, "h" -> pick_from(state, insert_handle())
-    _, "j" -> pick_from(state, insert_builtin())
+    _, "s" -> edit(state, manipulation.insert_string())
+    _, "d" -> edit(state, manipulation.delete())
+    _, "f" -> edit(state, manipulation.insert_function())
+    _, "g" -> edit(state, manipulation.select_field())
+    _, "h" -> edit(state, manipulation.insert_handle())
+    _, "j" -> edit(state, manipulation.insert_builtin())
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
-    _, "L" -> transform(state, "create list", buffer.create_empty_list)
-    _, "l" -> transform(state, "create list", buffer.create_list)
+    _, "L" -> edit(state, manipulation.create_empty_list())
+    _, "l" -> edit(state, manipulation.create_list())
     // choose release is different type returned i.e. cid
     // _, "@" -> choose_release(state)
     // _, "#" -> insert_reference(state)
     // _, // _, choose release just checks is expression
-    // _, "Z" -> map_buffer(state, "redo", buffer.redo)
-    // _, "z" -> map_buffer(state, "undo", buffer.undo)
-    _, "x" -> transform(state, "spread", buffer.spread)
-    // _, "c" -> call_function(state)
-    _, "C" -> transform(state, "call", buffer.call_once)
-    _, "b" -> transform(state, "create list", buffer.insert_binary)
-    _, "n" -> insert_integer(state)
-    // pick_multi
-    // _, "m" -> insert_case(state)
-    _, "v" -> pick_from(state, insert_variable())
-    // _, "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
-    // _, ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
+    _, "Z" -> edit(state, manipulation.redo())
+    _, "z" -> edit(state, manipulation.undo())
+    _, "x" -> edit(state, manipulation.spread())
+    _, "c" -> edit(state, manipulation.call_function())
+    _, "C" -> edit(state, manipulation.call_once())
+    _, "b" -> edit(state, manipulation.insert_binary())
+    _, "n" -> edit(state, manipulation.insert_integer())
+    _, "m" -> edit(state, manipulation.insert_case())
+    _, "v" -> edit(state, manipulation.insert_variable())
+    _, "<" -> edit(state, manipulation.insert_before())
+    _, ">" -> edit(state, manipulation.insert_after())
     _, "Enter" -> confirm(state)
     _, " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
-    // _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
     Editing(id, _error), _ -> {
       let mode = Editing(id, Some(NoKeyBinding(key)))
       #(State(..state, mode:), [])
     }
-    Nothing, _ -> #(state, [])
+    UnFocused, _ -> #(state, [])
     ReadingFromClipboard(id: _, rebuild: _), _ -> #(state, [])
     Running(id: _, status: _), _ -> #(state, [])
     Picking(id: _, picker: _, rebuild: _), _ -> #(state, [])
@@ -351,89 +337,30 @@ fn navigate(state: State, name, func) {
   }
 }
 
-fn transform(state: State, name, func) {
+// can't 1 for 1 map over a working state for the buffer because of the gen -> buffer step in resolved
+fn edit(state, manipulation) {
   use id, Example(buffer:) <- is_editing(state)
-
-  // this returns a generator that will only complete with the typing context. 
-  // Where do we look for updated ref's
-  // type checking could return them later
-  case func(buffer) {
-    Ok(gen) -> {
+  let manipulation.Operation(name:, apply:) = manipulation
+  case apply(buffer) {
+    Ok(manipulation.Resolved(gen)) -> {
       let state = set_example(state, id, Example(buffer: gen(infer.pure())))
       let state = State(..state, mode: Editing(id:, failure: None))
       #(state, [])
     }
-    Error(_reason) -> action_failed(state, id, name)
-  }
-}
-
-fn pick_any(state, name, func) {
-  use id, Example(buffer:) <- is_editing(state)
-  case func(buffer) {
-    Ok(rebuild) -> {
-      let state = State(..state, mode: Picking(id, picker.new("", []), rebuild))
-      #(state, [])
-    }
-    Error(_) -> action_failed(state, id, name)
-  }
-}
-
-/// pick a value from a list of suggestions
-fn pick_from(state, action) {
-  use id, Example(buffer:) <- is_editing(state)
-  let PickFrom(name:, start:) = action
-  case start(buffer) {
-    Ok(#(current, hints, rebuild)) -> {
-      let mode = Picking(id, picker.new(current, hints), rebuild:)
+    Ok(manipulation.PickSingle(picker, rebuild)) -> {
+      let mode = Picking(id, picker, rebuild:)
       #(State(..state, mode:), [])
     }
-    Error(_) -> action_failed(state, id, name)
-  }
-}
-
-/// These actions are defined at the level of the UI, not the buffer.Buffer
-/// They could be tied to a picker implementation
-pub type PickFrom {
-  PickFrom(
-    name: String,
-    start: fn(buffer.Buffer) ->
-      Result(#(String, List(#(String, String)), Rebuild(String)), Nil),
-  )
-}
-
-fn create_record(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.create_record(buffer) {
-    Ok(rebuild) -> {
-      let hints = case buffer.target_type(buffer) {
-        Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
-        _ -> []
-      }
-      case hints {
-        [] -> {
-          let rebuild = fn(label, context) { rebuild([label], context) }
-          let state =
-            State(..state, mode: Picking(id, picker.new("", []), rebuild))
-          #(state, [])
-        }
-        _ -> {
-          let buffer = rebuild(listx.keys(hints), _)(infer.pure())
-          let state = set_example(state, id, Example(buffer:))
-          let state = State(..state, mode: Editing(id:, failure: None))
-          #(state, [])
-        }
-      }
+    Ok(manipulation.EnterText(value, rebuild)) -> {
+      let mode = EditingText(id, value, rebuild:)
+      #(State(..state, mode:), [])
     }
-    Error(_) -> todo
+    Ok(manipulation.EnterInteger(value, rebuild)) -> {
+      let mode = EditingInteger(id, value, rebuild:)
+      #(State(..state, mode:), [])
+    }
+    Error(Nil) -> action_failed(state, id, name)
   }
-}
-
-fn insert_tag() {
-  PickFrom(name: "tag", start: fn(buffer) {
-    use rebuild <- result.map(buffer.tag(buffer))
-    let hints = listx.value_map(buffer.varients(buffer), debug.mono)
-    #("", hints, rebuild)
-  })
 }
 
 /// don't do key press under a mode switch
@@ -458,157 +385,142 @@ fn paste(state: State) {
   }
 }
 
-fn insert(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.insert(buffer) {
-    Ok(#(value, rebuild)) -> #(
-      State(..state, mode: Picking(id, picker.new(value, []), rebuild:)),
-      [],
-    )
-    Error(Nil) -> action_failed(state, id, "insert")
-  }
-}
-
-fn overwrite(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.overwrite(buffer) {
-    Ok(rebuild) -> {
-      let hints = case buffer.target_type(buffer) {
-        Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
-        _ -> []
-      }
-      let state =
-        State(..state, mode: Picking(id, picker.new("", hints), rebuild))
-      #(state, [])
-    }
-    Error(_) -> action_failed(state, id, "record")
-  }
-}
-
-fn perform() -> PickFrom {
-  PickFrom(name: "perform", start: fn(buffer) {
-    use rebuild <- result.map(buffer.perform(buffer))
-    let hints = effect_hints()
-    #("", hints, rebuild)
-  })
-}
-
-fn effect_hints() {
-  list.map(harness.types(harness.effects()), fn(effect) {
-    let #(key, types) = effect
-    #(key, snippet.render_effect(types))
-  })
-}
-
-fn insert_string(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.insert_string(buffer) {
-    Ok(#(value, rebuild)) -> #(
-      State(..state, mode: EditingText(id, value:, rebuild:)),
-      [],
-    )
-    Error(_) -> action_failed(state, id, "insert string")
-  }
-}
-
-fn select_field() -> PickFrom {
-  PickFrom(name: "select field", start: fn(buffer) {
-    use rebuild <- result.map(buffer.select_field(buffer))
-    let hints = listx.value_map(buffer.fields(buffer), debug.mono)
-    #("", hints, rebuild)
-  })
-}
-
-fn insert_handle() -> PickFrom {
-  PickFrom(name: "insert handle", start: fn(buffer) {
-    use rebuild <- result.map(buffer.insert_handle(buffer))
-    let hints = effect_hints()
-    #("", hints, rebuild)
-  })
-}
-
-fn insert_builtin() -> PickFrom {
-  PickFrom(name: "insert builtin", start: fn(buffer) {
-    use rebuild <- result.map(buffer.insert_builtin(buffer))
-    let hints = listx.value_map(infer.builtins(), snippet.render_poly)
-    #("", hints, rebuild)
-  })
-}
-
-fn insert_integer(state) {
-  use id, Example(buffer:) <- is_editing(state)
-  case buffer.insert_integer(buffer) {
-    Ok(#(value, rebuild)) -> {
-      #(State(..state, mode: EditingInteger(id:, value:, rebuild:)), [])
-    }
-    Error(Nil) -> action_failed(state, id, "insert integer")
-  }
-}
-
-fn insert_variable() -> PickFrom {
-  PickFrom(name: "insert variable", start: fn(buffer) {
-    use rebuild <- result.map(buffer.insert_variable(buffer))
-    let scope = buffer.target_scope(buffer) |> result.unwrap([])
-    let hints = listx.value_map(scope, snippet.render_poly)
-    #("", hints, rebuild)
-  })
-}
-
 fn confirm(state: State) {
   use id, Example(buffer:) <- is_editing(state)
-  let #(mode, effects) = loop(expression.execute(buffer.source(buffer), []))
+  let #(mode, effects) = loop(0, expression.execute(buffer.source(buffer), []))
   let mode = Running(id, mode)
   #(State(..state, mode:), effects)
 }
 
-fn resume(value, env, k, state, id) {
-  let #(mode, effects) = loop(expression.resume(value, env, k))
+fn resume(ref, value, env, k, state, id) {
+  let #(mode, effects) = loop(ref + 1, expression.resume(value, env, k))
   let mode = Running(id, mode)
   #(State(..state, mode:), effects)
+}
+
+fn handled(ref, cast) {
+  fn(r) { EffectHandled(ref:, value: cast(r)) }
 }
 
 // This could be something not called a runner. loop function in this module would reuse it.
 // This cant be reused by workspace as the shell keeps history of effects
 // if cast takes a list of interfaces we can have runners with a subset of effects
 // Normally it is best to copy paste this function
-fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
+// 
+// This loop is tied to this route/app by the return message type
+// The return of the effect could be a code return wot need counter but I don't know how you track trace/effect id
+// Probably best to fix module lookup first, as well as spotless, where do we cache, but it should be the same as 
+// spotless tokens last over different runs
+// 
+// Follow the elm pattern or the situation where I like midas pass in effect handlers, so we have a on handled
+// on fetched
+// hub has an API client
+// hub DOES NOT have a state/cache or it's own message types
+// The whole thing is a reference to the hub in the website
+// hub might have a selection of remotes
+// hub.module(cid)
+// hub.release() -> current status
+// hub.get_release -> tasks if invalid needs an error might always have come into existance
+// get_release -> it is ok or refreshes, or errors if the hash is wrong
+// pending and 
+fn loop(ref: Int, return: Return) -> #(Status, List(browser.Effect(Message))) {
   case return {
     Ok(value) -> #(Concluded(value), [])
     Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) ->
       case harness.cast(label, lift) {
         Ok(harness.Abort(reason)) -> #(Failed(reason), [])
-        Ok(harness.Alert(message)) -> #(Handling(label, env, k), [
-          browser.Alert(message, fn() { Ignore }),
+        Ok(harness.Alert(message)) -> #(Handling(ref, env, k), [
+          browser.Alert(message, fn() { EffectHandled(ref, v.unit()) }),
         ])
-        Ok(harness.Copy(text)) -> #(Handling(label, env, k), [
-          browser.WriteToClipboard(text, ClipboardWriteCompleted),
+        Ok(harness.Copy(text)) -> #(Handling(ref, env, k), [
+          browser.WriteToClipboard(text, handled(ref, copy.encode)),
         ])
         Ok(harness.DecodeJson(raw)) ->
-          loop(expression.resume(decode_json.sync(raw), env, k))
-        Ok(harness.Download(input)) -> #(Handling(label, env, k), [
-          browser.Download(input, fn() { Ignore }),
+          loop(ref, expression.resume(decode_json.sync(raw), env, k))
+        Ok(harness.Download(input)) -> #(Handling(ref, env, k), [
+          browser.Download(input, fn() { EffectHandled(ref, v.unit()) }),
         ])
-        Ok(harness.Fetch(request)) -> #(Handling(label, env, k), [
-          browser.fetch(request, FetchCompleted),
+        Ok(harness.Fetch(request)) -> #(Handling(ref, env, k), [
+          browser.fetch(request, handled(ref, fetch.encode)),
         ])
         Ok(harness.Flip) ->
-          loop(expression.resume(flip.encode(flip.sync()), env, k))
-        Ok(harness.Paste) -> #(Handling(label, env, k), [
-          browser.ReadFromClipboard(ClipboardReadCompleted),
+          loop(ref, expression.resume(flip.encode(flip.sync()), env, k))
+        Ok(harness.Paste) -> #(Handling(ref, env, k), [
+          browser.ReadFromClipboard(handled(ref, paste.encode)),
         ])
         Ok(harness.Print(message)) ->
-          loop(expression.resume(print.encode(print.sync(message)), env, k))
-        Ok(harness.Prompt(question)) -> #(Handling(label, env, k), [
-          browser.Prompt(question, PromptCompleted),
+          loop(
+            ref,
+            expression.resume(print.encode(print.sync(message)), env, k),
+          )
+        Ok(harness.Prompt(question)) -> #(Handling(ref, env, k), [
+          browser.Prompt(question, handled(ref, prompt.encode)),
         ])
         Ok(harness.Random(max)) ->
-          loop(expression.resume(random.encode(random.sync(max)), env, k))
-        Ok(harness.Visit(uri)) -> #(Handling(label, env, k), [
-          browser.Visit(uri:, resume: fn(_) { Ignore }),
+          loop(ref, expression.resume(random.encode(random.sync(max)), env, k))
+        Ok(harness.Visit(uri)) -> #(Handling(ref, env, k), [
+          browser.Visit(uri:, resume: fn(result) {
+            let value = case result {
+              Ok(_) -> v.ok(v.unit())
+              Error(reason) -> v.error(v.String(reason))
+            }
+            EffectHandled(ref, value)
+          }),
         ])
         Ok(harness.Spotless(service:, operation:)) -> todo
         Error(break) -> #(Failed(simple_debug.describe(break)), [])
       }
+    Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
+      let refs = todo
+      case dict.get(refs, cid) {
+        Ok(value) -> loop(ref, expression.resume(value, env, k))
+        Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
+      }
+    }
+    Error(#(break, _, _, _)) -> #(Failed(simple_debug.describe(break)), [])
+  }
+}
+
+fn get_module(cid: v1.Cid) {
+  // If we pass in a runner state, then it needs to be returned every time
+  let operation = client.get_module(cid)
+  // TODO configure origin
+  let request = operation.to_request(operation, origin.https("eyg.run"))
+  // Do we want to look up if already looking
+
+  // This is a browser action
+  browser.Fetch(request, fn(result) {
+    case result {
+      Ok(response) ->
+        case client.get_module_response(response) {
+          Ok(Some(source)) -> todo as "has to return just source"
+          // state arrives but then we need to work with it. update somehting internaly
+          // pure_loop(
+          //   expression.execute(
+          //     source |> tree.map_annotation(fn(_) { [] }),
+          //     [],
+          //   ),
+          // )
+          Ok(None) -> todo
+          Error(_) -> todo
+        }
+      Error(reason) -> Error(NetworkError(string.inspect(reason)))
+    }
+    |> ModuleFetched(cid, _)
+  })
+}
+
+fn pure_loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
+  case return {
+    Ok(value) -> #(Concluded(value), [])
+
+    Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
+      let refs = todo
+      case dict.get(refs, cid) {
+        Ok(value) -> pure_loop(expression.resume(value, env, k))
+        Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
+      }
+    }
     Error(#(break, _, _, _)) -> #(Failed(simple_debug.describe(break)), [])
   }
 }
@@ -616,7 +528,7 @@ fn loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
 fn is_editing(state: State, then) {
   case state.mode {
     Editing(id:, failure: _) -> then(id, get_example(state, id))
-    Nothing -> #(state, [])
+    UnFocused -> #(state, [])
     ReadingFromClipboard(..) -> #(state, [])
     Running(id: _, status: _) -> #(state, [])
     Picking(id: _, picker: _, rebuild: _) -> #(state, [])

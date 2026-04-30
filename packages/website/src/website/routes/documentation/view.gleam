@@ -509,7 +509,7 @@ fn example(state: state.State, id) {
         picker.render(picker) |> element.map(state.PickerMessage)
       state.ReadingFromClipboard(id: _, rebuild: _) -> element.none()
       state.Running(id: _, status: _) -> element.none()
-      state.Nothing -> element.none()
+      state.UnFocused -> element.none()
       _ -> element.none()
     },
   ])

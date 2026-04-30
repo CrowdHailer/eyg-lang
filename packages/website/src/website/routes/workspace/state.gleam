@@ -43,6 +43,7 @@ import website/components/snippet
 import website/config
 import website/harness/browser
 import website/harness/harness
+import website/manipulation
 import website/routes/workspace/buffer.{type Buffer}
 import website/sync/cache
 import website/sync/client
@@ -241,7 +242,7 @@ fn active(state) {
   }
 }
 
-pub fn package_choice(state) {
+fn package_choice(state) {
   let State(sync: client.Client(cache:, ..), ..) = state
   cache.package_index(cache)
 }
@@ -336,12 +337,12 @@ fn user_pressed_command_key(state, key) {
     "ArrowDown" -> move_down(state)
     "Q" -> link_filesystem(state)
     "q" -> choose_module(state)
-    "w" -> transform(state, "call", buffer.call_with)
-    "E" -> pick_any(state, "assign", buffer.assign_before)
-    "e" -> pick_any(state, "assign", buffer.assign)
-    "R" -> transform(state, "create record", buffer.create_empty_record)
-    "r" -> create_record(state)
-    "t" -> insert_tag(state)
+    "w" -> edit(state, manipulation.call_with())
+    "E" -> edit(state, manipulation.assign_before())
+    "e" -> edit(state, manipulation.assign())
+    "R" -> edit(state, manipulation.create_empty_record())
+    "r" -> edit(state, manipulation.create_record())
+    "t" -> edit(state, manipulation.insert_tag())
     "y" -> copy(state)
     "Y" -> paste(state)
     // TODO mode is authenticating
@@ -349,33 +350,32 @@ fn user_pressed_command_key(state, key) {
     "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
       browser.OpenPopup("/sign", resume: OpenPopupCompleted),
     ])
-    "i" -> insert(state)
-    "o" -> overwrite(state)
-    "p" -> perform(state)
+    "i" -> edit(state, manipulation.insert())
+    "o" -> edit(state, manipulation.overwrite())
+    "p" -> edit(state, manipulation.perform())
     "a" -> navigate(state, "increase selection", buffer.increase)
-    "s" -> insert_string(state)
-    "d" -> transform(state, "delete", buffer.delete)
-    "f" -> pick_any(state, "insert function", buffer.insert_function)
-    "g" -> select_field(state)
-    "h" -> insert_handle(state)
-    "j" -> insert_builtin(state)
+    "s" -> edit(state, manipulation.insert_string())
+    "d" -> edit(state, manipulation.delete())
+    "f" -> edit(state, manipulation.insert_function())
+    "g" -> edit(state, manipulation.select_field())
+    "h" -> edit(state, manipulation.insert_handle())
+    "j" -> edit(state, manipulation.insert_builtin())
     "k" -> navigate(state, "toggle", buffer.toggle_open)
-    "L" -> transform(state, "create list", buffer.create_empty_list)
-    "l" -> transform(state, "create list", buffer.create_list)
+    "L" -> edit(state, manipulation.create_empty_list())
+    "l" -> edit(state, manipulation.create_list())
     "@" -> choose_release(state)
     "#" -> insert_reference(state)
-    // choose release just checks is expression
-    "Z" -> map_buffer(state, "redo", buffer.redo)
-    "z" -> map_buffer(state, "undo", buffer.undo)
-    "x" -> transform(state, "spread", buffer.spread)
-    "c" -> call_function(state)
-    "C" -> transform(state, "call", buffer.call_once)
-    "b" -> transform(state, "create list", buffer.insert_binary)
-    "n" -> insert_integer(state)
-    "m" -> insert_case(state)
-    "v" -> insert_variable(state)
-    "<" -> transform_or_pick(state, "insert before", buffer.insert_before)
-    ">" -> transform_or_pick(state, "insert after", buffer.insert_after)
+    "Z" -> edit(state, manipulation.redo())
+    "z" -> edit(state, manipulation.undo())
+    "x" -> edit(state, manipulation.spread())
+    "c" -> edit(state, manipulation.call_function())
+    "C" -> edit(state, manipulation.call_once())
+    "b" -> edit(state, manipulation.insert_binary())
+    "n" -> edit(state, manipulation.insert_integer())
+    "m" -> edit(state, manipulation.insert_case())
+    "v" -> edit(state, manipulation.insert_variable())
+    "<" -> edit(state, manipulation.insert_before())
+    ">" -> edit(state, manipulation.insert_after())
     "Enter" -> confirm(state)
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     _ -> #(State(..state, user_error: Some(snippet.NoKeyBinding(key))), [])
@@ -397,29 +397,24 @@ fn navigate(state, name, func) {
   }
 }
 
-fn transform(state, name, func) {
-  case func(active(state)) {
-    Ok(gen) -> replace_buffer(state, gen)
-    Error(_) -> fail(state, name)
-  }
-}
-
-fn transform_or_pick(state, name, func) {
-  case func(active(state)) {
-    Ok(buffer.Done(gen)) -> replace_buffer(state, gen)
-    Ok(buffer.WithString(rebuild)) -> {
-      let state = State(..state, mode: Picking(picker.new("", []), rebuild))
+fn edit(state, operation) {
+  let manipulation.Operation(name:, apply:) = operation
+  case apply(active(state)) {
+    Ok(manipulation.Resolved(gen)) -> replace_buffer(state, gen)
+    Ok(manipulation.PickSingle(picker, rebuild)) -> {
+      let state = State(..state, mode: Picking(picker, rebuild))
       #(state, [])
     }
-    Error(_) -> fail(state, name)
+    Ok(manipulation.EnterText(value, rebuild)) -> {
+      let state = State(..state, mode: EditingText(value, rebuild))
+      #(state, [])
+    }
+    Ok(manipulation.EnterInteger(value, rebuild)) -> {
+      let state = State(..state, mode: EditingInteger(value, rebuild))
+      #(state, [])
+    }
+    Error(Nil) -> fail(state, name)
   }
-}
-
-/// pick from any value, i.e. the picker hints are empty
-fn pick_any(state, name, action) {
-  use rebuild <- try(action(active(state)), state, name)
-  let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-  #(state, [])
 }
 
 fn move_up(state) {
@@ -457,48 +452,6 @@ fn move_down(state) {
   }
 }
 
-// If on something pick a field
-// If not then go for all types
-fn create_record(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.create_record(buffer), state, "record")
-  let hints = case buffer.target_type(buffer) {
-    Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
-    _ -> []
-  }
-  case hints {
-    [] -> {
-      let rebuild = fn(label, context) { rebuild([label], context) }
-      let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-      #(state, [])
-    }
-    _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
-  }
-}
-
-fn overwrite(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.overwrite(buffer), state, "record")
-  let hints = case buffer.target_type(buffer) {
-    Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
-    _ -> []
-  }
-  let state = State(..state, mode: Picking(picker.new("", hints), rebuild))
-  #(state, [])
-}
-
-fn insert_tag(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.tag(buffer), state, "tag")
-  let hints = case buffer.target_type(buffer) {
-    Ok(t.Union(variants)) ->
-      listx.value_map(analysis.rows(variants), debug.mono)
-    _ -> []
-  }
-  let state = State(..state, mode: Picking(picker.new("", hints), rebuild))
-  #(state, [])
-}
-
 fn copy(state) {
   let buffer = active(state)
   case buffer.projection {
@@ -531,60 +484,6 @@ fn state_fail(state, action) {
 fn fail(state, action) {
   let state = state_fail(state, action)
   #(state, [])
-}
-
-fn insert(state) {
-  let buffer = active(state)
-  use #(value, rebuild) <- try(buffer.insert(buffer), state, "insert")
-  #(State(..state, mode: Picking(picker.new(value, []), rebuild:)), [])
-}
-
-// wrap in an on expression
-fn perform(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.perform(buffer), state, "perform")
-  let hints = effect_hints()
-  #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
-}
-
-fn effect_hints() {
-  list.map(harness.types(harness.effects()), fn(effect) {
-    let #(key, types) = effect
-    #(key, snippet.render_effect(types))
-  })
-}
-
-fn insert_string(state) {
-  let action = buffer.insert_string(active(state))
-  use #(value, rebuild) <- try(action, state, "insert string")
-  #(State(..state, mode: EditingText(value:, rebuild:)), [])
-}
-
-fn select_field(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.select_field(buffer), state, "select field")
-  let hints = case buffer.target_type(buffer) {
-    Ok(t.Record(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
-    _ -> []
-  }
-  let mode = Picking(picker: picker.new("", hints), rebuild:)
-  #(State(..state, mode:), [])
-}
-
-fn insert_handle(state) {
-  let action = buffer.insert_handle(active(state))
-  use rebuild <- try(action, state, "insert handle")
-  let hints = effect_hints()
-  let mode = Picking(picker: picker.new("", hints), rebuild:)
-  #(State(..state, mode:), [])
-}
-
-fn insert_builtin(state) {
-  let action = buffer.insert_builtin(active(state))
-  use rebuild <- try(action, state, "insert builtin")
-  let hints = listx.value_map(infer.builtins(), snippet.render_poly)
-  let mode = Picking(picker: picker.new("", hints), rebuild:)
-  #(State(..state, mode:), [])
 }
 
 fn choose_module(state) {
@@ -627,51 +526,6 @@ fn insert_reference(state) {
   }
   let state = State(..state, mode: Picking(picker.new("", []), rebuild))
   #(state, [])
-}
-
-fn map_buffer(state, name, f) {
-  case f(active(state)) {
-    Ok(buffer) -> replace_buffer(state, buffer)
-    Error(Nil) -> fail(state, name)
-  }
-}
-
-fn call_function(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.call_many(buffer), state, "call function")
-  let arity = buffer.target_arity(buffer) |> result.unwrap(1)
-  replace_buffer(state, rebuild(arity, _))
-}
-
-fn insert_integer(state) {
-  let action = buffer.insert_integer(active(state))
-  use #(value, rebuild) <- try(action, state, "insert integer")
-  #(State(..state, mode: EditingInteger(value:, rebuild:)), [])
-}
-
-fn insert_case(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.match(buffer), state, "record")
-  let hints = case buffer.target_type(buffer) {
-    Ok(t.Union(rows)) -> listx.value_map(analysis.rows(rows), debug.mono)
-    _ -> []
-  }
-  case hints {
-    [] -> {
-      let rebuild = fn(label, context) { rebuild([label], context) }
-      let state = State(..state, mode: Picking(picker.new("", []), rebuild))
-      #(state, [])
-    }
-    _ -> replace_buffer(state, rebuild(listx.keys(hints), _))
-  }
-}
-
-fn insert_variable(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.insert_variable(buffer), state, "insert variable")
-  let scope = buffer.target_scope(buffer) |> result.unwrap([])
-  let hints = listx.value_map(scope, snippet.render_poly)
-  #(State(..state, mode: Picking(picker.new("", hints), rebuild:)), [])
 }
 
 fn try(result, state, message, then) {
