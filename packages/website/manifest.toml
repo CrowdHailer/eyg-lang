@@ -60,6 +60,7 @@ eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 1.1.0 and < 2.0.0" }
 eyg_ir = { version = ">= 1.0.0 and < 2.0.0" }
 filepath = { version = ">= 1.1.2 and < 2.0.0" }
+gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_fetch = { version = ">= 1.3.1 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_javascript = { version = ">= 1.0.0 and < 2.0.0" }

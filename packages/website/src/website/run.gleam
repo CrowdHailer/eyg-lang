@@ -9,9 +9,9 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
+import gleam/http/request
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
@@ -180,8 +180,7 @@ pub fn loop(
         Ok(harness.Spotless(service:, operation:)) ->
           case token(context, service) {
             Ok(token) -> {
-              let request =
-                operation.to_request(operation, origin.https("todo.com"))
+              let request = service_request(service, operation, token)
               browser.fetch(request, handled(c, fetch.encode, context))
               |> handle(env, k, c, updated)
             }
@@ -201,8 +200,8 @@ pub fn loop(
       case module(context, cid) {
         Ok(value) -> loop(expression.resume(value, env, k), context)
         Error(Nil) -> {
-          let #(c, effects) = get_module(context, cid)
-          #(Suspended(c, env, k), context, effects)
+          let #(c, updated, effects) = get_module(context, cid)
+          #(Suspended(c, env, k), updated, effects)
         }
       }
     }
@@ -218,10 +217,10 @@ pub fn connect_completed(
   case result {
     Ok(token) -> {
       let Context(authentiction:, ..) = context
-      let authentication = dict.insert(authentiction, service, token)
+      let authentiction = dict.insert(authentiction, service, token)
       let #(tasks, effects) =
-        service_tasks(context.tasks, service, [], [], context)
-      let context = Context(..context, tasks:)
+        service_tasks(context.tasks, service, [], [], token, context)
+      let context = Context(..context, tasks:, authentiction:)
 
       #(context, effects)
     }
@@ -229,83 +228,109 @@ pub fn connect_completed(
   }
 }
 
-fn service_tasks(tasks, service, remaining, effects, context) {
+fn service_tasks(tasks, service, acc, effects, token, context) {
   case tasks {
-    [] -> #(list.reverse(remaining), list.reverse(effects))
+    [] -> #(list.reverse(acc), list.reverse(effects))
     [#(task_id, Connect(service: s, operation:)), ..rest] if s == service -> {
-      let request = operation.to_request(operation, origin.https("todo.com"))
+      let request = service_request(service, operation, token)
 
       let effect =
         browser.fetch(request, handled(task_id, fetch.encode, context))
-      service_tasks(rest, service, remaining, [effect, ..effects], context)
+      service_tasks(rest, service, acc, [effect, ..effects], token, context)
     }
     [other, ..rest] ->
-      service_tasks(rest, service, [other, ..remaining], effects, context)
+      service_tasks(rest, service, [other, ..acc], effects, token, context)
   }
 }
 
 // cache doesn't deal with the errors
 fn get_module(context: Context(_), cid: v1.Cid) {
-  // If we pass in a runner state, then it needs to be returned every time
+  let Context(counter: c, tasks:, ..) = context
+  let tasks = list.append(tasks, [#(c, Module(cid))])
+  let updated = Context(..context, counter: c + 1, tasks:)
+
   let operation = client.get_module(cid)
   // TODO configure origin
   let request = operation.to_request(operation, origin.https("eyg.run"))
-  // Do we want to look up if already looking
 
-  // This is a browser action
   let effect =
     browser.Fetch(request, fn(result) {
       case result {
         Ok(response) ->
           case client.get_module_response(response) {
             Ok(Some(source)) -> context.module_lookup_completed(cid, Ok(source))
-            // state arrives but then we need to work with it. update somehting internaly
-            // pure_loop(
-            //   expression.execute(
-            //     source |> tree.map_annotation(fn(_) { [] }),
-            //     [],
-            //   ),
-            // )
+
             Ok(None) -> todo
             Error(_) -> todo
           }
         Error(reason) -> todo
         //  Error(NetworkError(string.inspect(reason)))
       }
-      // |> ModuleFetched(cid, _)
     })
-  #(99_999, [effect])
+  #(c, updated, [effect])
 }
 
-fn get_module_completed(context, result) {
-  let source = todo
-  let #(run, actions) = pure_loop(expression.execute(source, []), context)
-  // new state
-  case run, actions {
-    Concluded(_), [] -> todo
-    Exception(_), [] -> todo
-    Aborted(_), [] -> todo
-    Suspended(task_id:, env:, k:), _ -> todo
-    _, [_, ..] -> todo
+pub fn get_module_completed(context, cid, result) {
+  case result {
+    Ok(source) -> {
+      let source = ir.map_annotation(source, fn(_) { [] })
+      let #(run, context, effects) =
+        pure_loop(expression.execute(source, []), context)
+
+      case run, effects {
+        Concluded(value), [] -> {
+          let modules = dict.insert(context.modules, cid, value)
+          let context = Context(..context, modules:)
+          let effects = []
+          let #(tasks, done) = module_tasks(context.tasks, cid, [], [], value)
+          let context = Context(..context, tasks:)
+          #(context, done, effects)
+        }
+        Exception(_), [] -> todo
+        Aborted(_), [] -> todo
+        Suspended(task_id:, env:, k:), _ -> todo
+        _, [_, ..] -> todo
+      }
+    }
+    Error(_) -> todo
   }
-  // returns task potentially
+}
+
+fn module_tasks(tasks, cid, acc, done, value) {
+  case tasks {
+    [] -> #(list.reverse(acc), list.reverse(done))
+    [#(task_id, Module(c)), ..rest] if c == cid -> {
+      let new = #(task_id, value)
+      module_tasks(rest, cid, acc, [new, ..done], value)
+    }
+    [other, ..rest] -> module_tasks(rest, cid, [other, ..acc], done, value)
+  }
 }
 
 fn pure_loop(
   return: Return,
-  context: Context(_),
-) -> #(Run, List(browser.Effect(_))) {
-  todo
-  // case return {
-  //   Ok(value) -> #(Concluded(value), [])
+  context: Context(m),
+) -> #(Run, Context(m), List(browser.Effect(_))) {
+  case return {
+    Ok(value) -> #(Concluded(value), context, [])
 
-  //   Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
-  //     let refs = todo
-  //     case dict.get(refs, cid) {
-  //       Ok(value) -> pure_loop(expression.resume(value, env, k), context)
-  //       Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
-  //     }
-  //   }
-  //   Error(#(break, _, _, _)) -> #(Failed(simple_debug.describe(break)), [])
-  // }
+    // Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
+    //   let refs = todo
+    //   case dict.get(refs, cid) {
+    //     Ok(value) -> pure_loop(expression.resume(value, env, k), context)
+    //     Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
+    //   }
+    // }
+    Error(#(break, _, _, _)) -> #(Exception(break), context, [])
+  }
+}
+
+fn service_request(service, operation, token) {
+  let origin = case service {
+    harness.DNSimple -> origin.https("api.dnsimple.com")
+    harness.GitHub -> origin.https("api.github.com")
+    harness.Vimeo -> origin.https("api.vimeo.com")
+  }
+  operation.to_request(operation, origin)
+  |> request.set_header("authorization", "Bearer " <> token)
 }
