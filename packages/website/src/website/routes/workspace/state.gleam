@@ -1,5 +1,4 @@
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -14,7 +13,6 @@ import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set
