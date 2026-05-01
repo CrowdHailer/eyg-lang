@@ -53,19 +53,9 @@ pub type Mode {
 pub type Meta =
   List(Int)
 
-pub type Value =
-  state.Value(Meta)
-
-pub type Debug =
-  state.Debug(Meta)
-
-pub type Return =
-  Result(Value, Debug)
-
 pub type Failure {
   NoKeyBinding(key: String)
   ActionFailed(action: String)
-  // RunFailed(istate.Debug(Path))
 }
 
 pub fn fail_message(reason) {
@@ -73,7 +63,6 @@ pub fn fail_message(reason) {
     NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
     ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
-    // RunFailed(#(reason, _, _, _)) -> simple_debug.reason_to_string(reason)
   }
 }
 
@@ -85,7 +74,7 @@ pub type Message {
 
   ClipboardReadCompleted(Result(String, String))
   Ignore
-  EffectHandled(task_id: Int, value: Value)
+  EffectHandled(task_id: Int, value: state.Value(Meta))
   SpotlessConnectCompleted(harness.Service, Result(String, String))
   ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
 }
@@ -101,7 +90,7 @@ pub fn set_example(state: State, id, snippet) {
 
 // snippet failure goes at top level
 pub fn init(config) {
-  let config.Config(origin:) = config
+  let config.Config(origin: _) = config
   let context =
     run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
 
@@ -191,7 +180,7 @@ pub fn update(state: State, message) {
               [],
             )
           }
-        _ -> todo
+        _ -> #(state, [])
       }
     }
 
