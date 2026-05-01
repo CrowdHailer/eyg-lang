@@ -2,6 +2,7 @@
 
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
+import eyg/interpreter/value as v
 
 pub const label = "Copy"
 
@@ -19,4 +20,11 @@ pub fn type_() {
 
 pub fn decode(input) {
   cast.as_string(input)
+}
+
+pub fn encode(result) {
+  case result {
+    Ok(Nil) -> v.ok(v.unit())
+    Error(reason) -> v.error(v.String(reason))
+  }
 }

@@ -3,6 +3,7 @@
 
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
+import eyg/interpreter/value as v
 import gleam/result.{try}
 
 pub const label = "Download"
@@ -23,4 +24,11 @@ pub fn decode(lift) {
   use name <- try(cast.field("name", cast.as_string, lift))
   use content <- try(cast.field("content", cast.as_binary, lift))
   Ok(Input(name, content))
+}
+
+pub fn encode(result) {
+  case result {
+    Ok(Nil) -> v.ok(v.unit())
+    Error(reason) -> v.error(v.String(reason))
+  }
 }

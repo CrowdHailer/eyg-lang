@@ -1,5 +1,6 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
+import eyg/interpreter/value as v
 
 pub const label = "Paste"
 
@@ -13,4 +14,11 @@ pub fn lower() {
 
 pub fn decode(lift) {
   cast.as_unit(lift, Nil)
+}
+
+pub fn encode(result) {
+  case result {
+    Ok(value) -> v.ok(v.String(value))
+    Error(reason) -> v.error(v.String(reason))
+  }
 }

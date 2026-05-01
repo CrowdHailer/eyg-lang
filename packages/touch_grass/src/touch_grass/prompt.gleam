@@ -1,5 +1,6 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
+import eyg/interpreter/value as v
 
 pub const label = "Prompt"
 
@@ -13,4 +14,11 @@ pub fn lower() {
 
 pub fn decode(lift) {
   cast.as_string(lift)
+}
+
+pub fn encode(result) {
+  case result {
+    Ok(value) -> v.ok(v.String(value))
+    Error(Nil) -> v.error(v.unit())
+  }
 }
