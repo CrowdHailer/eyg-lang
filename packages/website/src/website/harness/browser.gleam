@@ -17,6 +17,7 @@ import plinth/browser/file_system
 import plinth/browser/window
 import plinth/browser/window_proxy
 import touch_grass/download
+import website/harness/harness
 
 /// The browser platform effect
 ///
@@ -31,6 +32,7 @@ pub type Effect(m) {
     request: request.Request(BitArray),
     resume: fn(Result(response.Response(BitArray), fetch.FetchError)) -> m,
   )
+  Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> m)
   // FocusOnInput(resume:)
   LoadFiles(handle: file_system.DirectoryHandle)
   OpenPopup(
@@ -53,6 +55,9 @@ pub type Effect(m) {
   ShowDirectoryPicker(
     resume: fn(Result(file_system.Handle(file_system.D), String)) -> m,
   )
+  // TODO move to Follow etc but needs secure random and ability to combine effects
+  // TODO browser shouldn't rely on harness but no circular dependency yet
+  Spotless(service: harness.Service, resume: fn(Result(String, String)) -> m)
   Visit(uri: uri.Uri, resume: fn(Result(window_proxy.WindowProxy, String)) -> m)
   WriteToClipboard(text: String, resume: fn(Result(Nil, String)) -> m)
 }
@@ -98,6 +103,7 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
       use result <- promise.map(fetchx.send_bits(request))
       resume(result)
     }
+    Follow(uri:, resume:) -> todo
     LoadFiles(handle:) -> {
       todo as "this shouldn't read every file"
       // use #(_, files) <- promise.await(file_system.all_entries(handle))
@@ -147,6 +153,7 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
       use result <- promise.map(clipboard.write_text(text))
       resume(result)
     }
+    Spotless(service:, resume:) -> todo
   }
 }
 

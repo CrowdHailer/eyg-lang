@@ -506,8 +506,15 @@ fn get_module(cid: v1.Cid) {
         }
       Error(reason) -> Error(NetworkError(string.inspect(reason)))
     }
-    |> ModuleFetched(cid, _)
+    |> todo
+    // |> ModuleFetched(cid, _)
   })
+}
+
+fn get_module_completed(context, result) {
+  let source = todo
+  pure_loop(expression.execute(source, []))
+  // returns task potentially
 }
 
 fn pure_loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
