@@ -14,7 +14,6 @@ import morph/input
 import morph/navigation
 import morph/picker
 import multiformats/cid/v1
-import untethered/ledger/client.{NetworkError} as _
 import website/config
 import website/harness/browser
 import website/harness/harness
@@ -196,13 +195,6 @@ pub fn update(state: State, message) {
       }
     }
 
-    // SyncMessage(message) -> {
-    //   let State(cache: sync_client, ..) = state
-    //   let #(sync_client, effect) = client.update(sync_client, message)
-    //   let state = State(..state, cache: sync_client)
-    //   // let effects = [, ..effects]
-    //   #(state, todo as "client.lustre_run(effect, SyncMessage)")
-    // }
     ClipboardReadCompleted(return) -> {
       case state.mode {
         ReadingFromClipboard(id, rebuild) ->
@@ -245,7 +237,17 @@ pub fn update(state: State, message) {
         run.connect_completed(state.context, service, result)
       #(State(..state, context:), effects)
     }
-    ModuleLookupCompleted(..) -> todo
+    ModuleLookupCompleted(cid, result) -> {
+      let #(context, done, effects) =
+        run.get_module_completed(state.context, cid, result)
+      let mode =
+        list.fold(done, state.mode, fn(mode, result) {
+          mode
+          todo
+        })
+
+      #(State(..state, context:, mode:), effects)
+    }
   }
 }
 

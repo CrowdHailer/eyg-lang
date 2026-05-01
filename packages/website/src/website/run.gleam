@@ -197,12 +197,14 @@ pub fn loop(
       }
     }
     Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
-      case module(context, cid) {
-        Ok(value) -> loop(expression.resume(value, env, k), context)
-        Error(Nil) -> {
-          let #(c, updated, effects) = get_module(context, cid)
-          #(Suspended(c, env, k), updated, effects)
-        }
+      case get_module(context, cid) {
+        Found(value) -> loop(expression.resume(value, env, k), context)
+        Failed -> todo
+        Pending(c, updated, effects) -> #(
+          Suspended(c, env, k),
+          updated,
+          effects,
+        )
       }
     }
     Error(#(break, _, _, _)) -> #(Exception(break), context, [])
@@ -243,31 +245,43 @@ fn service_tasks(tasks, service, acc, effects, token, context) {
   }
 }
 
+pub type Lookup(m) {
+  Found(Value)
+  Failed
+  Pending(Int, Context(m), List(browser.Effect(m)))
+}
+
 // cache doesn't deal with the errors
-fn get_module(context: Context(_), cid: v1.Cid) {
-  let Context(counter: c, tasks:, ..) = context
-  let tasks = list.append(tasks, [#(c, Module(cid))])
-  let updated = Context(..context, counter: c + 1, tasks:)
+fn get_module(context: Context(_), cid: v1.Cid) -> Lookup(m) {
+  let Context(counter: c, tasks:, modules:, ..) = context
+  case dict.get(modules, cid) {
+    Ok(value) -> Found(value)
+    Error(_) -> {
+      let tasks = list.append(tasks, [#(c, Module(cid))])
+      let updated = Context(..context, counter: c + 1, tasks:)
 
-  let operation = client.get_module(cid)
-  // TODO configure origin
-  let request = operation.to_request(operation, origin.https("eyg.run"))
+      let operation = client.get_module(cid)
+      // TODO configure origin
+      let request = operation.to_request(operation, origin.https("eyg.run"))
 
-  let effect =
-    browser.Fetch(request, fn(result) {
-      case result {
-        Ok(response) ->
-          case client.get_module_response(response) {
-            Ok(Some(source)) -> context.module_lookup_completed(cid, Ok(source))
+      let effect =
+        browser.Fetch(request, fn(result) {
+          case result {
+            Ok(response) ->
+              case client.get_module_response(response) {
+                Ok(Some(source)) ->
+                  context.module_lookup_completed(cid, Ok(source))
 
-            Ok(None) -> todo
-            Error(_) -> todo
+                Ok(None) -> todo
+                Error(_) -> todo
+              }
+            Error(reason) -> todo
+            //  Error(NetworkError(string.inspect(reason)))
           }
-        Error(reason) -> todo
-        //  Error(NetworkError(string.inspect(reason)))
-      }
-    })
-  #(c, updated, [effect])
+        })
+      Pending(c, updated, [effect])
+    }
+  }
 }
 
 pub fn get_module_completed(context, cid, result) {
