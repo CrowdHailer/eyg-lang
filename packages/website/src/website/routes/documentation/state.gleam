@@ -1,14 +1,9 @@
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/hub/client
-import eyg/interpreter/break
 import eyg/interpreter/expression
-import eyg/interpreter/simple_debug
 import eyg/interpreter/state
-import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -19,16 +14,6 @@ import morph/input
 import morph/navigation
 import morph/picker
 import multiformats/cid/v1
-import ogre/operation
-import ogre/origin
-import touch_grass/copy
-import touch_grass/decode_json
-import touch_grass/fetch
-import touch_grass/flip
-import touch_grass/paste
-import touch_grass/print
-import touch_grass/prompt
-import touch_grass/random
 import untethered/ledger/client.{NetworkError} as _
 import website/config
 import website/harness/browser
@@ -36,9 +21,14 @@ import website/harness/harness
 import website/manipulation
 import website/routes/documentation/examples
 import website/routes/workspace/buffer
+import website/run
 
 pub type State {
-  State(mode: Mode, examples: Dict(String, Example))
+  State(
+    mode: Mode,
+    examples: Dict(String, Example),
+    context: run.Context(Message),
+  )
 }
 
 pub type Example {
@@ -57,16 +47,8 @@ pub type Mode {
   EditingText(id: String, value: String, rebuild: Rebuild(String))
   Picking(id: String, picker: picker.Picker, rebuild: Rebuild(String))
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
-  Running(id: String, status: Status)
+  Running(id: String, status: run.Run)
   UnFocused
-}
-
-/// Run Status
-pub type Status {
-  Concluded(Value)
-  Handling(ref: Int, env: state.Env(Meta), k: state.Stack(Meta))
-  Fetching(env: state.Env(Meta), k: state.Stack(Meta))
-  Failed(String)
 }
 
 pub type Meta =
@@ -103,9 +85,10 @@ pub type Message {
   PickerMessage(picker.Message)
 
   ClipboardReadCompleted(Result(String, String))
-  EffectHandled(ref: Int, value: Value)
-  ModuleFetched(v1.Cid, ir.Node(List(Int)))
   Ignore
+  EffectHandled(task_id: Int, value: Value)
+  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
 }
 
 pub fn get_example(state: State, id) {
@@ -120,13 +103,11 @@ pub fn set_example(state: State, id, snippet) {
 // snippet failure goes at top level
 pub fn init(config) {
   let config.Config(origin:) = config
-  // let #(client, init_task) = client.init(origin)
+  let context =
+    run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
 
-  let examples = examples.all()
-
-  let missing_cids = []
   let examples =
-    list.map(examples, fn(example) {
+    list.map(examples.all(), fn(example) {
       let #(key, editable) = example
       let projection = navigation.first(editable)
       // keep evaluation on example, if it runs don't print type errors. but show them in the code
@@ -134,9 +115,8 @@ pub fn init(config) {
       #(key, example)
     })
   let examples = dict.from_list(examples)
-  // let missing_cids = missing_refs(examples)
-  // let #(client, sync_task) = client.fetch_fragments(client, missing_cids)
-  let state = State(UnFocused, examples)
+
+  let state = State(UnFocused, examples, context)
   #(state, [])
 }
 
@@ -245,15 +225,27 @@ pub fn update(state: State, message) {
         _ -> #(state, [])
       }
     }
-    EffectHandled(ref:, value:) -> {
+
+    Ignore -> #(state, [])
+    EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        Running(id, Handling(ref: r, env:, k:)) if r == ref ->
-          resume(ref, value, env, k, state, id)
+        Running(id:, status: run.Suspended(task_id:, env:, k:))
+          if tid == task_id
+        -> {
+          let #(mode, context, effects) =
+            expression.resume(value, env, k)
+            |> run.loop(state.context)
+          let mode = Running(id, mode)
+          #(State(..state, mode:, context:), effects)
+        }
         _ -> #(state, [])
       }
+    SpotlessConnectCompleted(service, result) -> {
+      let #(context, effects) =
+        run.connect_completed(state.context, service, result)
+      #(State(..state, context:), effects)
     }
-    ModuleFetched(cid, value) -> todo
-    Ignore -> #(state, [])
+    ModuleLookupCompleted(..) -> todo
   }
 }
 
@@ -387,149 +379,10 @@ fn paste(state: State) {
 
 fn confirm(state: State) {
   use id, Example(buffer:) <- is_editing(state)
-  let #(mode, effects) = loop(0, expression.execute(buffer.source(buffer), []))
+  let #(mode, context, effects) =
+    expression.execute(buffer.source(buffer), []) |> run.loop(state.context)
   let mode = Running(id, mode)
-  #(State(..state, mode:), effects)
-}
-
-fn resume(ref, value, env, k, state, id) {
-  let #(mode, effects) = loop(ref + 1, expression.resume(value, env, k))
-  let mode = Running(id, mode)
-  #(State(..state, mode:), effects)
-}
-
-fn handled(ref, cast) {
-  fn(r) { EffectHandled(ref:, value: cast(r)) }
-}
-
-// This could be something not called a runner. loop function in this module would reuse it.
-// This cant be reused by workspace as the shell keeps history of effects
-// if cast takes a list of interfaces we can have runners with a subset of effects
-// Normally it is best to copy paste this function
-// 
-// This loop is tied to this route/app by the return message type
-// The return of the effect could be a code return wot need counter but I don't know how you track trace/effect id
-// Probably best to fix module lookup first, as well as spotless, where do we cache, but it should be the same as 
-// spotless tokens last over different runs
-// 
-// Follow the elm pattern or the situation where I like midas pass in effect handlers, so we have a on handled
-// on fetched
-// hub has an API client
-// hub DOES NOT have a state/cache or it's own message types
-// The whole thing is a reference to the hub in the website
-// hub might have a selection of remotes
-// hub.module(cid)
-// hub.release() -> current status
-// hub.get_release -> tasks if invalid needs an error might always have come into existance
-// get_release -> it is ok or refreshes, or errors if the hash is wrong
-// pending and 
-fn loop(ref: Int, return: Return) -> #(Status, List(browser.Effect(Message))) {
-  case return {
-    Ok(value) -> #(Concluded(value), [])
-    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) ->
-      case harness.cast(label, lift) {
-        Ok(harness.Abort(reason)) -> #(Failed(reason), [])
-        Ok(harness.Alert(message)) -> #(Handling(ref, env, k), [
-          browser.Alert(message, fn() { EffectHandled(ref, v.unit()) }),
-        ])
-        Ok(harness.Copy(text)) -> #(Handling(ref, env, k), [
-          browser.WriteToClipboard(text, handled(ref, copy.encode)),
-        ])
-        Ok(harness.DecodeJson(raw)) ->
-          loop(ref, expression.resume(decode_json.sync(raw), env, k))
-        Ok(harness.Download(input)) -> #(Handling(ref, env, k), [
-          browser.Download(input, fn() { EffectHandled(ref, v.unit()) }),
-        ])
-        Ok(harness.Fetch(request)) -> #(Handling(ref, env, k), [
-          browser.fetch(request, handled(ref, fetch.encode)),
-        ])
-        Ok(harness.Flip) ->
-          loop(ref, expression.resume(flip.encode(flip.sync()), env, k))
-        Ok(harness.Paste) -> #(Handling(ref, env, k), [
-          browser.ReadFromClipboard(handled(ref, paste.encode)),
-        ])
-        Ok(harness.Print(message)) ->
-          loop(
-            ref,
-            expression.resume(print.encode(print.sync(message)), env, k),
-          )
-        Ok(harness.Prompt(question)) -> #(Handling(ref, env, k), [
-          browser.Prompt(question, handled(ref, prompt.encode)),
-        ])
-        Ok(harness.Random(max)) ->
-          loop(ref, expression.resume(random.encode(random.sync(max)), env, k))
-        Ok(harness.Visit(uri)) -> #(Handling(ref, env, k), [
-          browser.Visit(uri:, resume: fn(result) {
-            let value = case result {
-              Ok(_) -> v.ok(v.unit())
-              Error(reason) -> v.error(v.String(reason))
-            }
-            EffectHandled(ref, value)
-          }),
-        ])
-        Ok(harness.Spotless(service:, operation:)) -> todo
-        Error(break) -> #(Failed(simple_debug.describe(break)), [])
-      }
-    Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
-      let refs = todo
-      case dict.get(refs, cid) {
-        Ok(value) -> loop(ref, expression.resume(value, env, k))
-        Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
-      }
-    }
-    Error(#(break, _, _, _)) -> #(Failed(simple_debug.describe(break)), [])
-  }
-}
-
-fn get_module(cid: v1.Cid) {
-  // If we pass in a runner state, then it needs to be returned every time
-  let operation = client.get_module(cid)
-  // TODO configure origin
-  let request = operation.to_request(operation, origin.https("eyg.run"))
-  // Do we want to look up if already looking
-
-  // This is a browser action
-  browser.Fetch(request, fn(result) {
-    case result {
-      Ok(response) ->
-        case client.get_module_response(response) {
-          Ok(Some(source)) -> todo as "has to return just source"
-          // state arrives but then we need to work with it. update somehting internaly
-          // pure_loop(
-          //   expression.execute(
-          //     source |> tree.map_annotation(fn(_) { [] }),
-          //     [],
-          //   ),
-          // )
-          Ok(None) -> todo
-          Error(_) -> todo
-        }
-      Error(reason) -> Error(NetworkError(string.inspect(reason)))
-    }
-    |> todo
-    // |> ModuleFetched(cid, _)
-  })
-}
-
-fn get_module_completed(context, result) {
-  let source = todo
-  pure_loop(expression.execute(source, []))
-  // returns task potentially
-}
-
-fn pure_loop(return: Return) -> #(Status, List(browser.Effect(Message))) {
-  case return {
-    Ok(value) -> #(Concluded(value), [])
-
-    Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
-      let refs = todo
-      case dict.get(refs, cid) {
-        Ok(value) -> pure_loop(expression.resume(value, env, k))
-        Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
-      }
-    }
-    Error(#(break, _, _, _)) -> #(Failed(simple_debug.describe(break)), [])
-  }
+  #(State(..state, mode:, context:), effects)
 }
 
 fn is_editing(state: State, then) {
