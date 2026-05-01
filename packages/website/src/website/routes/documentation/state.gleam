@@ -221,7 +221,7 @@ pub fn update(state: State, message) {
     Ignore -> #(state, [])
     EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        Running(id:, status: run.Suspended(task_id:, env:, k:))
+        Running(id:, status: run.Handling(task_id:, env:, k:))
           if tid == task_id
         -> {
           let #(mode, context, effects) =
@@ -240,13 +240,26 @@ pub fn update(state: State, message) {
     ModuleLookupCompleted(cid, result) -> {
       let #(context, done, effects) =
         run.get_module_completed(state.context, cid, result)
-      let mode =
-        list.fold(done, state.mode, fn(mode, result) {
-          mode
-          todo
-        })
-
-      #(State(..state, context:, mode:), effects)
+      // use the completed cid not the looked up cid as dependencies might have resolved
+      case state.mode {
+        Running(id, run.Fetching(module:, env:, k:)) ->
+          case list.key_find(done, module) {
+            Ok(Ok(value)) -> {
+              let #(run, context, inner_effects) =
+                expression.resume(value, env, k)
+                |> run.loop(context)
+              let mode = Running(id, run)
+              #(
+                State(..state, context:, mode:),
+                list.append(effects, inner_effects),
+              )
+            }
+            // If the module is a bad one the running state stays the same. it's up for the view to render the status
+            Ok(Error(_)) -> #(State(..state, context:), effects)
+            Error(Nil) -> #(State(..state, context:), effects)
+          }
+        _ -> #(State(..state, context:), effects)
+      }
     }
   }
 }

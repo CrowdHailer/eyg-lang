@@ -12,6 +12,7 @@ import gleam/dict.{type Dict}
 import gleam/http/request
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
@@ -23,7 +24,6 @@ import touch_grass/paste
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
-import untethered/ledger/client.{NetworkError} as _
 import website/harness/browser
 import website/harness/harness
 
@@ -66,20 +66,29 @@ pub type Context(m) {
   Context(
     counter: Int,
     modules: Dict(v1.Cid, Value),
+    fetching: Dict(v1.Cid, Fetching),
     authentiction: Dict(harness.Service, String),
-    tasks: List(#(Int, Task)),
+    connecting: List(#(Int, harness.Service, operation.Operation(BitArray))),
     handled: fn(Int, Value) -> m,
     connect_completed: fn(harness.Service, Result(String, String)) -> m,
     module_lookup_completed: fn(v1.Cid, Result(ir.Node(Nil), String)) -> m,
   )
 }
 
+pub type Fetching {
+  Requested
+  Invalid(state.Reason(Meta))
+  NotFetched(String)
+  Dependency(module: v1.Cid, env: state.Env(Meta), k: state.Stack(Meta))
+}
+
 pub fn empty(handled, connect_completed, module_lookup_completed) {
   Context(
     counter: 0,
     modules: dict.new(),
+    fetching: dict.new(),
     authentiction: dict.new(),
-    tasks: [],
+    connecting: [],
     handled:,
     connect_completed:,
     module_lookup_completed:,
@@ -103,14 +112,8 @@ pub type Run {
   Concluded(Value)
   Exception(state.Reason(Meta))
   Aborted(String)
-  Suspended(task_id: Int, env: state.Env(Meta), k: state.Stack(Meta))
-}
-
-pub type Task {
-  // Effect
-  Connect(service: harness.Service, operation: operation.Operation(BitArray))
-  Module(cid: v1.Cid)
-  // Release that points at a module
+  Handling(task_id: Int, env: state.Env(Meta), k: state.Stack(Meta))
+  Fetching(module: v1.Cid, env: state.Env(Meta), k: state.Stack(Meta))
 }
 
 fn handled(task_id, cast, context: Context(_)) {
@@ -120,7 +123,7 @@ fn handled(task_id, cast, context: Context(_)) {
 // TODO as updated from context
 // This needs a map function to be simplified
 fn handle(effect, env, k, c, context) {
-  #(Suspended(c, env, k), context, [effect])
+  #(Handling(c, env, k), context, [effect])
 }
 
 // This web_cli loop
@@ -160,7 +163,6 @@ pub fn loop(
           print.encode(print.sync(message))
           |> expression.resume(env, k)
           |> loop(context)
-
         Ok(harness.Prompt(question)) ->
           browser.Prompt(question, handled(c, prompt.encode, context))
           |> handle(env, k, c, updated)
@@ -185,10 +187,10 @@ pub fn loop(
               |> handle(env, k, c, updated)
             }
             Error(_) -> {
-              let tasks =
-                list.append(updated.tasks, [#(c, Connect(service:, operation:))])
-              let updated = Context(..updated, tasks:)
-              #(Suspended(c, env, k), updated, [
+              let connecting =
+                list.append(updated.connecting, [#(c, service, operation)])
+              let updated = Context(..updated, connecting:)
+              #(Handling(c, env, k), updated, [
                 browser.Spotless(service, context.connect_completed(service, _)),
               ])
             }
@@ -199,12 +201,9 @@ pub fn loop(
     Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
       case get_module(context, cid) {
         Found(value) -> loop(expression.resume(value, env, k), context)
-        Failed -> todo
-        Pending(c, updated, effects) -> #(
-          Suspended(c, env, k),
-          updated,
-          effects,
-        )
+        // returns the fetching state the view looksup in the context a fetching state
+        NotFound(_reason) -> #(Fetching(cid, env, k), context, [])
+        Pending(updated, effects) -> #(Fetching(cid, env, k), updated, effects)
       }
     }
     Error(#(break, _, _, _)) -> #(Exception(break), context, [])
@@ -214,15 +213,15 @@ pub fn loop(
 pub fn connect_completed(
   context: Context(m),
   service: harness.Service,
-  result: Result(String, a),
+  result: Result(String, String),
 ) -> #(Context(m), List(browser.Effect(m))) {
   case result {
     Ok(token) -> {
       let Context(authentiction:, ..) = context
       let authentiction = dict.insert(authentiction, service, token)
-      let #(tasks, effects) =
-        service_tasks(context.tasks, service, [], [], token, context)
-      let context = Context(..context, tasks:, authentiction:)
+      let #(connecting, effects) =
+        service_tasks(context.connecting, service, [], [], token, context)
+      let context = Context(..context, connecting:, authentiction:)
 
       #(context, effects)
     }
@@ -233,7 +232,7 @@ pub fn connect_completed(
 fn service_tasks(tasks, service, acc, effects, token, context) {
   case tasks {
     [] -> #(list.reverse(acc), list.reverse(effects))
-    [#(task_id, Connect(service: s, operation:)), ..rest] if s == service -> {
+    [#(task_id, s, operation), ..rest] if s == service -> {
       let request = service_request(service, operation, token)
 
       let effect =
@@ -247,18 +246,21 @@ fn service_tasks(tasks, service, acc, effects, token, context) {
 
 pub type Lookup(m) {
   Found(Value)
-  Failed
-  Pending(Int, Context(m), List(browser.Effect(m)))
+  NotFound(state.Reason(Meta))
+  Pending(Context(m), List(browser.Effect(m)))
 }
 
 // cache doesn't deal with the errors
-fn get_module(context: Context(_), cid: v1.Cid) -> Lookup(m) {
-  let Context(counter: c, tasks:, modules:, ..) = context
-  case dict.get(modules, cid) {
-    Ok(value) -> Found(value)
-    Error(_) -> {
-      let tasks = list.append(tasks, [#(c, Module(cid))])
-      let updated = Context(..context, counter: c + 1, tasks:)
+pub fn get_module(context: Context(_), cid: v1.Cid) -> Lookup(m) {
+  let Context(fetching:, modules:, ..) = context
+  case dict.get(modules, cid), dict.get(fetching, cid) {
+    Ok(value), _ -> Found(value)
+    Error(Nil), Ok(Requested) -> Pending(context, [])
+    Error(Nil), Ok(Dependency(..)) -> Pending(context, [])
+    Error(Nil), Ok(Invalid(reason)) -> NotFound(reason)
+    Error(Nil), Error(Nil) | Error(Nil), Ok(NotFetched(_)) -> {
+      let fetching = dict.insert(fetching, cid, Requested)
+      let updated = Context(..context, fetching:)
 
       let operation = client.get_module(cid)
       // TODO configure origin
@@ -266,25 +268,31 @@ fn get_module(context: Context(_), cid: v1.Cid) -> Lookup(m) {
 
       let effect =
         browser.Fetch(request, fn(result) {
-          case result {
+          let result = case result {
             Ok(response) ->
               case client.get_module_response(response) {
-                Ok(Some(source)) ->
-                  context.module_lookup_completed(cid, Ok(source))
-
-                Ok(None) -> todo
-                Error(_) -> todo
+                Ok(Some(source)) -> Ok(source)
+                Ok(None) -> Error("no module")
+                Error(_) -> Error("bad module lookup")
               }
-            Error(reason) -> todo
-            //  Error(NetworkError(string.inspect(reason)))
+            Error(reason) -> Error(string.inspect(reason))
           }
+          context.module_lookup_completed(cid, result)
         })
-      Pending(c, updated, [effect])
+      Pending(updated, [effect])
     }
   }
 }
 
-pub fn get_module_completed(context, cid, result) {
+pub fn get_module_completed(
+  context: Context(m),
+  cid: v1.Cid,
+  result: Result(ir.Node(_), String),
+) -> #(
+  Context(m),
+  List(#(v1.Cid, Result(state.Value(Meta), state.Reason(Meta)))),
+  List(browser.Effect(m)),
+) {
   case result {
     Ok(source) -> {
       let source = ir.map_annotation(source, fn(_) { [] })
@@ -294,30 +302,32 @@ pub fn get_module_completed(context, cid, result) {
       case run, effects {
         Concluded(value), [] -> {
           let modules = dict.insert(context.modules, cid, value)
-          let context = Context(..context, modules:)
-          let effects = []
-          let #(tasks, done) = module_tasks(context.tasks, cid, [], [], value)
-          let context = Context(..context, tasks:)
-          #(context, done, effects)
+          let fetching = dict.delete(context.fetching, cid)
+          let context = Context(..context, modules:, fetching:)
+          cascade_dependencies(context, [#(cid, Ok(value))], [], effects)
         }
-        Exception(_), [] -> todo
-        Aborted(_), [] -> todo
-        Suspended(task_id:, env:, k:), _ -> todo
-        _, [_, ..] -> todo
+        Exception(reason), [] -> {
+          let fetching = dict.insert(context.fetching, cid, Invalid(reason))
+          let context = Context(..context, fetching:)
+          cascade_dependencies(context, [#(cid, Error(reason))], [], effects)
+        }
+        Aborted(_), [] -> panic as "not in the pure loop handler"
+        Handling(task_id: _, env: _, k: _), _ -> panic as "not in the pure loop"
+        Fetching(module:, env:, k:), effects -> {
+          let fetching =
+            dict.insert(context.fetching, cid, Dependency(module:, env:, k:))
+          let context = Context(..context, fetching:)
+          #(context, [], effects)
+        }
+        _, [_, ..] -> panic as "There should not be effects for concluded runs"
       }
     }
-    Error(_) -> todo
-  }
-}
-
-fn module_tasks(tasks, cid, acc, done, value) {
-  case tasks {
-    [] -> #(list.reverse(acc), list.reverse(done))
-    [#(task_id, Module(c)), ..rest] if c == cid -> {
-      let new = #(task_id, value)
-      module_tasks(rest, cid, acc, [new, ..done], value)
+    Error(message) -> {
+      let fetching = dict.insert(context.fetching, cid, NotFetched(message))
+      let context = Context(..context, fetching:)
+      // Dont cascade as these errors are recoverable
+      #(context, [], [])
     }
-    [other, ..rest] -> module_tasks(rest, cid, [other, ..acc], done, value)
   }
 }
 
@@ -328,13 +338,13 @@ fn pure_loop(
   case return {
     Ok(value) -> #(Concluded(value), context, [])
 
-    // Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
-    //   let refs = todo
-    //   case dict.get(refs, cid) {
-    //     Ok(value) -> pure_loop(expression.resume(value, env, k), context)
-    //     Error(Nil) -> #(Fetching(env, k), [get_module(cid)])
-    //   }
-    // }
+    Error(#(break.UndefinedReference(cid), _meta, env, k)) ->
+      case get_module(context, cid) {
+        Found(value) -> pure_loop(expression.resume(value, env, k), context)
+        // returns the fetching state the view looksup in the context a fetching state
+        NotFound(_reason) -> #(Fetching(cid, env, k), context, [])
+        Pending(updated, effects) -> #(Fetching(cid, env, k), updated, effects)
+      }
     Error(#(break, _, _, _)) -> #(Exception(break), context, [])
   }
 }
@@ -347,4 +357,114 @@ fn service_request(service, operation, token) {
   }
   operation.to_request(operation, origin)
   |> request.set_header("authorization", "Bearer " <> token)
+}
+
+/// Work through a queue of module lookups, includes successes and invalid modules.
+fn cascade_dependencies(
+  context: Context(m),
+  queue: List(#(v1.Cid, Result(Value, state.Reason(Meta)))),
+  completed_acc: List(#(v1.Cid, Result(Value, state.Reason(Meta)))),
+  effects_acc: List(browser.Effect(m)),
+) -> #(
+  Context(m),
+  List(#(v1.Cid, Result(Value, state.Reason(Meta)))),
+  List(browser.Effect(m)),
+) {
+  case queue {
+    [] -> #(context, completed_acc, effects_acc)
+    [#(completed_cid, result), ..rest_queue] -> {
+      // Partition the `fetching` dictionary to find released dependencies
+      let #(released, remaining) =
+        dict.fold(
+          over: context.fetching,
+          from: #([], dict.new()),
+          with: fn(acc, fetch_cid, fetch_state) {
+            let #(blocked_acc, new_dict) = acc
+            case fetch_state {
+              // Match if the state is released on the CID that just completed
+              Dependency(dep_cid, env, k) if dep_cid == completed_cid -> #(
+                [#(fetch_cid, env, k), ..blocked_acc],
+                new_dict,
+              )
+              _ -> #(blocked_acc, dict.insert(new_dict, fetch_cid, fetch_state))
+            }
+          },
+        )
+
+      let context = Context(..context, fetching: remaining)
+
+      // Iterate over the released modules and resume their execution
+      let #(updated_context, new_queue, updated_effects) =
+        list.fold(
+          over: released,
+          from: #(context, rest_queue, effects_acc),
+          with: fn(acc, wait_info) {
+            let #(context, q, effs) = acc
+            let #(waiting_cid, env, k) = wait_info
+
+            case result {
+              Ok(value) -> {
+                // Resume evaluation with the newly resolved dependency
+                let #(run, context, eval_effs) =
+                  pure_loop(expression.resume(value, env, k), context)
+
+                case run {
+                  Concluded(val) -> {
+                    let modules = dict.insert(context.modules, waiting_cid, val)
+                    let context = Context(..context, modules: modules)
+                    // Push to the queue to trigger further cascades
+                    #(
+                      context,
+                      [#(waiting_cid, Ok(val)), ..q],
+                      list.append(effs, eval_effs),
+                    )
+                  }
+                  Exception(reason) -> {
+                    let fetching =
+                      dict.insert(
+                        context.fetching,
+                        waiting_cid,
+                        Invalid(reason),
+                      )
+                    let context = Context(..context, fetching: fetching)
+                    // Push the error to cascade failures
+                    #(
+                      context,
+                      [#(waiting_cid, Error(reason)), ..q],
+                      list.append(effs, eval_effs),
+                    )
+                  }
+                  Fetching(dep_cid, e, k2) -> {
+                    // Park it again if it immediately needs another module
+                    let fetching =
+                      dict.insert(
+                        context.fetching,
+                        waiting_cid,
+                        Dependency(dep_cid, e, k2),
+                      )
+                    let context = Context(..context, fetching: fetching)
+                    #(context, q, list.append(effs, eval_effs))
+                  }
+                  _ -> panic as "unexpected run state in pure loop"
+                }
+              }
+              Error(reason) -> {
+                // If the dependency failed, the waiting module automatically fails
+                let fetching =
+                  dict.insert(context.fetching, waiting_cid, Invalid(reason))
+                let context = Context(..context, fetching: fetching)
+                #(context, [#(waiting_cid, Error(reason)), ..q], effs)
+              }
+            }
+          },
+        )
+
+      cascade_dependencies(
+        updated_context,
+        new_queue,
+        [#(completed_cid, result), ..completed_acc],
+        updated_effects,
+      )
+    }
+  }
 }
