@@ -11,6 +11,7 @@ import morph/input
 import morph/picker
 import website/components
 import website/components/snippet
+import website/manipulation
 import website/routes/documentation/examples
 import website/routes/documentation/state
 
@@ -493,20 +494,23 @@ fn example(state: state.State, id) {
       ],
     ),
     case state.mode {
-      state.Editing(id: focused, failure: Some(failure)) if focused == id -> {
+      state.Navigating(id: focused, failure: Some(failure)) if focused == id -> {
         h.div([a.class("p-2 leading-none bg-red-300")], [
           h.text(state.fail_message(failure)),
         ])
       }
-      state.Editing(id: _, failure: Some(message)) ->
+      state.Navigating(id: _, failure: Some(message)) ->
         element.text(state.fail_message(message))
-      state.Editing(id: _, failure: None) -> element.none()
-      state.EditingInteger(id: focused, value:, rebuild: _) if focused == id ->
-        input.render_number(value) |> element.map(state.InputMessage)
-      state.EditingText(id: focused, value:, rebuild: _) if focused == id ->
-        input.render_text(value) |> element.map(state.InputMessage)
-      state.Picking(id: focused, picker:, rebuild: _) if focused == id ->
-        picker.render(picker) |> element.map(state.PickerMessage)
+      state.Navigating(id: _, failure: None) -> element.none()
+      state.Manipulating(focused, manipulation.EnterInteger(value, _))
+        if focused == id
+      -> input.render_number(value) |> element.map(state.InputMessage)
+      state.Manipulating(focused, manipulation.EnterText(value, _))
+        if focused == id
+      -> input.render_text(value) |> element.map(state.InputMessage)
+      state.Manipulating(focused, manipulation.PickSingle(picker, _))
+        if focused == id
+      -> picker.render(picker) |> element.map(state.PickerMessage)
       state.ReadingFromClipboard(id: _, rebuild: _) -> element.none()
       state.Running(id: _, status: _) -> element.none()
       state.UnFocused -> element.none()

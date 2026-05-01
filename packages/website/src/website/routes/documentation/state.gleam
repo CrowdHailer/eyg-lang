@@ -41,10 +41,8 @@ pub type Rebuild(t) =
 // Change Editing -> Focused/Navigating
 // Manipulating is called editing, EditingStatus is there
 pub type Mode {
-  Editing(id: String, failure: Option(Failure))
-  EditingInteger(id: String, value: Int, rebuild: Rebuild(Int))
-  EditingText(id: String, value: String, rebuild: Rebuild(String))
-  Picking(id: String, picker: picker.Picker, rebuild: Rebuild(String))
+  Navigating(id: String, failure: Option(Failure))
+  Manipulating(id: String, input: manipulation.UserInput)
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   Running(id: String, status: run.Run)
   UnFocused
@@ -114,46 +112,47 @@ pub fn update(state: State, message) {
       let Example(buffer:) = get_example(state, id)
       let buffer = buffer.focus_at(buffer, path) |> result.unwrap(buffer)
       let state = set_example(state, id, Example(buffer:))
-      let state = State(..state, mode: Editing(id:, failure: None))
+      let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
     UserPressedKey(key:) -> user_pressed_key(state, key)
     InputMessage(message) -> {
       let State(mode:, ..) = state
       case mode, message {
-        EditingInteger(id:, value:, rebuild:), _ ->
+        Manipulating(id, manipulation.EnterInteger(value, rebuild)), _ ->
           case input.update_number(value, message) {
             input.Continue(new) -> {
-              let mode = EditingInteger(..mode, value: new)
+              let mode =
+                Manipulating(id, manipulation.EnterInteger(new, rebuild))
               let state = State(..state, mode:)
               #(state, [])
             }
             input.Confirmed(value) -> {
               let state =
                 set_example(state, id, Example(rebuild(value, infer.pure())))
-              let state = State(..state, mode: Editing(id:, failure: None))
+              let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
             input.Cancelled -> {
-              let state = State(..state, mode: Editing(id:, failure: None))
+              let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
           }
-        EditingText(id:, value:, rebuild:), _ ->
+        Manipulating(id, manipulation.EnterText(value, rebuild)), _ ->
           case input.update_text(value, message) {
             input.Continue(new) -> {
-              let mode = EditingText(..mode, value: new)
+              let mode = Manipulating(id, manipulation.EnterText(new, rebuild))
               let state = State(..state, mode:)
               #(state, [])
             }
             input.Confirmed(value) -> {
               let state =
                 set_example(state, id, Example(rebuild(value, infer.pure())))
-              let state = State(..state, mode: Editing(id:, failure: None))
+              let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
             input.Cancelled -> {
-              let state = State(..state, mode: Editing(id:, failure: None))
+              let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
           }
@@ -163,20 +162,21 @@ pub fn update(state: State, message) {
     PickerMessage(message) -> {
       let State(mode:, ..) = state
       case mode {
-        Picking(id:, rebuild:, ..) ->
+        Manipulating(id, manipulation.PickSingle(_picker, rebuild)) ->
           case message {
-            picker.Updated(picker:) -> #(
-              State(..state, mode: Picking(id:, picker:, rebuild:)),
-              [],
-            )
+            picker.Updated(picker:) -> {
+              let mode =
+                Manipulating(id, manipulation.PickSingle(picker, rebuild))
+              #(State(..state, mode:), [])
+            }
             picker.Decided(label) -> {
               let state =
                 set_example(state, id, Example(rebuild(label, infer.pure())))
-              let state = State(..state, mode: Editing(id:, failure: None))
+              let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
             picker.Dismissed -> #(
-              State(..state, mode: Editing(id:, failure: None)),
+              State(..state, mode: Navigating(id:, failure: None)),
               [],
             )
           }
@@ -195,7 +195,7 @@ pub fn update(state: State, message) {
                     rebuild(e.from_annotated(expression), infer.pure())
                   let example = Example(buffer:)
                   let state = set_example(state, id, example)
-                  let state = State(..state, mode: Editing(id, None))
+                  let state = State(..state, mode: Navigating(id, None))
                   #(state, [])
                 }
 
@@ -307,16 +307,14 @@ fn user_pressed_key(state, key) {
     _, ">" -> edit(state, manipulation.insert_after())
     _, "Enter" -> confirm(state)
     _, " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
-    Editing(id, _error), _ -> {
-      let mode = Editing(id, Some(NoKeyBinding(key)))
+    Navigating(id, _error), _ -> {
+      let mode = Navigating(id, Some(NoKeyBinding(key)))
       #(State(..state, mode:), [])
     }
     UnFocused, _ -> #(state, [])
     ReadingFromClipboard(id: _, rebuild: _), _ -> #(state, [])
     Running(id: _, status: _), _ -> #(state, [])
-    Picking(id: _, picker: _, rebuild: _), _ -> #(state, [])
-    EditingInteger(id: _, value: _, rebuild: _), _ -> #(state, [])
-    EditingText(id: _, value: _, rebuild: _), _ -> #(state, [])
+    Manipulating(id: _, input: _), _ -> #(state, [])
   }
 }
 
@@ -326,7 +324,7 @@ fn navigate(state: State, name, func) {
   case func(buffer) {
     Ok(buffer) -> {
       let state = set_example(state, id, Example(buffer:))
-      let state = State(..state, mode: Editing(id:, failure: None))
+      let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
     Error(_reason) -> action_failed(state, id, name)
@@ -340,20 +338,11 @@ fn edit(state, manipulation) {
   case apply(buffer) {
     Ok(manipulation.Resolved(gen)) -> {
       let state = set_example(state, id, Example(buffer: gen(infer.pure())))
-      let state = State(..state, mode: Editing(id:, failure: None))
+      let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
-    Ok(manipulation.PickSingle(picker, rebuild)) -> {
-      let mode = Picking(id, picker, rebuild:)
-      #(State(..state, mode:), [])
-    }
-    Ok(manipulation.EnterText(value, rebuild)) -> {
-      let mode = EditingText(id, value, rebuild:)
-      #(State(..state, mode:), [])
-    }
-    Ok(manipulation.EnterInteger(value, rebuild)) -> {
-      let mode = EditingInteger(id, value, rebuild:)
-      #(State(..state, mode:), [])
+    Ok(manipulation.UserInput(input)) -> {
+      #(State(..state, mode: Manipulating(id, input)), [])
     }
     Error(Nil) -> action_failed(state, id, name)
   }
@@ -391,17 +380,13 @@ fn confirm(state: State) {
 
 fn is_editing(state: State, then) {
   case state.mode {
-    Editing(id:, failure: _) -> then(id, get_example(state, id))
-    UnFocused -> #(state, [])
-    ReadingFromClipboard(..) -> #(state, [])
-    Running(id: _, status: _) -> #(state, [])
-    Picking(id: _, picker: _, rebuild: _) -> #(state, [])
+    Navigating(id:, failure: _) -> then(id, get_example(state, id))
     _ -> #(state, [])
   }
 }
 
 fn action_failed(state, id, name) {
   let state =
-    State(..state, mode: Editing(id:, failure: Some(ActionFailed(name))))
+    State(..state, mode: Navigating(id:, failure: Some(ActionFailed(name))))
   #(state, [])
 }

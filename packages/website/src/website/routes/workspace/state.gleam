@@ -69,11 +69,7 @@ pub type State {
 
 pub type Mode {
   Editing
-  // The Picker is still used as their is string input for fields,enums,variable
-  Picking(picker: picker.Picker, rebuild: Rebuild(String))
-  // The projection in the target keeps all the rebuild information, but can error
-  EditingText(value: String, rebuild: Rebuild(String))
-  EditingInteger(value: Int, rebuild: Rebuild(Int))
+  Manipulating(manipulation.UserInput)
   ChoosingPackage(
     picker: picker.Picker,
     rebuild: Rebuild(#(String, Int, v1.Cid)),
@@ -399,18 +395,12 @@ fn edit(state, operation) {
   let manipulation.Operation(name:, apply:) = operation
   case apply(active(state)) {
     Ok(manipulation.Resolved(gen)) -> replace_buffer(state, gen)
-    Ok(manipulation.PickSingle(picker, rebuild)) -> {
-      let state = State(..state, mode: Picking(picker, rebuild))
+    Ok(manipulation.UserInput(input)) -> {
+      let mode = Manipulating(input)
+      let state = State(..state, mode:)
       #(state, [])
     }
-    Ok(manipulation.EnterText(value, rebuild)) -> {
-      let state = State(..state, mode: EditingText(value, rebuild))
-      #(state, [])
-    }
-    Ok(manipulation.EnterInteger(value, rebuild)) -> {
-      let state = State(..state, mode: EditingInteger(value, rebuild))
-      #(state, [])
-    }
+
     Error(Nil) -> fail(state, name)
   }
 }
@@ -522,7 +512,11 @@ fn insert_reference(state) {
     let assert Ok(#(cid, _)) = v1.from_string(cid)
     rebuild(cid, context)
   }
-  let state = State(..state, mode: Picking(picker.new("", []), rebuild))
+  let state =
+    State(
+      ..state,
+      mode: Manipulating(manipulation.PickSingle(picker.new("", []), rebuild)),
+    )
   #(state, [])
 }
 
@@ -968,11 +962,11 @@ fn spotless_connected(state, reference, service, result) {
 
 fn input_message(state, message) {
   let State(mode:, ..) = state
-  case mode, message {
-    EditingInteger(value:, rebuild:), _ ->
+  case mode {
+    Manipulating(manipulation.EnterInteger(value, rebuild)) ->
       case input.update_number(value, message) {
         input.Continue(new) -> {
-          let mode = EditingInteger(..mode, value: new)
+          let mode = Manipulating(manipulation.EnterInteger(new, rebuild))
           let state = State(..state, mode:)
           #(state, [])
         }
@@ -984,10 +978,10 @@ fn input_message(state, message) {
           #(state, [])
         }
       }
-    EditingText(value:, rebuild:), _ ->
+    Manipulating(manipulation.EnterText(value, rebuild)) ->
       case input.update_text(value, message) {
         input.Continue(new) -> {
-          let mode = EditingText(..mode, value: new)
+          let mode = Manipulating(manipulation.EnterText(new, rebuild))
           let state = State(..state, mode:)
           #(state, [])
         }
@@ -1000,7 +994,7 @@ fn input_message(state, message) {
         }
       }
 
-    _, _ -> #(state, [])
+    _ -> #(state, [])
   }
 }
 
@@ -1059,10 +1053,13 @@ fn effect_implementation_completed(state, reference, reply) {
 fn picker_message(state, message) {
   let State(mode:, ..) = state
   case mode {
-    Picking(rebuild:, ..) ->
+    Manipulating(manipulation.PickSingle(_, rebuild)) ->
       case message {
         picker.Updated(picker:) -> #(
-          State(..state, mode: Picking(picker:, rebuild:)),
+          State(
+            ..state,
+            mode: Manipulating(manipulation.PickSingle(picker, rebuild)),
+          ),
           [],
         )
         picker.Decided(label) -> {

@@ -12,6 +12,7 @@ import lustre/event
 import morph/editable
 import morph/projection
 import website/components/snippet
+import website/manipulation
 import website/routes/editor
 import website/routes/workspace/buffer
 import website/routes/workspace/state
@@ -20,7 +21,7 @@ pub fn render(state: state.State) {
   h.div([a.class("h-full")], [
     h.div([], [
       case state.mode {
-        state.Picking(picker:, ..) ->
+        state.Manipulating(manipulation.PickSingle(picker, _)) ->
           modal([
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])
@@ -32,9 +33,9 @@ pub fn render(state: state.State) {
           modal([
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])
-        state.EditingInteger(value:, ..) ->
+        state.Manipulating(manipulation.EnterInteger(value, ..)) ->
           modal([editor.render_number(value) |> element.map(state.InputMessage)])
-        state.EditingText(value:, ..) ->
+        state.Manipulating(manipulation.EnterText(value, ..)) ->
           modal([editor.render_text(value) |> element.map(state.InputMessage)])
         state.ReadingFromClipboard(..) -> element.none()
         state.WritingToClipboard -> element.none()

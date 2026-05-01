@@ -24,14 +24,18 @@ import website/routes/workspace/buffer.{type Buffer}
 /// `apply` manipulates the current state and either fails with an error, 
 /// or succeeds with a `NextStep`.
 pub type Operation {
-  Operation(name: String, apply: fn(Buffer) -> Result(Decision, Nil))
+  Operation(name: String, apply: fn(Buffer) -> Result(Continue, Nil))
 }
 
 /// Describes what (if anything) the user must decide after an operation
 /// has been initiated. `Resolved` means no further input is needed;
 /// the other variants carry the choices the user must pick from.
-pub type Decision {
+pub type Continue {
   Resolved(fn(infer.Context) -> buffer.Buffer)
+  UserInput(UserInput)
+}
+
+pub type UserInput {
   PickSingle(picker.Picker, Rebuild(String))
   EnterText(String, Rebuild(String))
   EnterInteger(Int, Rebuild(Int))
@@ -60,7 +64,7 @@ pub fn insert() {
 
 fn do_insert(buffer) {
   use #(value, rebuild) <- result.map(buffer.insert(buffer))
-  PickSingle(picker.new(value, []), rebuild)
+  UserInput(PickSingle(picker.new(value, []), rebuild))
 }
 
 // PRIMITIVES
@@ -74,7 +78,7 @@ pub fn insert_string() {
 
 fn do_insert_string(buffer) {
   use #(value, rebuild) <- result.map(buffer.insert_string(buffer))
-  EnterText(value, rebuild)
+  UserInput(EnterText(value, rebuild))
 }
 
 pub fn insert_integer() {
@@ -83,7 +87,7 @@ pub fn insert_integer() {
 
 fn do_insert_integer(buffer) {
   use #(value, rebuild) <- result.map(buffer.insert_integer(buffer))
-  EnterInteger(value, rebuild)
+  UserInput(EnterInteger(value, rebuild))
 }
 
 // FUNCTIONS
@@ -96,7 +100,7 @@ fn do_insert_variable(buffer) {
   use rebuild <- result.map(buffer.insert_variable(buffer))
   let scope = buffer.target_scope(buffer) |> result.unwrap([])
   let hints = listx.value_map(scope, snippet.render_poly)
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 pub fn insert_function() {
@@ -105,7 +109,7 @@ pub fn insert_function() {
 
 fn do_insert_function(buffer) {
   use rebuild <- result.map(buffer.insert_function(buffer))
-  PickSingle(picker.new("", []), rebuild)
+  UserInput(PickSingle(picker.new("", []), rebuild))
 }
 
 pub fn call_once() {
@@ -150,7 +154,7 @@ fn do_create_record(buffer) {
   case hints {
     [] -> {
       let rebuild = fn(label, context) { rebuild([label], context) }
-      PickSingle(picker.new("", []), rebuild)
+      UserInput(PickSingle(picker.new("", []), rebuild))
     }
     _ -> Resolved(rebuild(listx.keys(hints), _))
   }
@@ -167,7 +171,7 @@ pub fn select_field() {
 fn do_select_field(buffer) {
   use rebuild <- result.map(buffer.select_field(buffer))
   let hints = listx.value_map(buffer.fields(buffer), debug.mono)
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 pub fn overwrite() {
@@ -177,7 +181,7 @@ pub fn overwrite() {
 fn do_overwrite(buffer) {
   use rebuild <- result.map(buffer.overwrite(buffer))
   let hints = listx.value_map(buffer.fields(buffer), debug.mono)
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 pub fn insert_tag() {
@@ -187,7 +191,7 @@ pub fn insert_tag() {
 fn do_insert_tag(buffer) {
   use rebuild <- result.map(buffer.tag(buffer))
   let hints = listx.value_map(buffer.varients(buffer), debug.mono)
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 pub fn insert_case() {
@@ -201,7 +205,7 @@ fn do_insert_case(buffer) {
   case hints {
     [] -> {
       let rebuild = fn(label, context) { rebuild([label], context) }
-      PickSingle(picker.new("", []), rebuild)
+      UserInput(PickSingle(picker.new("", []), rebuild))
     }
     _ -> Resolved(rebuild(listx.keys(hints), _))
   }
@@ -215,7 +219,8 @@ fn do_insert_before(buffer) {
   use choice <- result.map(buffer.insert_before(buffer))
   case choice {
     buffer.Done(rebuild) -> Resolved(rebuild)
-    buffer.WithString(rebuild) -> PickSingle(picker.new("", []), rebuild)
+    buffer.WithString(rebuild) ->
+      UserInput(PickSingle(picker.new("", []), rebuild))
   }
 }
 
@@ -227,7 +232,8 @@ fn do_insert_after(buffer) {
   use choice <- result.map(buffer.insert_after(buffer))
   case choice {
     buffer.Done(rebuild) -> Resolved(rebuild)
-    buffer.WithString(rebuild) -> PickSingle(picker.new("", []), rebuild)
+    buffer.WithString(rebuild) ->
+      UserInput(PickSingle(picker.new("", []), rebuild))
   }
 }
 
@@ -239,7 +245,7 @@ pub fn assign() {
 
 fn do_assign(buffer) {
   use rebuild <- result.map(buffer.assign(buffer))
-  PickSingle(picker.new("", []), rebuild)
+  UserInput(PickSingle(picker.new("", []), rebuild))
 }
 
 pub fn assign_before() {
@@ -248,7 +254,7 @@ pub fn assign_before() {
 
 fn do_assign_before(buffer) {
   use rebuild <- result.map(buffer.assign_before(buffer))
-  PickSingle(picker.new("", []), rebuild)
+  UserInput(PickSingle(picker.new("", []), rebuild))
 }
 
 // EFFECTS perform, handle
@@ -259,7 +265,7 @@ pub fn perform() {
 fn do_perform(buffer) {
   use rebuild <- result.map(buffer.perform(buffer))
   let hints = effect_hints()
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 pub fn insert_handle() {
@@ -269,7 +275,7 @@ pub fn insert_handle() {
 fn do_insert_handle(buffer) {
   use rebuild <- result.map(buffer.insert_handle(buffer))
   let hints = effect_hints()
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 fn effect_hints() {
@@ -286,7 +292,7 @@ pub fn insert_builtin() {
 fn do_insert_builtin(buffer) {
   use rebuild <- result.map(buffer.insert_builtin(buffer))
   let hints = listx.value_map(infer.builtins(), snippet.render_poly)
-  PickSingle(picker.new("", hints), rebuild)
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 /// create an operation from better actions that always resolve
