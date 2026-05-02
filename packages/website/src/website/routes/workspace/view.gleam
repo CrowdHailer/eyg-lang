@@ -5,6 +5,7 @@ import eyg/interpreter/simple_debug
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
@@ -16,6 +17,7 @@ import website/manipulation
 import website/routes/editor
 import website/routes/workspace/buffer
 import website/routes/workspace/state
+import website/run
 
 pub fn render(state: state.State) {
   h.div([a.class("h-full")], [
@@ -39,12 +41,19 @@ pub fn render(state: state.State) {
           modal([editor.render_text(value) |> element.map(state.InputMessage)])
         state.ReadingFromClipboard(..) -> element.none()
         state.WritingToClipboard -> element.none()
-        state.RunningShell(occured:, awaiting:, debug:) ->
+        state.RunningShell(occured:, status:) ->
           modal([
             editor.render_effects_history(list.reverse(occured)),
-            case awaiting {
-              Some(_) -> h.div([], [h.text("running")])
-              None -> h.div([], [h.text(simple_debug.describe(debug.0))])
+            case status {
+              run.Concluded(return) ->
+                h.div([], [h.text(string.inspect(return))])
+              run.Exception(reason) ->
+                h.div([], [h.text(simple_debug.describe(reason))])
+              run.Aborted(message) -> h.div([], [h.text(message)])
+              run.Handling(task_id: _, env: _, k: _) ->
+                h.div([], [h.text("running")])
+              run.Fetching(module: _, env: _, k: _) ->
+                h.div([], [h.text("running")])
             },
           ])
         state.SigningPayload(..) -> modal([h.text("signing")])

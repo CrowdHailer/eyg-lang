@@ -44,7 +44,7 @@ pub type Mode {
   Navigating(id: String, failure: Option(Failure))
   Manipulating(id: String, input: manipulation.UserInput)
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
-  Running(id: String, status: run.Run)
+  Running(id: String, status: run.Run(state.Value(Meta)))
   UnFocused
 }
 
@@ -215,7 +215,7 @@ pub fn update(state: State, message) {
         -> {
           let #(mode, context, effects) =
             expression.resume(value, env, k)
-            |> run.loop(state.context)
+            |> run.loop(state.context, expression.resume)
           let mode = Running(id, mode)
           #(State(..state, mode:, context:), effects)
         }
@@ -236,7 +236,7 @@ pub fn update(state: State, message) {
             Ok(Ok(value)) -> {
               let #(run, context, inner_effects) =
                 expression.resume(value, env, k)
-                |> run.loop(context)
+                |> run.loop(context, expression.resume)
               let mode = Running(id, run)
               #(
                 State(..state, context:, mode:),
@@ -373,7 +373,8 @@ fn paste(state: State) {
 fn confirm(state: State) {
   use id, Example(buffer:) <- is_editing(state)
   let #(mode, context, effects) =
-    expression.execute(buffer.source(buffer), []) |> run.loop(state.context)
+    expression.execute(buffer.source(buffer), [])
+    |> run.loop(state.context, expression.resume)
   let mode = Running(id, mode)
   #(State(..state, mode:, context:), effects)
 }

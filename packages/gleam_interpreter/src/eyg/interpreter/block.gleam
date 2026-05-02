@@ -3,7 +3,10 @@ import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
+
+pub type Scope(m) =
+  List(#(String, state.Value(m)))
 
 const special = "!!special!!"
 
@@ -59,6 +62,10 @@ pub fn call(f, args, env, h) {
   loop(state.step(state.V(f), env, k), env.scope)
 }
 
-pub fn resume(value, env, k) {
+pub fn resume(
+  value: state.Value(t),
+  env: state.Env(t),
+  k: state.Stack(t),
+) -> Result(#(Option(state.Value(t)), Scope(t)), state.Debug(t)) {
   loop(state.step(state.V(value), env, k), env.scope)
 }

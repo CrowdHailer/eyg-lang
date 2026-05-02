@@ -29,12 +29,12 @@ fn execute(source, context) {
   source
   |> ir.map_annotation(fn(_) { [] })
   |> expression.execute([])
-  |> run.loop(context)
+  |> run.loop(context, expression.resume)
 }
 
 fn continue(value, env, k, context) {
   expression.resume(value, env, k)
-  |> run.loop(context)
+  |> run.loop(context, expression.resume)
 }
 
 pub fn pure_program_test() {

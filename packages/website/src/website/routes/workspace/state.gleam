@@ -1,23 +1,17 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
-import eyg/interpreter/break
-import eyg/interpreter/expression
 import eyg/interpreter/state as istate
 import eyg/ir/dag_json
-import eyg/ir/tree
+import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/dynamic/decode
-import gleam/http/request
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/set
-import gleam/string
-import gleam/uri
 import morph/analysis
 import morph/editable as e
 import morph/input
@@ -25,17 +19,12 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import multiformats/hashes
-import ogre/operation
 import ogre/origin
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
-import snag
-import touch_grass/decode_json
-import touch_grass/download
-import touch_grass/flip
-import touch_grass/print
 import website/components/readonly
+import website/components/runner
 import website/components/shell
 import website/components/snippet
 import website/config
@@ -43,6 +32,7 @@ import website/harness/browser
 import website/harness/harness
 import website/manipulation
 import website/routes/workspace/buffer.{type Buffer}
+import website/run
 import website/sync/cache
 import website/sync/client
 
@@ -62,8 +52,10 @@ pub type State {
     mounted_directory: Option(file_system.DirectoryHandle),
     flush_counter: Int,
     dirty: Dict(Filename, Nil),
+    // TODO remove sync and tokens
     sync: client.Client,
     tokens: dict.Dict(harness.Service, String),
+    context: run.Context(Message),
   )
 }
 
@@ -82,8 +74,7 @@ pub type Mode {
   // Once the run finishes the input is reset and running return
   RunningShell(
     occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
-    awaiting: Option(Int),
-    debug: istate.Debug(Meta),
+    status: run.Run(#(Option(istate.Value(Meta)), runner.Scope(Meta))),
   )
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))
@@ -106,7 +97,7 @@ pub type Ext {
 }
 
 pub type Meta =
-  Nil
+  List(Int)
 
 /// helper to make a context from a state, when a state exists
 /// In not all cases does this exist
@@ -119,11 +110,11 @@ fn ctx(state, target) {
   }
 }
 
-fn repl_context(
+pub fn repl_context(
   scope: List(#(String, istate.Value(Meta))),
   modules: Dict(Filename, Buffer),
   cache: cache.Cache,
-) {
+) -> infer.Context {
   module_context(scope, modules, cache)
   |> infer.with_effects(harness.types(harness.effects()))
 }
@@ -133,7 +124,7 @@ fn module_context(
   modules: Dict(Filename, Buffer),
   cache: cache.Cache,
 ) {
-  let #(bindings, tenv) = analysis.env_to_tenv(scope, Nil)
+  let #(bindings, tenv) = analysis.env_to_tenv(scope, [])
   let relative =
     dict.to_list(modules)
     |> list.filter_map(fn(entry) {
@@ -197,6 +188,8 @@ fn set_buffer(state, buffer) {
 
 pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
   let config.Config(origin:) = config
+  let context =
+    run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
   let #(sync, actions) = client.new(origin) |> client.sync()
   // let actions = list.map(actions, SyncAction)
   echo "todo need the sync actions"
@@ -220,6 +213,7 @@ pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
       flush_counter: 0,
       dirty: dict.new(),
       tokens: dict.new(),
+      context:,
     )
   #(state, actions)
 }
@@ -257,25 +251,21 @@ pub type Message {
   InputMessage(input.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
-  EffectImplementationCompleted(reference: Int, reply: istate.Value(Meta))
   PreviousMessage(Int, readonly.Message)
   UserSelectedPrevious(Int)
   PickerMessage(picker.Message)
-  SyncMessage(client.Message)
   ShowDirectoryPickerCompleted(
     Result(file_system.Handle(file_system.D), String),
   )
   LoadedFiles(
-    Result(List(#(Filename, Result(tree.Node(Nil), json.DecodeError))), String),
+    Result(List(#(Filename, Result(ir.Node(Nil), json.DecodeError))), String),
   )
   FlushTimeout(reference: Int)
-  SpotlessConnected(
-    reference: Int,
-    service: harness.Service,
-    result: Result(String, snag.Snag),
-  )
   OpenPopupCompleted(Result(window_proxy.WindowProxy, String))
   Ignore
+  EffectHandled(task_id: Int, value: istate.Value(Meta))
+  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
 }
 
 pub fn update(state: State, message) -> #(State, List(browser.Effect(Message))) {
@@ -289,21 +279,84 @@ pub fn update(state: State, message) -> #(State, List(browser.Effect(Message))) 
     InputMessage(message) -> input_message(state, message)
     ClipboardReadCompleted(result) -> clipboard_read_complete(state, result)
     ClipboardWriteCompleted(result) -> clipboard_write_complete(state, result)
-    EffectImplementationCompleted(reference:, reply:) ->
-      effect_implementation_completed(state, reference, reply)
     PreviousMessage(_, _) -> #(state, [])
     UserSelectedPrevious(_) -> #(state, [])
     PickerMessage(message) -> picker_message(state, message)
-    SyncMessage(message) -> sync_message(state, message)
     ShowDirectoryPickerCompleted(result) ->
       link_filesystem_completed(state, result)
     LoadedFiles(results) -> loaded_files(state, results)
     FlushTimeout(reference) -> flush_timeout(state, reference)
-    SpotlessConnected(reference:, service:, result:) ->
-      spotless_connected(state, reference, service, result)
     OpenPopupCompleted(result) -> open_popup_completed(state, result)
     Ignore -> #(state, [])
+    EffectHandled(task_id: tid, value:) ->
+      case state.mode {
+        RunningShell(occured, run.Handling(task_id:, env:, k:))
+          if tid == task_id
+        -> {
+          let #(mode, context, effects) =
+            block.resume(value, env, k)
+            |> run.loop(state.context, block.resume)
+          let mode = RunningShell(occured, mode)
+          #(State(..state, mode:, context:), effects)
+        }
+        _ -> #(state, [])
+      }
+    SpotlessConnectCompleted(service, result) -> {
+      let #(context, effects) =
+        run.connect_completed(state.context, service, result)
+      #(State(..state, context:), effects)
+    }
+    ModuleLookupCompleted(cid, result) -> {
+      let #(context, done, effects) =
+        run.get_module_completed(state.context, cid, result)
+      // use the completed cid not the looked up cid as dependencies might have resolved
+      case state.mode {
+        RunningShell(occured, run.Fetching(module:, env:, k:)) ->
+          case list.key_find(done, module) {
+            Ok(Ok(value)) -> {
+              let #(run, context, inner_effects) =
+                block.resume(value, env, k)
+                |> run.loop(context, block.resume)
+              let mode = RunningShell(occured, run)
+              #(
+                State(..state, context:, mode:),
+                list.append(effects, inner_effects),
+              )
+            }
+            // If the module is a bad one the running state stays the same. it's up for the view to render the status
+            Ok(Error(_)) -> #(State(..state, context:), effects)
+            Error(Nil) -> #(State(..state, context:), effects)
+          }
+        _ -> #(State(..state, context:), effects)
+      }
+    }
   }
+}
+
+fn loop(return, state) {
+  let occured = []
+  let State(context:, ..) = state
+  let #(run, context, effects) = run.loop(return, context, block.resume)
+  let state = case run {
+    run.Concluded(#(value, scope)) -> {
+      // Type is shell entry
+      let entry =
+        shell.Executed(
+          value:,
+          effects: list.reverse([]),
+          source: readonly.new(p.rebuild(state.repl.projection)),
+        )
+      let previous = [entry, ..state.previous]
+
+      let repl = buffer.empty(ctx(State(..state, scope:), Repl))
+      State(..state, mode: Editing, previous:, scope:, repl:)
+    }
+    _ -> {
+      let mode = RunningShell(occured, run)
+      State(..state, context:, mode:)
+    }
+  }
+  #(state, effects)
 }
 
 fn user_pressed_key(state, key) {
@@ -311,8 +364,9 @@ fn user_pressed_key(state, key) {
   case mode, key {
     Editing, _ -> user_pressed_command_key(state, key)
     RunningShell(..), "Escape" -> #(State(..state, mode: Editing), [])
-    RunningShell(awaiting: None, ..), _ ->
-      user_pressed_command_key(State(..state, mode: Editing), key)
+    // TODO reinstate
+    // RunningShell(awaiting: None, ..), _ ->
+    //   user_pressed_command_key(State(..state, mode: Editing), key)
     _, _ -> {
       echo "unexpected"
       echo mode
@@ -531,292 +585,14 @@ fn confirm(state) {
   let State(focused:, ..) = state
   case focused {
     Repl -> {
-      let editable = p.rebuild(state.repl.projection)
-      run(evaluate(editable, state.scope), [], state)
+      state.repl.projection
+      |> p.rebuild()
+      |> e.to_annotated([])
+      |> block.execute(state.scope)
+      |> loop(state)
     }
     _ -> fail(state, "Can't execute module")
   }
-}
-
-fn evaluate(editable, scope) {
-  e.to_annotated(editable, [])
-  |> tree.clear_annotation()
-  // TODO why do we clear this
-  |> block.execute(scope)
-}
-
-pub type Effect {
-  Alert(String)
-  Copy(String)
-  Download(download.Input)
-  Fetch(request.Request(BitArray))
-
-  Geolocation
-  Now
-  Paste
-  Prompt(message: String)
-  Random(max: Int)
-  Visit(uri.Uri)
-}
-
-type EffectImplementation {
-  Abort(String)
-  Internal(state: State, reply: istate.Value(Meta))
-  External(Effect)
-  Spotless(service: harness.Service, operation: operation.Operation(BitArray))
-}
-
-/// Have tried normalise run and run_module (or extract to runner?)
-/// resume is different based on expression/block also effects are different
-fn run(return, occured, state: State) -> #(State, List(_)) {
-  case return {
-    Ok(#(value, scope)) -> {
-      // Type is shell entry
-      let entry =
-        shell.Executed(
-          value:,
-          effects: list.reverse(occured),
-          source: readonly.new(p.rebuild(state.repl.projection)),
-        )
-      let previous = [entry, ..state.previous]
-      let repl = buffer.empty(ctx(State(..state, scope:), Repl))
-      let state = State(..state, mode: Editing, previous:, scope:, repl:)
-      #(state, [])
-    }
-    Error(debug) -> {
-      let #(reason, meta, env, k) = debug
-      case reason {
-        // internal not part of browser
-        break.UnhandledEffect(label, input) ->
-          case harness.cast(label, input) {
-            Ok(effect) -> {
-              case run_effect(effect, state) {
-                Abort(_message) ->
-                  runner_stoped(state, occured, #(reason, meta, env, k))
-                Internal(state:, reply:) -> {
-                  let return = block.resume(reply, env, k)
-                  let occured = [#(label, #(input, reply))]
-                  run(return, occured, state)
-                }
-                External(effect) -> {
-                  let effect_counter = state.effect_counter + 1
-                  let awaiting = Some(effect_counter)
-                  let mode = RunningShell(occured:, awaiting:, debug:)
-                  let state = State(..state, effect_counter:, mode:)
-                  #(state, [
-                    todo as "need run effect",
-                    // RunEffect(effect_counter, effect)
-                  ])
-                }
-                Spotless(service:, operation:) -> {
-                  case dict.get(state.tokens, service) {
-                    Error(Nil) -> {
-                      let effect_counter = state.effect_counter + 1
-                      let awaiting = Some(effect_counter)
-                      let mode = RunningShell(occured:, awaiting:, debug:)
-                      let state = State(..state, effect_counter:, mode:)
-                      #(state, [
-                        todo as "needs to be follow",
-                        // SpotlessConnect(
-                      //   effect_counter:,
-                      //   origin: state.origin,
-                      //   service:,
-                      // ),
-                      ])
-                    }
-                    Ok(token) -> {
-                      run_spotless_effect_with_token(
-                        state,
-                        occured,
-                        debug,
-                        service,
-                        token,
-                        operation,
-                      )
-                    }
-                  }
-                }
-              }
-            }
-            Error(reason) ->
-              runner_stoped(state, occured, #(reason, meta, env, k))
-          }
-        break.UndefinedReference(cid) ->
-          case dict.get(state.sync.cache.fragments, cid) {
-            Ok(cache.Fragment(value:, ..)) ->
-              run(block.resume(value, env, k), occured, state)
-            _ -> runner_stoped(state, occured, debug)
-          }
-        break.UndefinedRelease(package:, release: version, module:) ->
-          case package, version {
-            "./" <> name, 0 ->
-              case dict.get(state.modules, #(name, EygJson)) {
-                Ok(buffer) -> {
-                  let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  // echo buffer.module(buffer) == module
-                  // evaluate is for shell and expects a block and has effects
-                  // evaluate(source,[])
-                  let source = source |> tree.clear_annotation()
-                  case run_module(expression.execute(source, []), state) {
-                    Ok(value) ->
-                      run(block.resume(value, env, k), occured, state)
-                    Error(debug) -> runner_stoped(state, occured, debug)
-                  }
-                }
-                Error(Nil) -> runner_stoped(state, occured, debug)
-              }
-            _, _ ->
-              // These always return a value or an effect if working
-              case dict.get(state.sync.cache.releases, #(package, version)) {
-                Ok(release) if release.module == module ->
-                  case dict.get(state.sync.cache.fragments, module) {
-                    Ok(cache.Fragment(value:, ..)) ->
-                      run(block.resume(value, env, k), occured, state)
-                    _ -> runner_stoped(state, occured, debug)
-                  }
-                Ok(_) -> runner_stoped(state, occured, debug)
-                Error(Nil) -> runner_stoped(state, occured, debug)
-              }
-          }
-        _ -> runner_stoped(state, occured, debug)
-      }
-    }
-  }
-}
-
-fn run_spotless_effect_with_token(
-  state: State,
-  occured,
-  debug,
-  service: harness.Service,
-  token: String,
-  operation: operation.Operation(BitArray),
-) {
-  let service = harness.effect_label(service) |> string.lowercase
-  let path = "/proxy/" <> service <> operation.path
-  let origin = origin.https("spotless.run")
-
-  let request =
-    operation.to_request(operation, origin)
-    |> request.set_path(path)
-    |> request.set_header("authorization", "Bearer " <> token)
-
-  let effect = Fetch(request)
-  let effect_counter = state.effect_counter + 1
-  let awaiting = Some(effect_counter)
-  let mode = RunningShell(occured:, awaiting:, debug:)
-  let state = State(..state, effect_counter:, mode:)
-  #(state, [
-    todo as "need run effect",
-    // RunEffect(effect_counter, effect)
-  ])
-}
-
-/// module has no effects, it can return functions with effects so no access to state for internal effects
-fn run_module(
-  return: Result(istate.Value(Meta), _),
-  state: State,
-) -> Result(_, _) {
-  case return {
-    Ok(value) -> Ok(value)
-    Error(debug) -> {
-      let #(reason, _meta, env, k) = debug
-      case reason {
-        break.UndefinedReference(cid) ->
-          case dict.get(state.sync.cache.fragments, cid) {
-            Ok(cache.Fragment(value:, ..)) ->
-              run_module(expression.resume(value, env, k), state)
-            _ -> Error(debug)
-          }
-        break.UndefinedRelease(package:, release: version, module:) ->
-          case package, version {
-            "./" <> name, 0 ->
-              case dict.get(state.modules, #(name, EygJson)) {
-                Ok(buffer) -> {
-                  let source = e.to_annotated(p.rebuild(buffer.projection), [])
-                  // echo buffer.module(buffer) == module
-                  // evaluate is for shell and expects a block and has effects
-                  // evaluate(source,[])
-                  let source = source |> tree.clear_annotation()
-                  case run_module(expression.execute(source, []), state) {
-                    Ok(value) ->
-                      run_module(expression.resume(value, env, k), state)
-                    _ -> Error(debug)
-                  }
-                }
-                Error(Nil) -> Error(debug)
-              }
-            _, _ ->
-              // These always return a value or an effect if working
-              case dict.get(state.sync.cache.releases, #(package, version)) {
-                Ok(release) if release.module == module ->
-                  case dict.get(state.sync.cache.fragments, module) {
-                    Ok(cache.Fragment(value:, ..)) ->
-                      run_module(expression.resume(value, env, k), state)
-                    _ -> Error(debug)
-                  }
-                Ok(_) -> Error(debug)
-                Error(Nil) -> Error(debug)
-              }
-          }
-        _ -> Error(debug)
-      }
-    }
-  }
-}
-
-/// This must stay in the state module as it assumes that having access to the state object is it's concurrency model
-fn run_effect(effect, state: State) {
-  case effect {
-    harness.Abort(message) -> Abort(message)
-    harness.Alert(message) -> External(Alert(message))
-    harness.Copy(message) -> External(Copy(message))
-    harness.DecodeJson(raw) -> Internal(state:, reply: decode_json.sync(raw))
-    harness.Download(file) -> External(Download(file))
-    harness.Fetch(request) -> External(Fetch(request))
-    harness.Flip -> Internal(state:, reply: flip.encode(flip.sync()))
-
-    // harness.Follow(uri) -> External(Follow(uri))
-    // harness.Geolocation -> External(Geolocation)
-    // harness.Now -> External(Now)
-    // harness.Open(filename) -> {
-    //   let reply = case string.contains(filename, ".") {
-    //     True -> value.error(value.String("invalid module name"))
-    //     False -> value.ok(value.Record(dict.new()))
-    //   }
-    //   let state = State(..state, focused: Module(#(filename, EygJson)))
-    //   Internal(state:, reply:)
-    // }
-    harness.Paste -> External(Paste)
-    harness.Print(message) ->
-      Internal(state:, reply: print.encode(print.sync(message)))
-    harness.Prompt(message) -> External(Prompt(message))
-    harness.Random(max) -> External(Random(max))
-    // harness.ReadFile(file) -> {
-    //   let reply = case string.split_once(file, ".eyg.json") {
-    //     Ok(#(name, "")) ->
-    //       case dict.get(state.modules, #(name, EygJson)) {
-    //         Ok(buffer) ->
-    //           value.ok(
-    //             value.Binary(
-    //               dag_json.to_block(
-    //                 e.to_annotated(p.rebuild(buffer.projection), []),
-    //               ),
-    //             ),
-    //           )
-    //         Error(_) -> value.error(value.String("No file"))
-    //       }
-    //     _ -> value.error(value.String("No file"))
-    //   }
-    //   Internal(state:, reply:)
-    // }
-    harness.Visit(uri) -> External(Visit(uri))
-    harness.Spotless(service, operation) -> Spotless(service:, operation:)
-  }
-}
-
-fn runner_stoped(state, occured, debug) {
-  #(State(..state, mode: RunningShell(occured:, awaiting: None, debug:)), [])
 }
 
 // TODO test with sign effect
@@ -913,53 +689,6 @@ fn flush_timeout(state, reference) {
   }
 }
 
-fn spotless_connected(state, reference, service, result) {
-  let State(mode:, ..) = state
-  case mode {
-    // put awaiting false for the fact it's no longer running
-    RunningShell(
-      occured:,
-      awaiting:,
-      debug: #(break.UnhandledEffect(label, lift), _meta, _env, _k) as debug,
-    )
-      if awaiting == Some(reference)
-    -> {
-      case result {
-        Ok(token) -> {
-          let assert Ok(harness.Spotless(service: expected, operation:)) =
-            harness.cast(label, lift)
-          assert expected == service
-
-          let tokens = dict.insert(state.tokens, service, token)
-          let state = State(..state, tokens:)
-          run_spotless_effect_with_token(
-            state,
-            occured,
-            debug,
-            service,
-            token,
-            operation,
-          )
-        }
-        Error(reason) -> {
-          let mode = RunningShell(occured:, awaiting:, debug:)
-          #(
-            State(
-              ..state,
-              mode:,
-              user_error: Some(snippet.ActionFailed(
-                "run effect: " <> snag.line_print(reason),
-              )),
-            ),
-            [],
-          )
-        }
-      }
-    }
-    _ -> #(state, [])
-  }
-}
-
 fn input_message(state, message) {
   let State(mode:, ..) = state
   case mode {
@@ -1028,24 +757,6 @@ fn clipboard_write_complete(state, message) {
         }
         Error(_) -> fail(state, "copy")
       }
-    _ -> #(state, [])
-  }
-}
-
-fn effect_implementation_completed(state, reference, reply) {
-  let State(mode:, ..) = state
-  case mode {
-    // put awaiting false for the fact it's no longer running
-    RunningShell(
-      occured:,
-      awaiting:,
-      debug: #(break.UnhandledEffect(label, lift), _meta, env, k),
-    )
-      if awaiting == Some(reference)
-    -> {
-      let occured = [#(label, #(lift, reply)), ..occured]
-      run(block.resume(reply, env, k), occured, state)
-    }
     _ -> #(state, [])
   }
 }
@@ -1126,45 +837,4 @@ fn open_popup_completed(state: State, result) {
       #(state, [])
     }
   }
-}
-
-/// Used for testing
-pub fn replace_repl(state: State, new) {
-  let repl = buffer.from_projection(new, ctx(state, Repl))
-  State(..state, repl:)
-}
-
-/// Used for testing
-pub fn set_module(state, name, projection) {
-  let State(modules:, ..) = state
-  let modules =
-    dict.insert(
-      modules,
-      name,
-      buffer.from_projection(projection, ctx(state, Module(name))),
-    )
-  State(..state, modules:)
-}
-
-fn sync_message(state, message) {
-  let State(sync:, ..) = state
-  let before = sync.cache.fragments
-  let #(sync, actions) = client.update(sync, message)
-  let actions = list.map(actions, todo)
-  let before = set.from_list(dict.keys(before))
-  let after = set.from_list(dict.keys(sync.cache.fragments))
-  let diff = set.difference(after, before)
-  let repl =
-    buffer.add_references(state.repl, diff, ctx(State(..state, sync:), Repl))
-  let modules =
-    dict.map_values(state.modules, fn(name, buffer) {
-      buffer.add_references(
-        buffer,
-        diff,
-        ctx(State(..state, sync:), Module(name)),
-      )
-    })
-
-  let state = State(..state, sync:, repl:, modules:)
-  #(state, actions)
 }

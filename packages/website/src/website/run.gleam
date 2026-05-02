@@ -108,8 +108,8 @@ pub fn token(
   dict.get(authentiction, service)
 }
 
-pub type Run {
-  Concluded(Value)
+pub type Run(t) {
+  Concluded(t)
   Exception(state.Reason(Meta))
   Aborted(String)
   Handling(task_id: Int, env: state.Env(Meta), k: state.Stack(Meta))
@@ -128,9 +128,11 @@ fn handle(effect, env, k, c, context) {
 
 // This web_cli loop
 pub fn loop(
-  return: Return,
+  return: Result(t, _),
   context: Context(m),
-) -> #(Run, Context(m), List(browser.Effect(m))) {
+  resume: fn(state.Value(Meta), state.Env(Meta), state.Stack(Meta)) ->
+    Result(t, state.Debug(Meta)),
+) -> #(Run(t), Context(m), List(browser.Effect(m))) {
   case return {
     Ok(value) -> #(Concluded(value), context, [])
     Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
@@ -145,7 +147,7 @@ pub fn loop(
           browser.WriteToClipboard(text, handled(c, copy.encode, context))
           |> handle(env, k, c, updated)
         Ok(harness.DecodeJson(raw)) ->
-          loop(expression.resume(decode_json.sync(raw), env, k), context)
+          loop(resume(decode_json.sync(raw), env, k), context, resume)
         Ok(harness.Download(input)) ->
           browser.Download(input, fn() { context.handled(c, v.unit()) })
           |> handle(env, k, c, updated)
@@ -154,22 +156,22 @@ pub fn loop(
           |> handle(env, k, c, updated)
         Ok(harness.Flip) ->
           flip.encode(flip.sync())
-          |> expression.resume(env, k)
-          |> loop(context)
+          |> resume(env, k)
+          |> loop(context, resume)
         Ok(harness.Paste) ->
           browser.ReadFromClipboard(handled(c, paste.encode, context))
           |> handle(env, k, c, updated)
         Ok(harness.Print(message)) ->
           print.encode(print.sync(message))
-          |> expression.resume(env, k)
-          |> loop(context)
+          |> resume(env, k)
+          |> loop(context, resume)
         Ok(harness.Prompt(question)) ->
           browser.Prompt(question, handled(c, prompt.encode, context))
           |> handle(env, k, c, updated)
         Ok(harness.Random(max)) ->
           random.encode(random.sync(max))
-          |> expression.resume(env, k)
-          |> loop(context)
+          |> resume(env, k)
+          |> loop(context, resume)
         Ok(harness.Visit(uri)) ->
           browser.Visit(uri:, resume: fn(result) {
             let value = case result {
@@ -200,7 +202,7 @@ pub fn loop(
     }
     Error(#(break.UndefinedReference(cid), _meta, env, k)) -> {
       case get_module(context, cid) {
-        Found(value) -> loop(expression.resume(value, env, k), context)
+        Found(value) -> loop(resume(value, env, k), context, resume)
         // returns the fetching state the view looksup in the context a fetching state
         NotFound(_reason) -> #(Fetching(cid, env, k), context, [])
         Pending(updated, effects) -> #(Fetching(cid, env, k), updated, effects)
@@ -334,7 +336,7 @@ pub fn get_module_completed(
 fn pure_loop(
   return: Return,
   context: Context(m),
-) -> #(Run, Context(m), List(browser.Effect(_))) {
+) -> #(Run(_), Context(m), List(browser.Effect(_))) {
   case return {
     Ok(value) -> #(Concluded(value), context, [])
 

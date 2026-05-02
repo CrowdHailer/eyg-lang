@@ -16,7 +16,7 @@ import website/sync/cache
 
 pub type ShellEntry {
   Executed(
-    value: Option(istate.Value(Nil)),
+    value: Option(istate.Value(List(Int))),
     // The list of effects are kept in reverse order
     effects: List(runner.Effect(Nil)),
     source: readonly.Readonly,
@@ -135,7 +135,7 @@ pub fn update(shell, message) {
           shell,
           RunExternalHandler(ref, thunk),
         )
-        runner.Conclude(return) -> finalize(shell, return)
+        runner.Conclude(return) -> finalize(shell, todo)
       }
     }
     CurrentMessage(message) -> {
@@ -179,7 +179,7 @@ pub fn update(shell, message) {
           shell,
           RunExternalHandler(id, thunk),
         )
-        runner.Conclude(return) -> finalize(shell, return)
+        runner.Conclude(return) -> finalize(shell, todo)
       }
     }
     UserClickedPrevious(index) -> {
@@ -237,7 +237,7 @@ fn confirm(shell) {
       shell,
       RunExternalHandler(id, thunk),
     )
-    runner.Conclude(return) -> finalize(shell, return)
+    runner.Conclude(return) -> finalize(shell, todo)
   }
 }
 
