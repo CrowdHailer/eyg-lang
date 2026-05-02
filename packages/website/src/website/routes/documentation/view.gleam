@@ -502,19 +502,23 @@ fn example(state: state.State, id) {
       state.Navigating(id: _, failure: Some(message)) ->
         element.text(state.fail_message(message))
       state.Navigating(id: _, failure: None) -> element.none()
-      state.Manipulating(focused, manipulation.EnterInteger(value, _))
-        if focused == id
-      -> input.render_number(value) |> element.map(state.InputMessage)
-      state.Manipulating(focused, manipulation.EnterText(value, _))
-        if focused == id
-      -> input.render_text(value) |> element.map(state.InputMessage)
-      state.Manipulating(focused, manipulation.PickSingle(picker, _))
-        if focused == id
-      -> picker.render(picker) |> element.map(state.PickerMessage)
+      state.Manipulating(focused, user_input) if focused == id ->
+        case user_input {
+          manipulation.PickSingle(picker, _) ->
+            picker.render(picker) |> element.map(state.PickerMessage)
+          manipulation.PickCid(picker, _) ->
+            picker.render(picker) |> element.map(state.PickerMessage)
+          manipulation.EnterText(value, _) ->
+            input.render_text(value) |> element.map(state.InputMessage)
+          manipulation.EnterInteger(value, _) ->
+            input.render_number(value) |> element.map(state.InputMessage)
+          manipulation.PickRelease(picker, _) ->
+            picker.render(picker) |> element.map(state.PickerMessage)
+        }
+      state.Manipulating(..) -> element.none()
       state.ReadingFromClipboard(id: _, rebuild: _) -> element.none()
       state.Running(id: _, status: _) -> element.none()
       state.UnFocused -> element.none()
-      _ -> element.none()
     },
   ])
   // element.fragment([

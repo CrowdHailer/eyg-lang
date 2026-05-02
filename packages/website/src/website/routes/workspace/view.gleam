@@ -27,11 +27,11 @@ pub fn render(state: state.State) {
           modal([
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])
-        state.ChoosingPackage(picker:, ..) ->
+        state.Manipulating(manipulation.PickCid(picker, _)) ->
           modal([
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])
-        state.ChoosingModule(picker:, ..) ->
+        state.Manipulating(manipulation.PickRelease(picker, _)) ->
           modal([
             editor.render_picker(picker) |> element.map(state.PickerMessage),
           ])

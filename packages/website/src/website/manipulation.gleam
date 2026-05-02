@@ -8,13 +8,16 @@
 //// This doesn't handle Async like copy paste
 //// separate command mapping
 //// This module also includes the logic from inference types to a rendered version of that using debug.mono
+//// This builds on run_context and harness because it is the top understanding of these concept of manipulating in the browser
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
+import gleam/dict
 import gleam/list
 import gleam/listx
 import gleam/result
 import morph/picker
+import multiformats/cid/v1
 import website/components/snippet
 import website/harness/harness
 import website/routes/workspace/buffer.{type Buffer}
@@ -37,6 +40,8 @@ pub type Continue {
 
 pub type UserInput {
   PickSingle(picker.Picker, Rebuild(String))
+  PickCid(picker.Picker, Rebuild(v1.Cid))
+  PickRelease(picker.Picker, Rebuild(#(String, Int, v1.Cid)))
   EnterText(String, Rebuild(String))
   EnterInteger(Int, Rebuild(Int))
 }
@@ -258,6 +263,7 @@ fn do_assign_before(buffer) {
 }
 
 // EFFECTS perform, handle
+
 pub fn perform() {
   Operation(name: "perform", apply: do_perform)
 }
@@ -293,6 +299,57 @@ fn do_insert_builtin(buffer) {
   use rebuild <- result.map(buffer.insert_builtin(buffer))
   let hints = listx.value_map(infer.builtins(), snippet.render_poly)
   UserInput(PickSingle(picker.new("", hints), rebuild))
+}
+
+// References
+
+pub fn insert_reference() {
+  Operation(name: "insert reference", apply: do_insert_reference)
+}
+
+fn do_insert_reference(buffer) {
+  use rebuild <- result.map(buffer.insert_reference(buffer))
+  UserInput(PickCid(picker.new("", []), rebuild))
+}
+
+pub fn choose_module(modules) {
+  Operation(name: "choose module", apply: do_choose_module(_, modules))
+}
+
+fn do_choose_module(buffer, modules: dict.Dict(_, buffer.Buffer)) {
+  use rebuild <- result.map(buffer.insert_release(buffer))
+  let hints =
+    list.map(dict.to_list(modules), fn(module) {
+      let #(#(name, _ext), buffer) = module
+      #(name, snippet.render_poly(infer.poly_type(buffer.analysis)))
+    })
+  UserInput(PickRelease(picker.new("", hints), rebuild))
+}
+
+pub fn choose_release() {
+  Operation(name: "choose release", apply: do_choose_release)
+}
+
+fn do_choose_release(buffer) {
+  todo
+  // let buffer = active(state)
+  // use rebuild <- try(buffer.insert_release(buffer), state, "insert release")
+  // let hints =
+  //   list.map(package_choice(state), fn(release) {
+  //     todo
+  //     // let analysis.Release(package:, version:, ..) = release
+  //     // #(package, int.to_string(version))
+  //   })
+
+  // let picker = picker.new("", hints)
+  // let state = State(..state, mode: ChoosingPackage(picker:, rebuild:))
+  // #(state, [])
+}
+
+fn package_choice(state) {
+  todo
+  // let State(sync: client.Client(cache:, ..), ..) = state
+  // cache.package_index(cache)
 }
 
 /// create an operation from better actions that always resolve

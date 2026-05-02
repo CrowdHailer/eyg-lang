@@ -32,7 +32,6 @@ import website/harness/harness
 import website/manipulation
 import website/routes/workspace/buffer.{type Buffer}
 import website/run
-import website/sync/cache
 
 pub type State {
   State(
@@ -55,14 +54,6 @@ pub type State {
 pub type Mode {
   Editing
   Manipulating(manipulation.UserInput)
-  ChoosingPackage(
-    picker: picker.Picker,
-    rebuild: Rebuild(#(String, Int, v1.Cid)),
-  )
-  ChoosingModule(
-    picker: picker.Picker,
-    rebuild: Rebuild(#(String, Int, v1.Cid)),
-  )
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
   RunningShell(
@@ -215,12 +206,6 @@ fn active(state) {
   }
 }
 
-fn package_choice(state) {
-  todo
-  // let State(sync: client.Client(cache:, ..), ..) = state
-  // cache.package_index(cache)
-}
-
 pub type Message {
   // snippet render_project doesn't include any event handling
   // actual_render_project sets up events based off attributes on the html
@@ -366,7 +351,7 @@ fn user_pressed_command_key(state, key) {
     "ArrowUp" -> move_up(state)
     "ArrowDown" -> move_down(state)
     "Q" -> link_filesystem(state)
-    "q" -> choose_module(state)
+    "q" -> edit(state, manipulation.choose_module(state.modules))
     "w" -> edit(state, manipulation.call_with())
     "E" -> edit(state, manipulation.assign_before())
     "e" -> edit(state, manipulation.assign())
@@ -393,8 +378,8 @@ fn user_pressed_command_key(state, key) {
     "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> edit(state, manipulation.create_empty_list())
     "l" -> edit(state, manipulation.create_list())
-    "@" -> choose_release(state)
-    "#" -> insert_reference(state)
+    "@" -> edit(state, manipulation.choose_release())
+    "#" -> edit(state, manipulation.insert_reference())
     "Z" -> edit(state, manipulation.redo())
     "z" -> edit(state, manipulation.undo())
     "x" -> edit(state, manipulation.spread())
@@ -507,53 +492,6 @@ fn state_fail(state, action) {
 
 fn fail(state, action) {
   let state = state_fail(state, action)
-  #(state, [])
-}
-
-fn choose_module(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.insert_release(buffer), state, "insert release")
-  let hints =
-    list.map(dict.to_list(state.modules), fn(module) {
-      let #(#(name, _ext), buffer) = module
-      #(name, snippet.render_poly(infer.poly_type(buffer.analysis)))
-    })
-
-  let picker = picker.new("", hints)
-  let state = State(..state, mode: ChoosingModule(picker:, rebuild:))
-  #(state, [])
-}
-
-fn choose_release(state) {
-  let buffer = active(state)
-  use rebuild <- try(buffer.insert_release(buffer), state, "insert release")
-  let hints =
-    list.map(package_choice(state), fn(release) {
-      todo
-      // let analysis.Release(package:, version:, ..) = release
-      // #(package, int.to_string(version))
-    })
-
-  let picker = picker.new("", hints)
-  let state = State(..state, mode: ChoosingPackage(picker:, rebuild:))
-  #(state, [])
-}
-
-fn insert_reference(state) {
-  use rebuild <- try(
-    buffer.insert_reference(active(state)),
-    state,
-    "insert reference",
-  )
-  let rebuild = fn(cid, context) {
-    let assert Ok(#(cid, _)) = v1.from_string(cid)
-    rebuild(cid, context)
-  }
-  let state =
-    State(
-      ..state,
-      mode: Manipulating(manipulation.PickSingle(picker.new("", []), rebuild)),
-    )
   #(state, [])
 }
 
@@ -759,40 +697,40 @@ fn picker_message(state, message) {
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
-    ChoosingPackage(rebuild:, ..) ->
-      case message {
-        picker.Updated(picker:) -> #(
-          State(..state, mode: ChoosingPackage(picker:, rebuild:)),
-          [],
-        )
-        picker.Decided(label) -> {
-          case dict.get(todo, label) {
-            Ok(cache.Release(package:, version:, module:)) ->
-              State(..state, mode: Editing)
-              |> replace_buffer(rebuild(#(package, version, module), _))
-            Error(Nil) -> #(
-              State(
-                ..state,
-                user_error: Some(snippet.ActionFailed("choose package")),
-              ),
-              [],
-            )
-          }
-        }
-        picker.Dismissed -> #(State(..state, mode: Editing), [])
-      }
-    ChoosingModule(rebuild:, ..) ->
-      case message {
-        picker.Updated(picker:) -> #(
-          State(..state, mode: ChoosingModule(picker:, rebuild:)),
-          [],
-        )
-        picker.Decided(label) -> {
-          State(..state, mode: Editing)
-          |> replace_buffer(rebuild(#("./" <> label, 0, relative_cid(label)), _))
-        }
-        picker.Dismissed -> #(State(..state, mode: Editing), [])
-      }
+    // ChoosingPackage(rebuild:, ..) ->
+    //   case message {
+    //     picker.Updated(picker:) -> #(
+    //       State(..state, mode: ChoosingPackage(picker:, rebuild:)),
+    //       [],
+    //     )
+    //     picker.Decided(label) -> {
+    //       case dict.get(todo, label) {
+    //         Ok(cache.Release(package:, version:, module:)) ->
+    //           State(..state, mode: Editing)
+    //           |> replace_buffer(rebuild(#(package, version, module), _))
+    //         Error(Nil) -> #(
+    //           State(
+    //             ..state,
+    //             user_error: Some(snippet.ActionFailed("choose package")),
+    //           ),
+    //           [],
+    //         )
+    //       }
+    //     }
+    //     picker.Dismissed -> #(State(..state, mode: Editing), [])
+    //   }
+    // ChoosingModule(rebuild:, ..) ->
+    //   case message {
+    //     picker.Updated(picker:) -> #(
+    //       State(..state, mode: ChoosingModule(picker:, rebuild:)),
+    //       [],
+    //     )
+    //     picker.Decided(label) -> {
+    //       State(..state, mode: Editing)
+    //       |> replace_buffer(rebuild(#("./" <> label, 0, relative_cid(label)), _))
+    //     }
+    //     picker.Dismissed -> #(State(..state, mode: Editing), [])
+    //   }
     _ -> #(state, [])
   }
 }

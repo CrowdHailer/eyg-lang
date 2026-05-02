@@ -180,6 +180,32 @@ pub fn update(state: State, message) {
               [],
             )
           }
+        Manipulating(id, manipulation.PickCid(_picker, rebuild)) ->
+          case message {
+            picker.Updated(picker:) -> {
+              let mode = Manipulating(id, manipulation.PickCid(picker, rebuild))
+              #(State(..state, mode:), [])
+            }
+            picker.Decided(text) -> {
+              case v1.from_string(text) {
+                Ok(#(cid, _)) -> {
+                  let state =
+                    set_example(state, id, Example(rebuild(cid, infer.pure())))
+                  let state =
+                    State(..state, mode: Navigating(id:, failure: None))
+                  #(state, [])
+                }
+                Error(_) -> {
+                  echo "need error message for bad cid"
+                  #(state, [])
+                }
+              }
+            }
+            picker.Dismissed -> #(
+              State(..state, mode: Navigating(id:, failure: None)),
+              [],
+            )
+          }
         _ -> #(state, [])
       }
     }
@@ -262,8 +288,8 @@ fn user_pressed_key(state, key) {
     _, "ArrowLeft" -> navigate(state, "move left", buffer.previous)
     _, "ArrowUp" -> navigate(state, "move up", buffer.up)
     _, "ArrowDown" -> navigate(state, "move down", buffer.down)
-    // "Q" -> link_filesystem(state)
-    // "q" -> choose_module(state)
+    // _, "Q" -> link_filesystem(state)  Not supported in documentation
+    // _, "q" -> choose_module(state) Not supported in documentation
     _, "w" -> edit(state, manipulation.call_with())
     _, "E" -> edit(state, manipulation.assign_before())
     _, "e" -> edit(state, manipulation.assign())
@@ -292,8 +318,7 @@ fn user_pressed_key(state, key) {
     _, "l" -> edit(state, manipulation.create_list())
     // choose release is different type returned i.e. cid
     // _, "@" -> choose_release(state)
-    // _, "#" -> insert_reference(state)
-    // _, // _, choose release just checks is expression
+    _, "#" -> edit(state, manipulation.insert_reference())
     _, "Z" -> edit(state, manipulation.redo())
     _, "z" -> edit(state, manipulation.undo())
     _, "x" -> edit(state, manipulation.spread())
