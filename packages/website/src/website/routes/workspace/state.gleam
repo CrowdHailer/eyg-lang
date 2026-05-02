@@ -290,15 +290,11 @@ pub fn update(state: State, message) -> #(State, List(browser.Effect(Message))) 
     Ignore -> #(state, [])
     EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        RunningShell(occured, run.Handling(task_id:, env:, k:))
+        RunningShell(_occured, run.Handling(task_id:, env:, k:))
           if tid == task_id
-        -> {
-          let #(mode, context, effects) =
-            block.resume(value, env, k)
-            |> run.loop(state.context, block.resume)
-          let mode = RunningShell(occured, mode)
-          #(State(..state, mode:, context:), effects)
-        }
+        ->
+          block.resume(value, env, k)
+          |> loop(state)
         _ -> #(state, [])
       }
     SpotlessConnectCompleted(service, result) -> {
