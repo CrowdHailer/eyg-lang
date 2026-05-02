@@ -7,7 +7,6 @@ import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/dynamic/decode
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -34,7 +33,6 @@ import website/manipulation
 import website/routes/workspace/buffer.{type Buffer}
 import website/run
 import website/sync/cache
-import website/sync/client
 
 pub type State {
   State(
@@ -42,8 +40,6 @@ pub type State {
     mode: Mode,
     user_error: Option(snippet.Failure),
     focused: Target,
-    // The "Sequence ID" Pattern
-    effect_counter: Int,
     previous: List(shell.ShellEntry),
     after: Option(p.Projection),
     scope: List(#(String, istate.Value(Meta))),
@@ -52,9 +48,6 @@ pub type State {
     mounted_directory: Option(file_system.DirectoryHandle),
     flush_counter: Int,
     dirty: Dict(Filename, Nil),
-    // TODO remove sync and tokens
-    sync: client.Client,
-    tokens: dict.Dict(harness.Service, String),
     context: run.Context(Message),
   )
 }
@@ -103,26 +96,24 @@ pub type Meta =
 /// In not all cases does this exist
 /// Cant take ctx from state as sync messages or other might not be focused
 fn ctx(state, target) {
-  let State(modules:, scope:, sync:, ..) = state
+  let State(modules:, scope:, ..) = state
   case target {
-    Repl -> repl_context(scope, modules, sync.cache)
-    Module(_) -> module_context(scope, modules, sync.cache)
+    Repl -> repl_context(scope, modules)
+    Module(_) -> module_context(scope, modules)
   }
 }
 
 pub fn repl_context(
   scope: List(#(String, istate.Value(Meta))),
   modules: Dict(Filename, Buffer),
-  cache: cache.Cache,
 ) -> infer.Context {
-  module_context(scope, modules, cache)
+  module_context(scope, modules)
   |> infer.with_effects(harness.types(harness.effects()))
 }
 
 fn module_context(
   scope: List(#(String, istate.Value(Meta))),
   modules: Dict(Filename, Buffer),
-  cache: cache.Cache,
 ) {
   let #(bindings, tenv) = analysis.env_to_tenv(scope, [])
   let relative =
@@ -135,7 +126,7 @@ fn module_context(
       }
     })
     |> dict.from_list()
-  let references = dict.merge(relative, cache.type_map(cache))
+  let references = dict.merge(relative, dict.new())
   // TODO use a helper in infer that can accept this env to tenv environment 
   // but it requires moving the function out of morph analysis
   // infer.pure()
@@ -154,11 +145,10 @@ fn replace_buffer(state: State, gen) {
   let buffer = gen(ctx(state, state.focused))
   let state = set_buffer(state, buffer)
   let cids = infer.missing_references(buffer.analysis)
-  let #(sync, actions) = client.fetch_fragments(state.sync, cids)
+
   // let actions = list.map(actions, SyncAction)
   echo "todo "
   let actions = []
-  let state = State(..state, sync:)
 
   case state.focused {
     Repl -> #(state, actions)
@@ -190,29 +180,24 @@ pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
   let config.Config(origin:) = config
   let context =
     run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
-  let #(sync, actions) = client.new(origin) |> client.sync()
-  // let actions = list.map(actions, SyncAction)
-  echo "todo need the sync actions"
+
   let actions = []
   let scope = []
   let modules = dict.new()
   let state =
     State(
       origin:,
-      sync:,
       mode: Editing,
       user_error: None,
       focused: Repl,
-      effect_counter: 0,
       previous: [],
       after: None,
       scope:,
-      repl: buffer.empty(repl_context(scope, modules, sync.cache)),
+      repl: buffer.empty(repl_context(scope, modules)),
       modules:,
       mounted_directory: None,
       flush_counter: 0,
       dirty: dict.new(),
-      tokens: dict.new(),
       context:,
     )
   #(state, actions)
@@ -231,8 +216,9 @@ fn active(state) {
 }
 
 fn package_choice(state) {
-  let State(sync: client.Client(cache:, ..), ..) = state
-  cache.package_index(cache)
+  todo
+  // let State(sync: client.Client(cache:, ..), ..) = state
+  // cache.package_index(cache)
 }
 
 pub type Message {
@@ -543,8 +529,9 @@ fn choose_release(state) {
   use rebuild <- try(buffer.insert_release(buffer), state, "insert release")
   let hints =
     list.map(package_choice(state), fn(release) {
-      let analysis.Release(package:, version:, ..) = release
-      #(package, int.to_string(version))
+      todo
+      // let analysis.Release(package:, version:, ..) = release
+      // #(package, int.to_string(version))
     })
 
   let picker = picker.new("", hints)
@@ -649,10 +636,7 @@ fn loaded_files(state: State, result) {
       use source <- result.map(code)
 
       let buffer =
-        buffer.from_source(
-          source,
-          module_context(state.scope, state.modules, state.sync.cache),
-        )
+        buffer.from_source(source, module_context(state.scope, state.modules))
       #(name, buffer)
     })
   let modules = dict.from_list(modules)
@@ -782,7 +766,7 @@ fn picker_message(state, message) {
           [],
         )
         picker.Decided(label) -> {
-          case dict.get(state.sync.cache.packages, label) {
+          case dict.get(todo, label) {
             Ok(cache.Release(package:, version:, module:)) ->
               State(..state, mode: Editing)
               |> replace_buffer(rebuild(#(package, version, module), _))
