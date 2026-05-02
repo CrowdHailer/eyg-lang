@@ -14,6 +14,7 @@ import website/components/snippet
 import website/manipulation
 import website/routes/documentation/examples
 import website/routes/documentation/state
+import website/routes/workspace/buffer
 
 // doc h2
 fn title_to_id(text) {
@@ -475,6 +476,25 @@ pub fn render(state) {
 fn example(state: state.State, id) {
   let state.Example(buffer:) = state.get_example(state, id)
 
+  render_example(
+    buffer,
+    state.mode,
+    id,
+    state.UserClickedCode(id, _),
+    state.PickerMessage,
+    state.InputMessage,
+  )
+}
+
+// This is a bit back to front it shouldn't take the mode and ID instead we need a view model
+pub fn render_example(
+  buffer: buffer.Buffer,
+  mode: state.Mode,
+  id: String,
+  user_clicked_code: fn(List(Int)) -> m,
+  picker_message: fn(picker.Message) -> m,
+  input_message: fn(input.Message) -> m,
+) -> element.Element(m) {
   h.div([a.styles(snippet.embed_area_styles)], [
     h.pre(
       [
@@ -483,7 +503,7 @@ fn example(state: state.State, id) {
         event.on(
           "click",
           snippet.code_path_click_decoder()
-            |> decode.map(fn(path) { state.UserClickedCode(id:, path:) }),
+            |> decode.map(fn(path) { user_clicked_code(path) }),
         ),
       ],
       [
@@ -493,7 +513,7 @@ fn example(state: state.State, id) {
         ),
       ],
     ),
-    case state.mode {
+    case mode {
       state.Navigating(id: focused, failure: Some(failure)) if focused == id -> {
         h.div([a.class("p-2 leading-none bg-red-300")], [
           h.text(state.fail_message(failure)),
@@ -505,15 +525,15 @@ fn example(state: state.State, id) {
       state.Manipulating(focused, user_input) if focused == id ->
         case user_input {
           manipulation.PickSingle(picker, _) ->
-            picker.render(picker) |> element.map(state.PickerMessage)
+            picker.render(picker) |> element.map(picker_message)
           manipulation.PickCid(picker, _) ->
-            picker.render(picker) |> element.map(state.PickerMessage)
+            picker.render(picker) |> element.map(picker_message)
           manipulation.EnterText(value, _) ->
-            input.render_text(value) |> element.map(state.InputMessage)
+            input.render_text(value) |> element.map(input_message)
           manipulation.EnterInteger(value, _) ->
-            input.render_number(value) |> element.map(state.InputMessage)
+            input.render_number(value) |> element.map(input_message)
           manipulation.PickRelease(picker, _) ->
-            picker.render(picker) |> element.map(state.PickerMessage)
+            picker.render(picker) |> element.map(picker_message)
         }
       state.Manipulating(..) -> element.none()
       state.ReadingFromClipboard(id: _, rebuild: _) -> element.none()
@@ -521,18 +541,4 @@ fn example(state: state.State, id) {
       state.UnFocused -> element.none()
     },
   ])
-  // element.fragment([
-  //   example
-  //     |> view.render
-  //     |> element.map(state.ExampleMessage(identifier, _)),
-  //   case state.show_help {
-  //     True ->
-  //       h.pre(
-  //         [a.class("leading-none p-2 bg-gray-200")],
-  //         tree.lines(example.snippet.editable |> e.to_annotated([]))
-  //           |> list.map(fn(line) { element.text(line <> "\n") }),
-  //       )
-  //     False -> element.none()
-  //   },
-  // ])
 }

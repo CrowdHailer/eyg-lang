@@ -1,5 +1,6 @@
 import eyg/ir/dag_json
 import gleam/dict
+import gleam/json
 import gleam/option.{None, Some}
 import morph/editable as e
 import website/components/reload
@@ -30,30 +31,17 @@ pub const hot_reload_example = "{\"0\":\"l\",\"l\":\"initial\",\"v\":{\"0\":\"i\
 
 pub fn all() {
   [
-    // #(
-  //   closure_serialization_key,
-  //   init_example(closure_serialization, client.cache, effects),
-  // ),
-  // #(fetch_key, init_example(fetch_example, client.cache, effects)),
-  // #(twitter_key, init_example(twitter_example, client.cache, effects)),
-  // #(type_check_key, init_example(type_check_example, client.cache, effects)),
-  // #(
-  //   predictable_effects_key,
-  //   init_example(predictable_effects_example, client.cache, effects),
-  // ),
-  // #(hot_reload_key, {
-  //   let assert Ok(source) = dag_json.from_block(<<hot_reload_example:utf8>>)
-  //   reload.init(
-  //     source |> e.from_annotated |> e.to_annotated([]),
-  //     client.cache,
-  //   )
-  //   |> Reload
-  // }),
+    #(closure_serialization_key, from_source(closure_serialization)),
+    #(fetch_key, from_source(fetch_example)),
+    #(twitter_key, from_source(twitter_example)),
+    #(type_check_key, from_source(type_check_example)),
+    #(predictable_effects_key, from_source(predictable_effects_example)),
+    #(hot_reload_key, from_source(hot_reload_example)),
   ]
 }
 
-fn init_example(json, cache, extrinsic) {
-  todo
-  // example.from_block(<<json:utf8>>, cache, extrinsic)
-  // |> Simple
+fn from_source(source) {
+  let assert Ok(source) = json.parse(source, dag_json.decoder(Nil))
+  source
+  |> e.from_annotated
 }
