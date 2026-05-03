@@ -2,7 +2,6 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import multiformats/cid/v1
-import website/components/shell
 import website/config
 import website/harness/harness
 import website/routes/workspace/buffer
