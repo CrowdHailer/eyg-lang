@@ -22,7 +22,6 @@ import ogre/origin
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
-import website/components/runner
 import website/components/snippet
 import website/config
 import website/harness/browser
@@ -56,7 +55,7 @@ pub type Mode {
   // Once the run finishes the input is reset and running return
   RunningShell(
     occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
-    status: run.Run(#(Option(istate.Value(Meta)), runner.Scope(Meta))),
+    status: run.Run(#(Option(istate.Value(Meta)), istate.Scope(Meta))),
   )
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))

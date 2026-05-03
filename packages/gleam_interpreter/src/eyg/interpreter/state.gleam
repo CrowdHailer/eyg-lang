@@ -29,10 +29,13 @@ pub type Next(m) {
   Break(Result(Value(m), Debug(m)))
 }
 
+pub type Scope(m) =
+  List(#(String, Value(m)))
+
 // Env and Stack(m) also rely on each other
 pub type Env(m) {
   Env(
-    scope: List(#(String, Value(m))),
+    scope: Scope(m),
     references: dict.Dict(v1.Cid, Value(m)),
     builtins: dict.Dict(String, Builtin(m)),
   )
