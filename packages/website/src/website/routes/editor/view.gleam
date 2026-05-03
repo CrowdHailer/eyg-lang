@@ -14,7 +14,6 @@ import morph/picker
 import website/components/autocomplete
 import website/components/examples
 import website/components/output
-import website/components/shell
 import website/components/snippet
 import website/components/snippet/menu
 import website/components/vertical_menu
@@ -417,8 +416,13 @@ fn share_button(state: State) {
   )
 }
 
+pub type ShellFailure {
+  SnippetFailure(snippet.Failure)
+  NoMoreHistory
+}
+
 fn render_errors(
-  failure: option.Option(shell.ShellFailure),
+  failure: option.Option(ShellFailure),
   snippet: snippet.Snippet,
 ) -> element.Element(state.Message) {
   let errors = case snippet.analysis {
@@ -428,7 +432,7 @@ fn render_errors(
 
   case failure, errors {
     None, [] -> element.none()
-    Some(shell.SnippetFailure(failure)), _ ->
+    Some(SnippetFailure(failure)), _ ->
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
@@ -436,7 +440,7 @@ fn render_errors(
         ],
         [element.text(snippet.fail_message(failure))],
       )
-    Some(shell.NoMoreHistory), _ ->
+    Some(NoMoreHistory), _ ->
       h.div(
         [
           a.class("cover bg-red-300 px-2"),
