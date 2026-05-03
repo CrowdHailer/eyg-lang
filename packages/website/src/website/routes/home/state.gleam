@@ -53,7 +53,6 @@ pub fn init(config) {
 
 // Dont abstact as is useful because it uses the specific page State
 pub fn get_example(state: State, id) {
-  echo "hooooo"
   let assert Ok(buffer) = dict.get(state.examples, id)
   buffer
 }

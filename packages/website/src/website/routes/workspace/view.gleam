@@ -14,7 +14,7 @@ import morph/editable
 import morph/projection
 import website/components/snippet
 import website/manipulation
-import website/routes/editor
+import website/routes/editor/view as editor_view
 import website/routes/workspace/buffer
 import website/routes/workspace/state
 import website/run
@@ -25,25 +25,32 @@ pub fn render(state: state.State) {
       case state.mode {
         state.Manipulating(manipulation.PickSingle(picker, _)) ->
           modal([
-            editor.render_picker(picker) |> element.map(state.PickerMessage),
+            editor_view.render_picker(picker)
+            |> element.map(state.PickerMessage),
           ])
         state.Manipulating(manipulation.PickCid(picker, _)) ->
           modal([
-            editor.render_picker(picker) |> element.map(state.PickerMessage),
+            editor_view.render_picker(picker)
+            |> element.map(state.PickerMessage),
           ])
         state.Manipulating(manipulation.PickRelease(picker, _)) ->
           modal([
-            editor.render_picker(picker) |> element.map(state.PickerMessage),
+            editor_view.render_picker(picker)
+            |> element.map(state.PickerMessage),
           ])
         state.Manipulating(manipulation.EnterInteger(value, ..)) ->
-          modal([editor.render_number(value) |> element.map(state.InputMessage)])
+          modal([
+            editor_view.render_number(value) |> element.map(state.InputMessage),
+          ])
         state.Manipulating(manipulation.EnterText(value, ..)) ->
-          modal([editor.render_text(value) |> element.map(state.InputMessage)])
+          modal([
+            editor_view.render_text(value) |> element.map(state.InputMessage),
+          ])
         state.ReadingFromClipboard(..) -> element.none()
         state.WritingToClipboard -> element.none()
         state.RunningShell(occured:, status:) ->
           modal([
-            editor.render_effects_history(list.reverse(occured)),
+            editor_view.render_effects_history(list.reverse(occured)),
             case status {
               run.Concluded(return) ->
                 h.div([], [h.text(string.inspect(return))])
@@ -90,7 +97,7 @@ pub fn render(state: state.State) {
           case state.focused {
             state.Repl -> [
               h.text("Shell"),
-              editor.render_previous(
+              editor_view.render_previous(
                 state.previous,
                 state.PreviousMessage,
                 state.UserSelectedPrevious,
