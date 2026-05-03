@@ -22,9 +22,7 @@ import ogre/origin
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
-import website/components/readonly
 import website/components/runner
-import website/components/shell
 import website/components/snippet
 import website/config
 import website/harness/browser
@@ -39,7 +37,7 @@ pub type State {
     mode: Mode,
     user_error: Option(snippet.Failure),
     focused: Target,
-    previous: List(shell.ShellEntry),
+    previous: List(run.Previous),
     after: Option(p.Projection),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
@@ -222,7 +220,7 @@ pub type Message {
   InputMessage(input.Message)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
-  PreviousMessage(Int, readonly.Message)
+  PreviousMessage(Int, List(Int))
   UserSelectedPrevious(Int)
   PickerMessage(picker.Message)
   ShowDirectoryPickerCompleted(
@@ -250,7 +248,11 @@ pub fn update(state: State, message) -> #(State, List(browser.Effect(Message))) 
     InputMessage(message) -> input_message(state, message)
     ClipboardReadCompleted(result) -> clipboard_read_complete(state, result)
     ClipboardWriteCompleted(result) -> clipboard_write_complete(state, result)
-    PreviousMessage(_, _) -> #(state, [])
+    PreviousMessage(_, _) -> {
+      // TODO clicked prvious
+      echo "clicked previous"
+      #(state, [])
+    }
     UserSelectedPrevious(_) -> #(state, [])
     PickerMessage(message) -> picker_message(state, message)
     ShowDirectoryPickerCompleted(result) ->
@@ -307,12 +309,9 @@ fn loop(return, state) {
   let state = case run {
     run.Concluded(#(value, scope)) -> {
       // Type is shell entry
+      echo "todo effects"
       let entry =
-        shell.Executed(
-          value:,
-          effects: list.reverse([]),
-          source: readonly.new(p.rebuild(state.repl.projection)),
-        )
+        run.Previous(value:, effects: list.reverse([]), buffer: state.repl)
       let previous = [entry, ..state.previous]
 
       let repl = buffer.empty(ctx(State(..state, scope:), Repl))
@@ -434,9 +433,7 @@ fn move_up(state) {
     }
     Error(Nil) ->
       case state.focused == Repl, state.previous, state.after {
-        True, [entry, ..], None -> {
-          let repl =
-            buffer.from_projection(entry.source.projection, ctx(state, Repl))
+        True, [run.Previous(buffer: repl, ..), ..], None -> {
           #(State(..state, repl:, after: Some(state.repl.projection)), [])
         }
         _, _, _ -> fail(state, "move above")

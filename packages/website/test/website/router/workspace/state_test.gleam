@@ -3,7 +3,6 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/option.{Some}
 import ogre/origin
-import website/components/shell
 import website/config
 import website/harness/browser
 import website/routes/workspace/buffer
@@ -14,7 +13,7 @@ pub fn execute_expression_test() {
   let state = with_source(ir.add(ir.integer(7), ir.integer(21)))
   let assert #(state, []) = command(state, "Enter")
   assert state.Editing == state.mode
-  let assert [shell.Executed(value:, effects:, ..)] = state.previous
+  let assert [run.Previous(value:, effects:, ..)] = state.previous
   assert Some(v.Integer(28)) == value
   assert [] == effects
 }
@@ -24,7 +23,7 @@ pub fn execute_sync_effect_test() {
   let state = with_source(source)
   let assert #(state, []) = command(state, "Enter")
   assert state.Editing == state.mode
-  let assert [shell.Executed(value:, effects:, ..)] = state.previous
+  let assert [run.Previous(value:, effects:, ..)] = state.previous
   assert Some(v.Integer(0)) == value
   // TODO keep list of effects
   assert [] == effects
@@ -39,7 +38,7 @@ pub fn execute_async_effect_test() {
   let assert #(state, []) = state.update(state, resume())
 
   assert state.Editing == state.mode
-  let assert [shell.Executed(value:, effects:, ..)] = state.previous
+  let assert [run.Previous(value:, effects:, ..)] = state.previous
   assert Some(v.unit()) == value
   // TODO keep list of effects
   assert [] == effects

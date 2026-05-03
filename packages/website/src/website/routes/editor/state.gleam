@@ -10,7 +10,7 @@ import website/run
 
 pub type State {
   State(
-    previous: List(shell.ShellEntry),
+    previous: List(run.Previous),
     scope: List(state.Value(Meta)),
     buffer: buffer.Buffer,
     context: run.Context(Message),

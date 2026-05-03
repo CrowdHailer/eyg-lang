@@ -14,13 +14,13 @@ import morph/picker
 import website/components/autocomplete
 import website/components/examples
 import website/components/output
-import website/components/readonly
 import website/components/shell
 import website/components/snippet
 import website/components/snippet/menu
 import website/components/vertical_menu
 import website/routes/editor/state.{type State}
 import website/routes/workspace/buffer
+import website/run
 import website/ui
 
 fn not_a_modal(content, dismiss: a) {
@@ -209,7 +209,7 @@ pub fn render(state: State) -> element.Element(state.Message) {
 }
 
 fn render_shell(
-  previous,
+  previous: List(run.Previous),
   buffer: buffer.Buffer,
 ) -> element.Element(state.Message) {
   h.div([a.class("h-full flex flex-col")], [
@@ -312,12 +312,11 @@ pub fn render_previous(previous, on_readonly, on_previous) -> element.Element(a)
     list.index_map(list.reverse(previous), fn(p, i) {
       let i = count - i
       case p {
-        shell.Executed(value, effects, readonly) ->
+        run.Previous(value, effects, buffer) ->
           h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
             h.div([a.class("relative pr-8")], [
               h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
-                readonly.render(readonly)
-                |> element.map(on_readonly(i, _)),
+                ui.code(buffer.projection, buffer.analysis, on_readonly(i, _)),
               ]),
               h.button(
                 [

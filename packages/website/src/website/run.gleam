@@ -11,7 +11,7 @@ import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/http/request
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import multiformats/cid/v1
 import ogre/operation
@@ -26,6 +26,7 @@ import touch_grass/prompt
 import touch_grass/random
 import website/harness/browser
 import website/harness/harness
+import website/routes/workspace/buffer
 
 // This could be something not called a runner. loop function in this module would reuse it.
 // This cant be reused by workspace as the shell keeps history of effects
@@ -59,6 +60,9 @@ pub type Debug =
 
 pub type Return =
   Result(Value, Debug)
+
+pub type Effect =
+  #(String, #(Value, Value))
 
 /// Context is global over all the runs in a page,
 /// It contains the in memory cache or tokens and values for references
@@ -469,4 +473,12 @@ fn cascade_dependencies(
       )
     }
   }
+}
+
+pub type Previous {
+  Previous(
+    value: Option(state.Value(List(Int))),
+    effects: List(Effect),
+    buffer: buffer.Buffer,
+  )
 }
