@@ -472,9 +472,9 @@ pub fn render(state) {
   ])
 }
 
-// TODO remove render projection to the projection library
+// TODO remove render projection to the ui library
 fn example(state: state.State, id) {
-  let state.Example(buffer:) = state.get_example(state, id)
+  let buffer = state.get_example(state, id)
 
   render_example(
     buffer,

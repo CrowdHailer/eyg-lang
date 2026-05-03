@@ -25,13 +25,9 @@ import website/run
 pub type State {
   State(
     mode: Mode,
-    examples: Dict(String, Example),
+    examples: Dict(String, buffer.Buffer),
     context: run.Context(Message),
   )
-}
-
-pub type Example {
-  Example(buffer: buffer.Buffer)
 }
 
 pub type Rebuild(t) =
@@ -97,7 +93,7 @@ pub fn init(config) {
       let #(key, editable) = example
       let projection = navigation.first(editable)
       // keep evaluation on example, if it runs don't print type errors. but show them in the code
-      let example = Example(buffer.from_projection(projection, infer.pure()))
+      let example = buffer.from_projection(projection, infer.pure())
       #(key, example)
     })
   let examples = dict.from_list(examples)
@@ -109,9 +105,9 @@ pub fn init(config) {
 pub fn update(state: State, message) {
   case message {
     UserClickedCode(id:, path:) -> {
-      let Example(buffer:) = get_example(state, id)
+      let buffer = get_example(state, id)
       let buffer = buffer.focus_at(buffer, path) |> result.unwrap(buffer)
-      let state = set_example(state, id, Example(buffer:))
+      let state = set_example(state, id, buffer)
       let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
@@ -128,8 +124,7 @@ pub fn update(state: State, message) {
               #(state, [])
             }
             input.Confirmed(value) -> {
-              let state =
-                set_example(state, id, Example(rebuild(value, infer.pure())))
+              let state = set_example(state, id, rebuild(value, infer.pure()))
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
@@ -146,8 +141,7 @@ pub fn update(state: State, message) {
               #(state, [])
             }
             input.Confirmed(value) -> {
-              let state =
-                set_example(state, id, Example(rebuild(value, infer.pure())))
+              let state = set_example(state, id, rebuild(value, infer.pure()))
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
@@ -170,8 +164,7 @@ pub fn update(state: State, message) {
               #(State(..state, mode:), [])
             }
             picker.Decided(label) -> {
-              let state =
-                set_example(state, id, Example(rebuild(label, infer.pure())))
+              let state = set_example(state, id, rebuild(label, infer.pure()))
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
@@ -189,8 +182,7 @@ pub fn update(state: State, message) {
             picker.Decided(text) -> {
               case v1.from_string(text) {
                 Ok(#(cid, _)) -> {
-                  let state =
-                    set_example(state, id, Example(rebuild(cid, infer.pure())))
+                  let state = set_example(state, id, rebuild(cid, infer.pure()))
                   let state =
                     State(..state, mode: Navigating(id:, failure: None))
                   #(state, [])
@@ -219,7 +211,7 @@ pub fn update(state: State, message) {
                 Ok(expression) -> {
                   let buffer =
                     rebuild(e.from_annotated(expression), infer.pure())
-                  let example = Example(buffer:)
+                  let example = buffer
                   let state = set_example(state, id, example)
                   let state = State(..state, mode: Navigating(id, None))
                   #(state, [])
@@ -316,8 +308,7 @@ fn user_pressed_key(state, key) {
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
     _, "L" -> edit(state, manipulation.create_empty_list())
     _, "l" -> edit(state, manipulation.create_list())
-    // choose release is different type returned i.e. cid
-    // _, "@" -> choose_release(state)
+    _, "@" -> edit(state, manipulation.choose_release())
     _, "#" -> edit(state, manipulation.insert_reference())
     _, "Z" -> edit(state, manipulation.redo())
     _, "z" -> edit(state, manipulation.undo())
@@ -344,11 +335,11 @@ fn user_pressed_key(state, key) {
 }
 
 fn navigate(state: State, name, func) {
-  use id, Example(buffer:) <- is_editing(state)
+  use id, buffer <- is_editing(state)
 
   case func(buffer) {
     Ok(buffer) -> {
-      let state = set_example(state, id, Example(buffer:))
+      let state = set_example(state, id, buffer)
       let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
@@ -358,11 +349,11 @@ fn navigate(state: State, name, func) {
 
 // can't 1 for 1 map over a working state for the buffer because of the gen -> buffer step in resolved
 fn edit(state, manipulation) {
-  use id, Example(buffer:) <- is_editing(state)
+  use id, buffer <- is_editing(state)
   let manipulation.Operation(name:, apply:) = manipulation
   case apply(buffer) {
     Ok(manipulation.Resolved(gen)) -> {
-      let state = set_example(state, id, Example(buffer: gen(infer.pure())))
+      let state = set_example(state, id, gen(infer.pure()))
       let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
@@ -375,7 +366,7 @@ fn edit(state, manipulation) {
 
 /// don't do key press under a mode switch
 fn copy(state: State) {
-  use id, Example(buffer:) <- is_editing(state)
+  use id, buffer <- is_editing(state)
   case buffer.copy_source(buffer) {
     Ok(text) -> #(state, [
       browser.WriteToClipboard(text:, resume: fn(_) { Ignore }),
@@ -385,7 +376,7 @@ fn copy(state: State) {
 }
 
 fn paste(state: State) {
-  use id, Example(buffer:) <- is_editing(state)
+  use id, buffer <- is_editing(state)
   case buffer.set_expression(buffer) {
     Ok(rebuild) -> {
       let state = State(..state, mode: ReadingFromClipboard(id:, rebuild:))
@@ -396,7 +387,7 @@ fn paste(state: State) {
 }
 
 fn confirm(state: State) {
-  use id, Example(buffer:) <- is_editing(state)
+  use id, buffer <- is_editing(state)
   let #(mode, context, effects) =
     expression.execute(buffer.source(buffer), [])
     |> run.loop(state.context, expression.resume)

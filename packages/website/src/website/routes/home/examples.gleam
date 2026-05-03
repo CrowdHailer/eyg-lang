@@ -1,9 +1,6 @@
 import eyg/ir/dag_json
-import gleam/dict
 import gleam/json
-import gleam/option.{None, Some}
 import morph/editable as e
-import website/components/reload
 
 pub const closure_serialization_key = "closure_serialization"
 

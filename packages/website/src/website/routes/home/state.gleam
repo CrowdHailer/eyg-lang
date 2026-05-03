@@ -288,8 +288,7 @@ fn user_pressed_key(state, key) {
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
     _, "L" -> edit(state, manipulation.create_empty_list())
     _, "l" -> edit(state, manipulation.create_list())
-    // choose release is different type returned i.e. cid
-    // _, "@" -> choose_release(state)
+    _, "@" -> edit(state, manipulation.choose_release())
     _, "#" -> edit(state, manipulation.insert_reference())
     _, "Z" -> edit(state, manipulation.redo())
     _, "z" -> edit(state, manipulation.undo())
