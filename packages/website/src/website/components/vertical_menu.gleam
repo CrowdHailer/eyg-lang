@@ -7,7 +7,10 @@ import lustre/element
 import lustre/element/html as h
 import lustre/event
 
-pub fn one_col_menu(display_help, options) {
+pub fn one_col_menu(
+  display_help: Bool,
+  options: List(#(element.Element(a), String, a)),
+) -> List(element.Element(a)) {
   [
     // help_menu_button(state),
     // same as grid below
@@ -29,7 +32,12 @@ pub fn one_col_menu(display_help, options) {
   ]
 }
 
-pub fn two_col_menu(display_help, top, active, sub) {
+pub fn two_col_menu(
+  display_help: Bool,
+  top: List(#(element.Element(a), String, a)),
+  active: String,
+  sub: List(#(element.Element(a), String, a)),
+) -> List(element.Element(a)) {
   [
     h.div(
       [

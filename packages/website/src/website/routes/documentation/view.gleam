@@ -1,12 +1,9 @@
-import eyg/analysis/inference/levels_j/contextual as infer
-import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import lustre/event
 import morph/input
 import morph/picker
 import website/components
@@ -15,6 +12,7 @@ import website/manipulation
 import website/routes/documentation/examples
 import website/routes/documentation/state
 import website/routes/workspace/buffer
+import website/ui
 
 // doc h2
 fn title_to_id(text) {
@@ -496,23 +494,7 @@ pub fn render_example(
   input_message: fn(input.Message) -> m,
 ) -> element.Element(m) {
   h.div([a.styles(snippet.embed_area_styles)], [
-    h.pre(
-      [
-        a.class("language-eyg"),
-        a.styles(snippet.code_area_styles),
-        event.on(
-          "click",
-          snippet.code_path_click_decoder()
-            |> decode.map(fn(path) { user_clicked_code(path) }),
-        ),
-      ],
-      [
-        snippet.render_projection(
-          buffer.projection,
-          infer.all_errors(buffer.analysis),
-        ),
-      ],
-    ),
+    ui.code(buffer.projection, buffer.analysis, user_clicked_code),
     case mode {
       state.Navigating(id: focused, failure: Some(failure)) if focused == id -> {
         h.div([a.class("p-2 leading-none bg-red-300")], [

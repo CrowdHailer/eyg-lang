@@ -67,6 +67,7 @@ import plinth/javascript/console
 import website/components/autocomplete
 import website/components/snippet/menu
 import website/components/vertical_menu
+import website/ui
 
 pub const neo_blue_3 = "#87ceeb"
 
@@ -90,16 +91,7 @@ pub const embed_area_styles = [
   #("margin-top", ".5rem"),
 ]
 
-pub const code_area_styles = [
-  #("outline", "2px solid transparent"),
-  #("outline-offset", "2px"),
-  #("padding", ".5rem"),
-  #("white-space", "nowrap"),
-  #("overflow", "auto"),
-  #("margin-top", "auto"),
-  #("margin-bottom", "auto"),
-  #("height", "100%"),
-]
+const code_area_styles = ui.code_area_styles
 
 pub fn footer_area(color, contents) {
   h.div(
@@ -1087,7 +1079,10 @@ fn type_errors(snippet) {
   }
 }
 
-pub fn render_just_projection(state, autofocus) {
+pub fn render_just_projection(
+  state: Snippet,
+  autofocus: Bool,
+) -> element.Element(Message) {
   let Snippet(status: status, projection: proj, editable:, ..) = state
   let errors = type_errors(state)
   case status {
@@ -1107,29 +1102,6 @@ pub fn render_just_projection(state, autofocus) {
   }
 }
 
-pub fn code_path_click_decoder() {
-  decode.new_primitive_decoder("click", fn(event) {
-    let assert Ok(e) = pevent.cast_event(event)
-    let target = pevent.target(e)
-    let rev =
-      target
-      |> dynamicx.unsafe_coerce
-      |> dom_element.dataset_get("rev")
-    case rev {
-      Ok(rev) -> {
-        let assert Ok(rev) = case rev {
-          "" -> Ok([])
-          _ ->
-            string.split(rev, ",")
-            |> list.try_map(int.parse)
-        }
-        Ok(list.reverse(rev))
-      }
-      Error(Nil) -> Error([])
-    }
-  })
-}
-
 fn actual_render_projection(proj, autofocus, errors) {
   h.pre(
     [
@@ -1140,10 +1112,7 @@ fn actual_render_projection(proj, autofocus, errors) {
           a.attribute("tabindex", "0"),
           a.attribute("autofocus", "true"),
           // a.autofocus(True),
-          event.on(
-            "click",
-            code_path_click_decoder() |> decode.map(UserClickedCode),
-          ),
+          event.on("click", ui.code_path_click_decoder(UserClickedCode)),
           utils.on_hotkey(UserPressedCommandKey, UserFocusedOnCode),
         ]
         False -> [
@@ -1176,24 +1145,8 @@ fn actual_render_projection(proj, autofocus, errors) {
         ]
       }
     ],
-    [render_projection(proj, errors)],
+    [ui.render_projection(proj, errors)],
   )
-}
-
-pub fn render_projection(proj, errors) {
-  let #(focus, zoom) = proj
-  case focus, zoom {
-    p.Exp(e), [] ->
-      frame.Statements(render.statements(e, errors))
-      |> highlight.frame(highlight.focus())
-      |> frame.to_fat_line
-    _, _ -> {
-      // This is NOT reversed because zoom works from inside out
-      let frame = render.projection_frame(proj, render.Statements, errors)
-      render.push_render(frame, zoom, render.Statements, errors)
-      |> frame.to_fat_line
-    }
-  }
 }
 
 pub fn fail_message(reason) {

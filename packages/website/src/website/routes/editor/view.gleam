@@ -1,6 +1,5 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
-import eyg/interpreter/simple_debug
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -16,11 +15,13 @@ import website/components/autocomplete
 import website/components/examples
 import website/components/output
 import website/components/readonly
-import website/components/runner
 import website/components/shell
 import website/components/snippet
+import website/components/snippet/menu
 import website/components/vertical_menu
 import website/routes/editor/state.{type State}
+import website/routes/workspace/buffer
+import website/ui
 
 fn not_a_modal(content, dismiss: a) {
   element.fragment([
@@ -186,36 +187,31 @@ fn render_user_input(raw, type_, message) {
   ])
 }
 
-pub fn render(state: State) {
-  todo
-  // let show = state.display_help
-  // container(
-  //   render_menu_from_state(state)
-  //     |> list.map(fn(e) {
-  //       element.map(e, snippet.MessageFromMenu)
-  //       |> element.map(shell.CurrentMessage)
-  //       |> element.map(ShellMessage)
-  //     }),
-  //   [
-  //     render_pallet(state.shell.source)
-  //       |> element.map(shell.CurrentMessage)
-  //       |> element.map(ShellMessage),
-  //     h.div([a.class("absolute top-0 w-full bg-white")], [
-  //       help_menu_button(state),
-  //       fullscreen_menu_button(state),
-  //       share_button(state),
-  //     ]),
-  //     h.div([a.class("h-full")], [
-  //       render_shell(state.shell)
-  //       |> element.map(ShellMessage),
-  //       // h.div([], [element.text("hello")]),
-  //     ]),
-  //   ],
-  //   show,
-  // )
+pub fn render(state: State) -> element.Element(state.Message) {
+  let show = state.display_help
+  echo "open close menu"
+  let menu = menu.Closed
+  container(
+    render_menu_from_state(state.buffer, menu, state.display_help),
+    [
+      // render_pallet(state.shell.source)
+      //   |> element.map(shell.CurrentMessage)
+      //   |> element.map(ShellMessage),
+      h.div([a.class("absolute top-0 w-full bg-white")], [
+        help_menu_button(state),
+        fullscreen_menu_button(state),
+        share_button(state),
+      ]),
+      h.div([a.class("h-full")], [render_shell(state.previous, state.buffer)]),
+    ],
+    show,
+  )
 }
 
-fn render_shell(shell: shell.Shell(_)) {
+fn render_shell(
+  previous,
+  buffer: buffer.Buffer,
+) -> element.Element(state.Message) {
   h.div([a.class("h-full flex flex-col")], [
     h.div(
       [
@@ -223,7 +219,7 @@ fn render_shell(shell: shell.Shell(_)) {
         a.styles([#("min-height", "0")]),
       ],
       // This is all the examples if nothing already set
-      case list.length(shell.previous) {
+      case list.length(previous) {
         x if x < 4 -> [
           h.div([a.class("px-2 text-gray-700 cover")], [
             h.h2([a.class("texl-lg font-bold")], [element.text("The shell")]),
@@ -235,9 +231,10 @@ fn render_shell(shell: shell.Shell(_)) {
               list.map(examples.examples(), fn(e) {
                 let #(source, message) = e
                 h.li([], [
-                  h.button([event.on_click(shell.ParentSetSource(source))], [
-                    element.text(message),
-                  ]),
+                  h.text("examples"),
+                  // h.button([event.on_click(shell.ParentSetSource(source))], [
+                //   element.text(message),
+                // ]),
                 ])
               }),
             ),
@@ -246,12 +243,10 @@ fn render_shell(shell: shell.Shell(_)) {
         _ -> []
       },
     ),
-    render_previous(
-      shell.previous,
-      shell.PreviousMessage,
-      shell.UserClickedPrevious,
-    ),
-    render_errors(shell.failure, shell.source),
+    render_previous(previous, fn(_, _) { todo as "previous message" }, fn(_) {
+      todo
+    }),
+    // render_errors(shell.failure, shell.source),
     h.div(
       [
         a.class("cover border-t border-black font-mono bg-white grid"),
@@ -262,52 +257,52 @@ fn render_shell(shell: shell.Shell(_)) {
       ],
       [
         h.div([a.styles([#("max-height", "65vh"), #("overflow-y", "scroll")])], [
-          snippet.render_just_projection(shell.source, True),
+          ui.code(buffer.projection, buffer.analysis, fn(_) { todo }),
         ]),
-        case shell.runner {
-          runner.Runner(continue: False, ..) ->
-            h.button(
-              [
-                a.class(
-                  "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-                ),
-                event.on_click(snippet.UserPressedCommandKey("Enter")),
-              ],
-              [outline.play_circle()],
-            )
-          runner.Runner(awaiting: Some(_), ..) ->
-            h.span(
-              [
-                a.class(
-                  "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
-                ),
-              ],
-              [outline.arrow_path()],
-            )
-          runner.Runner(return: Error(#(reason, _, _, _)), ..) ->
-            h.span(
-              [
-                a.class(
-                  "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
-                ),
-                a.title(simple_debug.describe(reason)),
-              ],
-              [outline.exclamation_circle()],
-            )
-          _ ->
-            h.button(
-              [
-                a.class(
-                  "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-                ),
-                event.on_click(snippet.UserPressedCommandKey("Enter")),
-              ],
-              [outline.play_circle()],
-            )
-        },
+        // case shell.runner {
+      //   runner.Runner(continue: False, ..) ->
+      //     h.button(
+      //       [
+      //         a.class(
+      //           "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+      //         ),
+      //         event.on_click(snippet.UserPressedCommandKey("Enter")),
+      //       ],
+      //       [outline.play_circle()],
+      //     )
+      //   runner.Runner(awaiting: Some(_), ..) ->
+      //     h.span(
+      //       [
+      //         a.class(
+      //           "inline-block w-8 md:w-12 bg-blue-200 text-center text-xl",
+      //         ),
+      //       ],
+      //       [outline.arrow_path()],
+      //     )
+      //   runner.Runner(return: Error(#(reason, _, _, _)), ..) ->
+      //     h.span(
+      //       [
+      //         a.class(
+      //           "inline-block w-8 md:w-12 bg-red-200 text-center text-xl",
+      //         ),
+      //         a.title(simple_debug.describe(reason)),
+      //       ],
+      //       [outline.exclamation_circle()],
+      //     )
+      //   _ ->
+      //     h.button(
+      //       [
+      //         a.class(
+      //           "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+      //         ),
+      //         event.on_click(todo),
+      //       ],
+      //       [outline.play_circle()],
+      //     )
+      // },
       ],
     )
-      |> element.map(shell.CurrentMessage),
+      |> element.map(fn(x) { todo }),
   ])
 }
 
@@ -375,48 +370,58 @@ pub fn render_menu(status, projection, submenu, display_help) {
   }
 }
 
-// // The submenu is probably not part of the editor... yet
-// fn render_menu_from_state(state: State) {
-//   let State(shell: shell, ..) = state
-//   let snippet.Snippet(status: status, projection: projection, menu: menu, ..) =
-//     shell.source
-//   render_menu(status, projection, menu, state.display_help)
-// }
+// The submenu is probably not part of the editor... yet
+fn render_menu_from_state(
+  buffer: buffer.Buffer,
+  menu: menu.State,
+  display_help: Bool,
+) -> List(element.Element(state.Message)) {
+  let projection = buffer.projection
+  let status = snippet.Editing(snippet.Command)
+  // render_menu(status, projection, menu, display_help)
+  [element.text("menu")]
+}
 
-// fn help_menu_button(state: State) {
-//   h.button(
-//     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
-//     [
-//       vertical_menu.icon(
-//         outline.question_mark_circle(),
-//         "hide help",
-//         state.display_help,
-//       ),
-//     ],
-//   )
-// }
+fn help_menu_button(state: State) {
+  h.button(
+    [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(state.ToggleHelp)],
+    [
+      vertical_menu.icon(
+        outline.question_mark_circle(),
+        "hide help",
+        state.display_help,
+      ),
+    ],
+  )
+}
 
-// fn fullscreen_menu_button(state: State) {
-//   h.button(
-//     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-//     [vertical_menu.icon(outline.tv(), "fullscreen", state.display_help)],
-//   )
-// }
+fn fullscreen_menu_button(state: State) {
+  h.button(
+    [
+      a.class("hover:bg-gray-200 px-2 py-1"),
+      event.on_click(state.ToggleFullscreen),
+    ],
+    [vertical_menu.icon(outline.tv(), "fullscreen", state.display_help)],
+  )
+}
 
-// fn share_button(state: State) {
-//   h.button(
-//     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ShareCurrent)],
-//     [
-//       vertical_menu.icon(
-//         outline.arrow_up_on_square(),
-//         "share",
-//         state.display_help,
-//       ),
-//     ],
-//   )
-// }
+fn share_button(state: State) {
+  h.button(
+    [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(state.ShareCurrent)],
+    [
+      vertical_menu.icon(
+        outline.arrow_up_on_square(),
+        "share",
+        state.display_help,
+      ),
+    ],
+  )
+}
 
-fn render_errors(failure, snippet: snippet.Snippet) {
+fn render_errors(
+  failure: option.Option(shell.ShellFailure),
+  snippet: snippet.Snippet,
+) -> element.Element(state.Message) {
   let errors = case snippet.analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
@@ -454,10 +459,10 @@ fn render_errors(failure, snippet: snippet.Snippet) {
             _, _ ->
               h.div(
                 [
-                  event.on_click(
-                    snippet.UserClickedPath(path)
-                    |> shell.CurrentMessage,
-                  ),
+                  // event.on_click(
+                //   snippet.UserClickedPath(path)
+                //   |> shell.CurrentMessage,
+                // ),
                 ],
                 [element.text(debug.reason(reason))],
               )

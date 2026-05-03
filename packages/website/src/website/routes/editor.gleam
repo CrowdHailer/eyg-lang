@@ -1,3 +1,4 @@
+import gleam/javascript/promise
 import gleam/list
 import lustre
 import lustre/attribute as a
@@ -7,6 +8,7 @@ import lustre/element/html as h
 import mysig/asset
 import mysig/html
 import website/config
+import website/harness/browser
 import website/routes/common
 import website/routes/editor/state
 import website/routes/editor/view
@@ -60,42 +62,17 @@ pub fn client() {
 
 fn do_init(config) {
   let #(state, actions) = state.init(config)
-  #(state, effect.batch(list.map(actions, run)))
+  #(state, effect.batch(list.map(actions, effect)))
 }
 
 fn do_update(state, message) {
   let #(state, actions) = state.update(state, message)
-  #(state, effect.batch(list.map(actions, run)))
+  #(state, effect.batch(list.map(actions, effect)))
 }
 
-fn run(action) {
-  todo
-  // case action {
-  //   SyncAction(action) -> client.lustre_run([action], SyncMessage)
-  //   DoToggleFullScreen ->
-  //     effect.from(fn(_d) {
-  //       let w = window.self()
-  //       let doc = window.document(w)
-  //       case document.fullscreen_element(doc) {
-  //         Ok(_) -> document.exit_fullscreen(doc)
-  //         Error(Nil) -> {
-  //           let assert Ok(el) = document.get_element_by_id("app")
-  //           pelement.request_fullscreen(el)
-  //         }
-  //       }
-  //       Nil
-  //     })
-  //   FocusOnBuffer -> dispatch_nothing(snippet.focus_on_buffer)
-  //   FocusOnInput -> dispatch_nothing(snippet.focus_on_input)
-  //   ReadFromClipboard -> dispatch_to_snippet(snippet.read_from_clipboard())
-  //   ReadShellFromClipboard -> dispatch_to_shell(shell.read_from_clipboard())
-  //   RunExternalHandler(id:, thunk:) ->
-  //     dispatch_to_shell(
-  //       promise.map(thunk(), fn(reply) {
-  //         shell.RunnerMessage(runner.HandlerCompleted(id, reply))
-  //       }),
-  //     )
-  //   WriteToClipboad(text:) ->
-  //     dispatch_to_snippet(snippet.write_to_clipboard(text))
-  // }
+fn effect(action) {
+  effect.from(fn(dispatch) {
+    promise.map(browser.run(action), dispatch)
+    Nil
+  })
 }

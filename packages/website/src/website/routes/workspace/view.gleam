@@ -18,6 +18,7 @@ import website/routes/editor/view as editor_view
 import website/routes/workspace/buffer
 import website/routes/workspace/state
 import website/run
+import website/ui
 
 pub fn render(state: state.State) {
   h.div([a.class("h-full")], [
@@ -102,7 +103,7 @@ pub fn render(state: state.State) {
                 state.PreviousMessage,
                 state.UserSelectedPrevious,
               ),
-              snippet.render_projection(
+              ui.render_projection(
                 state.repl.projection,
                 contextual.all_errors(state.repl.analysis),
               ),
@@ -141,7 +142,7 @@ pub fn render(state: state.State) {
                     )
                 }
                 [
-                  snippet.render_projection(
+                  ui.render_projection(
                     buffer.projection,
                     contextual.all_errors(buffer.analysis),
                   ),
