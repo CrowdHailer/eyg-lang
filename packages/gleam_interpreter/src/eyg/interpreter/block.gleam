@@ -5,9 +5,6 @@ import gleam/dict
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-pub type Scope(m) =
-  List(#(String, state.Value(m)))
-
 const special = "!!special!!"
 
 // env is top env only updated by assigns
@@ -66,6 +63,6 @@ pub fn resume(
   value: state.Value(t),
   env: state.Env(t),
   k: state.Stack(t),
-) -> Result(#(Option(state.Value(t)), Scope(t)), state.Debug(t)) {
+) -> Result(#(Option(state.Value(t)), state.Scope(t)), state.Debug(t)) {
   loop(state.step(state.V(value), env, k), env.scope)
 }
