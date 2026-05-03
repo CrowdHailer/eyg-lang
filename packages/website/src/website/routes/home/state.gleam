@@ -10,7 +10,6 @@ import gleam/option.{None, Some}
 import gleam/result
 import morph/editable as e
 import morph/input
-import morph/navigation
 import morph/picker
 import multiformats/cid/v1
 import website/config
@@ -37,18 +36,11 @@ pub fn init(config) {
   let config.Config(origin: _) = config
   let context =
     run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
-  let examples =
-    list.map(examples.all(), fn(example) {
-      let #(key, editable) = example
-      let projection = navigation.first(editable)
-      // keep evaluation on example, if it runs don't print type errors. but show them in the code
-      let example = buffer.from_projection(projection, infer.pure())
-      #(key, example)
-    })
-  let examples = dict.from_list(examples)
+  let #(examples, context, effects) =
+    doc.init_collection(examples.all(), context)
 
   let state = State(doc.UnFocused, examples:, context:)
-  #(state, [])
+  #(state, effects)
 }
 
 // Dont abstact as is useful because it uses the specific page State

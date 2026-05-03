@@ -104,6 +104,10 @@ pub fn from_projection(projection, context) {
   )
 }
 
+pub fn reanalyse(buffer: Buffer, context: infer.Context) -> Buffer {
+  Buffer(..buffer, analysis: analyse(buffer.projection, context))
+}
+
 pub fn update_code(buffer, new, context) {
   let Buffer(history:, projection: old, ..) = buffer
   let history = history_new_entry(old, history)

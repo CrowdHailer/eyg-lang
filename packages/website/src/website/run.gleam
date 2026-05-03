@@ -256,6 +256,17 @@ pub type Lookup(m) {
   Pending(Context(m), List(browser.Effect(m)))
 }
 
+pub fn fetch_all(cids, context) {
+  list.fold(cids, #(context, []), fn(acc, cid) {
+    let #(context, effects) = acc
+    case get_module(context, cid) {
+      Found(_) -> acc
+      NotFound(_) -> acc
+      Pending(context, new) -> #(context, list.append(effects, new))
+    }
+  })
+}
+
 // cache doesn't deal with the errors
 pub fn get_module(context: Context(_), cid: v1.Cid) -> Lookup(m) {
   let Context(fetching:, modules:, ..) = context
@@ -413,6 +424,8 @@ fn cascade_dependencies(
                 // Resume evaluation with the newly resolved dependency
                 let #(run, context, eval_effs) =
                   pure_loop(expression.resume(value, env, k), context)
+
+                // TODO type check top  value
 
                 case run {
                   Concluded(val) -> {

@@ -11,13 +11,16 @@
 //// The harness specification is not shared with the cli specification because there are a few differences in effects available.
 //// Consistency accross platforms is managed by resusing touch_grass interfaces
 
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/value as v
+import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/list
 import gleam/uri
 import morph/analysis
+import multiformats/cid/v1
 import ogre/operation
 import touch_grass as tg
 import touch_grass/download
@@ -124,11 +127,21 @@ pub fn cast(
   }
 }
 
-pub fn types(harness: Harness(_, _)) {
+pub fn types(
+  harness: Harness(_, _),
+) -> List(#(String, #(t.Type(Int), t.Type(Int)))) {
   list.map(harness, fn(interface) {
     let Interface(name:, lift_type:, lower_type:, ..) = interface
     #(name, #(lift_type, lower_type))
   })
+}
+
+pub fn infer_context(
+  references: dict.Dict(v1.Cid, t.Type(#(Bool, Int))),
+) -> infer.Context {
+  infer.pure()
+  |> infer.with_references(references)
+  |> infer.with_effects(types(effects()))
 }
 
 pub fn decode_list(harness) {

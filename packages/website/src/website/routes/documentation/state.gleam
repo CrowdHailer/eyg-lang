@@ -33,9 +33,6 @@ pub type State {
 pub type Rebuild(t) =
   fn(t, infer.Context) -> buffer.Buffer
 
-// An edit status could be reused over the applications but viewing it would be separate
-// Change Editing -> Focused/Navigating
-// Manipulating is called editing, EditingStatus is there
 pub type Mode {
   Navigating(id: String, failure: Option(Failure))
   Manipulating(id: String, input: manipulation.UserInput)
@@ -85,21 +82,36 @@ pub fn set_example(state: State, id, snippet) {
 // snippet failure goes at top level
 pub fn init(config) {
   let config.Config(origin: _) = config
-  let context =
-    run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
+  let #(examples, context, effects) = init_collection(examples.all(), context())
+  let state = State(UnFocused, examples, context)
+  #(state, effects)
+}
 
+pub fn init_collection(sources, context) {
   let examples =
-    list.map(examples.all(), fn(example) {
+    list.map(sources, fn(example) {
       let #(key, editable) = example
-      let projection = navigation.first(editable)
-      // keep evaluation on example, if it runs don't print type errors. but show them in the code
-      let example = buffer.from_projection(projection, infer.pure())
-      #(key, example)
+      let buffer = buffer(editable)
+      #(key, buffer)
+    })
+  let missing_references =
+    list.flat_map(examples, fn(example) {
+      let #(_key, buffer) = example
+      infer.missing_references(buffer.analysis)
     })
   let examples = dict.from_list(examples)
+  let #(context, effects) = run.fetch_all(missing_references, context)
+  #(examples, context, effects)
+}
 
-  let state = State(UnFocused, examples, context)
-  #(state, [])
+pub fn context() {
+  run.empty(EffectHandled, SpotlessConnectCompleted, ModuleLookupCompleted)
+}
+
+fn buffer(editable) {
+  let projection = navigation.first(editable)
+  // keep evaluation on example, if it runs don't print type errors. but show them in the code
+  buffer.from_projection(projection, infer_context())
 }
 
 pub fn update(state: State, message) {
@@ -124,7 +136,8 @@ pub fn update(state: State, message) {
               #(state, [])
             }
             input.Confirmed(value) -> {
-              let state = set_example(state, id, rebuild(value, infer.pure()))
+              let state =
+                set_example(state, id, rebuild(value, infer_context()))
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
@@ -141,7 +154,8 @@ pub fn update(state: State, message) {
               #(state, [])
             }
             input.Confirmed(value) -> {
-              let state = set_example(state, id, rebuild(value, infer.pure()))
+              let state =
+                set_example(state, id, rebuild(value, infer_context()))
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
@@ -164,7 +178,8 @@ pub fn update(state: State, message) {
               #(State(..state, mode:), [])
             }
             picker.Decided(label) -> {
-              let state = set_example(state, id, rebuild(label, infer.pure()))
+              let state =
+                set_example(state, id, rebuild(label, infer_context()))
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
             }
@@ -182,7 +197,8 @@ pub fn update(state: State, message) {
             picker.Decided(text) -> {
               case v1.from_string(text) {
                 Ok(#(cid, _)) -> {
-                  let state = set_example(state, id, rebuild(cid, infer.pure()))
+                  let state =
+                    set_example(state, id, rebuild(cid, infer_context()))
                   let state =
                     State(..state, mode: Navigating(id:, failure: None))
                   #(state, [])
@@ -210,7 +226,7 @@ pub fn update(state: State, message) {
               case json.parse(text, dag_json.decoder(Nil)) {
                 Ok(expression) -> {
                   let buffer =
-                    rebuild(e.from_annotated(expression), infer.pure())
+                    rebuild(e.from_annotated(expression), infer_context())
                   let example = buffer
                   let state = set_example(state, id, example)
                   let state = State(..state, mode: Navigating(id, None))
@@ -247,6 +263,27 @@ pub fn update(state: State, message) {
     ModuleLookupCompleted(cid, result) -> {
       let #(context, done, effects) =
         run.get_module_completed(state.context, cid, result)
+      let ok =
+        list.filter_map(done, fn(result) {
+          let #(cid, result) = result
+          case result {
+            Ok(_value) -> Ok(cid)
+            Error(_) -> Error(Nil)
+          }
+        })
+      let examples =
+        dict.map_values(state.examples, fn(_k, buffer) {
+          let update =
+            list.any(ok, list.contains(
+              infer.missing_references(buffer.analysis),
+              _,
+            ))
+          case update {
+            True -> buffer.reanalyse(buffer, infer_context())
+            False -> buffer
+          }
+        })
+      let state = State(..state, examples:)
       // use the completed cid not the looked up cid as dependencies might have resolved
       case state.mode {
         Running(id, run.Fetching(module:, env:, k:)) ->
@@ -271,9 +308,13 @@ pub fn update(state: State, message) {
   }
 }
 
+fn infer_context() {
+  let references = dict.new()
+  harness.infer_context(references)
+}
+
 fn user_pressed_key(state, key) {
   let State(mode:, ..) = state
-  // set error to nothing
   case mode, key {
     _, "Escape" -> #(State(..state, mode: UnFocused), [])
     _, "ArrowRight" -> navigate(state, "move right", buffer.next)
@@ -290,7 +331,7 @@ fn user_pressed_key(state, key) {
     _, "t" -> edit(state, manipulation.insert_tag())
     _, "y" -> copy(state)
     _, "Y" -> paste(state)
-    // // TODO mode is authenticating
+
     // // you won't see much on the front page
     // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
     //   OpenPopup("/sign"),
@@ -353,7 +394,7 @@ fn edit(state, manipulation) {
   let manipulation.Operation(name:, apply:) = manipulation
   case apply(buffer) {
     Ok(manipulation.Resolved(gen)) -> {
-      let state = set_example(state, id, gen(infer.pure()))
+      let state = set_example(state, id, gen(infer_context()))
       let state = State(..state, mode: Navigating(id:, failure: None))
       #(state, [])
     }
