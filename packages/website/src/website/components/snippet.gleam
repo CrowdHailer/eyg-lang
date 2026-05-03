@@ -49,8 +49,6 @@ import morph/action
 import morph/analysis
 import morph/editable as e
 import morph/input
-import morph/lustre/frame
-import morph/lustre/highlight
 import morph/lustre/render
 import morph/navigation
 import morph/picker
