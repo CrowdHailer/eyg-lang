@@ -1,43 +1,16 @@
-import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/binding/error
-import eyg/interpreter/simple_debug
-import eyg/ir/tree as ir
-import gleam/int
-import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{None, Some}
-import gleroglero/outline
 import lustre
 import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
-import lustre/event
-import morph/analysis
-import morph/editable as e
-import morph/input
-import morph/picker
 import mysig/asset
 import mysig/html
-import plinth/browser/document
-import plinth/browser/element as pelement
-import plinth/browser/window
-import website/components/autocomplete
-import website/components/examples
-import website/components/output
-import website/components/readonly
-import website/components/runner
-import website/components/shell
-import website/components/snippet
-import website/components/vertical_menu
 import website/config
-import website/harness/harness
 import website/routes/common
 import website/routes/editor/state
 import website/routes/editor/view
 import website/routes/home
-import website/sync/client
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))

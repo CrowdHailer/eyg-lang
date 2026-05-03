@@ -11,7 +11,6 @@ import website/sync/client
 pub type State {
   State(
     sync: client.Client,
-    source: snippet.Snippet,
     shell: shell.Shell(harness.Effect),
     display_help: Bool,
   )
@@ -36,9 +35,7 @@ pub fn init(config) {
   let #(client, sync_task) = client.init(origin)
   let actions = list.map(sync_task, SyncAction)
   let shell = shell.init(harness.effects(), client.cache)
-  let source = e.from_annotated(ir.vacant())
-  let snippet = snippet.init(source)
-  let state = State(client, snippet, shell, False)
+  let state = State(client, shell, False)
   #(state, actions)
 }
 
@@ -46,7 +43,6 @@ pub type Message {
   ToggleHelp
   ToggleFullscreen
   ShareCurrent
-  SnippetMessage(snippet.Message)
   ShellMessage(shell.Message)
   SyncMessage(client.Message)
 }
@@ -66,43 +62,11 @@ pub fn update(state: State, message) -> #(State, List(Action)) {
       // Error action is response possible
       #(state, list.map(actions, SyncAction))
     }
-    SnippetMessage(message) -> {
-      let #(snippet, action) = snippet.update(state.source, message)
-      let State(display_help: display_help, ..) = state
 
-      let #(display_help, snippet_effects) = case action {
-        snippet.Nothing -> #(display_help, [])
-        snippet.NewCode -> #(display_help, [FocusOnBuffer])
-        snippet.Confirm -> #(display_help, [])
-        snippet.Failed(_failure) -> #(display_help, [])
-        snippet.ReturnToCode -> #(display_help, [FocusOnBuffer])
-        snippet.FocusOnInput -> #(display_help, [FocusOnInput])
-        snippet.ToggleHelp -> #(!display_help, [])
-        snippet.MoveAbove -> #(display_help, [])
-        snippet.MoveBelow -> #(display_help, [])
-        snippet.ReadFromClipboard -> #(display_help, [])
-
-        snippet.WriteToClipboard(text) -> #(display_help, [
-          WriteToClipboad(text:),
-        ])
-      }
-      // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      echo "We need the sync effect"
-      let state =
-        State(
-          ..state,
-          source: snippet,
-          // cache: cache,
-          display_help: display_help,
-        )
-      #(state, snippet_effects)
-    }
     ShellMessage(message) -> {
       let #(state, shell_effect) = shell_update(state, message)
-      let references =
-        snippet.references(state.source)
-        |> list.append(snippet.references(state.shell.source))
+      let references = snippet.references(state.shell.source)
+
       // TODO new references from shell message
       let #(sync, actions) = case references {
         [] -> #(state.sync, [])
