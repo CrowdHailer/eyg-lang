@@ -770,3 +770,23 @@ pub fn toggle_open(proj) {
     _ -> Error(Nil)
   }
 }
+
+pub fn next_vacant(projection) {
+  let bottom = p.zoom_in(projection)
+  let initial = p.path(bottom)
+  do_next_vacant(bottom, initial)
+}
+
+fn do_next_vacant(proj, initial) {
+  let next = next(proj)
+  case p.path(next) == initial {
+    True -> Error(Nil)
+    False ->
+      case next {
+        #(p.Exp(e.Vacant), _zoom) -> Ok(next)
+        // If at the top break, can search again to loop around
+        #(p.Exp(_), []) -> Error(Nil)
+        _ -> do_next_vacant(next, initial)
+      }
+  }
+}
