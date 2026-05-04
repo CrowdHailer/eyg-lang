@@ -1,0 +1,13 @@
+name = "topological"
+version = "1.0.0"
+
+description = "Topologically sort lists of any type."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/topological", tag_prefix = "topological-"  }
+links = [{ title = "Website", href = "https://eyg.run" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

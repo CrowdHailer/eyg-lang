@@ -18,7 +18,15 @@ jobs:
         gleam: ["1.15.3"]
         otp: ["28.4"]
         rebar3: ["3.25"]
-        package: ["gleam_analysis", "gleam_hub", "gleam_ir", "gleam_parser", "touch_grass", "untethered"]
+        package: [
+          "gleam_analysis",
+          "gleam_hub",
+          "gleam_ir",
+          "gleam_parser",
+          "topological",
+          "touch_grass",
+          "untethered"
+        ]
     steps:
       - uses: actions/checkout@v4
       - uses: erlef/setup-beam@v1
@@ -95,6 +103,7 @@ jobs:
           "gleam_parser",
           "gleam_x",
           "morph",
+          "topological",
           "touch_grass",
           "untethered",
           "website"
