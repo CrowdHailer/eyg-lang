@@ -2,6 +2,7 @@ import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/javascript/promise
 import gleam/list
@@ -29,12 +30,18 @@ pub fn await(ret) {
   }
 }
 
-pub fn execute(exp, scope) {
+pub fn execute(
+  exp: ir.Node(t),
+  scope: state.Scope(t),
+) -> Result(state.Value(t), state.Debug(t)) {
   loop(state.step(state.E(exp), new_env(scope), state.Empty(dict.new())))
 }
 
 // f should have all the required env information
-pub fn call(f, args) {
+pub fn call(
+  f: state.Value(t),
+  args: List(#(state.Value(t), t)),
+) -> Result(state.Value(t), state.Debug(t)) {
   let env = new_env([])
   let h = dict.new()
   let k =
@@ -43,6 +50,16 @@ pub fn call(f, args) {
       state.Stack(state.CallWith(value, env), meta, k)
     })
   loop(state.step(state.V(f), env, k))
+}
+
+pub fn call_field(
+  record: state.Value(t),
+  field: String,
+  meta: t,
+  args: List(#(state.Value(t), t)),
+) -> Result(state.Value(t), state.Debug(t)) {
+  let select = v.Partial(v.Select(field), [])
+  call(select, [#(record, meta), ..args])
 }
 
 // This assumes only scope needs passing around

@@ -29,10 +29,15 @@ pub type Next(m) {
   Break(Result(Value(m), Debug(m)))
 }
 
+pub type Scope(m) =
+  List(#(String, Value(m)))
+
 // Env and Stack(m) also rely on each other
+// Env as a type (not alias breaks recursive type definition up to continue)
+// builtins are passed in the env because builtin definition relies on interpreter state and we get a circular dependency
 pub type Env(m) {
   Env(
-    scope: List(#(String, Value(m))),
+    scope: Scope(m),
     references: dict.Dict(v1.Cid, Value(m)),
     builtins: dict.Dict(String, Builtin(m)),
   )

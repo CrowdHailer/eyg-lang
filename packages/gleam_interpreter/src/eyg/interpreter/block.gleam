@@ -3,7 +3,7 @@ import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 
 const special = "!!special!!"
 
@@ -43,13 +43,17 @@ pub fn inject(
   }
 }
 
-pub fn execute(exp: ir.Node(t), scope) {
+pub fn execute(
+  exp: ir.Node(t),
+  scope: state.Scope(t),
+) -> Result(#(Option(state.Value(t)), state.Scope(t)), state.Debug(t)) {
   let exp = inject(exp, [])
   let env = expression.new_env(scope)
   let h = dict.new()
   loop(state.step(state.E(exp), env, state.Empty(h)), env.scope)
 }
 
+/// TODO remove h
 pub fn call(f, args, env, h) {
   let k =
     list.fold_right(args, state.Empty(h), fn(k, arg) {
@@ -59,6 +63,10 @@ pub fn call(f, args, env, h) {
   loop(state.step(state.V(f), env, k), env.scope)
 }
 
-pub fn resume(value, env, k) {
+pub fn resume(
+  value: state.Value(t),
+  env: state.Env(t),
+  k: state.Stack(t),
+) -> Result(#(Option(state.Value(t)), state.Scope(t)), state.Debug(t)) {
   loop(state.step(state.V(value), env, k), env.scope)
 }
