@@ -1,6 +1,7 @@
 import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option
 import multiformats/cid/v1
 import untethered/ledger/schema
 
@@ -15,6 +16,26 @@ pub fn cid_decoder() {
 pub type ArchivedEntry =
   schema.ArchivedEntry
 
+pub fn package_entry(
+  cursor cursor: Int,
+  cid cid: v1.Cid,
+  payload payload: String,
+  entity entity: v1.Cid,
+  sequence sequence: Int,
+  previous previous: option.Option(v1.Cid),
+  type_ type_: String,
+) -> ArchivedEntry {
+  schema.ArchivedEntry(
+    cursor:,
+    cid:,
+    payload:,
+    entity:,
+    sequence:,
+    previous:,
+    type_:,
+  )
+}
+
 pub type PullParameters =
   schema.PullParameters
 
@@ -24,6 +45,8 @@ pub type PullResponse =
 pub const archived_entry_decoder = schema.archived_entry_decoder
 
 pub const pull_response_decoder = schema.pull_response_decoder
+
+pub const entries_response_encode = schema.entries_response_encode
 
 pub type ShareResponse =
   v1.Cid
