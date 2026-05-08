@@ -41,6 +41,7 @@ packages = [
 
 [requirements]
 eyg_cli = { path = "../gleam_cli" }
+eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 1.2.0 and < 2.0.0" }
 eyg_ir = { version = ">= 1.0.0 and < 2.0.0" }
 eyg_parser = { version = ">= 0.3.0 and < 1.0.0" }

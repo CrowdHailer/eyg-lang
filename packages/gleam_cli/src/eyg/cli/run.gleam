@@ -1,6 +1,7 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
+import eyg/hub/cache
 import eyg/interpreter/simple_debug
 import filepath
 import gleam/javascript/promise
@@ -21,7 +22,8 @@ pub fn execute(
   )
   use path <- promisex.try_sync(execute.resolve_relative(cwd, file))
   let dir = filepath.directory_name(path)
-  use result <- promise.map(execute.block(source, [], dir, config))
+  let state = execute.State(dir, config, cache.empty(), fn(_: Nil) { Nil })
+  use result <- promise.map(execute.block(source, [], state))
   case result {
     Ok(#(Some(value), _)) -> Ok(simple_debug.inspect(value))
     Ok(#(None, _)) -> Ok("")

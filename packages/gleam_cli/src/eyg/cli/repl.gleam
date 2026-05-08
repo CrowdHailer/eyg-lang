@@ -1,4 +1,5 @@
 import eyg/cli/internal/execute
+import eyg/hub/cache
 import eyg/interpreter/simple_debug
 import eyg/ir/tree as ir
 import eyg/parser
@@ -17,10 +18,11 @@ pub fn execute(config) {
     simplifile.current_directory()
     |> result.map_error(simplifile.describe_error),
   )
-  loop("", [], cwd, config)
+  let state = execute.State(cwd, config, cache.empty(), fn(_: Nil) { #(0, 0) })
+  loop("", [], state)
 }
 
-fn loop(buffer, scope, cwd, config) {
+fn loop(buffer, scope, state) {
   case input.input("> ") {
     Ok("") -> promise.resolve(Ok(""))
     Ok(code) -> {
@@ -33,23 +35,23 @@ fn loop(buffer, scope, cwd, config) {
               let #(label, value, at) = assignment
               #(ir.Let(label, value, acc), at)
             })
-          use result <- promise.await(execute.block(source, scope, cwd, config))
+          use result <- promise.await(execute.block(source, scope, state))
           case result {
             Ok(#(Some(value), scope)) -> {
               io.println(simple_debug.inspect(value))
-              loop("", scope, cwd, config)
+              loop("", scope, state)
             }
-            Ok(#(None, scope)) -> loop("", scope, cwd, config)
+            Ok(#(None, scope)) -> loop("", scope, state)
             Error(reason) -> {
               io.println_error(simple_debug.describe(reason))
-              loop("", scope, cwd, config)
+              loop("", scope, state)
             }
           }
         }
-        Error(UnexpectEnd) -> loop(buffer, scope, cwd, config)
+        Error(UnexpectEnd) -> loop(buffer, scope, state)
         Error(reason) -> {
           io.println(describe_reason(reason))
-          loop("", scope, cwd, config)
+          loop("", scope, state)
         }
       }
     }

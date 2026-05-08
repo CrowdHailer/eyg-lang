@@ -30,7 +30,9 @@ import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
+import gleam/int
 import gleam/list
+import gleam/pair
 import multiformats/cid/v1
 
 pub type Module(meta) {
@@ -124,6 +126,23 @@ pub fn release(
     Ok(_) -> Unavailable(Nil)
     Error(_) -> Unknown
   }
+}
+
+pub fn package(
+  cache: Cache(meta),
+  package: String,
+) -> Result(#(Int, v1.Cid), Nil) {
+  dict.to_list(cache.releases)
+  |> list.filter_map(fn(entry) {
+    let #(#(p, v), m) = entry
+    case p == package {
+      True -> Ok(#(v, m))
+      False -> Error(Nil)
+    }
+  })
+  |> list.sort(fn(r1, r2) { int.compare(pair.first(r1), pair.first(r2)) })
+  |> list.reverse
+  |> list.first
 }
 
 pub fn types(context: Cache(meta)) -> Dict(v1.Cid, binding.Poly) {

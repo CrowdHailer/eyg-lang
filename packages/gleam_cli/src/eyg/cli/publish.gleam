@@ -18,7 +18,7 @@ pub fn execute(package, file, config) {
   use source <- promisex.try_sync(source.read(file))
   use module <- promise.try_await(client.share_module(source, config.client))
 
-  use history <- promise.try_await(client.pull_package(client, package))
+  use history <- promise.try_await(client.pull_package(package, client))
   let previous = case history.entries {
     [] -> None
     [schema.ArchivedEntry(cid:, sequence:, ..), ..] -> Some(#(sequence, cid))

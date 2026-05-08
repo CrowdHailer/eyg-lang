@@ -6,8 +6,10 @@ CLI for running EYG programs and interacting with the EYG hub.
 
 For writing EYG source code check the [documentation](https://eyg.run/documentation) for language guide.
 There are script examples available in this repo in [example](./examples/)
+
 *The CLI supports running EYG IR files, saved as `.eyg.json` and textual code file, saved as `.eyg`.*
 
+*Set the remote to use with env variable `EYG_ORIGIN`.*
 
 ### Interpret a script
 
@@ -27,6 +29,21 @@ Starting the REPL is the default command for the CLI, so run as follows.
 
 ```sh
 eyg
+```
+
+### Create principle
+
+```sh
+eyg signatory initial <name>
+```
+
+The name is your personal alias for a principle.
+Good names are personal, work, etc.
+
+### Share
+
+```sh
+eyg share path/to/file.eyg.json
 ```
 
 ### Effects

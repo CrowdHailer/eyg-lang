@@ -2,18 +2,21 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/midas_bun
 import eyg/cli/internal/source
+import eyg/hub/cache.{type Cache}
 import eyg/hub/publisher
+import eyg/hub/release
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/expression
+import eyg/interpreter/state
 import eyg/interpreter/value
 import eyg/ir/tree as ir
 import filepath
 import gleam/fetchx
 import gleam/http/request
 import gleam/io
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/json
 import gleam/list
@@ -37,182 +40,251 @@ import touch_grass/file_system/write_file
 import touch_grass/http
 import untethered/ledger/schema
 
-pub fn block(source, scope, dir, config: config.Config) {
-  loop(block.execute(source, scope), dir, config.client)
+pub type State(meta) {
+  State(
+    cwd: String,
+    config: config.Config,
+    cache: Cache(meta),
+    map: fn(Nil) -> meta,
+  )
 }
 
-pub fn pure(source: ir.Node(t), dir, config: client.Client) {
-  pure_loop(expression.execute(source, []), dir, config)
+pub fn block(source, scope, state) {
+  loop(block.execute(source, scope), state)
 }
 
-fn loop(return, cwd, config: client.Client) -> promise.Promise(Result(_, _)) {
+pub type CacheUpdate(meta) {
+  Fetched(cid: v1.Cid, result: Result(ir.Node(meta), String))
+  Pulled(result: Result(List(schema.ArchivedEntry), String))
+}
+
+fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
+  let #(return, cache) = cache.loop(return, state.cache, block.resume)
+  let state = State(..state, cache:)
   case return {
     Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, _meta, env, k)) ->
       case reason {
         break.UnhandledEffect("AppendFile", lift) -> {
           use input <- promisex.try_sync(append_file.decode(lift))
-          let output = append_file(cwd, input)
-          loop(block.resume(append_file.encode(output), env, k), cwd, config)
+          let output = append_file(state.cwd, input)
+          loop(block.resume(append_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("DecodeJSON", lift) -> {
           use encoded <- promisex.try_sync(decode_json.decode(lift))
-          loop(block.resume(decode_json.sync(encoded), env, k), cwd, config)
+          loop(block.resume(decode_json.sync(encoded), env, k), state)
         }
         break.UnhandledEffect("DNSimple", lift) -> {
           use result <- promise.try_await(service_fetch("dnsimple", lift, 8080))
-          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+          loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("Fetch", lift) -> {
           use request <- promisex.try_sync(fetch.decode(lift))
           use result <- promise.await(fetchx.send_bits(request))
           let result = result.map_error(result, string.inspect)
-          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+          loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("GitHub", lift) -> {
           use result <- promise.try_await(service_fetch("github", lift, 8080))
-          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+          loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("Netlify", lift) -> {
           use result <- promise.try_await(service_fetch("netlify", lift, 8080))
-          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+          loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("Print", lift) -> {
           use message <- promisex.try_sync(cast.as_string(lift))
           io.print(message)
-          loop(block.resume(value.unit(), env, k), cwd, config)
+          loop(block.resume(value.unit(), env, k), state)
         }
         break.UnhandledEffect("ReadDirectory", lift) -> {
           use input <- promisex.try_sync(read_directory.decode(lift))
-          let output = read_directory(cwd, input)
-          loop(block.resume(read_directory.encode(output), env, k), cwd, config)
+          let output = read_directory(state.cwd, input)
+          loop(block.resume(read_directory.encode(output), env, k), state)
         }
         break.UnhandledEffect("ReadFile", lift) -> {
           use input <- promisex.try_sync(read_file.decode(lift))
-          let output = read_file(cwd, input)
-          loop(block.resume(read_file.encode(output), env, k), cwd, config)
+          let output = read_file(state.cwd, input)
+          loop(block.resume(read_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("Vimeo", lift) -> {
           use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
-          loop(block.resume(fetch.encode(result), env, k), cwd, config)
+          loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("WriteFile", lift) -> {
           use input <- promisex.try_sync(write_file.decode(lift))
-          let output = write_file(cwd, input)
-          loop(block.resume(write_file.encode(output), env, k), cwd, config)
+          let output = write_file(state.cwd, input)
+          loop(block.resume(write_file.encode(output), env, k), state)
         }
         break.UndefinedReference(cid) -> {
-          use value <- promise.try_await(lookup_reference(cid, cwd, config))
-          loop(block.resume(value, env, k), cwd, config)
+          use value <- promise.try_await(lookup_reference(cid, state))
+          loop(block.resume(value, env, k), state)
         }
-        break.UndefinedRelease(package:, release:, module:) -> {
-          use value <- promise.try_await(lookup_release(
-            package,
-            release,
-            module,
-            cwd,
-            config,
-          ))
-          loop(block.resume(value, env, k), cwd, config)
+        break.UndefinedRelease(package: p, release: v, module: m) -> {
+          use value <- promise.try_await(lookup_release(p, v, m, state))
+          loop(block.resume(value, env, k), state)
         }
+
         _ -> promise.resolve(Error(reason))
       }
   }
 }
 
+fn update(state: State(_)) {
+  let #(cache, effects) = cache.flush(state.cache)
+  case effects {
+    [] -> promise.resolve(State(..state, cache:))
+    _ -> {
+      use applicable <- promise.await(
+        promise.await_list(list.map(effects, do_effect(_, state))),
+      )
+      let cache = list.fold(applicable, cache, apply)
+      update(State(..state, cache:))
+    }
+  }
+}
+
+fn do_effect(
+  effect: cache.Action,
+  state: State(meta),
+) -> Promise(CacheUpdate(meta)) {
+  let client = state.config.client
+  case effect {
+    cache.FetchModule(dep) -> {
+      use result <- promise.map(client.get_module(dep, client))
+
+      case result {
+        Ok(Some(source)) ->
+          Fetched(dep, Ok(source |> ir.map_annotation(state.map)))
+        Ok(None) -> Fetched(dep, Error("unknown"))
+        Error(reason) -> Fetched(dep, Error(reason))
+      }
+    }
+    cache.PullPackages(offset:) -> {
+      use result <- promise.map(client.pull_packages(offset, client))
+      case result {
+        Ok(response) -> Pulled(Ok(response.entries))
+        Error(reason) -> Pulled(Error(reason))
+      }
+    }
+  }
+}
+
+fn apply(cache: Cache(_), update: CacheUpdate(_)) -> Cache(_) {
+  case update {
+    Fetched(cid:, result:) -> {
+      let #(cache, _done) = cache.fetched(cache, cid, result)
+      cache
+    }
+    Pulled(result:) ->
+      case result {
+        Ok(entries) -> {
+          list.fold(entries, cache, fn(cache, entry) {
+            let assert Ok(payload) =
+              json.parse(entry.payload, publisher.decoder())
+
+            let publisher.Release(package:, version:, module:) = payload.content
+            let release = release.Release(package:, version:, module:)
+            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
+            cache
+          })
+        }
+        Error(_reason) -> {
+          cache.Cache(..cache, cursor_status: cache.Pulled)
+        }
+      }
+  }
+}
+
 fn lookup_reference(
-  cid,
-  cwd,
-  config,
-) -> promise.Promise(Result(value.Value(_, _), _)) {
-  use result <- promise.await(client.get_module(cid, config))
-  case result {
-    Ok(Some(source)) -> {
-      use value <- promise.try_await(pure(source, cwd, config))
-      promise.resolve(Ok(value))
-    }
-    Ok(None) -> {
-      io.println("no module for #" <> v1.to_string(cid))
-      panic
-    }
-    Error(_) -> {
-      io.println("failed to fetch #" <> v1.to_string(cid))
+  cid: v1.Cid,
+  state: State(meta),
+) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
+  use state <- promise.map(update(state))
+  case cache.module(state.cache, cid) {
+    cache.Available(cache.Module(value:, ..)) -> Ok(value)
+    cache.Unavailable(reason) -> Error(reason)
+    cache.Unknown -> {
+      echo "failure to pull deps"
       panic
     }
   }
 }
 
-fn lookup_release(package, release, module, cwd, config) {
-  case package, release {
-    "./" <> _, 0 | "/" <> _, 0 | "../" <> _, 0 -> {
-      case resolve_relative(cwd, package) {
-        Ok(path) -> {
-          let source = case source.read(path) {
-            Ok(source) -> source
-            Error(reason) -> {
-              io.println(reason <> " " <> path)
-              panic
-            }
-          }
-
-          pure_loop(
-            expression.execute(source, []),
-            filepath.directory_name(path),
-            config,
-          )
-        }
-        Error(_) ->
-          promise.resolve(
-            Error(break.UndefinedRelease(package:, release:, module:)),
-          )
-      }
-    }
+fn lookup_release(package, version, module, state) {
+  case package, version {
+    "./" <> _, 0 | "/" <> _, 0 | "../" <> _, 0 ->
+      lookup_relative(package, version, module, state)
     _, 0 -> {
-      use response <- promise.await(client.pull_package(config, package))
-      let assert Ok(response) = response
-      case list.reverse(response.entries) {
-        [] ->
-          promise.resolve(
-            Error(break.UndefinedRelease(package:, release:, module:)),
-          )
-        [schema.ArchivedEntry(payload:, ..), ..] -> {
-          let assert Ok(entry) = json.parse(payload, publisher.decoder())
-          let cid = entry.content.module
-          use value <- promise.try_await(lookup_reference(cid, cwd, config))
-          promise.resolve(Ok(value))
+      let cache = cache.pull(state.cache)
+      use state <- promise.await(update(State(..state, cache:)))
+      case cache.package(state.cache, package) {
+        Ok(#(_, m)) -> lookup_reference(m, state)
+        Error(_) -> {
+          echo "package not found"
+          panic
         }
       }
     }
-    _, _ ->
+    _, _ -> {
+      let release = release.Release(package:, version:, module:)
+      case cache.release(state.cache, release) {
+        cache.Available(_m) -> lookup_relative(package, version, module, state)
+        cache.Unknown -> {
+          echo "package not found"
+          panic
+        }
+        cache.Unavailable(Nil) ->
+          break.UndefinedRelease(package:, release: version, module:)
+          |> Error
+          |> promise.resolve
+      }
+    }
+  }
+}
+
+fn lookup_relative(
+  package,
+  release,
+  module,
+  state: State(meta),
+) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
+  case resolve_relative(state.cwd, package) |> echo {
+    Ok(path) -> {
+      echo path
+      let source = case source.read(path) {
+        Ok(source) -> source |> ir.map_annotation(state.map)
+        Error(reason) -> {
+          io.println(reason <> " " <> path)
+          panic
+        }
+      }
+
+      pure_loop(expression.execute(source, []), state)
+    }
+    Error(_) ->
       promise.resolve(
         Error(break.UndefinedRelease(package:, release:, module:)),
       )
   }
 }
 
-fn pure_loop(return, cwd, config) {
+pub fn pure_loop(return, state: State(_)) {
+  let #(return, cache) = cache.loop(return, state.cache, expression.resume)
+  let state = State(..state, cache:)
   case return {
-    Ok(value) -> promise.resolve(Ok(value))
+    Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, _meta, env, k)) ->
       case reason {
         break.UndefinedReference(cid) -> {
-          use value <- promise.try_await(lookup_reference(cid, cwd, config))
-          pure_loop(expression.resume(value, env, k), cwd, config)
+          use value <- promise.try_await(lookup_reference(cid, state))
+          pure_loop(expression.resume(value, env, k), state)
         }
-        break.UndefinedRelease(package:, release:, module:) -> {
-          use result <- promise.await(lookup_release(
-            package,
-            release,
-            module,
-            cwd,
-            config,
-          ))
-          case result {
-            Ok(value) ->
-              pure_loop(expression.resume(value, env, k), cwd, config)
-            Error(reason) -> promise.resolve(Error(reason))
-          }
+        break.UndefinedRelease(package: p, release: v, module: m) -> {
+          use value <- promise.try_await(lookup_release(p, v, m, state))
+          pure_loop(expression.resume(value, env, k), state)
         }
+
         _ -> promise.resolve(Error(reason))
       }
   }

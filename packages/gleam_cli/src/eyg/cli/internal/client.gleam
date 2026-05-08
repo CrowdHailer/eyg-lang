@@ -5,7 +5,7 @@ import eyg/hub/publisher
 import eyg/hub/signatory
 import eyg/ir/tree as ir
 import gleam/fetchx
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
@@ -51,7 +51,7 @@ pub fn pull_principal(client: Client) {
 pub fn share_module(
   source: ir.Node(_),
   client: Client,
-) -> promise.Promise(Result(v1.Cid, String)) {
+) -> Promise(Result(v1.Cid, String)) {
   let operation = client.share_module(source)
   let request = operation.to_request(operation, client.origin)
   use result <- promise.map(fetchx.send_bits(request))
@@ -65,7 +65,7 @@ pub fn share_module(
 pub fn get_module(
   cid: v1.Cid,
   client: Client,
-) -> promise.Promise(Result(Option(ir.Node(Nil)), String)) {
+) -> Promise(Result(Option(ir.Node(Nil)), String)) {
   let operation = client.get_module(cid)
   let request = operation.to_request(operation, client.origin)
   use result <- promise.map(fetchx.send_bits(request))
@@ -82,7 +82,7 @@ pub fn submit_release(
   module: v1.Cid,
   previous: Option(#(Int, v1.Cid)),
   client: Client,
-) -> promise.Promise(Result(schema.ArchivedEntry, String)) {
+) -> Promise(Result(schema.ArchivedEntry, String)) {
   let #(sequence, previous) = case previous {
     Some(#(sequence, cid)) -> #(sequence + 1, Some(cid))
     None -> #(1, None)
@@ -112,9 +112,28 @@ pub fn submit_release(
   }
 }
 
-pub fn pull_package(client: Client, package) {
+pub fn pull_package(
+  package: String,
+  client: Client,
+) -> Promise(Result(schema.PullResponse, String)) {
   let parameters =
     schema.PullParameters(since: 0, limit: 1000, entities: [package])
+  let operation = client.pull_packages(parameters)
+  let request = operation.to_request(operation, client.origin)
+  use result <- promise.map(fetchx.send_bits(request))
+  case result {
+    Ok(response) ->
+      client.pull_signatories_response(response)
+      |> result.map_error(string.inspect)
+    Error(reason) -> Error(string.inspect(reason))
+  }
+}
+
+pub fn pull_packages(
+  since: Int,
+  client: Client,
+) -> Promise(Result(schema.PullResponse, String)) {
+  let parameters = schema.PullParameters(since:, limit: 1000, entities: [])
   let operation = client.pull_packages(parameters)
   let request = operation.to_request(operation, client.origin)
   use result <- promise.map(fetchx.send_bits(request))

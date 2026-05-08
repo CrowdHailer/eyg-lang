@@ -2,6 +2,8 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/platform
+import eyg/hub/cache
+import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/ir/dag_json
 import eyg/parser
@@ -69,7 +71,9 @@ fn check_index_json(package) {
   let index_path = dir <> "/" <> index_json
   let assert Ok(code) = simplifile.read(index_path)
   let assert Ok(source) = json.parse(code, dag_json.decoder(Nil))
-  use return <- promise.await(execute.pure(source, dir, eyg_origin))
+  let state = execute.State(dir, config, cache.empty(), fn(_) { Nil })
+  let return = expression.execute(source, [])
+  use return <- promise.await(execute.pure_loop(return, state))
   case return {
     Ok(_) -> {
       io.println("index.eyg.json Ok for " <> package)
@@ -86,8 +90,9 @@ fn check_index(package) {
   let index_path = dir <> "/" <> index
   let assert Ok(code) = simplifile.read(index_path)
   let assert Ok(source) = parser.all_from_string(code)
-
-  use return <- promise.await(execute.pure(source, dir, eyg_origin))
+  let state = execute.State(dir, config, cache.empty(), fn(_) { #(0, 0) })
+  let return = expression.execute(source, [])
+  use return <- promise.await(execute.pure_loop(return, state))
   case return {
     Ok(_) -> {
       io.println("index.eyg Ok for " <> package)
@@ -105,7 +110,8 @@ fn check_test(package) {
   let assert Ok(code) = simplifile.read(test_path)
   let assert Ok(source) = parser.all_from_string(code)
 
-  use return <- promise.await(execute.block(source, [], dir, config))
+  let state = execute.State(dir, config, cache.empty(), fn(_) { #(0, 0) })
+  use return <- promise.await(execute.block(source, [], state))
   case return {
     Ok(_) -> {
       io.println("test.eyg Ok for " <> package)
