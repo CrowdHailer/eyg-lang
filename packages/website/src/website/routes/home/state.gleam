@@ -1,280 +1,432 @@
-import eyg/interpreter/state as istate
-import eyg/interpreter/value
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/hub/cache
+import eyg/hub/publisher
+import eyg/hub/release
+import eyg/hub/schema
+import eyg/interpreter/expression
+import eyg/interpreter/state
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/javascript/promise
+import gleam/json
 import gleam/list
-import gleam/option.{type Option, None, Some}
-import lustre/effect
+import gleam/option.{None, Some}
+import gleam/result
+import morph/buffer
 import morph/editable as e
-import website/components/example
-import website/components/reload
-import website/components/runner
-import website/components/snippet
+import morph/input
+import morph/picker
+import multiformats/cid/v1
+import website/command
 import website/config
+import website/harness/browser
 import website/harness/harness
-import website/sync/client
+import website/manipulation as m
+import website/routes/documentation/state as doc
+import website/routes/home/examples
+import website/run
 
 pub type Meta =
   List(Int)
 
-pub type Value =
-  value.Value(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
-
-pub type Example {
-  Simple(example.Example)
-  // reload is parameterised by meta, Simple is not
-  Reload(reload.Reload(List(Int)))
-}
-
 pub type State {
-  State(sync: client.Client, active: Active, examples: Dict(String, Example))
-}
-
-pub type Active {
-  Editing(String, Option(snippet.Failure))
-  Nothing
-}
-
-pub const closure_serialization_key = "closure_serialization"
-
-const closure_serialization = "{\"0\":\"l\",\"l\":\"script\",\"v\":{\"0\":\"f\",\"l\":\"closure\",\"b\":{\"0\":\"l\",\"l\":\"js\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"to_javascript\"},\"a\":{\"0\":\"v\",\"l\":\"closure\"}},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"<script>\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"v\",\"l\":\"js\"}},\"a\":{\"0\":\"s\",\"v\":\"</script>\"}}}}},\"t\":{\"0\":\"l\",\"l\":\"name\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"v\",\"l\":\"value\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Alice\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Prompt\"},\"a\":{\"0\":\"s\",\"v\":\"What is your name?\"}}},\"t\":{\"0\":\"l\",\"l\":\"client\",\"v\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"l\",\"l\":\"message\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"Hello, \"}},\"a\":{\"0\":\"v\",\"l\":\"name\"}},\"t\":{\"0\":\"l\",\"l\":\"_\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Alert\"},\"a\":{\"0\":\"v\",\"l\":\"message\"}},\"t\":{\"0\":\"u\"}}}},\"t\":{\"0\":\"l\",\"l\":\"page\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"script\"},\"a\":{\"0\":\"v\",\"l\":\"client\"}},\"t\":{\"0\":\"l\",\"l\":\"page\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_to_binary\"},\"a\":{\"0\":\"v\",\"l\":\"page\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Download\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"name\"},\"a\":{\"0\":\"s\",\"v\":\"index.html\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"content\"},\"a\":{\"0\":\"v\",\"l\":\"page\"}},\"a\":{\"0\":\"u\"}}}}}}}}}"
-
-pub const fetch_key = "fetch"
-
-const fetch_example = "{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"@\",\"l\":{\"/\":\"baguqeeragtrji4oxi2ro6bpuo6bqiogjrwhvnmung3d7z5uf4hriebz5ujua\"},\"p\":\"standard\",\"r\":1},\"t\":{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"http\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"l\",\"l\":\"request\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"get\"},\"a\":{\"0\":\"v\",\"l\":\"http\"}},\"a\":{\"0\":\"s\",\"v\":\"catfact.ninja\"}},\"a\":{\"0\":\"s\",\"v\":\"/fact\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"$\",\"b\":{\"0\":\"l\",\"l\":\"body\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"body\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_from_binary\"},\"a\":{\"0\":\"v\",\"l\":\"body\"}}}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"Error\"},\"a\":{\"0\":\"u\"}}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Fetch\"},\"a\":{\"0\":\"v\",\"l\":\"request\"}}}}}}"
-
-pub const predictable_effects_key = "predictable_effects"
-
-pub const predictable_effects_example = "{\"0\":\"l\",\"l\":\"exec\",\"v\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"l\",\"l\":\"_\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Alert\"},\"a\":{\"0\":\"s\",\"v\":\"hello world!\"}},\"t\":{\"0\":\"s\",\"v\":\"done\"}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"h\",\"l\":\"Alert\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"f\",\"l\":\"resume\",\"b\":{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"resume\"},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"l\",\"l\":\"alerts\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"alerts\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"l\",\"l\":\"return\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"return\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"alerts\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"v\",\"l\":\"value\"}},\"a\":{\"0\":\"v\",\"l\":\"alerts\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"return\"},\"a\":{\"0\":\"v\",\"l\":\"return\"}},\"a\":{\"0\":\"u\"}}}}}}}}},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"l\",\"l\":\"return\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"exec\"},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"alerts\"},\"a\":{\"0\":\"ta\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"return\"},\"a\":{\"0\":\"v\",\"l\":\"return\"}},\"a\":{\"0\":\"u\"}}}}}}}"
-
-pub const type_check_key = "type_check"
-
-pub const type_check_example = "{\"0\":\"l\",\"l\":\"user\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"age\"},\"a\":{\"0\":\"i\",\"v\":71}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"name\"},\"a\":{\"0\":\"s\",\"v\":\"Eve\"}},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"l\",\"l\":\"total\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_add\"},\"a\":{\"0\":\"i\",\"v\":10}},\"a\":{\"0\":\"s\",\"v\":\"hello\"}},\"t\":{\"0\":\"l\",\"l\":\"address\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"address\"},\"a\":{\"0\":\"v\",\"l\":\"user\"}},\"t\":{\"0\":\"v\",\"l\":\"sum\"}}}}"
-
-pub const twitter_key = "twitter"
-
-pub const twitter_example = "{\"0\":\"l\",\"l\":\"message\",\"v\":{\"0\":\"s\",\"v\":\"I've just finished the EYG introduction\"},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Tweeted successfully\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Failed to send tweet.\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Twitter.Tweet\"},\"a\":{\"0\":\"v\",\"l\":\"message\"}}}}"
-
-pub const hot_reload_key = "hot_reload"
-
-pub const hot_reload_example = "{\"0\":\"l\",\"l\":\"initial\",\"v\":{\"0\":\"i\",\"v\":10},\"t\":{\"0\":\"l\",\"l\":\"handle\",\"v\":{\"0\":\"f\",\"l\":\"state\",\"b\":{\"0\":\"f\",\"l\":\"message\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_add\"},\"a\":{\"0\":\"v\",\"l\":\"state\"}},\"a\":{\"0\":\"i\",\"v\":1}}}},\"t\":{\"0\":\"l\",\"l\":\"render\",\"v\":{\"0\":\"f\",\"l\":\"count\",\"b\":{\"0\":\"l\",\"l\":\"count\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"count\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"the total is \"}},\"a\":{\"0\":\"v\",\"l\":\"count\"}}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"render\"},\"a\":{\"0\":\"v\",\"l\":\"render\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"handle\"},\"a\":{\"0\":\"v\",\"l\":\"handle\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"init\"},\"a\":{\"0\":\"v\",\"l\":\"initial\"}},\"a\":{\"0\":\"u\"}}}}}}}"
-
-fn init_example(json, cache, extrinsic) {
-  example.from_block(<<json:utf8>>, cache, extrinsic)
-  |> Simple
+  State(
+    mode: doc.Mode,
+    examples: Dict(String, buffer.Buffer),
+    context: run.Context(Message),
+  )
 }
 
 pub fn init(config) {
   let config.Config(origin:) = config
-  let #(client, init_tasks) = client.init(origin)
-  let effects = harness.effects()
-  let examples =
-    [
-      #(
-        closure_serialization_key,
-        init_example(closure_serialization, client.cache, effects),
-      ),
-      #(fetch_key, init_example(fetch_example, client.cache, effects)),
-      #(twitter_key, init_example(twitter_example, client.cache, effects)),
-      #(type_check_key, init_example(type_check_example, client.cache, effects)),
-      #(
-        predictable_effects_key,
-        init_example(predictable_effects_example, client.cache, effects),
-      ),
-      #(hot_reload_key, {
-        let assert Ok(source) = dag_json.from_block(<<hot_reload_example:utf8>>)
-        reload.init(
-          source |> e.from_annotated |> e.to_annotated([]),
-          client.cache,
-        )
-        |> Reload
-      }),
-    ]
-    |> dict.from_list
+  let context =
+    run.empty(
+      origin,
+      EffectHandled,
+      SpotlessConnectCompleted,
+      ModuleLookupCompleted,
+      PullPackagesCompleted,
+    )
+    |> run.pull()
 
-  let missing_cids = missing_refs(examples)
-  let #(client, sync_tasks) = client.fetch_fragments(client, missing_cids)
-  let state = State(client, Nothing, examples)
+  let #(examples, context) = doc.init_collection(examples.all(), context)
+  let #(context, effects) = run.flush(context)
 
-  #(state, client.lustre_run(list.append(init_tasks, sync_tasks), SyncMessage))
-}
+  // TODO move to a reload_buffer.create 
+  // typing should be able to do a typecheck against, that would show the actual required type
+  // let assert Ok(buffer) = dict.get(examples, examples.hot_reload_key)
 
-fn missing_refs(examples) {
-  dict.fold(examples, [], fn(acc, _key, example) {
-    case example {
-      Simple(example.Example(snippet:, ..))
-      | Reload(reload.Reload(snippet:, ..)) ->
-        snippet.references(snippet)
-        |> list.append(acc)
-        |> list.unique
-    }
-  })
+  // let #(run, context, _effects) =
+  //   expression.execute(buffer.source(buffer), [])
+  //   |> run.loop(context, expression.resume)
+  // case run {
+  //   run.Concluded(mod) -> {
+  //     case expression.call_field(mod, "init", [], []) {
+  //       Ok(app_state) -> todo
+  //       Error(_) -> todo
+  //     }
+  //   }
+  //   run.Exception(_) -> todo
+  //   run.Aborted(_) -> todo
+  //   run.Handling(task_id:, env:, k:) -> todo
+  //   run.Fetching(module:, env:, k:) -> todo
+  // }
+
+  let state = State(doc.UnFocused, examples:, context:)
+  #(state, effects)
 }
 
 // Dont abstact as is useful because it uses the specific page State
 pub fn get_example(state: State, id) {
-  let assert Ok(snippet) = dict.get(state.examples, id)
-  snippet
+  let assert Ok(buffer) = dict.get(state.examples, id)
+  buffer
 }
 
-pub fn set_example(state: State, id, snippet) {
-  State(..state, examples: dict.insert(state.examples, id, snippet))
+pub fn set_example(state: State, id, buffer) {
+  State(..state, examples: dict.insert(state.examples, id, buffer))
+}
+
+fn continue(state, id, gen) {
+  let State(context:, ..) = state
+  let buffer = gen(infer_context(context))
+  let state = set_example(state, id, buffer)
+  // reload key or type in the example or metadata 
+  let missing_references = infer.missing_references(buffer.analysis)
+  let context = run.fetch_all(missing_references, context)
+  let #(context, effects) = run.flush(context)
+  let state = State(..state, mode: doc.Navigating(id:, failure: None), context:)
+  #(state, effects)
 }
 
 pub type Message {
+  UserClickedCode(id: String, path: List(Int))
+  UserPressedKey(key: String)
+  InputMessage(input.Message)
+  PickerMessage(picker.Message)
 
-  SimpleMessage(String, example.Message)
-  ReloadMessage(String, reload.Message(List(Int)))
-  SyncMessage(client.Message)
-}
-
-fn dispatch_to_snippet(id, promise) {
-  effect.from(fn(d) {
-    promise.map(promise, fn(message) {
-      d(SimpleMessage(id, example.SnippetMessage(message)))
-    })
-    Nil
-  })
-}
-
-fn dispatch_to_runner(id, promise) {
-  effect.from(fn(d) {
-    promise.map(promise, fn(message) {
-      d(SimpleMessage(id, example.RunnerMessage(message)))
-    })
-    Nil
-  })
-}
-
-fn dispatch_nothing(_promise) {
-  effect.none()
+  ClipboardReadCompleted(Result(String, String))
+  Ignore
+  EffectHandled(task_id: Int, value: state.Value(Meta))
+  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
+  PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }
 
 pub fn update(state: State, message) {
-  case message {
-    SimpleMessage(id, message) -> {
-      let state = close_other_examples(state, id)
-      let example = get_example(state, id)
-      case example {
-        Simple(example) -> {
-          let #(example, action) = example.update(example, message)
-          let state = set_example(state, id, Simple(example))
-          let #(failure, action) = case action {
-            example.Nothing -> #(None, effect.none())
-            example.Failed(failure) -> #(Some(failure), effect.none())
-            example.ReturnToCode -> #(
-              None,
-              dispatch_nothing(snippet.focus_on_buffer()),
-            )
-            example.FocusOnInput -> #(
-              None,
-              dispatch_nothing(snippet.focus_on_input()),
-            )
-            example.ToggleHelp -> #(None, effect.none())
-            example.ReadFromClipboard -> #(
-              None,
-              dispatch_to_snippet(id, snippet.read_from_clipboard()),
-            )
-            example.WriteToClipboard(text) -> #(
-              None,
-              dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
-            )
-            example.RunExternalHandler(ref, thunk) -> #(
-              None,
-              dispatch_to_runner(id, runner.run_thunk(ref, thunk)),
-            )
-          }
-          let state = State(..state, active: Editing(id, failure))
-          #(state, action)
-        }
-        _ ->
-          panic as "SimpleMessage should not be sent to other kinds of example"
-      }
+  let State(mode:, ..) = state
+  case message, mode {
+    UserClickedCode(id:, path:), _ -> {
+      let buffer = get_example(state, id)
+      let buffer = buffer.focus_at(buffer, path) |> result.unwrap(buffer)
+      let state = set_example(state, id, buffer)
+      let state = State(..state, mode: doc.Navigating(id:, failure: None))
+      #(state, [])
     }
-    ReloadMessage(id, message) -> {
-      let state = close_other_examples(state, id)
-      let example = get_example(state, id)
-      case example {
-        Reload(example) -> {
-          let #(example, action) = reload.update(example, message)
-          let state = set_example(state, id, Reload(example))
-          let #(failure, action) = case action {
-            reload.Nothing -> #(None, effect.none())
-            reload.Failed(failure) -> #(Some(failure), effect.none())
-            reload.ReturnToCode -> #(
-              None,
-              dispatch_nothing(snippet.focus_on_buffer()),
-            )
-            reload.FocusOnInput -> #(
-              None,
-              dispatch_nothing(snippet.focus_on_input()),
-            )
-            reload.ReadFromClipboard -> #(
-              None,
-              dispatch_to_snippet(id, snippet.read_from_clipboard()),
-            )
-            reload.WriteToClipboard(text) -> #(
-              None,
-              dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
-            )
-          }
-          let state = State(..state, active: Editing(id, failure))
-          #(state, action)
+    UserPressedKey(key:), doc.Navigating(id, _)
+    | UserPressedKey(key:), doc.Running(id, run.Concluded(_))
+    | UserPressedKey(key:), doc.Running(id, run.Aborted(_))
+    | UserPressedKey(key:), doc.Running(id, run.Exception(_))
+    ->
+      // don't wrap this up in shared behaviour taking (context, buffer) as the top level key commands will change
+      user_pressed_key(state, id, key)
+    UserPressedKey(_), _ -> #(state, [])
+    InputMessage(message), doc.Manipulating(id, m.EnterInteger(value, rebuild)) ->
+      case input.update_number(value, message) {
+        input.Continue(new) -> {
+          let mode = doc.Manipulating(id, m.EnterInteger(new, rebuild))
+          let state = State(..state, mode:)
+          #(state, [])
         }
-        _ ->
-          panic as "SimpleMessage should not be sent to other kinds of example"
+        input.Confirmed(value) -> continue(state, id, rebuild(value, _))
+        input.Cancelled -> {
+          let state = State(..state, mode: doc.Navigating(id:, failure: None))
+          #(state, [])
+        }
       }
-    }
-    SyncMessage(message) -> {
-      let State(sync: sync_client, ..) = state
-      let #(sync_client, sync_tasks) = client.update(sync_client, message)
-      let #(entries, effects) =
-        dict.fold(state.examples, #([], []), fn(acc, key, example) {
-          let #(entries, effects) = acc
-          case example {
-            Simple(example) -> {
-              let #(example, action) =
-                example.update_cache(example, sync_client.cache)
-              let entries = [#(key, Simple(example)), ..entries]
-              let effects = case action {
-                runner.Nothing -> effects
-                runner.RunExternalHandler(ref, thunk) -> {
-                  let effect =
-                    dispatch_to_runner(key, runner.run_thunk(ref, thunk))
-                  [effect, ..effects]
-                }
-                runner.Conclude(_return) -> effects
-              }
-              #(entries, effects)
-            }
-            Reload(example) -> {
-              let entries = [#(key, Reload(example)), ..entries]
-              #(entries, effects)
+    InputMessage(message), doc.Manipulating(id, m.EnterText(value, rebuild)) ->
+      case input.update_text(value, message) {
+        input.Continue(new) -> {
+          let mode = doc.Manipulating(id, m.EnterText(new, rebuild))
+          let state = State(..state, mode:)
+          #(state, [])
+        }
+        input.Confirmed(value) -> continue(state, id, rebuild(value, _))
+        input.Cancelled -> {
+          let state = State(..state, mode: doc.Navigating(id:, failure: None))
+          #(state, [])
+        }
+      }
+
+    InputMessage(_), _ -> #(state, [])
+    PickerMessage(message), doc.Manipulating(id, m.PickSingle(_picker, rebuild))
+    ->
+      case message {
+        picker.Updated(picker:) -> {
+          let mode = doc.Manipulating(id, m.PickSingle(picker, rebuild))
+          #(State(..state, mode:), [])
+        }
+        picker.Decided(label) -> continue(state, id, rebuild(label, _))
+        picker.Dismissed -> #(
+          State(..state, mode: doc.Navigating(id:, failure: None)),
+          [],
+        )
+      }
+    PickerMessage(message), doc.Manipulating(id, m.PickCid(_picker, rebuild)) ->
+      case message {
+        picker.Updated(picker:) -> {
+          let mode = doc.Manipulating(id, m.PickCid(picker, rebuild))
+          #(State(..state, mode:), [])
+        }
+        picker.Decided(text) -> {
+          case v1.from_string(text) {
+            Ok(#(cid, _)) -> continue(state, id, rebuild(cid, _))
+            Error(_) -> {
+              echo "need error message for bad cid"
+              #(state, [])
             }
           }
-        })
-      let examples = dict.from_list(entries)
-      let state = State(..state, sync: sync_client, examples:)
-      #(
-        state,
-        effect.batch([client.lustre_run(sync_tasks, SyncMessage), ..effects]),
-      )
+        }
+        picker.Dismissed -> #(
+          State(..state, mode: doc.Navigating(id:, failure: None)),
+          [],
+        )
+      }
+    PickerMessage(message),
+      doc.Manipulating(id, m.PickRelease(_picker, rebuild))
+    ->
+      case message {
+        picker.Updated(picker:) -> {
+          let mode = doc.Manipulating(id, m.PickRelease(picker, rebuild))
+          #(State(..state, mode:), [])
+        }
+        picker.Decided(text) -> {
+          case cache.package(state.context.cache, text) {
+            Ok(#(v, m)) -> continue(state, id, rebuild(#(text, v, m), _))
+            Error(_) -> {
+              echo "need error message for bad cid"
+              #(state, [])
+            }
+          }
+        }
+        picker.Dismissed -> #(
+          State(..state, mode: doc.Navigating(id:, failure: None)),
+          [],
+        )
+      }
+    PickerMessage(_), _ -> #(state, [])
+    ClipboardReadCompleted(return), doc.ReadingFromClipboard(id, rebuild) ->
+      case return {
+        Ok(text) ->
+          case json.parse(text, dag_json.decoder(Nil)) {
+            Ok(expression) ->
+              continue(state, id, rebuild(e.from_annotated(expression), _))
+            Error(_) -> action_failed(state, id, "paste")
+          }
+        Error(_) -> action_failed(state, id, "paste")
+      }
+    ClipboardReadCompleted(_), _ -> #(state, [])
+    Ignore, _ -> #(state, [])
+    EffectHandled(task_id: tid, value:),
+      doc.Running(id:, status: run.Handling(task_id:, env:, k:))
+      if tid == task_id
+    -> {
+      let #(mode, context, effects) =
+        expression.resume(value, env, k)
+        |> run.loop(state.context, expression.resume)
+      let mode = doc.Running(id, mode)
+      #(State(..state, mode:, context:), effects)
+    }
+    EffectHandled(_, _), _ -> #(state, [])
+    SpotlessConnectCompleted(service, result), _ -> {
+      let #(context, effects) =
+        run.connect_completed(state.context, service, result)
+      #(State(..state, context:), effects)
+    }
+    ModuleLookupCompleted(cid, result), _ -> {
+      let #(context, done) =
+        run.get_module_completed(state.context, cid, result)
+      let examples = doc.reanalyse_examples(state.examples, done, context)
+      let state = State(..state, examples:)
+      // use the completed cid not the looked up cid as dependencies might have resolved
+      let #(context, effects) = run.flush(context)
+      case state.mode {
+        doc.Running(id, run.Pending(cache.Content(module), env:, k:)) -> {
+          case list.key_find(done, module) {
+            Ok(Ok(value)) -> {
+              let #(run, context, inner_effects) =
+                expression.resume(value, env, k)
+                |> run.loop(context, expression.resume)
+              let mode = doc.Running(id, run)
+              #(
+                State(..state, context:, mode:),
+                list.append(effects, inner_effects),
+              )
+            }
+            // If the module is a bad one the running state stays the same. it's up for the view to render the status
+            Ok(Error(_)) -> #(State(..state, context:), effects)
+            Error(Nil) -> #(State(..state, context:), effects)
+          }
+        }
+        _ -> #(State(..state, context:), effects)
+      }
+    }
+    PullPackagesCompleted(result), _ -> {
+      let cache = state.context.cache
+      let cache = case result {
+        Ok(entries) -> {
+          list.fold(entries, cache, fn(cache, entry) {
+            let assert Ok(payload) =
+              json.parse(entry.payload, publisher.decoder())
+
+            let publisher.Release(package:, version:, module:) = payload.content
+            let release = release.Release(package:, version:, module:)
+            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
+            cache
+          })
+        }
+        Error(_reason) -> {
+          cache.Cache(..cache, cursor_status: cache.Pulled)
+        }
+      }
+      let context = run.Context(..state.context, cache:)
+      let #(context, effects) = run.flush(context)
+      #(State(..state, context:), effects)
     }
   }
 }
 
-fn close_other_examples(state, id) {
-  let State(active:, ..) = state
-  case active {
-    Editing(current, _) if current != id -> {
-      let example = get_example(state, current)
-      let example = case example {
-        Simple(example) -> example.finish_editing(example) |> Simple
-        Reload(example) -> reload.finish_editing(example) |> Reload
-      }
-      set_example(state, current, example)
+fn user_pressed_key(state, id, key) {
+  case key {
+    "Escape" -> #(State(..state, mode: doc.UnFocused), [])
+    "ArrowRight" -> navigate(state, "move right", buffer.next)
+    "ArrowLeft" -> navigate(state, "move left", buffer.previous)
+    "ArrowUp" -> navigate(state, "move up", buffer.up)
+    "ArrowDown" -> navigate(state, "move down", buffer.down)
+    // "Q" -> link_filesystem(state)  Not supported in documentation
+    // "q" -> choose_module(state) Not supported in documentation
+    "w" -> edit(state, m.call_with())
+    "E" -> edit(state, m.assign_before())
+    "e" -> edit(state, m.assign())
+    "R" -> edit(state, m.create_empty_record())
+    "r" -> edit(state, m.create_record())
+    "t" -> edit(state, m.insert_tag())
+    "y" -> copy(state)
+    "Y" -> paste(state)
+    // // TODO mode is authenticating
+    // // you won't see much on the front page
+    // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
+    //   OpenPopup("/sign"),
+    // ])
+    "i" -> edit(state, m.insert())
+    "o" -> edit(state, m.overwrite())
+    "p" -> edit(state, m.perform())
+    "a" -> navigate(state, "increase selection", buffer.increase)
+    "s" -> edit(state, m.insert_string())
+    "d" -> edit(state, m.delete())
+    "f" -> edit(state, m.insert_function())
+    "g" -> edit(state, m.select_field())
+    "h" -> edit(state, m.insert_handle())
+    "j" -> edit(state, m.insert_builtin())
+    "k" -> navigate(state, "toggle", buffer.toggle_open)
+    "L" -> edit(state, m.create_empty_list())
+    "l" -> edit(state, m.create_list())
+    "@" -> edit(state, m.choose_release(state.context.cache))
+    "#" -> edit(state, m.insert_reference())
+    "Z" -> edit(state, m.redo())
+    "z" -> edit(state, m.undo())
+    "x" -> edit(state, m.spread())
+    "c" -> edit(state, m.call_function())
+    "C" -> edit(state, m.call_once())
+    "b" -> edit(state, m.insert_binary())
+    "n" -> edit(state, m.insert_integer())
+    "m" -> edit(state, m.insert_case())
+    "v" -> edit(state, m.insert_variable())
+    "<" -> edit(state, m.insert_before())
+    ">" -> edit(state, m.insert_after())
+    "Enter" -> confirm(state)
+    " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
+    _ -> {
+      let mode = doc.Navigating(id, Some(command.NoKeyBinding(key)))
+      #(State(..state, mode:), [])
     }
-    _ -> state
   }
+}
+
+fn navigate(state: State, name, func) {
+  use id, buffer <- is_editing(state)
+
+  case func(buffer) {
+    Ok(buffer) -> {
+      let state = set_example(state, id, buffer)
+      let state = State(..state, mode: doc.Navigating(id:, failure: None))
+      #(state, [])
+    }
+    Error(_reason) -> action_failed(state, id, name)
+  }
+}
+
+// can't 1 for 1 map over a working state for the buffer because of the gen -> buffer step in resolved
+fn edit(state, manipulation) {
+  use id, buffer <- is_editing(state)
+  let m.Operation(name:, apply:) = manipulation
+  case apply(buffer) {
+    Ok(m.Resolved(gen)) -> continue(state, id, gen)
+    Ok(m.UserInput(input)) -> {
+      #(State(..state, mode: doc.Manipulating(id, input)), [])
+    }
+    Error(Nil) -> action_failed(state, id, name)
+  }
+}
+
+/// don't do key press under a mode switch
+fn copy(state: State) {
+  use id, buffer <- is_editing(state)
+  case buffer.copy_source(buffer) {
+    Ok(text) -> #(state, [
+      browser.WriteToClipboard(text:, resume: fn(_) { Ignore }),
+    ])
+    Error(Nil) -> action_failed(state, id, "copy")
+  }
+}
+
+fn paste(state: State) {
+  use id, buffer <- is_editing(state)
+  case buffer.set_expression(buffer) {
+    Ok(rebuild) -> {
+      let state = State(..state, mode: doc.ReadingFromClipboard(id:, rebuild:))
+      #(state, [browser.ReadFromClipboard(ClipboardReadCompleted)])
+    }
+    Error(Nil) -> action_failed(state, id, "copy")
+  }
+}
+
+fn confirm(state: State) {
+  use id, buffer <- is_editing(state)
+  let #(mode, context, effects) =
+    expression.execute(buffer.source(buffer), [])
+    |> run.loop(state.context, expression.resume)
+  let mode = doc.Running(id, mode)
+  #(State(..state, mode:, context:), effects)
+}
+
+/// is_editing or concluded
+fn is_editing(state: State, then) {
+  case state.mode {
+    doc.Navigating(id:, failure: _) -> then(id, get_example(state, id))
+    doc.Running(id:, status: _) -> then(id, get_example(state, id))
+    _ -> #(state, [])
+  }
+}
+
+fn action_failed(state, id, name) {
+  let state =
+    State(
+      ..state,
+      mode: doc.Navigating(id:, failure: Some(command.ActionFailed(name))),
+    )
+  #(state, [])
+}
+
+fn infer_context(context: run.Context(_)) {
+  harness.infer_context(run.module_types(context))
 }

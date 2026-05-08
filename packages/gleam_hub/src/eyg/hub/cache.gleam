@@ -30,9 +30,7 @@ import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/int
 import gleam/list
-import gleam/pair
 import multiformats/cid/v1
 
 pub type Module(meta) {
@@ -82,6 +80,7 @@ pub type Cache(meta) {
     modules: Dict(v1.Cid, Module(meta)),
     fetching_modules: Dict(v1.Cid, FetchStatus(meta)),
     releases: Dict(#(String, Int), v1.Cid),
+    packages: Dict(String, #(Int, v1.Cid)),
     cursor: Int,
     cursor_status: CursorStatus,
   )
@@ -93,6 +92,7 @@ pub fn empty() -> Cache(meta) {
     modules: dict.new(),
     fetching_modules: dict.new(),
     releases: dict.new(),
+    packages: dict.new(),
     cursor: 0,
     cursor_status: Pulled,
   )
@@ -132,17 +132,18 @@ pub fn package(
   cache: Cache(meta),
   package: String,
 ) -> Result(#(Int, v1.Cid), Nil) {
-  dict.to_list(cache.releases)
-  |> list.filter_map(fn(entry) {
-    let #(#(p, v), m) = entry
-    case p == package {
-      True -> Ok(#(v, m))
-      False -> Error(Nil)
-    }
-  })
-  |> list.sort(fn(r1, r2) { int.compare(pair.first(r1), pair.first(r2)) })
-  |> list.reverse
-  |> list.first
+  // dict.to_list(cache.releases)
+  // |> list.filter_map(fn(entry) {
+  //   let #(#(p, v), m) = entry
+  //   case p == package {
+  //     True -> Ok(#(v, m))
+  //     False -> Error(Nil)
+  //   }
+  // })
+  // |> list.sort(fn(r1, r2) { int.compare(pair.first(r1), pair.first(r2)) })
+  // |> list.reverse
+  // |> list.first
+  dict.get(cache.packages, package)
 }
 
 pub fn types(context: Cache(meta)) -> Dict(v1.Cid, binding.Poly) {
@@ -254,7 +255,9 @@ pub fn pulled(
       set_status(cache, module, Invalid(reason))
     })
   let releases = dict.insert(cache.releases, #(p, v), m)
-  let cache = Cache(..cache, releases:, cursor:, cursor_status: Pulled)
+  let packages = dict.insert(cache.packages, p, #(v, m))
+  let cache =
+    Cache(..cache, releases:, packages:, cursor:, cursor_status: Pulled)
   // Need to handle the case of returning done releases
   case dict.get(cache.modules, m) {
     Ok(Module(value:, ..)) -> {

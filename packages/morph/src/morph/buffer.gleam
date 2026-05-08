@@ -1,31 +1,42 @@
+//// buffer doesn't define UI components, or grouping of actions.
+//// All actions might be presented differently in different UI
+//// 
+//// Return types from the buffer actions are not enough to know how to present choices
+//// 
+//// A top level application might create an enum of editing modes
+
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/ir/cid
-import gleam/javascript/promise
+import eyg/analysis/type_/isomorphic as iso
+import eyg/ir/dag_json
 import gleam/list
 import gleam/option.{None}
 import gleam/result
 import gleam/set
 import morph/action
+import morph/analysis
 import morph/editable as e
 import morph/navigation
 import morph/projection as p
 import morph/transformation as t
-import multiformats/cid/v1
-import plinth/browser/crypto/subtle
-import website/components/snippet
 
 pub type Buffer {
   Buffer(
-    history: snippet.History,
+    history: History,
     projection: p.Projection,
     analysis: infer.Analysis(List(Int)),
   )
 }
 
+pub type History {
+  History(undo: List(p.Projection), redo: List(p.Projection))
+}
+
+pub const empty_history = History([], [])
+
 fn history_new_entry(old, history) {
-  let snippet.History(undo: undo, ..) = history
+  let History(undo: undo, ..) = history
   let undo = [old, ..undo]
-  snippet.History(undo: undo, redo: [])
+  History(undo: undo, redo: [])
 }
 
 /// Need to repass in context as it might have changed, i.e. new references could have loaded.
@@ -35,7 +46,7 @@ pub fn undo(buffer) {
   case history.undo {
     [first, ..rest] -> {
       let redo = [projection, ..history.redo]
-      let history = snippet.History(undo: rest, redo:)
+      let history = History(undo: rest, redo:)
       Ok(fn(context) {
         Buffer(history:, projection: first, analysis: analyse(first, context))
       })
@@ -49,23 +60,13 @@ pub fn redo(buffer) {
   case history.redo {
     [first, ..rest] -> {
       let undo = [projection, ..history.undo]
-      let history = snippet.History(undo:, redo: rest)
+      let history = History(undo:, redo: rest)
       Ok(fn(context) {
         Buffer(history:, projection: first, analysis: analyse(first, context))
       })
     }
     [] -> Error(Nil)
   }
-}
-
-pub fn cid(buffer) {
-  let Buffer(projection:, ..) = buffer
-  let source = e.to_annotated(p.rebuild(projection), [])
-  let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
-  use result <- promise.map(subtle.digest(subtle.SHA256, bytes))
-  let assert Ok(hash) = result
-  let cid = resume(hash) |> v1.to_string
-  cid
 }
 
 fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {
@@ -88,10 +89,14 @@ pub fn from_source(source, context) {
 
 pub fn from_projection(projection, context) {
   Buffer(
-    history: snippet.empty_history,
+    history: empty_history,
     projection:,
     analysis: analyse(projection, context),
   )
+}
+
+pub fn reanalyse(buffer: Buffer, context: infer.Context) -> Buffer {
+  Buffer(..buffer, analysis: analyse(buffer.projection, context))
 }
 
 pub fn update_code(buffer, new, context) {
@@ -117,6 +122,20 @@ pub fn target_type(buffer) {
   let Buffer(projection:, analysis:, ..) = buffer
   let path = p.path(projection)
   infer.type_at(analysis, list.reverse(path))
+}
+
+pub fn fields(buffer) {
+  case target_type(buffer) {
+    Ok(iso.Record(rows)) -> analysis.rows(rows)
+    _ -> []
+  }
+}
+
+pub fn varients(buffer) {
+  case target_type(buffer) {
+    Ok(iso.Union(rows)) -> analysis.rows(rows)
+    _ -> []
+  }
 }
 
 pub fn target_scope(buffer) {
@@ -162,7 +181,7 @@ pub fn increase(buffer: Buffer) {
 }
 
 pub fn next_vacant(buffer) {
-  navigate(buffer, snippet.go_to_next_vacant)
+  navigate(buffer, navigation.next_vacant)
 }
 
 pub fn toggle_open(buffer) {
@@ -263,6 +282,23 @@ pub fn call_many(buffer: Buffer) {
 pub fn call_with(buffer: Buffer) {
   use new <- result.map(t.call_with(buffer.projection))
   fn(context) { update_code(buffer, new, context) }
+}
+
+pub fn source(buffer: Buffer) {
+  buffer.projection
+  |> p.rebuild
+  |> e.to_annotated([])
+}
+
+// maybe this should be copy_focus
+pub fn copy_source(buffer: Buffer) {
+  case buffer.projection {
+    #(p.Exp(expression), _) ->
+      e.to_annotated(expression, [])
+      |> dag_json.to_string
+      |> Ok
+    _ -> Error(Nil)
+  }
 }
 
 pub fn insert_integer(buffer: Buffer) {

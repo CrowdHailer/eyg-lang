@@ -15,6 +15,7 @@ import mysig/route.{Route}
 import simplifile
 import snag
 import website/routes/documentation
+import website/routes/editor
 import website/routes/home
 import website/routes/news
 import website/routes/news/archive
@@ -73,7 +74,7 @@ fn routes() {
       Route(index: route.Page(documentation.page()), items: []),
     ),
     // This old editor was a shell only
-    // #("editor", Route(index: route.Page(editor.page()), items: [])),
+    #("shell", Route(index: route.Page(editor.page()), items: [])),
     #("editor", Route(index: route.Page(workspace.page()), items: [])),
     #("news", news.route()),
     #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),

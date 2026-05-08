@@ -2,17 +2,24 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
-import website/components/snippet
 
-pub fn inline(spans) {
-  h.span([a.class("inline relative")], [above(), below(), ..spans])
+pub fn inline(spans, user_pressed_command_key) {
+  h.span([a.class("inline relative")], [
+    above(user_pressed_command_key),
+    below(user_pressed_command_key),
+    ..spans
+  ])
 }
 
-pub fn block(divs) {
-  h.div([a.class("relative")], [above(), below(), ..divs])
+pub fn block(divs, user_pressed_command_key) {
+  h.div([a.class("relative")], [
+    above(user_pressed_command_key),
+    below(user_pressed_command_key),
+    ..divs
+  ])
 }
 
-fn above() {
+fn above(user_pressed_command_key) {
   h.div(
     [
       a.class("flex gap-2"),
@@ -40,28 +47,28 @@ fn above() {
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mt-1"),
-          event.on_click(snippet.UserPressedCommandKey("l")),
+          event.on_click(user_pressed_command_key("l")),
         ],
         [element.text("[]")],
       ),
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mb-1"),
-          event.on_click(snippet.UserPressedCommandKey("r")),
+          event.on_click(user_pressed_command_key("r")),
         ],
         [element.text("{}")],
       ),
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mb-1"),
-          event.on_click(snippet.UserPressedCommandKey("c")),
+          event.on_click(user_pressed_command_key("c")),
         ],
         [element.text("()")],
       ),
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mt-1"),
-          event.on_click(snippet.UserPressedCommandKey("f")),
+          event.on_click(user_pressed_command_key("f")),
         ],
         [element.text("->")],
       ),
@@ -69,7 +76,7 @@ fn above() {
   )
 }
 
-fn below() {
+fn below(user_pressed_command_key) {
   h.div(
     [
       a.class("flex gap-2"),
@@ -95,28 +102,28 @@ fn below() {
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mb-1"),
-          event.on_click(snippet.UserPressedCommandKey("s")),
+          event.on_click(user_pressed_command_key("s")),
         ],
         [element.text("\"\"")],
       ),
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mt-1"),
-          event.on_click(snippet.UserPressedCommandKey("n")),
+          event.on_click(user_pressed_command_key("n")),
         ],
         [element.text("5")],
       ),
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mt-1"),
-          event.on_click(snippet.UserPressedCommandKey("a")),
+          event.on_click(user_pressed_command_key("a")),
         ],
         [element.text("+")],
       ),
       h.span(
         [
           a.class("bg-gray-700 p-1 rounded mb-1"),
-          event.on_click(snippet.UserPressedCommandKey("#")),
+          event.on_click(user_pressed_command_key("#")),
         ],
         [element.text("@")],
       ),
