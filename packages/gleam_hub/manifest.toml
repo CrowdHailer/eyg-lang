@@ -5,7 +5,7 @@ packages = [
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "eyg_analysis", version = "1.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "891AD711DF35EF4F266D3F8C190C87A923E55CBCC86A28931D39AF5444D2FABF" },
-  { name = "eyg_interpreter", version = "1.3.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_interpreter", source = "hex", outer_checksum = "1EADB1091EB0145CEFD7581156D5723C6C6E3C3758627F5BE18E4AA4B32D2AE0" },
+  { name = "eyg_interpreter", version = "2.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_interpreter", source = "hex", outer_checksum = "A48BE1B77A61EA6EFE7E7677F7053EE33FC31920730340D0C4830EB0E030AC4E" },
   { name = "eyg_ir", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "D61C51AB7B88B76B77867F10CA0C9A7C960C46A1C287543B1B1A8EA4B6F3524C" },
   { name = "eyg_parser", version = "0.3.1", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "4C01B2EF7B8BA7E320F30A16A2851229DFFAB1C64F7B8FB34B786CA93B5FD40E" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
@@ -27,7 +27,7 @@ packages = [
 [requirements]
 dag_json = { version = ">= 3.0.0 and < 4.0.0" }
 eyg_analysis = { version = ">= 1.1.0 and < 2.0.0" }
-eyg_interpreter = { version = ">= 1.3.0 and < 2.0.0" }
+eyg_interpreter = { version = ">= 2.0.0 and < 3.0.0" }
 eyg_ir = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }

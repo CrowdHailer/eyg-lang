@@ -336,3 +336,45 @@ fn do_binary_fold(bytes, state, func, meta, env, k) {
     _ -> panic as "assume full bytes"
   }
 }
+
+// This assumes only scope needs passing around
+pub fn default(scope) {
+  state.Env(scope: scope, builtins: all())
+}
+
+fn all() {
+  dict.new()
+  |> dict.insert("equal", equal)
+  |> dict.insert("fix", fix)
+  |> dict.insert("fixed", fixed)
+  |> dict.insert("never", never)
+  // integer
+  |> dict.insert("int_compare", int_compare)
+  |> dict.insert("int_add", add)
+  |> dict.insert("int_subtract", subtract)
+  |> dict.insert("int_multiply", multiply)
+  |> dict.insert("int_divide", divide)
+  |> dict.insert("int_absolute", absolute)
+  |> dict.insert("int_parse", int_parse)
+  |> dict.insert("int_to_string", int_to_string)
+  // String
+  |> dict.insert("string_append", string_append)
+  |> dict.insert("string_split", string_split)
+  |> dict.insert("string_split_once", string_split_once)
+  |> dict.insert("string_replace", string_replace)
+  |> dict.insert("string_uppercase", string_uppercase)
+  |> dict.insert("string_lowercase", string_lowercase)
+  |> dict.insert("string_starts_with", string_starts_with)
+  |> dict.insert("string_ends_with", string_ends_with)
+  |> dict.insert("string_length", string_length)
+  |> dict.insert("string_to_binary", string_to_binary)
+  |> dict.insert("string_from_binary", string_from_binary)
+  // Binary
+  |> dict.insert("binary_from_integers", binary_from_integers)
+  |> dict.insert("binary_size", binary_size)
+  |> dict.insert("binary_concat", binary_concat)
+  |> dict.insert("binary_fold", binary_fold)
+  // List
+  |> dict.insert("list_pop", list_pop)
+  |> dict.insert("list_fold", list_fold)
+}

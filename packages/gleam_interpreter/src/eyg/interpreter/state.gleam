@@ -5,7 +5,6 @@ import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
-import multiformats/cid/v1
 
 pub type Context(m) =
   #(List(#(Kontinue(m), m)), Env(m))
@@ -35,12 +34,13 @@ pub type Scope(m) =
 // Env and Stack(m) also rely on each other
 // Env as a type (not alias breaks recursive type definition up to continue)
 // builtins are passed in the env because builtin definition relies on interpreter state and we get a circular dependency
+// 
+// The env is returned from loop functions,
+// it's a simpler API for callers to pass the same Env type back rather than unwrap to just the scope
+// 
+// The only fix to remove builtins I can see is to write all builtins in the state module
 pub type Env(m) {
-  Env(
-    scope: Scope(m),
-    references: dict.Dict(v1.Cid, Value(m)),
-    builtins: dict.Dict(String, Builtin(m)),
-  )
+  Env(scope: Scope(m), builtins: Dict(String, Builtin(m)))
 }
 
 pub type Return(m) =
@@ -57,7 +57,7 @@ pub type Builtin(m) {
 
 pub type Stack(m) {
   Stack(Kontinue(m), m, Stack(m))
-  Empty(Dict(String, Extrinsic(m)))
+  Empty
 }
 
 pub type Kontinue(m) {
@@ -68,13 +68,10 @@ pub type Kontinue(m) {
   Delimit(String, Value(m), Env(m), Bool)
 }
 
-pub type Extrinsic(m) =
-  fn(Value(m)) -> Result(Value(m), Reason(m))
-
 pub fn step(c, env, k) {
   case c, k {
     E(exp), k -> try(eval(exp, env, k))
-    V(value), Empty(_) -> Break(Ok(value))
+    V(value), Empty -> Break(Ok(value))
     V(value), Stack(k, meta, rest) -> try(apply(value, env, k, meta, rest))
   }
 }
@@ -124,11 +121,7 @@ pub fn eval(exp, env: Env(m), k) {
         Ok(_) -> value(v.Partial(v.Builtin(identifier), []))
         _ -> Error(break.UndefinedBuiltin(identifier))
       }
-    ir.Reference(ref) ->
-      case dict.get(env.references, ref) {
-        Ok(v) -> value(v)
-        Error(Nil) -> Error(break.UndefinedReference(ref))
-      }
+    ir.Reference(ref) -> Error(break.UndefinedReference(ref))
     ir.Release(package, release, cid) ->
       Error(break.UndefinedRelease(package, release, cid))
   }
@@ -251,18 +244,7 @@ fn do_perform(label, arg, i_env, k, acc) {
     }
     Stack(kontinue, meta, rest) ->
       do_perform(label, arg, i_env, rest, [#(kontinue, meta), ..acc])
-    Empty(extrinsic) -> {
-      // inefficient to move back in error case
-      let original_k = move(acc, Empty(extrinsic))
-      case dict.get(extrinsic, label) {
-        Ok(handler) ->
-          case handler(arg) {
-            Ok(term) -> Ok(#(V(term), i_env, original_k))
-            Error(reason) -> Error(reason)
-          }
-        Error(Nil) -> Error(break.UnhandledEffect(label, arg))
-      }
-    }
+    Empty -> Error(break.UnhandledEffect(label, arg))
   }
 }
 

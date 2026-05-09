@@ -3,15 +3,21 @@ import eyg/interpreter/builtin
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import gleam/dict
 import gleam/javascript/promise
 import gleam/list
 
-pub fn resume(value, env, k) {
+/// Resume the interpretation loop with a value from a previous break position.
+/// This can be used to resume after any break but is normally used to implement
+/// effects and reference lookup
+pub fn resume(
+  value: state.Value(m),
+  env: state.Env(m),
+  k: state.Stack(m),
+) -> Result(state.Value(m), state.Debug(m)) {
   loop(state.step(state.V(value), env, k))
 }
 
-pub fn loop(next) {
+fn loop(next) {
   case next {
     state.Loop(c, e, k) -> loop(state.step(c, e, k))
     state.Break(result) -> result
@@ -30,22 +36,24 @@ pub fn await(ret) {
   }
 }
 
+/// Execute an expression within a scope
 pub fn execute(
   exp: ir.Node(t),
   scope: state.Scope(t),
 ) -> Result(state.Value(t), state.Debug(t)) {
-  loop(state.step(state.E(exp), new_env(scope), state.Empty(dict.new())))
+  loop(state.step(state.E(exp), builtin.default(scope), state.Empty))
 }
 
-// f should have all the required env information
+/// Call an evaluated function with a list of args
 pub fn call(
   f: state.Value(t),
   args: List(#(state.Value(t), t)),
 ) -> Result(state.Value(t), state.Debug(t)) {
-  let env = new_env([])
-  let h = dict.new()
+  // If f is a function, rather than builtin, it will be a closure with the environment captures
+  let env = builtin.default([])
+
   let k =
-    list.fold_right(args, state.Empty(h), fn(k, arg) {
+    list.fold_right(args, state.Empty, fn(k, arg) {
       let #(value, meta) = arg
       state.Stack(state.CallWith(value, env), meta, k)
     })
@@ -60,46 +68,4 @@ pub fn call_field(
 ) -> Result(state.Value(t), state.Debug(t)) {
   let select = v.Partial(v.Select(field), [])
   call(select, [#(record, meta), ..args])
-}
-
-// This assumes only scope needs passing around
-pub fn new_env(scope) {
-  state.Env(scope: scope, references: dict.new(), builtins: builtins())
-}
-
-fn builtins() {
-  dict.new()
-  |> dict.insert("equal", builtin.equal)
-  |> dict.insert("fix", builtin.fix)
-  |> dict.insert("fixed", builtin.fixed)
-  |> dict.insert("never", builtin.never)
-  // integer
-  |> dict.insert("int_compare", builtin.int_compare)
-  |> dict.insert("int_add", builtin.add)
-  |> dict.insert("int_subtract", builtin.subtract)
-  |> dict.insert("int_multiply", builtin.multiply)
-  |> dict.insert("int_divide", builtin.divide)
-  |> dict.insert("int_absolute", builtin.absolute)
-  |> dict.insert("int_parse", builtin.int_parse)
-  |> dict.insert("int_to_string", builtin.int_to_string)
-  // String
-  |> dict.insert("string_append", builtin.string_append)
-  |> dict.insert("string_split", builtin.string_split)
-  |> dict.insert("string_split_once", builtin.string_split_once)
-  |> dict.insert("string_replace", builtin.string_replace)
-  |> dict.insert("string_uppercase", builtin.string_uppercase)
-  |> dict.insert("string_lowercase", builtin.string_lowercase)
-  |> dict.insert("string_starts_with", builtin.string_starts_with)
-  |> dict.insert("string_ends_with", builtin.string_ends_with)
-  |> dict.insert("string_length", builtin.string_length)
-  |> dict.insert("string_to_binary", builtin.string_to_binary)
-  |> dict.insert("string_from_binary", builtin.string_from_binary)
-  // Binary
-  |> dict.insert("binary_from_integers", builtin.binary_from_integers)
-  |> dict.insert("binary_size", builtin.binary_size)
-  |> dict.insert("binary_concat", builtin.binary_concat)
-  |> dict.insert("binary_fold", builtin.binary_fold)
-  // List
-  |> dict.insert("list_pop", builtin.list_pop)
-  |> dict.insert("list_fold", builtin.list_fold)
 }

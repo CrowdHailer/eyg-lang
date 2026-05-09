@@ -6,7 +6,7 @@ target = "javascript"
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 eyg_analysis = ">= 1.0.0 and < 2.0.0"
 eyg_ir = ">= 1.0.0 and < 2.0.0"
-eyg_interpreter = ">= 1.0.0 and < 2.0.0"
+eyg_interpreter = ">= 2.0.0 and < 3.0.0"
 gleam_x = {path = "../gleam_x"}
 lustre = ">= 5.0.0 and < 6.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
