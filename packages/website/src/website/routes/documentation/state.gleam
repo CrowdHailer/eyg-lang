@@ -321,21 +321,23 @@ fn infer_context(context: run.Context(_)) {
 
 pub fn reanalyse_examples(
   examples: dict.Dict(String, buffer.Buffer),
-  done: List(#(v1.Cid, Result(a, b))),
+  _done: List(#(v1.Cid, Result(a, b))),
   context: run.Context(_),
 ) -> Dict(String, buffer.Buffer) {
-  let ok =
-    list.filter_map(done, fn(result) {
-      let #(cid, result) = result
-      case result {
-        Ok(_value) -> Ok(cid)
-        Error(_) -> Error(Nil)
-      }
-    })
+  // reanalyse everything
+  // filtering for just cid's doesn't catch the missing releases that should be reevaluated
+  // let ok =
+  //   list.filter_map(done, fn(result) {
+  //     let #(cid, result) = result
+  //     case result {
+  //       Ok(_value) -> Ok(cid)
+  //       Error(_) -> Error(Nil)
+  //     }
+  //   })
 
   dict.map_values(examples, fn(_k, buffer) {
-    let update =
-      list.any(ok, list.contains(infer.missing_references(buffer.analysis), _))
+    let update = !list.is_empty(infer.all_errors(buffer.analysis))
+    // list.any(ok, list.contains(infer.missing_references(buffer.analysis), _))
     case update {
       True -> buffer.reanalyse(buffer, infer_context(context))
       False -> buffer

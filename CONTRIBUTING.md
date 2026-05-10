@@ -35,12 +35,12 @@ You can now visit the website at [localhost:8001](http://localhost:8001)
 Migrations are saved in the [hub package](./packages/hub/)
 
 ```sh
-# packages/eyg.run
+# packages/hub
 (set -a; source ../eyg.run/.env; POSTGRES_HOST=localhost; set +a; gleam dev migrate)
 ```
 Check the migrations have run by running the hub tests.
 ```sh
-# packages/eyg.run
+# packages/hub
 (set -a; source ../eyg.run/.env; POSTGRES_HOST=localhost; set +a; gleam test)
 ```
 

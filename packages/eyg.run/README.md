@@ -35,3 +35,12 @@ ssh root@$DOMAIN 'bash -s' < ./bin/remote_install
 DOMAIN=...
 ./bin/deploy
 ```
+
+## Migrate
+
+Gleam is not installed on host machine so migrations need to be run from the container.
+Running from the container means all env is set up properly
+
+```sh
+docker compose run --rm -it backend dev migrate
+```

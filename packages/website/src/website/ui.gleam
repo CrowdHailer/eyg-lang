@@ -79,7 +79,10 @@ pub fn example(
         picker.render(picker) |> element.map(picker_message)
       Errors(errors) ->
         h.div(
-          [a.class("border-2 border-orange-3 px-2")],
+          [
+            a.class("border-2 border-orange-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
           list.map(errors, fn(reason) {
             // let #(_path, reason) = error
             h.div(
@@ -95,29 +98,65 @@ pub fn example(
         )
 
       Pending ->
-        h.div([a.class("border-2 border-blue-3 px-2")], [
-          h.text("click to run."),
-        ])
+        h.div(
+          [
+            a.class("border-2 border-blue-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
+          [
+            h.text("Enter to run."),
+          ],
+        )
       Running(run.Concluded(value)) ->
-        h.pre([a.class("border-2 border-green-3 px-2")], [
-          h.text(simple_debug.inspect(value)),
-        ])
+        h.pre(
+          [
+            a.class("border-2 border-green-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
+          [
+            h.text(simple_debug.inspect(value)),
+          ],
+        )
       Running(run.Exception(reason)) ->
-        h.div([a.class("border-2 border-orange-3 px-2")], [
-          h.text(simple_debug.describe(reason)),
-        ])
+        h.div(
+          [
+            a.class("border-2 border-orange-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
+          [
+            h.text(simple_debug.describe(reason)),
+          ],
+        )
       Running(run.Aborted(reason)) ->
-        h.div([a.class("border-2 border-orange-3 px-2")], [
-          h.text(reason),
-        ])
+        h.div(
+          [
+            a.class("border-2 border-orange-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
+          [
+            h.text(reason),
+          ],
+        )
       Running(run.Handling(..)) ->
-        h.div([a.class("border-2 border-blue-3 px-2")], [
-          h.text("running"),
-        ])
+        h.div(
+          [
+            a.class("border-2 border-blue-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
+          [
+            h.text("running"),
+          ],
+        )
       Running(run.Pending(..)) ->
-        h.div([a.class("border-2 border-blue-3 px-2")], [
-          h.text("running"),
-        ])
+        h.div(
+          [
+            a.class("border-2 border-blue-3 px-2"),
+            a.styles([#("overflow-x", "auto")]),
+          ],
+          [
+            h.text("running"),
+          ],
+        )
     },
   ])
 }

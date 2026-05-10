@@ -21,12 +21,13 @@ pub fn header() {
       h.header([a.class("mx-auto w-full max-w-7xl hstack py-1 px-1 md:px-8")], [
         h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
         h.div([a.class("expand hstack gap-2")], [
-          header_link("/editor", "Editor"),
+          // header_link("/editor", "Editor"),
           header_link("/documentation", "Documentation"),
           header_link("/roadmap", "Roadmap"),
           header_link("/news", "News"),
+          header_link("https://github.com/crowdhailer/eyg-lang", "Source"),
         ]),
-        // TODO reinstate hen something worthwhile happens
+        // TODO reinstate when something worthwhile happens
       // case session {
       //   None ->
       //     h.div([a.class("flex px-2 gap-2")], [

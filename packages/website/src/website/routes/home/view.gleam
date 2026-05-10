@@ -219,6 +219,21 @@ pub fn view() {
       //   True,
       // ),
       feature(
+        "Run anywhere, safely.",
+        [
+          "EYG programs are sandboxed by default. All possible side effects are managed.",
+          "Each runtime exposes it's own focused set of effects. The snippets on this page browser specific effects like Prompt and Download",
+          "The effects of a program can be statically inferred before running it ensure your program can successfully run in the given context.",
+        ],
+        action(
+          "Read more about the effects",
+          "/documentation#perform-effect",
+          Useful,
+        ),
+        [example(s, examples.browser_key)],
+        False,
+      ),
+      feature(
         "Never crash",
         [
           "Guarantee that a program will never crash by checking it ahead of time.
@@ -231,28 +246,12 @@ pub fn view() {
           example(s, examples.type_check_key),
           caption("Click on error message to jump to error."),
         ],
-        False,
-      ),
-      feature(
-        "Run anywhere",
-        [
-          "EYG programs are all independent of the machine they run on.
-        Any interaction with the world outside your program is accomplished via an effect.",
-          "A runtime can make an effect available. For example all snippets on this EYG homepage have access to this Tweet effect",
-        ],
-        action(
-          "Read more about the effects",
-          "/documentation#perform-effect",
-          Useful,
-        ),
-        [example(s, examples.twitter_key)],
         True,
       ),
       feature(
-        "Manage side effects",
+        "Handle effects",
         [
-          "All interactions to the world outside a program are managed as effects.",
-          "Any effect can be intercepted using a handler. This allows the response from the outside world to be replaced.",
+          "Any effect can be intercepted using a handler. Provide a response to you effect without any side effects.",
           "Handling effects is great for testing; if all effects are handled then your program is deterministic. No more flakey tests.",
         ],
         action(
@@ -285,17 +284,17 @@ pub fn view() {
         [example(s, examples.fetch_key)],
         True,
       ),
-      feature(
-        "Cross boundaries",
-        [
-          "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
-          "Build client and server as a single strongly typed program. Even extend type guarantees over your build scripts.",
-          "Other languages have the possiblity of closure serialisation, but EYG's runtime is designed to make them efficient.",
-        ],
-        action("Read the documentation.", "/documentation", Useful),
-        [example(s, examples.closure_serialization_key)],
-        False,
-      ),
+      // feature(
+      //   "Cross boundaries",
+      //   [
+      //     "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
+      //     "Build client and server as a single strongly typed program. Even extend type guarantees over your build scripts.",
+      //     "Other languages have the possiblity of closure serialisation, but EYG's runtime is designed to make them efficient.",
+      //   ],
+      //   action("Read the documentation.", "/documentation", Useful),
+      //   [example(s, examples.closure_serialization_key)],
+      //   False,
+      // ),
       // feature(
       //   "Hot code reloading",
       //   [
