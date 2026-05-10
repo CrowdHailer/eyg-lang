@@ -1,0 +1,5 @@
+---
+version: 1.5.5
+title: unclosed lambda parameter list
+---
+error: unexpected end of input

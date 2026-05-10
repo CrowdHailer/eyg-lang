@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: unexpected character backtick
+---
+error: invalid character '`' at position 0
+hint: remove or replace this character — EYG does not use it
+
+ 1 | `x
+     ^

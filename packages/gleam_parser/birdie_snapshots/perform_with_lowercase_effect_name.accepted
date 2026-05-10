@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: perform with lowercase effect name
+---
+error: expected an uppercase effect name after `perform` at position 8
+hint: effect names must start with an uppercase letter, e.g. `perform Log`
+
+ 1 | perform log
+             ^

@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: bang with no builtin name
+---
+error: expected a builtin identifier after `!` at position 1
+hint: builtins use lowercase names, e.g. `!int_add`
+
+ 1 | !
+      ^

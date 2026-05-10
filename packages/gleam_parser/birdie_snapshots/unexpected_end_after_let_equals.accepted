@@ -1,0 +1,5 @@
+---
+version: 1.5.5
+title: unexpected end after let equals
+---
+error: unexpected end of input

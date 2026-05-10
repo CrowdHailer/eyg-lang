@@ -1,7 +1,6 @@
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
-import eyg/parser/parser.{describe_reason} as _
 import gleam/json
 import gleam/list
 import gleam/option
@@ -18,7 +17,7 @@ pub fn read(file: String) -> Result(ir.Node(Nil), String) {
     Error(_) ->
       case parser.all_from_string(code) {
         Ok(source) -> Ok(ir.clear_annotation(source))
-        Error(reason) -> Error(describe_reason(reason))
+        Error(reason) -> Error(parser.format_error(reason, code))
       }
   }
 }

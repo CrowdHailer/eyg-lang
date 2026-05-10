@@ -11,6 +11,28 @@ import multiformats/cid/v1
 pub type Reason {
   UnexpectEnd
   UnexpectedToken(token: t.Token, position: Int)
+  // Raised when `=` is missing in a let binding: `let x 5`
+  MissingEquals(position: Int)
+  // Raised when `->` or the opening `{` is missing in a function: `(x) { x }`
+  MissingArrow(position: Int)
+  // Raised when the closing `}` of a function body is not found
+  UnclosedFunctionBody(open_at: Int)
+  // Raised when perform/handle is not followed by an uppercase effect name
+  ExpectedEffectName(keyword: String, position: Int)
+  // Raised when `!` is not followed by a lowercase builtin identifier
+  ExpectedBuiltinName(position: Int)
+  // Raised when `#` is followed by a label that is not a valid CID
+  InvalidCidReference(position: Int)
+  // Raised when `import` is not followed by a string path literal
+  InvalidImportPath(position: Int)
+  // Raised when tokens remain after a complete expression is parsed
+  TrailingTokens(token: t.Token, position: Int)
+  // Raised for characters the lexer does not recognise (e.g. `+`, `` ` ``)
+  InvalidCharacter(char: String, position: Int)
+  // Raised when a string literal is not closed before end of input
+  UnterminatedStringLiteral(position: Int)
+  // Raised when a string contains an unrecognised escape sequence (e.g. `\q`)
+  InvalidEscapeSequence(escape_char: String, position: Int)
 }
 
 pub type Span =
@@ -106,7 +128,8 @@ pub fn block(tokens) {
       use #(pattern, rest) <- try(one_pattern(rest))
       use rest <- try(case rest {
         [#(t.Equal, _), ..rest] -> Ok(rest)
-        _ -> fail(rest)
+        [#(_, at), ..] -> Error(MissingEquals(at))
+        [] -> Error(UnexpectEnd)
       })
       use #(value, rest) <- try(expression(rest))
       case block(rest) {
@@ -155,7 +178,8 @@ pub fn expression(tokens) {
       use #(pattern, rest) <- try(one_pattern(rest))
       use rest <- try(case rest {
         [#(t.Equal, _), ..rest] -> Ok(rest)
-        _ -> fail(rest)
+        [#(_, at), ..] -> Error(MissingEquals(at))
+        [] -> Error(UnexpectEnd)
       })
       use #(value, rest) <- try(expression(rest))
       use #(then, rest) <- try(expression(rest))
@@ -172,14 +196,19 @@ pub fn expression(tokens) {
     }
     t.LeftParen -> {
       use #(patterns_reversed, rest) <- try(do_patterns(rest, []))
-      use rest <- try(case rest {
-        [#(t.RightArrow, _), #(t.LeftBrace, _), ..rest] -> Ok(rest)
-        _ -> fail(rest)
+      use #(rest, brace_at) <- try(case rest {
+        [#(t.RightArrow, _), #(t.LeftBrace, brace_at), ..rest] ->
+          Ok(#(rest, brace_at))
+        // `->` present but `{` missing — point to the token where `{` was expected
+        [#(t.RightArrow, _), #(_, at), ..] -> Error(MissingArrow(at))
+        [#(t.RightArrow, arrow_at)] -> Error(MissingArrow(arrow_at + 2))
+        [#(_, at), ..] -> Error(MissingArrow(at))
+        [] -> Error(UnexpectEnd)
       })
       use #(body, rest) <- try(expression(rest))
       use #(rest, end) <- try(case rest {
         [#(t.RightBrace, end), ..rest] -> Ok(#(rest, end))
-        _ -> fail(rest)
+        _ -> Error(UnclosedFunctionBody(brace_at))
       })
       let span = #(start, end + 1)
       let exp =
@@ -247,7 +276,7 @@ pub fn expression(tokens) {
           let span = #(start, end + string.length(label))
           Ok(#(#(ir.Perform(label), span), rest))
         }
-        _ -> fail(rest)
+        _ -> Error(ExpectedEffectName("perform", next_pos(rest, start + 7)))
       }
     t.Handle ->
       case rest {
@@ -255,7 +284,7 @@ pub fn expression(tokens) {
           let span = #(start, end + string.length(label))
           Ok(#(#(ir.Handle(label), span), rest))
         }
-        _ -> fail(rest)
+        _ -> Error(ExpectedEffectName("handle", next_pos(rest, start + 6)))
       }
     t.Bang ->
       case rest {
@@ -263,19 +292,18 @@ pub fn expression(tokens) {
           let span = #(start, end + string.length(label))
           Ok(#(#(ir.Builtin(label), span), rest))
         }
-        _ -> fail(rest)
+        _ -> Error(ExpectedBuiltinName(next_pos(rest, start + 1)))
       }
     t.Hash ->
       case rest {
-        [#(t.Name(label), end), ..rest] as all -> {
+        [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-
           case v1.from_string(label) {
             Ok(#(cid, _)) -> Ok(#(#(ir.Reference(cid), span), rest))
-            Error(_) -> fail(all)
+            Error(_) -> Error(InvalidCidReference(end))
           }
         }
-        _ -> fail(rest)
+        _ -> Error(InvalidCidReference(next_pos(rest, start + 1)))
       }
     t.At ->
       case rest {
@@ -291,8 +319,13 @@ pub fn expression(tokens) {
           let span = #(start, end + string.length(value) + 2)
           Ok(#(#(ir.Release(value, 0, dag_json.vacant_cid), span), rest))
         }
-        _ -> fail(rest)
+        _ -> Error(InvalidImportPath(next_pos(rest, start + 6)))
       }
+    t.UnexpectedGrapheme(raw) ->
+      Error(InvalidCharacter(string.slice(raw, 0, 1), start))
+    t.UnterminatedString(_) -> Error(UnterminatedStringLiteral(start))
+    t.InvalidEscape(raw) ->
+      Error(InvalidEscapeSequence(string.slice(raw, 1, 1), start))
     _ -> Error(UnexpectedToken(token, start))
   })
 
@@ -339,6 +372,13 @@ fn fail(tokens) {
   case tokens {
     [] -> Error(UnexpectEnd)
     [#(t, start), ..] -> Error(UnexpectedToken(t, start))
+  }
+}
+
+fn next_pos(rest, fallback) {
+  case rest {
+    [#(_, at), ..] -> at
+    [] -> fallback
   }
 }
 
@@ -528,9 +568,10 @@ fn do_clauses(tokens, start, acc) {
         #(start, label, #(clause, clause + string.length(label)), branch),
         ..acc
       ]
-      // peek
-      let assert [#(_, last), ..] = rest
-      do_clauses(rest, last, acc)
+      case rest {
+        [#(_, last), ..] -> do_clauses(rest, last, acc)
+        [] -> Error(UnexpectEnd)
+      }
     }
     // Open function is parens that are treated as a call to the line above
     // uppername can never be a tag expression because return from Tag is not another fn
@@ -554,12 +595,71 @@ fn pop(tokens) {
 
 pub fn describe_reason(reason) {
   case reason {
-    UnexpectedToken(token:, position:) -> {
-      "unexpected token '"
+    UnexpectedToken(token:, position:) ->
+      "unexpected `"
       <> t.to_string(token)
-      <> "' at position: "
+      <> "` at position "
       <> int.to_string(position)
+    UnexpectEnd -> "unexpected end of input"
+    InvalidCharacter(char:, position:) ->
+      "invalid character '"
+      <> char
+      <> "' at position "
+      <> int.to_string(position)
+      <> "\nhint: remove or replace this character — EYG does not use it"
+    UnterminatedStringLiteral(position:) ->
+      "unterminated string literal at position "
+      <> int.to_string(position)
+      <> "\nhint: close the string with a double-quote `\"`"
+    InvalidEscapeSequence(escape_char:, position:) ->
+      "invalid escape sequence `\\"
+      <> escape_char
+      <> "` in string at position "
+      <> int.to_string(position)
+      <> "\nhint: valid escapes are \\n (newline), \\t (tab), \\r (carriage return), \\\" (quote), \\\\ (backslash)"
+    MissingEquals(position:) ->
+      "expected `=` after let binding name at position "
+      <> int.to_string(position)
+      <> "\nhint: let bindings use the form `let name = expression`"
+    MissingArrow(position:) ->
+      "expected `->` followed by `{` in function definition at position "
+      <> int.to_string(position)
+      <> "\nhint: functions are written as `(arg) -> { body }`"
+    UnclosedFunctionBody(open_at:) ->
+      "unclosed function body — expected `}` to close the `{` opened at position "
+      <> int.to_string(open_at)
+      <> "\nhint: every `{` in a function body must be closed with `}`"
+    ExpectedEffectName(keyword:, position:) ->
+      "expected an uppercase effect name after `"
+      <> keyword
+      <> "` at position "
+      <> int.to_string(position)
+      <> "\nhint: effect names must start with an uppercase letter, e.g. `"
+      <> keyword
+      <> " Log`"
+    ExpectedBuiltinName(position:) ->
+      "expected a builtin identifier after `!` at position "
+      <> int.to_string(position)
+      <> "\nhint: builtins use lowercase names, e.g. `!int_add`"
+    InvalidCidReference(position:) ->
+      "invalid content identifier (CID) after `#` at position "
+      <> int.to_string(position)
+      <> "\nhint: CID references use a valid base32-encoded CID, e.g. `#bafyreig...`"
+    InvalidImportPath(position:) ->
+      "expected a string path after `import` at position "
+      <> int.to_string(position)
+      <> "\nhint: import paths must be string literals, e.g. `import \"./module.eyg.json\"`"
+    TrailingTokens(token:, position:) -> {
+      let token_str = case token {
+        t.UnexpectedGrapheme(raw) -> string.slice(raw, 0, 1)
+        _ -> t.to_string(token)
+      }
+      "unexpected `"
+      <> token_str
+      <> "` at position "
+      <> int.to_string(position)
+      <> " — the expression is complete but there are leftover tokens"
+      <> "\nhint: EYG uses function calls for operations, not infix operators"
     }
-    UnexpectEnd -> "Unexpected end of program"
   }
 }

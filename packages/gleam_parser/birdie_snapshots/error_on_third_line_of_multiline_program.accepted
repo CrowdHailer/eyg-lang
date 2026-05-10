@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: error on third line of multiline program
+---
+error: expected an uppercase effect name after `perform` at position 29
+hint: effect names must start with an uppercase letter, e.g. `perform Log`
+
+ 3 | perform log
+             ^

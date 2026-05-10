@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: invalid escape sequence in string
+---
+error: invalid escape sequence `\q` in string at position 0
+hint: valid escapes are \n (newline), \t (tab), \r (carriage return), \" (quote), \\ (backslash)
+
+ 1 | "\q"
+     ^

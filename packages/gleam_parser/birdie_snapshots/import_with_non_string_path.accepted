@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: import with non-string path
+---
+error: expected a string path after `import` at position 7
+hint: import paths must be string literals, e.g. `import "./module.eyg.json"`
+
+ 1 | import foo
+            ^

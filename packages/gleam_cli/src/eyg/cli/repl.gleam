@@ -3,7 +3,7 @@ import eyg/hub/cache
 import eyg/interpreter/simple_debug
 import eyg/ir/tree as ir
 import eyg/parser
-import eyg/parser/parser.{UnexpectEnd, describe_reason} as _
+import eyg/parser/parser.{UnexpectEnd} as _
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -50,7 +50,7 @@ fn loop(buffer, scope, state) {
         }
         Error(UnexpectEnd) -> loop(buffer, scope, state)
         Error(reason) -> {
-          io.println(describe_reason(reason))
+          io.println(parser.format_error(reason, code))
           loop("", scope, state)
         }
       }

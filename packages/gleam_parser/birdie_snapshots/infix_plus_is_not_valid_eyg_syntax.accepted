@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: infix plus is not valid EYG syntax
+---
+error: unexpected `+` at position 2 — the expression is complete but there are leftover tokens
+hint: EYG uses function calls for operations, not infix operators
+
+ 1 | 5 + 3
+       ^

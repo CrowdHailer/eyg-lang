@@ -1,8 +1,7 @@
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
-import eyg/parser/parser.{UnexpectedToken} as _
-import eyg/parser/token as t
+import eyg/parser/parser.{InvalidCidReference, InvalidImportPath} as _
 import gleeunit/should
 import multiformats/cid/v1
 
@@ -718,7 +717,7 @@ pub fn invalid_reference_test() {
   { "#foobar" }
   |> parser.all_from_string()
   |> should.be_error()
-  |> should.equal(UnexpectedToken(t.Name("foobar"), 1))
+  |> should.equal(InvalidCidReference(1))
 }
 
 pub fn named_reference_test() {
@@ -741,7 +740,7 @@ pub fn invalid_unpublished_import_test() {
   { "import foobar" }
   |> parser.all_from_string()
   |> should.be_error()
-  |> should.equal(UnexpectedToken(t.Name("foobar"), 7))
+  |> should.equal(InvalidImportPath(7))
 }
 
 pub fn comment_test() {

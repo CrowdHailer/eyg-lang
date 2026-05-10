@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: unclosed function body
+---
+error: unclosed function body — expected `}` to close the `{` opened at position 7
+hint: every `{` in a function body must be closed with `}`
+
+ 1 | (x) -> { x
+            ^

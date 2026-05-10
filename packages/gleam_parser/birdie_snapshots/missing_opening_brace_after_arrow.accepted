@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: missing opening brace after arrow
+---
+error: expected `->` followed by `{` in function definition at position 7
+hint: functions are written as `(arg) -> { body }`
+
+ 1 | (x) -> x
+            ^

@@ -1,0 +1,9 @@
+---
+version: 1.5.5
+title: unterminated string literal
+---
+error: unterminated string literal at position 0
+hint: close the string with a double-quote `"`
+
+ 1 | "hello world
+     ^
