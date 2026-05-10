@@ -141,3 +141,64 @@ pub fn cant_republish_release_test() {
   let assert pog.ConstraintViolated(constraint:, ..) = reason
   assert "package_entries_unique_release_version" == constraint
 }
+
+pub fn record_and_fetch_package_owner_test() {
+  use conn <- helpers.with_transaction()
+  let package = g.package()
+  let entity_id = "bafybeiabc123"
+
+  let query = data.record_owner(package, entity_id)
+  let assert Ok(pog.Returned(rows: [owner], ..)) = pog.execute(query, conn)
+  assert owner.package == package
+  assert owner.entity_id == entity_id
+
+  let query = data.get_current_owner(package)
+  let assert Ok(pog.Returned(rows: [current], ..)) = pog.execute(query, conn)
+  assert current.package == package
+  assert current.entity_id == entity_id
+}
+
+pub fn get_current_owner_returns_empty_for_unknown_package_test() {
+  use conn <- helpers.with_transaction()
+  let package = g.package()
+
+  let query = data.get_current_owner(package)
+  let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, conn)
+  assert rows == []
+}
+
+pub fn current_owner_reflects_most_recent_record_test() {
+  use conn <- helpers.with_transaction()
+  let package = g.package()
+  let entity_a = "bafybeientity_a"
+  let entity_b = "bafybeientity_b"
+
+  let assert Ok(_) = pog.execute(data.record_owner(package, entity_a), conn)
+  let assert Ok(_) = pog.execute(data.record_owner(package, entity_b), conn)
+
+  let query = data.get_current_owner(package)
+  let assert Ok(pog.Returned(rows: [current], ..)) = pog.execute(query, conn)
+  assert current.entity_id == entity_b
+}
+
+pub fn ownership_records_are_never_deleted_test() {
+  use conn <- helpers.with_transaction()
+  let package = g.package()
+  let entity_id = "bafybeiabc123"
+
+  let assert Ok(_) = pog.execute(data.record_owner(package, entity_id), conn)
+
+  // The DELETE rule makes this a no-op; no error is raised
+  let assert Ok(pog.Returned(count: 0, ..)) =
+    pog.execute(
+      "DELETE FROM package_owners WHERE package = $1"
+        |> pog.query()
+        |> pog.parameter(pog.text(package)),
+      conn,
+    )
+
+  let query = data.get_current_owner(package)
+  let assert Ok(pog.Returned(rows: [still_there], ..)) =
+    pog.execute(query, conn)
+  assert still_there.entity_id == entity_id
+}

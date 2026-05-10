@@ -41,8 +41,8 @@ pub fn submit(request, context: context.Context) {
     |> result.replace_error(server.IncorrectSignature),
   )
 
-  let signatory = v1.to_string(entry.signatory)
-  let query = signatories.list_entries_from_entry(signatory)
+  let signatory_entity = v1.to_string(entry.signatory)
+  let query = signatories.list_entries_from_entry(signatory_entity)
   let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, context.db)
   let signatory_history =
     list.map(rows, fn(row) {
@@ -51,15 +51,15 @@ pub fn submit(request, context: context.Context) {
       entry.content
     })
 
-  use permission <- utils.try_untethered(
+  use _permission <- utils.try_untethered(
     signatory.fetch_permissions(entry.key, signatory_history)
     |> result.replace_error(server.DoesNotHavePermission),
   )
-  echo permission
 
-  use Nil <- utils.try_untethered(authorize(entry.content, permission))
+  use Nil <- utils.try_untethered(
+    check_package_ownership(entry.content, signatory_entity, context.db),
+  )
 
-  // TODO test writing permissions
   let query = data.insert_release(entry)
   use archived <- utils.db_result(pog.execute(query, context.db))
   let assert pog.Returned(rows: [entry], ..) = archived
@@ -73,9 +73,21 @@ fn validate_payload(payload) {
   server.validate_payload(payload, publisher.decoder())
 }
 
-fn authorize(_content, _permission) {
-  // As long as they key is in the signatory it has full permission
-  Ok(Nil)
+fn check_package_ownership(
+  content: publisher.Event,
+  entity_id: String,
+  db: pog.Connection,
+) -> Result(Nil, server.Denied) {
+  let publisher.Release(package:, ..) = content
+  case pog.execute(data.get_current_owner(package), db) {
+    Ok(pog.Returned(rows: [], ..)) -> {
+      let assert Ok(_) = pog.execute(data.record_owner(package, entity_id), db)
+      Ok(Nil)
+    }
+    Ok(pog.Returned(rows: [owner], ..)) if owner.entity_id == entity_id ->
+      Ok(Nil)
+    _ -> Error(server.DoesNotHavePermission)
+  }
 }
 
 pub fn pull(request, context) {

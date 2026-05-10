@@ -7,6 +7,31 @@ import multiformats/cid/v1
 import pog
 import untethered/ledger/schema
 
+pub type PackageOwner {
+  PackageOwner(package: String, entity_id: String)
+}
+
+fn package_owner_decoder() -> decode.Decoder(PackageOwner) {
+  use package <- decode.field(0, decode.string)
+  use entity_id <- decode.field(1, decode.string)
+  decode.success(PackageOwner(package:, entity_id:))
+}
+
+pub fn get_current_owner(package: String) -> pog.Query(PackageOwner) {
+  "SELECT package, entity_id FROM current_package_owners WHERE package = $1"
+  |> pog.query()
+  |> pog.parameter(pog.text(package))
+  |> pog.returning(package_owner_decoder())
+}
+
+pub fn record_owner(package: String, entity_id: String) -> pog.Query(PackageOwner) {
+  "INSERT INTO package_owners (package, entity_id) VALUES ($1, $2) RETURNING package, entity_id"
+  |> pog.query()
+  |> pog.parameter(pog.text(package))
+  |> pog.parameter(pog.text(entity_id))
+  |> pog.returning(package_owner_decoder())
+}
+
 pub fn insert_release(entry: publisher.Entry) -> pog.Query(schema.ArchivedEntry) {
   let data = publisher.encode(entry)
   let json = json.to_string(data)
