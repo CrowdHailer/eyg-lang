@@ -95,6 +95,7 @@ pub fn init_collection(sources, context) {
   let examples =
     list.map(sources, fn(example) {
       let #(key, editable) = example
+      let editable = e.open_all(editable)
       let buffer = buffer(editable, context)
       #(key, buffer)
     })
