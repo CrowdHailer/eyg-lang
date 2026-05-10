@@ -5,15 +5,46 @@ EYG is an immutable functional language with structural typing and managed effec
 
 The intermediate representation (IR) of EYG is a minimal tree and is the stable interface for writing EYG programs. Type checking, syntax, evaluation or compilation are optional components built on this foundation.
 
-## Get started
+## Install
+
+Follow the [install from source](./guides/install_from_source.md) guide with instructions to compile and install the EYG CLI.
+
+
+For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
+The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md).
+
+## Run a script
 
 To run scripts from your shell use the [CLI](./packages/gleam_cli/).
 checkout the [examples](./packages/gleam_cli/examples/)
 
-The CLI implements effects for:
-- `Fetch` make HTTP request
-- `Read` read a file on the file system
-- `DecodeJSON` Decode JSON using the host language.
+Both textual and JSON IR source files can be run with `eyg run`.
+
+### Effects
+
+The REPL and interpreter implement the following effects to access the host computer:
+
+| Effect | Purpose |
+|---|---|
+| `Print` | Write a string to stdout |
+| `ReadFile` | Read a byte range of a file |
+| `WriteFile` | Overwrite a file with new contents |
+| `AppendFile` | Append contents to a file |
+| `ReadDirectory` | List the entries in a directory |
+| `Fetch` | Make an HTTP request |
+| `DecodeJSON` | Parse a JSON binary into EYG values |
+
+Plus several authenticated service integrations powered by
+[spotless](https://hex.pm/packages/spotless), each performing an OAuth flow
+on first use:
+
+- `DNSimple`
+- `GitHub`
+- `Netlify`
+- `Vimeo`
+
+For the input / output shape of each effect, see the
+[effects reference](../../guides/effects_reference.md).
 
 ## Packages
 
