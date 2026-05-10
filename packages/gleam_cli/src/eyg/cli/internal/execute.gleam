@@ -249,9 +249,8 @@ fn lookup_relative(
   module,
   state: State(meta),
 ) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
-  case resolve_relative(state.cwd, package) |> echo {
+  case resolve_relative(state.cwd, package) {
     Ok(path) -> {
-      echo path
       let source = case source.read(path) {
         Ok(source) -> source |> ir.map_annotation(state.map)
         Error(reason) -> {
