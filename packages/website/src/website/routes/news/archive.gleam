@@ -2,6 +2,83 @@ import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(
+    "2026-05-11",
+    "An unreasonably practical update for EYG.",
+    "
+The text syntax for EYG is now [properly documented](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/simple_syntax.md).
+New filesystem effects in the CLI make useful shell scripts possible.
+Installing the CLI from source has its [own guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/install_from_source.md)
+
+All this makes using EYG much easier and brings the goal of a \"a better bash\" much closer.
+
+## A text syntax for EYG
+
+The primary mechanism for writing EYG has been the structural editor, as seen on the [website](https://eyg.run).
+This is still a supported way of creating EYG programs.
+That said, there are good reasons to have a text syntax.
+A text parser to EYG has been part of the project, just undocumented, for a good while.
+
+Having the text syntax but not documenting it is simply a wasted opportunity.
+So the [simple syntax guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/simple_syntax.md) is now complete,
+covering every feature supported by the parser.
+
+I will emphasise that both approaches are supported from now on.
+Also the semantics of the language are identical regardless of the approach used.
+
+Files with the `.eyg` extension are text, files with `.eyg.json` are IR.
+Both can be passed to `eyg run` and produce the same result.
+
+## Parser errors
+
+Now that text syntax is a fully supported part of the EYG toolchain it was a good time to improve the parser.
+The parser will now give meaningful errors.
+
+```sh
+error: expected a string path after `import` at position 7
+hint: import paths must be string literals, e.g. `import \"./module.eyg.json\"`
+
+ 1 | import 42
+            ^
+```
+
+## File system effects
+
+The CLI now implements `ReadFile`, `WriteFile`, `AppendFile` and `ReadDirectory`.
+Together with the existing `Print` and `Fetch` effects, this is enough to write small scripts that do real work on your computer.
+
+The full list of effects implemented by the CLI is documented in the [effects reference](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/cli_effects_reference.md).
+
+The [modifying text guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/modifying_text_files.md) shows how you can use scripts to replace use of shell tools like `ls`, `find` and `grep`.
+Full parity with these tools will likely take a few more guides but the foundation is there.
+Of course EYG is a nice language to work with so creating your own utility modules is a good way forward.
+
+## Binary builtins
+
+While I was working with the latest effects I noticed that some missing builtins where making it hard to complete tasks.
+The builtin functions `binary_size` and `binary_concat` have been added.
+
+## CLI polish
+
+The CLI has had a round of polish.
+The commands `eyg help` and `eyg --version` now do what you would expect.
+
+Installing the CLI is explained in the [install from source](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/install_from_source.md) guide.
+
+## Under the hood
+
+The REPL, interpreter and website all share a single implementation of module and package caching.
+This was a large change in how the runner worked and I'm pleased to have landed that.
+
+## Next
+
+With the backend work to pull packages and modules completed writing useful EYG scripts is much easier.
+Once you are writing scripts the next step is to share them.
+Development priority is now to build functionality around sharing and publishing packages.
+
+
+",
+  ),
+  Edition(
     "2025-04-13",
     "An interpreter, a compiler, a REPL or your own runtime.",
     "
@@ -77,7 +154,7 @@ That has changed and to signal that I am open to contributions there are two obv
 - There is much less code and it's all Gleam.
 
 The initial repo contains a JSON spec for the language.
-There is also a set of packages to build an interpreter with it's own external effect implementations.
+There is also a set of packages to build an interpreter with its own external effect implementations.
 The packages have all been tidied up with more tests, ci, some documentation etc.
 
 All other experiments have moved out.
