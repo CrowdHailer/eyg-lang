@@ -13,12 +13,16 @@ import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/result
+import shellout
 
 pub fn main() {
   use result <- promise.map(execute(args.parse(argv.load().arguments)))
   case result {
     Ok(message) -> io.println(message)
-    Error(reason) -> io.println(reason)
+    Error(reason) -> {
+      io.println_error(reason)
+      shellout.exit(1)
+    }
   }
 }
 
