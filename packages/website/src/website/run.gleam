@@ -39,10 +39,13 @@ import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/flip
+import touch_grass/now
 import touch_grass/paste
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
+
+// import touch_grass/sleep
 import untethered/ledger/schema
 import website/harness/browser
 import website/harness/harness
@@ -156,6 +159,10 @@ pub fn loop(
           flip.encode(flip.sync())
           |> resume(env, k)
           |> loop(context, resume)
+        Ok(harness.Now) ->
+          now.encode(now.sync())
+          |> resume(env, k)
+          |> loop(context, resume)
         Ok(harness.Paste) ->
           browser.ReadFromClipboard(handled(c, paste.encode, context))
           |> handle(env, k, c, updated)
@@ -170,6 +177,10 @@ pub fn loop(
           random.encode(random.sync(max))
           |> resume(env, k)
           |> loop(context, resume)
+        // Ok(harness.Sleep(max)) -> todo
+        // sleep.encode(sleep.sync(max))
+        // |> resume(env, k)
+        // |> loop(context, resume)
         Ok(harness.Visit(uri)) ->
           browser.Visit(uri:, resume: fn(result) {
             let value = case result {

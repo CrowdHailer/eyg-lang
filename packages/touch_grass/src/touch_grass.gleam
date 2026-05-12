@@ -5,13 +5,16 @@ import touch_grass/abort
 import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/download
+import touch_grass/env
 import touch_grass/fetch
 import touch_grass/flip
 import touch_grass/interface.{type Interface, Interface}
+import touch_grass/now
 import touch_grass/paste
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
+import touch_grass/sleep
 import touch_grass/visit
 
 pub fn abort() -> Interface(String, a, b) {
@@ -40,12 +43,20 @@ pub fn download() -> Interface(download.Input, a, b) {
   Interface(download.label, download.lift(), download.lower(), download.decode)
 }
 
+pub fn env() -> Interface(String, a, b) {
+  Interface(env.label, env.lift(), env.lower(), env.decode)
+}
+
 pub fn fetch() -> Interface(Request(BitArray), a, b) {
   Interface(fetch.label, fetch.lift(), fetch.lower(), fetch.decode)
 }
 
 pub fn flip() -> Interface(Nil, a, b) {
   Interface(flip.label, flip.lift(), flip.lower(), flip.decode)
+}
+
+pub fn now() -> Interface(Nil, a, b) {
+  Interface(now.label, now.lift(), now.lower(), now.decode)
 }
 
 pub fn paste() -> Interface(Nil, a, b) {
@@ -62,6 +73,10 @@ pub fn prompt() -> Interface(String, a, b) {
 
 pub fn random() -> Interface(Int, a, b) {
   Interface(random.label, random.lift(), random.lower(), random.decode)
+}
+
+pub fn sleep() -> Interface(Int, a, b) {
+  Interface(sleep.label, sleep.lift(), sleep.lower(), sleep.decode)
 }
 
 pub fn visit() -> Interface(uri.Uri, a, b) {

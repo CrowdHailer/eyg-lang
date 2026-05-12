@@ -27,12 +27,16 @@ The REPL and interpreter implement the following effects to access the host comp
 | Effect | Purpose |
 |---|---|
 | `Print` | Write a string to stdout |
+| `Now` | The current wall-clock time as Unix epoch milliseconds |
 | `ReadFile` | Read a byte range of a file |
 | `WriteFile` | Overwrite a file with new contents |
 | `AppendFile` | Append contents to a file |
+| `DeleteFile` | Delete a file |
 | `ReadDirectory` | List the entries in a directory |
 | `Fetch` | Make an HTTP request |
 | `DecodeJSON` | Parse a JSON binary into EYG values |
+| `Sleep` | Suspends the script for the given number of milliseconds. |
+| `Random` | Returns a uniformly random integer |
 
 Plus several authenticated service integrations powered by
 [spotless](https://hex.pm/packages/spotless), each performing an OAuth flow

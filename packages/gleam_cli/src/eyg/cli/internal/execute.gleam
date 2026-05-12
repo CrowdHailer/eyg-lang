@@ -1,3 +1,4 @@
+import envoy
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/midas_bun
@@ -7,10 +8,8 @@ import eyg/hub/publisher
 import eyg/hub/release
 import eyg/interpreter/block
 import eyg/interpreter/break
-import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/state
-import eyg/interpreter/value
 import eyg/ir/tree as ir
 import filepath
 import gleam/fetchx
@@ -32,12 +31,18 @@ import spotless
 import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/decode_json
+import touch_grass/env as env_effect
 import touch_grass/fetch
 import touch_grass/file_system/append_file
+import touch_grass/file_system/delete_file
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 import touch_grass/http
+import touch_grass/now
+import touch_grass/print
+import touch_grass/random
+import touch_grass/sleep
 import untethered/ledger/schema
 
 pub type State(meta) {
@@ -74,9 +79,19 @@ fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
           use encoded <- promisex.try_sync(decode_json.decode(lift))
           loop(block.resume(decode_json.sync(encoded), env, k), state)
         }
+        break.UnhandledEffect("DeleteFile", lift) -> {
+          use path <- promisex.try_sync(delete_file.decode(lift))
+          let output = delete_file(state.cwd, path)
+          loop(block.resume(delete_file.encode(output), env, k), state)
+        }
         break.UnhandledEffect("DNSimple", lift) -> {
           use result <- promise.try_await(service_fetch("dnsimple", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), state)
+        }
+        break.UnhandledEffect("Env", lift) -> {
+          use name <- promisex.try_sync(env_effect.decode(lift))
+          let result = envoy.get(name) |> option.from_result
+          loop(block.resume(env_effect.encode(result), env, k), state)
         }
         break.UnhandledEffect("Fetch", lift) -> {
           use request <- promisex.try_sync(fetch.decode(lift))
@@ -92,10 +107,19 @@ fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
           use result <- promise.try_await(service_fetch("netlify", lift, 8080))
           loop(block.resume(fetch.encode(result), env, k), state)
         }
+        break.UnhandledEffect("Now", _lift) -> {
+          let millis = now.sync()
+          loop(block.resume(now.encode(millis), env, k), state)
+        }
         break.UnhandledEffect("Print", lift) -> {
-          use message <- promisex.try_sync(cast.as_string(lift))
-          io.print(message)
-          loop(block.resume(value.unit(), env, k), state)
+          use message <- promisex.try_sync(print.decode(lift))
+          print.sync(message)
+          loop(block.resume(print.encode(Nil), env, k), state)
+        }
+        break.UnhandledEffect("Random", lift) -> {
+          use max <- promisex.try_sync(random.decode(lift))
+          let n = random.sync(max)
+          loop(block.resume(random.encode(n), env, k), state)
         }
         break.UnhandledEffect("ReadDirectory", lift) -> {
           use input <- promisex.try_sync(read_directory.decode(lift))
@@ -106,6 +130,11 @@ fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
           use input <- promisex.try_sync(read_file.decode(lift))
           let output = read_file(state.cwd, input)
           loop(block.resume(read_file.encode(output), env, k), state)
+        }
+        break.UnhandledEffect("Sleep", lift) -> {
+          use ms <- promisex.try_sync(sleep.decode(lift))
+          use Nil <- promise.await(promise.wait(ms))
+          loop(block.resume(sleep.encode(Nil), env, k), state)
         }
         break.UnhandledEffect("Vimeo", lift) -> {
           use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
@@ -361,6 +390,16 @@ pub fn write_file(cwd, input: write_file.Input) {
       resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
     )
     simplifile.write_bits(path, contents)
+  }
+  |> result.map_error(simplifile.describe_error)
+}
+
+pub fn delete_file(cwd, path) {
+  {
+    use path <- try(
+      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
+    )
+    simplifile.delete(path)
   }
   |> result.map_error(simplifile.describe_error)
 }

@@ -39,6 +39,18 @@ perform WriteFile({path: "out.txt", contents: !string_to_binary("hello")})
 
 Returns `Result({}, String)`.
 
+### `DeleteFile`
+
+Delete a file at the given path. Deleting a file that does not exist
+is an error, surfaced via the `Result` return type — callers that
+want delete-idempotency should match `Error(_)` and ignore.
+
+```eyg
+perform DeleteFile("scratch.txt")
+```
+
+Returns `Result({}, String)`.
+
 ### `AppendFile`
 
 Append bytes to a file. Safe for concurrent appends.
@@ -68,6 +80,16 @@ For a recursive walk, see
 
 ## I/O
 
+### `Now`
+
+Returns the current wall-clock time as Unix epoch milliseconds.
+
+```eyg
+let millis = perform Now({})
+```
+
+Argument is unit (`{}`). Returns `Int`.
+
 ### `Print`
 
 Write a string to stdout. No newline is added.
@@ -77,6 +99,28 @@ perform Print("hello\n")
 ```
 
 Returns `{}`.
+
+### `Random`
+
+Returns a uniformly random integer greater than 0 and less than max.
+
+```eyg
+let dice = !int_add(perform Random(6), 1)
+```
+
+Argument is unit (`{}`). Returns `Int`.
+
+### `Sleep`
+
+Suspends the script for the given number of milliseconds.
+Other effects in flight still progress.
+
+```eyg
+let _ = perform Sleep(1000)  // wait 1 second
+```
+
+Argument is `Int` (milliseconds). Returns unit (`{}`).
+
 
 ## Network
 

@@ -10,7 +10,7 @@ packages = [
   { name = "eyg_hub", version = "0.1.0", build_tools = ["gleam"], requirements = ["dag_json", "eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "ogre", "spotless", "untethered"], source = "local", path = "../gleam_hub" },
   { name = "eyg_interpreter", version = "2.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "glam", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_interpreter", source = "hex", outer_checksum = "71C8855ED641A3F3ABADE7B2D88FF8B096C6760F5273EEEB04F8C7083EA3271F" },
   { name = "eyg_ir", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "D61C51AB7B88B76B77867F10CA0C9A7C960C46A1C287543B1B1A8EA4B6F3524C" },
-  { name = "eyg_parser", version = "0.3.2", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "81D87F9D69A437FEAFC6244858D423E86631908A6E85D613340C66781FCC9454" },
+  { name = "eyg_parser", version = "0.3.3", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "F60B3EE8B79CE7307C334A4FB8AC14F43C683A877942185A99DD155C231C62D0" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
   { name = "glam", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "48A043A12091F93D911C316DD8F7FFD03CD9FF6F50848FC56E359D3C168DF0FA" },
   { name = "gleam_community_ansi", version = "1.5.0", build_tools = ["gleam"], requirements = ["gleam_community_colour", "gleam_regexp", "gleam_stdlib"], otp_app = "gleam_community_ansi", source = "hex", outer_checksum = "B5AA433AF84313E23FDF90CCFF752B9380FE9FFCE02B2949D49B7AACCC77B16D" },
@@ -50,7 +50,7 @@ packages = [
   { name = "snag", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "274F41D6C3ECF99F7686FDCE54183333E41D2C1CA5A3A673F9A8B2C7A4401077" },
   { name = "splitter", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "3DFD6B6C49E61EDAF6F7B27A42054A17CFF6CA2135FF553D0CB61C234D281DD0" },
   { name = "spotless", version = "3.4.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "ogre", "snag"], otp_app = "spotless", source = "hex", outer_checksum = "2415656D874FD03ED6FF7007B17F41A314277C75E80277E6BE1B7C5033D91444" },
-  { name = "touch_grass", version = "0.2.4", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "gleam_http", "gleam_stdlib", "julienne", "ogre"], otp_app = "touch_grass", source = "hex", outer_checksum = "AE25D10693C7948C322BA13F1CD06F2D7646F2262B498DD4415388BD141CF79E" },
+  { name = "touch_grass", version = "0.2.5", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "ogre"], otp_app = "touch_grass", source = "hex", outer_checksum = "E0BB0CF351BE78007DD9EE77529793C4B358B3E4704F3B32D69A8ABEA3B51C9A" },
   { name = "untethered", version = "0.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "ogre", "spotless"], source = "local", path = "../untethered" },
 ]
 
@@ -84,5 +84,5 @@ plinth = { version = ">= 0.10.2 and < 1.0.0" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 snag = { version = ">= 1.2.0 and < 2.0.0" }
 spotless = { version = ">= 3.4.0 and < 4.0.0" }
-touch_grass = { version = ">= 0.2.3 and < 1.0.0" }
+touch_grass = { version = ">= 0.2.5 and < 1.0.0" }
 untethered = { path = "../untethered" }

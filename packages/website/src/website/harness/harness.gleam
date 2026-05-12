@@ -35,10 +35,13 @@ pub type Effect {
   Download(download.Input)
   Fetch(Request(BitArray))
   Flip
+  Now
   Paste
   Print(String)
   Prompt(String)
   Random(Int)
+  // TODO requires browser sleep
+  // Sleep(Int)
   Visit(uri.Uri)
   // All Spotless effects
   Spotless(service: Service, operation: operation.Operation(BitArray))
@@ -91,9 +94,11 @@ pub fn effects() -> Harness(a, b) {
     tg.download() |> tg.map(Download),
     tg.fetch() |> tg.map(Fetch),
     tg.flip() |> tg.replace(Flip),
+    tg.now() |> tg.replace(Now),
     tg.paste() |> tg.replace(Paste),
     tg.print() |> tg.map(Print),
     tg.prompt() |> tg.map(Prompt),
+    // tg.sleep() |> tg.map(Sleep),
     tg.random() |> tg.map(Random),
     tg.visit() |> tg.map(Visit),
     spotless(DNSimple),
