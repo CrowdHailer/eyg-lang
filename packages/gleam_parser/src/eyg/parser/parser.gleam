@@ -654,12 +654,17 @@ pub fn describe_reason(reason) {
         t.UnexpectedGrapheme(raw) -> string.slice(raw, 0, 1)
         _ -> t.to_string(token)
       }
+      let hint = case token {
+        t.Let ->
+          "hint: the previous expression already completed the block. If you meant the block to continue, bind that expression to `let _ = ...` first."
+        _ -> "hint: EYG uses function calls for operations, not infix operators"
+      }
       "unexpected `"
       <> token_str
       <> "` at position "
       <> int.to_string(position)
-      <> " — the expression is complete but there are leftover tokens"
-      <> "\nhint: EYG uses function calls for operations, not infix operators"
+      <> " — the expression is complete but there are leftover tokens\n"
+      <> hint
     }
   }
 }

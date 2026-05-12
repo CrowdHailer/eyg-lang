@@ -1,5 +1,7 @@
 ---
 version: 1.5.5
 title: unclosed lambda parameter list
+file: ./test/eyg/parser/error_test.gleam
+test_name: unclosed_lambda_args_test
 ---
 error: unexpected end of input

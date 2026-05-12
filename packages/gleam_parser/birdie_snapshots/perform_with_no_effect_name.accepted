@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: perform with no effect name
+file: ./test/eyg/parser/error_test.gleam
+test_name: perform_missing_name_test
 ---
 error: expected an uppercase effect name after `perform` at position 7
 hint: effect names must start with an uppercase letter, e.g. `perform Log`

@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: missing equals — multiline let binding
+file: ./test/eyg/parser/error_test.gleam
+test_name: missing_equals_multiline_test
 ---
 error: expected `=` after let binding name at position 6
 hint: let bindings use the form `let name = expression`

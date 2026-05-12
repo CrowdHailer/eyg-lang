@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: bang with uppercase builtin name
+file: ./test/eyg/parser/error_test.gleam
+test_name: builtin_uppercase_name_test
 ---
 error: expected a builtin identifier after `!` at position 1
 hint: builtins use lowercase names, e.g. `!int_add`

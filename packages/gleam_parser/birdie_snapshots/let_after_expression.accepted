@@ -1,0 +1,11 @@
+---
+version: 1.5.5
+title: let after expression
+file: ./test/eyg/parser/error_test.gleam
+test_name: let_after_expression_test
+---
+error: unexpected `let` at position 12 — the expression is complete but there are leftover tokens
+hint: the previous expression already completed the block. If you meant the block to continue, bind that expression to `let _ = ...` first.
+
+ 3 | let y = 5
+     ^

@@ -1,5 +1,7 @@
 ---
 version: 1.5.5
 title: unexpected end after let equals
+file: ./test/eyg/parser/error_test.gleam
+test_name: unexpected_end_test
 ---
 error: unexpected end of input

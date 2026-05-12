@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: handle with no effect name
+file: ./test/eyg/parser/error_test.gleam
+test_name: handle_missing_name_test
 ---
 error: expected an uppercase effect name after `handle` at position 6
 hint: effect names must start with an uppercase letter, e.g. `handle Log`

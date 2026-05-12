@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: perform with lowercase effect name
+file: ./test/eyg/parser/error_test.gleam
+test_name: perform_lowercase_test
 ---
 error: expected an uppercase effect name after `perform` at position 8
 hint: effect names must start with an uppercase letter, e.g. `perform Log`

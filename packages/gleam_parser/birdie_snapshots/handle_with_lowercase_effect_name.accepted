@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: handle with lowercase effect name
+file: ./test/eyg/parser/error_test.gleam
+test_name: handle_lowercase_test
 ---
 error: expected an uppercase effect name after `handle` at position 7
 hint: effect names must start with an uppercase letter, e.g. `handle Log`

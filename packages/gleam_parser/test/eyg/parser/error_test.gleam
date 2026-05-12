@@ -121,3 +121,8 @@ pub fn multiline_error_test() {
   snap_error("let x = 5\nlet y = 10\nperform log")
   |> birdie.snap(title: "error on third line of multiline program")
 }
+
+pub fn let_after_expression_test() {
+  snap_error("let x = 1\n3\nlet y = 5\n{}")
+  |> birdie.snap(title: "let after expression")
+}

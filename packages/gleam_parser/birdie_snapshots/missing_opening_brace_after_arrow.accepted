@@ -1,6 +1,8 @@
 ---
 version: 1.5.5
 title: missing opening brace after arrow
+file: ./test/eyg/parser/error_test.gleam
+test_name: missing_brace_after_arrow_test
 ---
 error: expected `->` followed by `{` in function definition at position 7
 hint: functions are written as `(arg) -> { body }`
