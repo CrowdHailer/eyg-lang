@@ -1,0 +1,8 @@
+---
+version: 1.5.5
+title: very narrow width forces a list to break
+---
+[
+  1,
+  2,
+]

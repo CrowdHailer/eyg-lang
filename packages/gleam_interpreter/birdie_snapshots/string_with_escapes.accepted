@@ -1,0 +1,5 @@
+---
+version: 1.5.5
+title: string with escapes
+---
+"line one\nline two\twith\ttab"

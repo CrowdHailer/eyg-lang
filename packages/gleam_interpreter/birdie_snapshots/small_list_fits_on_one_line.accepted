@@ -1,0 +1,5 @@
+---
+version: 1.5.5
+title: small list fits on one line
+---
+[1, 2, 3]

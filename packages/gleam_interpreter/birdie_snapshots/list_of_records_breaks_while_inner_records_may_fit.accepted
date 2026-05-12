@@ -1,0 +1,8 @@
+---
+version: 1.5.5
+title: list of records breaks while inner records may fit
+---
+[
+  {age: 30, name: "alice"},
+  {age: 25, name: "bob"},
+]

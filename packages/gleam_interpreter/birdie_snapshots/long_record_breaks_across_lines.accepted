@@ -1,0 +1,11 @@
+---
+version: 1.5.5
+title: long record breaks across lines
+---
+{
+  field_1: "value 1",
+  field_2: "value 2",
+  field_3: "value 3",
+  field_4: "value 4",
+  field_5: "value 5",
+}

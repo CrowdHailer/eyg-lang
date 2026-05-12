@@ -1,0 +1,14 @@
+---
+version: 1.5.5
+title: deeply nested structures break and indent
+---
+[
+  {
+    label: "origin",
+    point: {x: 1, y: 2},
+  },
+  {
+    label: "origin",
+    point: {x: 1, y: 2},
+  },
+]

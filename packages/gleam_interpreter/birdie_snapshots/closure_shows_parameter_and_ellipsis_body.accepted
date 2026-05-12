@@ -1,0 +1,5 @@
+---
+version: 1.5.5
+title: closure shows parameter and ellipsis body
+---
+fn(x) { ... }

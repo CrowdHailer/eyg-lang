@@ -1,8 +1,13 @@
-//// A naive representation of EYG values as a string.
-//// Note the returned string can be any size and applications are best of writing their own visualisation.
+//// Pretty-printed representation of EYG values.
+////
+//// Output is laid out by `glam` so that small structures collapse onto a
+//// single line and only larger structures break across multiple lines. The
+//// returned string is intended for human consumption — applications that
+//// need machine-readable output should serialise the value themselves.
 
 import eyg/interpreter/break
 import eyg/interpreter/value as v
+import glam/doc.{type Document}
 import gleam/bit_array
 import gleam/dict
 import gleam/int
@@ -10,8 +15,11 @@ import gleam/list
 import gleam/string
 import multiformats/cid/v1
 
-/// Describe a reason to stop execution
-pub fn describe(reason) {
+/// Default width used when none is supplied.
+pub const default_width: Int = 80
+
+/// Describe a reason to stop execution.
+pub fn describe(reason) -> String {
   case reason {
     break.UndefinedVariable(var) -> "variable undefined: " <> var
     break.UndefinedBuiltin(var) -> "builtin undefined: !" <> var
@@ -19,12 +27,7 @@ pub fn describe(reason) {
     break.UndefinedRelease(package, release, _cid) ->
       "release undefined: @" <> package <> ":" <> int.to_string(release)
     break.IncorrectTerm(expected, got) ->
-      string.concat([
-        "unexpected term, expected: ",
-        expected,
-        " got: ",
-        inspect(got),
-      ])
+      "unexpected term, expected: " <> expected <> " got: " <> inspect(got)
     break.MissingField(field) -> "missing record field: " <> field
     break.NoMatch(term) -> "no cases matched for: " <> inspect(term)
     break.NotAFunction(term) -> "function expected got: " <> inspect(term)
@@ -36,58 +39,114 @@ pub fn describe(reason) {
   }
 }
 
-/// Inspect a value.
+/// Inspect a value at the default width.
 pub fn inspect(value: v.Value(_, _)) -> String {
-  do_inspect(value, 0)
+  render(value, default_width)
 }
 
-fn do_inspect(value: v.Value(_, _), indent: Int) -> String {
-  let indent_str = string.repeat("  ", indent)
+/// Render a value with an explicit line-width budget. A larger width keeps
+/// more on one line; a smaller width causes earlier breaking.
+pub fn render(value: v.Value(_, _), width: Int) -> String {
+  value
+  |> to_doc
+  |> doc.to_string(width)
+}
+
+fn to_doc(value: v.Value(_, _)) -> Document {
   case value {
-    v.String(s) -> "\"" <> escape_string(s) <> "\""
-    v.Integer(i) -> int.to_string(i)
-    v.Binary(b) -> {
-      let size = bit_array.byte_size(b)
-      let encoded = bit_array.base64_encode(b, True)
-      "Binary(" <> int.to_string(size) <> " bytes): " <> encoded
-    }
-    v.Tagged(label, inner) -> {
-      label <> "(" <> do_inspect(inner, indent) <> ")"
-    }
-    v.Record(fields) -> {
-      let items =
-        dict.to_list(fields)
-        |> list.map(fn(pair) {
-          let #(key, val) = pair
-          indent_str <> "  " <> key <> ": " <> do_inspect(val, indent + 1)
-        })
-        |> string.join("\n")
-      "{\n" <> items <> "\n" <> indent_str <> "}"
-    }
-    v.LinkedList(items) -> {
-      case items {
-        [] -> "[]"
-        _ -> {
-          let rendered =
-            items
-            |> list.map(fn(item) {
-              indent_str <> "  " <> do_inspect(item, indent + 1)
-            })
-            |> string.join(",\n")
-          "[\n" <> rendered <> "\n" <> indent_str <> "]"
-        }
-      }
-    }
-    v.Closure(param, _, _) -> "fn(" <> param <> ") -> {...}"
-    v.Partial(func, args) -> {
-      let args_str =
-        args
-        |> list.map(fn(a) { do_inspect(a, indent) })
-        |> string.join(", ")
-      "Partial(" <> string.inspect(func) <> ", " <> args_str <> ")"
-    }
-    v.Promise(_) -> "Promise(...)"
+    v.String(s) -> doc.from_string("\"" <> escape_string(s) <> "\"")
+    v.Integer(i) -> doc.from_string(int.to_string(i))
+    v.Binary(b) -> binary_doc(b)
+    v.Tagged(label, inner) ->
+      doc.from_string(label)
+      |> doc.append(wrap("(", to_doc(inner), ")"))
+    v.Record(fields) -> record_doc(fields)
+    v.LinkedList(items) -> list_doc(items)
+    v.Closure(param, _, _) -> doc.from_string("fn(" <> param <> ") { ... }")
+    v.Partial(func, args) -> partial_doc(func, args)
+    v.Promise(_) -> doc.from_string("Promise(...)")
   }
+}
+
+fn binary_doc(b: BitArray) -> Document {
+  let size = bit_array.byte_size(b)
+  let encoded = bit_array.base64_encode(b, True)
+  doc.from_string("Binary(" <> int.to_string(size) <> " bytes): " <> encoded)
+}
+
+fn record_doc(fields) -> Document {
+  case dict.is_empty(fields) {
+    True -> doc.from_string("{}")
+    False -> {
+      let entries =
+        dict.to_list(fields)
+        |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+        |> list.map(fn(pair) {
+          let #(key, value) = pair
+          doc.from_string(key <> ": ")
+          |> doc.append(to_doc(value))
+        })
+      separated(entries, "{", "}")
+    }
+  }
+}
+
+fn list_doc(items: List(v.Value(_, _))) -> Document {
+  case items {
+    [] -> doc.from_string("[]")
+    _ -> separated(list.map(items, to_doc), "[", "]")
+  }
+}
+
+fn partial_doc(func, args: List(v.Value(_, _))) -> Document {
+  let head = doc.from_string(string.inspect(func))
+  case func, args {
+    // TODO render the remaining switch branches, remove string.inspect
+    // choice of `.field` of `(x) -> { x.field }` for partials without parser representation
+    v.Tag(label), [] -> doc.from_string(label)
+    _, [] -> wrap("Partial(", head, ")")
+    _, _ -> {
+      let parts = [head, ..list.map(args, to_doc)]
+      let inner =
+        parts
+        |> doc.join(with: doc.concat([doc.from_string(","), doc.space]))
+      wrap("Partial(", inner, ")")
+    }
+  }
+}
+
+/// Wrap a single document between an opening and closing string. Used when
+/// the contents have already been laid out (eg. nested Tagged values).
+fn wrap(open: String, inner: Document, close: String) -> Document {
+  doc.concat([
+    doc.from_string(open),
+    doc.soft_break
+      |> doc.append(inner)
+      |> doc.nest(by: 2),
+    doc.soft_break,
+    doc.from_string(close),
+  ])
+  |> doc.group
+}
+
+/// Lay out a list of items between delimiters. When the contents fit on the
+/// current line they appear on one line separated by ", "; otherwise each
+/// item appears on its own indented line with a trailing comma.
+fn separated(items: List(Document), open: String, close: String) -> Document {
+  let separator = doc.break(", ", ",")
+  let body = doc.join(items, with: separator)
+  let inner =
+    doc.soft_break
+    |> doc.append(body)
+    |> doc.nest(by: 2)
+
+  doc.concat([
+    doc.from_string(open),
+    inner,
+    doc.break("", ","),
+    doc.from_string(close),
+  ])
+  |> doc.group
 }
 
 fn escape_string(s: String) -> String {

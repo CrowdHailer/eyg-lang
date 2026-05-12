@@ -1,6 +1,7 @@
 import website/routes/news/edition.{Edition}
 
 pub const published = [
+  // pretty render values
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",

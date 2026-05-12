@@ -37,6 +37,10 @@ pub fn unit() {
   Record(dict.new())
 }
 
+pub fn tag(label) {
+  Partial(Tag(label), [])
+}
+
 pub fn true() {
   Tagged("True", unit())
 }

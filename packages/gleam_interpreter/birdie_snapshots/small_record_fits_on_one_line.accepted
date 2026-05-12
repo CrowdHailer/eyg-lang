@@ -1,0 +1,5 @@
+---
+version: 1.5.5
+title: small record fits on one line
+---
+{a: 1, b: 2}
