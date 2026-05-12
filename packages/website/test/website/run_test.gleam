@@ -10,8 +10,10 @@ import gleam/crypto
 import gleam/dict
 import gleam/http/request
 import gleam/http/response
+import gleam/option.{None}
 import multiformats/cid/v1
 import ogre/origin
+import spotless/oauth_2_1/token
 import touch_grass/http
 import website/harness/browser
 import website/harness/harness
@@ -19,7 +21,7 @@ import website/run
 
 pub type Message {
   EffectHandled(task_id: Int, value: run.Value)
-  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
   ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
   PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }
@@ -89,13 +91,21 @@ pub fn spotless_effect_test() {
     execute(source, initial)
   assert 1 == updated.counter
 
-  let assert browser.Spotless(harness.DNSimple, resume:) = effect
-  let assert SpotlessConnectCompleted(service, result) = resume(Ok("dns_tok"))
+  let assert browser.Spotless(harness.DNSimple, _, resume:) = effect
+  let response =
+    token.Response(
+      access_token: "dns_tok",
+      token_type: "",
+      expires_in: None,
+      scope: [],
+      refresh_token: None,
+    )
+  let assert SpotlessConnectCompleted(service, result) = resume(Ok(response))
   let #(updated, effects) = run.connect_completed(updated, service, result)
   let assert [] = updated.connecting
   let assert [browser.Fetch(request:, resume:)] = effects
-  assert "/v2/accounts" == request.path
-  assert "api.dnsimple.com" == request.host
+  assert "/proxy/dnsimple/v2/accounts" == request.path
+  assert "eyg.test" == request.host
   assert Ok("Bearer dns_tok") == request.get_header(request, "authorization")
 
   let assert EffectHandled(0, value) =
@@ -113,8 +123,8 @@ pub fn spotless_effect_test() {
   assert 2 == updated.counter
 
   let assert browser.Fetch(request:, resume:) = effect
-  assert "/v2/accounts" == request.path
-  assert "api.dnsimple.com" == request.host
+  assert "/proxy/dnsimple/v2/accounts" == request.path
+  assert "eyg.test" == request.host
   assert Ok("Bearer dns_tok") == request.get_header(request, "authorization")
   let assert EffectHandled(1, value) =
     resume(Ok(response.new(200) |> response.set_body(<<>>)))

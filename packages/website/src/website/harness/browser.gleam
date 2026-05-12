@@ -1,21 +1,32 @@
 //// Browser is the API to the platform
 //// It might make sense to implement a version of the effect interface built on this
 
+import gleam/bit_array
 import gleam/fetch
 import gleam/fetchx
 import gleam/http/request
 import gleam/http/response
-import gleam/javascript/promise
+import gleam/int
+import gleam/javascript/promise.{type Promise}
+import gleam/javascript/promisex
 import gleam/json.{type Json}
 import gleam/result
 import gleam/string
 import gleam/uri
 import midas/browser
+import ogre/origin
 import plinth/browser/clipboard
 import plinth/browser/file
 import plinth/browser/file_system
+import plinth/browser/location
 import plinth/browser/window
 import plinth/browser/window_proxy
+import snag
+import spotless
+import spotless/oauth_2_1
+import spotless/oauth_2_1/authorization
+import spotless/oauth_2_1/token
+import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/download
 import website/harness/harness
 
@@ -57,7 +68,11 @@ pub type Effect(m) {
   )
   // TODO move to Follow etc but needs secure random and ability to combine effects
   // TODO browser shouldn't rely on harness but no circular dependency yet
-  Spotless(service: harness.Service, resume: fn(Result(String, String)) -> m)
+  Spotless(
+    service: harness.Service,
+    origin: origin.Origin,
+    resume: fn(Result(token.Response, String)) -> m,
+  )
   Visit(uri: uri.Uri, resume: fn(Result(window_proxy.WindowProxy, String)) -> m)
   WriteToClipboard(text: String, resume: fn(Result(Nil, String)) -> m)
 }
@@ -89,7 +104,7 @@ pub fn fetch(request, resume) {
 //     }
 
 // Use an ignore event if we don't want a message
-pub fn run(effect: Effect(m)) -> promise.Promise(m) {
+pub fn run(effect: Effect(m)) -> Promise(m) {
   case effect {
     Alert(message:, resume:) -> {
       window.alert(message)
@@ -154,85 +169,150 @@ pub fn run(effect: Effect(m)) -> promise.Promise(m) {
       use result <- promise.map(clipboard.write_text(text))
       resume(result)
     }
-    Spotless(service: _, resume: _) -> panic as "unsupported browser effect"
+    Spotless(service:, origin:, resume:) -> {
+      use result <- promise.map(spotless(origin, service))
+      resume(result)
+    }
   }
 }
 
-// pub fn read(name) {
-//   use dir <- promise.try_await(file_system.show_directory_picker())
-//   use file <- promise.try_await(file_system.get_file_handle(dir, name, True))
-//   use file <- promise.try_await(file_system.get_file(file))
-//   use text <- promise.map(file.bytes(file))
-//   Ok(text)
-// }
-// pub fn list() {
-//   use dir <- promise.try_await(file_system.show_directory_picker())
-//   use #(entries, _) <- promise.try_await(file_system.all_entries(dir))
-//   promise.resolve(Ok(list.map(array.to_list(entries), string.inspect)))
-// }
-//     state.SetFlushTimer(reference) ->
-//       effect.from(fn(dispatch) {
-//         promise.map(promise.wait(2000), fn(_: Nil) {
-//           dispatch(state.FlushTimeout(reference:))
-//         })
-//         Nil
-//       })
-//     state.SaveFile(handle:, filename:, projection:) -> {
-//       effect.from(fn(_dispatch) {
-//         {
-//           let name = case filename.1 {
-//             state.EygJson -> filename.0 <> ".eyg.json"
-//           }
-//           use file_handle <- promise.try_await(file_system.get_file_handle(
-//             handle,
-//             name,
-//             True,
-//           ))
+fn spotless(
+  origin: origin.Origin,
+  service: harness.Service,
+) -> Promise(Result(token.Response, String)) {
+  let client_id = origin.to_string(origin)
+  use bytes <- promisex.try_sync(browser.do_random(32))
+  let code_challenge = bit_array.base64_url_encode(bytes, False)
+  let code_challenge_method = pkce.Plain
+  let code_verifier = code_challenge
 
-//           use writable <- promise.try_await(file_system.create_writable(
-//             file_handle,
-//           ))
-//           let content =
-//             projection.rebuild(projection)
-//             |> editable.to_annotated([])
-//             |> dag_json.to_block()
+  let redirect_uri =
+    uri.Uri(..origin.to_uri(origin), path: "/") |> uri.to_string
 
-//           use Nil <- promise.try_await(file_system.write(writable, content))
-//           use Nil <- promise.try_await(file_system.close(writable))
-//           promise.resolve(Ok(Nil))
-//         }
-//         |> promise.map(fn(r) { echo r })
-//         Nil
-//       })
-//     }
-//     state.SpotlessConnect(effect_counter:, origin:, service:) -> {
-//       let assert Some(port) = origin.port
-//       effect.from(fn(dispatch) {
-//         promise.map(browser.run_task(spotless.dnsimple(port)), fn(result) {
-//           dispatch(state.SpotlessConnected(
-//             reference: effect_counter,
-//             service:,
-//             result:,
-//           ))
-//         })
-//         Nil
-//       })
-//     }
+  let #(service, scope) = case service {
+    harness.DNSimple -> #("dnsimple", [])
+    harness.GitHub -> #("github", [])
+    harness.Vimeo -> #("vimeo", [])
+  }
+  use server <- promisex.try_sync(
+    spotless.server(service)
+    |> result.replace_error("unknown service " <> service),
+  )
 
-//   }
-// }
+  let request =
+    authorization.Request(
+      client_id:,
+      code_challenge:,
+      code_challenge_method:,
+      redirect_uri:,
+      scope:,
+      state: "",
+      extra: [],
+    )
 
-// fn run_effect(effect) {
-//   case effect {
-//     state.Fetch(request) -> fetch.run(request)
-//     state.Geolocation -> geolocation.run()
-//     state.Now -> now.run()
+  let redirect =
+    authorization.request_to_url(server.authorization_endpoint, request)
+  // which or location or href throws the exception
 
-//   }
-// }
+  use redirect <- promise.await(do_follow(redirect))
+  use redirect <- promisex.try_sync(redirect)
+  use redirect <- promisex.try_sync(
+    uri.parse(redirect) |> result.replace_error("invalid redirect_url"),
+  )
+  use response <- promisex.try_sync(
+    oauth_2_1.authorization_response_from_uri(redirect)
+    |> result.map_error(snag.line_print),
+  )
+
+  let oauth_2_1.AuthorizationServer(token_endpoint:, ..) = server
+
+  let request =
+    token.Request(
+      grant_type: token.AuthorizationCode,
+      client_id:,
+      code: response.code,
+      code_verifier:,
+      redirect_uri: redirect_uri,
+    )
+
+  let request = token.request_to_http(token_endpoint, request)
+  use result <- promise.await(fetchx.send_bits(request))
+  use response <- promisex.try_sync(
+    result
+    |> result.map_error(fn(reason) {
+      "failed to fetch token: " <> string.inspect(reason)
+    }),
+  )
+  use response <- promisex.try_sync(
+    oauth_2_1.token_response_from_http(response)
+    |> result.map_error(snag.line_print),
+  )
+  let response =
+    response
+    |> result.map_error(string.inspect)
+
+  promise.resolve(response)
+}
+
+fn do_follow(url) {
+  let url = uri.to_string(url)
+  let frame = #(600, 700)
+  let assert Ok(popup) = open(url, frame)
+  receive_redirect(popup, 100)
+}
+
+pub fn open(url, frame_size) {
+  let space = #(
+    window.outer_width(window.self()),
+    window.outer_height(window.self()),
+  )
+  let #(#(offset_x, offset_y), #(inner_x, inner_y)) = center(frame_size, space)
+  let features =
+    string.concat([
+      "popup",
+      ",width=",
+      int.to_string(inner_x),
+      ",height=",
+      int.to_string(inner_y),
+      ",left=",
+      int.to_string(offset_x),
+      ",top=",
+      int.to_string(offset_y),
+    ])
+
+  window.open(url, "_blank", features)
+}
+
+pub fn center(inner, outer) {
+  let #(inner_x, inner_y) = inner
+  let #(outer_x, outer_y) = outer
+
+  let inner_x = int.min(inner_x, outer_x)
+  let inner_y = int.min(inner_y, outer_y)
+
+  let offset_x = { outer_x - inner_x } / 2
+  let offset_y = { outer_y - inner_y } / 2
+
+  #(#(offset_x, offset_y), #(inner_x, inner_y))
+}
+
+fn receive_redirect(popup, wait) {
+  use Nil <- promise.await(promise.wait(wait))
+  case href(window_proxy.location(popup)) |> echo {
+    Ok("http" <> _) as location -> {
+      window_proxy.close(popup)
+      promise.resolve(location)
+    }
+    _ -> receive_redirect(popup, wait)
+  }
+}
+
+// Needs to return result as location on cross origin is an error
+@external(javascript, "./browser_ffi.mjs", "href")
+fn href(location: location.Location) -> Result(String, String)
 
 @external(javascript, "../../website_ffi.mjs", "show_save_directory_picker")
-fn show_save_directory_picker() -> promise.Promise(
+fn show_save_directory_picker() -> Promise(
   Result(file_system.Handle(file_system.D), String),
 )
 

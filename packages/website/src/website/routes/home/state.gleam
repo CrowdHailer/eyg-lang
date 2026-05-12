@@ -17,6 +17,7 @@ import morph/editable as e
 import morph/input
 import morph/picker
 import multiformats/cid/v1
+import spotless/oauth_2_1/token
 import website/command
 import website/config
 import website/harness/browser
@@ -107,7 +108,7 @@ pub type Message {
   ClipboardReadCompleted(Result(String, String))
   Ignore
   EffectHandled(task_id: Int, value: state.Value(Meta))
-  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
   ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
   PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }

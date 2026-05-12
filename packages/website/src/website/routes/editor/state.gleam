@@ -4,6 +4,7 @@ import eyg/interpreter/state
 import eyg/ir/tree as ir
 import morph/buffer
 import multiformats/cid/v1
+import spotless/oauth_2_1/token
 import website/config
 import website/harness/harness
 import website/run
@@ -44,7 +45,7 @@ pub type Message {
   ToggleFullscreen
   ShareCurrent
   EffectHandled(task_id: Int, value: state.Value(Meta))
-  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
   ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
   PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }

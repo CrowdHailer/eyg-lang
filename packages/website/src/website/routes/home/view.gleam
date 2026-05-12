@@ -249,6 +249,38 @@ pub fn view() {
         True,
       ),
       feature(
+        "Business focused effects",
+        [
+          "An EYG effect can be any external implementation. This effect is at a higher abstraction than a HTTP fetch.",
+          "The web environment can include an OAuth flow and the platform can manage tokens. This keeps your application totally unaware of security tokens",
+        ],
+        element.none(),
+        [
+          example(s, examples.dnsimple_key),
+          caption("Click on error message to jump to error."),
+        ],
+        False,
+      ),
+      feature(
+        // "Immutable references",
+        // [
+        //   "Every program, script or function has a unique reference.",
+        //   "In EYG all packages and dependencies are fetched by reference, ensuring the same code is fetched everytime.",
+        // ],
+        "Robust ecosystem",
+        [
+          "Use an ecosystem of helpful packages to work faster. Share code with anyone using your unique handle.",
+          "Signing up for account names is in closed beta for now. Get in touch to find out more",
+        ],
+        action(
+          "Read the reference documentation.",
+          "/documentation#references",
+          Predictable,
+        ),
+        [example(s, examples.fetch_key)],
+        True,
+      ),
+      feature(
         "Handle effects",
         [
           "Any effect can be intercepted using a handler. Provide a response to you effect without any side effects.",
@@ -264,25 +296,6 @@ pub fn view() {
           caption("Click above to run and edit."),
         ],
         False,
-      ),
-      feature(
-        // "Immutable references",
-        // [
-        //   "Every program, script or function has a unique reference.",
-        //   "In EYG all packages and dependencies are fetched by reference, ensuring the same code is fetched everytime.",
-        // ],
-        "Named references",
-        [
-          "Use an ecosystem of helpful packages to work faster. Share code with anyone using your unique handle.",
-          "Signing up for account names is in closed beta for now. Get in touch to find out more",
-        ],
-        action(
-          "Read the reference documentation.",
-          "/documentation#references",
-          Predictable,
-        ),
-        [example(s, examples.fetch_key)],
-        True,
       ),
       // feature(
       //   "Cross boundaries",

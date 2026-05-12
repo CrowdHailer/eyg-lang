@@ -2,6 +2,7 @@ import gleam/http
 import gleam/http/request.{Request}
 import hub/modules/controller as modules
 import hub/packages/controller as packages
+import hub/proxy/controller as proxy
 import hub/signatories/controller as signatories
 import wisp
 
@@ -30,6 +31,7 @@ pub fn route(request, context) {
         _, _ -> wisp.html_response("Nothing", 404)
       }
     }
+    ["proxy", service, ..rest] -> proxy.to(service, rest, request)
     _ -> wisp.html_response("Nothing", 404)
   }
 }

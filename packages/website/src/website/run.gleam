@@ -26,7 +26,7 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/http/request
+import gleam/http/request.{Request}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -35,6 +35,7 @@ import morph/buffer
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
+import spotless/oauth_2_1/token
 import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/fetch
@@ -75,7 +76,7 @@ pub type Context(m) {
     authentiction: Dict(harness.Service, String),
     connecting: List(#(Int, harness.Service, operation.Operation(BitArray))),
     handled: fn(Int, Value) -> m,
-    connect_completed: fn(harness.Service, Result(String, String)) -> m,
+    connect_completed: fn(harness.Service, Result(token.Response, String)) -> m,
     module_lookup_completed: fn(v1.Cid, Result(ir.Node(Nil), String)) -> m,
     pull_packages_completed: fn(Result(List(schema.ArchivedEntry), String)) -> m,
   )
@@ -193,7 +194,8 @@ pub fn loop(
         Ok(harness.Spotless(service:, operation:)) ->
           case token(context, service) {
             Ok(token) -> {
-              let request = service_request(service, operation, token)
+              let request =
+                service_request(service, operation, token, context.hub_origin)
               browser.fetch(request, handled(c, fetch.encode, context))
               |> handle(env, k, c, updated)
             }
@@ -202,7 +204,11 @@ pub fn loop(
                 list.append(updated.connecting, [#(c, service, operation)])
               let updated = Context(..updated, connecting:)
               #(Handling(c, env, k), updated, [
-                browser.Spotless(service, context.connect_completed(service, _)),
+                browser.Spotless(
+                  service,
+                  context.hub_origin,
+                  context.connect_completed(service, _),
+                ),
               ])
             }
           }
@@ -225,10 +231,10 @@ pub fn loop(
 pub fn connect_completed(
   context: Context(m),
   service: harness.Service,
-  result: Result(String, String),
+  result: Result(token.Response, String),
 ) -> #(Context(m), List(browser.Effect(m))) {
   case result {
-    Ok(token) -> {
+    Ok(token.Response(access_token: token, ..)) -> {
       let Context(authentiction:, ..) = context
       let authentiction = dict.insert(authentiction, service, token)
       let #(connecting, effects) =
@@ -242,11 +248,12 @@ pub fn connect_completed(
   }
 }
 
-fn service_tasks(tasks, service, acc, effects, token, context) {
+fn service_tasks(tasks, service, acc, effects, token, context: Context(_)) {
   case tasks {
     [] -> #(list.reverse(acc), list.reverse(effects))
     [#(task_id, s, operation), ..rest] if s == service -> {
-      let request = service_request(service, operation, token)
+      let request =
+        service_request(service, operation, token, context.hub_origin)
 
       let effect =
         browser.fetch(request, handled(task_id, fetch.encode, context))
@@ -344,14 +351,17 @@ pub fn get_module_completed(
   #(Context(..context, cache:), resolutions)
 }
 
-fn service_request(service, operation, token) {
-  let origin = case service {
-    harness.DNSimple -> origin.https("api.dnsimple.com")
-    harness.GitHub -> origin.https("api.github.com")
-    harness.Vimeo -> origin.https("api.vimeo.com")
+fn service_request(service, operation, token, hub_origin) {
+  let #(origin, path_prefix) = case service {
+    harness.DNSimple -> #(hub_origin, "/proxy/dnsimple")
+    harness.GitHub -> #(origin.https("api.github.com"), "")
+    harness.Vimeo -> #(origin.https("api.vimeo.com"), "")
   }
-  operation.to_request(operation, origin)
-  |> request.set_header("authorization", "Bearer " <> token)
+  let request =
+    operation.to_request(operation, origin)
+    |> request.set_header("authorization", "Bearer " <> token)
+  let path = path_prefix <> request.path
+  Request(..request, path:)
 }
 
 pub type Previous {

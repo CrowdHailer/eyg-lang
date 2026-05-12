@@ -26,6 +26,7 @@ import multiformats/hashes
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
+import spotless/oauth_2_1/token
 import website/command
 import website/config
 import website/harness/browser
@@ -234,7 +235,7 @@ pub type Message {
   OpenPopupCompleted(Result(window_proxy.WindowProxy, String))
   Ignore
   EffectHandled(task_id: Int, value: istate.Value(Meta))
-  SpotlessConnectCompleted(harness.Service, Result(String, String))
+  SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
   ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
   PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }
