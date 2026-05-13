@@ -1,9 +1,11 @@
 # Eat Your Greens (EYG)
 
-A programming language for predictable, useful and confident development.
 EYG is an immutable functional language with structural typing and managed effects.
+The programming language is for predictable, useful and confident development.
 
 The intermediate representation (IR) of EYG is a minimal tree and is the stable interface for writing EYG programs. Type checking, syntax, evaluation or compilation are optional components built on this foundation.
+
+This repository contains the language definition, implementation, website and package hub.
 
 ## Install
 
