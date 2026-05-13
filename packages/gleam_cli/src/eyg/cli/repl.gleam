@@ -24,7 +24,7 @@ pub fn execute(config) {
 
 fn loop(buffer, scope, state) {
   case input.input("> ") {
-    Ok("") -> promise.resolve(Ok(""))
+    Ok("") -> promise.resolve(Ok(Nil))
     Ok(code) -> {
       let buffer = buffer <> code
       case parser.block_from_string(buffer) {

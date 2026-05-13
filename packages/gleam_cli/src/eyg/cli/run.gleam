@@ -13,7 +13,7 @@ import simplifile
 pub fn execute(
   file: String,
   config: config.Config,
-) -> promise.Promise(Result(String, String)) {
+) -> promise.Promise(Result(Nil, String)) {
   use source <- promisex.try_sync(source.read(file))
 
   use cwd <- promisex.try_sync(
@@ -25,8 +25,8 @@ pub fn execute(
   let state = execute.State(dir, config, cache.empty(), fn(_: Nil) { Nil })
   use result <- promise.map(execute.block(source, [], state))
   case result {
-    Ok(#(Some(value), _)) -> Ok(simple_debug.inspect(value))
-    Ok(#(None, _)) -> Ok("")
+    Ok(#(Some(_value), _)) -> Ok(Nil)
+    Ok(#(None, _)) -> Ok(Nil)
     Error(reason) -> Error(simple_debug.describe(reason))
   }
 }

@@ -3,7 +3,7 @@ import eyg/cli/internal/config
 import eyg/cli/internal/crypto
 import eyg/cli/internal/store
 import filepath
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/json
 import gleam/list
@@ -13,7 +13,10 @@ import multiformats/cid/v1
 import simplifile
 import untethered/ledger/schema
 
-pub fn initial(alias, config: config.Config) {
+pub fn initial(
+  alias: String,
+  config: config.Config,
+) -> Promise(Result(Nil, String)) {
   let config.Config(client:, dirs:) = config
   let keypair = crypto.generate_key()
   use first <- promise.try_await(client.initialise_principal(keypair, client))
@@ -45,7 +48,7 @@ pub fn initial(alias, config: config.Config) {
     simplifile.create_directory_all(filepath.directory_name(path))
 
   simplifile.write(path, cache)
-  |> result.replace("")
+  |> result.replace(Nil)
   |> result.map_error(simplifile.describe_error)
   |> promise.resolve
 }

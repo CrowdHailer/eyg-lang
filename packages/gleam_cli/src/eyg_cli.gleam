@@ -10,7 +10,7 @@ import eyg/cli/share
 import eyg/cli/signatory
 import eyg/cli/version
 import gleam/io
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/result
 import shellout
@@ -18,7 +18,7 @@ import shellout
 pub fn main() {
   use result <- promise.map(execute(args.parse(argv.load().arguments)))
   case result {
-    Ok(message) -> io.println(message)
+    Ok(_) -> Nil
     Error(reason) -> {
       io.println_error(reason)
       shellout.exit(1)
@@ -26,13 +26,28 @@ pub fn main() {
   }
 }
 
-fn execute(parsed) {
+fn execute(parsed: args.Args) -> Promise(Result(Nil, String)) {
   case parsed {
-    args.Help -> promise.resolve(Ok(args.help_text))
-    args.Version -> promise.resolve(Ok("eyg " <> version.string))
-    args.Fail -> promise.resolve(Error("bad arguments. try `eyg --help`."))
+    args.Help -> help()
+    args.Version -> version()
+    args.Fail -> fail()
     _ -> with_config(parsed)
   }
+}
+
+fn help() {
+  io.println(args.help_text)
+  promise.resolve(Ok(Nil))
+}
+
+fn version() {
+  io.println("eyg " <> version.string)
+  promise.resolve(Ok(Nil))
+}
+
+fn fail() {
+  io.println("bad arguments. try `eyg --help`.")
+  promise.resolve(Ok(Nil))
 }
 
 fn with_config(parsed) {

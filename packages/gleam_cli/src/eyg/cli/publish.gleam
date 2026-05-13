@@ -31,5 +31,5 @@ pub fn execute(package, file, config) {
     previous,
     client,
   ))
-  promise.resolve(Ok("published"))
+  promise.resolve(Ok(Nil))
 }
