@@ -121,6 +121,18 @@ let _ = perform Sleep(1000)  // wait 1 second
 
 Argument is `Int` (milliseconds). Returns unit (`{}`).
 
+### `Env`
+
+Read a process environment variable.
+
+```eyg
+match perform Env("HOME") {
+  Some(value) -> { value }
+  None({}) -> { "" }
+}
+```
+
+Argument is `String` (the variable name). Returns `Option(String)`.
 
 ## Network
 

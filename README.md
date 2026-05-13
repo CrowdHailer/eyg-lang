@@ -9,7 +9,6 @@ The intermediate representation (IR) of EYG is a minimal tree and is the stable 
 
 Follow the [install from source](./guides/install_from_source.md) guide with instructions to compile and install the EYG CLI.
 
-
 For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
 The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md).
 
@@ -37,6 +36,7 @@ The REPL and interpreter implement the following effects to access the host comp
 | `DecodeJSON` | Parse a JSON binary into EYG values |
 | `Sleep` | Suspends the script for the given number of milliseconds. |
 | `Random` | Returns a uniformly random integer |
+| `Env` | Read a process environment variable |
 
 Plus several authenticated service integrations powered by
 [spotless](https://hex.pm/packages/spotless), each performing an OAuth flow
