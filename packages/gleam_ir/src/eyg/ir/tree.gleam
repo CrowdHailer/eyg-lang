@@ -33,8 +33,9 @@ pub type Expression(m) {
   Handle(label: String)
 
   Builtin(identifier: String)
-  Reference(identifier: v1.Cid)
-  Release(package: String, release: Int, identifier: v1.Cid)
+  ContentReference(identifier: v1.Cid)
+  ReleaseReference(package: String, version: Int, identifier: v1.Cid)
+  RelativeReference(location: String)
 }
 
 pub fn variable(label) {
@@ -118,11 +119,11 @@ pub fn builtin(identifier) {
 }
 
 pub fn reference(identifier) {
-  #(Reference(identifier), Nil)
+  #(ContentReference(identifier), Nil)
 }
 
 pub fn release(package, release, identifier) {
-  #(Release(package, release, identifier), Nil)
+  #(ReleaseReference(package, release, identifier), Nil)
 }
 
 pub fn func(params, body) {
@@ -246,8 +247,9 @@ fn do_get_annotation(in, acc) -> List(_) {
     Handle(_label) -> acc
 
     Builtin(_identifier) -> acc
-    Reference(_identifier) -> acc
-    Release(_package, _release, _identifier) -> acc
+    ContentReference(_identifier) -> acc
+    ReleaseReference(_package, _release, _identifier) -> acc
+    RelativeReference(_location) -> acc
   }
 }
 
@@ -293,11 +295,12 @@ pub fn map_annotation(
     Handle(label) -> #(Handle(label), f(meta))
 
     Builtin(identifier) -> #(Builtin(identifier), f(meta))
-    Reference(identifier) -> #(Reference(identifier), f(meta))
-    Release(package, release, identifier) -> #(
-      Release(package, release, identifier),
+    ContentReference(identifier) -> #(ContentReference(identifier), f(meta))
+    ReleaseReference(package, release, identifier) -> #(
+      ReleaseReference(package, release, identifier),
       f(meta),
     )
+    RelativeReference(location:) -> #(RelativeReference(location:), f(meta))
   }
 }
 
@@ -339,12 +342,12 @@ pub fn list_references(exp) {
 fn do_list_references(exp, found) {
   let #(exp, _meta) = exp
   case exp {
-    Release(_, _, identifier) ->
+    ReleaseReference(_, _, identifier) ->
       case list.contains(found, identifier) {
         True -> found
         False -> [identifier, ..found]
       }
-    Reference(identifier) ->
+    ContentReference(identifier) ->
       case list.contains(found, identifier) {
         True -> found
         False -> [identifier, ..found]
@@ -370,7 +373,7 @@ pub fn list_named_references(exp) {
 fn do_list_named_references(exp, found) {
   let #(exp, _meta) = exp
   case exp {
-    Release(package, release, identifier) ->
+    ReleaseReference(package, release, identifier) ->
       case list.contains(found, #(package, release, identifier)) {
         True -> found
         False -> [#(package, release, identifier), ..found]
@@ -391,9 +394,9 @@ fn do_list_named_references(exp, found) {
 pub fn map_release(exp, mapper) {
   let #(exp, meta) = exp
   case exp {
-    Release(package, release, identifier) -> {
+    ReleaseReference(package, release, identifier) -> {
       let #(package, release, identifier) = mapper(package, release, identifier)
-      #(Release(package, release, identifier), meta)
+      #(ReleaseReference(package, release, identifier), meta)
     }
     Let(label, value, then) -> {
       let value = map_release(value, mapper)

@@ -10,7 +10,7 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 eyg_analysis = ">= 1.0.0 and < 2.0.0"
-eyg_ir = ">= 1.0.0 and < 2.0.0"
+eyg_ir = ">= 1.0.0 and < 3.0.0"
 eyg_parser = ">= 0.3.0 and < 1.0.0"
 
 [dev_dependencies]

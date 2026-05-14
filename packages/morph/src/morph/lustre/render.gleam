@@ -298,15 +298,14 @@ pub fn expression(exp, rev, errors) {
           text(v1.to_string(identifier)),
         ]),
       ])
-    e.Release("./" <> name, release, _) ->
+    e.Relative(location) ->
       frame.Inline([
         h.span(
           [
             a.class(reference),
             exp_key(rev),
-            a.title("release = " <> int.to_string(release)),
           ],
-          [text("./" <> name)],
+          [text(location)],
         ),
       ])
     e.Release(package, release, _) ->

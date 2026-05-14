@@ -7,6 +7,7 @@ pub type Reason(m, c) {
   UndefinedBuiltin(String)
   UndefinedReference(v1.Cid)
   UndefinedRelease(package: String, release: Int, module: v1.Cid)
+  UndefinedRelative(location: String)
   Vacant
   NoMatch(term: v.Value(m, c))
   UnhandledEffect(String, v.Value(m, c))

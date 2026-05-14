@@ -299,7 +299,7 @@ pub fn expression(tokens) {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
           case v1.from_string(label) {
-            Ok(#(cid, _)) -> Ok(#(#(ir.Reference(cid), span), rest))
+            Ok(#(cid, _)) -> Ok(#(#(ir.ContentReference(cid), span), rest))
             Error(_) -> Error(InvalidCidReference(end))
           }
         }
@@ -309,7 +309,10 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(ir.Release(label, 0, dag_json.vacant_cid), span), rest))
+          Ok(#(
+            #(ir.ReleaseReference(label, 0, dag_json.vacant_cid), span),
+            rest,
+          ))
         }
         _ -> fail(rest)
       }
@@ -317,7 +320,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.String(value), end), ..rest] -> {
           let span = #(start, end + string.length(value) + 2)
-          Ok(#(#(ir.Release(value, 0, dag_json.vacant_cid), span), rest))
+          Ok(#(#(ir.RelativeReference(value), span), rest))
         }
         _ -> Error(InvalidImportPath(next_pos(rest, start + 6)))
       }

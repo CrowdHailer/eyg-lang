@@ -710,7 +710,7 @@ pub fn reference_test() {
   { "#" <> dag_json.vacant_cid |> v1.to_string }
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(ir.Reference(dag_json.vacant_cid), #(0, 62)))
+  |> should.equal(#(ir.ContentReference(dag_json.vacant_cid), #(0, 62)))
 }
 
 pub fn invalid_reference_test() {
@@ -724,16 +724,16 @@ pub fn named_reference_test() {
   "@std"
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(ir.Release("std", 0, dag_json.vacant_cid), #(0, 4)))
+  |> should.equal(
+    #(ir.ReleaseReference("std", 0, dag_json.vacant_cid), #(0, 4)),
+  )
 }
 
 pub fn unpublished_import_test() {
   { "import \"./index.eyg.json\"" }
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(
-    #(ir.Release("./index.eyg.json", 0, dag_json.vacant_cid), #(0, 25)),
-  )
+  |> should.equal(#(ir.RelativeReference("./index.eyg.json"), #(0, 25)))
 }
 
 pub fn invalid_unpublished_import_test() {

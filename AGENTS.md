@@ -19,3 +19,6 @@ Ensure that the rational for new effects is explained and that the new effect is
 Prefer writing EYG over bash, it is safer.
 EYG does not have an effect to run shell commands.
 Resort to bash only when shell commands are needed.
+
+`RelativeReferences` can be encoded to get a content identifier.
+However this cannot be referenced or published as it's evaluated value is not constant.

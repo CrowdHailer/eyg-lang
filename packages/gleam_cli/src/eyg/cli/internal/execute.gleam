@@ -153,7 +153,10 @@ fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
           use value <- promise.try_await(lookup_release(p, v, m, state))
           loop(block.resume(value, env, k), state)
         }
-
+        break.UndefinedRelative(location:) -> {
+          use value <- promise.try_await(lookup_relative(location, state))
+          loop(block.resume(value, env, k), state)
+        }
         _ -> promise.resolve(Error(reason))
       }
   }
@@ -240,10 +243,8 @@ fn lookup_reference(
   }
 }
 
-fn lookup_release(package, version, module, state) {
+fn lookup_release(package, version, module, state: State(_)) {
   case package, version {
-    "./" <> _, 0 | "/" <> _, 0 | "../" <> _, 0 ->
-      lookup_relative(package, version, module, state)
     _, 0 -> {
       let cache = cache.pull(state.cache)
       use state <- promise.await(update(State(..state, cache:)))
@@ -258,7 +259,7 @@ fn lookup_release(package, version, module, state) {
     _, _ -> {
       let release = release.Release(package:, version:, module:)
       case cache.release(state.cache, release) {
-        cache.Available(_m) -> lookup_relative(package, version, module, state)
+        cache.Available(_m) -> lookup_reference(module, state)
         cache.Unknown -> {
           echo "package not found"
           panic
@@ -273,12 +274,10 @@ fn lookup_release(package, version, module, state) {
 }
 
 fn lookup_relative(
-  package,
-  release,
-  module,
+  location,
   state: State(meta),
 ) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
-  case resolve_relative(state.cwd, package) {
+  case resolve_relative(state.cwd, location) {
     Ok(path) -> {
       let source = case source.read(path) {
         Ok(source) -> source |> ir.map_annotation(state.map)
@@ -290,10 +289,7 @@ fn lookup_relative(
 
       pure_loop(expression.execute(source, []), state)
     }
-    Error(_) ->
-      promise.resolve(
-        Error(break.UndefinedRelease(package:, release:, module:)),
-      )
+    Error(_) -> promise.resolve(Error(break.UndefinedRelative(location:)))
   }
 }
 
@@ -312,7 +308,10 @@ pub fn pure_loop(return, state: State(_)) {
           use value <- promise.try_await(lookup_release(p, v, m, state))
           pure_loop(expression.resume(value, env, k), state)
         }
-
+        break.UndefinedRelative(location:) -> {
+          use value <- promise.try_await(lookup_relative(location, state))
+          pure_loop(expression.resume(value, env, k), state)
+        }
         _ -> promise.resolve(Error(reason))
       }
   }

@@ -32,6 +32,7 @@ pub type Expression {
   Builtin(String)
   Reference(v1.Cid)
   Release(package: String, release: Int, identifer: v1.Cid)
+  Relative(location: String)
 }
 
 pub type Assignments =
@@ -167,8 +168,9 @@ pub fn from_annotated(node) {
     ir.Handle(label) -> Deep(label)
 
     ir.Builtin(identifier) -> Builtin(identifier)
-    ir.Reference(identifier) -> Reference(identifier)
-    ir.Release(package, release, id) -> Release(package, release, id)
+    ir.ContentReference(identifier) -> Reference(identifier)
+    ir.ReleaseReference(package, release, id) -> Release(package, release, id)
+    ir.RelativeReference(location) -> Relative(location)
   }
 }
 
@@ -418,7 +420,11 @@ pub fn to_annotated(source, rev) {
     Perform(label) -> #(ir.Perform(label), rev)
     Deep(label) -> #(ir.Handle(label), rev)
     Builtin(identifier) -> #(ir.Builtin(identifier), rev)
-    Reference(identifier) -> #(ir.Reference(identifier), rev)
-    Release(package, release, id) -> #(ir.Release(package, release, id), rev)
+    Reference(identifier) -> #(ir.ContentReference(identifier), rev)
+    Release(package, release, id) -> #(
+      ir.ReleaseReference(package, release, id),
+      rev,
+    )
+    Relative(location:) -> #(ir.RelativeReference(location:), rev)
   }
 }

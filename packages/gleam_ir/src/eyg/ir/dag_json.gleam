@@ -98,13 +98,18 @@ pub fn decoder(meta) {
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
       use cid <- decode.field("l", codec.decode_cid())
-      decode.success(#(ir.Reference(cid), meta))
+      decode.success(#(ir.ContentReference(cid), meta))
     }
     "@" -> {
       use package <- decode.field("p", decode.string)
-      use release <- decode.field("r", decode.int)
+      // version field used to be called release, so still uses r field in serialized code
+      use version <- decode.field("r", decode.int)
       use cid <- decode.field("l", codec.decode_cid())
-      decode.success(#(ir.Release(package, release, cid), meta))
+      decode.success(#(ir.ReleaseReference(package, version, cid), meta))
+    }
+    "." -> {
+      use location <- decode.field("i", decode.string)
+      decode.success(#(ir.RelativeReference(location), meta))
     }
     _ -> {
       decode.failure(#(ir.Vacant, meta), "valid node key")
@@ -161,13 +166,16 @@ pub fn to_data_model(tree) {
     ir.Perform(x) -> node("p", [label(x)])
     ir.Handle(x) -> node("h", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
-    ir.Reference(identifier) -> node("#", [#("l", codec.cid(identifier))])
-    ir.Release(p, r, i) ->
+    ir.ContentReference(identifier) ->
+      node("#", [#("l", codec.cid(identifier))])
+    ir.ReleaseReference(p, r, i) ->
       node("@", [
         #("p", codec.string(p)),
         #("r", codec.int(r)),
         #("l", codec.cid(i)),
       ])
+    ir.RelativeReference(identifier) ->
+      node(".", [#("i", codec.string(identifier))])
   }
 }
 

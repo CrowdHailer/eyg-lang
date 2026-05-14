@@ -2,13 +2,13 @@
 # You typically do not need to edit this file
 
 packages = [
-  { name = "argv", version = "1.0.2", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "BA1FF0929525DEBA1CE67256E5ADF77A7CDDFE729E3E3F57A5BDCAA031DED09D" },
+  { name = "argv", version = "1.1.0", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "3277D100448BDB4A29B6D58C0F36F631CBC349E8BDD09766C6309DF202831140" },
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
   { name = "birdie", version = "1.5.5", build_tools = ["gleam"], requirements = ["argv", "edit_distance", "envoy", "filepath", "glance", "gleam_community_ansi", "gleam_json", "gleam_stdlib", "global_value", "justin", "rank", "simplifile", "term_size", "tom", "trie_again"], otp_app = "birdie", source = "hex", outer_checksum = "ABB86B0FA88DABCDDE93EDF6921060BB74502A5B410C3F35960CD539EC98AD37" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "edit_distance", version = "3.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "edit_distance", source = "hex", outer_checksum = "DE588BC3483ED6DBA717211B59F3178891A5FC6F1C00D415AE8C4233EAFB94B1" },
   { name = "envoy", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "9C6FBB6BFA02A52798BEEC5977A738CAD6E4A057F4B67FD0C8061AD2502C191A" },
-  { name = "eyg_ir", version = "1.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "D61C51AB7B88B76B77867F10CA0C9A7C960C46A1C287543B1B1A8EA4B6F3524C" },
+  { name = "eyg_ir", version = "2.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "E2DD124AC7250C1933BB0789593CAA4A9482B90A9ED39C542E7F3F4F38F6B266" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
   { name = "glam", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "48A043A12091F93D911C316DD8F7FFD03CD9FF6F50848FC56E359D3C168DF0FA" },
   { name = "glance", version = "6.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "glexer"], otp_app = "glance", source = "hex", outer_checksum = "49E0ED4793BB3F56C3E5ED00528D70CAE21D263F70A735604124B95C5F62E2DB" },
@@ -36,7 +36,7 @@ packages = [
 [requirements]
 birdie = { version = ">= 1.3.1 and < 2.0.0" }
 dag_json = { version = ">= 3.0.0 and < 4.0.0" }
-eyg_ir = { version = ">= 1.0.0 and < 2.0.0" }
+eyg_ir = { version = ">= 1.0.0 and < 3.0.0" }
 glam = { version = ">= 2.0.0 and < 3.0.0" }
 gleam_javascript = { version = ">= 0.13.0 and < 2.0.0" }
 gleam_json = { version = ">= 3.0.2 and < 4.0.0" }

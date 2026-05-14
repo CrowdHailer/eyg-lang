@@ -1,5 +1,5 @@
 name = "eyg_interpreter"
-version = "2.1.0"
+version = "3.0.0"
 target = "javascript"
 
 description = "EYG interpreter for the JavaScript runtime for server and browser."
@@ -9,7 +9,7 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-eyg_ir = ">= 1.0.0 and < 2.0.0"
+eyg_ir = ">= 1.0.0 and < 3.0.0"
 gleam_javascript = ">= 0.13.0 and < 2.0.0"
 gleam_json = ">= 3.0.2 and < 4.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"

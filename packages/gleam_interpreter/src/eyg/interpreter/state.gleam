@@ -121,9 +121,10 @@ pub fn eval(exp, env: Env(m), k) {
         Ok(_) -> value(v.Partial(v.Builtin(identifier), []))
         _ -> Error(break.UndefinedBuiltin(identifier))
       }
-    ir.Reference(ref) -> Error(break.UndefinedReference(ref))
-    ir.Release(package, release, cid) ->
+    ir.ContentReference(ref) -> Error(break.UndefinedReference(ref))
+    ir.ReleaseReference(package, release, cid) ->
       Error(break.UndefinedRelease(package, release, cid))
+    ir.RelativeReference(location:) -> Error(break.UndefinedRelative(location:))
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, k) })
 }

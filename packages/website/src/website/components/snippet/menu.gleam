@@ -170,7 +170,7 @@ pub fn top_content(projection) {
     p.Exp(exp) -> {
       // Piping case into another expression produces invalid JS on 1.10.0
       let tmp = case exp {
-        e.Variable(_) | e.Reference(_) | e.Release(_, _, _) -> [
+        e.Variable(_) | e.Reference(_) | e.Release(_, _, _) | e.Relative(_) -> [
           edit(),
           select_field(),
           call_function(),

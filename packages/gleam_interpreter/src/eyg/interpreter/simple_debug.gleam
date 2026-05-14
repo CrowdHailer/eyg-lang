@@ -26,6 +26,8 @@ pub fn describe(reason) -> String {
     break.UndefinedReference(id) -> "reference undefined: #" <> v1.to_string(id)
     break.UndefinedRelease(package, release, _cid) ->
       "release undefined: @" <> package <> ":" <> int.to_string(release)
+    break.UndefinedRelative(location:) ->
+      "relative location undefined: " <> location
     break.IncorrectTerm(expected, got) ->
       "unexpected term, expected: " <> expected <> " got: " <> inspect(got)
     break.MissingField(field) -> "missing record field: " <> field

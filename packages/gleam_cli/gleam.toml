@@ -13,8 +13,8 @@ argv = ">= 1.0.2 and < 2.0.0"
 envoy = ">= 1.1.0 and < 2.0.0"
 eyg_compiler = { path = "../gleam_compiler" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 2.1.0 and < 3.0.0"
-eyg_ir = ">= 1.0.0 and < 2.0.0"
+eyg_interpreter = ">= 2.1.0 and < 4.0.0"
+eyg_ir = ">= 2.0.0 and < 3.0.0"
 eyg_parser = ">= 0.3.2 and < 1.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
 gleam_crypto = ">= 1.5.1 and < 2.0.0"

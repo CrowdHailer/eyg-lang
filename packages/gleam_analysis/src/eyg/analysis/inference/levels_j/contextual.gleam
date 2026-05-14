@@ -2,6 +2,7 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
@@ -382,7 +383,7 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
           #(bindings, type_, eff, #(ir.Builtin(id), meta))
         }
       }
-    ir.Reference(cid) ->
+    ir.ContentReference(cid) ->
       lookup_ref(
         refs,
         error.MissingReference(cid),
@@ -392,7 +393,7 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
         level,
         bindings,
       )
-    ir.Release(package, release, cid) ->
+    ir.ReleaseReference(package, release, cid) ->
       lookup_ref(
         refs,
         error.UndefinedRelease(package, release, cid),
@@ -402,16 +403,29 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
         level,
         bindings,
       )
+    ir.RelativeReference(location:) -> {
+      // TODO this should get a error of it's own and own lookup path
+      let cid = dag_json.vacant_cid
+      lookup_ref(
+        refs,
+        error.UndefinedRelease(location, 0, cid),
+        cid,
+        env,
+        eff,
+        level,
+        bindings,
+      )
+    }
   }
 }
 
 fn lookup_ref(refs, reason, id, env, eff, level, bindings) {
   case dict.get(refs, id) {
-    Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Reference(id))
+    Ok(poly) -> prim(poly, env, eff, level, bindings, ir.ContentReference(id))
     Error(Nil) -> {
       let #(type_, bindings) = binding.mono(level, bindings)
       let meta = #(Error(reason), type_, t.Empty, env)
-      #(bindings, type_, eff, #(ir.Reference(id), meta))
+      #(bindings, type_, eff, #(ir.ContentReference(id), meta))
     }
   }
 }
