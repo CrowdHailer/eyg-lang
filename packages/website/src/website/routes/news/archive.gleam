@@ -5,6 +5,7 @@ pub const published = [
   // cli returns nonzero good for tests
   // add 4 effects
   // Implement DNSimple effect in browser
+  // implement eval that renders expressions
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",

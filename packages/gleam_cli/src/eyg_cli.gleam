@@ -1,6 +1,7 @@
 import argv
 import eyg/cli/args
 import eyg/cli/compile
+import eyg/cli/eval
 import eyg/cli/fetch
 import eyg/cli/internal/config
 import eyg/cli/publish
@@ -58,6 +59,7 @@ fn with_config(parsed) {
     args.Help | args.Version | args.Fail -> panic as "handled above"
     args.Repl -> repl.execute(config)
     args.Run(file) -> run.execute(file, config)
+    args.Eval(file:) -> eval.execute(file, config)
     args.Compile(file) -> compile.execute(file, config)
     args.Share(file:) -> share.execute(file, config)
     args.Fetch(cid:) -> fetch.execute(cid, config)

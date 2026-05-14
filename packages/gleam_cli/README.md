@@ -11,7 +11,7 @@ There are script examples available in this repo in [example](./examples/)
 
 *Set the remote to use with env variable `EYG_ORIGIN`.*
 
-### Interpret a script
+### Run a script
 
 To run a script pass in the file to the CLI `run` command.
 
@@ -30,6 +30,18 @@ Starting the REPL is the default command for the CLI, so run as follows.
 ```sh
 eyg
 ```
+
+### Evaluate an expression
+
+To evaluate a script, without running any effects, pass in the file to the CLI `eval` command.
+
+
+```sh
+eyg eval path/to/file.eyg
+```
+
+The `eval` command accepts EYG source as a text file or a JSON file.
+The evaluated value will printed.
 
 ### Create principle
 

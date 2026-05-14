@@ -1,6 +1,7 @@
 pub type Args {
   Repl
   Run(file: String)
+  Eval(file: String)
   Compile(file: String)
   Share(file: String)
   Fetch(cid: String)
@@ -15,6 +16,7 @@ pub fn parse(args) {
   case args {
     [] -> Repl
     ["run", file] -> Run(file:)
+    ["eval", file] -> Eval(file:)
     ["compile", file] -> Compile(file:)
     ["share", file] -> Share(file:)
     ["fetch", cid] -> Fetch(cid:)
@@ -30,7 +32,8 @@ pub const help_text = "eyg — run EYG programs and interact with the EYG hub
 usage: eyg [<command> [<args>]]
 commands:
   (no args)              start the REPL
-  run <file>             run a script (.eyg or .eyg.json)
+  run <file>             run a script
+  eval <file>            evaluate and print an expression with no side effects
   compile <file>         compile a script to JavaScript
   share <file>           share an IR module with the hub
   fetch <cid>            fetch a module by content id
