@@ -1,8 +1,10 @@
+import eyg/cli/internal/source
+
 pub type Args {
   Repl
-  Run(file: String)
-  Eval(file: String)
-  Compile(file: String)
+  Run(input: source.Input)
+  Eval(input: source.Input)
+  Compile(input: source.Input)
   Share(file: String)
   Fetch(cid: String)
   SignatoryInitial(name: String)
@@ -15,9 +17,13 @@ pub type Args {
 pub fn parse(args) {
   case args {
     [] -> Repl
-    ["run", file] -> Run(file:)
-    ["eval", file] -> Eval(file:)
-    ["compile", file] -> Compile(file:)
+    ["run", "-c", code] | ["run", "--code", code] -> Run(source.Code(code))
+    ["run", file] -> Run(source.File(file))
+    ["eval", "-c", code] | ["eval", "--code", code] -> Eval(source.Code(code))
+    ["eval", file] -> Eval(source.File(file))
+    ["compile", "-c", code] | ["compile", "--code", code] ->
+      Compile(source.Code(code))
+    ["compile", file] -> Compile(source.File(file))
     ["share", file] -> Share(file:)
     ["fetch", cid] -> Fetch(cid:)
     ["publish", package, file] -> Publish(package:, file:)
@@ -33,8 +39,12 @@ usage: eyg [<command> [<args>]]
 commands:
   (no args)              start the REPL
   run <file>             run a script
+  run -c, --code <code>  run inline EYG source
   eval <file>            evaluate and print an expression with no side effects
+  eval -c, --code <code> evaluate inline EYG source with no side effects
   compile <file>         compile a script to JavaScript
+  compile -c, --code <code>
+                         compile inline EYG source to JavaScript
   share <file>           share an IR module with the hub
   fetch <cid>            fetch a module by content id
   publish <pkg> <file>   publish a module under a package name

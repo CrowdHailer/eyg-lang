@@ -20,5 +20,7 @@ Prefer writing EYG over bash, it is safer.
 EYG does not have an effect to run shell commands.
 Resort to bash only when shell commands are needed.
 
+For small CLI snippets prefer `eyg run -c '<code>'`, `eyg eval -c '<code>'` over creating throwaway files.
+
 `RelativeReferences` can be encoded to get a content identifier.
 However this cannot be referenced or published as it's evaluated value is not constant.

@@ -6,6 +6,12 @@ pub const published = [
   // add 4 effects
   // Implement DNSimple effect in browser
   // implement eval that renders expressions
+  // The new syntax is additive:
+  // ```sh
+  // eyg run -c '!print("hello")'
+  // eyg eval --code '!int_add(1, 1)'
+  // eyg compile -c '!int_add(1, 1)'
+  // ```
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",

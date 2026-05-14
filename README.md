@@ -19,7 +19,18 @@ The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_
 To run scripts from your shell use the [CLI](./packages/gleam_cli/).
 checkout the [examples](./packages/gleam_cli/examples/)
 
-Both textual and JSON IR source files can be run with `eyg run`.
+Run scripts with `eyg run`.
+Use `eyg eval` for evaluating pure values and printing the result.
+Both textual and JSON IR source files can be evaluated or run.
+
+Small snippets can be run directly from the shell with `-c <code>` flag.
+The inline source flag  is available for `eyg run`, `eyg eval` and `eyg compile`.
+
+For example:
+```sh
+eyg run -c 'perform Print("hello")'
+eyg eval --code '@standard.integer.add(1, 1)'
+```
 
 ### Effects
 

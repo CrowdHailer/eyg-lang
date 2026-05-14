@@ -48,3 +48,9 @@ eyg run packages/gleam_cli/examples/pure.eyg
 ```
 
 You should see `2` (the script is `!int_add(1, 1)`).
+
+To verify inline source execution, run:
+
+```sh
+eyg eval -c '!int_add(1, 1)'
+```

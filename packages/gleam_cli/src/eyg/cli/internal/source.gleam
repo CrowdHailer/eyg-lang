@@ -7,11 +7,27 @@ import gleam/option
 import gleam/result.{try}
 import simplifile
 
+pub type Input {
+  File(path: String)
+  Code(code: String)
+}
+
+pub fn read_input(input: Input) -> Result(ir.Node(Nil), String) {
+  case input {
+    File(path:) -> read(path)
+    Code(code:) -> parse(code)
+  }
+}
+
 pub fn read(file: String) -> Result(ir.Node(Nil), String) {
   use code <- try(
     simplifile.read(file) |> result.map_error(simplifile.describe_error),
   )
 
+  parse(code)
+}
+
+pub fn parse(code: String) -> Result(ir.Node(Nil), String) {
   case json.parse(code, dag_json.decoder(Nil)) {
     Ok(source) -> Ok(source)
     Error(_) ->

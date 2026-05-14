@@ -58,9 +58,9 @@ fn with_config(parsed) {
   case parsed {
     args.Help | args.Version | args.Fail -> panic as "handled above"
     args.Repl -> repl.execute(config)
-    args.Run(file) -> run.execute(file, config)
-    args.Eval(file:) -> eval.execute(file, config)
-    args.Compile(file) -> compile.execute(file, config)
+    args.Run(input:) -> run.execute(input, config)
+    args.Eval(input:) -> eval.execute(input, config)
+    args.Compile(input:) -> compile.execute(input, config)
     args.Share(file:) -> share.execute(file, config)
     args.Fetch(cid:) -> fetch.execute(cid, config)
     args.Publish(package:, file:) -> publish.execute(package, file, config)

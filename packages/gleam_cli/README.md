@@ -20,6 +20,11 @@ eyg run path/to/file.eyg
 ```
 
 The `run` command accepts EYG source as a text file or a JSON file.
+To run inline source, pass `-c` or `--code`.
+
+```sh
+eyg run -c '!print("hello")'
+```
 
 *There are several example programs in the [examples dir](./examples/)*
 
@@ -42,6 +47,19 @@ eyg eval path/to/file.eyg
 
 The `eval` command accepts EYG source as a text file or a JSON file.
 The evaluated value will printed.
+To evaluate inline source, pass `-c` or `--code`.
+
+```sh
+eyg eval -c '!int_add(1, 1)'
+```
+
+### Compile inline source
+
+The `compile` command also accepts inline source.
+
+```sh
+eyg compile -c '!int_add(1, 1)'
+```
 
 ### Create principle
 

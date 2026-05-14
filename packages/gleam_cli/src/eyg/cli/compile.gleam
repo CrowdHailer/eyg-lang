@@ -7,10 +7,10 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 
 pub fn execute(
-  file: String,
+  input: source.Input,
   _config: config.Config,
 ) -> promise.Promise(Result(Nil, String)) {
-  use source <- promisex.try_sync(source.read(file))
+  use source <- promisex.try_sync(source.read_input(input))
   io.println(compiler.to_js(source, dict.new()))
   promise.resolve(Ok(Nil))
 }
