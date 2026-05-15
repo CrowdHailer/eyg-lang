@@ -10,11 +10,11 @@ import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import filepath
 import gleam/fetchx
 import gleam/http/request
-import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/json
@@ -237,8 +237,8 @@ fn lookup_reference(
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
     cache.Unavailable(reason) -> Error(reason)
     cache.Unknown -> {
-      echo "failure to pull deps"
-      panic
+      abort("failed to fetch module #" <> v1.to_string(cid))
+      |> Error()
     }
   }
 }
@@ -250,9 +250,10 @@ fn lookup_release(package, version, module, state: State(_)) {
       use state <- promise.await(update(State(..state, cache:)))
       case cache.package(state.cache, package) {
         Ok(#(_, m)) -> lookup_reference(m, state)
-        Error(_) -> {
-          echo "package not found"
-          panic
+        Error(Nil) -> {
+          abort("package not found: @" <> package)
+          |> Error
+          |> promise.resolve
         }
       }
     }
@@ -261,8 +262,9 @@ fn lookup_release(package, version, module, state: State(_)) {
       case cache.release(state.cache, release) {
         cache.Available(_m) -> lookup_reference(module, state)
         cache.Unknown -> {
-          echo "package not found"
-          panic
+          abort("module not found for package: @" <> package)
+          |> Error
+          |> promise.resolve
         }
         cache.Unavailable(Nil) ->
           break.UndefinedRelease(package:, release: version, module:)
@@ -273,21 +275,27 @@ fn lookup_release(package, version, module, state: State(_)) {
   }
 }
 
+// used to handle cases where the runtime aborts the program
+fn abort(reason: String) -> break.Reason(m, c) {
+  break.UnhandledEffect("Abort", v.String(reason))
+}
+
 fn lookup_relative(
   location,
   state: State(meta),
 ) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
   case resolve_relative(state.cwd, location) {
     Ok(path) -> {
-      let source = case source.read(path) {
-        Ok(source) -> source |> ir.map_annotation(state.map)
-        Error(reason) -> {
-          io.println(reason <> " " <> path)
-          panic
+      case source.read(path) {
+        Ok(source) -> {
+          let source = ir.map_annotation(source, state.map)
+          pure_loop(expression.execute(source, []), state)
         }
+        Error(_reason) ->
+          abort("failed to read module from location: " <> location)
+          |> Error
+          |> promise.resolve
       }
-
-      pure_loop(expression.execute(source, []), state)
     }
     Error(_) -> promise.resolve(Error(break.UndefinedRelative(location:)))
   }
@@ -426,7 +434,8 @@ fn service_request(service, operation, token) {
     "netlify" -> origin.https("api.netlify.com")
     "tavily" -> origin.https("api.tavily.com")
     "vimeo" -> origin.https("api.vimeo.com")
-    _ -> panic
+    // TODO this could be fixed by passing an enum of services through.
+    _ -> panic as "unknown service"
   }
   operation.to_request(operation, origin)
   |> request.set_header("authorization", "Bearer " <> token)
