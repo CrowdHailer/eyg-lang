@@ -1,8 +1,10 @@
 import eyg/ir/tree as ir
+import eyg/parser/debug
 import eyg/parser/lexer
+import eyg/parser/location
 import eyg/parser/parser
 import eyg/parser/token
-import gleam/int
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
@@ -49,12 +51,22 @@ fn do_gather(exp, acc) {
 /// Format a parse error as a human-readable string, showing the relevant
 /// source line with a pointer to the error location.
 pub fn format_error(reason: parser.Reason, source: String) -> String {
-  let description = parser.describe_reason(reason)
-  case reason_position(reason) {
-    None -> "error: " <> description
-    Some(pos) ->
-      "error: " <> description <> "\n\n" <> source_context(source, pos)
+  let description = debug.describe(reason)
+  let hint = debug.hint(reason)
+  let span = case reason_position(reason) {
+    Some(start) -> #(start, start)
+    None -> #(0, 0)
   }
+  render_error(description, hint, source, span)
+}
+
+pub fn render_error(description, hint, code, span) {
+  let lines = ["error: " <> description, "hint: " <> hint]
+  let context = case span {
+    #(0, 0) -> []
+    _ -> ["", ..location.source_context(code, span)]
+  }
+  string.join(list.append(lines, context), "\n")
 }
 
 fn reason_position(reason: parser.Reason) -> option.Option(Int) {
@@ -73,40 +85,5 @@ fn reason_position(reason: parser.Reason) -> option.Option(Int) {
     parser.InvalidCharacter(_, pos) -> Some(pos)
     parser.UnterminatedStringLiteral(pos) -> Some(pos)
     parser.InvalidEscapeSequence(_, pos) -> Some(pos)
-  }
-}
-
-fn source_context(source: String, pos: Int) -> String {
-  let lines = string.split(source, "\n")
-  do_source_context(lines, pos, 1, 0)
-}
-
-fn do_source_context(
-  lines: List(String),
-  target: Int,
-  line_num: Int,
-  offset: Int,
-) -> String {
-  case lines {
-    [] -> ""
-    [line, ..rest] -> {
-      let line_len = string.byte_size(line)
-      let line_end = offset + line_len
-      case target <= line_end {
-        True -> {
-          let col = int.max(0, target - offset)
-          let num_str = int.to_string(line_num)
-          let gutter = " " <> num_str <> " | "
-          let blank_gutter = string.repeat(" ", string.length(gutter))
-          gutter
-          <> line
-          <> "\n"
-          <> blank_gutter
-          <> string.repeat(" ", col)
-          <> "^"
-        }
-        False -> do_source_context(rest, target, line_num + 1, line_end + 1)
-      }
-    }
   }
 }

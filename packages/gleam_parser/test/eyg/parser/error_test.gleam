@@ -94,7 +94,7 @@ pub fn invalid_import_number_test() {
 }
 
 pub fn unexpected_character_test() {
-  snap_error("`x")
+  snap_error(" `x")
   |> birdie.snap(title: "unexpected character backtick")
 }
 
@@ -104,12 +104,12 @@ pub fn unexpected_plus_test() {
 }
 
 pub fn unterminated_string_test() {
-  snap_error("\"hello world")
+  snap_error(" \"hello world")
   |> birdie.snap(title: "unterminated string literal")
 }
 
 pub fn invalid_escape_test() {
-  snap_error("\"\\q\"")
+  snap_error(" \"\\q\"")
   |> birdie.snap(title: "invalid escape sequence in string")
 }
 

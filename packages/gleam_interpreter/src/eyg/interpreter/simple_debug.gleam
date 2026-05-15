@@ -41,6 +41,36 @@ pub fn describe(reason) -> String {
   }
 }
 
+/// Suggest a possible fix for an execution error.
+pub fn hint(reason) -> String {
+  case reason {
+    break.UndefinedVariable(_) ->
+      "check the variable name or add a `let` binding before it is used"
+    break.UndefinedBuiltin(_) ->
+      "check the builtin name against the builtins reference"
+    break.UndefinedReference(_) ->
+      "make sure the referenced module is available in the configured package hub"
+    break.UndefinedRelease(_, _, _) ->
+      "publish the release or pin the reference to an available module"
+    break.UndefinedRelative(_) ->
+      "run the program from the directory that contains the relative module"
+    break.IncorrectTerm(_, _) ->
+      "check the value passed to this operation has the expected shape"
+    break.MissingField(_) ->
+      "check the record contains this field before selecting or overwriting it"
+    break.NoMatch(_) ->
+      "add a matching case branch or an otherwise branch for this tag"
+    break.NotAFunction(_) ->
+      "only functions, builtins, and partially applied operations can be called"
+    break.UnhandledEffect("Abort", _) ->
+      "handle the abort effect or avoid performing it in this runtime"
+    break.UnhandledEffect(_, _) ->
+      "handle this effect or run the program in a runtime that supports it"
+    break.Vacant ->
+      "replace the todo with an expression before running the program"
+  }
+}
+
 /// Inspect a value at the default width.
 pub fn inspect(value: v.Value(_, _)) -> String {
   render(value, default_width)

@@ -4,8 +4,8 @@ title: unterminated string literal
 file: ./test/eyg/parser/error_test.gleam
 test_name: unterminated_string_test
 ---
-error: unterminated string literal at position 0
+error: unterminated string literal at position 1
 hint: close the string with a double-quote `"`
 
- 1 | "hello world
-     ^
+ 1 |  "hello world
+      ^

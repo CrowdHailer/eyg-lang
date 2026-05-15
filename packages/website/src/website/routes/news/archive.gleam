@@ -13,6 +13,7 @@ pub const published = [
   // eyg compile -c '!int_add(1, 1)'
   // ```
   // builtins reference
+  // pretty runtime errors
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",

@@ -1,6 +1,7 @@
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
+import eyg/parser/location
 import gleam/json
 import gleam/list
 import gleam/option
@@ -12,27 +13,27 @@ pub type Input {
   Code(code: String)
 }
 
-pub fn read_input(input: Input) -> Result(ir.Node(Nil), String) {
+pub fn read_input(input: Input) -> Result(String, String) {
   case input {
-    File(path:) -> read(path)
-    Code(code:) -> parse(code)
+    File(path:) -> read_file(path)
+    Code(code:) -> Ok(code)
   }
 }
 
-pub fn read(file: String) -> Result(ir.Node(Nil), String) {
+pub fn read_file(file: String) -> Result(String, String) {
   use code <- try(
     simplifile.read(file) |> result.map_error(simplifile.describe_error),
   )
 
-  parse(code)
+  Ok(code)
 }
 
-pub fn parse(code: String) -> Result(ir.Node(Nil), String) {
-  case json.parse(code, dag_json.decoder(Nil)) {
+pub fn parse(code: String) -> Result(ir.Node(location.Span), String) {
+  case json.parse(code, dag_json.decoder(#(0, 0))) {
     Ok(source) -> Ok(source)
     Error(_) ->
       case parser.all_from_string(code) {
-        Ok(source) -> Ok(ir.clear_annotation(source))
+        Ok(source) -> Ok(source)
         Error(reason) -> Error(parser.format_error(reason, code))
       }
   }

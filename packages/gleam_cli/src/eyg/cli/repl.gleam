@@ -42,8 +42,8 @@ fn loop(buffer, scope, state) {
               loop("", scope, state)
             }
             Ok(#(None, scope)) -> loop("", scope, state)
-            Error(reason) -> {
-              io.println_error(simple_debug.describe(reason))
+            Error(#(reason, span, _, _)) -> {
+              io.println_error(execute.render_error(reason, buffer, span))
               loop("", scope, state)
             }
           }

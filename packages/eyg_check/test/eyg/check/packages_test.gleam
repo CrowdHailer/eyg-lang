@@ -79,7 +79,7 @@ fn check_index_json(package) {
       io.println("index.eyg.json Ok for " <> package)
       promise.resolve(Nil)
     }
-    Error(reason) -> {
+    Error(#(reason, _, _, _)) -> {
       panic as { simple_debug.describe(reason) <> " in " <> package }
     }
   }
@@ -98,7 +98,7 @@ fn check_index(package) {
       io.println("index.eyg Ok for " <> package)
       promise.resolve(Nil)
     }
-    Error(reason) -> {
+    Error(#(reason, _, _, _)) -> {
       panic as { simple_debug.describe(reason) <> " in " <> package }
     }
   }
@@ -117,7 +117,7 @@ fn check_test(package) {
       io.println("test.eyg Ok for " <> package)
       promise.resolve(Nil)
     }
-    Error(reason) -> {
+    Error(#(reason, _, _, _)) -> {
       panic as { simple_debug.describe(reason) <> " in " <> package }
     }
   }

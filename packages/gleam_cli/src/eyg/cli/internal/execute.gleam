@@ -9,19 +9,20 @@ import eyg/hub/release
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import eyg/parser
 import filepath
 import gleam/fetchx
 import gleam/http/request
 import gleam/int
 import gleam/javascript/promise.{type Promise}
-import gleam/javascript/promisex
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
 import multiformats/cid/v1
@@ -65,48 +66,89 @@ pub type CacheUpdate(meta) {
   Pulled(result: Result(List(schema.ArchivedEntry), String))
 }
 
-fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
+// helper that rebuilds debug context of error
+fn try_sync(
+  result: Result(t, state.Reason(meta)),
+  meta: meta,
+  env: state.Env(meta),
+  k: state.Stack(meta),
+  then: fn(t) ->
+    Promise(
+      Result(#(Option(state.Value(meta)), state.Scope(meta)), state.Debug(meta)),
+    ),
+) -> Promise(
+  Result(#(Option(state.Value(meta)), state.Scope(meta)), state.Debug(meta)),
+) {
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
+  }
+}
+
+fn try_await(
+  result: Promise(Result(t, state.Reason(meta))),
+  meta: meta,
+  env: state.Env(meta),
+  k: state.Stack(meta),
+  then: fn(t) -> Promise(Result(r, state.Debug(meta))),
+) -> Promise(Result(r, state.Debug(meta))) {
+  use result <- promise.await(result)
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
+  }
+}
+
+fn loop(
+  return,
+  state: State(meta),
+) -> Promise(
+  Result(#(Option(state.Value(meta)), state.Scope(meta)), state.Debug(meta)),
+) {
   let #(return, cache) = cache.loop(return, state.cache, block.resume)
   let state = State(..state, cache:)
   case return {
     Ok(return) -> promise.resolve(Ok(return))
-    Error(#(reason, _meta, env, k)) ->
+    Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect("AppendFile", lift) -> {
-          use input <- promisex.try_sync(append_file.decode(lift))
+          use input <- try_sync(append_file.decode(lift), meta, env, k)
           let output = append_file(state.cwd, input)
           loop(block.resume(append_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("DecodeJSON", lift) -> {
-          use encoded <- promisex.try_sync(decode_json.decode(lift))
+          use encoded <- try_sync(decode_json.decode(lift), meta, env, k)
           loop(block.resume(decode_json.sync(encoded), env, k), state)
         }
         break.UnhandledEffect("DeleteFile", lift) -> {
-          use path <- promisex.try_sync(delete_file.decode(lift))
+          use path <- try_sync(delete_file.decode(lift), meta, env, k)
           let output = delete_file(state.cwd, path)
           loop(block.resume(delete_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("DNSimple", lift) -> {
-          use result <- promise.try_await(service_fetch("dnsimple", lift, 8080))
+          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
+          use result <- promise.try_await(service_fetch("dnsimple", operation))
           loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("Env", lift) -> {
-          use name <- promisex.try_sync(env_effect.decode(lift))
+          use name <- try_sync(env_effect.decode(lift), meta, env, k)
           let result = envoy.get(name) |> option.from_result
           loop(block.resume(env_effect.encode(result), env, k), state)
         }
         break.UnhandledEffect("Fetch", lift) -> {
-          use request <- promisex.try_sync(fetch.decode(lift))
+          use request <- try_sync(fetch.decode(lift), meta, env, k)
           use result <- promise.await(fetchx.send_bits(request))
           let result = result.map_error(result, string.inspect)
           loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("GitHub", lift) -> {
-          use result <- promise.try_await(service_fetch("github", lift, 8080))
+          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
+          use result <- promise.try_await(service_fetch("github", operation))
           loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("Netlify", lift) -> {
-          use result <- promise.try_await(service_fetch("netlify", lift, 8080))
+          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
+          use result <- promise.try_await(service_fetch("netlify", operation))
           loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("Now", _lift) -> {
@@ -114,52 +156,53 @@ fn loop(return, state: State(meta)) -> Promise(Result(_, _)) {
           loop(block.resume(now.encode(millis), env, k), state)
         }
         break.UnhandledEffect("Print", lift) -> {
-          use message <- promisex.try_sync(print.decode(lift))
+          use message <- try_sync(print.decode(lift), meta, env, k)
           print.sync(message)
           loop(block.resume(print.encode(Nil), env, k), state)
         }
         break.UnhandledEffect("Random", lift) -> {
-          use max <- promisex.try_sync(random.decode(lift))
+          use max <- try_sync(random.decode(lift), meta, env, k)
           let n = random.sync(max)
           loop(block.resume(random.encode(n), env, k), state)
         }
         break.UnhandledEffect("ReadDirectory", lift) -> {
-          use input <- promisex.try_sync(read_directory.decode(lift))
+          use input <- try_sync(read_directory.decode(lift), meta, env, k)
           let output = read_directory(state.cwd, input)
           loop(block.resume(read_directory.encode(output), env, k), state)
         }
         break.UnhandledEffect("ReadFile", lift) -> {
-          use input <- promisex.try_sync(read_file.decode(lift))
+          use input <- try_sync(read_file.decode(lift), meta, env, k)
           let output = read_file(state.cwd, input)
           loop(block.resume(read_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("Sleep", lift) -> {
-          use ms <- promisex.try_sync(sleep.decode(lift))
+          use ms <- try_sync(sleep.decode(lift), meta, env, k)
           use Nil <- promise.await(promise.wait(ms))
           loop(block.resume(sleep.encode(Nil), env, k), state)
         }
         break.UnhandledEffect("Vimeo", lift) -> {
-          use result <- promise.try_await(service_fetch("vimeo", lift, 8080))
+          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
+          use result <- promise.try_await(service_fetch("vimeo", operation))
           loop(block.resume(fetch.encode(result), env, k), state)
         }
         break.UnhandledEffect("WriteFile", lift) -> {
-          use input <- promisex.try_sync(write_file.decode(lift))
+          use input <- try_sync(write_file.decode(lift), meta, env, k)
           let output = write_file(state.cwd, input)
           loop(block.resume(write_file.encode(output), env, k), state)
         }
         break.UndefinedReference(cid) -> {
-          use value <- promise.try_await(lookup_reference(cid, state))
+          use value <- try_await(lookup_reference(cid, state), meta, env, k)
           loop(block.resume(value, env, k), state)
         }
         break.UndefinedRelease(package: p, release: v, module: m) -> {
-          use value <- promise.try_await(lookup_release(p, v, m, state))
+          use value <- try_await(lookup_release(p, v, m, state), meta, env, k)
           loop(block.resume(value, env, k), state)
         }
         break.UndefinedRelative(location:) -> {
-          use value <- promise.try_await(lookup_relative(location, state))
+          use value <- try_await(lookup_relative(location, state), meta, env, k)
           loop(block.resume(value, env, k), state)
         }
-        _ -> promise.resolve(Error(reason))
+        _ -> promise.resolve(Error(#(reason, meta, env, k)))
       }
   }
 }
@@ -302,11 +345,29 @@ fn lookup_relative(
 ) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
   case resolve_relative(state.cwd, location) {
     Ok(path) -> {
-      case source.read(path) {
-        Ok(source) -> {
-          let source = ir.map_annotation(source, state.map)
-          pure_loop(expression.execute(source, []), state)
-        }
+      case source.read_file(path) {
+        Ok(code) ->
+          case source.parse(code) {
+            Ok(source) -> {
+              // Spans from a loaded module point into its own source, not the
+              // top-level one, so flatten them to the placeholder meta. Runtime
+              // errors that bubble out from here will therefore omit location
+              // information.
+              let source = ir.map_annotation(source, fn(_) { state.map(Nil) })
+              use result <- promise.await(pure_loop(
+                expression.execute(source, []),
+                state,
+              ))
+              case result {
+                Ok(value) -> promise.resolve(Ok(value))
+                Error(#(reason, _, _, _)) -> promise.resolve(Error(reason))
+              }
+            }
+            Error(_) ->
+              abort("failed to read parse source from location: " <> location)
+              |> Error
+              |> promise.resolve
+          }
         Error(_reason) ->
           abort("failed to read module from location: " <> location)
           |> Error
@@ -317,26 +378,29 @@ fn lookup_relative(
   }
 }
 
-pub fn pure_loop(return, state: State(_)) {
+pub fn pure_loop(
+  return: Result(state.Value(meta), state.Debug(meta)),
+  state: State(meta),
+) -> Promise(Result(state.Value(meta), state.Debug(meta))) {
   let #(return, cache) = cache.loop(return, state.cache, expression.resume)
   let state = State(..state, cache:)
   case return {
     Ok(return) -> promise.resolve(Ok(return))
-    Error(#(reason, _meta, env, k)) ->
+    Error(#(reason, meta, env, k)) ->
       case reason {
         break.UndefinedReference(cid) -> {
-          use value <- promise.try_await(lookup_reference(cid, state))
+          use value <- try_await(lookup_reference(cid, state), meta, env, k)
           pure_loop(expression.resume(value, env, k), state)
         }
         break.UndefinedRelease(package: p, release: v, module: m) -> {
-          use value <- promise.try_await(lookup_release(p, v, m, state))
+          use value <- try_await(lookup_release(p, v, m, state), meta, env, k)
           pure_loop(expression.resume(value, env, k), state)
         }
         break.UndefinedRelative(location:) -> {
-          use value <- promise.try_await(lookup_relative(location, state))
+          use value <- try_await(lookup_relative(location, state), meta, env, k)
           pure_loop(expression.resume(value, env, k), state)
         }
-        _ -> promise.resolve(Error(reason))
+        _ -> promise.resolve(Error(#(reason, meta, env, k)))
       }
   }
 }
@@ -427,8 +491,8 @@ pub fn delete_file(cwd, path) {
   |> result.map_error(simplifile.describe_error)
 }
 
-fn service_fetch(service, lift, port) {
-  use operation <- promisex.try_sync(http.operation_to_gleam(lift))
+fn service_fetch(service, operation) {
+  let port = 8080
   use result <- promise.await(
     midas_bun.run(spotless.authenticate(service, [], "", port, pkce.S256)),
   )
@@ -455,4 +519,10 @@ fn service_request(service, operation, token) {
   }
   operation.to_request(operation, origin)
   |> request.set_header("authorization", "Bearer " <> token)
+}
+
+pub fn render_error(reason, code, span) -> String {
+  let message = simple_debug.describe(reason)
+  let hint = simple_debug.hint(reason)
+  parser.render_error(message, hint, code, span)
 }
