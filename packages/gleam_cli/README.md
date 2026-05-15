@@ -26,6 +26,12 @@ To run inline source, pass `-c` or `--code`.
 eyg run -c '!print("hello")'
 ```
 
+To run source from stdin, pass `-` or `--stdin`.
+
+```sh
+printf 'perform Print("hello")' | eyg run -
+```
+
 *There are several example programs in the [examples dir](./examples/)*
 
 ### Start the REPL
@@ -53,12 +59,24 @@ To evaluate inline source, pass `-c` or `--code`.
 eyg eval -c '!int_add(1, 1)'
 ```
 
+To evaluate source from stdin, pass `-` or `--stdin`.
+
+```sh
+printf '@standard.integer.add(1, 1)' | eyg eval -
+```
+
 ### Compile inline source
 
 The `compile` command also accepts inline source.
 
 ```sh
 eyg compile -c '!int_add(1, 1)'
+```
+
+Compile source from stdin with `-` or `--stdin`.
+
+```sh
+printf '@standard.integer.add(1, 1)' | eyg compile -
 ```
 
 ### Create principle

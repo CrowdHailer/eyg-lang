@@ -27,7 +27,7 @@ pub fn execute(
       use path <- result.try(execute.resolve_relative(cwd, path))
       Ok(filepath.directory_name(path))
     }
-    source.Code(_) -> Ok(cwd)
+    source.Code(_) | source.Stdin -> Ok(cwd)
   }
   use dir <- promisex.try_sync(dir)
   let state = execute.State(dir, config, cache.empty(), fn(_: Nil) { #(0, 0) })

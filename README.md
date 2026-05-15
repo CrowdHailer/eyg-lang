@@ -24,13 +24,15 @@ Run scripts with `eyg run`.
 Use `eyg eval` for evaluating pure values and printing the result.
 Both textual and JSON IR source files can be evaluated or run.
 
-Small snippets can be run directly from the shell with `-c <code>` flag.
-The inline source flag  is available for `eyg run`, `eyg eval` and `eyg compile`.
+Code can be run directly from the shell with `-c <code>` flag.
+Code can be read from stdin with `-` or `--stdin`.
+The inline source and stdin flags are available for `eyg run`, `eyg eval` and `eyg compile`.
 
 For example:
 ```sh
 eyg run -c 'perform Print("hello")'
 eyg eval --code '@standard.integer.add(1, 1)'
+printf 'perform Print("hello")' | eyg run -
 ```
 
 ### Effects

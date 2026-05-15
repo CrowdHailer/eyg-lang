@@ -11,14 +11,19 @@ import simplifile
 pub type Input {
   File(path: String)
   Code(code: String)
+  Stdin
 }
 
 pub fn read_input(input: Input) -> Result(String, String) {
   case input {
     File(path:) -> read_file(path)
     Code(code:) -> Ok(code)
+    Stdin -> read_stdin()
   }
 }
+
+@external(javascript, "./source_ffi.mjs", "readStdin")
+fn read_stdin() -> Result(String, String)
 
 pub fn read_file(file: String) -> Result(String, String) {
   use code <- try(
