@@ -1,0 +1,11 @@
+---
+version: 1.5.5
+title: named release with missing version
+file: ./test/eyg/parser/error_test.gleam
+test_name: invalid_release_version_test
+---
+error: expected an integer release version after `:` at position 10
+hint: pin a release with `@package:N` (e.g. `@tandard:3`) or omit `:` to track the latest
+
+ 1 | @standard:
+               ^

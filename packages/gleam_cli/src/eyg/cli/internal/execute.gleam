@@ -11,10 +11,12 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import filepath
 import gleam/fetchx
 import gleam/http/request
+import gleam/int
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/json
@@ -244,12 +246,13 @@ fn lookup_reference(
 }
 
 fn lookup_release(package, version, module, state: State(_)) {
-  case package, version {
-    _, 0 -> {
+  let unbound = module == dag_json.vacant_cid
+  case package, version, unbound {
+    _, 0, True -> {
       let cache = cache.pull(state.cache)
       use state <- promise.await(update(State(..state, cache:)))
       case cache.package(state.cache, package) {
-        Ok(#(_, m)) -> lookup_reference(m, state)
+        Ok(#(_, module)) -> lookup_reference(module, state)
         Error(Nil) -> {
           abort("package not found: @" <> package)
           |> Error
@@ -257,10 +260,23 @@ fn lookup_release(package, version, module, state: State(_)) {
         }
       }
     }
-    _, _ -> {
+    p, v, True -> {
+      let cache = cache.pull(state.cache)
+      use state <- promise.await(update(State(..state, cache:)))
+      case cache.unbound_release(state.cache, p, v) {
+        Ok(module) -> lookup_reference(module, state)
+        Error(Nil) ->
+          abort("package not found: @" <> p <> ":" <> int.to_string(v))
+          |> Error
+          |> promise.resolve
+      }
+    }
+    _, _, _ -> {
+      let cache = cache.pull(state.cache)
+      use state <- promise.await(update(State(..state, cache:)))
       let release = release.Release(package:, version:, module:)
       case cache.release(state.cache, release) {
-        cache.Available(_m) -> lookup_reference(module, state)
+        cache.Available(resolved) -> lookup_reference(resolved, state)
         cache.Unknown -> {
           abort("module not found for package: @" <> package)
           |> Error

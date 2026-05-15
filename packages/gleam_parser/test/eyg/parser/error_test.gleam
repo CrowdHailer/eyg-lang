@@ -68,6 +68,21 @@ pub fn invalid_cid_test() {
   |> birdie.snap(title: "hash with invalid CID")
 }
 
+pub fn invalid_release_version_test() {
+  snap_error("@standard:")
+  |> birdie.snap(title: "named release with missing version")
+}
+
+pub fn invalid_release_version_word_test() {
+  snap_error("@standard:foo")
+  |> birdie.snap(title: "named release with non-integer version")
+}
+
+pub fn invalid_pinned_release_test() {
+  snap_error("@standard:3:notacid")
+  |> birdie.snap(title: "pinned release with invalid CID")
+}
+
 pub fn invalid_import_path_test() {
   snap_error("import foo")
   |> birdie.snap(title: "import with non-string path")

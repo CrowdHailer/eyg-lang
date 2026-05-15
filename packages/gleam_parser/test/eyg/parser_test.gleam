@@ -1,7 +1,9 @@
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
-import eyg/parser/parser.{InvalidCidReference, InvalidImportPath} as _
+import eyg/parser/parser.{
+  InvalidCidReference, InvalidImportPath, InvalidReleaseVersion,
+} as _
 import gleeunit/should
 import multiformats/cid/v1
 
@@ -721,12 +723,55 @@ pub fn invalid_reference_test() {
 }
 
 pub fn named_reference_test() {
-  "@std"
+  "@standard"
   |> parser.all_from_string()
   |> should.be_ok()
   |> should.equal(
-    #(ir.ReleaseReference("std", 0, dag_json.vacant_cid), #(0, 4)),
+    #(ir.ReleaseReference("standard", 0, dag_json.vacant_cid), #(0, 9)),
   )
+}
+
+pub fn versioned_named_reference_test() {
+  "@standard:3"
+  |> parser.all_from_string()
+  |> should.be_ok()
+  |> should.equal(
+    #(ir.ReleaseReference("standard", 3, dag_json.vacant_cid), #(0, 11)),
+  )
+}
+
+pub fn pinned_named_reference_test() {
+  let source = "@standard:3:" <> dag_json.vacant_cid |> v1.to_string
+  source
+  |> parser.all_from_string()
+  |> should.be_ok()
+  |> should.equal(
+    #(ir.ReleaseReference("standard", 3, dag_json.vacant_cid), #(0, 73)),
+  )
+}
+
+pub fn invalid_versioned_named_reference_test() {
+  "@standard:"
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(InvalidReleaseVersion(10))
+
+  "@standard:foo"
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(InvalidReleaseVersion(10))
+}
+
+pub fn invalid_pinned_named_reference_test() {
+  "@standard:3:"
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(InvalidCidReference(12))
+
+  "@standard:3:nonsense"
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(InvalidCidReference(12))
 }
 
 pub fn unpublished_import_test() {

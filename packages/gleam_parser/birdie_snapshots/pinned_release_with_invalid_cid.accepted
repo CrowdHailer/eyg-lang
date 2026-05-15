@@ -1,0 +1,11 @@
+---
+version: 1.5.5
+title: pinned release with invalid CID
+file: ./test/eyg/parser/error_test.gleam
+test_name: invalid_pinned_release_test
+---
+error: invalid content identifier (CID) at position 12
+hint: CID references use a valid base32-encoded CID, e.g. `#bafyreig...`
+
+ 1 | @standard:3:notacid
+                 ^

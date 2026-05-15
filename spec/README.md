@@ -98,7 +98,7 @@ There is a test suite available in this repo that for checking the behaviour of 
 
 The set of builtins is as small as possible so consistency accross implementations is achievable.
 Builtins should not be considered the EYG standard library.
-A larger library of functionality is maintained and available under the `@stdlib` package.
+A larger library of functionality is maintained and available under the `@standard` package.
 
 Functionality like inspecting terms should be implemented as effects.
 This allows implementations of the `Debug` effect to differ.

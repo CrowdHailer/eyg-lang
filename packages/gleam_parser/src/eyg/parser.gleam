@@ -67,6 +67,7 @@ fn reason_position(reason: parser.Reason) -> option.Option(Int) {
     parser.ExpectedEffectName(_, pos) -> Some(pos)
     parser.ExpectedBuiltinName(pos) -> Some(pos)
     parser.InvalidCidReference(pos) -> Some(pos)
+    parser.InvalidReleaseVersion(pos) -> Some(pos)
     parser.InvalidImportPath(pos) -> Some(pos)
     parser.TrailingTokens(_, pos) -> Some(pos)
     parser.InvalidCharacter(_, pos) -> Some(pos)

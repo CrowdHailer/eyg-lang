@@ -24,3 +24,7 @@ For small CLI snippets prefer `eyg run -c '<code>'`, `eyg eval -c '<code>'` over
 
 `RelativeReferences` can be encoded to get a content identifier.
 However this cannot be referenced or published as it's evaluated value is not constant.
+
+A `@name` reference resolves to the latest published version of a package.
+For reproducible scripts use the pinned forms described in the
+[syntax guide](./guides/simple_syntax.md#named-packages):

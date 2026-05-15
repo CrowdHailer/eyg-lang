@@ -23,6 +23,8 @@ pub type Reason {
   ExpectedBuiltinName(position: Int)
   // Raised when `#` is followed by a label that is not a valid CID
   InvalidCidReference(position: Int)
+  // Raised when `:` after `@name` is not followed by an integer version
+  InvalidReleaseVersion(position: Int)
   // Raised when `import` is not followed by a string path literal
   InvalidImportPath(position: Int)
   // Raised when tokens remain after a complete expression is parsed
@@ -308,11 +310,48 @@ pub fn expression(tokens) {
     t.At ->
       case rest {
         [#(t.Name(label), end), ..rest] -> {
-          let span = #(start, end + string.length(label))
-          Ok(#(
-            #(ir.ReleaseReference(label, 0, dag_json.vacant_cid), span),
-            rest,
-          ))
+          let after_name = end + string.length(label)
+          case rest {
+            [#(t.Colon, _), #(t.Integer(raw), int_at), ..rest] -> {
+              let assert Ok(version) = int.parse(raw)
+              let after_version = int_at + string.length(raw)
+              case rest {
+                [#(t.Colon, _), #(t.Name(cid_label), cid_at), ..rest] -> {
+                  let after_cid = cid_at + string.length(cid_label)
+                  let span = #(start, after_cid)
+                  case v1.from_string(cid_label) {
+                    Ok(#(cid, _)) ->
+                      Ok(#(
+                        #(ir.ReleaseReference(label, version, cid), span),
+                        rest,
+                      ))
+                    Error(_) -> Error(InvalidCidReference(cid_at))
+                  }
+                }
+                [#(t.Colon, hash_at), ..] ->
+                  Error(InvalidCidReference(hash_at + 1))
+                _ -> {
+                  let span = #(start, after_version)
+                  Ok(#(
+                    #(
+                      ir.ReleaseReference(label, version, dag_json.vacant_cid),
+                      span,
+                    ),
+                    rest,
+                  ))
+                }
+              }
+            }
+            [#(t.Colon, colon_at), ..] ->
+              Error(InvalidReleaseVersion(colon_at + 1))
+            _ -> {
+              let span = #(start, after_name)
+              Ok(#(
+                #(ir.ReleaseReference(label, 0, dag_json.vacant_cid), span),
+                rest,
+              ))
+            }
+          }
         }
         _ -> fail(rest)
       }
@@ -645,9 +684,13 @@ pub fn describe_reason(reason) {
       <> int.to_string(position)
       <> "\nhint: builtins use lowercase names, e.g. `!int_add`"
     InvalidCidReference(position:) ->
-      "invalid content identifier (CID) after `#` at position "
+      "invalid content identifier (CID) at position "
       <> int.to_string(position)
       <> "\nhint: CID references use a valid base32-encoded CID, e.g. `#bafyreig...`"
+    InvalidReleaseVersion(position:) ->
+      "expected an integer release version after `:` at position "
+      <> int.to_string(position)
+      <> "\nhint: pin a release with `@package:N` (e.g. `@tandard:3`) or omit `:` to track the latest"
     InvalidImportPath(position:) ->
       "expected a string path after `import` at position "
       <> int.to_string(position)

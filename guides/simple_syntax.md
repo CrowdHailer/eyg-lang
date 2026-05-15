@@ -324,13 +324,21 @@ A reference is an immutable content-addressed module identifier. It starts with 
 
 ---
 
-## Named Packages
+## Packages
 
-A named package reference starts with `@`:
+A package reference starts with `@`. Three forms are accepted:
 
-```eyg
-let std = @std
-```
+| Syntax            | Meaning                                                              |
+|-------------------|----------------------------------------------------------------------|
+| `@standard`            | Latest published version (resolved at evaluation time).              |
+| `@standard:3`          | Exactly version `3`. The hash is whatever the registry has for it.   |
+| `@standard:3:bafyrei…` | Exactly version `3`, pinned to a specific module CID.                |
+
+The version is a positive integer. The pinned hash, when given, must be a valid base32-encoded CID.
+
+A bare `@standard` references the latest pulled release of that package.
+Pin a version (`@standard:3`) for reproducible scripts.
+Provide a hash (`@standard:3#…`) to not require trust in the package hub.
 
 ---
 

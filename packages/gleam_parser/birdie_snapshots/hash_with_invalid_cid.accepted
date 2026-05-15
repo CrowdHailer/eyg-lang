@@ -4,7 +4,7 @@ title: hash with invalid CID
 file: ./test/eyg/parser/error_test.gleam
 test_name: invalid_cid_test
 ---
-error: invalid content identifier (CID) after `#` at position 1
+error: invalid content identifier (CID) at position 1
 hint: CID references use a valid base32-encoded CID, e.g. `#bafyreig...`
 
  1 | #notacid

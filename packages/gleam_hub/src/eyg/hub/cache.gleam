@@ -128,6 +128,14 @@ pub fn release(
   }
 }
 
+pub fn unbound_release(
+  cache: Cache(meta),
+  package: String,
+  version: Int,
+) -> Result(v1.Cid, Nil) {
+  dict.get(cache.releases, #(package, version))
+}
+
 pub fn package(
   cache: Cache(meta),
   package: String,
