@@ -12,6 +12,7 @@ pub const published = [
   // eyg eval --code '!int_add(1, 1)'
   // eyg compile -c '!int_add(1, 1)'
   // ```
+  // builtins reference
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",

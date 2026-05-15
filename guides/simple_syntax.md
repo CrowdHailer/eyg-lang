@@ -310,11 +310,7 @@ Builtins call built-in runtime operations. They start with `!` followed by a low
 !string_append("hello", " world")
 ```
 
-Common builtins include:
-- `!int_add`, `!int_subtract`, `!int_multiply`, `!int_compare`
-- `!string_append`, `!string_length`
-- `!string_from_binary`
-- `!never` — raises an abort that cannot be recovered from
+See [`builtins_reference.md`](./builtins_reference.md) for the full list.
 
 ---
 

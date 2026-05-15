@@ -55,8 +55,13 @@ Returns the whole file, if less than 1Mb in size.
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"
 match fs.read("./hello.txt") {
-  Ok(contents) -> { !string_from_binary(contents) }
-  Error(reason) -> { !never(Abort(reason))}
+  Ok(contents) -> {
+    match !string_from_binary(contents) {
+      Ok(text) -> { text }
+      Error(_) -> { !never(perform Abort("file is not valid utf-8")) }
+    }
+  }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 
@@ -69,7 +74,12 @@ let path = "./hello.txt"
 let offset = 0
 let limit = 2000
 match fs.read({path, offset, limit}) {
-  Ok(contents) -> { !string_from_binary(contents) }
-  Error(reason) -> { !never(Abort(reason))}
+  Ok(contents) -> {
+    match !string_from_binary(contents) {
+      Ok(text) -> { text }
+      Error(_) -> { !never(perform Abort("not valid utf-8")) }
+    }
+  }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```

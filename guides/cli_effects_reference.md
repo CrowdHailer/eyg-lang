@@ -1,6 +1,6 @@
 ---
 title: CLI effects reference
-description: reference for effects implemented by the eyg CLI .
+description: Reference for effects implemented by the eyg CLI .
 ---
 
 EYG separates the **declaration** of an effect (in your script:
@@ -16,8 +16,13 @@ Read a slice of a file at a given byte offset.
 
 ```eyg
 match perform ReadFile({path: "data.txt", offset: 0, limit: 1000000}) {
-  Ok(bytes) -> { !string_from_binary(bytes) }
-  Error(reason) -> { !never(Abort(reason)) }
+  Ok(bytes) -> {
+    match !string_from_binary(bytes) {
+      Ok(text) -> { text }
+      Error(_) -> { !never(perform Abort("not valid utf-8")) }
+    }
+  }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 
@@ -68,7 +73,7 @@ List entries in a directory. Excludes `.` and `..`.
 ```eyg
 match perform ReadDirectory(".") {
   Ok(entries) -> { entries }
-  Error(reason) -> { !never(Abort(reason)) }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 
@@ -153,7 +158,7 @@ let request = {
 }
 match perform Fetch(request) {
   Ok({status, headers, body}) -> { status }
-  Error(reason) -> { !never(Abort(reason)) }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 
@@ -168,7 +173,7 @@ Parse a JSON binary into a flat list of `{term, depth}` events.
 ```eyg
 match perform DecodeJSON(!string_to_binary("{\"x\": 1}")) {
   Ok(events) -> { events }
-  Error(reason) -> { !never(Abort(reason)) }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 

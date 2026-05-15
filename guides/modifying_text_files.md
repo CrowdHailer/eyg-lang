@@ -16,7 +16,7 @@ let edit = import "../eyg_packages/edit/index.eyg"
 
 match edit.write_text({path: "./notes.txt", text: "first draft\n"}) {
   Ok(_) -> { perform Print("written\n") }
-  Error(reason) -> { !never(Abort(reason)) }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 
@@ -29,7 +29,7 @@ let edit = import "../eyg_packages/edit/index.eyg"
 
 match edit.patch({path: "./config.json", find: "\"debug\": false", replace: "\"debug\": true"}) {
   Ok(_) -> { perform Print("config updated\n") }
-  Error(reason) -> { !never(Abort(reason)) }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
 

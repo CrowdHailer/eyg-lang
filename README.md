@@ -12,7 +12,8 @@ This repository contains the language definition, implementation, website and pa
 Follow the [install from source](./guides/install_from_source.md) guide with instructions to compile and install the EYG CLI.
 
 For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
-The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md).
+The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md)
+and every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
 
 ## Run a script
 

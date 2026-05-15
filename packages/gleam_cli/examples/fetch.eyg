@@ -10,5 +10,5 @@ let request = {
 }
 match perform Fetch(request) {
   Ok({status: status}) -> { status }
-  Error(reason) -> { !never(Abort(reason)) }
+  Error(reason) -> { !never(perform Abort(reason)) }
 }
