@@ -14,6 +14,8 @@ pub const published = [
   // ```
   // builtins reference
   // pretty runtime errors
+  // inline pinning
+  // check command and pretty type analysis
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",

@@ -11,6 +11,7 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 argv = ">= 1.0.2 and < 2.0.0"
 envoy = ">= 1.1.0 and < 2.0.0"
+eyg_analysis = ">= 1.2.0 and < 2.0.0"
 eyg_compiler = { path = "../gleam_compiler" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = ">= 2.1.0 and < 4.0.0"

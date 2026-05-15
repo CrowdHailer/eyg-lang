@@ -4,6 +4,7 @@ pub type Args {
   Repl
   Run(input: source.Input)
   Eval(input: source.Input)
+  Check(input: source.Input)
   Compile(input: source.Input)
   Share(file: String)
   Fetch(cid: String)
@@ -23,6 +24,10 @@ pub fn parse(args) {
     ["eval", "-c", code] | ["eval", "--code", code] -> Eval(source.Code(code))
     ["eval", "-"] | ["eval", "--stdin"] -> Eval(source.Stdin)
     ["eval", file] -> Eval(source.File(file))
+    ["check", "-c", code] | ["check", "--code", code] ->
+      Check(source.Code(code))
+    ["check", "-"] | ["check", "--stdin"] -> Check(source.Stdin)
+    ["check", file] -> Check(source.File(file))
     ["compile", "-c", code] | ["compile", "--code", code] ->
       Compile(source.Code(code))
     ["compile", "-"] | ["compile", "--stdin"] -> Compile(source.Stdin)
@@ -47,6 +52,9 @@ commands:
   eval <file>            evaluate and print an expression with no side effects
   eval -, --stdin        evaluate EYG source read from stdin
   eval -c, --code <code> evaluate inline EYG source with no side effects
+  check <file>           type check a script
+  check -, --stdin       type check EYG source read from stdin
+  check -c, --code <code> type check inline EYG source
   compile <file>         compile a script to JavaScript
   compile -, --stdin     compile EYG source read from stdin
   compile -c, --code <code>

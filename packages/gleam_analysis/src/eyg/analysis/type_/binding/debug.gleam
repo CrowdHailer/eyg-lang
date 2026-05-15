@@ -95,6 +95,23 @@ pub fn pretty_reason(reason) {
   render_reason(reason)
 }
 
+pub fn hint(reason) {
+  case reason {
+    error.Todo -> "this expression is not yet implemented"
+    error.MissingVariable(label) -> "check '" <> label <> "' is defined"
+    error.MissingBuiltin(label) -> "check the builtin '!" <> label <> "' exists"
+    error.MissingReference(_) -> "the referenced module is not available"
+    error.UndefinedRelease(_, _, _) -> "the package release is not available"
+    error.MissingRow(label) ->
+      "the record or union is missing '" <> label <> "'"
+    error.TypeMismatch(_expected, _given) ->
+      "check the expression matches the expected type"
+    error.Recursive ->
+      "this expression has a recursive type which is not supported"
+    error.SameTail(_, _) -> "the row tails must be different"
+  }
+}
+
 fn render_row(r) -> List(String) {
   case r {
     t.Empty -> []

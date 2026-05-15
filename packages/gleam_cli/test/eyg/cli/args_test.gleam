@@ -37,6 +37,14 @@ pub fn eval_stdin_long_flag_test() {
   assert args.Eval(source.Stdin) == args.parse(["eval", "--stdin"])
 }
 
+pub fn check_stdin_test() {
+  assert args.Check(source.Stdin) == args.parse(["check", "-"])
+}
+
+pub fn check_stdin_long_flag_test() {
+  assert args.Check(source.Stdin) == args.parse(["check", "--stdin"])
+}
+
 pub fn compile_code_test() {
   let code = "!int_add(1, 1)"
   assert args.Compile(source.Code(code)) == args.parse(["compile", "-c", code])

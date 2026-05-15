@@ -1,5 +1,5 @@
 name = "eyg_analysis"
-version = "1.1.1"
+version = "1.2.0"
 target = "javascript"
 
 description = "Infers types for expressions, effects and scope variables of EYG programs."

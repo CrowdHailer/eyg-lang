@@ -1,5 +1,6 @@
 import argv
 import eyg/cli/args
+import eyg/cli/check
 import eyg/cli/compile
 import eyg/cli/eval
 import eyg/cli/fetch
@@ -60,6 +61,7 @@ fn with_config(parsed) {
     args.Repl -> repl.execute(config)
     args.Run(input:) -> run.execute(input, config)
     args.Eval(input:) -> eval.execute(input, config)
+    args.Check(input:) -> check.execute(input, config)
     args.Compile(input:) -> compile.execute(input, config)
     args.Share(file:) -> share.execute(file, config)
     args.Fetch(cid:) -> fetch.execute(cid, config)
