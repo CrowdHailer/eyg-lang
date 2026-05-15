@@ -1,13 +1,17 @@
 import dag_json as codec
 import eyg/ir/tree as ir
-import gleam/dynamic/decode
+import gleam/dynamic
+import gleam/dynamic/decode as d
 import gleam/json
 import multiformats/cid/v1
 import multiformats/hashes
 
-fn label_decoder(for, meta) {
-  use label <- decode.field("l", decode.string)
-  decode.success(#(for(label), meta))
+fn label_decoder(
+  for: fn(String) -> ir.Expression(meta),
+  meta: meta,
+) -> d.Decoder(ir.Node(meta)) {
+  use label <- d.field("l", d.string)
+  d.success(#(for(label), meta))
 }
 
 pub const vacant_cid = v1.Cid(
@@ -51,89 +55,94 @@ pub const vacant_cid = v1.Cid(
   ),
 )
 
-pub fn decoder(meta) {
-  use switch <- decode.field("0", decode.string)
+/// create a decoder that will parse JSON source to an annotated tree with the given metadata.
+pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
+  use switch <- d.field("0", d.string)
   case switch {
     "v" -> label_decoder(ir.Variable, meta)
     "f" -> {
-      use label <- decode.field("l", decode.string)
-      use body <- decode.field("b", decoder(meta))
-      decode.success(#(ir.Lambda(label, body), meta))
+      use label <- d.field("l", d.string)
+      use body <- d.field("b", decoder(meta))
+      d.success(#(ir.Lambda(label, body), meta))
     }
     "a" -> {
-      use function <- decode.field("f", decoder(meta))
-      use argument <- decode.field("a", decoder(meta))
-      decode.success(#(ir.Apply(function, argument), meta))
+      use function <- d.field("f", decoder(meta))
+      use argument <- d.field("a", decoder(meta))
+      d.success(#(ir.Apply(function, argument), meta))
     }
     "l" -> {
-      use label <- decode.field("l", decode.string)
-      use value <- decode.field("v", decoder(meta))
-      use then <- decode.field("t", decoder(meta))
-      decode.success(#(ir.Let(label, value, then), meta))
+      use label <- d.field("l", d.string)
+      use value <- d.field("v", decoder(meta))
+      use then <- d.field("t", decoder(meta))
+      d.success(#(ir.Let(label, value, then), meta))
     }
     "x" -> {
-      use bytes <- decode.field("v", codec.decode_bytes())
-      decode.success(#(ir.Binary(bytes), meta))
+      use bytes <- d.field("v", codec.decode_bytes())
+      d.success(#(ir.Binary(bytes), meta))
     }
     "i" -> {
-      use value <- decode.field("v", decode.int)
-      decode.success(#(ir.Integer(value), meta))
+      use value <- d.field("v", d.int)
+      d.success(#(ir.Integer(value), meta))
     }
     "s" -> {
-      use value <- decode.field("v", decode.string)
-      decode.success(#(ir.String(value), meta))
+      use value <- d.field("v", d.string)
+      d.success(#(ir.String(value), meta))
     }
-    "ta" -> decode.success(#(ir.Tail, meta))
-    "c" -> decode.success(#(ir.Cons, meta))
-    "z" -> decode.success(#(ir.Vacant, meta))
-    "u" -> decode.success(#(ir.Empty, meta))
+    "ta" -> d.success(#(ir.Tail, meta))
+    "c" -> d.success(#(ir.Cons, meta))
+    "z" -> d.success(#(ir.Vacant, meta))
+    "u" -> d.success(#(ir.Empty, meta))
     "e" -> label_decoder(ir.Extend, meta)
     "g" -> label_decoder(ir.Select, meta)
     "o" -> label_decoder(ir.Overwrite, meta)
     "t" -> label_decoder(ir.Tag, meta)
     "m" -> label_decoder(ir.Case, meta)
-    "n" -> decode.success(#(ir.NoCases, meta))
+    "n" -> d.success(#(ir.NoCases, meta))
     "p" -> label_decoder(ir.Perform, meta)
     "h" -> label_decoder(ir.Handle, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
-      use cid <- decode.field("l", codec.decode_cid())
-      decode.success(#(ir.ContentReference(cid), meta))
+      use cid <- d.field("l", codec.decode_cid())
+      d.success(#(ir.ContentReference(cid), meta))
     }
     "@" -> {
-      use package <- decode.field("p", decode.string)
+      use package <- d.field("p", d.string)
       // version field used to be called release, so still uses r field in serialized code
-      use version <- decode.field("r", decode.int)
-      use cid <- decode.field("l", codec.decode_cid())
-      decode.success(#(ir.ReleaseReference(package, version, cid), meta))
+      use version <- d.field("r", d.int)
+      use cid <- d.field("l", codec.decode_cid())
+      d.success(#(ir.ReleaseReference(package, version, cid), meta))
     }
     "." -> {
-      use location <- decode.field("i", decode.string)
-      decode.success(#(ir.RelativeReference(location), meta))
+      use location <- d.field("i", d.string)
+      d.success(#(ir.RelativeReference(location), meta))
     }
     _ -> {
-      decode.failure(#(ir.Vacant, meta), "valid node key")
+      d.failure(#(ir.Vacant, meta), "valid node key")
     }
   }
 }
 
-pub fn decode(json) {
-  decode.run(json, decoder(Nil))
+@deprecated("This function is tied to Nil metadata, use the `decoder` directly instead")
+pub fn decode(
+  json: dynamic.Dynamic,
+) -> Result(ir.Node(Nil), List(d.DecodeError)) {
+  d.run(json, decoder(Nil))
 }
 
-pub fn from_block(data) {
+@deprecated("This function is tied to Nil metadata, use the `decoder` directly instead")
+pub fn from_block(data: BitArray) -> Result(ir.Node(Nil), json.DecodeError) {
   json.parse_bits(data, decoder(Nil))
 }
 
-fn node(name, attributes) {
+fn node(name: String, attributes: List(#(String, json.Json))) -> json.Json {
   codec.object([#("0", codec.string(name)), ..attributes])
 }
 
-fn label(value) {
+fn label(value: String) -> #(String, json.Json) {
   #("l", codec.string(value))
 }
 
-pub fn to_data_model(tree) {
+pub fn to_data_model(tree: ir.Node(meta)) -> json.Json {
   let #(exp, _meta) = tree
   case exp {
     ir.Variable(x) -> node("v", [label(x)])
@@ -179,10 +188,10 @@ pub fn to_data_model(tree) {
   }
 }
 
-pub fn to_block(data) {
+pub fn to_block(data: ir.Node(meta)) -> BitArray {
   codec.encode(to_data_model(data))
 }
 
-pub fn to_string(data) {
+pub fn to_string(data: ir.Node(meta)) -> String {
   json.to_string(to_data_model(data))
 }

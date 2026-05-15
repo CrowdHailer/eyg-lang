@@ -37,7 +37,7 @@ pub fn ir_suite_test() {
   list.map(tests, fn(fixture) {
     let Fixture(name, raw, expected) = fixture
     let source =
-      codec.decode(raw)
+      decode.run(raw, codec.decoder(Nil))
       |> should.be_ok
     let cid.Sha256(bytes, resume) = cid.from_tree(source)
     let hash = crypto.hash(crypto.Sha256, bytes)
