@@ -1,0 +1,11 @@
+---
+version: 2.0.0
+title: runtime: not a function
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: not_a_function_test
+---
+error: function expected got: 5
+hint: only functions, builtins, and partially applied operations can be called
+
+ 1 | 5(1)
+     ^^^^

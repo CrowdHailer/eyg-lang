@@ -1,0 +1,11 @@
+---
+version: 2.0.0
+title: runtime: abort effect
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: abort_test
+---
+error: Aborted with reason: "oops"
+hint: handle the abort effect or avoid performing it in this runtime
+
+ 1 | perform Abort("oops")
+     ^^^^^^^^^^^^^^^^^^^^^

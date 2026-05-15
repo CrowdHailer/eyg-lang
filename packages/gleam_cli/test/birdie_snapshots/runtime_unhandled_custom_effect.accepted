@@ -1,0 +1,11 @@
+---
+version: 2.0.0
+title: runtime: unhandled custom effect
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: unhandled_effect_test
+---
+error: unhandled effect Custom(1)
+hint: handle this effect or run the program in a runtime that supports it
+
+ 1 | perform Custom(1)
+     ^^^^^^^^^^^^^^^^^

@@ -1,0 +1,13 @@
+---
+version: 2.0.0
+title: runtime: multi-line span
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: multi_line_span_test
+---
+error: missing record field: b
+hint: check the record contains this field before selecting or overwriting it
+
+ 1 | {a: 1
+     ^^^^^
+ 2 | }.b
+     ^^^

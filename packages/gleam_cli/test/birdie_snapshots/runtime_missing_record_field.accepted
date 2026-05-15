@@ -1,0 +1,11 @@
+---
+version: 2.0.0
+title: runtime: missing record field
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: missing_field_test
+---
+error: missing record field: b
+hint: check the record contains this field before selecting or overwriting it
+
+ 1 | {a: 1}.b
+     ^^^^^^^^

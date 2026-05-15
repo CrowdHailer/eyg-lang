@@ -1,0 +1,11 @@
+---
+version: 2.0.0
+title: runtime: undefined variable
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: undefined_variable_test
+---
+error: variable undefined: unknown
+hint: check the variable name or add a `let` binding before it is used
+
+ 1 | unknown
+     ^^^^^^^

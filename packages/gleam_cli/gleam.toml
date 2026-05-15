@@ -38,6 +38,7 @@ untethered = { path = "../untethered" }
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+birdie = ">= 2.0.0 and < 3.0.0"
 
 [javascript]
 runtime = "bun"

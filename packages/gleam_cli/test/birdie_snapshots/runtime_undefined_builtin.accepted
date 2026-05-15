@@ -1,0 +1,11 @@
+---
+version: 2.0.0
+title: runtime: undefined builtin
+file: ./test/eyg/cli/internal/execute_test.gleam
+test_name: undefined_builtin_test
+---
+error: builtin undefined: !nonexistent_builtin
+hint: check the builtin name against the builtins reference
+
+ 1 | !nonexistent_builtin
+     ^^^^^^^^^^^^^^^^^^^^

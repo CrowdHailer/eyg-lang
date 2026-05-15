@@ -1,4 +1,7 @@
+import birdie
 import eyg/cli/internal/execute
+import eyg/cli/internal/source
+import eyg/interpreter/expression
 import gleam/string
 import simplifile
 import touch_grass/file_system/append_file
@@ -81,4 +84,53 @@ pub fn append_file_test() {
   let assert Ok(contents) = execute.read_file("./test/fixtures", read_input)
   assert <<"start end">> == contents
   let assert Ok(Nil) = simplifile.delete_file("./test/fixtures/append.txt")
+}
+
+/// Run a snippet of EYG source text and capture the formatted runtime error.
+fn snap_text(code: String) -> String {
+  let assert Ok(node) = source.parse(code)
+  let assert Error(#(reason, span, _env, _k)) = expression.execute(node, [])
+  execute.render_error(reason, code, span)
+}
+
+pub fn undefined_variable_test() {
+  snap_text("unknown")
+  |> birdie.snap(title: "runtime: undefined variable")
+}
+
+pub fn undefined_variable_multiline_test() {
+  snap_text("let x = 1\nlet y = 2\nunknown")
+  |> birdie.snap(title: "runtime: undefined variable on third line")
+}
+
+pub fn undefined_builtin_test() {
+  snap_text("!nonexistent_builtin")
+  |> birdie.snap(title: "runtime: undefined builtin")
+}
+
+pub fn not_a_function_test() {
+  snap_text("5(1)")
+  |> birdie.snap(title: "runtime: not a function")
+}
+
+pub fn missing_field_test() {
+  snap_text("{a: 1}.b")
+  |> birdie.snap(title: "runtime: missing record field")
+}
+
+pub fn abort_test() {
+  snap_text("perform Abort(\"oops\")")
+  |> birdie.snap(title: "runtime: abort effect")
+}
+
+pub fn unhandled_effect_test() {
+  snap_text("perform Custom(1)")
+  |> birdie.snap(title: "runtime: unhandled custom effect")
+}
+
+pub fn multi_line_span_test() {
+  // Without a trailing comma, the record's whole span survives the parser
+  // and the renderer underlines every line the expression covers.
+  snap_text("{a: 1\n}.b")
+  |> birdie.snap(title: "runtime: multi-line span")
 }
