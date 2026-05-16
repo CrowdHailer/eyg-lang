@@ -1,0 +1,79 @@
+let json = import "../json/index.eyg.json"
+
+let expect = (result, message) -> {
+  match result {
+    Ok(value) -> { value }
+    Error(_) -> { !never(perform Abort(message)) }
+  }
+}
+
+let print_line = (line) -> {
+  perform Print(!string_append(line, "\n"))
+}
+
+let origin = {scheme: HTTPS({}), host: "eyg.run", port: None({})}
+
+let get = (path) -> {
+  {
+    method: GET({}),
+    path: path,
+    query: None({}),
+    headers: [],
+    body: !string_to_binary("")
+  }
+}
+
+let pull_packages_operation = (since) -> {
+  get("/packages/pull")
+}
+
+
+let dispatch = (operation, origin) -> {
+  let {scheme: scheme, host: host, port: port} = origin
+  let {method: method, path: path, query: query, headers: headers, body: body} = operation
+  let request = {method: method, scheme: scheme, host: host, port: port, path: path, query: query, headers: headers, body: body}
+  perform Fetch(request)
+}
+let d = json.decode
+
+let cid_decoder = d.object((fields) -> {
+  let encoded = d.field("/", d.string, fields)
+  CID(encoded)
+})
+
+let release_decoder = d.object((fields) -> {
+  let package = d.field("package", d.string, fields)
+  let version = d.field("version", d.integer, fields)
+  let module = d.field("module", cid_decoder, fields)
+  {package: package, version: version, module: module}
+})
+
+let payload_decoder = d.object((fields) -> {
+  let content = d.field("content", release_decoder, fields)
+  {content: content}
+})
+
+let entries_decoder = d.object((fields) -> {
+  let cursor = d.field("cursor", d.integer, fields)
+  let payload = d.field("payload", d.string, fields)
+  let payload = expect(json.parse(payload, payload_decoder),"failed to parse payload")
+  {cursor: cursor, payload: payload}
+})
+
+let pull_packages = (since) -> {
+  let operation = pull_packages_operation(since)
+  let response = expect(dispatch(operation, origin), "failed to fetch")
+  let decoder = d.object((fields) -> {
+    let entries = d.field("entries",d.list(entries_decoder), fields)
+    entries
+  })
+  expect(json.parse_bytes(response.body, decoder), "failed to parse")
+}
+
+let r = pull_packages(0)
+let r = @standard.list.reverse(r)
+let _ = @standard.list.map(r, ({payload}) -> {
+  // let _ = perform Log(payload)
+  print_line(payload.content.package)
+})
+perform Log(r)
