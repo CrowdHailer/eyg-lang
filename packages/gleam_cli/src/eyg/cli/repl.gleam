@@ -1,4 +1,5 @@
 import eyg/cli/internal/execute
+import eyg/cli/internal/source
 import eyg/hub/cache
 import eyg/interpreter/simple_debug
 import eyg/ir/tree as ir
@@ -18,7 +19,7 @@ pub fn execute(config) {
     simplifile.current_directory()
     |> result.map_error(simplifile.describe_error),
   )
-  let state = execute.State(cwd, config, cache.empty(), fn(_: Nil) { #(0, 0) })
+  let state = execute.State(cwd, config, cache.empty())
   loop("", [], state)
 }
 
@@ -35,6 +36,10 @@ fn loop(buffer, scope, state) {
               let #(label, value, at) = assignment
               #(ir.Let(label, value, acc), at)
             })
+          let source =
+            ir.map_annotation(source, fn(span) {
+              source.Location(source.Repl, source.Text(buffer, span))
+            })
           use result <- promise.await(execute.block(source, scope, state))
           case result {
             Ok(#(Some(value), scope)) -> {
@@ -42,8 +47,8 @@ fn loop(buffer, scope, state) {
               loop("", scope, state)
             }
             Ok(#(None, scope)) -> loop("", scope, state)
-            Error(#(reason, span, _, _)) -> {
-              io.println_error(execute.render_error(reason, buffer, span))
+            Error(#(reason, location, _, _)) -> {
+              io.println_error(execute.render_error(reason, location, state.cwd))
               loop("", scope, state)
             }
           }

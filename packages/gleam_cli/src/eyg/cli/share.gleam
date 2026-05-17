@@ -11,7 +11,7 @@ pub fn execute(
   config: config.Config,
 ) -> Promise(Result(Nil, String)) {
   use code <- promisex.try_sync(source.read_file(file))
-  use source <- promisex.try_sync(source.parse(code))
+  use source <- promisex.try_sync(source.parse_input(code, source.File(file)))
   use cid <- promise.try_await(client.share_module(source, config.client))
   io.println(v1.to_string(cid))
   promise.resolve(Ok(Nil))

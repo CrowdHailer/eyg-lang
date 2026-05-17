@@ -16,7 +16,7 @@ pub fn execute(package, file, config) {
     _ -> Error("Multiple signatories created")
   })
   use code <- promisex.try_sync(source.read_file(file))
-  use source <- promisex.try_sync(source.parse(code))
+  use source <- promisex.try_sync(source.parse_input(code, source.File(file)))
   use module <- promise.try_await(client.share_module(source, config.client))
 
   use history <- promise.try_await(client.pull_package(package, client))

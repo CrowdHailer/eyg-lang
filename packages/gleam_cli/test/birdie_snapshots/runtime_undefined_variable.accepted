@@ -7,5 +7,6 @@ test_name: undefined_variable_test
 error: variable undefined: unknown
 hint: check the variable name or add a `let` binding before it is used
 
+ <inline>
  1 | unknown
      ^^^^^^^

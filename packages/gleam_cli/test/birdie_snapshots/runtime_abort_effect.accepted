@@ -7,5 +7,6 @@ test_name: abort_test
 error: Aborted with reason: "oops"
 hint: handle the abort effect or avoid performing it in this runtime
 
+ <inline>
  1 | perform Abort("oops")
      ^^^^^^^^^^^^^^^^^^^^^

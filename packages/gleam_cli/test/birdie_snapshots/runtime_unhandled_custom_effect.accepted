@@ -7,5 +7,6 @@ test_name: unhandled_effect_test
 error: unhandled effect Custom(1)
 hint: handle this effect or run the program in a runtime that supports it
 
+ <inline>
  1 | perform Custom(1)
      ^^^^^^^^^^^^^^^^^

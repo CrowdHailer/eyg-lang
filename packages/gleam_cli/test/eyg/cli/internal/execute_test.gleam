@@ -88,9 +88,9 @@ pub fn append_file_test() {
 
 /// Run a snippet of EYG source text and capture the formatted runtime error.
 fn snap_text(code: String) -> String {
-  let assert Ok(node) = source.parse(code)
-  let assert Error(#(reason, span, _env, _k)) = expression.execute(node, [])
-  execute.render_error(reason, code, span)
+  let assert Ok(node) = source.parse_input(code, source.Code(code))
+  let assert Error(#(reason, location, _env, _k)) = expression.execute(node, [])
+  execute.render_error(reason, location, "")
 }
 
 pub fn undefined_variable_test() {

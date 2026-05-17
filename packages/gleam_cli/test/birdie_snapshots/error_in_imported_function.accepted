@@ -1,0 +1,12 @@
+---
+version: 2.0.0
+title: error in imported function
+file: ./test/eyg/cli/run_test.gleam
+test_name: print_error_in_import_test
+---
+error: variable undefined: y
+hint: check the variable name or add a `let` binding before it is used
+
+ test/fixtures/invalid_function.eyg
+ 1 | (x) -> { y }
+              ^

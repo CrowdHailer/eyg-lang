@@ -7,5 +7,6 @@ test_name: not_a_function_test
 error: function expected got: 5
 hint: only functions, builtins, and partially applied operations can be called
 
+ <inline>
  1 | 5(1)
      ^^^^

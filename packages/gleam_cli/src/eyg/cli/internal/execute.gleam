@@ -14,7 +14,7 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/parser
+import eyg/parser/location
 import filepath
 import gleam/fetchx
 import gleam/http/request
@@ -48,37 +48,45 @@ import touch_grass/random
 import touch_grass/sleep
 import untethered/ledger/schema
 
-pub type State(meta) {
-  State(
-    cwd: String,
-    config: config.Config,
-    cache: Cache(meta),
-    map: fn(Nil) -> meta,
-  )
+pub type Value =
+  state.Value(source.Location)
+
+pub type Scope =
+  state.Scope(source.Location)
+
+pub type Env =
+  state.Env(source.Location)
+
+pub type Stack =
+  state.Stack(source.Location)
+
+pub type Reason =
+  state.Reason(source.Location)
+
+pub type Debug =
+  state.Debug(source.Location)
+
+pub type State {
+  State(cwd: String, config: config.Config, cache: Cache(source.Location))
 }
 
 pub fn block(source, scope, state) {
   loop(block.execute(source, scope), state)
 }
 
-pub type CacheUpdate(meta) {
-  Fetched(cid: v1.Cid, result: Result(ir.Node(meta), String))
+pub type CacheUpdate {
+  Fetched(cid: v1.Cid, result: Result(ir.Node(source.Location), String))
   Pulled(result: Result(List(schema.ArchivedEntry), String))
 }
 
 // helper that rebuilds debug context of error
 fn try_sync(
-  result: Result(t, state.Reason(meta)),
-  meta: meta,
-  env: state.Env(meta),
-  k: state.Stack(meta),
-  then: fn(t) ->
-    Promise(
-      Result(#(Option(state.Value(meta)), state.Scope(meta)), state.Debug(meta)),
-    ),
-) -> Promise(
-  Result(#(Option(state.Value(meta)), state.Scope(meta)), state.Debug(meta)),
-) {
+  result: Result(t, Reason),
+  meta: source.Location,
+  env: Env,
+  k: Stack,
+  then: fn(t) -> Promise(Result(#(Option(Value), Scope), Debug)),
+) -> Promise(Result(#(Option(Value), Scope), Debug)) {
   case result {
     Ok(value) -> then(value)
     Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
@@ -86,12 +94,12 @@ fn try_sync(
 }
 
 fn try_await(
-  result: Promise(Result(t, state.Reason(meta))),
-  meta: meta,
-  env: state.Env(meta),
-  k: state.Stack(meta),
-  then: fn(t) -> Promise(Result(r, state.Debug(meta))),
-) -> Promise(Result(r, state.Debug(meta))) {
+  result: Promise(Result(t, Reason)),
+  meta: source.Location,
+  env: Env,
+  k: Stack,
+  then: fn(t) -> Promise(Result(r, Debug)),
+) -> Promise(Result(r, Debug)) {
   use result <- promise.await(result)
   case result {
     Ok(value) -> then(value)
@@ -99,12 +107,7 @@ fn try_await(
   }
 }
 
-fn loop(
-  return,
-  state: State(meta),
-) -> Promise(
-  Result(#(Option(state.Value(meta)), state.Scope(meta)), state.Debug(meta)),
-) {
+fn loop(return, state: State) -> Promise(Result(#(Option(Value), Scope), Debug)) {
   let #(return, cache) = cache.loop(return, state.cache, block.resume)
   let state = State(..state, cache:)
   case return {
@@ -207,7 +210,7 @@ fn loop(
   }
 }
 
-fn update(state: State(_)) {
+fn update(state: State) {
   let #(cache, effects) = cache.flush(state.cache)
   case effects {
     [] -> promise.resolve(State(..state, cache:))
@@ -221,10 +224,7 @@ fn update(state: State(_)) {
   }
 }
 
-fn do_effect(
-  effect: cache.Action,
-  state: State(meta),
-) -> Promise(CacheUpdate(meta)) {
+fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
   let client = state.config.client
   case effect {
     cache.FetchModule(dep) -> {
@@ -232,7 +232,15 @@ fn do_effect(
 
       case result {
         Ok(Some(source)) ->
-          Fetched(dep, Ok(source |> ir.map_annotation(state.map)))
+          Fetched(
+            dep,
+            Ok(
+              source
+              |> ir.map_annotation(fn(_: Nil) {
+                source.Location(source.Content(dep), source.Json)
+              }),
+            ),
+          )
         Ok(None) -> Fetched(dep, Error("unknown"))
         Error(reason) -> Fetched(dep, Error(reason))
       }
@@ -247,7 +255,10 @@ fn do_effect(
   }
 }
 
-fn apply(cache: Cache(_), update: CacheUpdate(_)) -> Cache(_) {
+fn apply(
+  cache: Cache(source.Location),
+  update: CacheUpdate,
+) -> Cache(source.Location) {
   case update {
     Fetched(cid:, result:) -> {
       let #(cache, _done) = cache.fetched(cache, cid, result)
@@ -273,10 +284,7 @@ fn apply(cache: Cache(_), update: CacheUpdate(_)) -> Cache(_) {
   }
 }
 
-fn lookup_reference(
-  cid: v1.Cid,
-  state: State(meta),
-) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
+fn lookup_reference(cid: v1.Cid, state: State) -> Promise(Result(Value, Reason)) {
   use state <- promise.map(update(state))
   case cache.module(state.cache, cid) {
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
@@ -288,7 +296,7 @@ fn lookup_reference(
   }
 }
 
-fn lookup_release(package, version, module, state: State(_)) {
+fn lookup_release(package, version, module, state: State) {
   let unbound = module == dag_json.vacant_cid
   case package, version, unbound {
     _, 0, True -> {
@@ -339,21 +347,13 @@ fn abort(reason: String) -> break.Reason(m, c) {
   break.UnhandledEffect("Abort", v.String(reason))
 }
 
-fn lookup_relative(
-  location,
-  state: State(meta),
-) -> Promise(Result(state.Value(meta), state.Reason(meta))) {
+fn lookup_relative(location, state: State) -> Promise(Result(Value, Reason)) {
   case resolve_relative(state.cwd, location) {
     Ok(path) -> {
       case source.read_file(path) {
         Ok(code) ->
-          case source.parse(code) {
+          case source.parse(code, source.Disk(path:)) {
             Ok(source) -> {
-              // Spans from a loaded module point into its own source, not the
-              // top-level one, so flatten them to the placeholder meta. Runtime
-              // errors that bubble out from here will therefore omit location
-              // information.
-              let source = ir.map_annotation(source, fn(_) { state.map(Nil) })
               use result <- promise.await(pure_loop(
                 expression.execute(source, []),
                 state,
@@ -379,9 +379,9 @@ fn lookup_relative(
 }
 
 pub fn pure_loop(
-  return: Result(state.Value(meta), state.Debug(meta)),
-  state: State(meta),
-) -> Promise(Result(state.Value(meta), state.Debug(meta))) {
+  return: Result(Value, Debug),
+  state: State,
+) -> Promise(Result(Value, Debug)) {
   let #(return, cache) = cache.loop(return, state.cache, expression.resume)
   let state = State(..state, cache:)
   case return {
@@ -521,8 +521,32 @@ fn service_request(service, operation, token) {
   |> request.set_header("authorization", "Bearer " <> token)
 }
 
-pub fn render_error(reason, code, span) -> String {
-  let message = simple_debug.describe(reason)
+pub fn render_error(
+  reason: Reason,
+  location: source.Location,
+  cwd: String,
+) -> String {
+  let description = simple_debug.describe(reason)
   let hint = simple_debug.hint(reason)
-  parser.render_error(message, hint, code, span)
+  let source.Location(origin, source) = location
+  let origin = case origin {
+    source.Disk(path:) -> string.replace(path, cwd <> "/", "")
+    source.Pipe -> "<pipe>"
+    source.Inline -> "<inline>"
+    source.Repl -> "<repl>"
+    source.Content(cid:) -> "#" <> v1.to_string(cid)
+    source.Release(package:, version:, cid: _) ->
+      "@" <> package <> ":" <> int.to_string(version)
+  }
+
+  let lines = ["error: " <> description, "hint: " <> hint]
+  let context = case source {
+    source.Text(code:, span:) -> [
+      "",
+      " " <> origin,
+      ..location.source_context(code, span)
+    ]
+    source.Json -> ["", " " <> origin]
+  }
+  string.join(list.append(lines, context), "\n")
 }

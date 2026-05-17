@@ -11,7 +11,7 @@ pub fn execute(
   _config: config.Config,
 ) -> Promise(Result(Nil, String)) {
   use code <- promisex.try_sync(source.read_input(input))
-  use source <- promisex.try_sync(source.parse(code))
+  use source <- promisex.try_sync(source.parse_input(code, input))
 
   let context = infer.unpure()
   let analysis = infer.check(context, source)
@@ -19,10 +19,10 @@ pub fn execute(
 
   case errors {
     [] -> promise.resolve(Ok(Nil))
-    [#(span, reason), ..] -> {
+    [#(location, reason), ..] -> {
       let message = debug.render_reason(reason)
       let hint = debug.hint(reason)
-      Error(parser.render_error(message, hint, code, span))
+      Error(parser.render_error(message, hint, code, source.span(location)))
       |> promise.resolve
     }
   }

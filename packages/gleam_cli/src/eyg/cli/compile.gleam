@@ -11,7 +11,7 @@ pub fn execute(
   _config: config.Config,
 ) -> promise.Promise(Result(Nil, String)) {
   use code <- promisex.try_sync(source.read_input(input))
-  use source <- promisex.try_sync(source.parse(code))
+  use source <- promisex.try_sync(source.parse_input(code, input))
   io.println(compiler.to_js(source, dict.new()))
   promise.resolve(Ok(Nil))
 }

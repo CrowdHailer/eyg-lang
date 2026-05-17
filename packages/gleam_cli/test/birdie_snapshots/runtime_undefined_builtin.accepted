@@ -7,5 +7,6 @@ test_name: undefined_builtin_test
 error: builtin undefined: !nonexistent_builtin
 hint: check the builtin name against the builtins reference
 
+ <inline>
  1 | !nonexistent_builtin
      ^^^^^^^^^^^^^^^^^^^^
