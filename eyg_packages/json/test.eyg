@@ -1,0 +1,65 @@
+let json = import "./index.eyg.json"
+
+let print_line = (line) -> {
+  perform Print(!string_append(line, "\n"))
+}
+
+let fail = (name) -> {
+  !never(perform Abort(!string_append("FAIL: ", name)))
+}
+
+let assert_eq = (expected, actual, name) -> {
+  match !equal(expected, actual) {
+    True(_) -> { print_line(!string_append("PASS: ", name)) }
+    False(_) -> { fail(name) }
+  }
+}
+
+let assert_parse_error = (result, name) -> {
+  match result {
+    Ok(_) -> { fail(name) }
+    Error(_) -> { print_line(!string_append("PASS: ", name)) }
+  }
+}
+
+let person_decoder = json.decode.object((parsed) -> {
+  let name = json.decode.field("name", json.decode.string)(parsed)
+  let age = json.decode.field("age", json.decode.integer)(parsed)
+  {name, age}
+})
+
+let nested_score_decoder = json.decode.object(
+  json.decode.field(
+    "player",
+    json.decode.object(json.decode.field("score", json.decode.integer))
+  )
+)
+
+let test_suite = ({}) -> {
+  let _ = print_line("\n--- Running Tests for json/index.eyg.json ---")
+
+  let _ = assert_eq(Ok(True({})), json.parse("true", json.decode.boolean), "decodes true")
+  let _ = assert_eq(Ok(False({})), json.parse("false", json.decode.boolean), "decodes false")
+
+  let _ = assert_eq(Ok(42), json.parse("42", json.decode.integer), "decodes integer")
+  let _ = assert_eq(Ok(-7), json.parse("-7", json.decode.integer), "decodes negative integer")
+
+  let _ = assert_eq(Ok("hello"), json.parse("\"hello\"", json.decode.string), "decodes string")
+  let _ = assert_eq(Ok("line\nbreak"), json.parse("\"line\\nbreak\"", json.decode.string), "decodes escaped string")
+
+  let _ = assert_eq(Ok([]), json.parse("[]", json.decode.list(json.decode.integer)), "decodes empty list")
+  let _ = assert_eq(Ok([1, 2, 3]), json.parse("[1,2,3]", json.decode.list(json.decode.integer)), "decodes list in source order")
+  let _ = assert_eq(Ok(["a", "b", "c"]), json.parse("[\"a\",\"b\",\"c\"]", json.decode.list(json.decode.string)), "decodes string list in source order")
+  let _ = assert_eq(Ok([[1, 2], [3, 4]]), json.parse("[[1,2],[3,4]]", json.decode.list(json.decode.list(json.decode.integer))), "decodes nested lists")
+
+  let _ = assert_eq(Ok("Ada"), json.parse("{\"name\":\"Ada\"}", json.decode.object(json.decode.field("name", json.decode.string))), "decodes object field")
+  let _ = assert_eq(Ok({name: "Ada", age: 36}), json.parse("{\"name\":\"Ada\",\"age\":36}", person_decoder), "decodes multiple object fields")
+  let _ = assert_eq(Ok(99), json.parse("{\"player\":{\"score\":99}}", nested_score_decoder), "decodes nested object field")
+  let _ = assert_eq(Ok([1, 2]), json.parse("[{\"id\":1},{\"id\":2}]", json.decode.list(json.decode.object(json.decode.field("id", json.decode.integer)))), "decodes list of objects in source order")
+
+  let _ = assert_parse_error(json.parse("not json", json.decode.boolean), "returns error for invalid JSON")
+
+  print_line("--- Tests Complete ---\n")
+}
+
+test_suite({})

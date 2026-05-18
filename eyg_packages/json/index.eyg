@@ -1,0 +1,201 @@
+let abort = (reason) -> {
+  !never(perform Abort(reason))
+}
+
+let expect = (result, message) -> {
+  match result {
+    Ok(value) -> { value }
+    Error(_) -> { abort(message) }
+  }
+}
+
+let reverse = !fix((self, items, acc) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> { self(tail, [head, ..acc]) }
+    Error(_) -> { acc }
+  }
+})
+
+let take = (parsed) -> {
+  match !list_pop(parsed) {
+    Ok({head, tail}) -> { {head, tail} }
+    Error(_) -> { abort("Unexpected end of JSON") }
+  }
+}
+
+let drop = !fix((self, parsed, under) -> {
+  match !list_pop(parsed) {
+    Ok({head, tail}) -> {
+      match !int_compare(head.depth, under) {
+        Gt(_) -> { self(tail, under) }
+        Eq(_) -> { parsed }
+        Lt(_) -> { parsed }
+      }
+    }
+    Error(_) -> { [] }
+  }
+})
+
+let boolean = (parsed) -> {
+  let {head, tail} = take(parsed)
+  match head.term {
+    True(_) -> { {value: True({}), rest: tail} }
+    False(_) -> { {value: False({}), rest: tail} }
+    Null(_) -> { abort("Expected boolean") }
+    Integer(_) -> { abort("Expected boolean") }
+    String(_) -> { abort("Expected boolean") }
+    Number(_) -> { abort("Expected boolean") }
+    Array(_) -> { abort("Expected boolean") }
+    Object(_) -> { abort("Expected boolean") }
+    Field(_) -> { abort("Expected boolean") }
+  }
+}
+
+let integer = (parsed) -> {
+  let {head, tail} = take(parsed)
+  match head.term {
+    Integer(value) -> { {value, rest: tail} }
+    True(_) -> { abort("Expected integer") }
+    False(_) -> { abort("Expected integer") }
+    Null(_) -> { abort("Expected integer") }
+    String(_) -> { abort("Expected integer") }
+    Number(_) -> { abort("Expected integer") }
+    Array(_) -> { abort("Expected integer") }
+    Object(_) -> { abort("Expected integer") }
+    Field(_) -> { abort("Expected integer") }
+  }
+}
+
+let string = (parsed) -> {
+  let {head, tail} = take(parsed)
+  match head.term {
+    String(value) -> { {value, rest: tail} }
+    True(_) -> { abort("Expected string") }
+    False(_) -> { abort("Expected string") }
+    Null(_) -> { abort("Expected string") }
+    Integer(_) -> { abort("Expected string") }
+    Number(_) -> { abort("Expected string") }
+    Array(_) -> { abort("Expected string") }
+    Object(_) -> { abort("Expected string") }
+    Field(_) -> { abort("Expected string") }
+  }
+}
+
+let list = (item_decoder) -> {
+  (parsed) -> {
+    let {head, tail} = take(parsed)
+    match head.term {
+      Array(_) -> {
+        let under = head.depth
+        let read_items = !fix((self, rest, acc) -> {
+          match !list_pop(rest) {
+            Ok({head, tail}) -> {
+              match !int_compare(head.depth, under) {
+                Gt(_) -> {
+                  let decoded = item_decoder(rest)
+                  self(decoded.rest, [decoded.value, ..acc])
+                }
+                Eq(_) -> { {value: reverse(acc, []), rest} }
+                Lt(_) -> { {value: reverse(acc, []), rest} }
+              }
+            }
+            Error(_) -> { {value: reverse(acc, []), rest} }
+          }
+        })
+        read_items(tail, [])
+      }
+      True(_) -> { abort("Expected list") }
+      False(_) -> { abort("Expected list") }
+      Null(_) -> { abort("Expected list") }
+      Integer(_) -> { abort("Expected list") }
+      String(_) -> { abort("Expected list") }
+      Number(_) -> { abort("Expected list") }
+      Object(_) -> { abort("Expected list") }
+      Field(_) -> { abort("Expected list") }
+    }
+  }
+}
+
+let do_field = !fix((self, parsed, at, seek) -> {
+  match !list_pop(parsed) {
+    Ok({head, tail}) -> {
+      match !int_compare(head.depth, at) {
+        Lt(_) -> { Error(seek) }
+        Eq(_) -> {
+          match head.term {
+            Field(label) -> {
+              match !equal(label, seek) {
+                True(_) -> { Ok(tail) }
+                False(_) -> { self(tail, at, seek) }
+              }
+            }
+            True(_) -> { self(tail, at, seek) }
+            False(_) -> { self(tail, at, seek) }
+            Null(_) -> { self(tail, at, seek) }
+            Integer(_) -> { self(tail, at, seek) }
+            String(_) -> { self(tail, at, seek) }
+            Number(_) -> { self(tail, at, seek) }
+            Array(_) -> { self(tail, at, seek) }
+            Object(_) -> { self(tail, at, seek) }
+          }
+        }
+        Gt(_) -> { self(tail, at, seek) }
+      }
+    }
+    Error(_) -> { Error(seek) }
+  }
+})
+
+let field = (label, decoder) -> {
+  (parsed) -> {
+    let {head} = take(parsed)
+    match do_field(parsed, head.depth, label) {
+      Ok(rest) -> { decoder(rest).value }
+      Error(_) -> { abort("Missing field") }
+    }
+  }
+}
+
+let object = (decoder) -> {
+  (parsed) -> {
+    let {head, tail} = take(parsed)
+  match head.term {
+    Object(_) -> { {value: decoder(tail), rest: drop(tail, head.depth)} }
+    True(_) -> { abort("Expected object") }
+    False(_) -> { abort("Expected object") }
+    Null(_) -> { abort("Expected object") }
+    Integer(_) -> { abort("Expected object") }
+    String(_) -> { abort("Expected object") }
+    Number(_) -> { abort("Expected object") }
+    Array(_) -> { abort("Expected object") }
+    Field(_) -> { abort("Expected object") }
+  }
+}
+}
+
+let parse_bytes = (json, decoder) -> {
+  match perform DecodeJSON(json) {
+    Ok(flat) -> { Ok(decoder(flat).value) }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+let parse = (json, decoder) -> {
+  parse_bytes(!string_to_binary(json), decoder)
+}
+
+let decode = {
+  boolean,
+  integer,
+  string,
+  list,
+  field,
+  object
+}
+
+{
+  parse,
+  parse_bytes,
+  expect,
+  decode
+}
