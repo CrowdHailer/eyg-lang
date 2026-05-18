@@ -1,0 +1,12 @@
+---
+version: 2.0.0
+title: runtime: abort in hub Content module focuses user call
+---
+error: Aborted with reason: "bad arg"
+hint: handle the abort effect or avoid performing it in this runtime
+
+  in #baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma
+  in #baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma (42)
+→ in main.eyg:2 (42)
+ 2 | lib(42)
+     ^^^^^^^

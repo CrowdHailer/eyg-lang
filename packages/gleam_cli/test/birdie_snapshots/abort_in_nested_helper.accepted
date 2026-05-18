@@ -1,0 +1,12 @@
+---
+version: 2.0.0
+title: abort in nested helper
+---
+error: Aborted with reason: "bad value"
+hint: handle the abort effect or avoid performing it in this runtime
+
+→ in test/fixtures/abort_helper.eyg:2
+ 2 |   perform Abort("bad value")
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  in test/fixtures/abort_helper.eyg:5 (42)
+  in ./test/fixtures/abort_main.eyg:2 (42)

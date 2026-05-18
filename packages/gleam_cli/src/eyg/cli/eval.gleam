@@ -40,7 +40,7 @@ pub fn execute(
       io.println(simple_debug.inspect(value))
       Ok(Nil)
     }
-    Error(#(reason, location, _env, _k)) ->
-      Error(execute.render_error(reason, location, cwd))
+    Error(#(reason, location, _env, k)) ->
+      Error(execute.render_error(reason, location, k, cwd))
   }
 }

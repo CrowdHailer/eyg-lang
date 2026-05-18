@@ -33,8 +33,8 @@ pub fn execute(
   case result {
     Ok(#(Some(_value), _)) -> Ok(Nil)
     Ok(#(None, _)) -> Ok(Nil)
-    Error(#(reason, location, _, _)) -> {
-      Error(execute.render_error(reason, location, cwd))
+    Error(#(reason, location, _, k)) -> {
+      Error(execute.render_error(reason, location, k, cwd))
     }
   }
 }

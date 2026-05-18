@@ -521,15 +521,118 @@ fn service_request(service, operation, token) {
   |> request.set_header("authorization", "Bearer " <> token)
 }
 
+/// One frame of the runtime stack trace - the failing expression's
+/// meta (with `arg: None`) plus every closure call recorded by a
+/// Trace frame on the continuation stack (with `arg: Some(value)`).
+pub type Frame {
+  Frame(location: source.Location, arg: Option(Value))
+}
+
+/// Render a runtime error as a stack trace.
+///
+/// Collects the failing expression's meta plus every `Trace` frame on
+/// the continuation stack and renders one line per frame innermost
+/// first. The deepest frame whose origin is a user-code origin (i.e.
+/// not `Content` or `Release`) is marked with `→` and shown with a
+/// source snippet + caret; other frames are summarised as
+/// `in <label>:<line> (<arg value>)`.
 pub fn render_error(
   reason: Reason,
   location: source.Location,
+  stack: Stack,
   cwd: String,
 ) -> String {
+  let frames = [Frame(location, None), ..collect_traces(stack, [])]
   let description = simple_debug.describe(reason)
   let hint = simple_debug.hint(reason)
-  let source.Location(origin, source) = location
-  let origin = case origin {
+  let header = ["error: " <> description, "hint: " <> hint]
+  let focus = find_focus(frames, 0)
+  let trace_lines = render_frames(frames, focus, 0, cwd, [])
+  case trace_lines {
+    [] -> string.join(header, "\n")
+    _ -> string.join(list.append(header, ["", ..trace_lines]), "\n")
+  }
+}
+
+fn collect_traces(stack: Stack, acc: List(Frame)) -> List(Frame) {
+  case stack {
+    state.Empty -> list.reverse(acc)
+    state.Stack(state.Trace(arg), meta, rest) ->
+      collect_traces(rest, [Frame(meta, Some(arg)), ..acc])
+    state.Stack(_, _, rest) -> collect_traces(rest, acc)
+  }
+}
+
+/// Index of the deepest frame written by the user (i.e. backed by a
+/// file, the REPL, inline code, or stdin).
+fn find_focus(frames: List(Frame), i: Int) -> Option(Int) {
+  case frames {
+    [] -> None
+    [Frame(source.Location(origin, _), _), ..rest] ->
+      case origin {
+        source.Content(_) | source.Release(..) -> find_focus(rest, i + 1)
+        _ -> Some(i)
+      }
+  }
+}
+
+fn render_frames(
+  frames: List(Frame),
+  focus: Option(Int),
+  i: Int,
+  cwd: String,
+  acc: List(String),
+) -> List(String) {
+  case frames {
+    [] -> list.reverse(acc)
+    [frame, ..rest] -> {
+      let is_focus = focus == Some(i)
+      let lines = render_frame(frame, is_focus, cwd)
+      render_frames(
+        rest,
+        focus,
+        i + 1,
+        cwd,
+        list.fold(lines, acc, fn(acc, line) { [line, ..acc] }),
+      )
+    }
+  }
+}
+
+fn render_frame(frame: Frame, is_focus: Bool, cwd: String) -> List(String) {
+  let Frame(source.Location(origin, source), arg) = frame
+  let label = origin_label(origin, cwd)
+  let prefix = case is_focus {
+    True -> "→ in "
+    False -> "  in "
+  }
+  let suffix = case arg {
+    Some(value) -> " (" <> simple_debug.inspect(value) <> ")"
+    None -> ""
+  }
+  case source {
+    source.Text(code:, span:) -> {
+      let #(start, _) = span
+      let line_no = line_at(code, start)
+      let header = case line_no {
+        0 -> prefix <> label <> suffix
+        n -> prefix <> label <> ":" <> int.to_string(n) <> suffix
+      }
+      case is_focus {
+        True -> [header, ..location.source_context(code, span)]
+        False -> [header]
+      }
+    }
+    source.Json ->
+      case is_focus {
+        True -> [prefix <> label <> " (no source)" <> suffix]
+        False -> [prefix <> label <> suffix]
+      }
+  }
+}
+
+fn origin_label(origin: source.Origin, cwd: String) -> String {
+  case origin {
     source.Disk(path:) -> string.replace(path, cwd <> "/", "")
     source.Pipe -> "<pipe>"
     source.Inline -> "<inline>"
@@ -538,15 +641,13 @@ pub fn render_error(
     source.Release(package:, version:, cid: _) ->
       "@" <> package <> ":" <> int.to_string(version)
   }
+}
 
-  let lines = ["error: " <> description, "hint: " <> hint]
-  let context = case source {
-    source.Text(code:, span:) -> [
-      "",
-      " " <> origin,
-      ..location.source_context(code, span)
-    ]
-    source.Json -> ["", " " <> origin]
+/// 1-based line number for a byte offset into `code`. Returns 0 when
+/// `code` is empty.
+fn line_at(code: String, offset: Int) -> Int {
+  case code {
+    "" -> 0
+    _ -> string.slice(code, 0, offset) |> string.split("\n") |> list.length
   }
-  string.join(list.append(lines, context), "\n")
 }

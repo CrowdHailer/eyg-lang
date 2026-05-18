@@ -18,6 +18,15 @@ pub fn print_error_in_import_test() {
   birdie.snap(reason, title: "error in imported function")
 }
 
+pub fn abort_in_nested_helper_test() {
+  use return <- promise.map(run.execute(
+    source.File("./test/fixtures/abort_main.eyg"),
+    config,
+  ))
+  let assert Error(reason) = return
+  birdie.snap(reason, title: "abort in nested helper")
+}
+
 const eyg_origin = client.Client(
   origin: origin.Origin(http.Https, "eyg.run", None),
 )

@@ -47,8 +47,13 @@ fn loop(buffer, scope, state) {
               loop("", scope, state)
             }
             Ok(#(None, scope)) -> loop("", scope, state)
-            Error(#(reason, location, _, _)) -> {
-              io.println_error(execute.render_error(reason, location, state.cwd))
+            Error(#(reason, location, _, k)) -> {
+              io.println_error(execute.render_error(
+                reason,
+                location,
+                k,
+                state.cwd,
+              ))
               loop("", scope, state)
             }
           }

@@ -1,0 +1,8 @@
+---
+version: 2.0.0
+title: runtime: release origin with unbound cid
+---
+error: Aborted with reason: "bad arg"
+hint: handle the abort effect or avoid performing it in this runtime
+
+  in @missing_lib:2

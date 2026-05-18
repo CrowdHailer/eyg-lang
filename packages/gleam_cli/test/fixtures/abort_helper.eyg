@@ -1,0 +1,7 @@
+let inner = (x) -> {
+  perform Abort("bad value")
+}
+let outer = (x) -> {
+  inner(x)
+}
+outer

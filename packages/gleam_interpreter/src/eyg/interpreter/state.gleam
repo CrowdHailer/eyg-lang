@@ -66,6 +66,11 @@ pub type Kontinue(m) {
   Assign(String, ir.Node(m), Env(m))
   CallWith(Value(m), Env(m))
   Delimit(String, Value(m), Env(m), Bool)
+  /// Pass-through marker pushed on every closure call.
+  /// Only required for debug purposes.
+  /// Holds the arg value. NOTE this is not necessarity the problem arg value and is in fact only last arg value
+  /// Holding full environment, and maybe body, would allow rendering full args for debugging
+  Trace(Value(m))
 }
 
 pub fn step(c, env, k) {
@@ -139,6 +144,7 @@ pub fn apply(value, env, k, meta, rest) {
     Apply(f, env) -> call(f, value, meta, env, rest)
     CallWith(arg, env) -> call(value, arg, meta, env, rest)
     Delimit(_, _, _, _) -> Ok(#(V(value), env, rest))
+    Trace(_) -> Ok(#(V(value), env, rest))
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, rest) })
 }
@@ -147,7 +153,7 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
   case f {
     v.Closure(param, body, captured) -> {
       let env = Env(..env, scope: [#(param, arg), ..captured])
-      Ok(#(E(body), env, k))
+      Ok(#(E(body), env, Stack(Trace(arg), meta, k)))
     }
     // builtin needs to return result for the case statement
     // Resume/Deep need access to k nothing needs access to env but extension might change that

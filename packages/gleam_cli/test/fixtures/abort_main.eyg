@@ -1,0 +1,2 @@
+let helper = import "./abort_helper.eyg"
+helper(42)
