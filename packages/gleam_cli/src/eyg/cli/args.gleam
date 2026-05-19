@@ -1,7 +1,8 @@
 import eyg/cli/internal/source
+import gleam/option.{type Option, None, Some}
 
 pub type Args {
-  Repl
+  Shell(Option(source.Input))
   Run(input: source.Input)
   Script(input: source.Input, arguments: List(String))
   Eval(input: source.Input)
@@ -17,7 +18,11 @@ pub type Args {
 
 pub fn parse(args) {
   case args {
-    [] -> Repl
+    [] -> Shell(None)
+    ["shell", "-c", code] | ["shell", "--code", code] ->
+      Shell(Some(source.Code(code)))
+    ["shell", "-"] | ["shell", "--stdin"] -> Shell(Some(source.Stdin))
+    ["shell", file] -> Shell(Some(source.File(file)))
     ["run", "-c", code] | ["run", "--code", code] -> Run(source.Code(code))
     ["run", "-"] | ["run", "--stdin"] -> Run(source.Stdin)
     ["run", file] -> Run(source.File(file))

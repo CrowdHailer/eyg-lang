@@ -1,10 +1,10 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
+import eyg/cli/internal/ir
 import eyg/cli/internal/source
 import eyg/hub/cache
 import eyg/interpreter/cast
 import eyg/interpreter/state
-import eyg/ir/tree as ir
 import filepath
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -35,10 +35,9 @@ pub fn execute(
   use dir <- promisex.try_sync(dir)
   let state = execute.State(dir, config, cache.empty())
 
-  let arguments =
-    list.map(arguments, fn(arg) { #(ir.String(arg), meta) }) |> list
+  let arguments = list.map(arguments, fn(arg) { ir.string(arg) }) |> ir.list
 
-  let source = apply(apply(select("script"), source), arguments)
+  let source = ir.apply(ir.apply(ir.select("script"), source), arguments)
 
   use result <- promise.map(execute.block(source, [], state))
   case result {
@@ -46,40 +45,11 @@ pub fn execute(
       case cast.as_integer(exit_code) {
         Ok(exit_code) -> Ok(exit_code)
         Error(reason) ->
-          Error(execute.render_error(reason, meta, state.Empty, cwd))
+          Error(execute.render_error(reason, ir.meta, state.Empty, cwd))
       }
     Ok(#(None, _)) -> Ok(0)
     Error(#(reason, location, _, k)) -> {
       Error(execute.render_error(reason, location, k, cwd))
     }
   }
-}
-
-const meta = source.Location(source.Repl, source.Json)
-
-pub fn list(items) {
-  do_list(list.reverse(items), tail())
-}
-
-pub fn do_list(reversed, acc) {
-  case reversed {
-    [item, ..rest] -> do_list(rest, apply(apply(cons(), item), acc))
-    [] -> acc
-  }
-}
-
-pub fn tail() {
-  #(ir.Tail, meta)
-}
-
-pub fn cons() {
-  #(ir.Cons, meta)
-}
-
-pub fn apply(func, argument) {
-  #(ir.Apply(func, argument), meta)
-}
-
-pub fn select(label) {
-  #(ir.Select(label), meta)
 }

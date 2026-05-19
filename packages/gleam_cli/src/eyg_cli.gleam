@@ -6,10 +6,10 @@ import eyg/cli/eval
 import eyg/cli/fetch
 import eyg/cli/internal/config
 import eyg/cli/publish
-import eyg/cli/repl
 import eyg/cli/run
 import eyg/cli/script
 import eyg/cli/share
+import eyg/cli/shell
 import eyg/cli/signatory
 import eyg/cli/version
 import gleam/io
@@ -54,7 +54,7 @@ fn with_config(parsed) {
   )
   case parsed {
     args.Help | args.Version -> panic as "handled above"
-    args.Repl -> repl.execute(config)
+    args.Shell(input) -> shell.execute(input, config)
     args.Run(input:) -> run.execute(input, config)
     args.Script(input:, arguments:) -> script.execute(input, arguments, config)
     args.Eval(input:) -> eval.execute(input, config)
