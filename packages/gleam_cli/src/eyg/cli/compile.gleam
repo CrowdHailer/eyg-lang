@@ -9,9 +9,9 @@ import gleam/javascript/promisex
 pub fn execute(
   input: source.Input,
   _config: config.Config,
-) -> promise.Promise(Result(Nil, String)) {
+) -> promise.Promise(Result(Int, String)) {
   use code <- promisex.try_sync(source.read_input(input))
   use source <- promisex.try_sync(source.parse_input(code, input))
   io.println(compiler.to_js(source, dict.new()))
-  promise.resolve(Ok(Nil))
+  promise.resolve(Ok(0))
 }

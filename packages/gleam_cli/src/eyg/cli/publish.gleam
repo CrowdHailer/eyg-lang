@@ -7,7 +7,11 @@ import gleam/javascript/promisex
 import gleam/option.{None, Some}
 import untethered/ledger/schema
 
-pub fn execute(package, file, config) {
+pub fn execute(
+  package: String,
+  file: String,
+  config: config.Config,
+) -> promise.Promise(Result(Int, String)) {
   let config.Config(client:, dirs:) = config
   use signatories <- promisex.try_sync(store.all_signatories(dirs))
   use signatory <- promisex.try_sync(case signatories {
@@ -32,5 +36,5 @@ pub fn execute(package, file, config) {
     previous,
     client,
   ))
-  promise.resolve(Ok(Nil))
+  promise.resolve(Ok(0))
 }

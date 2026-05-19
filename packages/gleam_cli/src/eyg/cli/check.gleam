@@ -9,7 +9,7 @@ import gleam/javascript/promisex
 pub fn execute(
   input: source.Input,
   _config: config.Config,
-) -> Promise(Result(Nil, String)) {
+) -> Promise(Result(Int, String)) {
   use code <- promisex.try_sync(source.read_input(input))
   use source <- promisex.try_sync(source.parse_input(code, input))
 
@@ -18,7 +18,7 @@ pub fn execute(
   let errors = infer.all_errors(analysis)
 
   case errors {
-    [] -> promise.resolve(Ok(Nil))
+    [] -> promise.resolve(Ok(0))
     [#(location, reason), ..] -> {
       let message = debug.render_reason(reason)
       let hint = debug.hint(reason)

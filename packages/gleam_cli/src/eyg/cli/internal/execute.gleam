@@ -107,7 +107,10 @@ fn try_await(
   }
 }
 
-fn loop(return, state: State) -> Promise(Result(#(Option(Value), Scope), Debug)) {
+fn loop(
+  return: Result(#(Option(Value), Scope), Debug),
+  state: State,
+) -> Promise(Result(#(Option(Value), Scope), Debug)) {
   let #(return, cache) = cache.loop(return, state.cache, block.resume)
   let state = State(..state, cache:)
   case return {

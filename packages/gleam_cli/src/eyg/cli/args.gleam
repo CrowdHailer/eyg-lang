@@ -3,6 +3,7 @@ import eyg/cli/internal/source
 pub type Args {
   Repl
   Run(input: source.Input)
+  Script(input: source.Input, arguments: List(String))
   Eval(input: source.Input)
   Check(input: source.Input)
   Compile(input: source.Input)
@@ -12,7 +13,6 @@ pub type Args {
   Publish(package: String, file: String)
   Help
   Version
-  Fail
 }
 
 pub fn parse(args) {
@@ -24,6 +24,12 @@ pub fn parse(args) {
     ["eval", "-c", code] | ["eval", "--code", code] -> Eval(source.Code(code))
     ["eval", "-"] | ["eval", "--stdin"] -> Eval(source.Stdin)
     ["eval", file] -> Eval(source.File(file))
+    ["script", "-c", code, ..arguments]
+    | ["script", "--code", code, ..arguments] ->
+      Script(source.Code(code), arguments)
+    ["script", "-", ..arguments] | ["script", "--stdin", ..arguments] ->
+      Script(source.Stdin, arguments)
+    ["script", file, ..arguments] -> Script(source.File(file), arguments)
     ["check", "-c", code] | ["check", "--code", code] ->
       Check(source.Code(code))
     ["check", "-"] | ["check", "--stdin"] -> Check(source.Stdin)
@@ -38,7 +44,7 @@ pub fn parse(args) {
     ["signatory", "initial", name] -> SignatoryInitial(name:)
     ["help"] | ["--help"] | ["-h"] -> Help
     ["version"] | ["--version"] | ["-V"] -> Version
-    _ -> Fail
+    [file, ..arguments] -> Script(source.File(file), arguments)
   }
 }
 
@@ -46,7 +52,8 @@ pub const help_text = "eyg — run EYG programs and interact with the EYG hub
 usage: eyg [<command> [<args>]]
 commands:
   (no args)              start the REPL
-  run <file>             run a script
+  <file> [args...]       Run a script with the remaining CLI args
+  run <file>             run EYG source from file
   run -, --stdin         run EYG source read from stdin
   run -c, --code <code>  run inline EYG source
   eval <file>            evaluate and print an expression with no side effects

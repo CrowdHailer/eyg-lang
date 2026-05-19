@@ -14,7 +14,7 @@ import simplifile
 pub fn execute(
   input: source.Input,
   config: config.Config,
-) -> promise.Promise(Result(Nil, String)) {
+) -> promise.Promise(Result(Int, String)) {
   use code <- promisex.try_sync(source.read_input(input))
   use source <- promisex.try_sync(source.parse_input(code, input))
 
@@ -38,7 +38,7 @@ pub fn execute(
   case result {
     Ok(value) -> {
       io.println(simple_debug.inspect(value))
-      Ok(Nil)
+      Ok(0)
     }
     Error(#(reason, location, _env, k)) ->
       Error(execute.render_error(reason, location, k, cwd))

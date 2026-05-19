@@ -16,7 +16,7 @@ import untethered/ledger/schema
 pub fn initial(
   alias: String,
   config: config.Config,
-) -> Promise(Result(Nil, String)) {
+) -> Promise(Result(Int, String)) {
   let config.Config(client:, dirs:) = config
   let keypair = crypto.generate_key()
   use first <- promise.try_await(client.initialise_principal(keypair, client))
@@ -48,7 +48,7 @@ pub fn initial(
     simplifile.create_directory_all(filepath.directory_name(path))
 
   simplifile.write(path, cache)
-  |> result.replace(Nil)
+  |> result.replace(0)
   |> result.map_error(simplifile.describe_error)
   |> promise.resolve
 }
