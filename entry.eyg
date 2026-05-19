@@ -1,4 +1,9 @@
+#!/usr/bin/env eyg
 {
+  script: (arguments) -> {
+    let _ = perform Print("welcome to the EYG repo\n")
+    0
+  },
   shell: (_) -> {
     let test = "TODO test"
     perform Break({})

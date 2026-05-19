@@ -15,24 +15,55 @@ For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_
 The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md)
 and every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
 
-## Run a script
+## Execute code
 
-To run scripts from your shell use the [CLI](./packages/gleam_cli/).
-checkout the [examples](./packages/gleam_cli/examples/)
+There are many ways to run EYG in different locations.
+Execute EYG from your shell using the [CLI](./packages/gleam_cli/).
 
-Run scripts with `eyg run`.
-Use `eyg eval` for evaluating pure values and printing the result.
-Both textual and JSON IR source files can be evaluated or run.
+### Scripts
 
-Code can be run directly from the shell with `-c <code>` flag.
+A hello world script.
+```eyg
+{
+  script: (_) -> {
+    perform Print("Hello, World!\n")
+  }
+}
+```
+
+Run a script using `eyg script path/to/script`.
+*Both textual and JSON IR source files can be evaluated.*
+
+Code can be supplied as with the `-c <code>` flag.
 Code can be read from stdin with `-` or `--stdin`.
-The inline source and stdin flags are available for `eyg run`, `eyg eval` and `eyg compile`.
 
-For example:
+An EYG script must return a record with the `script` field.
+The record type is `{script: ({}) -> Int ..}`
+The returned integer is the exit code of the script.
+
+### Pure evaluation
+
+Use `eyg eval` for evaluating pure values and printing the result.
+
+### Start the shell
+
 ```sh
-eyg run -c 'perform Print("hello")'
-eyg eval --code '@standard.integer.add(1, 1)'
-printf 'perform Print("hello")' | eyg run -
+eyg shell
+eyg shell path/to/config
+```
+
+A shell config file must return a record with the `shell` field.
+If the function performs a `Break` effect then the shell will be started in that scope.
+
+I the example below the `tests` variable will be setup in the shell.
+
+```eyg
+{
+  script: (_) -> {
+    let tests = import "./path/to/tests.eyg"
+    perform Break({})
+  }
+}
 ```
 
 ### Effects

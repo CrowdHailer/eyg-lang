@@ -6,6 +6,7 @@ import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result.{try}
+import gleam/string
 import multiformats/cid/v1
 import simplifile
 
@@ -50,8 +51,15 @@ pub fn read_file(file: String) -> Result(String, String) {
   use code <- try(
     simplifile.read(file) |> result.map_error(simplifile.describe_error),
   )
-
-  Ok(code)
+  case string.starts_with(code, "#!") {
+    True -> {
+      case string.split_once(code, "\n") {
+        Ok(#(_, rest)) -> Ok(rest)
+        Error(Nil) -> Ok("")
+      }
+    }
+    False -> Ok(code)
+  }
 }
 
 /// parse the code adding it's span to an origin identifier
