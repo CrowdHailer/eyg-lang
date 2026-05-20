@@ -5,9 +5,13 @@ on:
     branches:
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   POSTGRES_PASSWORD: banana-penguin-truck
   SECRET_KEY_BASE: word-button-noodle
+  EYG_CLI_VERSION: gleam_cli-v0.0.0
 
 jobs:
   test-beam:
@@ -126,3 +130,23 @@ jobs:
         working-directory: packages/${{matrix.package}}
       - run: gleam format --check src test
         working-directory: packages/${{matrix.package}}
+  test-eyg-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the eyg CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL \
+            -o "$RUNNER_TEMP/bin/eyg-linux-x64" \
+            "https://github.com/CrowdHailer/eyg-lang/releases/download/${EYG_CLI_VERSION}/eyg-linux-x64"
+          curl -fsSL \
+            -o "$RUNNER_TEMP/SHA256SUMS" \
+            "https://github.com/CrowdHailer/eyg-lang/releases/download/${EYG_CLI_VERSION}/SHA256SUMS"
+          cd "$RUNNER_TEMP/bin"
+          sha256sum --check --ignore-missing "$RUNNER_TEMP/SHA256SUMS"
+          mv eyg-linux-x64 eyg
+          chmod +x eyg
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Run EYG package tests
+        run: eyg script entry.eyg

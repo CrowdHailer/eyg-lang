@@ -9,7 +9,7 @@ let standard = import "./index.eyg.json"
 let s = standard.string
 
 let test_uppercase = (_) -> {
-  let _ = aok.equal_string(s.uppercase("hello"), "HELLO1")
+  let _ = aok.equal_string(s.uppercase("hello"), "HELLO")
   let _ = aok.equal_string(s.uppercase(""), "")
   {}
 }
