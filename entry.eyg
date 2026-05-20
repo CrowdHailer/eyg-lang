@@ -1,11 +1,25 @@
 #!/usr/bin/env eyg
+let list = @standard.list
+let aok = import "eyg_packages/aok/index.eyg"
+
+let tests = list.flatten([
+  import "./eyg_packages/standard/test.eyg"
+])
+let test = (_) -> {
+  aok.all(tests)
+}
+let debug = aok.debug(tests)
+
 {
   script: (arguments) -> {
     let _ = perform Print("welcome to the EYG repo\n")
-    0
+    let counts = test({})
+    match !equal(counts.failed, 0) {
+      True({}) -> { 0 }
+      False({}) -> { 1 }
+    }
   },
   shell: (_) -> {
-    let test = "TODO test"
     perform Break({})
   }
 }

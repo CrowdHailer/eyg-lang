@@ -1,0 +1,220 @@
+// aok - effect-handler test helpers.
+//
+// Assertion helpers perform `Abort(msg)` directly; `eyg test` catches
+// the abort per-test, renders the source context, and reports
+// pass/fail. The `assert_X` family installs an effect handler around a
+// thunk and returns `{lift, resume}` when the expected effect fires
+// (or aborts when it didn't), letting tests check effectful code with
+// the same call-site clarity as ordinary assertions.
+
+let quote = (s) -> {
+  !string_append("`", !string_append(s, "`"))
+}
+
+let equal = (a, b) -> {
+  match !equal(a, b) {
+    True(_) -> { a }
+    False(_) -> { perform Abort("values were not equal") }
+  }
+}
+
+let equal_string = (a, b) -> {
+  match !equal(a, b) {
+    True(_) -> { a }
+    False(_) -> {
+      perform Abort(!string_append(quote(a), !string_append(" does not equal ", quote(b))))
+    }
+  }
+}
+
+let ok = (result) -> {
+  match result {
+    Ok(value) -> { value }
+    | (_) -> { perform Abort("value was not `Ok`") }
+  }
+}
+
+let error = (result) -> {
+  match result {
+    Error(reason) -> { reason }
+    | (_) -> { perform Abort("value was not `Error`") }
+  }
+}
+
+let true = (condition) -> {
+  match condition {
+    True(_) -> { {} }
+    False(_) -> { perform Abort("value was not `True`") }
+  }
+}
+
+let false = (condition) -> {
+  match condition {
+    False(_) -> { {} }
+    True(_) -> { perform Abort("value was not `False`") }
+  }
+}
+
+let contains = !fix((self, items, value) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      match !equal(head, value) {
+        True(_) -> { value }
+        False(_) -> { self(tail, value) }
+      }
+    }
+    Error(_) -> { perform Abort("list did not contain expected value") }
+  }
+})
+
+// Assert that `f(arg)` performs `Log` and return the lifted value plus
+// a resume continuation so the test can step the computation forward.
+//
+//     let {lift, resume} = aok.assert_log(my_func, my_input)
+//     let _ = aok.equal_string(lift, "expected log message")
+//     let final = resume({})    // continue the suspended computation
+//
+// If `f(arg)` finishes without performing `Log`, the helper aborts
+// with a message naming the missed effect.
+let assert_log = (f, arg) -> {
+  let outcome = handle Log((lift, resume) -> {
+    Captured({lift, resume})
+  }, (_) -> {
+    let _ = f(arg)
+    Missed({})
+  })
+  match outcome {
+    Captured(payload) -> { payload }
+    Missed(_) -> { perform Abort("expected `Log` effect, none was performed") }
+  }
+}
+
+// Variant of assert_log for the `Print` effect.
+let assert_print = (f, arg) -> {
+  let outcome = handle Print((lift, resume) -> {
+    Captured({lift, resume})
+  }, (_) -> {
+    let _ = f(arg)
+    Missed({})
+  })
+  match outcome {
+    Captured(payload) -> { payload }
+    Missed(_) -> { perform Abort("expected `Print` effect, none was performed") }
+  }
+}
+
+// Assert that `f(arg)` aborts. Returns `{lift, resume}` with `lift`
+// being the abort reason. Calling `resume` continues from where the
+// abort fired (rare in tests but supported by deep handlers).
+let assert_abort = (f, arg) -> {
+  let outcome = handle Abort((lift, resume) -> {
+    Captured({lift, resume})
+  }, (_) -> {
+    let _ = f(arg)
+    Missed({})
+  })
+  match outcome {
+    Captured(payload) -> { payload }
+    Missed(_) -> { perform Abort("expected `Abort` effect, none was performed") }
+  }
+}
+
+// Invoke a single test closure with `{}` under a deep `Abort` handler.
+// Returns `Pass({})` when the body completes, or `Fail(reason)` where
+// `reason` is the abort message. Unlike `eyg test`, the runtime stack
+// is *not* exposed here - that would let EYG programs branch on
+// internal location data and break determinism. For source-located
+// stack traces, run the same suite through `eyg test`.
+let run_test = (test) -> {
+  handle Abort((reason, _resume) -> {
+    Fail(reason)
+  }, (_) -> {
+    let _ = test({})
+    Pass({})
+  })
+}
+
+let reverse = (list) -> {
+  !list_fold(list, [], (el, acc) -> { [el, ..acc] })
+}
+
+// Run every `{name, test}` record in order and return a list of
+// `{name, outcome}` records (same order) where `outcome` is `Pass({})`
+// or `Fail(reason)`. The input shape matches the one `eyg test`
+// expects, so the same suite is callable from EYG and from the CLI
+// runner without changes.
+let run_all = (tests) -> {
+  let results = !list_fold(tests, [], ({name, test}, acc) -> {
+    [{name, outcome: run_test(test)}, ..acc]
+  })
+  reverse(results)
+}
+
+let print_line = (line) -> {
+  perform Print(!string_append(line, "\n"))
+}
+
+// Run every test and print a one-line PASS/FAIL report per test plus
+// a trailing summary. Performs `Print` for reporting but catches
+// `Abort` per test, so the program only ever observes the abort
+// message - not the stack. Returns `{passed, failed}`.
+//
+// Use when you want a complete report. For a single failing test
+// with a source-located stack trace, use `debug` instead.
+let all = (tests) -> {
+  let counts = !list_fold(tests, {passed: 0, failed: 0}, ({name, test}, {passed, failed}) -> {
+    match run_test(test) {
+      Pass(_) -> {
+        let _ = print_line(!string_append("PASS  ", name))
+        {passed: !int_add(passed, 1), failed}
+      }
+      Fail(reason) -> {
+        let _ = print_line(!string_append("FAIL  ", name))
+        let _ = print_line(!string_append("  ", reason))
+        {passed, failed: !int_add(failed, 1)}
+      }
+    }
+  })
+  let _ = print_line(!string_append(
+    !int_to_string(counts.passed),
+    !string_append(" passed, ", !string_append(
+      !int_to_string(counts.failed),
+      " failed"
+    ))
+  ))
+  counts
+}
+
+// Find the test whose `name` matches and call it directly with `{}`.
+// **Does not catch `Abort`** - if the test aborts, the unhandled
+// effect propagates up to the CLI's `render_error`, producing the
+// same source-located stack trace `eyg test` would have shown. The
+// program itself never sees that trace, so determinism is preserved.
+let debug = !fix((self, tests, name) -> {
+  match !list_pop(tests) {
+    Ok({head, tail}) -> {
+      match !equal(head.name, name) {
+        True(_) -> { head.test({}) }
+        False(_) -> { self(tail, name) }
+      }
+    }
+    Error(_) -> { perform Abort(!string_append("no test named ", name)) }
+  }
+})
+
+{
+  equal,
+  equal_string,
+  ok,
+  error,
+  true,
+  false,
+  contains,
+  assert_log,
+  assert_print,
+  assert_abort,
+  run_test,
+  run_all,
+  all,
+  debug
+}

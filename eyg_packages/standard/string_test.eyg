@@ -1,0 +1,100 @@
+// Tests for @standard.string using aok.
+//
+// Each test_* closure asserts via `aok.X`; the helpers perform `Abort`
+// on failure and `eyg test` catches it. The final value is a list of
+// `{name, test}` records, which is the shape `eyg test` expects.
+
+let aok = import "../aok/index.eyg"
+let standard = import "./index.eyg.json"
+let s = standard.string
+
+let test_uppercase = (_) -> {
+  let _ = aok.equal_string(s.uppercase("hello"), "HELLO1")
+  let _ = aok.equal_string(s.uppercase(""), "")
+  {}
+}
+
+let test_lowercase = (_) -> {
+  let _ = aok.equal_string(s.lowercase("WORLD"), "world")
+  {}
+}
+
+let test_append = (_) -> {
+  let _ = aok.equal_string(s.append("foo", "bar"), "foobar")
+  {}
+}
+
+let test_length = (_) -> {
+  let _ = aok.equal(s.length("hello"), 5)
+  let _ = aok.equal(s.length(""), 0)
+  {}
+}
+
+let test_starts_with = (_) -> {
+  let _ = aok.true(s.starts_with("hello world", "hello"))
+  let _ = aok.false(s.starts_with("hello", "world"))
+  {}
+}
+
+let test_ends_with = (_) -> {
+  let _ = aok.true(s.ends_with("hello world", "world"))
+  let _ = aok.false(s.ends_with("hello", "world"))
+  {}
+}
+
+let test_split = (_) -> {
+  let {head, tail} = s.split("a,b,c", ",")
+  let _ = aok.equal_string(head, "a")
+  let _ = aok.equal(tail, ["b", "c"])
+  {}
+}
+
+let test_split_once_present = (_) -> {
+  let parts = aok.ok(s.split_once("key=value", "="))
+  let _ = aok.equal_string(parts.pre, "key")
+  let _ = aok.equal_string(parts.post, "value")
+  {}
+}
+
+let test_split_once_absent = (_) -> {
+  let _ = aok.error(s.split_once("nokey", "="))
+  {}
+}
+
+let test_replace = (_) -> {
+  let _ = aok.equal_string(s.replace("a-b-c", "-", "_"), "a_b_c")
+  {}
+}
+
+let test_join = (_) -> {
+  let _ = aok.equal_string(s.join(["a", "b", "c"], ", "), "a, b, c")
+  let _ = aok.equal_string(s.join([], ", "), "")
+  {}
+}
+
+let test_concat = (_) -> {
+  let _ = aok.equal_string(s.concat(["foo", "bar", "baz"]), "foobarbaz")
+  {}
+}
+
+let test_to_binary_roundtrip = (_) -> {
+  let bytes = s.to_binary("hello")
+  let _ = aok.ok(s.from_binary(bytes))
+  {}
+}
+
+[
+  {name: "uppercase", test: test_uppercase},
+  {name: "lowercase", test: test_lowercase},
+  {name: "append", test: test_append},
+  {name: "length", test: test_length},
+  {name: "starts_with", test: test_starts_with},
+  {name: "ends_with", test: test_ends_with},
+  {name: "split", test: test_split},
+  {name: "split_once present", test: test_split_once_present},
+  {name: "split_once absent", test: test_split_once_absent},
+  {name: "replace", test: test_replace},
+  {name: "join", test: test_join},
+  {name: "concat", test: test_concat},
+  {name: "to_binary roundtrip", test: test_to_binary_roundtrip}
+]

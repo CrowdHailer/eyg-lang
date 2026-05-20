@@ -353,6 +353,8 @@ fn abort(reason: String) -> break.Reason(m, c) {
 fn lookup_relative(location, state: State) -> Promise(Result(Value, Reason)) {
   case resolve_relative(state.cwd, location) {
     Ok(path) -> {
+      // The state is not returned so we never need to reset the cwd
+      let state = State(..state, cwd: filepath.directory_name(path))
       case source.read_file(path) {
         Ok(code) ->
           case source.parse(code, source.Disk(path:)) {

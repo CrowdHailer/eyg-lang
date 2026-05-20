@@ -7,6 +7,7 @@ import eyg/interpreter/simple_debug
 import eyg/ir/tree
 import eyg/parser
 import eyg/parser/parser.{UnexpectEnd} as _
+import filepath
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -22,7 +23,16 @@ pub fn execute(input, config) {
     |> result.map_error(simplifile.describe_error),
   )
 
-  let state = execute.State(cwd, config, cache.empty())
+  let dir =
+    case input {
+      Some(source.File(path:)) -> {
+        use path <- result.try(execute.resolve_relative(cwd, path))
+        Ok(filepath.directory_name(path))
+      }
+      _ -> Ok(cwd)
+    }
+    |> result.unwrap(cwd)
+  let state = execute.State(dir, config, cache.empty())
   use scope <- promise.try_await(case input {
     Some(input) -> {
       use code <- promisex.try_sync(source.read_input(input))
@@ -34,7 +44,7 @@ pub fn execute(input, config) {
         Error(#(break.UnhandledEffect("Break", _), _, env, _)) ->
           promise.resolve(Ok(env.scope))
         Error(#(reason, location, _, k)) -> {
-          promise.resolve(Error(execute.render_error(reason, location, k, cwd)))
+          promise.resolve(Error(execute.render_error(reason, location, k, dir)))
         }
       }
     }
