@@ -179,6 +179,24 @@ match perform DecodeJSON(!string_to_binary("{\"x\": 1}")) {
 
 Each event's `term` is one of: `True | False | Null | Integer i | String s | Number {…} | Array | Object | Field name`.
 
+## Cryptography
+
+### `Hash`
+
+Compute a cryptographic digest of a binary.
+
+```eyg
+let digest = perform Hash({algorithm: SHA256({}), bytes: !string_to_binary("abc")})
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `algorithm` | `SHA256({})` | The hash algorithm to use |
+| `bytes` | `Binary` | The data to hash |
+
+Returns `Binary` (the raw digest).
+
+
 ## Authenticated services
 
 Each of these performs a [spotless](https://hex.pm/packages/spotless) OAuth

@@ -1,5 +1,5 @@
 name = "touch_grass"
-version = "0.2.7"
+version = "0.2.8"
 
 description = "Common effect types, decoders and encoders for your Eat Your Greens (EYG) runtime."
 licences = ["Apache-2.0"]

@@ -16,6 +16,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser/location
 import filepath
+import gleam/crypto
 import gleam/fetchx
 import gleam/http/request
 import gleam/int
@@ -33,6 +34,7 @@ import snag
 import spotless
 import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
+import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env as env_effect
 import touch_grass/fetch
@@ -151,6 +153,10 @@ fn loop(
           use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
           use result <- promise.try_await(service_fetch("github", operation))
           loop(block.resume(fetch.encode(result), env, k), state)
+        }
+        break.UnhandledEffect("Hash", lift) -> {
+          use input <- try_sync(hash.decode(lift), meta, env, k)
+          loop(block.resume(hash.encode(hash(input)), env, k), state)
         }
         break.UnhandledEffect("Netlify", lift) -> {
           use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
@@ -419,7 +425,14 @@ pub fn resolve_relative(root, relative) {
   filepath.expand(joined) |> result.replace_error("invalid relative directory")
 }
 
-pub fn append_file(cwd, input: append_file.Input) {
+pub fn hash(input) {
+  let hash.Input(algorithm:, bytes:) = input
+  case algorithm {
+    hash.Sha256 -> crypto.hash(crypto.Sha256, bytes)
+  }
+}
+
+pub fn append_file(cwd: String, input: append_file.Input) -> Result(Nil, String) {
   {
     let append_file.Input(path:, contents:) = input
     use path <- try(
