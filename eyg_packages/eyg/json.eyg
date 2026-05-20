@@ -1,0 +1,86 @@
+
+let reverse = !fix((self, items, acc) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> { self(tail, [head, ..acc]) }
+    Error(_) -> { acc }
+  }
+})
+
+// Escape a string's contents for embedding between double quotes. The
+// backslash must be replaced first so the escapes added afterwards are
+// not themselves escaped.
+let escape = (value) -> {
+  let value = !string_replace(value, "\\", "\\\\")
+  let value = !string_replace(value, "\"", "\\\"")
+  let value = !string_replace(value, "\n", "\\n")
+  let value = !string_replace(value, "\r", "\\r")
+  let value = !string_replace(value, "\t", "\\t")
+  value
+}
+
+let quote = (value) -> {
+  !string_append("\"", !string_append(escape(value), "\""))
+}
+
+let string = (value, acc) -> {
+  [quote(value), ..acc]
+}
+
+let integer = (value,acc) ->  { 
+  [!int_to_string(value), ..acc]
+}
+
+let boolean = (value, acc) -> {
+  match value {
+    True(_) -> { ["true", ..acc] }
+    False(_) -> { ["false", ..acc] }
+  }
+}
+
+let null = (acc) -> { ["null", ..acc] }
+
+let array = (items, acc) -> {
+  match !list_pop(items) {
+    Ok({head: head, tail: tail}) -> {
+      let acc = !list_fold(reverse(tail, []), ["]", ..acc], (item, acc) -> {
+        [",", ..item(acc)]
+      })
+      ["[", ..head(acc)]
+    }
+    Error(_) -> { ["[]",..acc] }
+  }
+}
+
+let object = (fields, acc) -> {
+  let render = (entry, acc) -> {
+    let {key, value} = entry
+    [quote(key), ":", ..value(acc)]
+  }
+  match !list_pop(fields) {
+    Error(_) -> { ["{}", ..acc] }
+    Ok({head, tail}) -> {
+      let inner = !list_fold(reverse(tail, []), ["}", ..acc], (entry, acc) -> {
+        [",", ..render(entry, acc)]
+      })
+      ["{", ..render(head, inner)]
+    }
+  }
+}
+
+let field = (key, value) -> { {key: key, value: value} }
+
+let to_string = (parts) -> {
+  @standard.string.concat(parts([]))
+}
+
+
+{
+  string: string,
+  integer: integer,
+  boolean: boolean,
+  null: null,
+  array: array,
+  object: object,
+  field: field,
+  to_string: to_string
+}

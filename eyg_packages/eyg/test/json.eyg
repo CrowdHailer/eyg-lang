@@ -1,0 +1,156 @@
+let j = import "../json.eyg"
+let aok = import "../../aok/index.eyg"
+
+let test_string = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.string("hello")), "\"hello\"")
+  let _ = aok.equal_string(j.to_string(j.string("")), "\"\"")
+  {}
+}
+
+let test_integer = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.integer(42)), "42")
+  let _ = aok.equal_string(j.to_string(j.integer(0)), "0")
+  let _ = aok.equal_string(j.to_string(j.integer(-7)), "-7")
+  {}
+}
+
+let test_boolean = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.boolean(True({}))), "true")
+  let _ = aok.equal_string(j.to_string(j.boolean(False({}))), "false")
+  {}
+}
+
+let test_null = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.null), "null")
+  {}
+}
+
+// --- arrays ---
+
+let test_empty_array = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.array([])), "[]")
+  {}
+}
+
+let test_array = (_) -> {
+  let value = j.array([j.integer(1), j.integer(2), j.integer(3)])
+  let _ = aok.equal_string(j.to_string(value), "[1,2,3]")
+  {}
+}
+
+let test_array_singleton = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.array([j.string("x")])), "[\"x\"]")
+  {}
+}
+
+let test_nested_array = (_) -> {
+  let value = j.array([
+    j.array([j.integer(1), j.integer(2)]),
+    j.array([j.integer(3), j.integer(4)])
+  ])
+  let _ = aok.equal_string(j.to_string(value), "[[1,2],[3,4]]")
+  {}
+}
+
+// --- objects ---
+
+let test_empty_object = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.object([])), "{}")
+  {}
+}
+
+let test_object = (_) -> {
+  let value = j.object([j.field("name", j.string("Ada"))])
+  let _ = aok.equal_string(j.to_string(value), "{\"name\":\"Ada\"}")
+  {}
+}
+
+let test_object_fields = (_) -> {
+  let value = j.object([
+    j.field("a", j.integer(1)),
+    j.field("b", j.integer(2))
+  ])
+  let _ = aok.equal_string(j.to_string(value), "{\"a\":1,\"b\":2}")
+  {}
+}
+
+let test_nested_object = (_) -> {
+  let value = j.object([
+    j.field("outer", j.object([j.field("inner", j.integer(1))]))
+  ])
+  let _ = aok.equal_string(j.to_string(value), "{\"outer\":{\"inner\":1}}")
+  {}
+}
+
+// --- escaping ---
+
+let test_escape_quote = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.string("a\"b")), "\"a\\\"b\"")
+  {}
+}
+
+let test_escape_backslash = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.string("a\\b")), "\"a\\\\b\"")
+  {}
+}
+
+let test_escape_whitespace = (_) -> {
+  let _ = aok.equal_string(j.to_string(j.string("a\nb")), "\"a\\nb\"")
+  let _ = aok.equal_string(j.to_string(j.string("a\tb")), "\"a\\tb\"")
+  let _ = aok.equal_string(j.to_string(j.string("a\rb")), "\"a\\rb\"")
+  {}
+}
+
+let test_escape_key = (_) -> {
+  let value = j.object([j.field("ke\"y", j.string("v"))])
+  let _ = aok.equal_string(j.to_string(value), "{\"ke\\\"y\":\"v\"}")
+  {}
+}
+
+// A value containing JSON punctuation cannot break out of its string.
+let test_escape_is_safe = (_) -> {
+  let value = j.object([j.field("k", j.string("\"x\":1,\"y\""))])
+  let _ = aok.equal_string(
+    j.to_string(value),
+    "{\"k\":\"\\\"x\\\":1,\\\"y\\\"\"}"
+  )
+  {}
+}
+
+// --- a mixed document ---
+
+let test_mixed = (_) -> {
+  let value = j.object([
+    j.field("name", j.string("Ada")),
+    j.field("age", j.integer(36)),
+    j.field("active", j.boolean(True({}))),
+    j.field("tags", j.array([j.string("a"), j.string("b")])),
+    j.field("note", j.null)
+  ])
+  let _ = aok.equal_string(
+    j.to_string(value),
+    "{\"name\":\"Ada\",\"age\":36,\"active\":true,\"tags\":[\"a\",\"b\"],\"note\":null}"
+  )
+  {}
+}
+
+[
+  {name: "encode string", test: test_string},
+  {name: "encode integer", test: test_integer},
+  {name: "encode boolean", test: test_boolean},
+  {name: "encode null", test: test_null},
+  {name: "encode empty array", test: test_empty_array},
+  {name: "encode array", test: test_array},
+  {name: "encode singleton array", test: test_array_singleton},
+  {name: "encode nested array", test: test_nested_array},
+  {name: "encode empty object", test: test_empty_object},
+  {name: "encode object", test: test_object},
+  {name: "encode object with fields", test: test_object_fields},
+  {name: "encode nested object", test: test_nested_object},
+  {name: "escape quote", test: test_escape_quote},
+  {name: "escape backslash", test: test_escape_backslash},
+  {name: "escape whitespace", test: test_escape_whitespace},
+  {name: "escape key", test: test_escape_key},
+  {name: "escaping is injection safe", test: test_escape_is_safe},
+  {name: "encode mixed document", test: test_mixed}
+]

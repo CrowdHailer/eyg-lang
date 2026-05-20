@@ -1,0 +1,12 @@
+let aok = import "../aok/index.eyg"
+let tests = import "./test/json.eyg"
+
+{
+  tests: tests,
+  script: (_) -> {
+    match !equal(aok.all(tests).failed, 0) {
+      True({}) -> { 0 }
+      False({}) -> { 1 }
+    }
+  }
+}
