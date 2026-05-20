@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
- 
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Optional first arg: a bun --compile target (e.g. bun-linux-x64) used to
+# cross-compile. When omitted bun builds a binary for the host platform.
+# Optional second arg: output path (default ./dist/eyg).
+target="${1:-}"
+outfile="${2:-./dist/eyg}"
+
+
 gleam build
-bun build build/dev/javascript/eyg_cli/eyg_cli.mjs --compile --footer="main();" --outfile ./dist/eyg
+
+bun build build/dev/javascript/eyg_cli/eyg_cli.mjs \
+  --compile \
+  ${target:+--target="$target"} \
+  --footer="main();" \
+  --outfile "$outfile"
