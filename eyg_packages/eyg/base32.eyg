@@ -1,0 +1,77 @@
+// RFC 4648 base32 encoding, lowercase alphabet, without padding.
+//
+// Renders binary data as text. The multibase `b` prefix used by CIDv1
+// identifiers is base32 in exactly this form.
+
+let chars = [
+  "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
+  "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "2", "3", "4", "5", "6", "7"
+]
+
+// The i-th element of a list, aborting when out of range.
+let nth = !fix((self, items, i) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      match !int_compare(i, 0) {
+        Eq(_) -> { head }
+        | (_) -> { self(tail, !int_subtract(i, 1)) }
+      }
+    }
+    Error(_) -> { !never(perform Abort("base32: index out of range")) }
+  }
+})
+
+// 2 raised to a non-negative power.
+let pow2 = !fix((self, n) -> {
+  match !int_compare(n, 0) {
+    Gt(_) -> { !int_multiply(2, self(!int_subtract(n, 1))) }
+    | (_) -> { 1 }
+  }
+})
+
+let divide = (x, m) -> {
+  match !int_divide(x, m) {
+    Ok(q) -> { q }
+    Error(_) -> { !never(perform Abort("base32: divide by zero")) }
+  }
+}
+
+let modulo = (x, m) -> {
+  !int_subtract(x, !int_multiply(divide(x, m), m))
+}
+
+// Emit a base32 character for every complete 5-bit group buffered in
+// `acc`, leaving fewer than 5 bits behind.
+let drain = !fix((self, st) -> {
+  match !int_compare(st.bits, 5) {
+    Lt(_) -> { st }
+    | (_) -> {
+      let bits = !int_subtract(st.bits, 5)
+      let unit = pow2(bits)
+      let index = modulo(divide(st.acc, unit), 32)
+      let acc = modulo(st.acc, unit)
+      self({acc, bits, out: !string_append(st.out, nth(chars, index))})
+    }
+  }
+})
+
+// Encode a binary as a base32 string.
+let encode = (bytes) -> {
+  let st = !binary_fold(bytes, {acc: 0, bits: 0, out: ""}, (byte, st) -> {
+    drain({
+      acc: !int_add(!int_multiply(st.acc, 256), byte),
+      bits: !int_add(st.bits, 8),
+      out: st.out
+    })
+  })
+  // Pad any trailing bits out to a final 5-bit group.
+  match !int_compare(st.bits, 0) {
+    Gt(_) -> {
+      let index = !int_multiply(st.acc, pow2(!int_subtract(5, st.bits)))
+      !string_append(st.out, nth(chars, index))
+    }
+    | (_) -> { st.out }
+  }
+}
+
+{encode}

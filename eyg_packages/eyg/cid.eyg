@@ -1,0 +1,20 @@
+// Build the content identifier (CID) of a published EYG module.
+//
+// A module is published as a dag-json block. Its CID is the CIDv1 of
+// that block: a fixed header followed by the sha256 digest of the block,
+// rendered with the multibase `b` (base32) prefix.
+
+let base32 = import "./base32.eyg"
+
+// CIDv1 header for a dag-json block (codec 0x0129) hashed with
+// sha256-256: version 0x01, codec varint [0xa9, 0x02], hash 0x12 and
+// digest length 0x20 (32 bytes).
+let header = !binary_from_integers([1, 169, 2, 18, 32])
+
+// The CID string for a module, given the sha256 digest of its dag-json
+// block.
+let from_sha256 = (digest) -> {
+  !string_append("b", base32.encode(!binary_concat(header, digest)))
+}
+
+{from_sha256}

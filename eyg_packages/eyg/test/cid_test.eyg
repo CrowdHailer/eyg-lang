@@ -1,0 +1,50 @@
+// Tests for cid.eyg, run by entry.eyg via the aok library.
+//
+// cid.from_sha256 builds the CIDv1 of a dag-json module from the sha256
+// digest of its block.
+
+let aok = import "../../aok/index.eyg"
+let cid = import "../cid.eyg"
+
+// The sha256 digest of eyg_packages/standard/index.eyg.json. The standard
+// package is published on the hub, so its CID is known and fixed.
+let standard_digest = !binary_from_integers([
+  58, 194, 98, 155, 246, 74, 70, 147, 83, 15, 69, 89, 33, 138, 167, 217,
+  53, 89, 113, 103, 64, 10, 48, 134, 107, 216, 233, 114, 211, 53, 209, 18
+])
+
+let test_known_cid = (_) -> {
+  let _ = aok.equal_string(
+    cid.from_sha256(standard_digest),
+    "baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja"
+  )
+  {}
+}
+
+// An all-zero digest leaves only the CIDv1 header, so the result is the
+// header's base32 prefix followed by `a` (base32 zero) for every byte.
+let test_header_prefix = (_) -> {
+  let zeros = !binary_from_integers([
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  ])
+  let _ = aok.equal_string(
+    cid.from_sha256(zeros),
+    "baguqeeraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  )
+  {}
+}
+
+// A CIDv1 of a 32-byte digest is always the `b` multibase prefix plus 60
+// base32 characters.
+let test_cid_length = (_) -> {
+  let _ = aok.equal(!string_length(cid.from_sha256(standard_digest)), 61)
+  let _ = aok.true(!string_starts_with(cid.from_sha256(standard_digest), "b"))
+  {}
+}
+
+[
+  {name: "cid from a known digest", test: test_known_cid},
+  {name: "cid header prefix", test: test_header_prefix},
+  {name: "cid length and multibase prefix", test: test_cid_length}
+]
