@@ -596,6 +596,10 @@ pub fn builtins() {
     #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
     #("binary_size", pure1(t.Binary, t.Integer)),
     #("binary_concat", pure2(t.Binary, t.Binary, t.Binary)),
+    #("binary_compare", {
+      let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
+      pure2(t.Binary, t.Binary, return)
+    }),
     #("binary_fold", {
       let acc = q(1)
       // eff only thrown by reduce when last argument given

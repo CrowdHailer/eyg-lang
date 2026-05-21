@@ -307,6 +307,19 @@ pub fn do_binary_concat(left, right, _meta, env, k) {
   Ok(#(state.V(v.Binary(bit_array.append(left, right))), env, k))
 }
 
+pub const binary_compare = state.Arity2(do_binary_compare)
+
+pub fn do_binary_compare(left, right, _meta, env, k) {
+  use left <- try(cast.as_binary(left))
+  use right <- try(cast.as_binary(right))
+  let return = case bit_array.compare(left, right) {
+    order.Lt -> v.Tagged("Lt", v.unit())
+    order.Eq -> v.Tagged("Eq", v.unit())
+    order.Gt -> v.Tagged("Gt", v.unit())
+  }
+  Ok(#(state.V(return), env, k))
+}
+
 pub const binary_fold = state.Arity3(do_binary_fold)
 
 fn do_binary_fold(bytes, state, func, meta, env, k) {
@@ -373,6 +386,7 @@ fn all() {
   |> dict.insert("binary_from_integers", binary_from_integers)
   |> dict.insert("binary_size", binary_size)
   |> dict.insert("binary_concat", binary_concat)
+  |> dict.insert("binary_compare", binary_compare)
   |> dict.insert("binary_fold", binary_fold)
   // List
   |> dict.insert("list_pop", list_pop)

@@ -67,6 +67,7 @@ Conventions:
 |--------------------------|------------------------------------------|----------------------------------------------------------------------|
 | `!binary_size`           | `(Binary) -> Int`                        | Size in bytes.                                                       |
 | `!binary_concat`         | `(Binary, Binary) -> Binary`             |                                                                      |
+| `!binary_compare`        | `(Binary, Binary) -> Lt({}) \| Eq({}) \| Gt({})` | Byte-wise comparison.                                      |
 | `!binary_from_integers`  | `(List(Int)) -> Binary`                  | Each int must be 0..255.                                             |
 | `!binary_fold`           | `(Binary, b, (Int, b) -> b) -> b`        | Byte-by-byte left fold.                                              |
 
@@ -88,4 +89,3 @@ let _ = !list_fold(items, {}, (item, _) -> {
 let {head, tail} = !string_split(text, "\n")
 let lines = [head, ..tail]
 ```
-
