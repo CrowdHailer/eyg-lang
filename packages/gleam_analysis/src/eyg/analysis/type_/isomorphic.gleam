@@ -73,7 +73,7 @@ pub fn ast() {
       #("String", String),
       #("Tail", unit),
       #("Cons", unit),
-      #("Vacant", String),
+      #("Vacant", unit),
       #("Empty", unit),
       #("Extend", String),
       #("Select", String),
@@ -84,6 +84,16 @@ pub fn ast() {
       #("Perform", String),
       #("Handle", String),
       #("Builtin", String),
+      #("ContentReference", String),
+      #(
+        "ReleaseReference",
+        record([
+          #("package", String),
+          #("version", Integer),
+          #("cid", String),
+        ]),
+      ),
+      #("RelativeReference", String),
     ]),
   )
 }
