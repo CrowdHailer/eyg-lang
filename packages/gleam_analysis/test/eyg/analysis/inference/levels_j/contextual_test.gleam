@@ -305,13 +305,13 @@ pub fn select_test() {
 pub fn tag_test() {
   "Ok"
   |> calc(t.Empty)
-  |> should.equal([ok("(0) -> Ok: 0 | ..1", "")])
+  |> should.equal([ok("(0) -> [Ok: 0 | ..1]", "")])
 
   "Ok(8)"
   |> calc(t.Empty)
   |> should.equal([
-    ok("Ok: Integer | ..1", ""),
-    ok("(Integer) -> Ok: Integer | ..1", ""),
+    ok("[Ok: Integer | ..1]", ""),
+    ok("(Integer) -> [Ok: Integer | ..1]", ""),
     ok("Integer", ""),
   ])
 }
@@ -541,7 +541,7 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "7", "Bar(↑Integer ↓7)"),
     #(
       Ok(Nil),
-      "((Integer <Bar(↑Integer ↓7), Foo(↑Integer ↓29), ..30>) -> 7 <Bar(↑Integer ↓7), Foo(↑Integer ↓29), ..30>) -> 7",
+      "(\n  (Integer <Bar(↑Integer ↓7), Foo(↑Integer ↓29), ..30>) -> 7\n  <Bar(↑Integer ↓7), Foo(↑Integer ↓29), ..30>,\n) -> 7",
       "",
     ),
     #(Ok(Nil), "(Integer <Bar(↑Integer ↓7)>) -> 7", ""),
@@ -551,7 +551,7 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "29", "Foo(↑Integer ↓29)"),
     #(
       Ok(Nil),
-      "((Integer <Foo(↑Integer ↓29), Bar(↑Integer ↓7), ..30>) -> 29 <Foo(↑Integer ↓29), Bar(↑Integer ↓7), ..30>) -> 29",
+      "(\n  (Integer <Foo(↑Integer ↓29), Bar(↑Integer ↓7), ..30>) -> 29\n  <Foo(↑Integer ↓29), Bar(↑Integer ↓7), ..30>,\n) -> 29",
       "",
     ),
     #(Ok(Nil), "(Integer <Foo(↑Integer ↓29)>) -> 29", ""),

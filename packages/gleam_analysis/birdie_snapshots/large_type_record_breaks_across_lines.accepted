@@ -1,0 +1,13 @@
+---
+version: 1.5.5
+title: large type record breaks across lines
+---
+{
+  name: String,
+  content: Binary,
+  attempts: Integer,
+  result: [
+    Ok: String |
+    Error: {message: String}
+  ],
+}

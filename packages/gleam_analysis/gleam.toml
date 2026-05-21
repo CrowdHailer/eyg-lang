@@ -1,5 +1,5 @@
 name = "eyg_analysis"
-version = "1.2.0"
+version = "1.2.1"
 target = "javascript"
 
 description = "Infers types for expressions, effects and scope variables of EYG programs."
@@ -11,7 +11,9 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 eyg_ir = ">= 1.0.0 and < 3.0.0"
 eyg_parser = ">= 0.1.0 and < 2.0.0"
+glam = ">= 2.0.0 and < 3.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
 
 [dev-dependencies]
+birdie = ">= 1.3.1 and < 2.0.0"
 gleeunit = ">= 1.0.0 and < 2.0.0"

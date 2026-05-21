@@ -1,0 +1,71 @@
+---
+version: 1.5.5
+title: large effectful function breaks across lines
+---
+(
+  {path: String, bytes: Binary}
+  <
+    ReadFile(↑String ↓[
+      Ok: Binary |
+      Error: String
+    ]),
+    DecodeJSON(↑Binary ↓[
+      Ok: List(
+        [
+          Variable: String |
+          Lambda: String |
+          Apply: {} |
+          Let: String |
+          Binary: Binary |
+          Integer: Integer |
+          String: String |
+          Tail: {} |
+          Cons: {} |
+          Vacant: String |
+          Empty: {} |
+          Extend: String |
+          Select: String |
+          Overwrite: String |
+          Tag: String |
+          Case: String |
+          NoCases: {} |
+          Perform: String |
+          Handle: String |
+          Builtin: String
+        ]
+      ) |
+      Error: String
+    ]),
+    ..7
+  >,
+) -> Promise(
+  List(
+    {
+      key: String,
+      value: List(
+        [
+          Variable: String |
+          Lambda: String |
+          Apply: {} |
+          Let: String |
+          Binary: Binary |
+          Integer: Integer |
+          String: String |
+          Tail: {} |
+          Cons: {} |
+          Vacant: String |
+          Empty: {} |
+          Extend: String |
+          Select: String |
+          Overwrite: String |
+          Tag: String |
+          Case: String |
+          NoCases: {} |
+          Perform: String |
+          Handle: String |
+          Builtin: String
+        ]
+      ),
+    }
+  )
+)

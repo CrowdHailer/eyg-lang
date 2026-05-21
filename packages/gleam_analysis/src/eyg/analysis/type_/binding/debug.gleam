@@ -1,10 +1,13 @@
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import glam/doc.{type Document}
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/string
 import multiformats/cid/v1
+
+const default_width: Int = 80
 
 pub fn mono(type_) {
   render_type(type_)
@@ -18,52 +21,60 @@ pub fn effect(e) {
   render_effects(e)
 }
 
+pub fn render(typ, width: Int) -> String {
+  typ
+  |> to_doc
+  |> doc.to_string(width)
+}
+
 pub fn render_type(typ) {
+  render(typ, default_width)
+}
+
+fn to_doc(typ) -> Document {
   case typ {
-    t.Var(i) -> int.to_string(i)
-    t.Integer -> "Integer"
-    t.Binary -> "Binary"
-    t.String -> "String"
-    t.Never -> "Never"
-    t.List(el) -> "List(" <> render_type(el) <> ")"
-    t.Fun(from, eff, to) -> render_function(to, [#(from, eff)])
-    t.Union(row) -> string.join(render_row(row), " | ")
-    t.Record(row) -> "{" <> string.join(render_row(row), ", ") <> "}"
+    t.Var(i) -> doc.from_string(int.to_string(i))
+    t.Integer -> doc.from_string("Integer")
+    t.Binary -> doc.from_string("Binary")
+    t.String -> doc.from_string("String")
+    t.Never -> doc.from_string("Never")
+    t.List(el) -> wrap("List(", to_doc(el), ")")
+    t.Fun(from, eff, to) -> function_doc(to, [#(from, eff)])
+    t.Union(row) ->
+      wrap("[", row_docs(row) |> doc.join(with: doc.break(" | ", " |")), "]")
+    t.Record(row) -> separated(row_docs(row), "{", "}")
     // Rows can be rendered as any mismatch in errors
-    t.EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
-    t.Promise(inner) -> string.concat(["Promise(", render_type(inner), ")"])
+    t.EffectExtend(_, _, _) -> wrap("<", effects_doc(typ), ">")
+    t.Promise(inner) -> wrap("Promise(", to_doc(inner), ")")
     row -> {
-      string.concat([
-        "{",
-        render_row(row)
-          |> string.join(""),
-        "}",
-      ])
+      wrap("{", row_docs(row) |> doc.join(with: doc.from_string("")), "}")
     }
   }
 }
 
-fn render_function(to, acc) {
+fn function_doc(to, acc) {
   case to {
-    t.Fun(from, eff, to) -> render_function(to, [#(from, eff), ..acc])
+    t.Fun(from, eff, to) -> function_doc(to, [#(from, eff), ..acc])
     _ -> {
       let args = list.reverse(acc)
-      let rendered =
-        list.map(args, fn(arg) {
-          let #(arg, eff) = arg
-          let arg = render_type(arg)
-          case eff {
-            // assumes resolved TODO remove and use the open close code
-            // t.Var(_) -> arg
-            t.Empty -> arg
-            _ -> arg <> " <" <> render_effects(eff) <> ">"
-          }
-        })
-      let rendered =
-        list.intersperse(rendered, ", ")
-        |> string.concat
-      "(" <> rendered <> ") -> " <> render_type(to)
+      let rendered = list.map(args, argument_doc)
+      separated(rendered, "(", ")")
+      |> doc.append(doc.from_string(" -> "))
+      |> doc.append(to_doc(to))
     }
+  }
+}
+
+fn argument_doc(arg) -> Document {
+  let #(arg, eff) = arg
+  case eff {
+    // assumes resolved TODO remove and use the open close code
+    // t.Var(_) -> arg
+    t.Empty -> to_doc(arg)
+    _ ->
+      to_doc(arg)
+      |> doc.append(doc.space)
+      |> doc.append(wrap("<", effects_doc(eff), ">"))
   }
 }
 
@@ -112,45 +123,93 @@ pub fn hint(reason) {
   }
 }
 
-fn render_row(r) -> List(String) {
+fn row_docs(r) -> List(Document) {
   case r {
     t.Empty -> []
-    t.Var(i) -> [string.append("..", int.to_string(i))]
+    t.Var(i) -> [doc.from_string(string.append("..", int.to_string(i)))]
     t.RowExtend(label, value, tail) -> {
-      let field = string.concat([label, ": ", render_type(value)])
-      [field, ..render_row(tail)]
+      let field =
+        doc.from_string(label <> ": ")
+        |> doc.append(to_doc(value))
+      [field, ..row_docs(tail)]
     }
-    _ -> ["not a valid row", string.inspect(r)]
+    _ -> [
+      doc.from_string("not a valid row"),
+      doc.from_string(string.inspect(r)),
+    ]
   }
 }
 
 pub fn render_effects(effects) {
+  effects_doc(effects)
+  |> doc.to_string(default_width)
+}
+
+fn effects_doc(effects) -> Document {
   case effects {
-    t.Var(i) -> ".." <> int.to_string(i)
-    t.Empty -> ""
+    t.Var(i) -> doc.from_string(".." <> int.to_string(i))
+    t.Empty -> doc.from_string("")
     t.EffectExtend(label, #(lift, resume), tail) ->
-      string.join(
-        collect_effect(tail, [render_effect(label, lift, resume)])
-          |> list.reverse,
-        ", ",
-      )
-    _ -> "not a valid effect"
+      collect_effect(tail, [effect_doc(label, lift, resume)])
+      |> list.reverse
+      |> doc.join(with: doc.break(", ", ","))
+    _ -> doc.from_string("not a valid effect")
   }
 }
 
-fn render_effect(label, lift, resume) {
-  string.concat([label, "(↑", render_type(lift), " ↓", render_type(resume), ")"])
+fn effect_doc(label, lift, resume) -> Document {
+  doc.concat([
+    doc.from_string(label <> "(↑"),
+    to_doc(lift),
+    doc.from_string(" ↓"),
+    to_doc(resume),
+    doc.from_string(")"),
+  ])
 }
 
-fn collect_effect(eff, acc) {
+fn collect_effect(eff, acc: List(Document)) {
   case eff {
     t.EffectExtend(label, #(lift, resume), tail) ->
-      collect_effect(tail, [render_effect(label, lift, resume), ..acc])
-    t.Var(i) -> [string.append("..", int.to_string(i)), ..acc]
+      collect_effect(tail, [effect_doc(label, lift, resume), ..acc])
+    t.Var(i) -> [doc.from_string(string.append("..", int.to_string(i))), ..acc]
     t.Empty -> acc
     _ -> {
       io.println("unexpected effect")
       acc
+    }
+  }
+}
+
+fn wrap(open: String, inner: Document, close: String) -> Document {
+  doc.concat([
+    doc.from_string(open),
+    doc.soft_break
+      |> doc.append(inner)
+      |> doc.nest(by: 2),
+    doc.soft_break,
+    doc.from_string(close),
+  ])
+  |> doc.group
+}
+
+fn separated(items: List(Document), open: String, close: String) -> Document {
+  case items {
+    [] -> doc.from_string(open <> close)
+    _ -> {
+      let separator = doc.break(", ", ",")
+      let body = doc.join(items, with: separator)
+      let inner =
+        doc.soft_break
+        |> doc.append(body)
+        |> doc.nest(by: 2)
+
+      doc.concat([
+        doc.from_string(open),
+        inner,
+        doc.break("", ","),
+        doc.from_string(close),
+      ])
+      |> doc.group
     }
   }
 }
