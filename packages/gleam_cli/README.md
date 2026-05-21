@@ -42,6 +42,15 @@ Starting the REPL is the default command for the CLI, so run as follows.
 eyg
 ```
 
+Lines beginning with `/` are shell commands rather than EYG source:
+
+| Command | Description |
+|---|---|
+| `/help` | show the available commands |
+| `/scope` | list the variables in scope and their values |
+| `/type <expr>`, `/t <expr>` | infer and show the type of an expression |
+
+
 ### Evaluate an expression
 
 To evaluate a script, without running any effects, pass in the file to the CLI `eval` command.
