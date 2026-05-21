@@ -5,8 +5,9 @@ description: How to compile and install the eyg CLI from source.
 
 Manage EYG projects with a self-contained binary.
 The source is in [`packages/gleam_cli`](../packages/gleam_cli/). 
-This CLI provides `eyg run`, `eyg compile`, `eyg repl` as well as commands
-to share/publish code on the EYG hub.
+
+To install without the Gleam and Bun toolchains, follow the
+[install a prebuilt binary](./install_prebuilt.md) guide instead.
 
 ## Prerequisites
 

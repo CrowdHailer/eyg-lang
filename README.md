@@ -9,7 +9,18 @@ This repository contains the language definition, implementation, website and pa
 
 ## Install
 
-Follow the [install from source](./guides/install_from_source.md) guide with instructions to compile and install the EYG CLI.
+Install the EYG CLI with one command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash
+```
+
+Or pick another approach:
+
+- [install a prebuilt binary](./guides/install_prebuilt.md) — the
+  installer above, plus how to install a release asset by hand.
+- [install from source](./guides/install_from_source.md) — compile and
+  install the CLI with the Gleam and Bun toolchains.
 
 For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
 The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md)
