@@ -464,6 +464,7 @@ pub fn read_directory(
           simplifile.Other -> Error(simplifile.Unknown(""))
         }
       })
+      |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
     Ok(children)
   }
   |> result.map_error(simplifile.describe_error)
