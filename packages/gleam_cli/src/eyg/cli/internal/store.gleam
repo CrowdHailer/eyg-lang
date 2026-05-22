@@ -33,7 +33,10 @@ pub fn save_signatory(
     signatory_encode(principal, keypair)
     |> json.to_string
 
-  simplifile.write(path, blob)
+  use Nil <- result.try(simplifile.write(path, blob))
+
+  // The file embeds a private key — restrict it to the owner (rw-------).
+  simplifile.set_permissions_octal(path, 0o600)
 }
 
 pub fn all_signatories(dirs) {

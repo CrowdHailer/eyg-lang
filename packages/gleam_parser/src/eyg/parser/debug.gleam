@@ -93,7 +93,8 @@ pub fn hint(reason) {
       case token {
         t.Let ->
           "the previous expression already completed the block. If you meant the block to continue, bind that expression to `let _ = ...` first."
-        _ -> "EYG uses function calls for operations, not infix operators"
+        _ ->
+          "EYG uses function calls for operations (e.g. !int_add(a, b)), not infix operators"
       }
     }
   }

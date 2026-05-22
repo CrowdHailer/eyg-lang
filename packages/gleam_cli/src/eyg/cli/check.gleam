@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/debug
 import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/parser
+import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 
@@ -18,7 +19,10 @@ pub fn execute(
   let errors = infer.all_errors(analysis)
 
   case errors {
-    [] -> promise.resolve(Ok(0))
+    [] -> {
+      io.println(debug.render_type(infer.type_(analysis)))
+      promise.resolve(Ok(0))
+    }
     [#(location, reason), ..] -> {
       let message = debug.render_reason(reason)
       let hint = debug.hint(reason)

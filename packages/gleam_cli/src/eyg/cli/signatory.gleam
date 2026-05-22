@@ -3,6 +3,7 @@ import eyg/cli/internal/config
 import eyg/cli/internal/crypto
 import eyg/cli/internal/store
 import filepath
+import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/json
@@ -47,8 +48,11 @@ pub fn initial(
   let assert Ok(Nil) =
     simplifile.create_directory_all(filepath.directory_name(path))
 
-  simplifile.write(path, cache)
-  |> result.replace(0)
-  |> result.map_error(simplifile.describe_error)
-  |> promise.resolve
+  use Nil <- promisex.try_sync(
+    simplifile.write(path, cache)
+    |> result.map_error(simplifile.describe_error),
+  )
+  io.println("created signatory '" <> alias <> "'")
+  io.println("principal " <> v1.to_string(principal))
+  promise.resolve(Ok(0))
 }
