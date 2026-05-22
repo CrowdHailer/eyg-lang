@@ -7,7 +7,7 @@ Always read the [CONTRIBUTING](./CONTRIBUTING.md) guide, it explains how to set 
 
 ## Writing EYG
 
-When writing eyg code read the [syntax guide](./guides/simple_syntax.md).
+When writing eyg code read the [syntax guide](./guides/syntax.md).
 To start exploring the codebase read the [explore the filesystem guide](./guides/explore_the_file_system.md).
 
 EYG programs can only interact with the outside world through effects and each runtime has different effects.
@@ -27,7 +27,7 @@ However this cannot be referenced or published as it's evaluated value is not co
 
 A `@name` reference resolves to the latest published version of a package.
 For reproducible scripts use the pinned forms described in the
-[syntax guide](./guides/simple_syntax.md#named-packages):
+[syntax guide](./guides/syntax.md#named-packages):
 
 ## EYG packages
 

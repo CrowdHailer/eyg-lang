@@ -16,6 +16,7 @@ import simplifile
 import snag
 import website/routes/documentation
 import website/routes/editor
+import website/routes/guides
 import website/routes/home
 import website/routes/news
 import website/routes/news/archive
@@ -76,6 +77,7 @@ fn routes() {
     // This old editor was a shell only
     #("shell", Route(index: route.Page(editor.page()), items: [])),
     #("editor", Route(index: route.Page(workspace.page()), items: [])),
+    #("guides", guides.route()),
     #("news", news.route()),
     #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),
   ])

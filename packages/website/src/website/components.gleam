@@ -23,6 +23,7 @@ pub fn header() {
         h.div([a.class("expand hstack gap-2")], [
           // header_link("/editor", "Editor"),
           header_link("/documentation", "Documentation"),
+          header_link("/guides", "Guides"),
           header_link("/roadmap", "Roadmap"),
           header_link("/news", "News"),
           header_link("https://github.com/crowdhailer/eyg-lang", "Source"),

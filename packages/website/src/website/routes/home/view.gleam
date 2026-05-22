@@ -135,6 +135,15 @@ pub fn view() {
                 ],
                 [element.text("Documentation")],
               ),
+              h.a(
+                [
+                  a.href("/guides"),
+                  a.class(
+                    "border-2 border-black font-bold inline-block py-2 px-3 rounded-xl",
+                  ),
+                ],
+                [element.text("Guides")],
+              ),
             ]),
           ]),
           h.p([a.class("")], [

@@ -4,6 +4,7 @@
 packages = [
   { name = "argv", version = "1.1.0", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "3277D100448BDB4A29B6D58C0F36F631CBC349E8BDD09766C6309DF202831140" },
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
+  { name = "casefold", version = "2.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "casefold", source = "hex", outer_checksum = "86F8E4A12F441538D4DF9315A0584598F0C848678E87D13E25DDB43C61DB16E6" },
   { name = "conversation", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "conversation", source = "hex", outer_checksum = "60AFB424A723D5B29925487BCA66FF09EB157FD3EF72AF072714FEC903701226" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "eyg_analysis", version = "1.2.1", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "62241D441D802D09588D5C68E2ABDE7EA3D677D14570FABD4F111CE19904C19F" },
@@ -40,6 +41,7 @@ packages = [
   { name = "midas", version = "2.0.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "E51EA1F29F91B793C70C81B5C29C2BA343EB7D5F71462542DFF6437F9F9AC4B3" },
   { name = "midas_browser", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth", "snag"], otp_app = "midas_browser", source = "hex", outer_checksum = "546BA604CCE0D1EAB2A3966447B7FCBA75F1AE767904136D0546705EF34D315A" },
   { name = "midas_node", version = "1.4.0", build_tools = ["gleam"], requirements = ["conversation", "filepath", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "midas", "plinth", "shellout", "simplifile", "snag"], otp_app = "midas_node", source = "hex", outer_checksum = "F19D552A87F0C7119B6BF855AA1FE08E8DC7042480B0B054C4B6FB9C22E47A6A" },
+  { name = "mork", version = "1.12.0", build_tools = ["gleam"], requirements = ["casefold", "gleam_regexp", "gleam_stdlib", "splitter"], otp_app = "mork", source = "hex", outer_checksum = "9C08D94C80FE7DF25D4C5E2511390AEDF20DC3CFA110BC61DD23F4518172AC5C" },
   { name = "morph", version = "0.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_stdlib", "gleam_x", "lustre", "multiformats", "plinth"], source = "local", path = "../morph" },
   { name = "multiformats", version = "4.0.0", build_tools = ["gleam"], requirements = ["base32", "gleam_javascript", "gleam_stdlib", "gleb128"], otp_app = "multiformats", source = "hex", outer_checksum = "48D290956A6F21086EE9C0C2B69ACAF5DC0067EE7E4605990445E5BDC85B7AAE" },
   { name = "mysig", version = "0.5.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "simplifile", "snag"], otp_app = "mysig", source = "hex", outer_checksum = "8DC5F8A32CC81B07C6197AA5A179AB1825D83F13BC0DEF81954D3BB1A1D17825" },
@@ -60,6 +62,7 @@ eyg_analysis = { version = ">= 1.0.0 and < 2.0.0" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 2.1.0 and < 4.0.0" }
 eyg_ir = { version = ">= 1.0.0 and < 3.0.0" }
+eyg_parser = { version = ">= 0.3.4 and < 1.0.0" }
 filepath = { version = ">= 1.1.2 and < 2.0.0" }
 gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_fetch = { version = ">= 1.3.1 and < 2.0.0" }
@@ -76,6 +79,7 @@ lustre = { version = ">= 5.6.0 and < 6.0.0" }
 midas = { version = ">= 2.0.0 and < 3.0.0" }
 midas_browser = { version = ">= 1.1.2 and < 2.0.0" }
 midas_node = { version = ">= 1.4.0 and < 2.0.0" }
+mork = { version = ">= 1.12.0 and < 2.0.0" }
 morph = { path = "../morph" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 mysig = { version = ">= 0.5.0 and < 1.0.0" }

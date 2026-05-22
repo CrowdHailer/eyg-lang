@@ -21,7 +21,7 @@ pub const published = [
     "2026-05-11",
     "An unreasonably practical update for EYG.",
     "
-The text syntax for EYG is now [properly documented](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/simple_syntax.md).
+The text syntax for EYG is now [properly documented](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/syntax.md).
 New filesystem effects in the CLI make useful shell scripts possible.
 Installing the CLI from source has its [own guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/install_from_source.md)
 
@@ -35,7 +35,7 @@ That said, there are good reasons to have a text syntax.
 A text parser to EYG has been part of the project, just undocumented, for a good while.
 
 Having the text syntax but not documenting it is simply a wasted opportunity.
-So the [simple syntax guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/simple_syntax.md) is now complete,
+So the [simple syntax guide](https://github.com/CrowdHailer/eyg-lang/blob/main/guides/syntax.md) is now complete,
 covering every feature supported by the parser.
 
 I will emphasise that both approaches are supported from now on.

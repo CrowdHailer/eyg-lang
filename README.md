@@ -23,7 +23,7 @@ Or pick another approach:
   install the CLI with the Gleam and Bun toolchains.
 
 For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
-The language syntax is described in [`guides/simple_syntax.md`](./guides/simple_syntax.md)
+The language syntax is described in [`guides/syntax.md`](./guides/syntax.md)
 and every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
 
 ## Execute code

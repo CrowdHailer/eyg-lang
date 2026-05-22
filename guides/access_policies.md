@@ -1,5 +1,5 @@
 ---
-title: Effect access policies
+name: Effect access policies
 description: Add policies for calling side effects with the overlay access package.
 ---
 

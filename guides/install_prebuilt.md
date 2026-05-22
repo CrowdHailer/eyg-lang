@@ -1,5 +1,5 @@
 ---
-title: install a prebuilt binary
+name: install a prebuilt binary
 description: How to install the eyg CLI from a prebuilt binary.
 ---
 

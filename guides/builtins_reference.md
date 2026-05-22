@@ -1,6 +1,6 @@
 ---
-title: Builtins reference
-description: Refernce of every builtin function defined.
+name: Builtins reference
+description: Reference of every builtin function defined.
 ---
 
 Builtins are runtime-provided functionality.

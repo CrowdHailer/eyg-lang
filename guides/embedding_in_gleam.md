@@ -1,3 +1,8 @@
+---
+name: Embedding EYG in Gleam programs
+description: How to use EYG as an embedded scripting language in Gleam.
+---
+
 # Embedding EYG in Gleam programs
 
 EYG is type safe scripting language with managed side effects.

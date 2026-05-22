@@ -1,5 +1,5 @@
 ---
-title: CLI effects reference
+name: CLI effects reference
 description: Reference for effects implemented by the eyg CLI .
 ---
 

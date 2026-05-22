@@ -1,5 +1,5 @@
 ---
-title: explore the file system
+name: explore the file system
 description: How to list directory contents, find files and read file contents.
 ---
 

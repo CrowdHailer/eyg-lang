@@ -28,6 +28,7 @@ services:
       # website-build must be remounted after (on top of) the packages host dir.
       # This is so any host build artifacts are not copied
       - ..:/opt/packages
+      - ../../guides:/opt/guides
       # only the build dir for server is used for building the server project
       - website-build:/opt/packages/website/build
       - website-node_modules:/opt/packages/website/node_modules

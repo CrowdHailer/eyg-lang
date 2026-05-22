@@ -1,3 +1,7 @@
+---
+name: EYG syntax guide
+description: Syntax reference for the EYG text representation.
+---
 # EYG Syntax Guide
 
 EYG is a type-safe scripting language with managed effects.

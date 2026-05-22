@@ -1,5 +1,5 @@
 ---
-title: install from source
+name: install from source
 description: How to compile and install the eyg CLI from source.
 ---
 

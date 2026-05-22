@@ -1,5 +1,5 @@
 ---
-title: modifying text files
+name: modifying text files
 description: How to write, append to, and patch file contents using the edit module.
 ---
 
