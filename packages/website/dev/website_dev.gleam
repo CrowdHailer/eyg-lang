@@ -18,6 +18,7 @@ import website/routes/documentation
 import website/routes/editor
 import website/routes/guides
 import website/routes/home
+import website/routes/llms
 import website/routes/news
 import website/routes/news/archive
 import website/routes/news/edition
@@ -67,6 +68,7 @@ fn routes() {
   let assert Ok(pea) = simplifile.read_bits("src/website/images/pea.webp")
 
   Route(index: route.Page(home.page()), items: [
+    #("llms.txt", Route(route.Static(<<llms.content():utf8>>), [])),
     #("share.png", Route(route.Static(share), [])),
     // Keep for old emails
     #("pea.webp", Route(route.Static(pea), [])),

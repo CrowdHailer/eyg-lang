@@ -13,6 +13,9 @@ rsync -avz \
 ../gleam_hub ../gleam_x ../hub ../morph ../untethered ../website ../eyg.run \
 root@$DOMAIN:/opt/
 
+# it's a pain to install guides to top level but it's a hangover from when I was publishing just packages.
+rsync -avz ../../guides root@$DOMAIN:/guides/
+
 echo "=== Setting config ==="
 
 scp .production.env root@eyg.run:/opt/eyg.run/.env

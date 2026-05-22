@@ -34,11 +34,8 @@ fn all(root) -> List(Guide) {
 
     let #(front, content) = mork.split_frontmatter_from_input(raw)
     let lines = string.split(front, "\n")
-    echo "start"
     use name <- result.try(get_field(lines, "name"))
-    echo name
     use description <- result.try(get_field(lines, "description"))
-    echo description
     let slug =
       get_field(lines, "slug")
       |> result.unwrap(
@@ -53,7 +50,7 @@ fn all(root) -> List(Guide) {
   })
 }
 
-fn from_repo() {
+pub fn from_repo() {
   all("../../guides")
 }
 
