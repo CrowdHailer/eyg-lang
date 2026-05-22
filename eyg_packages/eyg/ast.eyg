@@ -1,0 +1,196 @@
+// Render the flat AST representation described by
+// eyg/analysis/type_/isomorphic.ast() to compact DAG JSON.
+//
+// The AST is a prefix list. Nodes with children consume the following
+// entries:
+//
+//   [Let("x"), Integer(5), Variable("x")]
+//
+// renders as the same compact DAG JSON that eyg/ir/dag_json.gleam emits.
+
+let base64 = import "./base64.eyg"
+let dag_json = import "./dag_json.eyg"
+let json = import "../json/index.eyg.json"
+let list = @standard.list
+let result = @standard.result
+let string = @standard.string
+let d = json.decode
+
+let node = (tag, fields) -> {
+  dag_json.object([dag_json.field("0", dag_json.string(tag)), ..fields])
+}
+
+let label = (value) -> {
+  dag_json.field("l", dag_json.string(value))
+}
+
+let binary_decoder = d.object((fields) -> {
+  let encoded = d.field("/", d.object((fields) -> {
+    d.field("bytes", d.string, fields)
+  }), fields)
+  base64.decode(encoded)
+})
+
+let link_decoder = d.object((fields) -> {
+  d.field("/", d.string, fields)
+})
+
+let find_tag = !fix((self, decoders, tag) -> {
+  match !list_pop(decoders) {
+    Error(_) -> { None({}) }
+    Ok({head, tail}) -> {
+      match !equal(head.tag, tag) {
+        True(_) -> { Some(head.decode) }
+        False(_) -> { self(tail, tag) }
+      }
+    }
+  }
+})
+
+let source_decoder = !fix((self, parsed) -> {
+  d.object((fields) -> {
+    let tag = d.field("0", d.string, fields)
+    let decoders = [
+      {tag: "v", decode: (_) -> { [Variable(d.field("l", d.string, fields))] }},
+      {tag: "f", decode: (_) -> { [Lambda(d.field("l", d.string, fields)), ..d.field("b", self, fields)] }},
+      {tag: "a", decode: (_) -> {
+        [Apply({}), ..list.append(d.field("f", self, fields), d.field("a", self, fields))]
+      }},
+      {tag: "l", decode: (_) -> {
+        [Let(d.field("l", d.string, fields)), ..list.append(d.field("v", self, fields), d.field("t", self, fields))]
+      }},
+      {tag: "x", decode: (_) -> { [Binary(d.field("v", binary_decoder, fields))] }},
+      {tag: "i", decode: (_) -> { [Integer(d.field("v", d.integer, fields))] }},
+      {tag: "s", decode: (_) -> { [String(d.field("v", d.string, fields))] }},
+      {tag: "ta", decode: (_) -> { [Tail({})] }},
+      {tag: "c", decode: (_) -> { [Cons({})] }},
+      {tag: "z", decode: (_) -> { [Vacant({})] }},
+      {tag: "u", decode: (_) -> { [Empty({})] }},
+      {tag: "e", decode: (_) -> { [Extend(d.field("l", d.string, fields))] }},
+      {tag: "g", decode: (_) -> { [Select(d.field("l", d.string, fields))] }},
+      {tag: "o", decode: (_) -> { [Overwrite(d.field("l", d.string, fields))] }},
+      {tag: "t", decode: (_) -> { [Tag(d.field("l", d.string, fields))] }},
+      {tag: "m", decode: (_) -> { [Case(d.field("l", d.string, fields))] }},
+      {tag: "n", decode: (_) -> { [NoCases({})] }},
+      {tag: "p", decode: (_) -> { [Perform(d.field("l", d.string, fields))] }},
+      {tag: "h", decode: (_) -> { [Handle(d.field("l", d.string, fields))] }},
+      {tag: "b", decode: (_) -> { [Builtin(d.field("l", d.string, fields))] }},
+      {tag: "#", decode: (_) -> { [ContentReference(d.field("l", link_decoder, fields))] }},
+      {tag: "@", decode: (_) -> {
+        [ReleaseReference({
+          package: d.field("p", d.string, fields),
+          version: d.field("r", d.integer, fields),
+          cid: d.field("l", link_decoder, fields)
+        })]
+      }},
+      {tag: ".", decode: (_) -> { [RelativeReference(d.field("i", d.string, fields))] }}
+    ]
+    match find_tag(decoders, tag) {
+      Some(decode) -> { decode({}) }
+      None(_) -> { [Vacant({})] }
+    }
+  })(parsed)
+})
+
+let source_json_to_ast = (source) -> {
+  json.parse(source, source_decoder)
+}
+
+let source_json_bytes_to_ast = (source) -> {
+  json.parse_bytes(source, source_decoder)
+}
+
+let parse = !fix((self, nodes) -> {
+  match !list_pop(nodes) {
+    Error(_) -> { {value: node("z", []), rest: []} }
+    Ok({head, tail}) -> {
+      match head {
+        Variable(value) -> { {value: node("v", [label(value)]), rest: tail} }
+        Lambda(value) -> {
+          let body = self(tail)
+          {
+            value: node("f", [label(value), dag_json.field("b", body.value)]),
+            rest: body.rest
+          }
+        }
+        Apply(_) -> {
+          let function = self(tail)
+          let argument = self(function.rest)
+          {
+            value: node("a", [
+              dag_json.field("f", function.value),
+              dag_json.field("a", argument.value)
+            ]),
+            rest: argument.rest
+          }
+        }
+        Let(value) -> {
+          let definition = self(tail)
+          let then = self(definition.rest)
+          {
+            value: node("l", [
+              label(value),
+              dag_json.field("v", definition.value),
+              dag_json.field("t", then.value)
+            ]),
+            rest: then.rest
+          }
+        }
+        Binary(value) -> { {value: node("x", [dag_json.field("v", dag_json.binary(value))]), rest: tail} }
+        Integer(value) -> { {value: node("i", [dag_json.field("v", dag_json.integer(value))]), rest: tail} }
+        String(value) -> { {value: node("s", [dag_json.field("v", dag_json.string(value))]), rest: tail} }
+        Tail(_) -> { {value: node("ta", []), rest: tail} }
+        Cons(_) -> { {value: node("c", []), rest: tail} }
+        Vacant(_) -> { {value: node("z", []), rest: tail} }
+        Empty(_) -> { {value: node("u", []), rest: tail} }
+        Extend(value) -> { {value: node("e", [label(value)]), rest: tail} }
+        Select(value) -> { {value: node("g", [label(value)]), rest: tail} }
+        Overwrite(value) -> { {value: node("o", [label(value)]), rest: tail} }
+        Tag(value) -> { {value: node("t", [label(value)]), rest: tail} }
+        Case(value) -> { {value: node("m", [label(value)]), rest: tail} }
+        NoCases(_) -> { {value: node("n", []), rest: tail} }
+        Perform(value) -> { {value: node("p", [label(value)]), rest: tail} }
+        Handle(value) -> { {value: node("h", [label(value)]), rest: tail} }
+        Builtin(value) -> { {value: node("b", [label(value)]), rest: tail} }
+        ContentReference(value) -> {
+          {value: node("#", [dag_json.field("l", dag_json.link(value))]), rest: tail}
+        }
+        ReleaseReference(value) -> {
+          {
+            value: node("@", [
+              dag_json.field("p", dag_json.string(value.package)),
+              dag_json.field("r", dag_json.integer(value.version)),
+              dag_json.field("l", dag_json.link(value.cid))
+            ]),
+            rest: tail
+          }
+        }
+        RelativeReference(value) -> {
+          {value: node(".", [dag_json.field("i", dag_json.string(value))]), rest: tail}
+        }
+      }
+    }
+  }
+})
+
+let ast_to_value = (nodes) -> {
+  parse(nodes).value
+}
+
+let ast_to_parts = (nodes) -> {
+  ast_to_value(nodes)([])
+}
+
+let ast_to_string = (nodes) -> {
+  dag_json.to_string(ast_to_value(nodes))
+}
+
+{
+  ast_to_value,
+  ast_to_parts,
+  ast_to_string,
+  source_decoder,
+  source_json_to_ast,
+  source_json_bytes_to_ast
+}
+
