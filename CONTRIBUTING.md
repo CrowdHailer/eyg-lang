@@ -1,5 +1,13 @@
 # Contributing to EYG
 
+## Writing EYG packages
+
+All EYG packages are in the `eyg_packages` directory.
+A package should expose it's tests as the `tests` field of the entry module.
+The entry module will be in `entry.eyg` of the package directory.
+
+The tests for all packages can be run using the repository level `entry.eyg` file.
+
 ## Setup local development
 
 The application is specified as a Docker Compose file in the eyg.run [package](./packages/eyg.run)

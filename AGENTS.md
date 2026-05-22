@@ -28,3 +28,8 @@ However this cannot be referenced or published as it's evaluated value is not co
 A `@name` reference resolves to the latest published version of a package.
 For reproducible scripts use the pinned forms described in the
 [syntax guide](./guides/simple_syntax.md#named-packages):
+
+## EYG packages
+
+All code written into `eyg_packages` must be completly tested.
+Ensure that the whole suite of tests still pass by running `entry.eyg` from the top level of the repository.
