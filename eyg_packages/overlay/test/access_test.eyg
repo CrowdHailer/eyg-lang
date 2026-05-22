@@ -1,0 +1,339 @@
+// Tests for overlay.access. The suite exercises the policy values directly
+// and through real handlers so the package documents its own runtime behavior.
+
+let aok = import "../../aok/index.eyg"
+let access = import "../access.eyg"
+
+let append = (a, b) -> {
+  !string_append(a, b)
+}
+
+let bytes = (text) -> {
+  !string_to_binary(text)
+}
+
+let fetch_request = (method, scheme, host, port) -> {
+  {
+    method,
+    scheme,
+    host,
+    port,
+    path: "/v1/items",
+    query: None({}),
+    headers: [],
+    body: bytes("")
+  }
+}
+
+let get_request = fetch_request(GET({}), HTTPS({}), "api.example.com", None({}))
+let post_request = fetch_request(POST({}), HTTPS({}), "api.example.com", None({}))
+let port_request = fetch_request(GET({}), HTTPS({}), "api.example.com", Some(8443))
+
+let read_request = (path, limit) -> {
+  {path, offset: 0, limit}
+}
+
+let write_request = (path, text) -> {
+  {path, contents: bytes(text)}
+}
+
+let fixture_root = "eyg_packages/overlay/fixtures"
+let source_path = "eyg_packages/overlay/fixtures/source.txt"
+let output_path = "eyg_packages/overlay/fixtures/allow_all_output.txt"
+
+let expect_allow = (decision) -> {
+  match decision {
+    Allow(_) -> { {} }
+    Deny(reason) -> { perform Abort(append("expected Allow decision, denied: ", reason)) }
+    | (_) -> { perform Abort("expected Allow decision") }
+  }
+}
+
+let expect_deny = (decision) -> {
+  match decision {
+    Deny(reason) -> { reason }
+    Allow(_) -> { perform Abort("expected Deny decision, got Allow") }
+    | (_) -> { perform Abort("expected Deny decision") }
+  }
+}
+
+let expect_mock = (decision) -> {
+  match decision {
+    Mock(value) -> { value }
+    Deny(reason) -> { perform Abort(append("expected Mock decision, denied: ", reason)) }
+    Allow(_) -> { perform Abort("expected Mock decision, got Allow") }
+  }
+}
+
+let has_entry_named = !fix((self, entries, name) -> {
+  match !list_pop(entries) {
+    Ok({head, tail}) -> {
+      match !equal(head.name, name) {
+        True(_) -> { True({}) }
+        False(_) -> { self(tail, name) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+let test_core_decisions_and_combiner = (_) -> {
+  let _ = expect_allow(access.allow({}))
+  let _ = aok.equal_string("blocked", expect_deny(access.deny("blocked")({})))
+  let _ = aok.equal_string("mocked", expect_mock(access.mock("mocked")({})))
+
+  let _ = expect_allow(access.all([access.allow, access.allow])({}))
+  let _ = aok.equal_string(
+    "first",
+    expect_deny(access.all([access.allow, access.deny("first"), access.deny("second")])({}))
+  )
+  let _ = aok.equal_string(
+    "mocked",
+    expect_mock(access.all([access.allow, access.mock("mocked"), access.deny("after")])({}))
+  )
+  {}
+}
+
+let test_apply_deny_all_returns_effect_errors = (_) -> {
+  let output = access.apply(access.deny_all, (_) -> {
+    {
+      fetch: perform Fetch(get_request),
+      read_file: perform ReadFile(read_request(source_path, 20)),
+      read_directory: perform ReadDirectory(fixture_root),
+      write_file: perform WriteFile(write_request(output_path, "deny")),
+      append_file: perform AppendFile(write_request(output_path, "deny")),
+      delete_file: perform DeleteFile(output_path)
+    }
+  })
+
+  let _ = aok.equal_string("fetch denied by policy", aok.error(output.fetch))
+  let _ = aok.equal_string("read_file denied by policy", aok.error(output.read_file))
+  let _ = aok.equal_string("read_directory denied by policy", aok.error(output.read_directory))
+  let _ = aok.equal_string("write_file denied by policy", aok.error(output.write_file))
+  let _ = aok.equal_string("append_file denied by policy", aok.error(output.append_file))
+  let _ = aok.equal_string("delete_file denied by policy", aok.error(output.delete_file))
+  {}
+}
+
+let test_apply_mocks_without_host_io = (_) -> {
+  let mock_response = {
+    status: 202,
+    headers: [{key: "content-type", value: "text/plain"}],
+    body: bytes("accepted")
+  }
+  let entries = [{name: "virtual.txt", type: File({size: 7})}]
+  let policy = {
+    fetch: access.fetch.mock_response(mock_response),
+    read_file: access.read_file.mock_text("virtual file"),
+    read_directory: access.read_directory.mock_entries(entries),
+    write_file: access.write_file.mock_success,
+    append_file: access.append_file.mock_success,
+    delete_file: access.delete_file.mock_success,
+    ..access.deny_all
+  }
+
+  let output = access.apply(policy, (_) -> {
+    {
+      fetch: perform Fetch(get_request),
+      read_file: perform ReadFile(read_request("missing/no-host-read.txt", 5)),
+      read_directory: perform ReadDirectory("missing/no-host-directory"),
+      write_file: perform WriteFile(write_request("missing/no-host-write.txt", "write")),
+      append_file: perform AppendFile(write_request("missing/no-host-append.txt", "append")),
+      delete_file: perform DeleteFile("missing/no-host-delete.txt")
+    }
+  })
+
+  let _ = aok.equal(mock_response, aok.ok(output.fetch))
+  let _ = aok.equal(bytes("virtual file"), aok.ok(output.read_file))
+  let _ = aok.equal(entries, aok.ok(output.read_directory))
+  let _ = aok.equal({}, aok.ok(output.write_file))
+  let _ = aok.equal({}, aok.ok(output.append_file))
+  let _ = aok.equal({}, aok.ok(output.delete_file))
+  {}
+}
+
+let test_apply_allow_all_passes_file_effects_to_host = (_) -> {
+  let output = access.apply(access.allow_all, (_) -> {
+    let read = perform ReadFile(read_request(source_path, 100))
+    let read_directory = perform ReadDirectory(fixture_root)
+    let write_file = perform WriteFile(write_request(output_path, "one"))
+    let append_file = perform AppendFile(write_request(output_path, "two"))
+    let reread = perform ReadFile(read_request(output_path, 100))
+    let delete_file = perform DeleteFile(output_path)
+    {read, read_directory, write_file, append_file, reread, delete_file}
+  })
+
+  let _ = aok.equal(bytes("overlay fixture\n"), aok.ok(output.read))
+  let _ = aok.true(has_entry_named(aok.ok(output.read_directory), "source.txt"))
+  let _ = aok.equal({}, aok.ok(output.write_file))
+  let _ = aok.equal({}, aok.ok(output.append_file))
+  let _ = aok.equal(bytes("onetwo"), aok.ok(output.reread))
+  let _ = aok.equal({}, aok.ok(output.delete_file))
+  {}
+}
+
+let test_policy_record_overwrite_from_constants = (_) -> {
+  let from_deny = {
+    read_file: access.read_file.mock_text("overridden"),
+    ..access.deny_all
+  }
+  let deny_output = access.apply(from_deny, (_) -> {
+    perform ReadFile(read_request("missing/overridden.txt", 1))
+  })
+  let _ = aok.equal(bytes("overridden"), aok.ok(deny_output))
+
+  let from_allow = {
+    read_file: access.deny("custom read denial"),
+    ..access.allow_all
+  }
+  let allow_output = access.apply(from_allow, (_) -> {
+    perform ReadFile(read_request(source_path, 20))
+  })
+  let _ = aok.equal_string("custom read denial", aok.error(allow_output))
+  {}
+}
+
+let test_fetch_helpers = (_) -> {
+  let _ = expect_allow(access.fetch.allow_hosts(["api.example.com"])(get_request))
+  let _ = aok.equal_string(
+    "fetch denied: GET https://api.example.com",
+    expect_deny(access.fetch.allow_hosts(["elsewhere.example.com"])(get_request))
+  )
+  let _ = expect_allow(access.fetch.allow_get_hosts(["api.example.com"])(get_request))
+  let _ = aok.equal_string(
+    "fetch denied: POST https://api.example.com",
+    expect_deny(access.fetch.allow_get_hosts(["api.example.com"])(post_request))
+  )
+  let _ = expect_allow(access.fetch.allow_origins([
+    {scheme: HTTPS({}), host: "api.example.com", port: Some(8443)}
+  ])(port_request))
+  let _ = aok.equal_string(
+    "fetch denied: GET https://api.example.com:8443",
+    expect_deny(access.fetch.allow_origins([
+      {scheme: HTTPS({}), host: "api.example.com", port: None({})}
+    ])(port_request))
+  )
+  let _ = aok.equal_string(
+    "fetch denied: GET https://api.example.com",
+    expect_deny(access.fetch.deny_hosts(["api.example.com"])(get_request))
+  )
+  let _ = expect_allow(access.fetch.deny_hosts(["blocked.example.com"])(get_request))
+
+  let json = expect_mock(access.fetch.mock_json(201, "{\"ok\":true}")(get_request))
+  let _ = aok.equal(201, json.status)
+  let _ = aok.equal([{key: "content-type", value: "application/json"}], json.headers)
+  let _ = aok.equal(bytes("{\"ok\":true}"), json.body)
+  {}
+}
+
+let test_read_helpers = (_) -> {
+  let normalized = "eyg_packages/overlay/fixtures/../fixtures/source.txt"
+  let _ = expect_allow(access.read_file.allow_under([fixture_root])(read_request(normalized, 10)))
+  let _ = aok.equal_string(
+    "read_file denied: eyg_packages/overlay/fixtures-other/source.txt",
+    expect_deny(access.read_file.allow_under([fixture_root])(read_request("eyg_packages/overlay/fixtures-other/source.txt", 10)))
+  )
+  let _ = aok.equal_string(
+    "read_file denied: ../secret.txt",
+    expect_deny(access.read_file.allow_under([fixture_root])(read_request("../secret.txt", 10)))
+  )
+  let _ = expect_allow(access.read_file.allow_exact([source_path])(read_request(normalized, 10)))
+  let _ = aok.equal_string(
+    "read_file exceeds byte limit: 5",
+    expect_deny(access.read_file.max_bytes(5)(read_request(source_path, 6)))
+  )
+  let _ = expect_allow(access.read_file.max_bytes(5)(read_request(source_path, 5)))
+  let _ = aok.equal(bytes("text"), expect_mock(access.read_file.mock_text("text")(read_request("anything.txt", 1))))
+
+  let mock_files = access.read_file.mock_files([
+    {path: "virtual/./a.txt", contents: bytes("A")},
+  ])
+  let _ = aok.equal(bytes("A"), expect_mock(mock_files(read_request("virtual/a.txt", 1))))
+  let _ = aok.equal_string(
+    "read_file denied: virtual/missing.txt",
+    expect_deny(mock_files(read_request("virtual/missing.txt", 1)))
+  )
+  {}
+}
+
+let test_directory_helpers = (_) -> {
+  let entries = [{name: "one.txt", type: File({size: 1})}]
+  let _ = expect_allow(access.read_directory.allow_under([fixture_root])(fixture_root))
+  let _ = expect_allow(access.read_directory.allow_exact([fixture_root])(append(fixture_root, "/../fixtures")))
+  let _ = aok.equal_string(
+    "read_directory denied: eyg_packages/overlay",
+    expect_deny(access.read_directory.allow_exact([fixture_root])("eyg_packages/overlay"))
+  )
+  let _ = aok.equal(entries, expect_mock(access.read_directory.mock_entries(entries)("anything")))
+
+  let directories = access.read_directory.mock_directories([
+    {path: "virtual/dir", entries},
+  ])
+  let _ = aok.equal(entries, expect_mock(directories("virtual/./dir")))
+  let _ = aok.equal_string(
+    "read_directory denied: virtual/missing",
+    expect_deny(directories("virtual/missing"))
+  )
+  {}
+}
+
+let test_write_append_delete_helpers = (_) -> {
+  let write = write_request(append(fixture_root, "/out.txt"), "abc")
+  let outside = write_request("eyg_packages/overlay-other/out.txt", "abc")
+  let _ = expect_allow(access.write_file.allow_under([fixture_root])(write))
+  let _ = aok.equal_string(
+    "write_file denied: eyg_packages/overlay-other/out.txt",
+    expect_deny(access.write_file.allow_under([fixture_root])(outside))
+  )
+  let _ = expect_allow(access.write_file.allow_exact([append(fixture_root, "/out.txt")])(write))
+  let _ = aok.equal_string(
+    "write_file exceeds byte limit: 2",
+    expect_deny(access.write_file.max_bytes(2)(write))
+  )
+  let _ = aok.equal({}, expect_mock(access.write_file.mock_success(write)))
+
+  let _ = expect_allow(access.append_file.allow_under([fixture_root])(write))
+  let _ = expect_allow(access.append_file.allow_exact([append(fixture_root, "/out.txt")])(write))
+  let _ = aok.equal_string(
+    "append_file exceeds byte limit: 2",
+    expect_deny(access.append_file.max_bytes(2)(write))
+  )
+  let _ = aok.equal({}, expect_mock(access.append_file.mock_success(write)))
+
+  let delete_path = append(fixture_root, "/out.txt")
+  let _ = expect_allow(access.delete_file.allow_under([fixture_root])(delete_path))
+  let _ = expect_allow(access.delete_file.allow_exact([delete_path])(append(fixture_root, "/./out.txt")))
+  let _ = aok.equal_string(
+    "delete_file denied: eyg_packages/overlay-other/out.txt",
+    expect_deny(access.delete_file.allow_under([fixture_root])("eyg_packages/overlay-other/out.txt"))
+  )
+  let _ = aok.equal({}, expect_mock(access.delete_file.mock_success(delete_path)))
+  {}
+}
+
+let test_file_policy_builders = (_) -> {
+  let read_only = access.file.allow_read_under([fixture_root])
+  let _ = expect_allow(read_only.read_file(read_request(source_path, 10)))
+  let _ = expect_allow(read_only.read_directory(fixture_root))
+
+  let writable = access.file.allow_under([fixture_root])
+  let _ = expect_allow(writable.read_file(read_request(source_path, 10)))
+  let _ = expect_allow(writable.read_directory(fixture_root))
+  let _ = expect_allow(writable.write_file(write_request(append(fixture_root, "/out.txt"), "abc")))
+  let _ = expect_allow(writable.append_file(write_request(append(fixture_root, "/out.txt"), "abc")))
+  let _ = expect_allow(writable.delete_file(append(fixture_root, "/out.txt")))
+  {}
+}
+
+[
+  {name: "access core decisions and combiner", test: test_core_decisions_and_combiner},
+  {name: "access apply deny_all returns effect errors", test: test_apply_deny_all_returns_effect_errors},
+  {name: "access apply mocks without host IO", test: test_apply_mocks_without_host_io},
+  {name: "access apply allow_all passes file effects to host", test: test_apply_allow_all_passes_file_effects_to_host},
+  {name: "access policy record overwrite from constants", test: test_policy_record_overwrite_from_constants},
+  {name: "access fetch helpers", test: test_fetch_helpers},
+  {name: "access read helpers", test: test_read_helpers},
+  {name: "access directory helpers", test: test_directory_helpers},
+  {name: "access write append delete helpers", test: test_write_append_delete_helpers},
+  {name: "access file policy builders", test: test_file_policy_builders},
+]

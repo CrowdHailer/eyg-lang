@@ -1,0 +1,555 @@
+// Runtime access policy helpers for result-returning CLI effects.
+//
+// A policy returns one of three decisions:
+//
+//   Allow({})    - perform the original host effect.
+//   Mock(value)  - resume the effect as Ok(value) without host IO.
+//   Deny(reason) - resume the effect as Error(reason).
+//
+// The handlers deliberately preserve the wrapped function's return type.
+// Denials are delivered through the normal Result lower value of each
+// intercepted effect rather than through a wrapper around the whole run.
+
+let append = (a, b) -> {
+  !string_append(a, b)
+}
+
+let contains = !fix((self, items, value) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      match !equal(head, value) {
+        True(_) -> { True({}) }
+        False(_) -> { self(tail, value) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+let reverse = (items) -> {
+  !list_fold(items, [], (item, acc) -> { [item, ..acc] })
+}
+
+let join_path = (parts) -> {
+  match !list_pop(parts) {
+    Ok({head, tail}) -> {
+      !list_fold(tail, head, (part, acc) -> {
+        append(acc, append("/", part))
+      })
+    }
+    Error(_) -> { "." }
+  }
+}
+
+// Normalize a relative path lexically. This collapses `.` and `..` segments
+// before policy checks, and rejects paths that escape above the starting root.
+// It does not resolve symbolic links; the CLI runtime does not expose that
+// information to EYG code.
+let normalize_path = (path) -> {
+  match !string_starts_with(path, "/") {
+    True(_) -> { Error("absolute paths are not supported by overlay.access path helpers") }
+    False(_) -> {
+      let {head, tail} = !string_split(path, "/")
+      let parts = [head, ..tail]
+      let normalized = !fix((self, remaining, acc) -> {
+        match !list_pop(remaining) {
+          Ok({head, tail}) -> {
+            match !equal(head, "") {
+              True(_) -> { self(tail, acc) }
+              False(_) -> {
+                match !equal(head, ".") {
+                  True(_) -> { self(tail, acc) }
+                  False(_) -> {
+                    match !equal(head, "..") {
+                      True(_) -> {
+                        match !list_pop(acc) {
+                          Ok({tail: rest}) -> { self(tail, rest) }
+                          Error(_) -> { Error("path escapes above its root") }
+                        }
+                      }
+                      False(_) -> { self(tail, [head, ..acc]) }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          Error(_) -> { Ok(join_path(reverse(acc))) }
+        }
+      })
+      normalized(parts, [])
+    }
+  }
+}
+
+let path_denied = (effect, path) -> {
+  append(effect, append(" denied: ", path))
+}
+
+let path_is_under = (root, path) -> {
+  match !equal(root, ".") {
+    True(_) -> { True({}) }
+    False(_) -> {
+      match !equal(root, path) {
+        True(_) -> { True({}) }
+        False(_) -> { !string_starts_with(path, append(root, "/")) }
+      }
+    }
+  }
+}
+
+let any_under = !fix((self, roots, path) -> {
+  match !list_pop(roots) {
+    Ok({head, tail}) -> {
+      match normalize_path(head) {
+        Ok(root) -> {
+          match path_is_under(root, path) {
+            True(_) -> { True({}) }
+            False(_) -> { self(tail, path) }
+          }
+        }
+        Error(_) -> { self(tail, path) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+let any_exact = !fix((self, paths, path) -> {
+  match !list_pop(paths) {
+    Ok({head, tail}) -> {
+      match normalize_path(head) {
+        Ok(candidate) -> {
+          match !equal(candidate, path) {
+            True(_) -> { True({}) }
+            False(_) -> { self(tail, path) }
+          }
+        }
+        Error(_) -> { self(tail, path) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+let allow_path_under = (effect, roots, path) -> {
+  match normalize_path(path) {
+    Ok(normalized) -> {
+      match any_under(roots, normalized) {
+        True(_) -> { Allow({}) }
+        False(_) -> { Deny(path_denied(effect, path)) }
+      }
+    }
+    Error(_) -> { Deny(path_denied(effect, path)) }
+  }
+}
+
+let allow_path_exact = (effect, paths, path) -> {
+  match normalize_path(path) {
+    Ok(normalized) -> {
+      match any_exact(paths, normalized) {
+        True(_) -> { Allow({}) }
+        False(_) -> { Deny(path_denied(effect, path)) }
+      }
+    }
+    Error(_) -> { Deny(path_denied(effect, path)) }
+  }
+}
+
+let allow_max_bytes = (effect, requested, max) -> {
+  match !int_compare(requested, max) {
+    Gt(_) -> { Deny(append(effect, append(" exceeds byte limit: ", !int_to_string(max)))) }
+    Eq(_) -> { Allow({}) }
+    Lt(_) -> { Allow({}) }
+  }
+}
+
+let method_name = (method) -> {
+  match method {
+    CONNECT(_) -> { "CONNECT" }
+    DELETE(_) -> { "DELETE" }
+    GET(_) -> { "GET" }
+    HEAD(_) -> { "HEAD" }
+    OPTIONS(_) -> { "OPTIONS" }
+    PATCH(_) -> { "PATCH" }
+    POST(_) -> { "POST" }
+    PUT(_) -> { "PUT" }
+    TRACE(_) -> { "TRACE" }
+    | (_) -> { "OTHER" }
+  }
+}
+
+let scheme_name = (scheme) -> {
+  match scheme {
+    HTTP(_) -> { "http" }
+    HTTPS(_) -> { "https" }
+    | (_) -> { "unknown" }
+  }
+}
+
+let port_suffix = (port) -> {
+  match port {
+    Some(value) -> { append(":", !int_to_string(value)) }
+    None(_) -> { "" }
+  }
+}
+
+let origin_string = (request) -> {
+  append(
+    scheme_name(request.scheme),
+    append("://", append(request.host, port_suffix(request.port)))
+  )
+}
+
+let fetch_denied = (request) -> {
+  append("fetch denied: ", append(method_name(request.method), append(" ", origin_string(request))))
+}
+
+let fetch_allow_hosts = (hosts) -> {
+  (request) -> {
+    match contains(hosts, request.host) {
+      True(_) -> { Allow({}) }
+      False(_) -> { Deny(fetch_denied(request)) }
+    }
+  }
+}
+
+let fetch_allow_get_hosts = (hosts) -> {
+  (request) -> {
+    match request.method {
+      GET(_) -> { fetch_allow_hosts(hosts)(request) }
+      | (_) -> { Deny(fetch_denied(request)) }
+    }
+  }
+}
+
+let fetch_allow_origins = (origins) -> {
+  (request) -> {
+    let origin = {scheme: request.scheme, host: request.host, port: request.port}
+    match contains(origins, origin) {
+      True(_) -> { Allow({}) }
+      False(_) -> { Deny(fetch_denied(request)) }
+    }
+  }
+}
+
+let fetch_deny_hosts = (hosts) -> {
+  (request) -> {
+    match contains(hosts, request.host) {
+      True(_) -> { Deny(fetch_denied(request)) }
+      False(_) -> { Allow({}) }
+    }
+  }
+}
+
+let fetch_mock_response = (response) -> {
+  (_) -> { Mock(response) }
+}
+
+let fetch_mock_json = (status, body) -> {
+  fetch_mock_response({
+    status,
+    headers: [{key: "content-type", value: "application/json"}],
+    body: !string_to_binary(body)
+  })
+}
+
+let read_file_allow_under = (roots) -> {
+  (request) -> { allow_path_under("read_file", roots, request.path) }
+}
+
+let read_file_allow_exact = (paths) -> {
+  (request) -> { allow_path_exact("read_file", paths, request.path) }
+}
+
+let read_file_max_bytes = (max) -> {
+  (request) -> { allow_max_bytes("read_file", request.limit, max) }
+}
+
+let read_file_mock_text = (text) -> {
+  (_) -> { Mock(!string_to_binary(text)) }
+}
+
+let read_file_mock_files = (files) -> {
+  (request) -> {
+    match normalize_path(request.path) {
+      Ok(path) -> {
+        !fix((self, remaining) -> {
+          match !list_pop(remaining) {
+            Ok({head, tail}) -> {
+              match normalize_path(head.path) {
+                Ok(candidate) -> {
+                  match !equal(candidate, path) {
+                    True(_) -> { Mock(head.contents) }
+                    False(_) -> { self(tail) }
+                  }
+                }
+                Error(_) -> { self(tail) }
+              }
+            }
+            Error(_) -> { Deny(path_denied("read_file", request.path)) }
+          }
+        })(files)
+      }
+      Error(_) -> { Deny(path_denied("read_file", request.path)) }
+    }
+  }
+}
+
+let read_directory_allow_under = (roots) -> {
+  (path) -> { allow_path_under("read_directory", roots, path) }
+}
+
+let read_directory_allow_exact = (paths) -> {
+  (path) -> { allow_path_exact("read_directory", paths, path) }
+}
+
+let read_directory_mock_entries = (entries) -> {
+  (_) -> { Mock(entries) }
+}
+
+let read_directory_mock_directories = (directories) -> {
+  (path) -> {
+    match normalize_path(path) {
+      Ok(normalized) -> {
+        !fix((self, remaining) -> {
+          match !list_pop(remaining) {
+            Ok({head, tail}) -> {
+              match normalize_path(head.path) {
+                Ok(candidate) -> {
+                  match !equal(candidate, normalized) {
+                    True(_) -> { Mock(head.entries) }
+                    False(_) -> { self(tail) }
+                  }
+                }
+                Error(_) -> { self(tail) }
+              }
+            }
+            Error(_) -> { Deny(path_denied("read_directory", path)) }
+          }
+        })(directories)
+      }
+      Error(_) -> { Deny(path_denied("read_directory", path)) }
+    }
+  }
+}
+
+let write_file_allow_under = (roots) -> {
+  (request) -> { allow_path_under("write_file", roots, request.path) }
+}
+
+let write_file_allow_exact = (paths) -> {
+  (request) -> { allow_path_exact("write_file", paths, request.path) }
+}
+
+let write_file_max_bytes = (max) -> {
+  (request) -> { allow_max_bytes("write_file", !binary_size(request.contents), max) }
+}
+
+let write_file_mock_success = (_) -> {
+  Mock({})
+}
+
+let append_file_allow_under = (roots) -> {
+  (request) -> { allow_path_under("append_file", roots, request.path) }
+}
+
+let append_file_allow_exact = (paths) -> {
+  (request) -> { allow_path_exact("append_file", paths, request.path) }
+}
+
+let append_file_max_bytes = (max) -> {
+  (request) -> { allow_max_bytes("append_file", !binary_size(request.contents), max) }
+}
+
+let append_file_mock_success = (_) -> {
+  Mock({})
+}
+
+let delete_file_allow_under = (roots) -> {
+  (path) -> { allow_path_under("delete_file", roots, path) }
+}
+
+let delete_file_allow_exact = (paths) -> {
+  (path) -> { allow_path_exact("delete_file", paths, path) }
+}
+
+let delete_file_mock_success = (_) -> {
+  Mock({})
+}
+
+let allow = (_) -> {
+  Allow({})
+}
+
+let deny = (reason) -> {
+  (_) -> { Deny(reason) }
+}
+
+let mock = (value) -> {
+  (_) -> { Mock(value) }
+}
+
+let all = (policies) -> {
+  (request) -> {
+    !fix((self, remaining) -> {
+      match !list_pop(remaining) {
+        Ok({head, tail}) -> {
+          match head(request) {
+            Allow(_) -> { self(tail) }
+            Mock(value) -> { Mock(value) }
+            Deny(reason) -> { Deny(reason) }
+          }
+        }
+        Error(_) -> { Allow({}) }
+      }
+    })(policies)
+  }
+}
+
+let allow_all = {
+  fetch: allow,
+  read_file: allow,
+  read_directory: allow,
+  write_file: allow,
+  append_file: allow,
+  delete_file: allow
+}
+
+let deny_all = {
+  fetch: deny("fetch denied by policy"),
+  read_file: deny("read_file denied by policy"),
+  read_directory: deny("read_directory denied by policy"),
+  write_file: deny("write_file denied by policy"),
+  append_file: deny("append_file denied by policy"),
+  delete_file: deny("delete_file denied by policy")
+}
+
+let apply = (policy, run) -> {
+  handle Fetch((request, resume) -> {
+    match policy.fetch(request) {
+      Allow(_) -> { resume(perform Fetch(request)) }
+      Mock(response) -> { resume(Ok(response)) }
+      Deny(reason) -> { resume(Error(reason)) }
+    }
+  }, (_) -> {
+    handle ReadFile((request, resume) -> {
+      match policy.read_file(request) {
+        Allow(_) -> { resume(perform ReadFile(request)) }
+        Mock(bytes) -> { resume(Ok(bytes)) }
+        Deny(reason) -> { resume(Error(reason)) }
+      }
+    }, (_) -> {
+      handle ReadDirectory((path, resume) -> {
+        match policy.read_directory(path) {
+          Allow(_) -> { resume(perform ReadDirectory(path)) }
+          Mock(entries) -> { resume(Ok(entries)) }
+          Deny(reason) -> { resume(Error(reason)) }
+        }
+      }, (_) -> {
+        handle WriteFile((request, resume) -> {
+          match policy.write_file(request) {
+            Allow(_) -> { resume(perform WriteFile(request)) }
+            Mock(ok) -> { resume(Ok(ok)) }
+            Deny(reason) -> { resume(Error(reason)) }
+          }
+        }, (_) -> {
+          handle AppendFile((request, resume) -> {
+            match policy.append_file(request) {
+              Allow(_) -> { resume(perform AppendFile(request)) }
+              Mock(ok) -> { resume(Ok(ok)) }
+              Deny(reason) -> { resume(Error(reason)) }
+            }
+          }, (_) -> {
+            handle DeleteFile((path, resume) -> {
+              match policy.delete_file(path) {
+                Allow(_) -> { resume(perform DeleteFile(path)) }
+                Mock(ok) -> { resume(Ok(ok)) }
+                Deny(reason) -> { resume(Error(reason)) }
+              }
+            }, run)
+          })
+        })
+      })
+    })
+  })
+}
+
+let fetch = {
+  allow_hosts: fetch_allow_hosts,
+  allow_get_hosts: fetch_allow_get_hosts,
+  allow_origins: fetch_allow_origins,
+  deny_hosts: fetch_deny_hosts,
+  mock_response: fetch_mock_response,
+  mock_json: fetch_mock_json
+}
+
+let read_file = {
+  allow_under: read_file_allow_under,
+  allow_exact: read_file_allow_exact,
+  max_bytes: read_file_max_bytes,
+  mock_text: read_file_mock_text,
+  mock_files: read_file_mock_files
+}
+
+let read_directory = {
+  allow_under: read_directory_allow_under,
+  allow_exact: read_directory_allow_exact,
+  mock_entries: read_directory_mock_entries,
+  mock_directories: read_directory_mock_directories
+}
+
+let write_file = {
+  allow_under: write_file_allow_under,
+  allow_exact: write_file_allow_exact,
+  max_bytes: write_file_max_bytes,
+  mock_success: write_file_mock_success
+}
+
+let append_file = {
+  allow_under: append_file_allow_under,
+  allow_exact: append_file_allow_exact,
+  max_bytes: append_file_max_bytes,
+  mock_success: append_file_mock_success
+}
+
+let delete_file = {
+  allow_under: delete_file_allow_under,
+  allow_exact: delete_file_allow_exact,
+  mock_success: delete_file_mock_success
+}
+
+let file = {
+  allow_read_under: (roots) -> {
+    {
+      read_file: read_file_allow_under(roots),
+      read_directory: read_directory_allow_under(roots)
+    }
+  },
+  allow_under: (roots) -> {
+    {
+      read_file: read_file_allow_under(roots),
+      read_directory: read_directory_allow_under(roots),
+      write_file: write_file_allow_under(roots),
+      append_file: append_file_allow_under(roots),
+      delete_file: delete_file_allow_under(roots)
+    }
+  }
+}
+
+{
+  apply,
+  allow_all,
+  deny_all,
+  allow,
+  deny,
+  mock,
+  all,
+  fetch,
+  read_file,
+  read_directory,
+  write_file,
+  append_file,
+  delete_file,
+  file
+}

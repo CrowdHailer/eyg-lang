@@ -4,7 +4,8 @@ let aok = import "eyg_packages/aok/index.eyg"
 
 let tests = list.flatten([
   import "./eyg_packages/standard/test.eyg",
-  import "./eyg_packages/eyg/entry.eyg".tests
+  import "./eyg_packages/eyg/entry.eyg".tests,
+  import "./eyg_packages/overlay/entry.eyg".tests
 ])
 let test = (_) -> {
   aok.all(tests)

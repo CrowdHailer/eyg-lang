@@ -8,6 +8,10 @@ EYG separates the **declaration** of an effect (in your script:
 The CLI in this repository ([`packages/gleam_cli`](../packages/gleam_cli/))
 implements the effects below.
 
+For scripts that need value-based restrictions around `Fetch` and the
+result-returning file-system effects, see
+[`overlay.access`](./access_policies.md).
+
 ## File system
 
 ### `ReadFile`
@@ -154,7 +158,7 @@ let request = {
   path: "",
   query: None({}),
   headers: [],
-  body: !string_to_binary(""),
+  body: !string_to_binary("")
 }
 match perform Fetch(request) {
   Ok({status, headers, body}) -> { status }
@@ -220,7 +224,7 @@ let request = {
   path: "/user",
   query: None({}),
   headers: [],
-  body: !string_to_binary(""),
+  body: !string_to_binary("")
 }
 perform GitHub(request)
 ```
