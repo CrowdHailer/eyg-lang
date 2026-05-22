@@ -20,6 +20,11 @@ let x = 5
 x
 ```
 
+### Blocks
+
+Multiple `let` statements form a block.
+EYG is expression based and bare statements (without a `let`) are not support.
+
 ---
 
 ## Literals
@@ -29,8 +34,8 @@ x
 Integers are written as sequences of digits. Negative integers use a leading `-`.
 
 ```eyg
-42
--7
+let x = 42
+let y = -7
 0
 ```
 
@@ -47,8 +52,8 @@ Strings are enclosed in double quotes. Supported escape sequences:
 | `\\`   | Backslash |
 
 ```eyg
-"hello, world"
-"line one\nline two"
+let a = "hello, world"
+let b = "line one\nline two"
 "she said \"hi\""
 ```
 
@@ -59,8 +64,8 @@ Strings are enclosed in double quotes. Supported escape sequences:
 A variable is any lowercase identifier (letters, digits, and underscores, starting with a letter or underscore).
 
 ```eyg
-x
-my_value
+let _ = x
+let _ = my_value
 counter1
 ```
 
@@ -152,8 +157,8 @@ add(3, 4)
 Any expression followed by `(args)` applies it as a function. Chained calls are left-associative.
 
 ```eyg
-f(x)
-f(x)(y)
+let _ = f(x)
+let _ = f(x)(y)
 outer(inner(value))
 ```
 
@@ -164,7 +169,7 @@ outer(inner(value))
 Records are ordered collections of named fields, written with `{}`.
 
 ```eyg
-{}
+let _ = {}
 {name: "Alice", age: 30}
 ```
 
@@ -201,8 +206,8 @@ let name = "Alice"
 Lists are written with `[]`. Items are separated by commas. A trailing comma is allowed.
 
 ```eyg
-[]
-[1, 2, 3]
+let l1 = []
+let l2 = [1, 2, 3]
 ["a", "b",]
 ```
 
@@ -211,8 +216,7 @@ Lists are written with `[]`. Items are separated by commas. A trailing comma is 
 `..expr` spreads an existing list as the tail:
 
 ```eyg
-[1, ..rest]
-[0, ..list]
+let list = [1, ..rest]
 ```
 
 ---
@@ -222,16 +226,16 @@ Lists are written with `[]`. Items are separated by commas. A trailing comma is 
 Tags create tagged values (like union variants). A tag name starts with an uppercase letter.
 
 ```eyg
-Ok
-Error
-True
+let _ = Ok
+let _ = Error
+let _ = True
 False
 ```
 
 Tags are applied as functions:
 
 ```eyg
-Ok(value)
+let _ = Ok(value)
 Error("something went wrong")
 ```
 
@@ -273,7 +277,7 @@ An else branch catches any tag not handled by previous cases. It is written with
 
 ```eyg
 match x {
-  Ok value -> { value }
+  Ok(value) -> { value }
   | (other) -> { -1 }
 }
 ```
@@ -309,8 +313,8 @@ handle Log
 Builtins call built-in runtime operations. They start with `!` followed by a lowercase identifier.
 
 ```eyg
-!int_add(3, 4)
-!int_multiply(x, y)
+let seven = !int_add(3, 4)
+let product = !int_multiply(x, y)
 !string_append("hello", " world")
 ```
 

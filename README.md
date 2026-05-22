@@ -37,7 +37,7 @@ A hello world script.
 ```eyg
 {
   script: (_) -> {
-    perform Print("Hello, World!\n")
+    let _ = perform Print("Hello, World!\n")
     0
   }
 }
