@@ -17,7 +17,7 @@ Ignore directories by name, the contents of any directory ignored will be be omi
 
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"
-let {list, string} = import "../eyg_packages/standard/index.eyg"
+let {list, string} = @standard
 
 let files = fs.list_files({root: ".", ignore: [".git", ".node_modules"]})
 let json_files = list.filter((path) -> { string.ends_with(path, ".json") })
@@ -30,7 +30,7 @@ The returned file information includes size.
 
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"
-let {list} = import "../eyg_packages/standard/index.eyg"
+let {list} = @standard
 
 let files_and_folders = fs.list({root: ".", ignore: [".git", ".node_modules"]})
 

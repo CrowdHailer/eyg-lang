@@ -38,6 +38,7 @@ A hello world script.
 {
   script: (_) -> {
     perform Print("Hello, World!\n")
+    0
   }
 }
 ```
@@ -48,9 +49,10 @@ Run a script using `eyg script path/to/script`.
 Code can be supplied as with the `-c <code>` flag.
 Code can be read from stdin with `-` or `--stdin`.
 
-An EYG script must return a record with the `script` field.
-The record type is `{script: ({}) -> Int ..}`
-The returned integer is the exit code of the script.
+An EYG file must contain a record a `script` function which accepts a list of string, the arguments, and returns an integer.
+The returned integer will be the exit code.
+
+The type of a valid script file is `{script: ({}) -> Int, ..}`.
 
 ### Pure evaluation
 
@@ -70,7 +72,7 @@ I the example below the `tests` variable will be setup in the shell.
 
 ```eyg
 {
-  script: (_) -> {
+  shell: (_) -> {
     let tests = import "./path/to/tests.eyg"
     perform Break({})
   }
@@ -106,7 +108,7 @@ on first use:
 - `Vimeo`
 
 For the input / output shape of each effect, see the
-[effects reference](../../guides/effects_reference.md).
+[effects reference](./guides/cli_effects_reference.md).
 
 ## Packages
 

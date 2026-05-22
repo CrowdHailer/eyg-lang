@@ -56,17 +56,24 @@ pub fn parse(args) {
 pub const help_text = "eyg — run EYG programs and interact with the EYG hub
 usage: eyg [<command> [<args>]]
 commands:
-  (no args)              start the REPL
+  (no args)              start the shell
+  shell <file>           Start a shell with the file as shell config
+  shell -, --stdin       Start a shell with stdin as shell config
+  shell -c, --code <code>Start a shell with inline shell config
+  script <file>          Run the script from the provided file
+  script -, --stdin      Run a script read from stdin
+  script -c, --code <code>
+                         Run a script from inline source
   <file> [args...]       Run a script with the remaining CLI args
-  run <file>             run EYG source from file
-  run -, --stdin         run EYG source read from stdin
-  run -c, --code <code>  run inline EYG source
   eval <file>            evaluate and print an expression with no side effects
   eval -, --stdin        evaluate EYG source read from stdin
   eval -c, --code <code> evaluate inline EYG source with no side effects
   check <file>           type check a script
   check -, --stdin       type check EYG source read from stdin
   check -c, --code <code> type check inline EYG source
+  run <file>             run EYG source from file
+  run -, --stdin         run EYG source read from stdin
+  run -c, --code <code>  run inline EYG source
   compile <file>         compile a script to JavaScript
   compile -, --stdin     compile EYG source read from stdin
   compile -c, --code <code>

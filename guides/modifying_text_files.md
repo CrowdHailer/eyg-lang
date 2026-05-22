@@ -83,7 +83,7 @@ The example below reads a list of source files, patches a version string in each
 ```eyg
 let fs   = import "../eyg_packages/fs/index.eyg"
 let edit = import "../eyg_packages/edit/index.eyg"
-let {list} = import "../eyg_packages/standard/index.eyg"
+let {list} = @standard
 
 let files = fs.list_files({root: ".", ignore: [".git"]})
 let source_files = list.filter((path) -> { string.ends_with(path, ".gleam") }, files)

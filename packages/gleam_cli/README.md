@@ -13,7 +13,24 @@ There are script examples available in this repo in [example](./examples/)
 
 ### Run a script
 
-To run a script pass in the file to the CLI `run` command.
+The `script` command will execute the a `script` function.
+Command line args are passed as a list of strings and the return value should be a integer, that will be the final exit code.
+
+A valid script file has the type `{script: ({}) -> Int, ..}`.
+
+The `script` command accepts a source file containing text syntax or JSON encoded IR.
+
+```sh
+eyg script path/to/file
+```
+
+To run inline source, pass `-c` or `--code`.
+
+### Run a file
+
+**Prefer running a script, instead of running a file.**
+
+The `run` command will execute the file and run any valid effects found.
 
 ```sh
 eyg run path/to/file.eyg
@@ -53,8 +70,7 @@ Lines beginning with `/` are shell commands rather than EYG source:
 
 ### Evaluate an expression
 
-To evaluate a script, without running any effects, pass in the file to the CLI `eval` command.
-
+To evaluate a file, without running any effects, pass in the file to the CLI `eval` command.
 
 ```sh
 eyg eval path/to/file.eyg

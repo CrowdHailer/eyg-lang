@@ -342,7 +342,7 @@ The version is a positive integer. The pinned hash, when given, must be a valid 
 
 A bare `@standard` references the latest pulled release of that package.
 Pin a version (`@standard:3`) for reproducible scripts.
-Provide a hash (`@standard:3#…`) to not require trust in the package hub.
+Provide a hash (`@standard:3:…`) to not require trust in the package hub.
 
 ---
 
@@ -352,7 +352,7 @@ Provide a hash (`@standard:3#…`) to not require trust in the package hub.
 
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"
-let {list} = import "../eyg_packages/standard/index.eyg"
+let {list} = import "../eyg_packages/standard/index.eyg.json"
 ```
 
 The imported value is the module's exported value (usually a record of functions).
@@ -369,7 +369,7 @@ The imported value is the module's exported value (usually a record of functions
 
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"
-let {list} = import "../eyg_packages/standard/index.eyg"
+let {list} = import "../eyg_packages/standard/index.eyg.json"
 
 let files = fs.list_files({root: ".", ignore: [".git"]})
 let gleam_files = list.filter(
