@@ -1,0 +1,87 @@
+// The native JSON IPLD format is called DAG-JSON to disambiguate it from regular JSON. Most simple JSON objects are valid DAG-JSON. The primary differences are:
+// 
+// - Bytes and Links are supported with special use of single-key ("/") map.
+// - In limited cases, maps with the key "/" other than those used to encode Bytes and Links, are disallowed.
+// - Maps are sorted by key.
+
+let aok = import "../../aok/index.eyg"
+let dag_json = import "../dag_json.eyg"
+
+let test_scalar_values = (_) -> {
+  let _ = aok.equal_string(dag_json.to_string(dag_json.string("hello")), "\"hello\"")
+  let _ = aok.equal_string(dag_json.to_string(dag_json.integer(42)), "42")
+  let _ = aok.equal_string(dag_json.to_string(dag_json.boolean(True({}))), "true")
+  let _ = aok.equal_string(dag_json.to_string(dag_json.boolean(False({}))), "false")
+  let _ = aok.equal_string(dag_json.to_string(dag_json.null), "null")
+  {}
+}
+
+let test_array = (_) -> {
+  let value = dag_json.array([
+    dag_json.string("a"),
+    dag_json.integer(2),
+    dag_json.boolean(True({}))
+  ])
+  let _ = aok.equal_string(dag_json.to_string(value), "[\"a\",2,true]")
+  {}
+}
+
+let test_object_sorts_fields = (_) -> {
+  let value = dag_json.object([
+    dag_json.field("v", dag_json.integer(1)),
+    dag_json.field("0", dag_json.string("i"))
+  ])
+  let _ = aok.equal_string(dag_json.to_string(value), "{\"0\":\"i\",\"v\":1}")
+  {}
+}
+
+let test_object_sorts_arbitrary_fields = (_) -> {
+  let value = dag_json.object([
+    dag_json.field("z", dag_json.integer(1)),
+    dag_json.field("aa", dag_json.integer(2)),
+    dag_json.field("a", dag_json.integer(3))
+  ])
+  let _ = aok.equal_string(dag_json.to_string(value), "{\"a\":3,\"aa\":2,\"z\":1}")
+  {}
+}
+
+let test_binary = (_) -> {
+  let _ = aok.equal_string(
+    dag_json.to_string(dag_json.binary(!string_to_binary(""))),
+    "{\"/\":{\"bytes\":\"\"}}"
+  )
+  {}
+}
+
+
+let test_link = (_) -> {
+  let value = dag_json.link("baguqeeraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+  let _ = aok.equal_string(
+    dag_json.to_string(value),
+    "{\"/\":\"baguqeeraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}"
+  )
+  {}
+}
+
+let test_nested = (_) -> {
+  let value = dag_json.object([
+    dag_json.field("module", dag_json.link("baguqeeraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")),
+    dag_json.field("package", dag_json.string("standard")),
+    dag_json.field("version", dag_json.integer(1))
+  ])
+  let _ = aok.equal_string(
+    dag_json.to_string(value),
+    "{\"module\":{\"/\":\"baguqeeraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"package\":\"standard\",\"version\":1}"
+  )
+  {}
+}
+
+[
+  {name: "dag-json scalar values", test: test_scalar_values},
+  {name: "dag-json array", test: test_array},
+  {name: "dag-json object sorts fields", test: test_object_sorts_fields},
+  {name: "dag-json object sorts arbitrary fields", test: test_object_sorts_arbitrary_fields},
+  {name: "dag-json binary", test: test_binary},
+  {name: "dag-json link", test: test_link},
+  {name: "dag-json nested object", test: test_nested}
+]

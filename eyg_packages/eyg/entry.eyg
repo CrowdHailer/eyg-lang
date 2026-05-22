@@ -1,7 +1,9 @@
 let aok = import "../aok/index.eyg"
 let tests = @standard.list.flatten([
   import "./test/base32_test.eyg",
+  import "./test/base64_test.eyg",
   import "./test/cid_test.eyg",
+  import "./test/dag_json_test.eyg",
   import "./test/json_test.eyg"
 ])
 

@@ -1,0 +1,191 @@
+let list = @standard.list
+let string = @standard.string
+let result = @standard.result
+
+let append3 = (a, b, c) -> {
+  list.append(a, list.append(b, c))
+}
+
+let byte_list = (bytes) -> {
+  list.reverse(!binary_fold(bytes, [], (byte, acc) -> { [byte, ..acc] }))
+}
+
+let remainder = (value, divisor) -> {
+  let quotient = result.unwrap(0, !int_divide(value, divisor))
+  !int_subtract(value, !int_multiply(quotient, divisor))
+}
+
+let byte_string = (value) -> {
+  result.unwrap("", !string_from_binary(!binary_from_integers([value])))
+}
+
+let base64_char = (value) -> {
+  match !int_compare(value, 26) {
+    Lt(_) -> { byte_string(!int_add(65, value)) }
+    | (_) -> {
+      match !int_compare(value, 52) {
+        Lt(_) -> { byte_string(!int_add(97, !int_subtract(value, 26))) }
+        | (_) -> {
+          match !int_compare(value, 62) {
+            Lt(_) -> { byte_string(!int_add(48, !int_subtract(value, 52))) }
+            Eq(_) -> { "+" }
+            Gt(_) -> { "/" }
+          }
+        }
+      }
+    }
+  }
+}
+
+let take3 = (bytes) -> {
+  match !list_pop(bytes) {
+    Error(_) -> { None({}) }
+    Ok({head: a, tail}) -> {
+      match !list_pop(tail) {
+        Error(_) -> { Some({a, b: 0, c: 0, size: 1, rest: []}) }
+        Ok({head: b, tail}) -> {
+          match !list_pop(tail) {
+            Error(_) -> { Some({a, b, c: 0, size: 2, rest: []}) }
+            Ok({head: c, tail}) -> { Some({a, b, c, size: 3, rest: tail}) }
+          }
+        }
+      }
+    }
+  }
+}
+
+let encode_chunk = ({a, b, c, size}) -> {
+  let first = result.unwrap(0, !int_divide(a, 4))
+  let second = !int_add(!int_multiply(remainder(a, 4), 16), result.unwrap(0, !int_divide(b, 16)))
+  let third = !int_add(!int_multiply(remainder(b, 16), 4), result.unwrap(0, !int_divide(c, 64)))
+  let fourth = remainder(c, 64)
+  match !int_compare(size, 1) {
+    Eq(_) -> { [base64_char(first), base64_char(second)] }
+    | (_) -> {
+      match !int_compare(size, 2) {
+        Eq(_) -> { [base64_char(first), base64_char(second), base64_char(third)] }
+        | (_) -> { [base64_char(first), base64_char(second), base64_char(third), base64_char(fourth)] }
+      }
+    }
+  }
+}
+
+let base64_parts = !fix((self, bytes, acc) -> {
+  match take3(bytes) {
+    None(_) -> { list.reverse(acc) }
+    Some(chunk) -> {
+      self(chunk.rest, list.append(list.reverse(encode_chunk(chunk)), acc))
+    }
+  }
+})
+
+let encode = (bytes) -> {
+  string.concat(base64_parts(byte_list(bytes), []))
+}
+
+let base64_value = (byte) -> {
+  match !int_compare(byte, 65) {
+    Lt(_) -> {
+      match !int_compare(byte, 43) {
+        Eq(_) -> { Some(62) }
+        | (_) -> {
+          match !int_compare(byte, 47) {
+            Eq(_) -> { Some(63) }
+            | (_) -> {
+              match !int_compare(byte, 48) {
+                Lt(_) -> { None({}) }
+                | (_) -> {
+                  match !int_compare(byte, 58) {
+                    Lt(_) -> { Some(!int_add(byte, 4)) }
+                    | (_) -> { None({}) }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    | (_) -> {
+      match !int_compare(byte, 91) {
+        Lt(_) -> { Some(!int_subtract(byte, 65)) }
+        | (_) -> {
+          match !int_compare(byte, 97) {
+            Lt(_) -> { None({}) }
+            | (_) -> {
+              match !int_compare(byte, 123) {
+                Lt(_) -> { Some(!int_subtract(byte, 71)) }
+                | (_) -> { None({}) }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+let base64_values = (encoded) -> {
+  let bytes = byte_list(!string_to_binary(encoded))
+  list.reverse(!list_fold(bytes, [], (byte, acc) -> {
+    match base64_value(byte) {
+      Some(value) -> { [value, ..acc] }
+      None(_) -> { acc }
+    }
+  }))
+}
+
+let take4 = (values) -> {
+  match !list_pop(values) {
+    Error(_) -> { None({}) }
+    Ok({head: a, tail}) -> {
+      match !list_pop(tail) {
+        Error(_) -> { None({}) }
+        Ok({head: b, tail}) -> {
+          match !list_pop(tail) {
+            Error(_) -> { Some({a, b, c: 0, d: 0, size: 2, rest: []}) }
+            Ok({head: c, tail}) -> {
+              match !list_pop(tail) {
+                Error(_) -> { Some({a, b, c, d: 0, size: 3, rest: []}) }
+                Ok({head: d, tail}) -> { Some({a, b, c, d, size: 4, rest: tail}) }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+let decode_chunk = ({a, b, c, d, size}) -> {
+  let first = !int_add(!int_multiply(a, 4), result.unwrap(0, !int_divide(b, 16)))
+  let second = !int_add(!int_multiply(remainder(b, 16), 16), result.unwrap(0, !int_divide(c, 4)))
+  let third = !int_add(!int_multiply(remainder(c, 4), 64), d)
+  match !int_compare(size, 2) {
+    Eq(_) -> { [first] }
+    | (_) -> {
+      match !int_compare(size, 3) {
+        Eq(_) -> { [first, second] }
+        | (_) -> { [first, second, third] }
+      }
+    }
+  }
+}
+
+let base64_decode_bytes = !fix((self, values, acc) -> {
+  match take4(values) {
+    None(_) -> { !binary_from_integers(list.reverse(acc)) }
+    Some(chunk) -> {
+      self(chunk.rest, list.append(list.reverse(decode_chunk(chunk)), acc))
+    }
+  }
+})
+
+let decode = (encoded) -> {
+  base64_decode_bytes(base64_values(encoded), [])
+}
+
+{
+  decode,
+  encode
+}

@@ -1,0 +1,68 @@
+// DAG JSON encoder.
+//
+// Values are represented in the same continuation style as json.eyg:
+// each constructor returns a function that prepends its encoded parts to
+// an accumulator.
+
+let json = import "./json.eyg"
+let base64 = import "./base64.eyg"
+
+let reverse = !fix((self, items, acc) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> { self(tail, [head, ..acc]) }
+    Error(_) -> { acc }
+  }
+})
+
+let comes_before = (left, right) -> {
+  match !binary_compare(!string_to_binary(left.key), !string_to_binary(right.key)) {
+    Lt(_) -> { True({}) }
+    Eq(_) -> { True({}) }
+    Gt(_) -> { False({}) }
+  }
+}
+
+let insert = !fix((self, sorted, entry) -> {
+  match !list_pop(sorted) {
+    Error(_) -> { [entry] }
+    Ok({head, tail}) -> {
+      match comes_before(entry, head) {
+        True(_) -> { [entry, head, ..tail] }
+        False(_) -> { [head, ..self(tail, entry)] }
+      }
+    }
+  }
+})
+
+let sort_fields = (fields) -> {
+  !list_fold(fields, [], (entry, acc) -> { insert(acc, entry) })
+}
+
+let object = (fields) -> {
+  json.object(sort_fields(fields))
+}
+
+let binary = (bytes) -> {
+  json.object([
+    json.field("/", json.object([
+      json.field("bytes", json.string(base64.encode(bytes)))
+    ]))
+  ])
+}
+
+let link = (cid) -> {
+  object([json.field("/", json.string(cid))])
+}
+
+{
+  binary,
+  string: json.string,
+  integer: json.integer,
+  boolean: json.boolean,
+  null: json.null,
+  array: json.array,
+  object,
+  field: json.field,
+  link,
+  to_string: json.to_string
+}

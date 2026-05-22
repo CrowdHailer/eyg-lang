@@ -1,0 +1,57 @@
+let aok = import "../../aok/index.eyg"
+let base64 = import "../base64.eyg"
+let list = @standard.list
+
+let encode_test = (_) -> {
+  let _ = aok.equal_string(base64.encode(!string_to_binary("")), "")
+  let _ = aok.equal_string(base64.encode(!string_to_binary("f")), "Zg")
+  let _ = aok.equal_string(base64.encode(!string_to_binary("fo")), "Zm8")
+  let _ = aok.equal_string(base64.encode(!string_to_binary("foo")), "Zm9v")
+  let _ = aok.equal_string(base64.encode(!string_to_binary("foob")), "Zm9vYg")
+  let _ = aok.equal_string(base64.encode(!string_to_binary("fooba")), "Zm9vYmE")
+  let _ = aok.equal_string(base64.encode(!string_to_binary("foobar")), "Zm9vYmFy")
+  {}
+}
+
+let decode_test = (_) -> {
+  let _ = aok.equal(!string_to_binary(""), base64.decode(""))
+  let _ = aok.equal(!string_to_binary("f"), base64.decode("Zg"))
+  let _ = aok.equal(!string_to_binary("fo"), base64.decode("Zm8"))
+  let _ = aok.equal(!string_to_binary("foo"), base64.decode("Zm9v"))
+  let _ = aok.equal(!string_to_binary("foob"), base64.decode("Zm9vYg"))
+  let _ = aok.equal(!string_to_binary("fooba"), base64.decode("Zm9vYmE"))
+  let _ = aok.equal(!string_to_binary("foobar"), base64.decode("Zm9vYmFy"))
+  {}
+}
+
+let roundtrip = (bytes) -> {
+  aok.equal(bytes, base64.decode(base64.encode(bytes)))
+}
+
+let roundtrip_test = (_) -> {
+  let _ = roundtrip(!binary_from_integers([]))
+  let _ = roundtrip(!binary_from_integers([0]))
+  let _ = roundtrip(!binary_from_integers([255]))
+  let _ = roundtrip(!binary_from_integers([1, 2]))
+  let _ = roundtrip(!binary_from_integers([1, 2, 3]))
+  let _ = roundtrip(!binary_from_integers([1, 2, 3, 4]))
+  let _ = roundtrip(!binary_from_integers([1, 2, 3, 4, 5]))
+  let _ = roundtrip(!binary_from_integers([10, 20, 30, 40, 50, 60]))
+  let _ = roundtrip(!binary_from_integers([255, 254, 253, 252, 251, 250, 249]))
+  {}
+}
+
+let all_chars_test = (_) -> {
+  let all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  // 64 chars -> 16 chunks of 4 -> 16 * 3 = 48 bytes
+  let decoded = base64.decode(all_chars)
+  let _ = aok.equal_string(base64.encode(decoded), all_chars)
+  {}
+}
+
+[
+  {name: "base64 encode RFC vectors", test: encode_test},
+  {name: "base64 decode RFC vectors", test: decode_test},
+  {name: "base64 roundtrip", test: roundtrip_test},
+  {name: "base64 all characters mapping", test: all_chars_test}
+]
