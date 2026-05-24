@@ -16,7 +16,7 @@ There are script examples available in this repo in [example](./examples/)
 The `script` command will execute the a `script` function.
 Command line args are passed as a list of strings and the return value should be a integer, that will be the final exit code.
 
-A valid script file has the type `{script: ({}) -> Int, ..}`.
+A valid script file has the type `{script: (List(String)) -> Int, ..}`.
 
 The `script` command accepts a source file containing text syntax or JSON encoded IR.
 

@@ -52,7 +52,7 @@ Code can be read from stdin with `-` or `--stdin`.
 An EYG file must contain a record a `script` function which accepts a list of string, the arguments, and returns an integer.
 The returned integer will be the exit code.
 
-The type of a valid script file is `{script: ({}) -> Int, ..}`.
+The type of a valid script file is `{script: (List(String)) -> Int, ..}`.
 
 ### Pure evaluation
 
