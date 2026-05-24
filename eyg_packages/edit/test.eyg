@@ -1,4 +1,4 @@
-let {write_text, append_text, patch, grep} = import "./index.eyg"
+let {write_text, append_text, append_line, patch, grep} = import "./index.eyg"
 
 let print_line = (line) -> {
   perform Print(!string_append(line, "\n"))
@@ -37,6 +37,16 @@ let test_suite = ({}) -> {
   }
   let appended = perform ReadFile({path: "fixtures/append_output.txt", offset: 0, limit: 1000000})
   let _ = assert_eq(Ok(!string_to_binary("first second")), appended, "append_text accumulates content")
+
+  // Test append_line: appends a newline after each item
+  let _ = write_text({path: "fixtures/append_output.txt", text: ""})
+  let _ = match append_line({path: "fixtures/append_output.txt", line: "first"}) {
+    Ok(_) -> { assert_true(True({}), "append_line returns ok") }
+    Error(_) -> { assert_true(False({}), "append_line returns ok") }
+  }
+  let _ = append_line({path: "fixtures/append_output.txt", line: "second"})
+  let appended_lines = perform ReadFile({path: "fixtures/append_output.txt", offset: 0, limit: 1000000})
+  let _ = assert_eq(Ok(!string_to_binary("first\nsecond\n")), appended_lines, "append_line appends newline")
 
   // Test patch: find and replace within a file
   let _ = write_text({path: "fixtures/patch_output.txt", text: "Hello, World!"})

@@ -59,4 +59,4 @@ let grep = ({text, patterns}) -> {
   
 }
 
-{write_text, append_text, patch, grep}
+{write_text, append_text, append_line, patch, grep}
