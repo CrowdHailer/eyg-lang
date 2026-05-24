@@ -1,22 +1,90 @@
 import website/routes/news/edition.{Edition}
 
 pub const published = [
-  // pretty render values
-  // cli returns nonzero good for tests
-  // add 4 effects
-  // Implement DNSimple effect in browser
-  // implement eval that renders expressions
-  // The new syntax is additive:
-  // ```sh
-  // eyg run -c '!print("hello")'
-  // eyg eval --code '!int_add(1, 1)'
-  // eyg compile -c '!int_add(1, 1)'
-  // ```
-  // builtins reference
-  // pretty runtime errors
-  // inline pinning
-  // check command and pretty type analysis
-  // shell and script field
+  Edition(
+    "2026-05-24",
+    "A host of CLI improvements, new guides and new effects",
+    "
+Over the last few weeks I've focused on making the CLI ergonomic to use.
+This includes new commands and new flags, better output and easier installation.
+
+## New CLI commands and flags
+
+The [CLI](https://github.com/CrowdHailer/eyg-lang/tree/main/packages/gleam_cli) has gained the commands `eval`, `check` `script` and `shell`.
+
+- With `eval` you can evaluate source code without running any effects and print the resulting value.
+- Type check any expression using the `check` command.
+- The `shell` command replaces `repl` and accepts an optional source file as shell config.
+- Run an EYG script using the `script` command. 
+
+All of the new and existing commands get two new flags.
+The `--code` or `-c` flag accepts inline code. 
+Use `--stdin` or `-` to pipe source from STDIN.
+
+## Better output
+
+The [glam library](https://github.com/giacomocavalieri/glam) has been a great discovery.
+Glam enables you to define your own pretty printer for any type.
+The printed value neatly wraps on to multiple lines with correct indentation depending on it's size.
+
+Pretty printing and the eval command is a brilliant way to explore values.
+For example to see all the functions in the string module from the standard library run
+
+```sh
+eyg eval -c '@standard.string'
+```
+
+Errors are also improved with the full stacktrace being printed and the file path of the error also presented.
+
+## Easier installation
+
+Building cross platform binaries is now done in CI.
+Installing the correct binary for your machine is now a single line command.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash
+```
+
+There are even more improvements in the CLI.
+
+- The CLI now returns non-zero exit codes on failure, ensuring your CI/CD pipelines and shell scripts can react correctly to errors.
+- The shell now has commands `/help`, `/scope` (list all variables in scope) and `/type` (type check an expression in the repl)
+
+The best way to see all the improvements is to try that installer and have a play.
+Any difficulties please do let me know.
+
+## New guides
+
+The [guides](https://eyg.run/guides) are now available on the website.
+New guides written include:
+
+- [full reference of builtins](https://eyg.run/guides/builtins-reference)
+- [full reference of effects available to the CLI](https://eyg.run/guides/cli-effects-reference)
+- [How to install prebuilt binary](https://eyg.run/guides/install-a-prebuilt-binary)
+- [How to install from source](https://eyg.run/guides/install-from-source)
+- [A guide on controlling side effects with runtime policies](https://eyg.run/guides/effect-access-policies)
+
+I'm particularly pleased with the effect access policy guides.
+I'll be talking more about that soon.
+
+## New effects.
+
+The CLI now supports the effects `DeleteFile`, `Env`, `Hash`, `Now`, `Random` and `Sleep`.
+A much more complete set to write useful scripts with. See the [full reference](https://eyg.run/guides/cli-effects-reference)
+
+The authenticated effects now work in the web environment.
+You can check out a `perform `DNSimple(operation)` example on the [homepage](https://eyg.run)
+
+## Other news
+
+To end, a few extra improvements that don't fit above include:
+
+- A new builtin `binary_compare` to sort binary values
+- Inline pinning of releases, see the [syntax guide](https://eyg.run/guides/eyg-syntax-guide) for details
+- EYG packages for encoding JSON, for working with DAG JSON (the reason for the new builtin), encoding/decoding base32 and base64 values and finally a [module](https://github.com/CrowdHailer/eyg-lang/blob/main/eyg_packages/eyg/ast.eyg) to parse and serialize the EYG intermediate representation.
+",
+  ),
+
   Edition(
     "2026-05-11",
     "An unreasonably practical update for EYG.",
