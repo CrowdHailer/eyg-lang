@@ -57,3 +57,18 @@ pub fn compile_stdin_test() {
 pub fn compile_stdin_long_flag_test() {
   assert args.Compile(source.Stdin) == args.parse(["compile", "--stdin"])
 }
+
+pub fn script_from_cid_test() {
+  let cid = "#baguqeerat6kjk2gjedpjcv4tuh5qiozijzgbhenep5cjfbe7vgc2ehjcqlma"
+  assert args.Script(source.Code(cid), []) == args.parse([cid])
+}
+
+pub fn script_from_cid_with_args_test() {
+  let cid = "#baguqeerat6kjk2gjedpjcv4tuh5qiozijzgbhenep5cjfbe7vgc2ehjcqlma"
+  assert args.Script(source.Code(cid), ["a", "b"])
+    == args.parse([cid, "a", "b"])
+}
+
+pub fn script_from_package_test() {
+  assert args.Script(source.Code("@standard"), []) == args.parse(["@standard"])
+}

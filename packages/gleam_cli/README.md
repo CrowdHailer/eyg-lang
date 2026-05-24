@@ -4,9 +4,6 @@ CLI for running EYG programs and interacting with the EYG hub.
 
 ## Usage
 
-For writing EYG source code check the [documentation](https://eyg.run/documentation) for language guide.
-There are script examples available in this repo in [example](./examples/)
-
 *The CLI supports running EYG IR files, saved as `.eyg.json` and textual code file, saved as `.eyg`.*
 
 *Set the remote to use with env variable `EYG_ORIGIN`.*
@@ -24,32 +21,12 @@ The `script` command accepts a source file containing text syntax or JSON encode
 eyg script path/to/file
 ```
 
-To run inline source, pass `-c` or `--code`.
-
-### Run a file
-
-**Prefer running a script, instead of running a file.**
-
-The `run` command will execute the file and run any valid effects found.
+A shared script can be referenced by it's hash, or if published it's release.
 
 ```sh
-eyg run path/to/file.eyg
+eyg script #baguqee...
+eyg script @myscript
 ```
-
-The `run` command accepts EYG source as a text file or a JSON file.
-To run inline source, pass `-c` or `--code`.
-
-```sh
-eyg run -c '!print("hello")'
-```
-
-To run source from stdin, pass `-` or `--stdin`.
-
-```sh
-printf 'perform Print("hello")' | eyg run -
-```
-
-*There are several example programs in the [examples dir](./examples/)*
 
 ### Start the REPL
 
@@ -90,6 +67,30 @@ To evaluate source from stdin, pass `-` or `--stdin`.
 printf '@standard.integer.add(1, 1)' | eyg eval -
 ```
 
+### Run a file
+
+**Prefer running a script, instead of running a file.**
+
+The `run` command will execute the file and run any valid effects found.
+
+```sh
+eyg run path/to/file.eyg
+```
+
+The `run` command accepts EYG source as a text file or a JSON file.
+To run inline source, pass `-c` or `--code`.
+
+```sh
+eyg run -c '!print("hello")'
+```
+
+To run source from stdin, pass `-` or `--stdin`.
+
+```sh
+printf 'perform Print("hello")' | eyg run -
+```
+
+
 ### Compile inline source
 
 The `compile` command also accepts inline source.
@@ -119,51 +120,5 @@ Good names are personal, work, etc.
 eyg share path/to/file.eyg.json
 ```
 
-### Effects
-
-The REPL and interpreter have effects that are the interface to the computer.
-To start these include:
-- DecodeJSON
-- Fetch
-- Print
-- Read
-
-As well as several local auth integrations powered by spotless.
-- DNSimple
-- GitHub
-- Netlify
-- Vimeo
-
-### Compile to JavaScript
 
 
-## Installation
-
-To build and install from source
-
-```sh
-./bin/compile
-```
-
-Copy to a directory on your $PATH. *This will probably require sudo.*
-```sh
-mv ./dist/eyg /usr/local/bin/eyg
-```
-
-To achieve all in one step use the install script.
-
-```sh
-./bin/install
-```
-
-## Development
-
-```sh
-gleam run -- run ./examples/fetch.eyg
-```
-
-To run the tests.
-
-```sh
-gleam test
-```

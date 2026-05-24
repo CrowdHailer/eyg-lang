@@ -1,40 +1,17 @@
 # Eat Your Greens (EYG)
 
-EYG is an immutable functional language with structural typing and managed effects.
-The programming language is for predictable, useful and confident development.
+EYG is a scripting language with structural typing, managed effects and immutable dependencies.
 
-The intermediate representation (IR) of EYG is a minimal tree and is the stable interface for writing EYG programs. Type checking, syntax, evaluation or compilation are optional components built on this foundation.
-
-This repository contains the language definition, implementation, website and package hub.
-
-## Install
-
-Install the EYG CLI with one command:
+Install the CLI with:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash
 ```
 
-Or pick another approach:
+A hello world example script.
 
-- [install a prebuilt binary](./guides/install_prebuilt.md) — the
-  installer above, plus how to install a release asset by hand.
-- [install from source](./guides/install_from_source.md) — compile and
-  install the CLI with the Gleam and Bun toolchains.
-
-For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
-The language syntax is described in [`guides/syntax.md`](./guides/syntax.md)
-and every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
-
-## Execute code
-
-There are many ways to run EYG in different locations.
-Execute EYG from your shell using the [CLI](./packages/gleam_cli/).
-
-### Scripts
-
-A hello world script.
 ```eyg
+#!/usr/bin/env eyg
 {
   script: (_) -> {
     let _ = perform Print("Hello, World!\n")
@@ -43,74 +20,71 @@ A hello world script.
 }
 ```
 
+Update permissions `chmod +x entry.eyg`.
+Then run the script directly `./entry.eyg`.
+
+## Scripts and modules
+
+Any file containing valid source code is a module.
+The file containing just `5` is a module.
+
+An EYG script is a function from the list of script arguments to a returned exit code.
+The type of a script function is `(List(String)) -> Integer`
+
+A valid script module has a script function as a field of a record.
+The type of a script file/module is `{script: (List(String)) -> Int, ..}`.
+
 Run a script using `eyg script path/to/script`.
-*Both textual and JSON IR source files can be evaluated.*
 
-Code can be supplied as with the `-c <code>` flag.
-Code can be read from stdin with `-` or `--stdin`.
+### Entryfiles
 
-An EYG file must contain a record a `script` function which accepts a list of string, the arguments, and returns an integer.
-The returned integer will be the exit code.
+An entryfile is the first module run.
+It can be a valid script file and, because records are extensible, have other fields.
+For example a module with a "shell" field is a valid shell config.
 
-The type of a valid script file is `{script: (List(String)) -> Int, ..}`.
-
-### Pure evaluation
-
-Use `eyg eval` for evaluating pure values and printing the result.
-
-### Start the shell
-
-```sh
-eyg shell
-eyg shell path/to/config
-```
-
-A shell config file must return a record with the `shell` field.
-If the function performs a `Break` effect then the shell will be started in that scope.
-
-I the example below the `tests` variable will be setup in the shell.
+The example below works as a script and shell config.
 
 ```eyg
+// entry.eyg
+let tests = import "./path/to/tests.eyg"
 {
+  script: (arguments) -> {
+    let counts = test({})
+    match !equal(counts.failed, 0) {
+      True({}) -> { 0 }
+      False({}) -> { 1 }
+    }
+  },
   shell: (_) -> {
-    let tests = import "./path/to/tests.eyg"
     perform Break({})
   }
 }
 ```
 
-### Effects
+Start the shell with `eyg shell entry.eyg`
+Run all the tests with `eyg script entry.eyg`
 
-The REPL and interpreter implement the following effects to access the host computer:
+EYG is a strongly typed replacement for `bash`, `make` and shell tools in general.
+Type check your whole project, application and scripts with `eyg check entry.eyg`
 
-| Effect | Purpose |
-|---|---|
-| `Print` | Write a string to stdout |
-| `Now` | The current wall-clock time as Unix epoch milliseconds |
-| `ReadFile` | Read a byte range of a file |
-| `WriteFile` | Overwrite a file with new contents |
-| `AppendFile` | Append contents to a file |
-| `DeleteFile` | Delete a file |
-| `ReadDirectory` | List the entries in a directory |
-| `Fetch` | Make an HTTP request |
-| `DecodeJSON` | Parse a JSON binary into EYG values |
-| `Sleep` | Suspends the script for the given number of milliseconds. |
-| `Random` | Returns a uniformly random integer |
-| `Env` | Read a process environment variable |
+### Pure evaluation
 
-Plus several authenticated service integrations powered by
-[spotless](https://hex.pm/packages/spotless), each performing an OAuth flow
-on first use:
+Use `eyg eval` for evaluating pure values, no side effects, and printing the result.
 
-- `DNSimple`
-- `GitHub`
-- `Netlify`
-- `Vimeo`
+## Resources
 
-For the input / output shape of each effect, see the
-[effects reference](./guides/cli_effects_reference.md).
+- For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
+- The language syntax is described in [`guides/syntax.md`](./guides/syntax.md).
+- Every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
+- Rull effect reference is in [`./guides/cli_effects_reference.md`](./guides/cli_effects_reference.md)
+- To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md)
 
 ## Packages
+
+The intermediate representation (IR) of EYG is a minimal tree and is the stable interface for writing EYG programs. 
+Type checking, syntax, evaluation or compilation are optional components built on this foundation.
+
+This repository contains the language definition, implementation, website and package hub.
 
 EYG makes it easy to swap out components of the toolchain.
 A sensible reason could be to create a runtime with a unique set of effects, i.e. embed EYG in a game or website.
