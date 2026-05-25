@@ -299,7 +299,16 @@ fn lookup_reference(cid: v1.Cid, state: State) -> Promise(Result(Value, Reason))
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
     cache.Unavailable(reason) -> Error(reason)
     cache.Unknown -> {
-      abort("failed to fetch module #" <> v1.to_string(cid))
+      // The module itself may have been fetched successfully; this branch
+      // also fires when one of its dependencies couldn't be resolved. We
+      // can't yet say *which* dep is missing, but we can keep the user
+      // from chasing the wrong CID.
+      abort(
+        "failed to load module #"
+        <> v1.to_string(cid)
+        <> " (the module itself or one of its dependencies could not be fetched from "
+        <> "$EYG_ORIGIN)",
+      )
       |> Error()
     }
   }

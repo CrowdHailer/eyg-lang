@@ -24,7 +24,7 @@ pub type OsFamily {
   Linux
 }
 
-fn detect_os() -> OsFamily {
+pub fn detect_os() -> OsFamily {
   case envoy.get("OS") {
     Ok("Windows" <> _) -> Windows
     _ ->
