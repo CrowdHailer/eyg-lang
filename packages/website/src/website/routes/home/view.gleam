@@ -116,33 +116,43 @@ pub fn view() {
                 "A programming language for predictable, useful and confident development.",
               ),
             ]),
-            h.div([a.class("flex gap-2 mt-4")], [
-              h.a(
+            // h.div([a.class("flex gap-2 mt-4 flex-wrap")], [
+            //   h.a(
+            //     [
+            //       a.href("/editor"),
+            //       a.class(
+            //         "inline-block py-2 px-3 rounded-xl text-white font-bold bg-gray-900 border-2 border-gray-900",
+            //       ),
+            //     ],
+            //     [element.text("Editor")],
+            //   ),
+            //   h.a(
+            //     [
+            //       a.href("/guides"),
+            //       a.class(
+            //         "border-2 border-black font-bold inline-block py-2 px-3 rounded-xl",
+            //       ),
+            //     ],
+            //     [element.text("Guides")],
+            //   ),
+            // ]),
+            h.div([a.class("mt-4 max-w-lg")], [
+              h.p([a.class("text-sm text-gray-600 mb-1")], [
+                element.text("Install in one line:"),
+              ]),
+              h.pre(
                 [
-                  a.href("/editor"),
                   a.class(
-                    "inline-block py-2 px-3 rounded-xl text-white font-bold bg-gray-900 border-2 border-gray-900",
+                    "bg-gray-900 text-green-100 text-sm rounded-lg p-3 overflow-x-auto",
                   ),
                 ],
-                [element.text("Editor")],
-              ),
-              h.a(
                 [
-                  a.href("/documentation"),
-                  a.class(
-                    "border-2 border-black font-bold inline-block py-2 px-3 rounded-xl",
-                  ),
+                  h.code([], [
+                    element.text(
+                      "curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash",
+                    ),
+                  ]),
                 ],
-                [element.text("Documentation")],
-              ),
-              h.a(
-                [
-                  a.href("/guides"),
-                  a.class(
-                    "border-2 border-black font-bold inline-block py-2 px-3 rounded-xl",
-                  ),
-                ],
-                [element.text("Guides")],
               ),
             ]),
           ]),
