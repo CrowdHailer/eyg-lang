@@ -47,6 +47,15 @@ let test_suite = ({}) -> {
   let _ = assert_eq(Ok("hello"), json.parse("\"hello\"", json.decode.string), "decodes string")
   let _ = assert_eq(Ok("line\nbreak"), json.parse("\"line\\nbreak\"", json.decode.string), "decodes escaped string")
 
+  // u-escapes per RFC 8259 section 7. lobste.rs HTML-escapes description fields this way.
+  // Expected strings stay ASCII because the EYG lexer panics on non-ASCII
+  // bytes in source (see notes/lobsters-and-json.md). Cross-plane decoding
+  // is covered by the Gleam-side tests in packages/julienne.
+  let _ = assert_eq(Ok("<p>"), json.parse("\"\\u003cp\\u003e\"", json.decode.string), "decodes ascii unicode escape")
+  let _ = assert_eq(Ok("<<>>"), json.parse("\"\\u003c\\u003c\\u003e\\u003e\"", json.decode.string), "decodes consecutive unicode escapes")
+  let _ = assert_parse_error(json.parse("\"\\uD834\"", json.decode.string), "rejects lone high surrogate")
+  let _ = assert_parse_error(json.parse("\"\\u00ZZ\"", json.decode.string), "rejects bad hex digits in unicode escape")
+
   let _ = assert_eq(Ok([]), json.parse("[]", json.decode.list(json.decode.integer)), "decodes empty list")
   let _ = assert_eq(Ok([1, 2, 3]), json.parse("[1,2,3]", json.decode.list(json.decode.integer)), "decodes list in source order")
   let _ = assert_eq(Ok(["a", "b", "c"]), json.parse("[\"a\",\"b\",\"c\"]", json.decode.list(json.decode.string)), "decodes string list in source order")
