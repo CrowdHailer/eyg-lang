@@ -69,7 +69,7 @@ fn check_index_json(package) {
   let index_path = dir <> "/" <> index_json
   let assert Ok(code) = simplifile.read(index_path)
   let assert Ok(source) = source.parse_input(code, source.File(index_path))
-  let state = execute.State(dir, config, cache.empty())
+  let state = execute.State(config, cache.empty())
   let return = expression.execute(source, [])
   use return <- promise.await(execute.pure_loop(return, state))
   case return {
@@ -88,7 +88,7 @@ fn check_index(package) {
   let index_path = dir <> "/" <> index
   let assert Ok(code) = simplifile.read(index_path)
   let assert Ok(source) = source.parse_input(code, source.File(index_path))
-  let state = execute.State(dir, config, cache.empty())
+  let state = execute.State(config, cache.empty())
   let return = expression.execute(source, [])
   use return <- promise.await(execute.pure_loop(return, state))
   case return {
@@ -108,7 +108,7 @@ fn check_test(package) {
   let assert Ok(code) = simplifile.read(test_path)
   let assert Ok(source) = source.parse_input(code, source.File(test_path))
 
-  let state = execute.State(dir, config, cache.empty())
+  let state = execute.State(config, cache.empty())
   use return <- promise.await(execute.block(source, [], state))
   case return {
     Ok(_) -> {

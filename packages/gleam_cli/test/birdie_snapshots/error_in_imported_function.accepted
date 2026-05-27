@@ -8,4 +8,4 @@ hint: check the variable name or add a `let` binding before it is used
 → in test/fixtures/invalid_function.eyg:1
  1 | (x) -> { y }
               ^
-  in ./test/fixtures/bad_function_in_import.eyg:2 ({})
+  in test/fixtures/bad_function_in_import.eyg:2 ({})

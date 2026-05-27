@@ -352,7 +352,11 @@ Provide a hash (`@standard:3:…`) to not require trust in the package hub.
 
 ## Imports
 
-`import` loads a workspace-relative module by path. The path must be a string literal.
+`import` loads a module by path.
+The path must be a string literal.
+Relative paths are resolved from the directory of the source file that contains the import.
+
+An `import` expression cannot be in a shared or published module.
 
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"

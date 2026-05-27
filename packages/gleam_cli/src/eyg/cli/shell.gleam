@@ -11,7 +11,6 @@ import eyg/interpreter/simple_debug
 import eyg/ir/tree
 import eyg/parser
 import eyg/parser/parser.{UnexpectEnd} as _
-import filepath
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -23,23 +22,14 @@ import input
 import simplifile
 
 pub fn execute(input, config) {
-  use cwd <- promisex.try_sync(
-    simplifile.current_directory()
-    |> result.map_error(simplifile.describe_error),
-  )
-
-  let dir =
-    case input {
-      Some(source.File(path:)) -> {
-        use path <- result.try(execute.resolve_relative(cwd, path))
-        Ok(filepath.directory_name(path))
-      }
-      _ -> Ok(cwd)
-    }
-    |> result.unwrap(cwd)
-  let state = execute.State(dir, config, cache.empty())
+  let state = execute.State(config, cache.empty())
   use scope <- promise.try_await(case input {
     Some(input) -> {
+      use cwd <- promisex.try_sync(
+        simplifile.current_directory()
+        |> result.map_error(simplifile.describe_error),
+      )
+      use input <- promisex.try_sync(execute.normalize_input(cwd, input))
       use code <- promisex.try_sync(source.read_input(input))
       use source <- promisex.try_sync(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
@@ -49,7 +39,7 @@ pub fn execute(input, config) {
         Error(#(break.UnhandledEffect("Break", _), _, env, _)) ->
           promise.resolve(Ok(env.scope))
         Error(#(reason, location, _, k)) -> {
-          promise.resolve(Error(execute.render_error(reason, location, k, dir)))
+          promise.resolve(Error(execute.render_error(reason, location, k, cwd)))
         }
       }
     }
@@ -118,7 +108,7 @@ pub fn handle(code, scope, defs, state) {
             ))
             Error(#(reason, location, _env, k)) -> #(
               [
-                Error(execute.render_error(reason, location, k, state.cwd)),
+                Error(execute.render_error(reason, location, k, "/todo")),
               ],
               #("", scope, defs, state),
             )

@@ -38,3 +38,7 @@ pub fn unit() {
 pub fn select(label) {
   #(ir.Select(label), meta)
 }
+
+pub fn get(value, label) {
+  apply(select(label), value)
+}

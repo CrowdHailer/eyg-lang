@@ -1,0 +1,18 @@
+let helper = import "sub/helper.eyg"
+
+let expect_bytes = (expected, actual, label) -> {
+  match !equal(actual, !string_to_binary(expected)) {
+    True(_) -> { 0 }
+    False(_) -> { !never(perform Abort(label)) }
+  }
+}
+
+let _ = match helper.read({}) {
+  Ok(bytes) -> { expect_bytes("from helper\n", bytes, "helper read wrong file") }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+
+match perform ReadFile({path: "data.txt", offset: 0, limit: 100}) {
+  Ok(bytes) -> { expect_bytes("from main\n", bytes, "main read wrong file") }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}

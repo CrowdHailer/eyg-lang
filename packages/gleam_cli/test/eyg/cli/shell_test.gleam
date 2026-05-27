@@ -84,7 +84,6 @@ pub fn type_of_of_a_pure_expression_has_no_effects_test() {
 
 fn state() -> execute.State {
   execute.State(
-    cwd: "",
     config: config.Config(
       client: client.Client(origin: origin.https("eyg.test")),
       dirs: platform.PlatformDirs(config_dir: "", cache_dir: "", data_dir: ""),

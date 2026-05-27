@@ -27,7 +27,7 @@ pub type Origin {
 }
 
 pub type Location {
-  Location(Origin, Source)
+  Location(origin: Origin, source: Source)
 }
 
 /// A span carrying its source-of-truth.
@@ -81,12 +81,17 @@ pub fn parse(code: String, origin: Origin) -> Result(ir.Node(Location), String) 
 }
 
 pub fn parse_input(code: String, input: Input) {
-  let origin = case input {
+  let origin = input_origin(input)
+  parse(code, origin)
+}
+
+/// Input is valid input this doesn't include release or module, the origin type does.
+pub fn input_origin(input) {
+  case input {
     File(path:) -> Disk(path:)
     Code(code: _) -> Inline
     Stdin -> Pipe
   }
-  parse(code, origin)
 }
 
 pub fn block_expression(code) {

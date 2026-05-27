@@ -76,8 +76,9 @@ Use `eyg eval` for evaluating pure values, no side effects, and printing the res
 - For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
 - The language syntax is described in [`guides/syntax.md`](./guides/syntax.md).
 - Every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
-- Rull effect reference is in [`./guides/cli_effects_reference.md`](./guides/cli_effects_reference.md)
-- To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md)
+- Full effect reference is in [`./guides/cli_effects_reference.md`](./guides/cli_effects_reference.md).
+- File and import path resolution is explained in [`guides/file_resolution.md`](./guides/file_resolution.md).
+- To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md).
 
 ## Packages
 

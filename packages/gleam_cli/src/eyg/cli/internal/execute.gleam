@@ -39,6 +39,7 @@ import touch_grass/decode_json
 import touch_grass/env as env_effect
 import touch_grass/fetch
 import touch_grass/file_system/append_file
+import touch_grass/file_system/cwd
 import touch_grass/file_system/delete_file
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
@@ -69,7 +70,7 @@ pub type Debug =
   state.Debug(source.Location)
 
 pub type State {
-  State(cwd: String, config: config.Config, cache: Cache(source.Location))
+  State(config: config.Config, cache: Cache(source.Location))
 }
 
 pub fn block(source, scope, state) {
@@ -121,8 +122,13 @@ fn loop(
       case reason {
         break.UnhandledEffect("AppendFile", lift) -> {
           use input <- try_sync(append_file.decode(lift), meta, env, k)
-          let output = append_file(state.cwd, input)
+          let output = append_file(meta.origin, input)
           loop(block.resume(append_file.encode(output), env, k), state)
+        }
+        break.UnhandledEffect("CWD", lift) -> {
+          use Nil <- try_sync(cwd.decode(lift), meta, env, k)
+          let output = cwd()
+          loop(block.resume(cwd.encode(output), env, k), state)
         }
         break.UnhandledEffect("DecodeJSON", lift) -> {
           use encoded <- try_sync(decode_json.decode(lift), meta, env, k)
@@ -130,7 +136,7 @@ fn loop(
         }
         break.UnhandledEffect("DeleteFile", lift) -> {
           use path <- try_sync(delete_file.decode(lift), meta, env, k)
-          let output = delete_file(state.cwd, path)
+          let output = delete_file(meta.origin, path)
           loop(block.resume(delete_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("DNSimple", lift) -> {
@@ -179,12 +185,12 @@ fn loop(
         }
         break.UnhandledEffect("ReadDirectory", lift) -> {
           use input <- try_sync(read_directory.decode(lift), meta, env, k)
-          let output = read_directory(state.cwd, input)
+          let output = read_directory(meta.origin, input)
           loop(block.resume(read_directory.encode(output), env, k), state)
         }
         break.UnhandledEffect("ReadFile", lift) -> {
           use input <- try_sync(read_file.decode(lift), meta, env, k)
-          let output = read_file(state.cwd, input)
+          let output = read_file(meta.origin, input)
           loop(block.resume(read_file.encode(output), env, k), state)
         }
         break.UnhandledEffect("Sleep", lift) -> {
@@ -199,7 +205,7 @@ fn loop(
         }
         break.UnhandledEffect("WriteFile", lift) -> {
           use input <- try_sync(write_file.decode(lift), meta, env, k)
-          let output = write_file(state.cwd, input)
+          let output = write_file(meta.origin, input)
           loop(block.resume(write_file.encode(output), env, k), state)
         }
         break.UndefinedReference(cid) -> {
@@ -211,7 +217,12 @@ fn loop(
           loop(block.resume(value, env, k), state)
         }
         break.UndefinedRelative(location:) -> {
-          use value <- try_await(lookup_relative(location, state), meta, env, k)
+          use value <- try_await(
+            lookup_relative(location, meta.origin, state),
+            meta,
+            env,
+            k,
+          )
           loop(block.resume(value, env, k), state)
         }
         _ -> promise.resolve(Error(#(reason, meta, env, k)))
@@ -365,11 +376,13 @@ fn abort(reason: String) -> break.Reason(m, c) {
   break.UnhandledEffect("Abort", v.String(reason))
 }
 
-fn lookup_relative(location, state: State) -> Promise(Result(Value, Reason)) {
-  case resolve_relative(state.cwd, location) {
+fn lookup_relative(
+  location: String,
+  origin: source.Origin,
+  state: State,
+) -> Promise(Result(Value, Reason)) {
+  case resolve_filepath(origin, location) {
     Ok(path) -> {
-      // The state is not returned so we never need to reset the cwd
-      let state = State(..state, cwd: filepath.directory_name(path))
       case source.read_file(path) {
         Ok(code) ->
           case source.parse(code, source.Disk(path:)) {
@@ -417,7 +430,12 @@ pub fn pure_loop(
           pure_loop(expression.resume(value, env, k), state)
         }
         break.UndefinedRelative(location:) -> {
-          use value <- try_await(lookup_relative(location, state), meta, env, k)
+          use value <- try_await(
+            lookup_relative(location, meta.origin, state),
+            meta,
+            env,
+            k,
+          )
           pure_loop(expression.resume(value, env, k), state)
         }
         _ -> promise.resolve(Error(#(reason, meta, env, k)))
@@ -425,13 +443,49 @@ pub fn pure_loop(
   }
 }
 
-pub fn resolve_relative(root, relative) {
+pub fn normalize_input(working_directory, input: source.Input) {
+  case input {
+    source.File(path:) -> {
+      use path <- try(resolve_relative(working_directory, path))
+      Ok(source.File(path))
+    }
+    source.Code(_) | source.Stdin -> Ok(input)
+  }
+}
+
+fn resolve_relative(root, relative) {
   let joined = case filepath.is_absolute(relative) {
     True -> relative
     False -> filepath.join(root, relative)
   }
+  filepath.expand(joined)
+  |> result.replace_error("invalid relative path outside filesystem")
+}
 
-  filepath.expand(joined) |> result.replace_error("invalid relative directory")
+pub fn resolve_filepath(
+  from: source.Origin,
+  path: String,
+) -> Result(String, String) {
+  use joined <- try(case filepath.is_absolute(path) {
+    True -> Ok(path)
+    False ->
+      case from {
+        source.Disk(path: source_path) ->
+          source_path
+          |> filepath.directory_name()
+          |> filepath.join(path)
+          |> Ok
+        _ ->
+          Error(
+            "relative path \""
+            <> path
+            <> "\" requires a disk-backed source; use CWD or an absolute path",
+          )
+      }
+  })
+
+  filepath.expand(joined)
+  |> result.replace_error("invalid relative path outside filesystem")
 }
 
 pub fn hash(input) {
@@ -441,42 +495,45 @@ pub fn hash(input) {
   }
 }
 
-pub fn append_file(cwd: String, input: append_file.Input) -> Result(Nil, String) {
-  {
-    let append_file.Input(path:, contents:) = input
-    use path <- try(
-      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
-    )
-    simplifile.append_bits(path, contents)
-  }
+pub fn append_file(
+  origin: source.Origin,
+  input: append_file.Input,
+) -> Result(Nil, String) {
+  let append_file.Input(path:, contents:) = input
+  use path <- try(resolve_filepath(origin, path))
+
+  simplifile.append_bits(path, contents)
+  |> result.map_error(simplifile.describe_error)
+}
+
+pub fn cwd() {
+  simplifile.current_directory()
   |> result.map_error(simplifile.describe_error)
 }
 
 pub fn read_directory(
-  cwd cwd: String,
+  origin: source.Origin,
   path path: String,
 ) -> read_directory.Output {
-  {
-    use path <- try(
-      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
-    )
-    use children <- try(simplifile.read_directory(path))
-    let children =
-      list.filter_map(children, fn(child) {
-        let path = path <> "/" <> child
+  use path <- try(resolve_filepath(origin, path))
+  use children <- try(
+    simplifile.read_directory(path)
+    |> result.map_error(simplifile.describe_error),
+  )
+  let children =
+    list.filter_map(children, fn(child) {
+      let path = path <> "/" <> child
 
-        use info <- try(simplifile.file_info(path))
-        case simplifile.file_info_type(info) {
-          simplifile.File -> Ok(#(child, read_directory.File(size: info.size)))
-          simplifile.Directory -> Ok(#(child, read_directory.Directory))
-          simplifile.Symlink -> Error(simplifile.Unknown(""))
-          simplifile.Other -> Error(simplifile.Unknown(""))
-        }
-      })
-      |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
-    Ok(children)
-  }
-  |> result.map_error(simplifile.describe_error)
+      use info <- try(simplifile.file_info(path))
+      case simplifile.file_info_type(info) {
+        simplifile.File -> Ok(#(child, read_directory.File(size: info.size)))
+        simplifile.Directory -> Ok(#(child, read_directory.Directory))
+        simplifile.Symlink -> Error(simplifile.Unknown(""))
+        simplifile.Other -> Error(simplifile.Unknown(""))
+      }
+    })
+    |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+  Ok(children)
 }
 
 @external(javascript, "./execute_ffi.mjs", "readAtOffset")
@@ -486,36 +543,23 @@ fn read_at_offset(
   limit limit: Int,
 ) -> Result(BitArray, simplifile.FileError)
 
-pub fn read_file(cwd, input: read_file.Input) {
-  {
-    let read_file.Input(path:, limit:, offset:) = input
-    use path <- try(
-      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
-    )
-
-    read_at_offset(path:, limit:, offset:)
-  }
+pub fn read_file(origin: source.Origin, input: read_file.Input) {
+  let read_file.Input(path:, limit:, offset:) = input
+  use path <- try(resolve_filepath(origin, path))
+  read_at_offset(path:, limit:, offset:)
   |> result.map_error(simplifile.describe_error)
 }
 
-pub fn write_file(cwd, input: write_file.Input) {
-  {
-    let write_file.Input(path:, contents:) = input
-    use path <- try(
-      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
-    )
-    simplifile.write_bits(path, contents)
-  }
+pub fn write_file(origin: source.Origin, input: write_file.Input) {
+  let write_file.Input(path:, contents:) = input
+  use path <- try(resolve_filepath(origin, path))
+  simplifile.write_bits(path, contents)
   |> result.map_error(simplifile.describe_error)
 }
 
-pub fn delete_file(cwd, path) {
-  {
-    use path <- try(
-      resolve_relative(cwd, path) |> result.replace_error(simplifile.Enoent),
-    )
-    simplifile.delete(path)
-  }
+pub fn delete_file(origin: source.Origin, path) {
+  use path <- try(resolve_filepath(origin, path))
+  simplifile.delete(path)
   |> result.map_error(simplifile.describe_error)
 }
 

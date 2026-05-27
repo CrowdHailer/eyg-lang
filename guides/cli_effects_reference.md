@@ -14,6 +14,10 @@ result-returning file-system effects, see
 
 ## File system
 
+Relative filesystem paths are resolved from directory of the source expression that performs the effect.
+Inline code, shared and published modules have no source directory using a relative path will always fail.
+Use `perform CWD({})` to build an absolute path for reading relative to a scripts running location.
+
 ### `ReadFile`
 
 Read a slice of a file at a given byte offset.
@@ -32,7 +36,7 @@ match perform ReadFile({path: "data.txt", offset: 0, limit: 1000000}) {
 
 | Field | Type | Notes |
 |---|---|---|
-| `path` | `String` | Resolved relative to the script's directory |
+| `path` | `String` | Absolute or relative to the source expressions directory |
 | `offset` | `Int` | Byte offset to start reading from |
 | `limit` | `Int` | Maximum bytes to read |
 
