@@ -7,6 +7,7 @@ import touch_grass/decode_json
 import touch_grass/download
 import touch_grass/env
 import touch_grass/fetch
+import touch_grass/file_system/cwd
 import touch_grass/flip
 import touch_grass/interface.{type Interface, Interface}
 import touch_grass/now
@@ -28,6 +29,10 @@ pub fn alert() -> Interface(String, a, b) {
 
 pub fn copy() -> Interface(String, a, b) {
   Interface(copy.label, copy.lift(), copy.lower(), copy.decode)
+}
+
+pub fn cwd() -> Interface(Nil, a, b) {
+  Interface(cwd.label, cwd.lift(), cwd.lower(), cwd.decode)
 }
 
 pub fn decode_json() -> Interface(BitArray, a, b) {

@@ -87,6 +87,16 @@ For a recursive walk, see
 [`eyg_packages/fs/index.eyg`](../eyg_packages/fs/index.eyg)'s `list` and
 `list_files` helpers.
 
+### `CWD`
+
+Return the Current Working Directory (CWD) where the `eyg` process was started.
+
+```eyg
+let cwd = perform CWD({})
+```
+
+Argument is unit (`{}`). Returns `Ok(String) | Error({})`.
+
 ## I/O
 
 ### `Now`
