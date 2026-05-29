@@ -49,7 +49,8 @@ fn read_stdin() -> Result(String, String)
 
 pub fn read_file(file: String) -> Result(String, String) {
   use code <- try(
-    simplifile.read(file) |> result.map_error(simplifile.describe_error),
+    simplifile.read(file)
+    |> result.map_error(fn(err) { format_file_error(file, err) }),
   )
   case string.starts_with(code, "#!") {
     True -> {
@@ -60,6 +61,28 @@ pub fn read_file(file: String) -> Result(String, String) {
     }
     False -> Ok(code)
   }
+}
+
+fn format_file_error(path: String, err: simplifile.FileError) -> String {
+  let #(description, hint) = case err {
+    simplifile.Enoent -> #(
+      "no such file: " <> path,
+      "check the path and that the file exists, relative to the current working directory",
+    )
+    simplifile.Eisdir -> #(
+      "expected a file but found a directory: " <> path,
+      "pass the path to a source file, not a directory",
+    )
+    simplifile.Eacces -> #(
+      "permission denied reading: " <> path,
+      "check the file is readable by the current user",
+    )
+    _ -> #(
+      "could not read " <> path <> ": " <> simplifile.describe_error(err),
+      "check the path is correct and readable",
+    )
+  }
+  "error: " <> description <> "\nhint: " <> hint
 }
 
 /// parse the code adding it's span to an origin identifier

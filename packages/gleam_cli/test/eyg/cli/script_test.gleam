@@ -6,6 +6,7 @@ import eyg/cli/script
 import gleam/http
 import gleam/javascript/promise
 import gleam/option.{None}
+import gleam/string
 import ogre/origin
 
 pub fn print_error_in_import_test() {
@@ -17,6 +18,13 @@ pub fn print_error_in_import_test() {
     config,
   ))
   let assert Ok(2) = return
+}
+
+pub fn missing_script_field_error_anchors_to_source_test() {
+  use return <- promise.map(script.execute(source.Code("{a: 1}"), [], config))
+  let assert Error(msg) = return
+  let assert True = string.contains(msg, "missing record field: script")
+  let assert True = string.contains(msg, "{a: 1}")
 }
 
 const eyg_origin = client.Client(
