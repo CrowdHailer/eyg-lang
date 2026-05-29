@@ -35,7 +35,7 @@ Block only the `DeleteFile` effect.
 
 ```eyg
 let policy = {
-  delete_file: access.deny("deletion is disallowed")
+  delete_file: access.deny("deletion is disallowed"),
   ..access.allow_all
 }
 
@@ -78,16 +78,13 @@ This library introduces no new control flow, denied effects will be handled in t
 
 ## Write your own policies
 
-Each policy field returns a decision value.
+Each policy field returns one of three decision tags:
 
-```eyg
-Allow({})      // perform the original host effect
-Mock(value)    // resume as Ok(value)
-Deny(reason)   // resume as Error(reason)
-```
-
-Denied operations resume as the effect's normal `Error(reason)` value.
-Mocked operations resume as `Ok(value)`.
+| Decision        | Effect                                  |
+|-----------------|-----------------------------------------|
+| `Allow({})`     | perform the original host effect        |
+| `Mock(value)`   | resume with `Ok(value)`                   |
+| `Deny(reason)`  | resume with `Error(reason)`               |
 
 ```
 let only_localhost = (request) -> {

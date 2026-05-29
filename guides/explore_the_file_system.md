@@ -36,11 +36,11 @@ let files_and_folders = fs.list({root: ".", ignore: [".git", ".node_modules"]})
 
 let large_files = list.filter_map(({path, type}) -> {
   match type {
-    Directory -> { Error({}) }
+    Directory(_) -> { Error({}) }
     File({size}) -> {
       match !int_compare(size, 2000) {
         Gt(_) -> { Ok({path, size}) }
-        // (_) -> { Error({}) }
+        | (_) -> { Error({}) }
       }
     }
   }
