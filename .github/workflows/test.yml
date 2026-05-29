@@ -41,6 +41,12 @@ jobs:
       - run: gleam deps download
         shell: bash # Required for git deps
         working-directory: packages/${{matrix.package}}
+      - name: Manifest is in sync
+        # `gleam deps download` regenerates manifest.toml when its
+        # contents drift from gleam.toml. A non-empty diff means the
+        # committed manifest was stale.
+        run: git diff --exit-code manifest.toml
+        working-directory: packages/${{matrix.package}}
       - run: gleam build --warnings-as-errors
         working-directory: packages/${{matrix.package}}
       - run: gleam test
@@ -123,6 +129,9 @@ jobs:
           gleam-version: ${{matrix.gleam}}
       - run: gleam deps download
         shell: bash # Required for git deps
+        working-directory: packages/${{matrix.package}}
+      - name: Manifest is in sync
+        run: git diff --exit-code manifest.toml
         working-directory: packages/${{matrix.package}}
       - run: gleam build --target javascript --warnings-as-errors
         working-directory: packages/${{matrix.package}}
