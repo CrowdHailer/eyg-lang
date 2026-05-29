@@ -23,6 +23,11 @@ pub fn describe(reason) {
       <> escape_char
       <> "` in string at position "
       <> int.to_string(position)
+    parser.IntegerLiteralOutOfRange(raw:, position:) ->
+      "integer literal `"
+      <> raw
+      <> "` is out of range at position "
+      <> int.to_string(position)
     parser.MissingEquals(position:) ->
       "expected `=` after let binding name at position "
       <> int.to_string(position)
@@ -72,6 +77,8 @@ pub fn hint(reason) {
       "close the string with a double-quote `\"`"
     parser.InvalidEscapeSequence(..) ->
       "valid escapes are \\n (newline), \\t (tab), \\r (carriage return), \\\" (quote), \\\\ (backslash)"
+    parser.IntegerLiteralOutOfRange(..) ->
+      "on the JavaScript target integers must be within the safe range (-(2^53-1) to 2^53-1)"
     parser.MissingEquals(..) ->
       "let bindings use the form `let name = expression`"
     parser.MissingArrow(..) -> "functions are written as `(arg) -> { body }`"

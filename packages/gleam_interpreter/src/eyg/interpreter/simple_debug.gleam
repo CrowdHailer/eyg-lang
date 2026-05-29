@@ -38,6 +38,7 @@ pub fn describe(reason) -> String {
     break.UnhandledEffect(effect, lift) ->
       "unhandled effect " <> effect <> "(" <> inspect(lift) <> ")"
     break.Vacant -> "tried to run a todo"
+    break.Unrepresentable(..) -> "integer out of range"
   }
 }
 
@@ -68,6 +69,8 @@ pub fn hint(reason) -> String {
       "handle this effect or run the program in a runtime that supports it"
     break.Vacant ->
       "replace the todo with an expression before running the program"
+    break.Unrepresentable(..) ->
+      "on the JavaScript target integers must be within the safe range (-(2^53-1) to 2^53-1)"
   }
 }
 

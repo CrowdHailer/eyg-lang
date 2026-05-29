@@ -13,4 +13,8 @@ pub type Reason(m, c) {
   UnhandledEffect(String, v.Value(m, c))
   IncorrectTerm(expected: String, got: v.Value(m, c))
   MissingField(String)
+  // The expression is unrepresentable on the runtime.
+  // For example an integer outside the safe-integer range on JavaScript.
+  // This halts the run with a resumable state.
+  Unrepresentable(builtin: String, args: List(v.Value(m, c)))
 }

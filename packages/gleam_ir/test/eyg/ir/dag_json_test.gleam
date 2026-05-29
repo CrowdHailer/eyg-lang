@@ -1,11 +1,13 @@
 import eyg/ir/cid
 import eyg/ir/dag_json as codec
+import eyg/ir/integer
 import gleam/crypto
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/io
 import gleam/json
 import gleam/list
+import gleam/result
 import gleeunit/should
 import multiformats/cid/v1
 import simplifile
@@ -51,4 +53,20 @@ pub fn ir_suite_test() {
       }
     }
   })
+}
+
+// Decoding an integer succeeds exactly when the target can represent it. On
+// JavaScript the native JSON parser rounds a value outside the safe range, so
+// it is rejected; on Erlang the same input is an exact bignum and decodes
+// fine. Asserting against `integer.is_safe` keeps the test correct on both
+// targets (it can't be a shared spec fixture for that reason).
+pub fn decode_out_of_safe_range_integer_test() {
+  json.parse("{\"0\":\"i\",\"v\":999999999999999000000}", codec.decoder(Nil))
+  |> result.is_ok
+  |> should.equal(integer.is_safe(999_999_999_999_999 * 1_000_000))
+}
+
+pub fn decode_in_range_integer_test() {
+  json.parse("{\"0\":\"i\",\"v\":5}", codec.decoder(Nil))
+  |> should.be_ok
 }

@@ -85,5 +85,6 @@ fn reason_position(reason: parser.Reason) -> option.Option(Int) {
     parser.InvalidCharacter(_, pos) -> Some(pos)
     parser.UnterminatedStringLiteral(pos) -> Some(pos)
     parser.InvalidEscapeSequence(_, pos) -> Some(pos)
+    parser.IntegerLiteralOutOfRange(_, pos) -> Some(pos)
   }
 }

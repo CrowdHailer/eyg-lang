@@ -1,4 +1,5 @@
 import eyg/ir/dag_json
+import eyg/ir/integer
 import eyg/ir/tree as ir
 import eyg/parser/token as t
 import gleam/int
@@ -35,6 +36,8 @@ pub type Reason {
   UnterminatedStringLiteral(position: Int)
   // Raised when a string contains an unrecognised escape sequence (e.g. `\q`)
   InvalidEscapeSequence(escape_char: String, position: Int)
+  // Raised when an integer literal can't be represented exactly on the target.
+  IntegerLiteralOutOfRange(raw: String, position: Int)
 }
 
 pub type Span =
@@ -228,6 +231,7 @@ pub fn expression(tokens) {
     }
     t.Integer(raw) -> {
       let assert Ok(value) = int.parse(raw)
+      use value <- try(in_range(value, raw, start))
       let span = #(start, start + string.length(raw))
       Ok(#(#(ir.Integer(value), span), rest))
     }
@@ -236,8 +240,9 @@ pub fn expression(tokens) {
       case next {
         t.Integer(raw) -> {
           let assert Ok(value) = int.parse(raw)
+          use value <- try(in_range(-1 * value, raw, from))
           let span = #(start, from + string.length(raw))
-          Ok(#(#(ir.Integer(-1 * value), span), rest))
+          Ok(#(#(ir.Integer(value), span), rest))
         }
         _ -> Error(UnexpectedToken(token, start))
       }
@@ -421,6 +426,17 @@ fn next_pos(rest, fallback) {
   case rest {
     [#(_, at), ..] -> at
     [] -> fallback
+  }
+}
+
+// Reject an integer literal the target can't represent exactly. On Erlang
+// every integer is exact so this always succeeds; on JavaScript `int.parse`
+// has already rounded an out-of-range literal to the nearest double, so we
+// fail loudly instead of keeping the corrupted value.
+fn in_range(value: Int, raw: String, position: Int) -> Result(Int, Reason) {
+  case integer.is_safe(value) {
+    True -> Ok(value)
+    False -> Error(IntegerLiteralOutOfRange(raw, position))
   }
 }
 

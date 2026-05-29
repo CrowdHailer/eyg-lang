@@ -1,6 +1,5 @@
 name = "eyg_ir"
-version = "2.1.0"
-target = "javascript"
+version = "2.2.0"
 
 description = "Data structures for the EYG IR"
 licences = ["Apache-2.0"]
@@ -12,7 +11,6 @@ gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 gleam_json = ">= 3.0.2 and < 4.0.0"
 dag_json = ">= 3.0.0 and < 4.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
-gleam_javascript = ">= 1.0.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

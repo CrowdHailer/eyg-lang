@@ -2,6 +2,7 @@ import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/integer
 import gleam/bit_array
 import gleam/dict
 import gleam/int
@@ -62,26 +63,40 @@ fn do_int_compare(left, right, _meta, env, k) {
 
 pub const add = state.Arity2(do_add)
 
-fn do_add(left, right, _meta, env, k) {
-  use left <- try(cast.as_integer(left))
-  use right <- try(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left + right)), env, k))
+fn do_add(left_value, right_value, _meta, env, k) {
+  use left <- try(cast.as_integer(left_value))
+  use right <- try(cast.as_integer(right_value))
+  let return = left + right
+  case integer.is_safe(return) {
+    True -> Ok(#(state.V(v.Integer(return)), env, k))
+    False -> Error(break.Unrepresentable("int_add", [left_value, right_value]))
+  }
 }
 
 pub const subtract = state.Arity2(do_subtract)
 
-fn do_subtract(left, right, _meta, env, k) {
-  use left <- try(cast.as_integer(left))
-  use right <- try(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left - right)), env, k))
+fn do_subtract(left_value, right_value, _meta, env, k) {
+  use left <- try(cast.as_integer(left_value))
+  use right <- try(cast.as_integer(right_value))
+  let return = left - right
+  case integer.is_safe(return) {
+    True -> Ok(#(state.V(v.Integer(return)), env, k))
+    False ->
+      Error(break.Unrepresentable("int_subtract", [left_value, right_value]))
+  }
 }
 
 pub const multiply = state.Arity2(do_multiply)
 
-fn do_multiply(left, right, _meta, env, k) {
-  use left <- try(cast.as_integer(left))
-  use right <- try(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left * right)), env, k))
+fn do_multiply(left_value, right_value, _meta, env, k) {
+  use left <- try(cast.as_integer(left_value))
+  use right <- try(cast.as_integer(right_value))
+  let return = left * right
+  case integer.is_safe(return) {
+    True -> Ok(#(state.V(v.Integer(return)), env, k))
+    False ->
+      Error(break.Unrepresentable("int_multiply", [left_value, right_value]))
+  }
 }
 
 pub const divide = state.Arity2(do_divide)
@@ -105,13 +120,18 @@ fn do_absolute(x, _meta, env, k) {
 
 pub const int_parse = state.Arity1(do_int_parse)
 
-fn do_int_parse(raw, _meta, env, k) {
-  use raw <- try(cast.as_string(raw))
-  let value = case int.parse(raw) {
-    Ok(i) -> v.ok(v.Integer(i))
-    Error(Nil) -> v.error(v.unit())
+fn do_int_parse(raw_value, _meta, env, k) {
+  use raw <- try(cast.as_string(raw_value))
+  // A malformed string is a normal `Error` result, identical on every target.
+  // A well-formed number the target can't represent exactly breaks the run.
+  case int.parse(raw) {
+    Error(Nil) -> Ok(#(state.V(v.error(v.unit())), env, k))
+    Ok(i) ->
+      case integer.is_safe(i) {
+        True -> Ok(#(state.V(v.ok(v.Integer(i))), env, k))
+        False -> Error(break.Unrepresentable("int_parse", [raw_value]))
+      }
   }
-  Ok(#(state.V(value), env, k))
 }
 
 pub const int_to_string = state.Arity1(do_int_to_string)

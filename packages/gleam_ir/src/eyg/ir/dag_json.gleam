@@ -1,4 +1,5 @@
 import dag_json as codec
+import eyg/ir/integer
 import eyg/ir/tree as ir
 import gleam/dynamic
 import gleam/dynamic/decode as d
@@ -82,7 +83,14 @@ pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
     }
     "i" -> {
       use value <- d.field("v", d.int)
-      d.success(#(ir.Integer(value), meta))
+      // On the JavaScript target the native JSON parser rounds integers outside the safe range to the nearest double.
+      // Reject values rather than returning a corrupted integer.
+      // This could be made available on the decode library.
+      case integer.is_safe(value) {
+        True -> d.success(#(ir.Integer(value), meta))
+        False ->
+          d.failure(#(ir.Vacant, meta), "an exactly representable integer")
+      }
     }
     "s" -> {
       use value <- d.field("v", d.string)
