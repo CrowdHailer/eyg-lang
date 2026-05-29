@@ -89,7 +89,7 @@ pub fn render_reason(reason) {
       "release undefined: @" <> package <> ":" <> int.to_string(release)
     error.MissingRow(label) -> "missing row '" <> label <> "'"
     error.TypeMismatch(expected, given) ->
-      "type missmatch given: "
+      "type mismatch given: "
       <> render_type(given)
       <> " expected: "
       <> render_type(expected)

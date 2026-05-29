@@ -92,9 +92,11 @@ let x = 5 x
 `let` can destructure a record into its fields. Each field is extracted by name.
 
 ```eyg
-let {name: first, age: n} = person
+let {name: first, age: n} = {name: "Bob", age: 25, admin: True({})}
 first
 ```
+
+Any unlisted fields in the pattern are ignored, there is no rest or spread syntax.
 
 If the variable name matches the field name, the `: variable` part can be omitted:
 
@@ -149,6 +151,28 @@ Multiple arguments are written separated by commas. Since functions are curried,
 let add = (x, y) -> { !int_add(x, y) }
 add(3, 4)
 ```
+
+**EYG has no loop or each construct, instead use !fix, !list_fold or libraries.**
+
+### Recursion
+
+To write a recursive function use the `!fix` builtin.
+`!fix` passes the function itself as the first argument to the function.
+
+```eyg
+let factorial = !fix((self, n) -> {
+  match !int_compare(n, 0) {
+    Eq(_) -> { 1 }
+    | (_) -> { !int_multiply(n, self(!int_subtract(n, 1))) }
+  }
+})
+factorial(5)
+```
+
+### Fold
+
+To iterate the items of a list use `!list_fold`.
+All iteration patterns can be built on `!list_fold`, use an effect for early return.
 
 ---
 
@@ -261,6 +285,8 @@ match Ok(5) {
 }
 ```
 
+*`_` is the conventional placeholder when a value is discarded.*
+
 Or in "function" form (without a subject), producing a function that takes the value to match:
 
 ```eyg
@@ -281,6 +307,20 @@ match x {
   | (other) -> { -1 }
 }
 ```
+
+### What `match` does NOT support
+
+`match` only deconstructs tagged values.
+
+| Unsupported                         | Use instead                                                                              |
+|-------------------------------------|------------------------------------------------------------------------------------------|
+| `match n { 2 -> { ... } }`          | Dispatch on a tag via `!int_compare` returning `Lt({}) \| Eq({}) \| Gt({})`.             |
+| `match x { _ -> { ... } }`          | An else branch: `\| (_) -> { ... }`.                                                     |
+| `match xs { [] -> { 0 } }`          | `!list_pop(xs)` returns `Ok({head, tail}) \| Error({})`; match on that tag.              |
+| `Ok(Some(v)) -> ...`                | Match outer tag, then `match` on the inner value inside the branch.                      |
+
+If a branch ignores the payload entirely, the conventional placeholder
+is `_`:
 
 ---
 

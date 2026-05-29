@@ -8,6 +8,25 @@ CLI for running EYG programs and interacting with the EYG hub.
 
 *Set the remote to use with env variable `EYG_ORIGIN`.*
 
+### Which subcommand do I want?
+
+The three "execute" subcommands are close but not interchangeable.
+Pick the one that matches what you're doing:
+
+| Subcommand   | Runs effects? | Prints final value? | Source must be... | Exit code |
+|--------------|---------------|---------------------|-------------------|-----------|
+| `eyg script` | yes           | no — the `script` function's `Int` return value is the exit code | a record with a `script: (List(String)) -> Int` field | the returned `Int` |
+| `eyg run`    | yes           | no                  | any expression    | 0 on success, 1 on error |
+| `eyg eval`   | **no** (pure) | yes — prints the evaluated value | any expression | 0 on success, 1 on error |
+
+Rules of thumb:
+
+- **Production scripts** with command-line args and an exit code → `script`.
+- **One-liner with side effects** ("read this file and print it") → `run`.
+- **Pure computation you want to see the result of** ("what does this expression evaluate to?") → `eval`.
+
+All accept the source as a file argument, as inline source `-c <code>` or from `-` / `--stdin`.
+
 ### Run a script
 
 The `script` command will execute the a `script` function.
