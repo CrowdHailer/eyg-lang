@@ -494,6 +494,22 @@ pub fn record_test() {
   )
 }
 
+pub fn record_trailing_comma_test() {
+  let assert Ok(source) = parser.all_from_string("{a: 5,}")
+  assert ir.record([#("a", ir.integer(5))]) == ir.clear_annotation(source)
+
+  let assert Ok(source) = parser.all_from_string("{a: 5, b: 6,}")
+  assert ir.record([#("a", ir.integer(5)), #("b", ir.integer(6))])
+    == ir.clear_annotation(source)
+
+  let assert Ok(source) = parser.all_from_string("{a, b,}")
+  assert ir.record([#("a", ir.variable("a")), #("b", ir.variable("b"))])
+    == ir.clear_annotation(source)
+
+  let assert Ok(source) = parser.all_from_string("{a,}")
+  assert ir.record([#("a", ir.variable("a"))]) == ir.clear_annotation(source)
+}
+
 pub fn record_sugar_test() {
   "{a, b}"
   |> parser.all_from_string()

@@ -482,7 +482,16 @@ pub fn build_list(reversed, acc) {
 fn do_record(rest, start, acc) {
   use #(#(token, kstart), rest) <- try(pop(rest))
   case token {
-    t.RightBrace -> Ok(#(#(ir.Empty, #(start, kstart + 1)), rest))
+    t.RightBrace ->
+      // in the empty case the finishing span covers the whole record `{}`
+      // in the field case the finishing span covers only the closing `}`
+      case acc {
+        [] -> Ok(#(#(ir.Empty, #(start, kstart + 1)), rest))
+        _ -> {
+          let span = #(kstart, kstart + 1)
+          Ok(#(build_record(acc, #(ir.Empty, span)), rest))
+        }
+      }
     t.Name(label) -> {
       use #(#(token, next), rest) <- try(pop(rest))
       case token {
