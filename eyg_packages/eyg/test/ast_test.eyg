@@ -1,20 +1,21 @@
 // Each test mirrors one fixture from spec/ir_suite.json. 
 
 let aok = import "../../aok/index.eyg"
+let assert = aok.assert
 let ast = import "../ast.eyg"
 let cid = import "../cid.eyg"
 
 // The json is the compact DAG JSON; the expected CID is the suite CID
 // and nodes is the flat AST representation in EYG.
 let check = (json, nodes, expected_cid) -> {
-  let decoded = aok.ok(ast.source_json_to_ast(json))
-  let _ = aok.equal(decoded, nodes)
-  let decoded_bytes = aok.ok(ast.source_json_bytes_to_ast(!string_to_binary(json)))
-  let _ = aok.equal(decoded_bytes, nodes)
+  let decoded = assert.ok(ast.source_json_to_ast(json))
+  let _ = assert.equal(decoded, nodes)
+  let decoded_bytes = assert.ok(ast.source_json_bytes_to_ast(!string_to_binary(json)))
+  let _ = assert.equal(decoded_bytes, nodes)
   let rendered = ast.ast_to_string(decoded)
-  let _ = aok.equal_string(rendered, json)
+  let _ = assert.equal_string(rendered, json)
   let digest = perform Hash({algorithm: SHA256({}), bytes: !string_to_binary(rendered)})
-  let _ = aok.equal_string(cid.from_sha256(digest), expected_cid)
+  let _ = assert.equal_string(cid.from_sha256(digest), expected_cid)
   {}
 }
 

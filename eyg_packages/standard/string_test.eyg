@@ -1,85 +1,80 @@
-// Tests for @standard.string using aok.
-//
-// Each test_* closure asserts via `aok.X`; the helpers perform `Abort`
-// on failure and `eyg test` catches it. The final value is a list of
-// `{name, test}` records, which is the shape `eyg test` expects.
-
 let aok = import "../aok/index.eyg"
+let assert = aok.assert
 let standard = import "./index.eyg.json"
 let s = standard.string
 
 let test_uppercase = (_) -> {
-  let _ = aok.equal_string(s.uppercase("hello"), "HELLO")
-  let _ = aok.equal_string(s.uppercase(""), "")
+  let _ = assert.equal_string(s.uppercase("hello"), "HELLO")
+  let _ = assert.equal_string(s.uppercase(""), "")
   {}
 }
 
 let test_lowercase = (_) -> {
-  let _ = aok.equal_string(s.lowercase("WORLD"), "world")
+  let _ = assert.equal_string(s.lowercase("WORLD"), "world")
   {}
 }
 
 let test_append = (_) -> {
-  let _ = aok.equal_string(s.append("foo", "bar"), "foobar")
+  let _ = assert.equal_string(s.append("foo", "bar"), "foobar")
   {}
 }
 
 let test_length = (_) -> {
-  let _ = aok.equal(s.length("hello"), 5)
-  let _ = aok.equal(s.length(""), 0)
+  let _ = assert.equal(s.length("hello"), 5)
+  let _ = assert.equal(s.length(""), 0)
   {}
 }
 
 let test_starts_with = (_) -> {
-  let _ = aok.true(s.starts_with("hello world", "hello"))
-  let _ = aok.false(s.starts_with("hello", "world"))
+  let _ = assert.true(s.starts_with("hello world", "hello"))
+  let _ = assert.false(s.starts_with("hello", "world"))
   {}
 }
 
 let test_ends_with = (_) -> {
-  let _ = aok.true(s.ends_with("hello world", "world"))
-  let _ = aok.false(s.ends_with("hello", "world"))
+  let _ = assert.true(s.ends_with("hello world", "world"))
+  let _ = assert.false(s.ends_with("hello", "world"))
   {}
 }
 
 let test_split = (_) -> {
   let {head, tail} = s.split("a,b,c", ",")
-  let _ = aok.equal_string(head, "a")
-  let _ = aok.equal(tail, ["b", "c"])
+  let _ = assert.equal_string(head, "a")
+  let _ = assert.equal(tail, ["b", "c"])
   {}
 }
 
 let test_split_once_present = (_) -> {
-  let parts = aok.ok(s.split_once("key=value", "="))
-  let _ = aok.equal_string(parts.pre, "key")
-  let _ = aok.equal_string(parts.post, "value")
+  let parts = assert.ok(s.split_once("key=value", "="))
+  let _ = assert.equal_string(parts.pre, "key")
+  let _ = assert.equal_string(parts.post, "value")
   {}
 }
 
 let test_split_once_absent = (_) -> {
-  let _ = aok.error(s.split_once("nokey", "="))
+  let _ = assert.error(s.split_once("nokey", "="))
   {}
 }
 
 let test_replace = (_) -> {
-  let _ = aok.equal_string(s.replace("a-b-c", "-", "_"), "a_b_c")
+  let _ = assert.equal_string(s.replace("a-b-c", "-", "_"), "a_b_c")
   {}
 }
 
 let test_join = (_) -> {
-  let _ = aok.equal_string(s.join(["a", "b", "c"], ", "), "a, b, c")
-  let _ = aok.equal_string(s.join([], ", "), "")
+  let _ = assert.equal_string(s.join(["a", "b", "c"], ", "), "a, b, c")
+  let _ = assert.equal_string(s.join([], ", "), "")
   {}
 }
 
 let test_concat = (_) -> {
-  let _ = aok.equal_string(s.concat(["foo", "bar", "baz"]), "foobarbaz")
+  let _ = assert.equal_string(s.concat(["foo", "bar", "baz"]), "foobarbaz")
   {}
 }
 
 let test_to_binary_roundtrip = (_) -> {
   let bytes = s.to_binary("hello")
-  let _ = aok.ok(s.from_binary(bytes))
+  let _ = assert.ok(s.from_binary(bytes))
   {}
 }
 

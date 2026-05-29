@@ -1,123 +1,90 @@
-// aok - effect-handler test helpers.
-//
-// Assertion helpers perform `Abort(msg)` directly; `eyg test` catches
-// the abort per-test, renders the source context, and reports
-// pass/fail. The `assert_X` family installs an effect handler around a
-// thunk and returns `{lift, resume}` when the expected effect fires
-// (or aborts when it didn't), letting tests check effectful code with
-// the same call-site clarity as ordinary assertions.
-
 let quote = (s) -> {
   !string_append("`", !string_append(s, "`"))
 }
 
-let equal = (a, b) -> {
-  match !equal(a, b) {
-    True(_) -> { a }
-    False(_) -> { perform Abort("values were not equal") }
-  }
+let reverse = (list) -> {
+  !list_fold(list, [], (el, acc) -> { [el, ..acc] })
 }
 
-let equal_string = (a, b) -> {
-  match !equal(a, b) {
-    True(_) -> { a }
-    False(_) -> {
-      perform Abort(!string_append(quote(a), !string_append(" does not equal ", quote(b))))
+let assert = {
+  equal: (a, b) -> {
+    match !equal(a, b) {
+      True(_) -> { a }
+      False(_) -> { perform Abort("values were not equal") }
     }
-  }
-}
-
-let ok = (result) -> {
-  match result {
-    Ok(value) -> { value }
-    | (_) -> { perform Abort("value was not `Ok`") }
-  }
-}
-
-let error = (result) -> {
-  match result {
-    Error(reason) -> { reason }
-    | (_) -> { perform Abort("value was not `Error`") }
-  }
-}
-
-let true = (condition) -> {
-  match condition {
-    True(_) -> { {} }
-    False(_) -> { perform Abort("value was not `True`") }
-  }
-}
-
-let false = (condition) -> {
-  match condition {
-    False(_) -> { {} }
-    True(_) -> { perform Abort("value was not `False`") }
-  }
-}
-
-let contains = !fix((self, items, value) -> {
-  match !list_pop(items) {
-    Ok({head, tail}) -> {
-      match !equal(head, value) {
-        True(_) -> { value }
-        False(_) -> { self(tail, value) }
+  },
+  equal_string: (a, b) -> {
+    match !equal(a, b) {
+      True(_) -> { a }
+      False(_) -> {
+        perform Abort(!string_append(quote(a), !string_append(" does not equal ", quote(b))))
       }
     }
-    Error(_) -> { perform Abort("list did not contain expected value") }
-  }
-})
-
-// Assert that `f(arg)` performs `Log` and return the lifted value plus
-// a resume continuation so the test can step the computation forward.
-//
-//     let {lift, resume} = aok.assert_log(my_func, my_input)
-//     let _ = aok.equal_string(lift, "expected log message")
-//     let final = resume({})    // continue the suspended computation
-//
-// If `f(arg)` finishes without performing `Log`, the helper aborts
-// with a message naming the missed effect.
-let assert_log = (f, arg) -> {
-  let outcome = handle Log((lift, resume) -> {
-    Captured({lift, resume})
-  }, (_) -> {
-    let _ = f(arg)
-    Missed({})
+  },
+  ok: (result) -> {
+    match result {
+      Ok(value) -> { value }
+      | (_) -> { perform Abort("value was not `Ok`") }
+    }
+  },
+  error: (result) -> {
+    match result {
+      Error(reason) -> { reason }
+      | (_) -> { perform Abort("value was not `Error`") }
+    }
+  },
+  true: (condition) -> {
+    match condition {
+      True(_) -> { {} }
+      False(_) -> { perform Abort("value was not `True`") }
+    }
+  },
+  false: (condition) -> {
+    match condition {
+      False(_) -> { {} }
+      True(_) -> { perform Abort("value was not `False`") }
+    }
+  },
+  contains: !fix((self, items, value) -> {
+    match !list_pop(items) {
+      Ok({head, tail}) -> {
+        match !equal(head, value) {
+          True(_) -> { value }
+          False(_) -> { self(tail, value) }
+        }
+      }
+      Error(_) -> { perform Abort("list did not contain expected value") }
+    }
   })
-  match outcome {
-    Captured(payload) -> { payload }
-    Missed(_) -> { perform Abort("expected `Log` effect, none was performed") }
+}
+
+let expect = {
+  log: (f, arg) -> {
+    handle Log((lift, resume) -> {
+      {lift, resume}
+    }, (_) -> {
+      let _ = f(arg)
+      !never(perform Abort("expected `Log` effect, none was performed"))
+    })
+  },
+  print: (f, arg) -> {
+    handle Print((lift, resume) -> {
+      {lift, resume}
+    }, (_) -> {
+      let _ = f(arg)
+      !never(perform Abort("expected `Print` effect, none was performed"))
+    })
+  },
+  abort: (f, arg) -> {
+    handle Abort((lift, resume) -> {
+      {lift, resume}
+    }, (_) -> {
+      let _ = f(arg)
+      !never(perform Abort("expected `Abort` effect, none was performed"))
+    })
   }
 }
 
-// Variant of assert_log for the `Print` effect.
-let assert_print = (f, arg) -> {
-  let outcome = handle Print((lift, resume) -> {
-    Captured({lift, resume})
-  }, (_) -> {
-    let _ = f(arg)
-    Missed({})
-  })
-  match outcome {
-    Captured(payload) -> { payload }
-    Missed(_) -> { perform Abort("expected `Print` effect, none was performed") }
-  }
-}
-
-// Assert that `f(arg)` aborts. Returns `{lift, resume}` with `lift`
-// being the abort reason. Calling `resume` continues from where the
-// abort fired (rare in tests but supported by deep handlers).
-let assert_abort = (f, arg) -> {
-  let outcome = handle Abort((lift, resume) -> {
-    Captured({lift, resume})
-  }, (_) -> {
-    let _ = f(arg)
-    Missed({})
-  })
-  match outcome {
-    Captured(payload) -> { payload }
-    Missed(_) -> { perform Abort("expected `Abort` effect, none was performed") }
-  }
-}
 
 // Invoke a single test closure with `{}` under a deep `Abort` handler.
 // Returns `Pass({})` when the body completes, or `Fail(reason)` where
@@ -134,9 +101,6 @@ let run_test = (test) -> {
   })
 }
 
-let reverse = (list) -> {
-  !list_fold(list, [], (el, acc) -> { [el, ..acc] })
-}
 
 // Run every `{name, test}` record in order and return a list of
 // `{name, outcome}` records (same order) where `outcome` is `Pass({})`
@@ -203,16 +167,8 @@ let debug = !fix((self, tests, name) -> {
 })
 
 {
-  equal,
-  equal_string,
-  ok,
-  error,
-  true,
-  false,
-  contains,
-  assert_log,
-  assert_print,
-  assert_abort,
+  assert,
+  expect,
   run_test,
   run_all,
   all,

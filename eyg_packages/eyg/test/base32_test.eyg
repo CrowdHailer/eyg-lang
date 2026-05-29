@@ -1,33 +1,32 @@
-// Tests for base32.eyg, run by entry.eyg via the aok library.
-//
 // The expected values are the RFC 4648 test vectors, lowercased and with
-// the padding removed - the form base32.eyg produces.
+// the padding removed.
 
 let aok = import "../../aok/index.eyg"
+let assert = aok.assert
 let base32 = import "../base32.eyg"
 
 let test_empty = (_) -> {
-  let _ = aok.equal_string(base32.encode(!string_to_binary("")), "")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("")), "")
   {}
 }
 
 // One vector per input length 1..6, so every bit alignment is covered.
 let test_rfc_vectors = (_) -> {
-  let _ = aok.equal_string(base32.encode(!string_to_binary("f")), "my")
-  let _ = aok.equal_string(base32.encode(!string_to_binary("fo")), "mzxq")
-  let _ = aok.equal_string(base32.encode(!string_to_binary("foo")), "mzxw6")
-  let _ = aok.equal_string(base32.encode(!string_to_binary("foob")), "mzxw6yq")
-  let _ = aok.equal_string(base32.encode(!string_to_binary("fooba")), "mzxw6ytb")
-  let _ = aok.equal_string(base32.encode(!string_to_binary("foobar")), "mzxw6ytboi")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("f")), "my")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("fo")), "mzxq")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("foo")), "mzxw6")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("foob")), "mzxw6yq")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("fooba")), "mzxw6ytb")
+  let _ = assert.equal_string(base32.encode(!string_to_binary("foobar")), "mzxw6ytboi")
   {}
 }
 
 // Raw bytes rather than text: the all-zero and all-one bytes exercise
 // the first and last characters of the alphabet.
 let test_raw_bytes = (_) -> {
-  let _ = aok.equal_string(base32.encode(!binary_from_integers([0])), "aa")
-  let _ = aok.equal_string(base32.encode(!binary_from_integers([255])), "74")
-  let _ = aok.equal_string(
+  let _ = assert.equal_string(base32.encode(!binary_from_integers([0])), "aa")
+  let _ = assert.equal_string(base32.encode(!binary_from_integers([255])), "74")
+  let _ = assert.equal_string(
     base32.encode(!binary_from_integers([0, 0, 0, 0, 0])),
     "aaaaaaaa"
   )

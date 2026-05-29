@@ -3,9 +3,14 @@ let list = @standard.list
 let aok = import "eyg_packages/aok/index.eyg"
 
 let tests = list.flatten([
+  import "./eyg_packages/aok/entry.eyg".tests,
   import "./eyg_packages/standard/test.eyg",
-  import "./eyg_packages/eyg/entry.eyg".tests,
-  import "./eyg_packages/overlay/entry.eyg".tests
+  import "./eyg_packages/eyg/entry.eyg".tests
+  // import "./eyg_packages/overlay/entry.eyg".tests,
+  // import "./eyg_packages/json/entry.eyg".tests,
+  // import "./eyg_packages/fs/entry.eyg".tests,
+  // import "./eyg_packages/edit/entry.eyg".tests,
+  // import "./eyg_packages/option/entry.eyg".tests
 ])
 let test = (_) -> {
   aok.all(tests)

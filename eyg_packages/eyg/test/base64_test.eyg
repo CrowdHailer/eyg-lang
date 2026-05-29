@@ -1,31 +1,32 @@
 let aok = import "../../aok/index.eyg"
+let assert = aok.assert
 let base64 = import "../base64.eyg"
 let list = @standard.list
 
 let encode_test = (_) -> {
-  let _ = aok.equal_string(base64.encode(!string_to_binary("")), "")
-  let _ = aok.equal_string(base64.encode(!string_to_binary("f")), "Zg")
-  let _ = aok.equal_string(base64.encode(!string_to_binary("fo")), "Zm8")
-  let _ = aok.equal_string(base64.encode(!string_to_binary("foo")), "Zm9v")
-  let _ = aok.equal_string(base64.encode(!string_to_binary("foob")), "Zm9vYg")
-  let _ = aok.equal_string(base64.encode(!string_to_binary("fooba")), "Zm9vYmE")
-  let _ = aok.equal_string(base64.encode(!string_to_binary("foobar")), "Zm9vYmFy")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("")), "")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("f")), "Zg")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("fo")), "Zm8")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("foo")), "Zm9v")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("foob")), "Zm9vYg")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("fooba")), "Zm9vYmE")
+  let _ = assert.equal_string(base64.encode(!string_to_binary("foobar")), "Zm9vYmFy")
   {}
 }
 
 let decode_test = (_) -> {
-  let _ = aok.equal(!string_to_binary(""), base64.decode(""))
-  let _ = aok.equal(!string_to_binary("f"), base64.decode("Zg"))
-  let _ = aok.equal(!string_to_binary("fo"), base64.decode("Zm8"))
-  let _ = aok.equal(!string_to_binary("foo"), base64.decode("Zm9v"))
-  let _ = aok.equal(!string_to_binary("foob"), base64.decode("Zm9vYg"))
-  let _ = aok.equal(!string_to_binary("fooba"), base64.decode("Zm9vYmE"))
-  let _ = aok.equal(!string_to_binary("foobar"), base64.decode("Zm9vYmFy"))
+  let _ = assert.equal(!string_to_binary(""), base64.decode(""))
+  let _ = assert.equal(!string_to_binary("f"), base64.decode("Zg"))
+  let _ = assert.equal(!string_to_binary("fo"), base64.decode("Zm8"))
+  let _ = assert.equal(!string_to_binary("foo"), base64.decode("Zm9v"))
+  let _ = assert.equal(!string_to_binary("foob"), base64.decode("Zm9vYg"))
+  let _ = assert.equal(!string_to_binary("fooba"), base64.decode("Zm9vYmE"))
+  let _ = assert.equal(!string_to_binary("foobar"), base64.decode("Zm9vYmFy"))
   {}
 }
 
 let roundtrip = (bytes) -> {
-  aok.equal(bytes, base64.decode(base64.encode(bytes)))
+  assert.equal(bytes, base64.decode(base64.encode(bytes)))
 }
 
 let roundtrip_test = (_) -> {
@@ -45,7 +46,7 @@ let all_chars_test = (_) -> {
   let all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
   // 64 chars -> 16 chunks of 4 -> 16 * 3 = 48 bytes
   let decoded = base64.decode(all_chars)
-  let _ = aok.equal_string(base64.encode(decoded), all_chars)
+  let _ = assert.equal_string(base64.encode(decoded), all_chars)
   {}
 }
 

@@ -1,9 +1,5 @@
-// Tests for cid.eyg, run by entry.eyg via the aok library.
-//
-// cid.from_sha256 builds the CIDv1 of a dag-json module from the sha256
-// digest of its block.
-
 let aok = import "../../aok/index.eyg"
+let assert = aok.assert
 let cid = import "../cid.eyg"
 
 // The sha256 digest of eyg_packages/standard/index.eyg.json. The standard
@@ -14,7 +10,7 @@ let standard_digest = !binary_from_integers([
 ])
 
 let test_known_cid = (_) -> {
-  let _ = aok.equal_string(
+  let _ = assert.equal_string(
     cid.from_sha256(standard_digest),
     "baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja"
   )
@@ -28,7 +24,7 @@ let test_header_prefix = (_) -> {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
   ])
-  let _ = aok.equal_string(
+  let _ = assert.equal_string(
     cid.from_sha256(zeros),
     "baguqeeraaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   )
@@ -38,8 +34,8 @@ let test_header_prefix = (_) -> {
 // A CIDv1 of a 32-byte digest is always the `b` multibase prefix plus 60
 // base32 characters.
 let test_cid_length = (_) -> {
-  let _ = aok.equal(!string_length(cid.from_sha256(standard_digest)), 61)
-  let _ = aok.true(!string_starts_with(cid.from_sha256(standard_digest), "b"))
+  let _ = assert.equal(!string_length(cid.from_sha256(standard_digest)), 61)
+  let _ = assert.true(!string_starts_with(cid.from_sha256(standard_digest), "b"))
   {}
 }
 

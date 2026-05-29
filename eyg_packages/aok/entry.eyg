@@ -1,0 +1,12 @@
+let aok = import "./index.eyg"
+let tests = import "./test.eyg"
+
+{
+  tests,
+  script: (_) -> {
+    match !equal(aok.all(tests).failed, 0) {
+      True(_) -> { 0 }
+      False(_) -> { 1 }
+    }
+  }
+}

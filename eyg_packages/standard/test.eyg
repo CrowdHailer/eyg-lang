@@ -1,4 +1,3 @@
-
 @standard.list.flatten([
   import "string_test.eyg"
 ])
