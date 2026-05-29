@@ -1,0 +1,63 @@
+let origin = {
+  https: (host) -> { {scheme: HTTPS({}), host: host, port: None({})} },
+  localhost: (port) -> { {scheme: HTTP({}), host: "localhost", port: Some(port)} }
+}
+
+let operation = {
+  get: (path) -> {
+    {
+      method: GET({}),
+      path: path,
+      query: None({}),
+      headers: [],
+      body: !string_to_binary("")
+    }
+  },
+  post: (path, {content_type, bytes}) -> {
+    {
+      method: POST({}),
+      path: path,
+      query: None({}),
+      headers: [{key: "content-type", value: content_type}],
+      body: bytes
+    }
+  }
+}
+
+let response = {
+  ok: ({content_type, bytes}) -> {
+    {
+      status: 200,
+      headers: [{key: "content-type", value: content_type}],
+      body: bytes
+    }
+  },
+  no_content: {
+    status: 204,
+    headers: [],
+    body: !string_to_binary("")
+  }
+}
+
+let dispatch = (operation, origin) -> {
+  let {scheme, host, port} = origin
+  let {method, path, query, headers, body} = operation
+  let request = {
+    method: method,
+    scheme: scheme,
+    host: host,
+    port: port,
+    path: path,
+    query: query,
+    headers: headers,
+    body: body
+  }
+  perform Fetch(request)
+}
+
+{
+  origin,
+  operation,
+  response,
+  dispatch
+}

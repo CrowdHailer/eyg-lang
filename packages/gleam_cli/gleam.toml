@@ -1,5 +1,5 @@
 name = "eyg_cli"
-version = "0.0.1"
+version = "0.0.2"
 target = "javascript"
 
 description = "CLI for running EYG programs and interacting with the EYG hub."

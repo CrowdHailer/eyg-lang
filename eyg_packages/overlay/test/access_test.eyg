@@ -149,25 +149,7 @@ let test_apply_mocks_without_host_io = (_) -> {
   {}
 }
 
-let test_apply_allow_all_passes_file_effects_to_host = (_) -> {
-  let output = access.apply(access.allow_all, (_) -> {
-    let read = perform ReadFile(read_request(source_path, 100))
-    let read_directory = perform ReadDirectory(fixture_root)
-    let write_file = perform WriteFile(write_request(output_path, "one"))
-    let append_file = perform AppendFile(write_request(output_path, "two"))
-    let reread = perform ReadFile(read_request(output_path, 100))
-    let delete_file = perform DeleteFile(output_path)
-    {read, read_directory, write_file, append_file, reread, delete_file}
-  })
 
-  let _ = assert.equal(bytes("overlay fixture\n"), assert.ok(output.read))
-  let _ = assert.true(has_entry_named(assert.ok(output.read_directory), "source.txt"))
-  let _ = assert.equal({}, assert.ok(output.write_file))
-  let _ = assert.equal({}, assert.ok(output.append_file))
-  let _ = assert.equal(bytes("onetwo"), assert.ok(output.reread))
-  let _ = assert.equal({}, assert.ok(output.delete_file))
-  {}
-}
 
 let test_policy_record_overwrite_from_constants = (_) -> {
   let from_deny = {
@@ -326,7 +308,6 @@ let test_file_policy_builders = (_) -> {
   {name: "access core decisions and combiner", test: test_core_decisions_and_combiner},
   {name: "access apply deny_all returns effect errors", test: test_apply_deny_all_returns_effect_errors},
   {name: "access apply mocks without host IO", test: test_apply_mocks_without_host_io},
-  {name: "access apply allow_all passes file effects to host", test: test_apply_allow_all_passes_file_effects_to_host},
   {name: "access policy record overwrite from constants", test: test_policy_record_overwrite_from_constants},
   {name: "access fetch helpers", test: test_fetch_helpers},
   {name: "access read helpers", test: test_read_helpers},

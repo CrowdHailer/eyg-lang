@@ -7,7 +7,7 @@ let tests = list.flatten([
   import "./eyg_packages/standard/test.eyg",
   import "./eyg_packages/eyg/entry.eyg".tests,
   import "./eyg_packages/overlay/entry.eyg".tests,
-  // import "./eyg_packages/json/entry.eyg".tests,
+  import "./eyg_packages/json/entry.eyg".tests,
   import "./eyg_packages/fs/entry.eyg".tests,
   import "./eyg_packages/edit/entry.eyg".tests,
   import "./eyg_packages/option/entry.eyg".tests

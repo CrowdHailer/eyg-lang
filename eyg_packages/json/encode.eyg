@@ -1,0 +1,82 @@
+// JSON encoder.
+//
+// Each encoder returns a `String` of valid JSON. Compose them to
+// build complex documents:
+//
+//     let person = encode.object([
+//       {key: "name",  value: encode.string("Ada")},
+//       {key: "age",   value: encode.integer(36)},
+//       {key: "admin", value: encode.boolean(True({}))}
+//     ])
+//
+// The result strings are pure values - no effects, no parser
+// required. Round-trips through `decode` are tested in
+// ../json/test.eyg.
+
+let string_helpers = @standard.string
+
+// Escape characters that aren't legal between JSON double-quotes.
+// Order matters: replace backslash first so the escapes we add next
+// aren't themselves escaped.
+let escape = (value) -> {
+  let value = !string_replace(value, "\\", "\\\\")
+  let value = !string_replace(value, "\"", "\\\"")
+  let value = !string_replace(value, "\n", "\\n")
+  let value = !string_replace(value, "\r", "\\r")
+  let value = !string_replace(value, "\t", "\\t")
+  value
+}
+
+let quote = (value) -> {
+  !string_append("\"", !string_append(escape(value), "\""))
+}
+
+let string = (value) -> { quote(value) }
+
+let integer = (value) -> { !int_to_string(value) }
+
+let boolean = (value) -> {
+  match value {
+    True(_) -> { "true" }
+    False(_) -> { "false" }
+  }
+}
+
+let null = (_) -> { "null" }
+
+let join = (items, separator) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      !list_fold(tail, head, (item, acc) -> {
+        !string_append(acc, !string_append(separator, item))
+      })
+    }
+    Error(_) -> { "" }
+  }
+}
+
+// Array of already-encoded strings. Each entry must itself be valid
+// JSON (typically produced by the other encoders in this module).
+let array = (items) -> {
+  !string_append("[", !string_append(join(items, ","), "]"))
+}
+
+// {key, value} entry for object/.
+let field = (key, value) -> { {key, value} }
+
+let object = (fields) -> {
+  let pairs = @standard.list.map(fields, ({key, value}) -> {
+    !string_append(quote(key), !string_append(":", value))
+  })
+  !string_append("{", !string_append(join(pairs, ","), "}"))
+}
+
+{
+  string,
+  integer,
+  boolean,
+  null,
+  array,
+  object,
+  field
+}

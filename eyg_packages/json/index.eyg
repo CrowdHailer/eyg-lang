@@ -9,12 +9,12 @@ let expect = (result, message) -> {
   }
 }
 
-let reverse = !fix((self, items, acc) -> {
-  match !list_pop(items) {
-    Ok({head, tail}) -> { self(tail, [head, ..acc]) }
-    Error(_) -> { acc }
-  }
-})
+// Two-arg shim around @standard.list.reverse: call sites pass an
+// initial accumulator (always `[]` in this package), so the explicit
+// form keeps the call sites unchanged.
+let reverse = (items, acc) -> {
+  @standard.list.append(@standard.list.reverse(items), acc)
+}
 
 let take = (parsed) -> {
   match !list_pop(parsed) {
@@ -193,9 +193,12 @@ let decode = {
   object
 }
 
+let encode = import "./encode.eyg"
+
 {
   parse,
   parse_bytes,
   expect,
-  decode
+  decode,
+  encode
 }

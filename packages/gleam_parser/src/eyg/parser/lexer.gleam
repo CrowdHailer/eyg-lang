@@ -129,6 +129,8 @@ fn comment(buffer, rest, done) {
     // leave newline on stack to end up as witespace
     "\r\n" <> _ | "\n" <> _ ->
       done(t.Comment(buffer), string.byte_size(buffer) + 2, rest)
+    // A comment at EOF (no trailing newline) closes here.
+    "" -> done(t.Comment(buffer), string.byte_size(buffer) + 2, "")
     _ -> {
       let next_byte = byte_slice_range(rest, 0, 1)
       let rest = byte_slice_from(rest, 1)
