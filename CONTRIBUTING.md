@@ -1,5 +1,25 @@
 # Contributing to EYG
 
+## Running tests
+
+To test all the packages on the BEAM environment.
+```sh
+# Erlang-target Gleam packages
+for pkg in packages/{gleam_analysis,gleam_hub,gleam_ir,gleam_parser,topological,touch_grass,untethered}; do
+  ( cd "$pkg" && gleam format --check src test && gleam build --warnings-as-errors && gleam test )
+done
+```
+To test all the packages on the JavaScript environment.
+```sh
+for pkg in packages/{eyg_check,gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,morph,topological,touch_grass,untethered,website}; do
+  ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
+done
+```
+Test all the eyg packages.
+```sh
+eyg script entry.eyg
+```
+
 ## Writing EYG packages
 
 All EYG packages are in the `eyg_packages` directory.
@@ -8,9 +28,9 @@ The entry module will be in `entry.eyg` of the package directory.
 
 The tests for all packages can be run using the repository level `entry.eyg` file.
 
-## Setup local development
+## Local site development
 
-The application is specified as a Docker Compose file in the eyg.run [package](./packages/eyg.run)
+The infrastructure for the website and hub application is specified as a Docker Compose file in the eyg.run [package](./packages/eyg.run)
 This includes a local development setup.
 
 ### Create a `.env` file
