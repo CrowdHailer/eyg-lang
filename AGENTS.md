@@ -33,6 +33,7 @@ For reproducible scripts use the pinned forms described in the
 
 All code written into `eyg_packages` must be completly tested.
 Ensure that the whole suite of tests still pass by running `entry.eyg` from the top level of the repository.
+<<<<<<< HEAD
 
 ## Notes
 
@@ -49,3 +50,30 @@ Remove notes when they are no longer relevant.
 Prefer adding tests or checks that remain fresh rather than writing notes that can go stale.
 
 Notes should contain `name:` `description:` and `date:` in frontmatter.
+=======
+## Implementing Plans
+
+KEEP NOTES in the `notes` directory of this (the eyg-lang) repo.
+
+When asked to add a feature or solve a problem in this repository you must:
+
+1. Make a compelling case for the feature
+2. Provide clear guidance for a reviewer to understand whay you have done.
+3. Explain what you could have done differently.
+4. Link to resources and examples or your chosen approach to show that it is best practise or common.
+5. Break your work down into a sensible series of commits.
+6. Commit frequently and push to a feature branch
+7. Never ask the user for clarification, assume the plan is good and for any missing information make your own decisions and record them in the proposal document.
+8. Show an example of the feature in use. If this is a new eyg feature or package ensure that the example runs correctly.
+
+Write up a proposal document with the above points and to keep track of your work.
+After every step check that all tests pass.
+Write new tests liberally
+
+IMPORTANT: Prefer writing EYG code to adding new effects.
+Prefer adding new effects to changing the language.
+Only as a last resort implement new language features and explain thoroughly why they are needed.
+
+After completing the feature add a future work section to the proposal document.
+For the smallest future features implement them.
+>>>>>>> 190880fd (update plans)
