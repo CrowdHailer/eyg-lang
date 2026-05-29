@@ -1,3 +1,7 @@
+let list_helpers = @standard.list
+let contains = list_helpers.contains
+let reverse = list_helpers.reverse
+
 let print_line = (line) -> {
   perform Print(!string_append(line, "\n"))
 }
@@ -5,20 +9,6 @@ let print_line = (line) -> {
 let path_join = (before, after) -> {
   !string_append(before, !string_append("/", after))
 }
-
-let contains = !fix((self,items,value) -> { 
-  match !list_pop(items) {
-    Ok({head, tail}) -> {
-      match !equal(head, value) {
-        True({}) -> { True({}) }
-        False({}) -> { self(tail, value) }
-      }
-    }
-    Error(_) -> { False({}) }
-  }
-})
-
-let reverse = (list) -> {!list_fold(list, [], (el, acc) -> {[el, ..acc]})}
 
 
 let list = ({root, ignore}) -> {
@@ -80,7 +70,8 @@ let read = (path) -> {
         let combined = !binary_concat(acc, bytes)
         match !int_compare(len, chunk) {
           Lt(_) -> { Ok(combined) }
-          Eq(_) -> { self(!int_add(offset, chunk), combined) }
+          Eq(_) -> { self(!int_add(offset, len), combined) }
+          Gt(_) -> { self(!int_add(offset, len), combined) }
         }
       }
       Error(reason) -> { Error(reason) }

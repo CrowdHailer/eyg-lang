@@ -1,0 +1,73 @@
+// Option module: Some(value) / None({}) for "may or may not have a value".
+
+let some = (value) -> { Some(value) }
+let none = (_) -> { None({}) }
+
+let is_some = (option) -> {
+  match option {
+    Some(_) -> { True({}) }
+    None(_) -> { False({}) }
+  }
+}
+
+let is_none = (option) -> {
+  match option {
+    Some(_) -> { False({}) }
+    None(_) -> { True({}) }
+  }
+}
+
+// Apply a function to the wrapped value, leaving None untouched.
+let map = (option, f) -> {
+  match option {
+    Some(value) -> { Some(f(value)) }
+    None(_) -> { None({}) }
+  }
+}
+
+// Unwrap or fall back to `default`. The default is evaluated only
+// when the option is None.
+let unwrap_or = (option, default) -> {
+  match option {
+    Some(value) -> { value }
+    None(_) -> { default }
+  }
+}
+
+// Like unwrap_or but the default is produced lazily via a thunk -
+// useful when the default is expensive or has effects.
+let unwrap_or_else = (option, fallback) -> {
+  match option {
+    Some(value) -> { value }
+    None(_) -> { fallback({}) }
+  }
+}
+
+// Convert a Result to an Option, discarding the error reason.
+let from_result = (result) -> {
+  match result {
+    Ok(value) -> { Some(value) }
+    Error(_) -> { None({}) }
+  }
+}
+
+// Convert an Option to a Result, supplying a reason for the None
+// case.
+let to_result = (option, reason) -> {
+  match option {
+    Some(value) -> { Ok(value) }
+    None(_) -> { Error(reason) }
+  }
+}
+
+{
+  some,
+  none,
+  is_some,
+  is_none,
+  map,
+  unwrap_or,
+  unwrap_or_else,
+  from_result,
+  to_result
+}

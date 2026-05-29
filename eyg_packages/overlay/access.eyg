@@ -10,24 +10,12 @@
 // Denials are delivered through the normal Result lower value of each
 // intercepted effect rather than through a wrapper around the whole run.
 
+let list_helpers = @standard.list
+let contains = list_helpers.contains
+let reverse = list_helpers.reverse
+
 let append = (a, b) -> {
   !string_append(a, b)
-}
-
-let contains = !fix((self, items, value) -> {
-  match !list_pop(items) {
-    Ok({head, tail}) -> {
-      match !equal(head, value) {
-        True(_) -> { True({}) }
-        False(_) -> { self(tail, value) }
-      }
-    }
-    Error(_) -> { False({}) }
-  }
-})
-
-let reverse = (items) -> {
-  !list_fold(items, [], (item, acc) -> { [item, ..acc] })
 }
 
 let join_path = (parts) -> {

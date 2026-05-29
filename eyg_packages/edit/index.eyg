@@ -1,4 +1,3 @@
-let fs = import "../fs/index.eyg"
 let write_text = ({path, text}) -> {
   perform WriteFile({path, contents: !string_to_binary(text)})
 }
@@ -12,12 +11,16 @@ let append_line = ({path, line}) -> {
   append_text({path, text})
 }
 
-let patch = ({path, find, replace}) -> {
-  match fs.read(path) {
+// Read+transform+write helper. Performs ReadFile/WriteFile inline so
+// the caller's path resolution applies (a previous version went via
+// fs.read which resolved paths from the fs package's directory).
+let update_text = ({path, transform}) -> {
+  match perform ReadFile({path, offset: 0, limit: 16777216}) {
     Ok(contents) -> {
       match !string_from_binary(contents) {
         Ok(text) -> {
-          perform WriteFile({path, contents: !string_to_binary(!string_replace(text, find, replace))})
+          let next = transform(text)
+          perform WriteFile({path, contents: !string_to_binary(next)})
         }
         Error(_) -> { Error("file is not valid utf-8") }
       }
@@ -26,25 +29,95 @@ let patch = ({path, find, replace}) -> {
   }
 }
 
-let reverse = (list) -> {!list_fold(list, [], (el, acc) -> {[el, ..acc]})}
+// Replace every occurrence of `find` with `replace` in the file.
+// (The underlying `!string_replace` is all-occurrences; `patch` is
+// kept as a backwards-compatible alias.)
+let replace_all = ({path, find, replace}) -> {
+  update_text({path, transform: (text) -> { !string_replace(text, find, replace) }})
+}
+
+let patch = replace_all
+
+let reverse = @standard.list.reverse
+
+let split_lines = (text) -> {
+  let {head, tail} = !string_split(text, "\n")
+  [head, ..tail]
+}
+
+let join_lines = (lines) -> {
+  // Avoid the trailing-newline ambiguity: re-join with "\n" exactly,
+  // so a file that ended with a newline still does.
+  match !list_pop(lines) {
+    Ok({head, tail}) -> {
+      !list_fold(tail, head, (line, acc) -> {
+        !string_append(acc, !string_append("\n", line))
+      })
+    }
+    Error(_) -> { "" }
+  }
+}
+
+// Insert `line` at 1-based position `at`. Lines at or after `at`
+// shift down. `at` of 1 prepends; `at` greater than (line count + 1)
+// appends.
+let insert_line_at = ({path, at, line}) -> {
+  update_text({path, transform: (text) -> {
+    let lines = split_lines(text)
+    let {before, after} = !list_fold(lines, {before: [], after: [], i: 1}, (l, acc) -> {
+      match !int_compare(acc.i, at) {
+        Lt(_) -> { {before: [l, ..acc.before], after: acc.after, i: !int_add(acc.i, 1)} }
+        | (_) -> { {before: acc.before, after: [l, ..acc.after], i: !int_add(acc.i, 1)} }
+      }
+    })
+    let lines = !list_fold(reverse(before), [line, ..reverse(after)], (l, acc) -> {
+      [l, ..acc]
+    })
+    join_lines(lines)
+  }})
+}
+
+let contains_any_pattern = !fix((self, line, patterns) -> {
+  match !list_pop(patterns) {
+    Ok({head, tail}) -> {
+      match !string_split_once(line, head) {
+        Ok(_) -> { True({}) }
+        Error(_) -> { self(line, tail) }
+      }
+    }
+    Error(_) -> { False({}) }
+  }
+})
+
+// Remove every line in `path` containing any of `patterns`. Returns
+// the number of lines removed alongside Ok/Error.
+let delete_lines_matching = ({path, patterns}) -> {
+  match perform ReadFile({path, offset: 0, limit: 16777216}) {
+    Ok(contents) -> {
+      match !string_from_binary(contents) {
+        Ok(text) -> {
+          let lines = split_lines(text)
+          let kept = !list_fold(lines, [], (line, acc) -> {
+            match contains_any_pattern(line, patterns) {
+              True(_) -> { acc }
+              False(_) -> { [line, ..acc] }
+            }
+          })
+          let kept = reverse(kept)
+          match perform WriteFile({path, contents: !string_to_binary(join_lines(kept))}) {
+            Ok(_) -> { Ok({removed: !int_subtract(!list_fold(lines, 0, (_, n) -> { !int_add(n, 1) }), !list_fold(kept, 0, (_, n) -> { !int_add(n, 1) }))}) }
+            Error(reason) -> { Error(reason) }
+          }
+        }
+        Error(_) -> { Error("file is not valid utf-8") }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
 
 let grep = ({text, patterns}) -> {
-  let {head, tail} = !string_split(text, "\n")
-  let lines = [head, ..tail]
-
-  let contains_any_pattern = !fix((self, line, patterns) -> {
-    match !list_pop(patterns) {
-      Ok({head, tail}) -> {
-        // Check if pattern is in line by trying to split
-        match !string_split_once(line, head) {
-          Ok(_) -> { True({}) }
-          Error(_) -> { self(line, tail) }
-        }
-      }
-      Error(_) -> { False({}) }
-    }
-  })
-
+  let lines = split_lines(text)
   !fix((self, line, remaining, found) -> {
     match !list_pop(remaining) {
       Ok({head, tail}) -> {
@@ -56,7 +129,15 @@ let grep = ({text, patterns}) -> {
       Error(_) -> { reverse(found) }
     }
   })(1, lines, [])
-  
 }
 
-{write_text, append_text, append_line, patch, grep}
+{
+  write_text,
+  append_text,
+  append_line,
+  patch,
+  replace_all,
+  insert_line_at,
+  delete_lines_matching,
+  grep
+}

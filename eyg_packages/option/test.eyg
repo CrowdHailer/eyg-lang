@@ -1,0 +1,43 @@
+let {assert} = import "../aok/index.eyg"
+let option = import "./index.eyg"
+
+[
+  {name: "option.some wraps a value",
+   test: (_) -> { assert.equal(option.some(5), Some(5)) }},
+  {name: "option.none produces None({})",
+   test: (_) -> { assert.equal(option.none({}), None({})) }},
+
+  {name: "option.is_some on Some is True",
+   test: (_) -> { assert.true(option.is_some(Some(1))) }},
+  {name: "option.is_some on None is False",
+   test: (_) -> { assert.false(option.is_some(None({}))) }},
+  {name: "option.is_none on None is True",
+   test: (_) -> { assert.true(option.is_none(None({}))) }},
+  {name: "option.is_none on Some is False",
+   test: (_) -> { assert.false(option.is_none(Some(1))) }},
+
+  {name: "option.map applies f when Some",
+   test: (_) -> { assert.equal(option.map(Some(2), (x) -> { !int_add(x, 1) }), Some(3)) }},
+  {name: "option.map leaves None alone",
+   test: (_) -> { assert.equal(option.map(None({}), (x) -> { x }), None({})) }},
+
+  {name: "option.unwrap_or returns the value on Some",
+   test: (_) -> { assert.equal(option.unwrap_or(Some(7), 0), 7) }},
+  {name: "option.unwrap_or returns the default on None",
+   test: (_) -> { assert.equal(option.unwrap_or(None({}), 99), 99) }},
+
+  {name: "option.unwrap_or_else invokes the thunk on None",
+   test: (_) -> { assert.equal(option.unwrap_or_else(None({}), (_) -> { 11 }), 11) }},
+  {name: "option.unwrap_or_else skips the thunk on Some",
+   test: (_) -> { assert.equal(option.unwrap_or_else(Some(3), (_) -> { 99 }), 3) }},
+
+  {name: "option.from_result drops Ok wrapping",
+   test: (_) -> { assert.equal(option.from_result(Ok(5)), Some(5)) }},
+  {name: "option.from_result turns Error into None",
+   test: (_) -> { assert.equal(option.from_result(Error("nope")), None({})) }},
+
+  {name: "option.to_result wraps Some as Ok",
+   test: (_) -> { assert.equal(option.to_result(Some(5), "missing"), Ok(5)) }},
+  {name: "option.to_result wraps None as Error with the supplied reason",
+   test: (_) -> { assert.equal(option.to_result(None({}), "missing"), Error("missing")) }},
+]
