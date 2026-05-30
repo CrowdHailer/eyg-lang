@@ -36,6 +36,8 @@ Ensure that the whole suite of tests still pass by running `entry.eyg` from the 
 
 ## Notes
 
+DO NOT save memories, keep notes instead.
+
 Notes are recorded in the `notes` directory.
 
 Refer to relevant notes when working to not repeat issues.
