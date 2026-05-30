@@ -23,13 +23,20 @@ jobs:
         otp: ["28.4"]
         rebar3: ["3.25"]
         package: [
+          # "eyg_check",
           "gleam_analysis",
+          # "gleam_cli",
+          # "gleam_compiler",
           "gleam_hub",
+          # "gleam_interpreter",
           "gleam_ir",
           "gleam_parser",
+          # "gleam_x",
+          # "morph",
           "topological",
           "touch_grass",
           "untethered"
+          # "website"
         ]
     steps:
       - uses: actions/checkout@v4
@@ -47,9 +54,9 @@ jobs:
         # committed manifest was stale.
         run: git diff --exit-code manifest.toml
         working-directory: packages/${{matrix.package}}
-      - run: gleam build --warnings-as-errors
+      - run: gleam build --target erlang --warnings-as-errors
         working-directory: packages/${{matrix.package}}
-      - run: gleam test
+      - run: gleam test --target erlang
         working-directory: packages/${{matrix.package}}
       - run: gleam format --check src test
         working-directory: packages/${{matrix.package}}
@@ -108,8 +115,8 @@ jobs:
           "gleam_cli",
           "gleam_compiler",
           "gleam_hub",
-          "gleam_ir",
           "gleam_interpreter",
+          "gleam_ir",
           "gleam_parser",
           "gleam_x",
           "morph",

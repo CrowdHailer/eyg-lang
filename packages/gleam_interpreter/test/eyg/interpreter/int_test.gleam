@@ -19,7 +19,7 @@ pub fn int_parse_out_of_safe_range_test() {
   let n = 999_999_999_999_999 * 1_000_000
   case integer.is_safe(n) {
     True -> {
-      assert Ok(v.Integer(n)) == result
+      assert Ok(v.ok(v.Integer(n))) == result
     }
     False -> {
       let assert Error(#(reason, _, _, _)) = result

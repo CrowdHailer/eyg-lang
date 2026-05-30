@@ -1,0 +1,21 @@
+---
+name: interpreter is javascript only
+description: The gleam_interpreter has promises and can only run on the JavaScript runtime.
+date: 2026-05-30
+---
+
+Earlier in development an experiment to support async work via promises was added to the interpreter.
+In EYG everything should be explicit, so any program using async/await would reveal this through one of both of the Async/Await effect.
+Because an Await effect needs to be implemented in the runtime the runtime is built on promises.
+This means that the gleam_interpreter cannot run on erlang.
+
+Currently the supported runtimes have effects for `Fetch` and `ReadFile` etc that are synchronous and do not require `Await`.
+
+## Future direction
+
+The promise value could be removed from the interpreter value representation.
+This would be a breaking change but not effect anyone at this time.
+
+Promise functionality could be recreated on the BEAM as a noop.
+
+Another concurrency story could be the right approach for EYG and the interpreter could be left as is until that is clear.

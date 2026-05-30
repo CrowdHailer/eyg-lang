@@ -33,3 +33,17 @@ For reproducible scripts use the pinned forms described in the
 
 All code written into `eyg_packages` must be completly tested.
 Ensure that the whole suite of tests still pass by running `entry.eyg` from the top level of the repository.
+
+## Notes
+
+Notes are recorded in the `notes` directory.
+
+Refer to relevant notes when working to not repeat issues.
+Write notes for design decisions when a trade-off has been made.
+Keep notes concise, do not duplicate documentation.
+Notes should only be written when stuff is not clear in the code or documentation.
+
+Remove notes when they are no longer relevant.
+Prefer adding tests or checks that remain fresh rather than writing notes that can go stale.
+
+Notes should contain `name:` `description:` and `date:` in frontmatter.
