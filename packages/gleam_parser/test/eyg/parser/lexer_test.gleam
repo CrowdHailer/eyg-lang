@@ -180,3 +180,25 @@ pub fn name_with_keyword_and_digits_test() {
     #(t.Name("match2"), 5),
   ])
 }
+
+pub fn panic_in_comment_test() {
+  "// Hi 🫛 there\n"
+  |> lexer.lex
+  |> should.equal([#(t.Comment(" Hi 🫛 there"), 0), #(t.Whitespace("\n"), 16)])
+}
+
+pub fn non_ascii_string_test() {
+  "\"🫛\""
+  |> lexer.lex
+  |> should.equal([#(t.String("🫛"), 0)])
+}
+
+pub fn non_ascii_name_test() {
+  "o🫛qrs"
+  |> lexer.lex
+  |> should.equal([
+    #(t.Name("o"), 0),
+    #(t.UnexpectedGrapheme("🫛"), 1),
+    #(t.Name("qrs"), 5),
+  ])
+}
