@@ -33,7 +33,6 @@ For reproducible scripts use the pinned forms described in the
 
 All code written into `eyg_packages` must be completly tested.
 Ensure that the whole suite of tests still pass by running `entry.eyg` from the top level of the repository.
-<<<<<<< HEAD
 
 ## Notes
 
@@ -50,7 +49,6 @@ Remove notes when they are no longer relevant.
 Prefer adding tests or checks that remain fresh rather than writing notes that can go stale.
 
 Notes should contain `name:` `description:` and `date:` in frontmatter.
-=======
 ## Implementing Plans
 
 KEEP NOTES in the `notes` directory of this (the eyg-lang) repo.
@@ -76,4 +74,3 @@ Only as a last resort implement new language features and explain thoroughly why
 
 After completing the feature add a future work section to the proposal document.
 For the smallest future features implement them.
->>>>>>> 190880fd (update plans)
