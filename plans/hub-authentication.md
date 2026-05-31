@@ -25,6 +25,9 @@ The following tasks need completing.
 - [ ] Write a guide for publishing a module
 - [ ] Write a manifesto on the principle purpose of untethererd
 
+Write any new sub tasks to this list.
+Mark items as done in this list when they are complete, code is tested and formatted.
+
 NOTE:
 
 - Document any notes and difficulties as you encounter them
