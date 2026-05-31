@@ -5,7 +5,9 @@ import gleam/result
 import hub/cid
 import hub/crypto
 import hub/modules/data as modules
+import hub/packages/data as packages
 import hub/signatories/data as signatories
+import multiformats/cid/v1
 import pog
 
 pub fn module(conn) {
@@ -27,4 +29,10 @@ pub fn signatory(conn) {
   use pog.Returned(rows:, ..) <- result.map(pog.execute(query, conn))
   let assert [entry] = rows
   #(entry, keypair)
+}
+
+pub fn own_package(conn, package, entity: v1.Cid) {
+  let query = packages.record_owner(package, v1.to_string(entity))
+  use _ <- result.map(pog.execute(query, conn))
+  Nil
 }

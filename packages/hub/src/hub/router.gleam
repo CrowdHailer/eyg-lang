@@ -21,6 +21,7 @@ pub fn route(request, context) {
       case rest, method {
         ["submit"], http.Post -> packages.submit(request, context)
         ["pull"], http.Get -> packages.pull(request, context)
+        [name, "owner"], http.Get -> packages.owner(name, context)
         _, _ -> wisp.html_response("Nothing", 404)
       }
     }
