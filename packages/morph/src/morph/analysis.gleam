@@ -149,7 +149,7 @@ pub fn value_to_type(value, bindings, meta: t) {
         Error(Nil) -> panic as "where did this builtin come from"
       }
     }
-    v.Partial(_node, _args) | v.Promise(_) -> {
+    v.Partial(_node, _args) -> {
       io.println(string.inspect(value))
       panic as "These value cannot be cast to a type, they should not occur in the standard editable programs"
     }

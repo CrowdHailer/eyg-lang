@@ -167,7 +167,13 @@ pub const string_split_once = state.Arity2(do_string_split_once)
 pub fn do_string_split_once(s, pattern, _meta, env, k) {
   use s <- try(cast.as_string(s))
   use pattern <- try(cast.as_string(pattern))
-  let value = case string.split_once(s, pattern) {
+  // gleam_stdlib's string.split_once disagrees across targets on an empty
+  // pattern: JavaScript yields #("", s) while Erlang yields Error(Nil).
+  let split = case pattern {
+    "" -> Ok(#("", s))
+    _ -> string.split_once(s, pattern)
+  }
+  let value = case split {
     Ok(#(pre, post)) -> {
       let record =
         v.Record(
@@ -187,7 +193,15 @@ pub fn do_string_replace(in, from, to, _meta, env, k) {
   use from <- try(cast.as_string(from))
   use to <- try(cast.as_string(to))
 
-  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
+  // gleam_stdlib's string.replace disagrees across targets on an empty `from`:
+  // JavaScript inserts `to` around every grapheme (and at both ends) while
+  // Erlang leaves the string untouched.
+  let replaced = case from, in {
+    "", "" -> to
+    "", _ -> to <> string.join(string.to_graphemes(in), to) <> to
+    _, _ -> string.replace(in, from, to)
+  }
+  Ok(#(state.V(v.String(replaced)), env, k))
 }
 
 pub const string_uppercase = state.Arity1(do_string_uppercase)

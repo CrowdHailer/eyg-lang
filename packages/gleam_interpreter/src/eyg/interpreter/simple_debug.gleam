@@ -99,7 +99,6 @@ fn to_doc(value: v.Value(_, _)) -> Document {
     v.LinkedList(items) -> list_doc(items)
     v.Closure(param, _, _) -> doc.from_string("fn(" <> param <> ") { ... }")
     v.Partial(func, args) -> partial_doc(func, args)
-    v.Promise(_) -> doc.from_string("Promise(...)")
   }
 }
 

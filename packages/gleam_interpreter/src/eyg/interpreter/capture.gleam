@@ -107,8 +107,6 @@ fn do_capture(term, env, meta) {
       #(exp, env)
     }
     v.Partial(switch, applied) -> capture_defunc(switch, applied, env, meta)
-    v.Promise(_) ->
-      panic as "not capturing promise, yet. Can be done making serialize async"
   }
 }
 

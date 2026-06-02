@@ -28,7 +28,7 @@ jobs:
           # "gleam_cli",
           # "gleam_compiler",
           "gleam_hub",
-          # "gleam_interpreter",
+          "gleam_interpreter",
           "gleam_ir",
           "gleam_parser",
           # "gleam_x",

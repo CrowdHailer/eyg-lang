@@ -47,11 +47,6 @@ pub fn blocking(lift) {
   run()
 }
 
-pub fn handle(lift) {
-  use p <- result.map(blocking(lift))
-  v.Promise(p)
-}
-
 pub fn do() {
   geolocation.current_position()
 }

@@ -1,5 +1,5 @@
 import eyg/ir/dag_json
-import gleam/bit_array
+import gleam/json
 import gleam/option.{None}
 import gleeunit/should
 import morph/editable as e
@@ -7,8 +7,7 @@ import morph/projection as p
 
 pub fn from_string(source) {
   source
-  |> bit_array.from_string()
-  |> dag_json.from_block()
+  |> json.parse(dag_json.decoder(Nil))
   |> should.be_ok()
   |> e.from_annotated()
 }

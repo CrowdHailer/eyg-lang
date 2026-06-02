@@ -1,9 +1,7 @@
-import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import gleam/javascript/promise
 import gleam/list
 
 /// Resume the interpretation loop with a value from a previous break position.
@@ -21,18 +19,6 @@ fn loop(next) {
   case next {
     state.Loop(c, e, k) -> loop(state.step(c, e, k))
     state.Break(result) -> result
-  }
-}
-
-// Solves the situation that JavaScript suffers from coloured functions
-// To eval code that may be async needs to return a promise of a result
-pub fn await(ret) {
-  case ret {
-    Error(#(break.UnhandledEffect("Await", v.Promise(p)), _meta, env, k)) -> {
-      use return <- promise.await(p)
-      await(loop(state.step(state.V(return), env, k)))
-    }
-    other -> promise.resolve(other)
   }
 }
 

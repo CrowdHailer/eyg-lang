@@ -96,10 +96,3 @@ pub fn as_option(value, decoder) {
     #("None", as_unit(_, None)),
   ])
 }
-
-pub fn as_promise(term) {
-  case term {
-    v.Promise(js_promise) -> Ok(js_promise)
-    _ -> Error(break.IncorrectTerm("Promise", term))
-  }
-}

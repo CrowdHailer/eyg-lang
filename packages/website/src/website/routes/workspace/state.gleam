@@ -8,7 +8,6 @@ import eyg/interpreter/block
 import eyg/interpreter/state as istate
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/dynamic/decode
 import gleam/json
@@ -676,7 +675,7 @@ fn clipboard_read_complete(state, return) {
     ReadingFromClipboard(rebuild) ->
       case return {
         Ok(text) ->
-          case dag_json.from_block(bit_array.from_string(text)) {
+          case json.parse(text, dag_json.decoder(Nil)) {
             Ok(expression) ->
               State(..state, mode: Editing)
               |> replace_buffer(rebuild(e.from_annotated(expression), _))

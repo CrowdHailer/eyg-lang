@@ -1,6 +1,5 @@
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/option.{None, Some}
 
 pub type Value(m, context) {
@@ -16,7 +15,6 @@ pub type Value(m, context) {
     env: List(#(String, Value(m, context))),
   )
   Partial(Switch(context), List(Value(m, context)))
-  Promise(JSPromise(Value(m, context)))
 }
 
 pub type Switch(context) {
