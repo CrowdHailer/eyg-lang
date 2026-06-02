@@ -136,6 +136,20 @@ Function parameters can be record patterns:
 ({name, age}) -> { name }
 ```
 
+### Zero-Argument Functions
+
+Functions always require at least one parameter, it can be discarded using `_`:
+
+```eyg
+// incorrect, no parameters
+() -> { perform Print("hello\n") }
+```
+
+```eyg
+// correct, at least one parameter
+(_) -> { perform Print("hello\n") }
+```
+
 ### Calling Functions
 
 Apply a function by appending a parenthesised argument list:

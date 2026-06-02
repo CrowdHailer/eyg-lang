@@ -18,6 +18,12 @@ import multiformats/cid/v1
 /// Default width used when none is supplied.
 pub const default_width: Int = 80
 
+/// Maximum structural nesting rendered before substructures are elided with
+/// `…`. Error and shell output must stay readable and, crucially, must not
+/// recurse so deeply that the layout overflows the call stack — a recursive
+/// EYG program can build values nested tens of thousands of levels deep.
+const max_depth: Int = 8
+
 /// Describe a reason to stop execution.
 pub fn describe(reason) -> String {
   case reason {
@@ -83,22 +89,29 @@ pub fn inspect(value: v.Value(_, _)) -> String {
 /// more on one line; a smaller width causes earlier breaking.
 pub fn render(value: v.Value(_, _), width: Int) -> String {
   value
-  |> to_doc
+  |> to_doc(0)
   |> doc.to_string(width)
 }
 
-fn to_doc(value: v.Value(_, _)) -> Document {
-  case value {
-    v.String(s) -> doc.from_string("\"" <> escape_string(s) <> "\"")
-    v.Integer(i) -> doc.from_string(int.to_string(i))
-    v.Binary(b) -> binary_doc(b)
-    v.Tagged(label, inner) ->
-      doc.from_string(label)
-      |> doc.append(wrap("(", to_doc(inner), ")"))
-    v.Record(fields) -> record_doc(fields)
-    v.LinkedList(items) -> list_doc(items)
-    v.Closure(param, _, _) -> doc.from_string("fn(" <> param <> ") { ... }")
-    v.Partial(func, args) -> partial_doc(func, args)
+fn to_doc(value: v.Value(_, _), depth: Int) -> Document {
+  case depth >= max_depth {
+    // Too deep to render in full — elide the remaining structure. This bounds
+    // both the output size and the layout recursion, so an arbitrarily deep
+    // value can no longer hang the renderer or overflow the stack.
+    True -> doc.from_string("…")
+    False ->
+      case value {
+        v.String(s) -> doc.from_string("\"" <> escape_string(s) <> "\"")
+        v.Integer(i) -> doc.from_string(int.to_string(i))
+        v.Binary(b) -> binary_doc(b)
+        v.Tagged(label, inner) ->
+          doc.from_string(label)
+          |> doc.append(wrap("(", to_doc(inner, depth + 1), ")"))
+        v.Record(fields) -> record_doc(fields, depth)
+        v.LinkedList(items) -> list_doc(items, depth)
+        v.Closure(param, _, _) -> doc.from_string("fn(" <> param <> ") { ... }")
+        v.Partial(func, args) -> partial_doc(func, args, depth)
+      }
   }
 }
 
@@ -108,7 +121,7 @@ fn binary_doc(b: BitArray) -> Document {
   doc.from_string("Binary(" <> int.to_string(size) <> " bytes): " <> encoded)
 }
 
-fn record_doc(fields) -> Document {
+fn record_doc(fields, depth: Int) -> Document {
   case dict.is_empty(fields) {
     True -> doc.from_string("{}")
     False -> {
@@ -118,21 +131,22 @@ fn record_doc(fields) -> Document {
         |> list.map(fn(pair) {
           let #(key, value) = pair
           doc.from_string(key <> ": ")
-          |> doc.append(to_doc(value))
+          |> doc.append(to_doc(value, depth + 1))
         })
       separated(entries, "{", "}")
     }
   }
 }
 
-fn list_doc(items: List(v.Value(_, _))) -> Document {
+fn list_doc(items: List(v.Value(_, _)), depth: Int) -> Document {
   case items {
     [] -> doc.from_string("[]")
-    _ -> separated(list.map(items, to_doc), "[", "]")
+    _ ->
+      separated(list.map(items, fn(item) { to_doc(item, depth + 1) }), "[", "]")
   }
 }
 
-fn partial_doc(func, args: List(v.Value(_, _))) -> Document {
+fn partial_doc(func, args: List(v.Value(_, _)), depth: Int) -> Document {
   let head = doc.from_string(string.inspect(func))
   case func, args {
     // TODO render the remaining switch branches, remove string.inspect
@@ -140,7 +154,7 @@ fn partial_doc(func, args: List(v.Value(_, _))) -> Document {
     v.Tag(label), [] -> doc.from_string(label)
     _, [] -> wrap("Partial(", head, ")")
     _, _ -> {
-      let parts = [head, ..list.map(args, to_doc)]
+      let parts = [head, ..list.map(args, fn(arg) { to_doc(arg, depth + 1) })]
       let inner =
         parts
         |> doc.join(with: doc.concat([doc.from_string(","), doc.space]))

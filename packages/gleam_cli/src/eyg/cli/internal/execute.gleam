@@ -114,7 +114,7 @@ fn try_await(
   }
 }
 
-fn loop(
+pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
 ) -> Promise(Result(#(Option(Value), Scope), Debug)) {
@@ -660,6 +660,10 @@ pub fn render_error(
   let hint = simple_debug.hint(reason)
   let header = ["error: " <> description, "hint: " <> hint]
   let focus = find_focus(frames, 0)
+  // echo focus
+  // let frames = list.drop(frames, focus |> option.unwrap(0))
+  // let frames = list.take(frames, 3)
+  // echo "here"
   let trace_lines = render_frames(frames, focus, 0, cwd, [])
   case trace_lines {
     [] -> string.join(header, "\n")
