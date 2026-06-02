@@ -26,6 +26,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
+import kryptos/eddsa
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
@@ -34,9 +35,12 @@ import snag
 import spotless
 import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
+import touch_grass/cryptography/create_key
 import touch_grass/cryptography/hash
+import touch_grass/cryptography/sign
 import touch_grass/decode_json
 import touch_grass/env as env_effect
+import touch_grass/eyg_parse
 import touch_grass/fetch
 import touch_grass/file_system/append_file
 import touch_grass/file_system/cwd
@@ -125,6 +129,11 @@ fn loop(
           let output = append_file(meta.origin, input)
           loop(block.resume(append_file.encode(output), env, k), state)
         }
+        break.UnhandledEffect("CreateKey", lift) -> {
+          use request <- try_sync(create_key.decode(lift), meta, env, k)
+          let output = create_key(request)
+          loop(block.resume(create_key.encode(output), env, k), state)
+        }
         break.UnhandledEffect("CWD", lift) -> {
           use Nil <- try_sync(cwd.decode(lift), meta, env, k)
           let output = cwd()
@@ -148,6 +157,11 @@ fn loop(
           use name <- try_sync(env_effect.decode(lift), meta, env, k)
           let result = envoy.get(name) |> option.from_result
           loop(block.resume(env_effect.encode(result), env, k), state)
+        }
+        break.UnhandledEffect("EYGParse", lift) -> {
+          use code <- try_sync(eyg_parse.decode(lift), meta, env, k)
+          let result = source.parse(code, meta.origin)
+          loop(block.resume(eyg_parse.encode(result), env, k), state)
         }
         break.UnhandledEffect("Fetch", lift) -> {
           use request <- try_sync(fetch.decode(lift), meta, env, k)
@@ -192,6 +206,11 @@ fn loop(
           use input <- try_sync(read_file.decode(lift), meta, env, k)
           let output = read_file(meta.origin, input)
           loop(block.resume(read_file.encode(output), env, k), state)
+        }
+        break.UnhandledEffect("Sign", lift) -> {
+          use request <- try_sync(sign.decode(lift), meta, env, k)
+          let output = sign(request)
+          loop(block.resume(sign.encode(output), env, k), state)
         }
         break.UnhandledEffect("Sleep", lift) -> {
           use ms <- try_sync(sleep.decode(lift), meta, env, k)
@@ -492,6 +511,28 @@ pub fn hash(input) {
   let hash.Input(algorithm:, bytes:) = input
   case algorithm {
     hash.Sha256 -> crypto.hash(crypto.Sha256, bytes)
+  }
+}
+
+pub fn create_key(request) {
+  case request {
+    create_key.Eddsa -> {
+      let #(private_key, public_key) = eddsa.generate_key_pair(eddsa.Ed25519)
+      Ok(create_key.EddsaKey(
+        public_key: eddsa.public_key_to_bytes(public_key),
+        private_key: eddsa.to_bytes(private_key),
+      ))
+    }
+  }
+}
+
+pub fn sign(request) {
+  case request {
+    sign.EddsaSign(private_key:, data:) ->
+      case eddsa.from_bytes(eddsa.Ed25519, private_key) {
+        Ok(#(key, _public)) -> Ok(eddsa.sign(key, data))
+        Error(Nil) -> Error("invalid Ed25519 private key")
+      }
   }
 }
 

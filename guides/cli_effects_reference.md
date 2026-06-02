@@ -197,7 +197,25 @@ match perform DecodeJSON(!string_to_binary("{\"x\": 1}")) {
 
 Each event's `term` is one of: `True | False | Null | Integer i | String s | Number {…} | Array | Object | Field name`.
 
+### `EYGParse`
+
+Parse EYG source text into the canonical flat AST representation.
+
+```eyg
+match perform EYGParse("let x = 1\nx") {
+  Ok(nodes) -> { nodes }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+```
+
+Argument is `String`. Returns `Ok(List(AstNode)) | Error(String)`.
+AST nodes appear in pre-order and their fixed-arity children follow them in the
+list. The CLI accepts both text syntax and DAG JSON through this effect.
+
 ## Cryptography
+
+For design rationale and extension guidance, see
+[`Crypto effects`](./crypto_effects.md).
 
 ### `Hash`
 
@@ -214,6 +232,36 @@ let digest = perform Hash({algorithm: SHA256({}), bytes: !string_to_binary("abc"
 
 Returns `Binary` (the raw digest).
 
+### `CreateKey`
+
+Generate a key pair for a named algorithm.
+
+```eyg
+let key = match perform CreateKey(Eddsa({})) {
+  Ok(key) -> { key }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+```
+
+The request is an open algorithm variant. Currently the CLI supports
+`Eddsa({})`, which generates an Ed25519 key and returns
+`Ok(Eddsa({kty: "OKP", crv: "Ed25519", x, d}))`; `x` is the raw public key and
+`d` is the raw private seed as binaries.
+
+### `Sign`
+
+Sign a binary with key material in the shape returned by `CreateKey`.
+
+```eyg
+match perform Sign({key: key, data: !string_to_binary("message")}) {
+  Ok(signature) -> { signature }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+```
+
+Returns `Result(Binary, String)`. The signature is the raw Ed25519 signature
+binary; invalid key material is returned as `Error(reason)` rather than
+crashing the host runtime.
 
 ## Authenticated services
 

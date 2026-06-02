@@ -6,11 +6,15 @@ import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
+import gleam/bit_array
 import gleam/dict
 import gleam/list
 import gleam/string
+import kryptos/eddsa
 import multiformats/cid/v1
 import simplifile
+import touch_grass/cryptography/create_key
+import touch_grass/cryptography/sign
 import touch_grass/file_system/append_file
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
@@ -92,6 +96,65 @@ pub fn append_file_test() {
   let assert Ok(contents) = execute.read_file(origin, read_input)
   assert <<"start end">> == contents
   let assert Ok(Nil) = simplifile.delete_file("./test/fixtures/append.txt")
+}
+
+pub fn create_eddsa_key_test() {
+  let assert Ok(create_key.EddsaKey(public_key:, private_key:)) =
+    execute.create_key(create_key.Eddsa)
+
+  // Ed25519 raw keys are 32 bytes each.
+  assert bit_array.byte_size(public_key) == 32
+  assert bit_array.byte_size(private_key) == 32
+
+  // The generated key material round-trips: importing the private seed yields
+  // a key whose signatures verify against the reported public key.
+  let assert Ok(#(imported_private, _)) =
+    eddsa.from_bytes(eddsa.Ed25519, private_key)
+  let assert Ok(imported_public) =
+    eddsa.public_key_from_bytes(eddsa.Ed25519, public_key)
+  let signature = eddsa.sign(imported_private, <<"hello">>)
+  assert eddsa.verify(imported_public, <<"hello">>, signature:)
+}
+
+pub fn create_key_returns_distinct_keys_test() {
+  let assert Ok(create_key.EddsaKey(private_key: a, ..)) =
+    execute.create_key(create_key.Eddsa)
+  let assert Ok(create_key.EddsaKey(private_key: b, ..)) =
+    execute.create_key(create_key.Eddsa)
+  assert a != b
+}
+
+pub fn sign_verifies_against_generated_key_test() {
+  // A key from CreateKey signs a message; the signature verifies against the
+  // public key the same effect reported.
+  let assert Ok(create_key.EddsaKey(public_key:, private_key:)) =
+    execute.create_key(create_key.Eddsa)
+
+  let message = <<"the quick brown fox">>
+  let assert Ok(signature) =
+    execute.sign(sign.EddsaSign(private_key:, data: message))
+
+  let assert Ok(public) = eddsa.public_key_from_bytes(eddsa.Ed25519, public_key)
+  assert eddsa.verify(public, message, signature:)
+}
+
+pub fn sign_rejects_tampered_message_test() {
+  let assert Ok(create_key.EddsaKey(public_key:, private_key:)) =
+    execute.create_key(create_key.Eddsa)
+
+  let assert Ok(signature) =
+    execute.sign(sign.EddsaSign(private_key:, data: <<"original">>))
+
+  let assert Ok(public) = eddsa.public_key_from_bytes(eddsa.Ed25519, public_key)
+  assert !eddsa.verify(public, <<"tampered">>, signature:)
+}
+
+pub fn sign_rejects_invalid_key_test() {
+  // An Ed25519 seed must be 32 bytes; a short one is rejected rather than
+  // crashing the host.
+  let assert Error(message) =
+    execute.sign(sign.EddsaSign(private_key: <<"too short">>, data: <<"x">>))
+  assert message == "invalid Ed25519 private key"
 }
 
 /// Run a snippet of EYG source text and capture the formatted runtime error.

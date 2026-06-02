@@ -10,6 +10,7 @@ import gleam/http/response.{type Response, Response}
 import gleam/list
 import gleam/result.{try}
 import ogre/operation
+import ogre/origin.{type Origin, Origin}
 
 pub fn method() -> binding.Mono {
   t.union([
@@ -230,4 +231,35 @@ pub fn operation_to_gleam(
     headers: headers,
     body: body,
   ))
+}
+
+pub fn origin() -> binding.Mono {
+  t.record([
+    #("scheme", scheme()),
+    #("host", t.String),
+    #("port", t.option(t.Integer)),
+  ])
+}
+
+pub fn origin_to_eyg(origin: Origin) -> v.Value(a, b) {
+  let Origin(scheme: scheme, host: host, port: port) = origin
+  v.Record(
+    dict.from_list([
+      #("scheme", scheme_to_eyg(scheme)),
+      #("host", v.String(host)),
+      #("port", v.option(port, v.Integer)),
+    ]),
+  )
+}
+
+pub fn origin_to_gleam(origin) {
+  use scheme <- result.try(cast.field("scheme", scheme_to_gleam, origin))
+  use host <- result.try(cast.field("host", cast.as_string, origin))
+  use port <- result.try(cast.field(
+    "port",
+    cast.as_option(_, cast.as_integer),
+    origin,
+  ))
+
+  Ok(Origin(scheme: scheme, host: host, port: port))
 }

@@ -24,9 +24,11 @@ packages = [
 [requirements]
 eyg_analysis = { version = ">= 1.1.0 and < 2.0.0" }
 eyg_interpreter = { version = ">= 1.1.0 and < 7.0.0" }
+eyg_ir = { version = ">= 2.2.0 and < 3.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleam_time = { version = ">= 1.8.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 julienne = { version = ">= 1.0.0 and < 2.0.0" }
+multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 ogre = { version = ">= 1.0.0 and < 2.0.0" }

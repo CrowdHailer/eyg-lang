@@ -48,7 +48,7 @@ packages = [
   { name = "spotless", version = "3.5.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "ogre", "snag"], otp_app = "spotless", source = "hex", outer_checksum = "30D5B79DF62C5EFDE06E890C492AFC6E8696E203E19F9672A871A157FA735A71" },
   { name = "term_size", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "term_size", source = "hex", outer_checksum = "D00BD2BC8FB3EBB7E6AE076F3F1FF2AC9D5ED1805F004D0896C784D06C6645F1" },
   { name = "tom", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_time"], otp_app = "tom", source = "hex", outer_checksum = "DCF04CB7AB35D58CFC598C66EA2E1816D160759802C89B2BA6238780D59BC256" },
-  { name = "touch_grass", version = "0.2.10", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "ogre"], otp_app = "touch_grass", source = "hex", outer_checksum = "56D52B2744EA5D19D840DB1A4C83CF27B6B6376768FA4C3CAA241FB7A29679DB" },
+  { name = "touch_grass", version = "0.2.11", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "multiformats", "ogre"], otp_app = "touch_grass", source = "hex", outer_checksum = "DE0F2B42201BACCEA7BB12A18F4C257529AEAC4FF40A7704999863835D69D7E4" },
   { name = "trie_again", version = "1.1.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "trie_again", source = "hex", outer_checksum = "E3BD66B4E126EF567EA8C4944EAB216413392ADF6C16C36047AF79EE5EF13466" },
   { name = "untethered", version = "0.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "ogre", "spotless"], source = "local", path = "../untethered" },
 ]
@@ -82,5 +82,5 @@ shellout = { version = ">= 1.8.0 and < 2.0.0" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 snag = { version = ">= 1.2.0 and < 2.0.0" }
 spotless = { version = ">= 3.4.0 and < 4.0.0" }
-touch_grass = { version = ">= 0.2.8 and < 1.0.0" }
+touch_grass = { version = ">= 0.2.11 and < 1.0.0" }
 untethered = { path = "../untethered" }
