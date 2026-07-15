@@ -9,11 +9,11 @@ set -euo pipefail
 #
 # Run it directly:
 #
-#   curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash
+#   curl -fsSL https://eyg.run/install | bash
 #
 # Or install a specific release:
 #
-#   curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash -s -- gleam_cli-v0.0.0
+#   curl -fsSL https://eyg.run/install | bash -s -- gleam_cli-v0.0.0
 
 REPO="CrowdHailer/eyg-lang"
 VERSION="${1:-latest}"

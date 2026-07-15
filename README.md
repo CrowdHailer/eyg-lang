@@ -5,7 +5,7 @@ EYG is a scripting language with structural typing, managed effects and immutabl
 Install the CLI with:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash
+curl -fsSL https://eyg.run/install | bash
 ```
 
 A hello world example script.

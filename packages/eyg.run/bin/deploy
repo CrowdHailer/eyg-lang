@@ -22,7 +22,7 @@ scp .env.production root@eyg.run:/opt/eyg.run/.env
 
 echo "=== Restarting containers ==="
 
-ssh root@$DOMAIN "cd /opt/eyg.run && docker compose build && docker compose up -d"
+ssh root@$DOMAIN "cd /opt/eyg.run && docker compose build && docker compose up -d && docker compose up -d --force-recreate --no-deps proxy"
 
 echo "=== Waiting for responsive service ==="
 

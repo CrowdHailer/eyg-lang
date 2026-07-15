@@ -13,7 +13,7 @@ downloads the matching release binary, verifies its checksum and installs
 it:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash
+curl -fsSL https://eyg.run/install | bash
 ```
 
 The installer writes `eyg` to `$HOME/.local/bin`.
@@ -22,7 +22,7 @@ The installer downloads from the latest GitHub release by default.
 To install a specific release, pass its tag as the first script argument:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh \
+curl -fsSL https://eyg.run/install \
   | bash -s -- gleam_cli-v0.0.0
 ```
 

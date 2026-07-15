@@ -147,9 +147,7 @@ pub fn view() {
                 ],
                 [
                   h.code([], [
-                    element.text(
-                      "curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash",
-                    ),
+                    element.text("curl -fsSL https://eyg.run/install | bash"),
                   ]),
                 ],
               ),

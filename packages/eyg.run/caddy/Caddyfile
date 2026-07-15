@@ -11,7 +11,10 @@
 	handle /proxy/* {
 		reverse_proxy backend:8080
 	}
-	
+	handle /install {
+		redir https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh
+	}
+
 	handle {
 		root * /var/eyg
 		try_files {path} {path}/index.html /index.html
@@ -24,4 +27,3 @@
 		level {$LOG_LEVEL:INFO}
 	}
 }
-

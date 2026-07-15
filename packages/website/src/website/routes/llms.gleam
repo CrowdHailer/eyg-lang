@@ -29,7 +29,7 @@ fn header() {
     "Install the EYG CLI.",
     "",
     "```",
-    "curl -fsSL https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh | bash",
+    "curl -fsSL https://eyg.run/install | bash",
     "```",
     "",
     "Validate the CLI is installed.",
