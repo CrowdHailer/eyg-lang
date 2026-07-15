@@ -86,7 +86,10 @@ fn format_file_error(path: String, err: simplifile.FileError) -> String {
 }
 
 /// parse the code adding it's span to an origin identifier
-pub fn parse(code: String, origin: Origin) -> Result(ir.Node(Location), String) {
+pub fn parse(
+  code: String,
+  origin: Origin,
+) -> Result(ir.Node(Location), String) {
   case json.parse(code, dag_json.decoder(Location(origin, Json))) {
     Ok(source) -> Ok(source)
     Error(_) ->

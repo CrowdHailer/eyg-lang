@@ -94,7 +94,10 @@ pub fn map(interface: Interface(t, a, b), f: fn(t) -> u) -> Interface(u, a, b) {
   Interface(..interface, decode:)
 }
 
-pub fn replace(interface: Interface(Nil, a, b), value: u) -> Interface(u, a, b) {
+pub fn replace(
+  interface: Interface(Nil, a, b),
+  value: u,
+) -> Interface(u, a, b) {
   let Interface(decode:, ..) = interface
   let decode = cast.map(decode, fn(_: Nil) { value })
   Interface(..interface, decode:)

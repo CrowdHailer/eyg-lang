@@ -131,7 +131,8 @@ pub fn update(state: State, message) {
       // don't wrap this up in shared behaviour taking (context, buffer) as the top level key commands will change
       user_pressed_key(state, id, key)
     UserPressedKey(_), _ -> #(state, [])
-    InputMessage(message), doc.Manipulating(id, m.EnterInteger(value, rebuild)) ->
+    InputMessage(message), doc.Manipulating(id, m.EnterInteger(value, rebuild))
+    ->
       case input.update_number(value, message) {
         input.Continue(new) -> {
           let mode = doc.Manipulating(id, m.EnterInteger(new, rebuild))

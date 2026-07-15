@@ -330,6 +330,60 @@
     font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
   }
 
+  .site-header,
+  .home-hero,
+  .home-feature,
+  .signup-grid {
+    display: grid;
+    align-items: center;
+  }
+
+  .site-header {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: 0.25rem 2rem;
+    padding-inline: clamp(0.5rem, 4vw, 2rem);
+  }
+
+  .site-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  .home-hero {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: clamp(1rem, 5vw, 4rem);
+    padding-inline: clamp(1rem, 4vw, 2rem);
+  }
+
+  .home-merits {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+    padding-inline: clamp(1rem, 4vw, 2rem);
+  }
+
+  .home-feature {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+    margin-block: clamp(4rem, 10vw, 7rem);
+    padding-inline: clamp(1rem, 4vw, 2rem);
+  }
+
+  .home-feature-reverse {
+    direction: rtl;
+  }
+
+  .home-feature-item {
+    min-width: 0;
+    direction: ltr;
+  }
+
+  .signup-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+
   /* h2 {
     display: inline-block;
     font-weight: bold;

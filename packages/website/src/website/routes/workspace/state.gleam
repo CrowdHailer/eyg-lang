@@ -239,7 +239,10 @@ pub type Message {
   PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }
 
-pub fn update(state: State, message) -> #(State, List(browser.Effect(Message))) {
+pub fn update(
+  state: State,
+  message,
+) -> #(State, List(browser.Effect(Message))) {
   case message {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
     WindowReceivedMessageEvent(event:) ->

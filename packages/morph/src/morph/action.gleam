@@ -416,7 +416,8 @@ pub fn extend_before(source) {
 
 fn extend_pattern_before(pattern) {
   case pattern {
-    p.AssignBind(field, var, pre, post) | p.AssignField(field, var, pre, post) -> {
+    p.AssignBind(field, var, pre, post)
+    | p.AssignField(field, var, pre, post) -> {
       Ok(fn(label) { p.AssignBind(label, label, pre, [#(field, var), ..post]) })
     }
     _ -> Error(Nil)
@@ -508,7 +509,8 @@ pub fn extend_after(source) {
 
 fn extend_pattern_after(pattern) {
   case pattern {
-    p.AssignBind(field, var, pre, post) | p.AssignField(field, var, pre, post) -> {
+    p.AssignBind(field, var, pre, post)
+    | p.AssignField(field, var, pre, post) -> {
       Ok(fn(label) { p.AssignBind(label, label, [#(field, var), ..pre], post) })
     }
     _ -> Error(Nil)

@@ -323,7 +323,10 @@ fn apply(
   }
 }
 
-fn lookup_reference(cid: v1.Cid, state: State) -> Promise(Result(Value, Reason)) {
+fn lookup_reference(
+  cid: v1.Cid,
+  state: State,
+) -> Promise(Result(Value, Reason)) {
   use state <- promise.map(update(state))
   case cache.module(state.cache, cid) {
     cache.Available(cache.Module(value:, ..)) -> Ok(value)

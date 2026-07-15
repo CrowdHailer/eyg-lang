@@ -12,15 +12,13 @@ pub fn header() {
   // z index needed to go over vimeo video embeds
   h.div(
     [
-      a.class(
-        "fixed top-0 right-0 left-0 z-20 bg-white bg-opacity-80 border-b border-white",
-      ),
+      a.class("sticky top-0 z-20 bg-white bg-opacity-80 border-b border-white"),
       a.styles([#("backdrop-filter", "blur(6px)")]),
     ],
     [
-      h.header([a.class("mx-auto w-full max-w-7xl hstack py-1 px-1 md:px-8")], [
+      h.header([a.class("site-header mx-auto w-full max-w-7xl py-1")], [
         h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
-        h.div([a.class("expand hstack gap-2")], [
+        h.div([a.class("site-nav")], [
           // header_link("/editor", "Editor"),
           header_link("/documentation", "Documentation"),
           header_link("/guides", "Guides"),
@@ -61,7 +59,7 @@ pub fn footer() {
 }
 
 pub fn signup_inline() {
-  h.div([a.class("max-w-3xl mx-auto hstack px-1 md:gap-6")], [
+  h.div([a.class("signup-grid max-w-3xl mx-auto")], [
     h.div([a.class("font-bold")], [
       element.text("Want to stay up to date?"),
       h.br([]),

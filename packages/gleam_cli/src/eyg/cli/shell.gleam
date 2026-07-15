@@ -94,18 +94,14 @@ pub fn handle(code, scope, defs, state) {
             })
           use result <- promise.map(execute.block(located, scope, state))
           case result {
-            Ok(#(Some(value), scope)) -> #([Ok(simple_debug.inspect(value))], #(
-              "",
-              scope,
-              list.append(defs, assignments),
-              state,
-            ))
-            Ok(#(None, scope)) -> #([], #(
-              "",
-              scope,
-              list.append(defs, assignments),
-              state,
-            ))
+            Ok(#(Some(value), scope)) -> #(
+              [Ok(simple_debug.inspect(value))],
+              #("", scope, list.append(defs, assignments), state),
+            )
+            Ok(#(None, scope)) -> #(
+              [],
+              #("", scope, list.append(defs, assignments), state),
+            )
             Error(#(reason, location, _env, k)) -> #(
               [
                 Error(execute.render_error(reason, location, k, "/todo")),
@@ -117,14 +113,10 @@ pub fn handle(code, scope, defs, state) {
         Error(UnexpectEnd) ->
           promise.resolve(#([], #(code, scope, defs, state)))
         Error(reason) ->
-          promise.resolve(
-            #([Error(parser.format_error(reason, code))], #(
-              "",
-              scope,
-              defs,
-              state,
-            )),
-          )
+          promise.resolve(#(
+            [Error(parser.format_error(reason, code))],
+            #("", scope, defs, state),
+          ))
       }
     }
   }

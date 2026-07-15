@@ -53,19 +53,18 @@ fn page_area(content) {
 fn feature(title, description, last, item, reverse) {
   h.div(
     [
-      a.class("mx-auto w-full max-w-6xl my-28 px-1 md:px-8 gap-12 md:flex"),
-      a.styles([#("align-items", "center")]),
-      a.classes([#("flex-row-reverse", reverse)]),
+      a.class("home-feature mx-auto w-full max-w-6xl gap-12"),
+      a.classes([#("home-feature-reverse", reverse)]),
     ],
     [
-      h.div([a.styles([#("width", "40%")])], [
+      h.div([a.class("home-feature-item")], [
         h.h2([a.class("text-4xl my-8 font-bold")], [element.text(title)]),
         ..list.map(description, fn(d) {
           h.div([a.class("my-2 text-lg")], [element.text(d)])
         })
         |> list.append([last])
       ]),
-      h.div([a.class(""), a.styles([#("width", "60%")])], item),
+      h.div([a.class("home-feature-item")], item),
     ],
   )
 }
@@ -108,7 +107,7 @@ pub fn view() {
     h.div([a.class("")], [
       components.header(),
       page_area([
-        h.div([a.class("expand hstack")], [
+        h.div([a.class("home-hero expand mx-auto w-full max-w-6xl")], [
           h.div([a.class("m-2")], [
             h.p([a.class("text-4xl font-bold")], [element.text("EYG")]),
             h.p([a.class("max-w-lg text-2xl")], [
@@ -173,60 +172,57 @@ pub fn view() {
           ]),
         ]),
       ]),
-      h.div(
-        [a.class("grid grid-cols-3 max-w-2xl gap-1 md:gap-6 px-1 mx-auto")],
-        [
-          h.div(
-            [
-              a.class(
-                "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-green-100 neo-2xl",
+      h.div([a.class("home-merits grid max-w-2xl gap-6 mx-auto")], [
+        h.div(
+          [
+            a.class(
+              "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-green-100 neo-2xl",
+            ),
+          ],
+          [
+            h.div([a.class(" text-xl font-bold")], [
+              element.text("Predictable:"),
+            ]),
+            h.p([], [
+              element.text(
+                " programs are deterministic, dependencies are immutable",
               ),
-            ],
-            [
-              h.div([a.class(" text-xl font-bold")], [
-                element.text("Predictable:"),
-              ]),
-              h.p([], [
-                element.text(
-                  " programs are deterministic, dependencies are immutable",
-                ),
-              ]),
-            ],
-          ),
-          h.div(
-            [
-              a.class(
-                "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-pink-100 neo-2xl",
+            ]),
+          ],
+        ),
+        h.div(
+          [
+            a.class(
+              "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-pink-100 neo-2xl",
+            ),
+          ],
+          [
+            h.div([a.class(" text-xl font-bold")], [element.text("Useful:")]),
+            h.p([], [
+              element.text(
+                " run anywhere, managed effects allow programs to declare runtime requirements",
               ),
-            ],
-            [
-              h.div([a.class(" text-xl font-bold")], [element.text("Useful:")]),
-              h.p([], [
-                element.text(
-                  " run anywhere, managed effects allow programs to declare runtime requirements",
-                ),
-              ]),
-            ],
-          ),
-          h.div(
-            [
-              a.class(
-                "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-red-100 neo-2xl",
+            ]),
+          ],
+        ),
+        h.div(
+          [
+            a.class(
+              "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-red-100 neo-2xl",
+            ),
+          ],
+          [
+            h.div([a.class(" text-xl font-bold")], [
+              element.text("Confident:"),
+            ]),
+            h.p([], [
+              element.text(
+                " A sound structural type system guarantees programs never crash",
               ),
-            ],
-            [
-              h.div([a.class(" text-xl font-bold")], [
-                element.text("Confident:"),
-              ]),
-              h.p([], [
-                element.text(
-                  " A sound structural type system guarantees programs never crash",
-                ),
-              ]),
-            ],
-          ),
-        ],
-      ),
+            ]),
+          ],
+        ),
+      ]),
       // feature(
       //   "Edit with confidence",
       //   [

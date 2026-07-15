@@ -480,16 +480,13 @@ pub fn build_list(reversed, acc) {
       let #(_, #(_, c)) = acc
       let #(_, #(_, b)) = item
 
-      build_list(
-        rest,
-        #(
-          ir.Apply(
-            #(ir.Apply(#(ir.Cons, #(from, from + 1)), item), #(from, b)),
-            acc,
-          ),
-          #(from, c),
+      build_list(rest, #(
+        ir.Apply(
+          #(ir.Apply(#(ir.Cons, #(from, from + 1)), item), #(from, b)),
+          acc,
         ),
-      )
+        #(from, c),
+      ))
     }
     [] -> acc
   }
@@ -576,13 +573,10 @@ pub fn build_record(reversed, acc) {
       let #(_, #(_, b)) = item
       let #(a, _) = span
 
-      build_record(
-        rest,
-        #(
-          ir.Apply(#(ir.Apply(#(ir.Extend(label), span), item), #(a, b)), acc),
-          #(a, c),
-        ),
-      )
+      build_record(rest, #(
+        ir.Apply(#(ir.Apply(#(ir.Extend(label), span), item), #(a, b)), acc),
+        #(a, c),
+      ))
     }
     [] -> acc
   }
@@ -595,16 +589,10 @@ pub fn build_overwrite(reversed, acc) {
       let #(_, #(_, b)) = item
       let #(a, _) = span
 
-      build_overwrite(
-        rest,
-        #(
-          ir.Apply(
-            #(ir.Apply(#(ir.Overwrite(label), span), item), #(a, b)),
-            acc,
-          ),
-          #(a, c),
-        ),
-      )
+      build_overwrite(rest, #(
+        ir.Apply(#(ir.Apply(#(ir.Overwrite(label), span), item), #(a, b)), acc),
+        #(a, c),
+      ))
     }
     [] -> acc
   }

@@ -18,7 +18,7 @@ rsync -avz ../../guides root@$DOMAIN:/guides/
 
 echo "=== Setting config ==="
 
-scp .production.env root@eyg.run:/opt/eyg.run/.env
+scp .env.production root@eyg.run:/opt/eyg.run/.env
 
 echo "=== Restarting containers ==="
 

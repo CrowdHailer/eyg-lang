@@ -300,7 +300,11 @@ fn render_shell(
   ])
 }
 
-pub fn render_previous(previous, on_readonly, on_previous) -> element.Element(a) {
+pub fn render_previous(
+  previous,
+  on_readonly,
+  on_previous,
+) -> element.Element(a) {
   h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
     let count = list.length(previous) - 1
     list.index_map(list.reverse(previous), fn(p, i) {

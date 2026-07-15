@@ -128,8 +128,8 @@ pub fn delete(zip) {
       _
     ->
       Ok(#(p.FnParam(p.AssignBind(l, x, pre_p, post_p), pre, post, body), zoom))
-    p.FnParam(p.AssignField(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ ->
-      Ok(#(p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body), zoom))
+    p.FnParam(p.AssignField(_, _, [#(l, x), ..pre_p], []), pre, post, body), _
+    -> Ok(#(p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body), zoom))
     p.FnParam(p.AssignBind(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ ->
       Ok(#(p.FnParam(p.AssignBind(l, x, pre_p, []), pre, post, body), zoom))
     p.FnParam(p.AssignField(_, _, [], []), pre, post, body), _ ->
@@ -145,8 +145,8 @@ pub fn delete(zip) {
     -> Ok(#(p.Label(l, v, pre, post, for), zoom))
     p.Label(_, _, [#(l, v), ..pre], [], for), _ ->
       Ok(#(p.Label(l, v, pre, [], for), zoom))
-    p.Exp(e.Vacant), [p.RecordValue(_label, [#(l, v), ..pre], [], for), ..zoom] ->
-      Ok(#(p.Exp(v), [p.RecordValue(l, pre, [], for), ..zoom]))
+    p.Exp(e.Vacant), [p.RecordValue(_label, [#(l, v), ..pre], [], for), ..zoom]
+    -> Ok(#(p.Exp(v), [p.RecordValue(l, pre, [], for), ..zoom]))
     p.Label(_, _, [], [], p.Record), _ -> Ok(#(p.Exp(e.Record([], None)), zoom))
     p.Exp(e.Vacant), [p.RecordValue(_label, [], [], _for), ..zoom] ->
       Ok(#(p.Exp(e.Record([], None)), zoom))

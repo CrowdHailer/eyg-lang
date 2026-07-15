@@ -38,7 +38,9 @@ pub fn record_owner(
   |> pog.returning(package_owner_decoder())
 }
 
-pub fn insert_release(entry: publisher.Entry) -> pog.Query(schema.ArchivedEntry) {
+pub fn insert_release(
+  entry: publisher.Entry,
+) -> pog.Query(schema.ArchivedEntry) {
   let data = publisher.encode(entry)
   let json = json.to_string(data)
   let cid = cid.from_block(<<json:utf8>>)
