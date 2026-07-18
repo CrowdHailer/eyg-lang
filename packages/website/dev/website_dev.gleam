@@ -7,8 +7,9 @@ import gleam/list
 import gleam/result
 import gleam/string
 import lustre/element
+import midas/continuation
+import midas/defunctionalise as d
 import midas/node
-import midas/task as t
 import mysig/build
 import mysig/dev
 import mysig/route.{Route}
@@ -88,22 +89,25 @@ fn routes() {
 const replace_string = "!CONTENT!"
 
 fn email() {
-  let task = {
-    use template <- t.do(t.read("src/website/routes/news/edition/email.html"))
-    use template <- t.try(
-      bit_array.to_string(template)
-      |> result.replace_error(snag.new("not a utf8 string")),
-    )
-    let assert [latest, ..] = archive.published
-    let content =
-      element.to_string(edition.render(
-        latest,
-        list.length(archive.published),
-        "https://eyg.run/pea.webp",
+  let task =
+    {
+      use template <- continuation.try_then(d.read_file(
+        "src/website/routes/news/edition/email.html",
       ))
-    let output = string.replace(template, replace_string, content)
-    t.write("email.html", <<output:utf8>>)
-  }
+      use template <- continuation.try(
+        bit_array.to_string(template)
+        |> result.replace_error("not a utf8 string"),
+      )
+      let assert [latest, ..] = archive.published
+      let content =
+        element.to_string(edition.render(
+          latest,
+          list.length(archive.published),
+          "https://eyg.run/pea.webp",
+        ))
+      let output = string.replace(template, replace_string, content)
+      d.write_file("email.html", <<output:utf8>>)
+    }(fn(result) { d.Done(result.map_error(result, snag.new)) })
 
   node.run(task, ".")
 }

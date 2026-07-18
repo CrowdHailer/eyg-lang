@@ -21,7 +21,6 @@ import plinth/browser/file_system
 import plinth/browser/location
 import plinth/browser/window
 import plinth/browser/window_proxy
-import snag
 import spotless
 import spotless/oauth_2_1
 import spotless/oauth_2_1/authorization
@@ -219,23 +218,26 @@ fn spotless(
   use redirect <- promisex.try_sync(
     uri.parse(redirect) |> result.replace_error("invalid redirect_url"),
   )
-  use response <- promisex.try_sync(
-    oauth_2_1.authorization_response_from_uri(redirect)
-    |> result.map_error(snag.line_print),
-  )
+  use response <- promisex.try_sync(oauth_2_1.authorization_response_from_uri(
+    redirect,
+  ))
+
+  use response <- promisex.try_sync(case response.result {
+    Ok(response) -> Ok(response)
+    Error(response) -> Error(response.error)
+  })
 
   let oauth_2_1.AuthorizationServer(token_endpoint:, ..) = server
 
   let request =
-    token.Request(
-      grant_type: token.AuthorizationCode,
+    token.AuthorizationCode(
       client_id:,
-      code: response.code,
+      code: response,
       code_verifier:,
-      redirect_uri: redirect_uri,
+      // redirect_uri: redirect_uri,
     )
 
-  let request = token.request_to_http(token_endpoint, request)
+  let request = token.authorization_code_to_http(token_endpoint, request)
   use result <- promise.await(fetchx.send_bits(request))
   use response <- promisex.try_sync(
     result
@@ -245,7 +247,7 @@ fn spotless(
   )
   use response <- promisex.try_sync(
     oauth_2_1.token_response_from_http(response)
-    |> result.map_error(snag.line_print),
+    |> result.map_error(string.inspect),
   )
   let response =
     response
