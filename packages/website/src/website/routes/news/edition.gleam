@@ -275,7 +275,8 @@ pub fn block(container) {
       )
     jot.RawBlock(_content)
     | jot.BlockQuote(attributes: _, items: _)
-    | jot.Div(attributes: _, items: _) -> {
+    | jot.Div(attributes: _, items: _, class: _)
+    | jot.OrderedList(layout: _, punctuation: _, ordinal: _, start: _, items: _) -> {
       echo container
       panic as "not supported"
     }
@@ -329,7 +330,13 @@ pub fn inline(content) {
       | jot.MathDisplay(content: _)
       | jot.MathInline(content: _)
       | jot.NonBreakingSpace
-      | jot.Span(..) -> panic as "not supported"
+      | jot.Span(..)
+      | jot.Delete(content: _)
+      | jot.Insert(content: _)
+      | jot.Mark(content: _)
+      | jot.Superscript(content: _)
+      | jot.Subscript(content: _)
+      | jot.Symbol(content: _) -> panic as "not supported"
     }
   })
 }

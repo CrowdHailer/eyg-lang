@@ -69,6 +69,7 @@ fn block(container) {
     jot.Div(items:, ..) -> h.div([], list.map(items, block))
     jot.RawBlock(content) -> h.pre([], [element.text(content)])
     jot.ThematicBreak -> h.hr([a.class("my-8")])
+    jot.OrderedList(..) -> panic as "switch to pamphlet"
   }
 }
 
@@ -92,6 +93,7 @@ fn heading(level: Int, id: String, children) {
   }
 }
 
+// TODO switch to pamphlet
 fn inline(content) {
   list.map(content, fn(item) {
     case item {
@@ -115,6 +117,12 @@ fn inline(content) {
       jot.Code(content) -> inline_code(content)
       jot.MathInline(content) | jot.MathDisplay(content) -> inline_code(content)
       jot.Footnote(reference) -> h.sup([], [element.text(reference)])
+      jot.Delete(content: _) -> panic as "switch to pamphlet"
+      jot.Insert(content: _) -> panic as "switch to pamphlet"
+      jot.Mark(content: _) -> panic as "switch to pamphlet"
+      jot.Superscript(content: _) -> panic as "switch to pamphlet"
+      jot.Subscript(content: _) -> panic as "switch to pamphlet"
+      jot.Symbol(content: _) -> panic as "switch to pamphlet"
     }
   })
 }
@@ -256,6 +264,12 @@ fn inline_text(content) {
       jot.Linebreak | jot.NonBreakingSpace -> " "
       jot.Footnote(reference) -> reference
       jot.MathInline(content) | jot.MathDisplay(content) -> content
+      jot.Delete(content: _) -> panic as "switch to pamphlet"
+      jot.Insert(content: _) -> panic as "switch to pamphlet"
+      jot.Mark(content: _) -> panic as "switch to pamphlet"
+      jot.Superscript(content: _) -> panic as "switch to pamphlet"
+      jot.Subscript(content: _) -> panic as "switch to pamphlet"
+      jot.Symbol(content: _) -> panic as "switch to pamphlet"
     }
   })
   |> string.join("")
