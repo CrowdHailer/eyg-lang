@@ -1,7 +1,7 @@
 import envoy
+import eyg/cli/internal/bun_platform
 import eyg/cli/internal/client
 import eyg/cli/internal/config
-import eyg/cli/internal/midas_bun
 import eyg/cli/internal/source
 import eyg/hub/cache.{type Cache}
 import eyg/hub/publisher
@@ -31,8 +31,8 @@ import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
 import simplifile
-import snag
 import spotless
+import spotless/context
 import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/cryptography/create_key
@@ -607,18 +607,35 @@ pub fn delete_file(origin: source.Origin, path) {
   |> result.map_error(simplifile.describe_error)
 }
 
+fn spotless_context() -> context.Context(Promise(t), Nil) {
+  context.Context(
+    export_jwk: fn(_key) { panic as "export_jwk not implemented" },
+    follow: bun_platform.follow,
+    fetch: bun_platform.fetch,
+    hash: bun_platform.hash,
+    sign: fn(_, _, _) { panic as "sign not implemented" },
+    strong_random: bun_platform.strong_random,
+    unix_now: fn() { panic as "unix_now not implemented" },
+  )
+}
+
 fn service_fetch(service, operation) {
   let port = 8080
-  use result <- promise.await(
-    midas_bun.run(spotless.authenticate(service, [], "", port, pkce.S256)),
-  )
+  use result <- promise.await(spotless.authenticate(
+    service,
+    [],
+    "",
+    port,
+    pkce.S256,
+    spotless_context(),
+  )(promise.resolve))
   use result <- promise.await(case result {
     Ok(token.Response(access_token:, ..)) -> {
       let request = service_request(service, operation, access_token)
       use result <- promise.map(fetchx.send_bits(request))
       result.map_error(result, string.inspect)
     }
-    Error(reason) -> promise.resolve(Error(snag.line_print(reason)))
+    Error(reason) -> promise.resolve(Error(reason))
   })
   promise.resolve(Ok(result))
 }

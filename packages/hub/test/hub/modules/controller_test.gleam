@@ -3,6 +3,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http
 import gleam/http/request
+import gleam/json
 import gleam/string
 import hub/helpers.{dispatch}
 import hub/router
@@ -20,7 +21,7 @@ pub fn share_valid_fragment_test() {
 
   let response = dispatch(client.get_module(cid), context)
   assert response.status == 200
-  assert dag_json.from_block(response.body) == Ok(source)
+  assert json.parse_bits(response.body, dag_json.decoder(Nil)) == Ok(source)
 }
 
 pub fn share_fragment_is_idempotent_test() {
