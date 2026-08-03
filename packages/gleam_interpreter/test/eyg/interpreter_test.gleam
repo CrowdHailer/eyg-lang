@@ -190,9 +190,7 @@ pub fn evaluation_suite_test() {
             if l == label && v == value
           -> r.resume(reply, env, k)
           _ ->
-            panic as {
-              "did not raise correct effect" <> string.inspect(return)
-            }
+            panic as { "did not raise correct effect" <> string.inspect(return) }
         }
       })
     check_evaluated(name, final, expected)

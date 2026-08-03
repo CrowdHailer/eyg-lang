@@ -525,8 +525,7 @@ pub fn render_example(
     state.Navigating(id: focused, failure: Some(reason)) if focused == id ->
       ui.Errors([command.fail_message(reason)])
     state.Navigating(id: _, failure: _) -> errors_or_value(buffer, context)
-    state.Manipulating(id: focused, input:) if focused == id ->
-      ui.Editing(input)
+    state.Manipulating(id: focused, input:) if focused == id -> ui.Editing(input)
     state.Manipulating(..) -> errors_or_value(buffer, context)
     state.ReadingFromClipboard(..) -> errors_or_value(buffer, context)
     state.Running(id: focused, status: status) if focused == id ->
