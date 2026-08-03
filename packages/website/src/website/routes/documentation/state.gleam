@@ -18,14 +18,14 @@ import morph/input
 import morph/navigation
 import morph/picker
 import multiformats/cid/v1
+import pal/browser
+import pal/harness
+import pal/run
 import spotless/oauth_2_1/token
 import website/command
 import website/config
-import website/harness/browser
-import website/harness/harness
 import website/manipulation as m
 import website/routes/documentation/examples
-import website/run
 
 pub type State {
   State(

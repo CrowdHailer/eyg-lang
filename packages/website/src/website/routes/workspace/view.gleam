@@ -13,11 +13,11 @@ import lustre/event
 import morph/buffer
 import morph/editable
 import morph/projection
+import pal/run
 import website/command
 import website/manipulation
 import website/routes/editor/view as editor_view
 import website/routes/workspace/state
-import website/run
 import website/ui
 
 pub fn render(state: state.State) {

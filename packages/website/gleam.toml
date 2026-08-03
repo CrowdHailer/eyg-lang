@@ -26,6 +26,7 @@ morph = { path = "../morph" }
 multiformats = ">= 4.0.0 and < 5.0.0"
 mysig = ">= 0.5.0 and < 1.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
+pal = { path = "../pal" }
 plinth = ">= 0.10.2 and < 1.0.0"
 simplifile = ">= 2.4.0 and < 3.0.0"
 snag = ">= 1.2.0 and < 2.0.0"

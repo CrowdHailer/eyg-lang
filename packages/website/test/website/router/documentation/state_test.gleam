@@ -1,17 +1,21 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/error
+import eyg/ir/cid
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/crypto
 import gleam/dict
+import gleam/http/response
 import gleam/option.{None}
 import morph/editable
 import morph/picker
 import multiformats/cid/v1
 import ogre/origin
-import website/harness/browser
+import pal/browser
+import pal/run
+
 import website/manipulation
 import website/routes/documentation/state.{State}
-import website/run
-import website/run_test.{cid_from_tree, module_response}
 
 pub fn analyse_web_effect_test() {
   let source = ir.call(ir.perform("Alert"), [ir.string("hi")])
@@ -70,4 +74,15 @@ fn with_source(source) {
   let mode = state.Navigating(id: "default", failure: None)
   let state = State(mode:, examples:, context: context)
   state
+}
+
+fn module_response(source) {
+  let body = dag_json.to_block(source)
+  response.new(200)
+  |> response.set_body(body)
+}
+
+pub fn cid_from_tree(source) {
+  let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
+  resume(crypto.hash(crypto.Sha256, bytes))
 }

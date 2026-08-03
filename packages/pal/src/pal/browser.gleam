@@ -5,17 +5,19 @@ import gleam/bit_array
 import gleam/fetch
 import gleam/fetchx
 import gleam/http/request
-import gleam/http/response
+import gleam/http/response.{Response}
 import gleam/int
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/json.{type Json}
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import gleam/uri
-import midas/browser
 import ogre/origin
+import pal/harness
 import plinth/browser/clipboard
+import plinth/browser/crypto
 import plinth/browser/file
 import plinth/browser/file_system
 import plinth/browser/location
@@ -27,7 +29,6 @@ import spotless/oauth_2_1/authorization
 import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/download
-import website/harness/harness
 
 /// The browser platform effect
 ///
@@ -41,6 +42,10 @@ pub type Effect(m) {
   Fetch(
     request: request.Request(BitArray),
     resume: fn(Result(response.Response(BitArray), fetch.FetchError)) -> m,
+  )
+  FetchStreamResponse(
+    request: request.Request(BitArray),
+    resume: fn(Result(response.Response(Reader), fetch.FetchError)) -> m,
   )
   // Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> m)
   // FocusOnInput(resume:)
@@ -56,6 +61,10 @@ pub type Effect(m) {
   )
   Prompt(question: String, resume: fn(Result(String, Nil)) -> m)
   ReadFromClipboard(resume: fn(Result(String, String)) -> m)
+  ReadChunk(
+    reader: Reader,
+    resume: fn(Result(Option(BitArray), fetch.FetchError)) -> m,
+  )
   SaveFile(
     handle: file_system.DirectoryHandle,
     filename: String,
@@ -81,6 +90,9 @@ pub fn fetch(request, resume) {
     resume(result.map_error(result, string.inspect))
   })
 }
+
+pub type Reader =
+  fn() -> Promise(Result(Option(BitArray), fetch.FetchError))
 
 // helpers like save_buffer
 
@@ -117,6 +129,20 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       use result <- promise.map(fetchx.send_bits(request))
       resume(result)
     }
+    FetchStreamResponse(request:, resume:) -> {
+      use result <- promise.map(fetch.send_bits(request))
+      case result {
+        Ok(response) ->
+          case fetch.stream_body(response) {
+            Ok(reader) -> {
+              let reader = fn() { fetch.read_chunk(reader) }
+              resume(Ok(Response(..response, body: reader)))
+            }
+            Error(reason) -> resume(Error(reason))
+          }
+        Error(reason) -> resume(Error(reason))
+      }
+    }
     // Follow(uri:, resume:) -> todo
     LoadFiles(handle: _) -> {
       panic as "this shouldn't read every file"
@@ -144,13 +170,17 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       // todo
     }
     OpenPopup(location:, resume:) -> {
-      promise.resolve(resume(browser.open(location, #(650, 800))))
+      promise.resolve(resume(open(location, #(650, 800))))
     }
     Prompt(question:, resume:) ->
       promise.resolve(resume(window.prompt(question)))
 
     PostMessage(target:, payload:, resume:) ->
       promise.resolve(resume(window_proxy.post_message(target, payload, "*")))
+    ReadChunk(reader, resume) -> {
+      use result <- promise.map(reader())
+      resume(result)
+    }
     ReadFromClipboard(resume) -> {
       use result <- promise.map(clipboard.read_text())
       resume(result)
@@ -162,7 +192,7 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       resume(result)
     }
     Visit(uri:, resume:) -> {
-      promise.resolve(resume(browser.open(uri.to_string(uri), #(800, 400))))
+      promise.resolve(resume(open(uri.to_string(uri), #(800, 400))))
     }
     WriteToClipboard(text:, resume:) -> {
       use result <- promise.map(clipboard.write_text(text))
@@ -180,7 +210,7 @@ fn spotless(
   service: harness.Service,
 ) -> Promise(Result(token.Response, String)) {
   let client_id = origin.to_string(origin)
-  use bytes <- promisex.try_sync(browser.do_random(32))
+  use bytes <- promisex.try_sync(do_random(32))
   let code_challenge = bit_array.base64_url_encode(bytes, False)
   let code_challenge_method = pkce.Plain
   let code_verifier = code_challenge
@@ -313,7 +343,7 @@ fn receive_redirect(popup, wait) {
 @external(javascript, "./browser_ffi.mjs", "href")
 fn href(location: location.Location) -> Result(String, String)
 
-@external(javascript, "../../website_ffi.mjs", "show_save_directory_picker")
+@external(javascript, "./browser_ffi.mjs", "show_save_directory_picker")
 fn show_save_directory_picker() -> Promise(
   Result(file_system.Handle(file_system.D), String),
 )
@@ -322,11 +352,22 @@ fn show_save_directory_picker() -> Promise(
 // // fn get_persisted_directory() -> promise.Promise(
 // //   Result(file_system.Handle(file_system.D), String),
 // // )
-@external(javascript, "../../website_ffi.mjs", "downloadFile")
+@external(javascript, "./browser_ffi.mjs", "downloadFile")
 fn do_download_file(file: file.File) -> Nil
 
 pub fn download_file(input) {
   let download.Input(name:, content:) = input
   let file = file.new(content, name)
   do_download_file(file)
+}
+
+fn do_random(length) {
+  case window.crypto(window.self()) {
+    Ok(crypto) ->
+      case crypto.get_random_values(crypto, length) {
+        Ok(bytes) -> Ok(bytes)
+        Error(reason) -> Error(reason)
+      }
+    Error(Nil) -> Error("no crypto")
+  }
 }

@@ -4,10 +4,10 @@ import eyg/ir/tree as ir
 import gleam/option.{Some}
 import morph/buffer
 import ogre/origin
+import pal/browser
+import pal/run
 import website/config
-import website/harness/browser
 import website/routes/workspace/state.{State}
-import website/run
 
 pub fn execute_expression_test() {
   let state = with_source(ir.add(ir.integer(7), ir.integer(21)))

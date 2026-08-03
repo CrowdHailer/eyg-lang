@@ -13,11 +13,11 @@ import gleam/http/response
 import gleam/option.{None}
 import multiformats/cid/v1
 import ogre/origin
+import pal/browser
+import pal/harness
+import pal/run
 import spotless/oauth_2_1/token
 import touch_grass/http
-import website/harness/browser
-import website/harness/harness
-import website/run
 
 pub type Message {
   EffectHandled(task_id: Int, value: run.Value)

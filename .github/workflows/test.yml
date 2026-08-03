@@ -118,6 +118,7 @@ jobs:
           "gleam_parser",
           "gleam_x",
           "morph",
+          "pal",
           "topological",
           "touch_grass",
           "untethered",

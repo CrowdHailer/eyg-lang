@@ -9,12 +9,12 @@ import lustre/event
 import morph/buffer
 import morph/input
 import morph/picker
+import pal/run
 import website/components/examples
 import website/components/output
 import website/components/snippet/menu
 import website/components/vertical_menu
 import website/routes/editor/state.{type State}
-import website/run
 import website/ui
 
 // fn not_a_modal(content, dismiss: a) {

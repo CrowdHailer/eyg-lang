@@ -7,8 +7,8 @@ import lustre/element
 import lustre/element/html as h
 import mysig/asset
 import mysig/html
+import pal/browser
 import website/config
-import website/harness/browser
 import website/routes/common
 import website/routes/editor/state
 import website/routes/editor/view

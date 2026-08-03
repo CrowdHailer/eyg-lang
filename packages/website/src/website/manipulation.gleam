@@ -23,7 +23,7 @@ import gleam/string
 import morph/buffer.{type Buffer}
 import morph/picker
 import multiformats/cid/v1
-import website/harness/harness
+import pal/harness
 
 /// Represents an available manipulation that can be performed on the AST.
 /// `name` is the human-readable label (e.g. "Delete", "Insert Variable").

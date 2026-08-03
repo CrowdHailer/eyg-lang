@@ -1,25 +1,5 @@
 import { Result$Ok, Result$Error } from "./gleam.mjs";
 
-// https://www.stefanjudis.com/snippets/how-trigger-file-downloads-with-javascript/
-export function downloadFile(file) {
-  // Create a link and set the URL using `createObjectURL`
-  const link = document.createElement("a");
-  link.style.display = "none";
-  link.href = URL.createObjectURL(file);
-  link.download = file.name;
-
-  // It needs to be added to the DOM so it can be clicked
-  document.body.appendChild(link);
-  link.click();
-
-  // To make this work on Firefox we need to wait
-  // a little while before removing it.
-  setTimeout(() => {
-    URL.revokeObjectURL(link.href);
-    link.parentNode.removeChild(link);
-  }, 0);
-}
-
 // https://stackoverflow.com/questions/33406169/failed-to-execute-setselectionrange-on-htmlinputelement-the-input-elements
 export function selectAllInput(input) {
   // pre elements are in some cases focused on and they don't have a value field
@@ -39,15 +19,6 @@ const DB_NAME = "fs-db"
 const STORE_NAME ="handles"
 const DIR_HANDLE_KEY = 'selected-directory';
 
-export async function show_save_directory_picker() {
-  try {
-    const dirHandle = await window.showDirectoryPicker();
-    await saveDirectoryHandle(dirHandle)
-    return Result$Ok(dirHandle);
-  } catch (error) {
-    return Result$Error(error.toString());
-  }
-}
 
 export async function get_persisted_directory() {
   try {

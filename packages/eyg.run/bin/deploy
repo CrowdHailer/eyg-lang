@@ -10,7 +10,7 @@ rsync -avz \
 --exclude '.git' \
 --exclude '.env' \
 --exclude 'build' \
-../gleam_hub ../gleam_x ../hub ../morph ../untethered ../website ../eyg.run \
+../gleam_hub ../gleam_x ../hub ../morph ../pal ../untethered ../website ../eyg.run \
 root@$DOMAIN:/opt/
 
 # it's a pain to install guides to top level but it's a hangover from when I was publishing just packages.

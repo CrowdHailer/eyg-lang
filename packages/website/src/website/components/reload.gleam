@@ -9,7 +9,7 @@ import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import morph/analysis
-import website/run
+import pal/run
 
 // helpers
 

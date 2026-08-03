@@ -11,10 +11,10 @@ import mysig/asset
 import mysig/asset/client
 import mysig/html
 import ogre/origin
+import pal/browser
 import plinth/browser/document
 import plinth/browser/event as browser_event
 import website/config
-import website/harness/browser
 import website/routes/common
 import website/routes/home/state
 import website/routes/home/view

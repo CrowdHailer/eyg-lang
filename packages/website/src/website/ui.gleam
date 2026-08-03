@@ -17,10 +17,10 @@ import morph/lustre/highlight
 import morph/lustre/render
 import morph/picker
 import morph/projection as p
+import pal/run
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
 import website/manipulation
-import website/run
 
 pub const code_area_styles = [
   #("outline", "2px solid transparent"),

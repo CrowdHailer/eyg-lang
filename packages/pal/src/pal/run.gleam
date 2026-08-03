@@ -35,6 +35,8 @@ import morph/buffer
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
+import pal/browser
+import pal/harness
 import spotless/oauth_2_1/token
 import touch_grass/copy
 import touch_grass/decode_json
@@ -45,11 +47,7 @@ import touch_grass/paste
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
-
-// import touch_grass/sleep
 import untethered/ledger/schema
-import website/harness/browser
-import website/harness/harness
 
 pub type Meta =
   List(Int)

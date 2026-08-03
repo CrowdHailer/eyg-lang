@@ -22,16 +22,16 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import multiformats/hashes
+import pal/browser
+import pal/harness
+import pal/run
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
 import spotless/oauth_2_1/token
 import website/command
 import website/config
-import website/harness/browser
-import website/harness/harness
 import website/manipulation as m
-import website/run
 
 pub type State {
   State(

@@ -7,11 +7,11 @@ import lustre/element
 import lustre/element/html as h
 import mysig/asset
 import mysig/html
+import pal/browser
 import plinth/browser/document
 import plinth/browser/event
 import plinth/browser/window
 import website/config
-import website/harness/browser
 import website/routes/common
 import website/routes/home
 import website/routes/workspace/state

@@ -10,11 +10,11 @@ import lustre/element/html as h
 import morph/buffer
 import morph/input
 import morph/picker
+import pal/run
 import website/command
 import website/components
 import website/routes/documentation/examples
 import website/routes/documentation/state
-import website/run
 import website/ui
 
 // doc h2
