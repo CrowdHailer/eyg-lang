@@ -6,6 +6,7 @@ DOMAIN=eyg.run
 echo "=== Syncing code ==="
 
 rsync -avz \
+--delete \
 --exclude 'node_modules' \
 --exclude '.git' \
 --exclude '.env' \

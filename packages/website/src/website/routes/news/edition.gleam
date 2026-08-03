@@ -274,6 +274,7 @@ pub fn block(container) {
         }),
       )
     jot.RawBlock(_content)
+    | jot.Table(..)
     | jot.BlockQuote(attributes: _, items: _)
     | jot.Div(attributes: _, items: _, class: _)
     | jot.OrderedList(layout: _, punctuation: _, ordinal: _, start: _, items: _) -> {
@@ -326,6 +327,7 @@ pub fn inline(content) {
           ],
           [e.text(content)],
         )
+      jot.Symbol(content) -> e.text(content)
       jot.Footnote(_)
       | jot.MathDisplay(content: _)
       | jot.MathInline(content: _)
@@ -335,8 +337,7 @@ pub fn inline(content) {
       | jot.Insert(content: _)
       | jot.Mark(content: _)
       | jot.Superscript(content: _)
-      | jot.Subscript(content: _)
-      | jot.Symbol(content: _) -> panic as "not supported"
+      | jot.Subscript(content: _) -> panic as "not supported"
     }
   })
 }

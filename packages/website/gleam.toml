@@ -18,15 +18,17 @@ gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_time = ">= 1.8.0 and < 2.0.0"
 gleam_x = { path = "../gleam_x" }
 gleroglero = ">= 1.2.0 and < 2.0.0"
-jot = ">= 8.0.0 and < 13.0.0"
+# jot = ">= 8.0.0 and < 13.0.0"
+jot = { git = "https://github.com/crowdhailer/jot", ref = "379ff6d" }
 lustre = ">= 5.6.0 and < 6.0.0"
 midas_browser = ">= 1.1.2 and < 2.0.0"
-mork = ">= 1.12.0 and < 2.0.0"
 morph = { path = "../morph" }
 multiformats = ">= 4.0.0 and < 5.0.0"
 mysig = ">= 0.5.0 and < 1.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 pal = { path = "../pal" }
+# pamphlet = ">= 1.0.0 and < 2.0.0"
+pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "d0fcb68" }
 plinth = ">= 0.10.2 and < 1.0.0"
 simplifile = ">= 2.4.0 and < 3.0.0"
 snag = ">= 1.2.0 and < 2.0.0"

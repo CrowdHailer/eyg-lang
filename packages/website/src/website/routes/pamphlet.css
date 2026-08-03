@@ -1,0 +1,128 @@
+.pamphlet p {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  line-height: 1.75rem;
+}
+
+.pamphlet h1 {
+  margin-bottom: 1.5rem;
+  font-size: 2.25rem;
+  line-height: 1.25;
+}
+
+.pamphlet h2,
+.pamphlet h3,
+.pamphlet h4,
+.pamphlet h5,
+.pamphlet h6 {
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 4rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pamphlet h2 {
+  font-size: 1.875rem;
+}
+
+.pamphlet h3 {
+  font-size: 1.5rem;
+}
+
+.pamphlet h4 {
+  font-size: 1.25rem;
+}
+
+.pamphlet h5 {
+  font-size: 1.125rem;
+}
+
+.pamphlet h6 {
+  font-size: 1rem;
+}
+
+.pamphlet a {
+  text-decoration: underline;
+}
+
+.pamphlet img {
+  max-width: 100%;
+}
+
+.pamphlet code {
+  padding: 1px 3px;
+  border-radius: 4px;
+  background-color: #2d3748;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.pamphlet pre {
+  margin-top: 27px;
+  margin-bottom: 27px;
+  padding: 13px 18px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background-color: #2d3748;
+  color: #e2e8f0;
+  font-size: 14px;
+  line-height: 1.7142857;
+}
+
+.pamphlet pre code {
+  padding: 0;
+  border-width: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.pamphlet ul {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.pamphlet blockquote {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+  border-left: 4px solid #d1d5db;
+  color: #374151;
+}
+
+.pamphlet hr {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.pamphlet table {
+  width: 100%;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: left;
+}
+
+.pamphlet th,
+.pamphlet td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+}
+
+.pamphlet th {
+  background-color: #f3f4f6;
+}
+
+.pamphlet td {
+  vertical-align: top;
+}

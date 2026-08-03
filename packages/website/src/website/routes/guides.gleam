@@ -1,43 +1,36 @@
+import gleam/bit_array
 import gleam/list
 import gleam/result
 import gleam/string
+import jot
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import mork
 import mysig/asset
 import mysig/html
 import mysig/route as route_builder
+import pamphlet
+import pamphlet/djot
+import pamphlet/lustre
 import simplifile
 import website/components
-import website/components/markdown
 import website/routes/common
 import website/routes/home
 
 pub type Guide {
-  Guide(slug: String, name: String, description: String, content: String)
-}
-
-fn get_field(lines, key) {
-  list.find_map(lines, fn(line) {
-    case string.split_once(line, ":") {
-      Ok(#(k, value)) if k == key -> Ok(string.trim(value))
-      _ -> Error(Nil)
-    }
-  })
+  Guide(slug: String, name: String, description: String, document: jot.Document)
 }
 
 fn all(root) -> List(Guide) {
   let assert Ok(paths) = simplifile.get_files(root)
   list.filter_map(paths, fn(path) {
     let assert Ok(raw) = simplifile.read(path)
+    let #(front, document) = pamphlet.parse(raw)
 
-    let #(front, content) = mork.split_frontmatter_from_input(raw)
-    let lines = string.split(front, "\n")
-    use name <- result.try(get_field(lines, "name"))
-    use description <- result.try(get_field(lines, "description"))
+    use name <- result.try(list.key_find(front, "name"))
+    use description <- result.try(list.key_find(front, "description"))
     let slug =
-      get_field(lines, "slug")
+      list.key_find(front, "slug")
       |> result.unwrap(
         name
         |> string.replace(" ", "-")
@@ -46,7 +39,7 @@ fn all(root) -> List(Guide) {
         |> string.trim,
       )
 
-    Ok(Guide(slug:, name:, description:, content:))
+    Ok(Guide(slug:, name:, description:, document:))
   })
 }
 
@@ -58,7 +51,9 @@ pub fn route() {
   route_builder.Route(
     index: route_builder.Page(index_page()),
     items: list.flat_map(from_repo(), fn(guide) {
-      let Guide(slug:, ..) = guide
+      let Guide(slug:, document:, ..) = guide
+      let md_content =
+        djot.to_markup(document, djot.default())(bit_array.from_string)
       [
         #(
           slug,
@@ -70,7 +65,7 @@ pub fn route() {
         #(
           slug <> ".md",
           route_builder.Route(
-            index: route_builder.Static(<<guide.content:utf8>>),
+            index: route_builder.Static(md_content),
             items: [],
           ),
         ),
@@ -82,6 +77,7 @@ pub fn route() {
 fn layout(path, title, description, body) {
   use layout <- asset.do(asset.load(home.layout_path))
   use neo <- asset.do(asset.load("src/website/routes/neo.css"))
+  use pamphlet_style <- asset.do(asset.load("src/website/routes/pamphlet.css"))
   html.doc(
     list.flatten([
       [
@@ -89,6 +85,7 @@ fn layout(path, title, description, body) {
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
         common.prism_style(),
+        html.stylesheet(asset.src(pamphlet_style)),
       ],
       common.page_meta(path, title, description),
       common.diagnostics(),
@@ -146,15 +143,15 @@ pub fn index_page() {
 }
 
 fn guide_body(guide) {
-  let Guide(content:, ..) = guide
-
+  let Guide(document:, ..) = guide
+  let content = lustre.to_lustre(document, lustre.default())(fn(x) { x })
   [
     components.header(),
     h.main([a.class("mx-auto w-full max-w-4xl px-4 pt-20 pb-16")], [
       h.a([a.href("/guides"), a.class("font-bold underline")], [
         element.text("Guides"),
       ]),
-      h.article([a.class("mt-4")], markdown.render(content)),
+      h.article([a.class("pamphlet mt-4")], [content]),
     ]),
     components.footer(),
   ]
