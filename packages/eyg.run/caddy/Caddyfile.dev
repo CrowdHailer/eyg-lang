@@ -13,13 +13,13 @@
 	}
 
 	handle {
+		header Access-Control-Allow-Origin "*"
 		reverse_proxy frontend:8080
 	}
 
-  log {
+	log {
 		output stdout
 		format console
 		level {$LOG_LEVEL:INFO}
 	}
 }
-
