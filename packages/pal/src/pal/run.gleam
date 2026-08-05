@@ -131,8 +131,6 @@ pub fn loop(
   resume: fn(state.Value(Meta), state.Env(Meta), state.Stack(Meta)) ->
     Result(t, state.Debug(Meta)),
 ) -> #(Run(t), Context(m), List(browser.Effect(m))) {
-  let #(return, cache) = cache.loop(return, context.cache, resume)
-  let context = Context(..context, cache:)
   case return {
     Ok(value) -> #(Concluded(value), context, [])
     Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
@@ -214,13 +212,21 @@ pub fn loop(
       }
     }
     Error(#(break.UndefinedReference(cid), _meta, env, k)) ->
-      case cache.module(context.cache, cid) {
-        cache.Available(cache.Module(value:, ..)) ->
+      case cache.fetch_module(context.cache, cid) {
+        cache.Ready(cache.Module(value:, ..)) ->
           value
           |> resume(env, k)
           |> loop(context, resume)
-        cache.Unknown -> #(Pending(cache.Content(cid), env:, k:), context, [])
-        cache.Unavailable(reason) -> #(Exception(reason), context, [])
+        cache.Working(cache) -> {
+          let context = Context(..context, cache:)
+          #(Pending(cache.Content(cid), env:, k:), context, [])
+        }
+        cache.NotFound(..) -> #(
+          Pending(cache.Content(cid), env:, k:),
+          context,
+          [],
+        )
+        cache.Unsound(reason) -> #(Exception(reason), context, [])
       }
     Error(#(break, _, _, _)) -> #(Exception(break), context, [])
   }
@@ -303,12 +309,12 @@ fn fetch_module(
   hub_origin: origin.Origin,
   module_lookup_completed: fn(v1.Cid, Result(ir.Node(Nil), String)) -> m,
 ) -> browser.Effect(m) {
-  let operation = client.get_module(cid)
-  let request = operation.to_request(operation, hub_origin)
+  let request = client.fetch_module_request(cid, hub_origin)
+
   browser.Fetch(request, fn(result) {
     let result = case result {
       Ok(response) ->
-        case client.get_module_response(response) {
+        case client.fetch_module_response(response) {
           Ok(Some(source)) -> Ok(source)
           Ok(None) -> Error("no module")
           Error(_) -> Error("bad module lookup")
@@ -321,10 +327,11 @@ fn fetch_module(
 
 fn pull_packages(since, hub_origin, pull_packages_completed) {
   let request =
-    client.pull_packages(
+    client.pull_packages_request(
       schema.PullParameters(since:, limit: 1000, entities: []),
+      hub_origin,
     )
-    |> operation.to_request(hub_origin)
+
   browser.Fetch(request, fn(result) {
     let result = case result {
       Ok(response) ->
@@ -345,7 +352,8 @@ pub fn get_module_completed(
   result: Result(ir.Node(_), String),
 ) -> #(Context(m), List(cache.Resolution(Meta))) {
   let result = result.map(result, ir.map_annotation(_, fn(_) { [] }))
-  let #(cache, resolutions) = cache.fetched(context.cache, cid, result)
+  let #(cache, resolutions) =
+    cache.fetch_module_completed(context.cache, cid, result)
   #(Context(..context, cache:), resolutions)
 }
 

@@ -1,16 +1,5 @@
 //// 
-//// .modules is a dict of module CID to module value and type
-//// .fetching_modules is a dict of module CID to a status of NotRequested | Requested | Failed | Invalid | DependsOn(Content | Release)
-//// .cursor is a number offset with a status, Pulling | Pulled | ReadyToPull
-//// .releases is a dictionary of #(package, version) -> cid
 //// 
-//// fn module(cid) -> Unknown | Invalid(inpure/unsound) | Available(source,value,type)
-//// fn release(release) -> Unknown | Invalid(incorrectmodule) | Availabile(cid)
-//// 
-//// fn pull(cache) -> cache : marks the cursor as ReadyToPull
-//// fn fetch(cache, cid) -> cache : adds the cid to the fetching map if not yet pulled
-////
-//// fn flush(cache) -> #(cache, actions) -> marks the cursor as pulling and the NotRequested modules as requested.
 //// 
 //// fn fetched(cache, cid, source) -> #(cache, done) evaluates using loop the new source and adds to the set of modules if returns a value
 ////    Also checks all modules blocked due to a dependency and concludes them if possible, done is a list of all resolved references and releases
@@ -24,19 +13,38 @@
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
+import eyg/hub/client
+import eyg/hub/publisher
 import eyg/hub/release
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
+import gleam/json
 import gleam/list
+import gleam/result
+import midas/continuation.{type Continuation as K}
+import midas/effect
 import multiformats/cid/v1
+import ogre/origin
+import untethered/ledger/schema
 
+/// A container for the evaluate value and inferred type of a module.
 pub type Module(meta) {
   Module(value: state.Value(meta), type_: binding.Poly)
 }
 
+/// Has a module reference been requested, evaluated, failed, pending or none of the above
+/// 
+/// - `NotRequested` is equivalent to a reference not being in the collection of modules or fetching modules.
+/// - `Requested` An action to request the module by it's reference has been created.
+///   Requesting a module is idempotent so there is no tracking information of the request.
+/// - `Failed` The request process failed and could be from a timeout, network error or bad response.
+///   The failed status should be expanded with information on when the last request was made
+/// - `Invalid` The content identifier has associated content but it is not a valid pure module.
+///   TODO separate valid bun unsound/impure EYG code from content that is not EYG code.
+/// - `DependsOn` To continue processing the module requires the dependency to be available.
 pub type FetchStatus(meta) {
   NotRequested
   Requested
@@ -66,6 +74,13 @@ pub type Action {
   PullPackages(offset: Int)
 }
 
+/// A message type for actions to return to the cache.
+/// This allows callers to update the cache when actions complete without any tracking of the task on the callers side.
+pub type ActionCompleted {
+  FetchModuleCompleted(v1.Cid, Result(ir.Node(Nil), String))
+  PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
+}
+
 pub type Resolution(meta) =
   #(v1.Cid, Result(state.Value(meta), state.Reason(meta)))
 
@@ -75,6 +90,21 @@ pub type Resource(value, reason) {
   Unavailable(reason)
 }
 
+pub type Status(meta) {
+  Ready(Module(meta))
+  Working(Cache(meta))
+  NotFound(at: Int)
+  // Maybe another decode error
+  Unsound(reason: state.Reason(meta))
+}
+
+/// The state of the cache.
+/// It is parameterised by the metadata type of the code it stores.
+/// .modules is a dict of module CID to module value and type
+/// .fetching_modules is a dict of module CID to a status of NotRequested | Requested | Failed | Invalid | DependsOn(Content | Release)
+/// .cursor is a number offset with a status, Pulling | Pulled | ReadyToPull
+/// .releases is a dictionary of #(package, version) -> cid
+/// 
 pub type Cache(meta) {
   Cache(
     modules: Dict(v1.Cid, Module(meta)),
@@ -86,7 +116,8 @@ pub type Cache(meta) {
   )
 }
 
-/// Create a new empty cache
+/// Create a new empty cache useful in tests.
+/// For most situations start with a ready cache.
 pub fn empty() -> Cache(meta) {
   Cache(
     modules: dict.new(),
@@ -96,6 +127,32 @@ pub fn empty() -> Cache(meta) {
     cursor: 0,
     cursor_status: Pulled,
   )
+}
+
+/// Create a new cache, it is ReadyToPull
+pub fn ready() -> Cache(meta) {
+  Cache(
+    modules: dict.new(),
+    fetching_modules: dict.new(),
+    releases: dict.new(),
+    packages: dict.new(),
+    cursor: 0,
+    cursor_status: ReadyToPull,
+  )
+}
+
+/// Find the associated module for a cid.
+pub fn fetch_module(cache: Cache(meta), cid: v1.Cid) -> Status(meta) {
+  let Cache(modules:, fetching_modules:, ..) = cache
+  case dict.get(modules, cid), dict.get(fetching_modules, cid) {
+    Ok(module), _ -> Ready(module)
+    Error(Nil), Ok(NotRequested) -> Working(fetch(cache, cid))
+    Error(Nil), Ok(Requested) -> Working(cache)
+    Error(Nil), Ok(DependsOn(..)) -> Working(cache)
+    Error(Nil), Ok(Failed(_)) -> NotFound(0)
+    Error(Nil), Ok(Invalid(reason)) -> Unsound(reason)
+    Error(Nil), Error(Nil) -> Working(fetch(cache, cid))
+  }
 }
 
 /// Find the associated module for a cid.
@@ -210,24 +267,90 @@ pub fn flush(cache: Cache(meta)) -> #(Cache(meta), List(Action)) {
   #(Cache(..cache, cursor_status:, fetching_modules:), effects)
 }
 
+pub fn compute(
+  action: Action,
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+) -> K(t, ActionCompleted) {
+  case action {
+    FetchModule(cid) -> {
+      use result <- continuation.then(client.fetch_module(cid, origin, fetch))
+      continuation.return(FetchModuleCompleted(cid, result))
+    }
+    PullPackages(offset:) -> {
+      use result <- continuation.then(client.pull_packages(
+        schema.PullParameters(since: offset, limit: 1000, entities: []),
+        origin,
+        fetch,
+      ))
+      continuation.return(PullPackagesCompleted(result))
+    }
+  }
+}
+
+/// Handle the `ActionCompleted` message from a finished task
+pub fn update(
+  cache: Cache(meta),
+  message: ActionCompleted,
+  map_meta: fn(Nil) -> meta,
+) -> #(Cache(meta), _) {
+  case message {
+    FetchModuleCompleted(cid, result) -> {
+      let result = result.map(result, ir.map_annotation(_, map_meta))
+      fetch_module_completed(cache, cid, result)
+    }
+    PullPackagesCompleted(result) -> pull_packages_completed(cache, result)
+  }
+}
+
+pub fn pull_packages_completed(
+  cache: Cache(meta),
+  result: Result(List(schema.ArchivedEntry), String),
+) -> #(Cache(meta), List(Resolution(meta))) {
+  case result {
+    Ok(entries) -> {
+      list.fold(entries, #(cache, []), fn(acc, entry) {
+        let #(cache, done) = acc
+        let assert Ok(payload) = json.parse(entry.payload, publisher.decoder())
+
+        let publisher.Release(package:, version:, module:) = payload.content
+        let release = release.Release(package:, version:, module:)
+        let #(cache, new) = pulled(cache, entry.cursor, release)
+
+        #(cache, list.append(done, new))
+      })
+    }
+    Error(_reason) -> {
+      // TODO need error status in here
+      #(Cache(..cache, cursor_status: Pulled), [])
+    }
+  }
+}
+
 /// Evaluates a newly arrived module and attempts to resolve anything waiting on it.
-pub fn fetched(
+pub fn fetch_module_completed(
   cache: Cache(meta),
   cid: v1.Cid,
   result: Result(ir.Node(meta), String),
 ) -> #(Cache(meta), List(Resolution(meta))) {
   case result {
-    Ok(source) -> {
-      let return = expression.execute(source, [])
-      let #(cache, new) = handle_return(cache, cid, source, return)
-      cascade(cache, new, [])
-    }
+    Ok(source) -> with_module(cache, cid, source)
     // transient failure
     Error(reason) -> {
       let cache = set_status(cache, cid, Failed(reason))
       #(cache, [])
     }
   }
+}
+
+pub fn with_module(
+  cache: Cache(meta),
+  cid: v1.Cid,
+  source: ir.Node(meta),
+) -> #(Cache(meta), List(Resolution(meta))) {
+  let return = expression.execute(source, [])
+  let #(cache, new) = handle_return(cache, cid, source, return)
+  cascade(cache, new, [])
 }
 
 /// Update the cache with the result of pulling the releases
@@ -292,7 +415,7 @@ pub fn pulled(
   }
 }
 
-pub fn loop(
+fn loop(
   return: Result(a, state.Debug(meta)),
   cache: Cache(meta),
   resume: fn(state.Value(meta), state.Env(meta), state.Stack(meta)) ->

@@ -118,8 +118,6 @@ pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
 ) -> Promise(Result(#(Option(Value), Scope), Debug)) {
-  let #(return, cache) = cache.loop(return, state.cache, block.resume)
-  let state = State(..state, cache:)
   case return {
     Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, meta, env, k)) ->
@@ -270,7 +268,7 @@ fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
       use result <- promise.map(client.get_module(dep, client))
 
       case result {
-        Ok(Some(source)) ->
+        Ok(source) ->
           Fetched(
             dep,
             Ok(
@@ -280,16 +278,12 @@ fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
               }),
             ),
           )
-        Ok(None) -> Fetched(dep, Error("unknown"))
         Error(reason) -> Fetched(dep, Error(reason))
       }
     }
     cache.PullPackages(offset:) -> {
       use result <- promise.map(client.pull_packages(offset, client))
-      case result {
-        Ok(response) -> Pulled(Ok(response.entries))
-        Error(reason) -> Pulled(Error(reason))
-      }
+      Pulled(result)
     }
   }
 }
@@ -300,7 +294,7 @@ fn apply(
 ) -> Cache(source.Location) {
   case update {
     Fetched(cid:, result:) -> {
-      let #(cache, _done) = cache.fetched(cache, cid, result)
+      let #(cache, _done) = cache.fetch_module_completed(cache, cid, result)
       cache
     }
     Pulled(result:) ->
@@ -437,8 +431,6 @@ pub fn pure_loop(
   return: Result(Value, Debug),
   state: State,
 ) -> Promise(Result(Value, Debug)) {
-  let #(return, cache) = cache.loop(return, state.cache, expression.resume)
-  let state = State(..state, cache:)
   case return {
     Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, meta, env, k)) ->

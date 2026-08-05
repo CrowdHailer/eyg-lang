@@ -19,7 +19,7 @@ pub fn share_valid_fragment_test() {
   let assert Ok(cid) = client.share_response(response)
   assert utils.cid_from_tree(source) == cid
 
-  let response = dispatch(client.get_module(cid), context)
+  let response = dispatch(client.fetch_module_operation(cid), context)
   assert response.status == 200
   assert json.parse_bits(response.body, dag_json.decoder(Nil)) == Ok(source)
 }
@@ -85,7 +85,8 @@ pub fn accept_large_fragment_test() {
 
 pub fn fetch_nonexistant_fragment_test() {
   use context <- helpers.web_context()
-  let response = dispatch(client.get_module(dag_json.vacant_cid), context)
+  let response =
+    dispatch(client.fetch_module_operation(dag_json.vacant_cid), context)
   assert response.status == 204
 }
 

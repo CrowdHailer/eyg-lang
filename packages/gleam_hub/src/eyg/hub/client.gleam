@@ -3,12 +3,18 @@ import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/http/request.{type Request}
 import gleam/http/response.{Response}
 import gleam/json
 import gleam/option.{None, Some}
+import gleam/string
+import midas/continuation.{type Continuation as K}
+import midas/effect
 import multiformats/cid/v1
 import ogre/operation.{type Operation}
+import ogre/origin
 import untethered/ledger/client
+import untethered/ledger/schema as lschema
 import untethered/substrate
 
 pub fn submit_signatory(
@@ -60,12 +66,17 @@ pub fn pull_signatories_response(
 }
 
 // Create a get module operation
-pub fn get_module(cid: v1.Cid) -> Operation(BitArray) {
+pub fn fetch_module_operation(cid: v1.Cid) -> Operation(BitArray) {
   operation.get("/modules/" <> v1.to_string(cid))
   |> operation.set_body(<<>>)
 }
 
-pub fn get_module_response(
+pub fn fetch_module_request(cid, origin) {
+  fetch_module_operation(cid)
+  |> operation.to_request(origin)
+}
+
+pub fn fetch_module_response(
   response: response.Response(BitArray),
 ) -> Result(option.Option(ir.Node(Nil)), client.Failure) {
   let Response(status:, body:, ..) = response
@@ -78,6 +89,26 @@ pub fn get_module_response(
     204 -> Ok(None)
     _ -> Error(client.UnexpectedStatus(status:))
   }
+}
+
+/// Make a request to fetch a module by its content identifier from a hub.
+pub fn fetch_module(
+  cid: v1.Cid,
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+) -> K(t, Result(ir.Node(Nil), String)) {
+  let request = fetch_module_request(cid, origin)
+  use result <- continuation.then(fetch(request))
+  let result = case result {
+    Ok(response) ->
+      case fetch_module_response(response) {
+        Ok(Some(source)) -> Ok(source)
+        Ok(None) -> Error("no module")
+        Error(_) -> Error("bad module lookup")
+      }
+    Error(reason) -> Error(string.inspect(reason))
+  }
+  continuation.return(result)
 }
 
 /// Create a share module operation
@@ -130,8 +161,18 @@ pub fn submit_package_response(
   }
 }
 
-pub fn pull_packages(parameters: schema.PullParameters) -> Operation(BitArray) {
+pub fn pull_packages_operation(
+  parameters: schema.PullParameters,
+) -> Operation(BitArray) {
   client.pull_request("/packages/pull", parameters)
+}
+
+pub fn pull_packages_request(
+  parameters: schema.PullParameters,
+  origin: origin.Origin,
+) -> Request(BitArray) {
+  pull_packages_operation(parameters)
+  |> operation.to_request(origin)
 }
 
 pub fn pull_packages_response(
@@ -146,4 +187,24 @@ pub fn pull_packages_response(
       }
     _ -> Error(client.UnexpectedStatus(status:))
   }
+}
+
+pub fn pull_packages(
+  parameters: schema.PullParameters,
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+) -> K(t, Result(List(schema.ArchivedEntry), String)) {
+  let request = pull_packages_request(parameters, origin)
+
+  use result <- continuation.then(fetch(request))
+  let result = case result {
+    Ok(response) ->
+      case pull_packages_response(response) {
+        Ok(lschema.PullResponse(entries:)) -> Ok(entries)
+
+        Error(_) -> Error("bad module lookup")
+      }
+    Error(reason) -> Error(string.inspect(reason))
+  }
+  continuation.return(result)
 }

@@ -1,3 +1,4 @@
+import eyg/cli/internal/bun_platform
 import eyg/cli/internal/crypto
 import eyg/cli/internal/store
 import eyg/hub/client
@@ -65,15 +66,8 @@ pub fn share_module(
 pub fn get_module(
   cid: v1.Cid,
   client: Client,
-) -> Promise(Result(Option(ir.Node(Nil)), String)) {
-  let operation = client.get_module(cid)
-  let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
-  case result {
-    Ok(response) ->
-      client.get_module_response(response) |> result.map_error(string.inspect)
-    Error(reason) -> Error(string.inspect(reason))
-  }
+) -> Promise(Result(ir.Node(Nil), String)) {
+  client.fetch_module(cid, client.origin, bun_platform.fetch)(promise.resolve)
 }
 
 pub fn submit_release(
@@ -115,32 +109,20 @@ pub fn submit_release(
 pub fn pull_package(
   package: String,
   client: Client,
-) -> Promise(Result(schema.PullResponse, String)) {
+) -> Promise(Result(List(schema.ArchivedEntry), String)) {
   let parameters =
     schema.PullParameters(since: 0, limit: 1000, entities: [package])
-  let operation = client.pull_packages(parameters)
-  let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
-  case result {
-    Ok(response) ->
-      client.pull_signatories_response(response)
-      |> result.map_error(string.inspect)
-    Error(reason) -> Error(string.inspect(reason))
-  }
+  client.pull_packages(parameters, client.origin, bun_platform.fetch)(
+    promise.resolve,
+  )
 }
 
 pub fn pull_packages(
   since: Int,
   client: Client,
-) -> Promise(Result(schema.PullResponse, String)) {
+) -> Promise(Result(List(schema.ArchivedEntry), String)) {
   let parameters = schema.PullParameters(since:, limit: 1000, entities: [])
-  let operation = client.pull_packages(parameters)
-  let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
-  case result {
-    Ok(response) ->
-      client.pull_signatories_response(response)
-      |> result.map_error(string.inspect)
-    Error(reason) -> Error(string.inspect(reason))
-  }
+  client.pull_packages(parameters, client.origin, bun_platform.fetch)(
+    promise.resolve,
+  )
 }
