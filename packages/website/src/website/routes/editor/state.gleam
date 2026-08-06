@@ -4,9 +4,9 @@ import eyg/interpreter/state
 import eyg/ir/tree as ir
 import morph/buffer
 import multiformats/cid/v1
-import pal/harness
 import pal/run
 import spotless/oauth_2_1/token
+import touch_grass/harness/browser as harness
 import website/config
 
 pub type State {

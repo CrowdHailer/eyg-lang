@@ -14,9 +14,9 @@ import gleam/option.{None}
 import multiformats/cid/v1
 import ogre/origin
 import pal/browser
-import pal/harness
 import pal/run
 import spotless/oauth_2_1/token
+import touch_grass/harness/browser as harness
 import touch_grass/http
 
 pub type Message {

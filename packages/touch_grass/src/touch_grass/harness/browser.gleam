@@ -19,7 +19,6 @@ import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/list
 import gleam/uri
-import morph/analysis
 import multiformats/cid/v1
 import ogre/operation
 import touch_grass as tg
@@ -112,14 +111,6 @@ pub fn take(labels) {
     let Interface(name:, ..) = interface
     list.any(labels, fn(l) { l == name })
   })
-}
-
-/// Add the effects of a harness to an analysis context
-pub fn analysis_with_harness(
-  context: analysis.Context,
-  harness: Harness(_, _),
-) -> analysis.Context {
-  analysis.with_effects(context, types(harness))
 }
 
 pub fn cast(

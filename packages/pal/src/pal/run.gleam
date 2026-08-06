@@ -36,12 +36,12 @@ import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
 import pal/browser
-import pal/harness
 import spotless/oauth_2_1/token
 import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/flip
+import touch_grass/harness/browser as harness
 import touch_grass/now
 import touch_grass/paste
 import touch_grass/print

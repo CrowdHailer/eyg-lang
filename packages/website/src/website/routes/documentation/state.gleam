@@ -19,9 +19,9 @@ import morph/navigation
 import morph/picker
 import multiformats/cid/v1
 import pal/browser
-import pal/harness
 import pal/run
 import spotless/oauth_2_1/token
+import touch_grass/harness/browser as harness
 import website/command
 import website/config
 import website/manipulation as m

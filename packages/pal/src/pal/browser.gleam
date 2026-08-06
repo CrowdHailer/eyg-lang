@@ -15,7 +15,6 @@ import gleam/result
 import gleam/string
 import gleam/uri
 import ogre/origin
-import pal/harness
 import plinth/browser/clipboard
 import plinth/browser/crypto
 import plinth/browser/file
@@ -29,6 +28,7 @@ import spotless/oauth_2_1/authorization
 import spotless/oauth_2_1/token
 import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/download
+import touch_grass/harness/browser as harness
 
 /// The browser platform effect
 ///
