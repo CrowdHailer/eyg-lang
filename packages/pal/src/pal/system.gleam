@@ -370,10 +370,10 @@ fn receive_redirect(popup, wait) {
 }
 
 // Needs to return result as location on cross origin is an error
-@external(javascript, "./browser_ffi.mjs", "href")
+@external(javascript, "./system_ffi.mjs", "href")
 fn href(location: location.Location) -> Result(String, String)
 
-@external(javascript, "./browser_ffi.mjs", "show_save_directory_picker")
+@external(javascript, "./system_ffi.mjs", "show_save_directory_picker")
 fn show_save_directory_picker() -> Promise(
   Result(file_system.Handle(file_system.D), String),
 )
@@ -382,7 +382,7 @@ fn show_save_directory_picker() -> Promise(
 // // fn get_persisted_directory() -> promise.Promise(
 // //   Result(file_system.Handle(file_system.D), String),
 // // )
-@external(javascript, "./browser_ffi.mjs", "downloadFile")
+@external(javascript, "./system_ffi.mjs", "downloadFile")
 fn do_download_file(file: file.File) -> Nil
 
 pub fn download_file(input) {

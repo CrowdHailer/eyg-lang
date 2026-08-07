@@ -3,7 +3,7 @@ import eyg/interpreter/value as v
 import gleam/http/response.{type Response}
 import gleam/result
 import midas/effect
-import pal/browser as system
+import pal/system
 import touch_grass/copy
 import touch_grass/decode_json
 import touch_grass/fetch
