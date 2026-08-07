@@ -123,7 +123,7 @@ pub fn render(state) {
               "Closure serialization",
             ]),
             section_content("Editor features", ["Copy paste", "Next vacant"]),
-            section_content("Advanced", ["Show IR"]),
+            // section_content("Advanced", ["Show IR"]),
           ]),
         ],
       ),
@@ -457,15 +457,15 @@ pub fn render(state) {
           ],
           None,
         ),
-        chapter(
-          "13",
-          "Show IR",
-          [
-            p("The intermediate representation (IR) is a stable interface."),
-            p("Press '?' in any example to toggle showing the IR"),
-          ],
-          None,
-        ),
+        // chapter(
+        //   "13",
+        //   "Show IR",
+        //   [
+        //     p("The intermediate representation (IR) is a stable interface."),
+        //     p("Press '?' in any example to toggle showing the IR"),
+        //   ],
+        //   None,
+        // ),
         h.div([a.styles([#("height", "30vh")])], []),
         components.footer(),
       ]),
