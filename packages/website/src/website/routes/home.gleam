@@ -11,7 +11,7 @@ import mysig/asset
 import mysig/asset/client
 import mysig/html
 import ogre/origin
-import pal/browser
+import pal/system
 import plinth/browser/document
 import plinth/browser/event as browser_event
 import website/config
@@ -87,7 +87,7 @@ fn do_update(state, message) {
 
 fn effect(action) {
   effect.from(fn(dispatch) {
-    promise.map(browser.run(action), dispatch)
+    promise.map(system.run(action), dispatch)
     Nil
   })
 }

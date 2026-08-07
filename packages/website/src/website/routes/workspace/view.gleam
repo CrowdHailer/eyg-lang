@@ -13,7 +13,6 @@ import lustre/event
 import morph/buffer
 import morph/editable
 import morph/projection
-import pal/run
 import website/command
 import website/manipulation
 import website/routes/editor/view as editor_view
@@ -53,14 +52,15 @@ pub fn render(state: state.State) {
           modal([
             editor_view.render_effects_history(list.reverse(occured)),
             case status {
-              run.Concluded(return) ->
-                h.div([], [h.text(string.inspect(return))])
-              run.Exception(reason) ->
-                h.div([], [h.text(simple_debug.describe(reason))])
-              run.Aborted(message) -> h.div([], [h.text(message)])
-              run.Handling(task_id: _, env: _, k: _) ->
-                h.div([], [h.text("running")])
-              run.Pending(..) -> h.div([], [h.text("running")])
+              // run.Concluded(return) ->
+              //   h.div([], [h.text(string.inspect(return))])
+              // run.Exception(reason) ->
+              //   h.div([], [h.text(simple_debug.describe(reason))])
+              // run.Aborted(message) -> h.div([], [h.text(message)])
+              // run.Handling(task_id: _, env: _, k: _) ->
+              //   h.div([], [h.text("running")])
+              // run.Pending(..) -> h.div([], [h.text("running")])
+              _ -> todo
             },
           ])
         state.SigningPayload(..) -> modal([h.text("signing")])

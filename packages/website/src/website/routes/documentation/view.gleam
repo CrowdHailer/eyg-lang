@@ -10,7 +10,6 @@ import lustre/element/html as h
 import morph/buffer
 import morph/input
 import morph/picker
-import pal/run
 import website/command
 import website/components
 import website/routes/documentation/examples
@@ -473,7 +472,7 @@ pub fn render(state) {
   ])
 }
 
-fn errors_or_value(buffer: buffer.Buffer, context: run.Context(_)) {
+fn errors_or_value(buffer: buffer.Buffer, context) {
   todo as "this should not run"
   // case infer.all_errors(buffer.analysis) {
   //   [] -> {

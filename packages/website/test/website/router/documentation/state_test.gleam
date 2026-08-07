@@ -12,7 +12,7 @@ import morph/editable
 import morph/picker
 import multiformats/cid/v1
 import ogre/origin
-import pal/browser
+import pal/system
 import website/manipulation
 import website/routes/documentation/state.{State}
 
@@ -32,8 +32,8 @@ pub fn analyse_reference_test() {
   assert error.MissingReference(cid) == reason
   let assert #(_context, [_pull, effect]) =
     state.flush_cache(state.cache, origin.https("eyg.test"))
-  let assert browser.Fetch(_request, resume:) = effect
-  let assert browser.Done(message) = resume(Ok(module_response(lib)))
+  let assert system.Fetch(_request, resume:) = effect
+  let assert system.Done(message) = resume(Ok(module_response(lib)))
   let #(state, _effects) = state.update(state, message)
 
   let assert [] = infer.all_errors(default(state).analysis)
@@ -53,8 +53,8 @@ pub fn insert_reference_test() {
   let assert #(state, [_pull, effect]) = state.update(state, message)
   let assert [#([], reason)] = infer.all_errors(default(state).analysis)
   assert error.MissingReference(cid) == reason
-  let assert browser.Fetch(_request, resume:) = effect
-  let assert browser.Done(message) = resume(Ok(module_response(lib)))
+  let assert system.Fetch(_request, resume:) = effect
+  let assert system.Done(message) = resume(Ok(module_response(lib)))
   let assert #(state, []) = state.update(state, message)
   let assert [] = infer.all_errors(default(state).analysis)
 }

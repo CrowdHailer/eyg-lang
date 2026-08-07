@@ -1,12 +1,8 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
-import eyg/hub/publisher
-import eyg/hub/release
-import eyg/hub/schema
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/dag_json
-import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
@@ -18,7 +14,7 @@ import morph/input
 import morph/picker
 import multiformats/cid/v1
 import ogre/origin
-import pal/browser
+import pal/system
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import website/command
@@ -62,7 +58,7 @@ fn continue(
   state: State,
   id: String,
   gen: fn(infer.Context) -> buffer.Buffer,
-) -> #(State, List(browser.Effect(Message))) {
+) -> #(State, List(system.Effect(Message))) {
   let State(cache:, origin:, ..) = state
   let buffer = gen(doc.infer_context(cache))
   let state = set_example(state, id, buffer)
@@ -331,7 +327,7 @@ fn copy(state: State) {
   use id, buffer <- is_editing(state)
   case buffer.copy_source(buffer) {
     Ok(text) -> #(state, [
-      browser.WriteToClipboard(text:, resume: fn(_) { browser.Done(Ignore) }),
+      system.WriteToClipboard(text:, resume: fn(_) { system.Done(Ignore) }),
     ])
     Error(Nil) -> action_failed(state, id, "copy")
   }
@@ -343,8 +339,8 @@ fn paste(state: State) {
     Ok(rebuild) -> {
       let state = State(..state, mode: doc.ReadingFromClipboard(id:, rebuild:))
       #(state, [
-        browser.ReadFromClipboard(fn(result) {
-          browser.Done(ClipboardReadCompleted(result))
+        system.ReadFromClipboard(fn(result) {
+          system.Done(ClipboardReadCompleted(result))
         }),
       ])
     }
@@ -389,8 +385,8 @@ fn flush_cache(cache, origin) {
   let #(cache, effects) = cache.flush(cache)
   let effects =
     list.map(effects, fn(effect) {
-      cache.compute(effect, origin, browser.fetch)(fn(return) {
-        browser.Done(CacheMessage(return))
+      cache.compute(effect, origin, system.fetch)(fn(return) {
+        system.Done(CacheMessage(return))
       })
     })
   #(cache, effects)

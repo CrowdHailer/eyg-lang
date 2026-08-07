@@ -7,7 +7,7 @@ import lustre/element
 import lustre/element/html as h
 import mysig/asset
 import mysig/html
-import pal/browser
+import pal/system
 import plinth/browser/document
 import plinth/browser/event as browser_event
 import website/config
@@ -71,7 +71,7 @@ fn do_update(state, message) {
 
 fn effect(action) {
   effect.from(fn(dispatch) {
-    promise.map(browser.run(action), dispatch)
+    promise.map(system.run(action), dispatch)
     Nil
   })
 }

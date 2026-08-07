@@ -17,7 +17,6 @@ import morph/lustre/highlight
 import morph/lustre/render
 import morph/picker
 import morph/projection as p
-import pal/run
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
 import website/manipulation
@@ -53,7 +52,10 @@ pub type ExampleState {
   Editing(manipulation.UserInput)
   Errors(List(String))
   Pending
-  Running(run.Run(state.Value(List(Int))))
+  Running(
+    Nil,
+    // run.Run(state.Value(List(Int)))
+  )
 }
 
 // This is a bit back to front it shouldn't take the mode and ID instead we need a view model
@@ -107,56 +109,57 @@ pub fn example(
             h.text("Enter to run."),
           ],
         )
-      Running(run.Concluded(value)) ->
-        h.pre(
-          [
-            a.class("border-2 border-green-3 px-2"),
-            a.styles([#("overflow-x", "auto")]),
-          ],
-          [
-            h.text(simple_debug.inspect(value)),
-          ],
-        )
-      Running(run.Exception(reason)) ->
-        h.div(
-          [
-            a.class("border-2 border-orange-3 px-2"),
-            a.styles([#("overflow-x", "auto")]),
-          ],
-          [
-            h.text(simple_debug.describe(reason)),
-          ],
-        )
-      Running(run.Aborted(reason)) ->
-        h.div(
-          [
-            a.class("border-2 border-orange-3 px-2"),
-            a.styles([#("overflow-x", "auto")]),
-          ],
-          [
-            h.text(reason),
-          ],
-        )
-      Running(run.Handling(..)) ->
-        h.div(
-          [
-            a.class("border-2 border-blue-3 px-2"),
-            a.styles([#("overflow-x", "auto")]),
-          ],
-          [
-            h.text("running"),
-          ],
-        )
-      Running(run.Pending(..)) ->
-        h.div(
-          [
-            a.class("border-2 border-blue-3 px-2"),
-            a.styles([#("overflow-x", "auto")]),
-          ],
-          [
-            h.text("running"),
-          ],
-        )
+      // Running(run.Concluded(value)) ->
+      //   h.pre(
+      //     [
+      //       a.class("border-2 border-green-3 px-2"),
+      //       a.styles([#("overflow-x", "auto")]),
+      //     ],
+      //     [
+      //       h.text(simple_debug.inspect(value)),
+      //     ],
+      //   )
+      // Running(run.Exception(reason)) ->
+      //   h.div(
+      //     [
+      //       a.class("border-2 border-orange-3 px-2"),
+      //       a.styles([#("overflow-x", "auto")]),
+      //     ],
+      //     [
+      //       h.text(simple_debug.describe(reason)),
+      //     ],
+      //   )
+      // Running(run.Aborted(reason)) ->
+      //   h.div(
+      //     [
+      //       a.class("border-2 border-orange-3 px-2"),
+      //       a.styles([#("overflow-x", "auto")]),
+      //     ],
+      //     [
+      //       h.text(reason),
+      //     ],
+      //   )
+      // Running(run.Handling(..)) ->
+      //   h.div(
+      //     [
+      //       a.class("border-2 border-blue-3 px-2"),
+      //       a.styles([#("overflow-x", "auto")]),
+      //     ],
+      //     [
+      //       h.text("running"),
+      //     ],
+      //   )
+      // Running(run.Pending(..)) ->
+      //   h.div(
+      //     [
+      //       a.class("border-2 border-blue-3 px-2"),
+      //       a.styles([#("overflow-x", "auto")]),
+      //     ],
+      //     [
+      //       h.text("running"),
+      //     ],
+      //   )
+      _ -> todo
     },
   ])
 }

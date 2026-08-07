@@ -17,8 +17,8 @@ import morph/navigation
 import morph/picker
 import multiformats/cid/v1
 import ogre/origin
-import pal/browser
 import pal/platform/browser as platform
+import pal/system
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import website/command
@@ -86,7 +86,7 @@ fn continue(
   state: State,
   id: String,
   gen: fn(infer.Context) -> buffer.Buffer,
-) -> #(State, List(browser.Effect(Message))) {
+) -> #(State, List(system.Effect(Message))) {
   let State(cache:, ..) = state
   let buffer = gen(infer_context(cache))
   let state = set_example(state, id, buffer)
@@ -97,7 +97,7 @@ fn continue(
 }
 
 // snippet failure goes at top level
-pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
+pub fn init(config: config.Config) -> #(State, List(system.Effect(Message))) {
   let config.Config(origin:) = config
   let #(examples, cache) = init_collection(examples.all(), cache.ready())
   let #(cache, effects) = flush_cache(cache, origin)
@@ -109,8 +109,8 @@ pub fn flush_cache(cache, origin) {
   let #(cache, effects) = cache.flush(cache)
   let effects =
     list.map(effects, fn(effect) {
-      cache.compute(effect, origin, browser.fetch)(fn(return) {
-        browser.Done(CacheMessage(return))
+      cache.compute(effect, origin, system.fetch)(fn(return) {
+        system.Done(CacheMessage(return))
       })
     })
   #(cache, effects)
@@ -429,7 +429,7 @@ fn copy(state: State) {
   use id, buffer <- is_editing(state)
   case buffer.copy_source(buffer) {
     Ok(text) -> #(state, [
-      browser.WriteToClipboard(text:, resume: fn(_) { browser.Done(Ignore) }),
+      system.WriteToClipboard(text:, resume: fn(_) { system.Done(Ignore) }),
     ])
     Error(Nil) -> action_failed(state, id, "copy")
   }
@@ -441,8 +441,8 @@ fn paste(state: State) {
     Ok(rebuild) -> {
       let state = State(..state, mode: ReadingFromClipboard(id:, rebuild:))
       #(state, [
-        browser.ReadFromClipboard(fn(result) {
-          browser.Done(ClipboardReadCompleted(result))
+        system.ReadFromClipboard(fn(result) {
+          system.Done(ClipboardReadCompleted(result))
         }),
       ])
     }
@@ -488,16 +488,16 @@ pub fn loop(
   counter: Int,
   cache: cache.Cache(Meta),
   effect_handled: fn(Int, state.Value(Meta)) -> m,
-) -> #(Run, Int, Option(browser.Effect(m))) {
+) -> #(Run, Int, Option(system.Effect(m))) {
   case return {
     Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
       case platform.cast(label, lift) {
         Ok(effect) -> {
           case platform.extrinsic(effect) {
-            Ok(browser.Done(value)) ->
+            Ok(system.Done(value)) ->
               loop(Ok(value), counter, cache, effect_handled)
             Ok(effect) -> {
-              let effect = browser.map(effect, effect_handled(counter, _))
+              let effect = system.map(effect, effect_handled(counter, _))
               let run = Handling(counter, env, k)
               #(run, counter + 1, Some(effect))
             }
