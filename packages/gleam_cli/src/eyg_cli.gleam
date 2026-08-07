@@ -5,6 +5,7 @@ import eyg/cli/compile
 import eyg/cli/eval
 import eyg/cli/fetch
 import eyg/cli/internal/config
+import eyg/cli/parse
 import eyg/cli/publish
 import eyg/cli/run
 import eyg/cli/script
@@ -60,6 +61,7 @@ fn with_config(parsed) {
     args.Eval(input:) -> eval.execute(input, config)
     args.Check(input:) -> check.execute(input, config)
     args.Compile(input:) -> compile.execute(input, config)
+    args.Parse(input:) -> parse.execute(input, config)
     args.Share(file:) -> share.execute(file, config)
     args.Fetch(cid:) -> fetch.execute(cid, config)
     args.Publish(package:, file:) -> publish.execute(package, file, config)

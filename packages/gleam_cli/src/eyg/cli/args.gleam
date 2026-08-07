@@ -8,6 +8,7 @@ pub type Args {
   Eval(input: source.Input)
   Check(input: source.Input)
   Compile(input: source.Input)
+  Parse(input: source.Input)
   Share(file: String)
   Fetch(cid: String)
   SignatoryInitial(name: String)
@@ -56,6 +57,12 @@ pub fn parse(args) {
     ["compile", "#" <> _ as code] | ["compile", "@" <> _ as code] ->
       Compile(source.Code(code))
     ["compile", file] -> Compile(source.File(file))
+    ["parse", "-c", code] | ["parse", "--code", code] ->
+      Parse(source.Code(code))
+    ["parse", "-"] | ["parse", "--stdin"] -> Parse(source.Stdin)
+    ["parse", "#" <> _ as code] | ["parse", "@" <> _ as code] ->
+      Parse(source.Code(code))
+    ["parse", file] -> Parse(source.File(file))
     ["share", file] -> Share(file:)
     ["fetch", cid] -> Fetch(cid:)
     ["publish", package, file] -> Publish(package:, file:)
@@ -76,14 +83,14 @@ commands:
   shell #<mod>, @<pkg>   Start a shell with a module or package as shell config
   shell -, --stdin       Start a shell with stdin as shell config
   shell -c, --code <code>Start a shell with inline shell config
-  script <file>          Run the script from the provided file
-  script -, --stdin      Run a script read from stdin
+  script <file>          run the script from the provided file
+  script -, --stdin      run a script read from stdin
   script -c, --code <code>
-  script #<mod>, @<pkg>  Run a script from a module or package
-                         Run a script from inline source
-  <file> [args...]       Run a script with the remaining CLI args
-  #<cid> [args...]       Run a script fetched by content id
-  @<pkg> [args...]       Run a script from a published package
+  script #<mod>, @<pkg>  run a script from a module or package
+                         run a script from inline source
+  <file> [args...]       run a script with the remaining CLI args
+  #<cid> [args...]       run a script fetched by content id
+  @<pkg> [args...]       run a script from a published package
   eval <file>            evaluate and print an expression with no side effects
   eval -, --stdin        evaluate EYG source read from stdin
   eval -c, --code <code> evaluate inline EYG source with no side effects
@@ -95,12 +102,16 @@ commands:
   run <file>             run EYG source from file
   run -, --stdin         run EYG source read from stdin
   run -c, --code <code>  run inline EYG source
-  run #<mod>, @<pkg>     Run a module or package
+  run #<mod>, @<pkg>     run a module or package
   compile <file>         compile a script to JavaScript
   compile -, --stdin     compile EYG source read from stdin
   compile -c, --code <code>
                          compile inline EYG source to JavaScript
   compile #<mod>, @<pkg> Compile a module or package to JavaScript
+  parse <file>           parse EYG source from file and write JSON to stdout
+  parse -, --stdin       parse EYG source read from stdin and write JSON to stdout
+  parse -c, --code <code>parse inline EYG source and write JSON to stdout
+  parse #<mod>, @<pkg>   parse a module or package and write JSON to stdout
   share <file>           share an IR module with the hub
   fetch <cid>            fetch a module by content id
   publish <pkg> <file>   publish a module under a package name
