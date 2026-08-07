@@ -22,8 +22,8 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import multiformats/hashes
+import ogre/origin
 import pal/browser
-import pal/run
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
@@ -38,7 +38,7 @@ pub type State {
     mode: Mode,
     user_error: Option(command.Failure),
     focused: Target,
-    previous: List(run.Previous),
+    previous: List(Previous),
     after: Option(p.Projection),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
@@ -46,8 +46,29 @@ pub type State {
     mounted_directory: Option(file_system.DirectoryHandle),
     flush_counter: Int,
     dirty: Dict(Filename, Nil),
-    context: run.Context(Message),
+    origin: origin.Origin,
+    cache: cache.Cache(Meta),
+    counter: Int,
   )
+}
+
+pub type EffectRecord =
+  #(String, #(istate.Value(Meta), istate.Value(Meta)))
+
+pub type Previous {
+  Previous(
+    value: Option(istate.Value(List(Int))),
+    effects: List(EffectRecord),
+    buffer: buffer.Buffer,
+  )
+}
+
+// This run is different to a doc run, it doesn't have a success case
+pub type Run {
+  Exception(istate.Reason(Meta))
+  Aborted(String)
+  Handling(task_id: Int, env: istate.Env(Meta), k: istate.Stack(Meta))
+  Blocked(dep: cache.Dependency, env: istate.Env(Meta), k: istate.Stack(Meta))
 }
 
 pub type Mode {
@@ -55,10 +76,7 @@ pub type Mode {
   Manipulating(m.UserInput)
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
-  RunningShell(
-    occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
-    status: run.Run(#(Option(istate.Value(Meta)), istate.Scope(Meta))),
-  )
+  RunningShell(occured: List(EffectRecord), status: Run)
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))
   SigningPayload(popup: Option(window_proxy.WindowProxy), payload: String)
@@ -163,16 +181,8 @@ fn set_buffer(state, buffer) {
 
 pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
   let config.Config(origin:) = config
-  let context =
-    run.empty(
-      origin,
-      EffectHandled,
-      SpotlessConnectCompleted,
-      ModuleLookupCompleted,
-      PullPackagesCompleted,
-    )
-    |> run.pull()
-  let #(context, effects) = run.flush(context)
+  let cache = cache.ready()
+  let #(cache, effects) = flush_cache(cache, origin)
   let scope = []
   let modules = dict.new()
   let state =
@@ -188,9 +198,22 @@ pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
       mounted_directory: None,
       flush_counter: 0,
       dirty: dict.new(),
-      context:,
+      origin:,
+      cache:,
+      counter: 0,
     )
   #(state, effects)
+}
+
+pub fn flush_cache(cache, origin) {
+  let #(cache, effects) = cache.flush(cache)
+  let effects =
+    list.map(effects, fn(effect) {
+      cache.compute(effect, origin, browser.fetch)(fn(return) {
+        browser.Done(CacheMessage(return))
+      })
+    })
+  #(cache, effects)
 }
 
 fn active(state) {
@@ -235,8 +258,7 @@ pub type Message {
   Ignore
   EffectHandled(task_id: Int, value: istate.Value(Meta))
   SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
-  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
-  PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
+  CacheMessage(cache.ActionCompleted)
 }
 
 pub fn update(
@@ -268,90 +290,55 @@ pub fn update(
     Ignore -> #(state, [])
     EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        RunningShell(_occured, run.Handling(task_id:, env:, k:))
-          if tid == task_id
-        ->
+        RunningShell(_occured, Handling(task_id:, env:, k:)) if tid == task_id ->
           block.resume(value, env, k)
           |> loop(state)
         _ -> #(state, [])
       }
     SpotlessConnectCompleted(service, result) -> {
-      let #(context, effects) =
-        run.connect_completed(state.context, service, result)
-      #(State(..state, context:), effects)
+      todo
+      // let #(context, effects) =
+      //   run.connect_completed(state.context, service, result)
+      // #(State(..state, context:), effects)
     }
-    ModuleLookupCompleted(cid, result) -> {
-      let #(context, done) =
-        run.get_module_completed(state.context, cid, result)
-      // use the completed cid not the looked up cid as dependencies might have resolved
-      let #(context, effects) = run.flush(context)
+    CacheMessage(message) -> {
+      let #(cache, done) = cache.update(state.cache, message, fn(_) { [] })
+      // reanalyse modules
       case state.mode {
-        RunningShell(occured, run.Pending(cache.Content(module), env:, k:)) -> {
-          case list.key_find(done, module) {
-            Ok(Ok(value)) -> {
-              let #(run, context, inner_effects) =
-                block.resume(value, env, k)
-                |> run.loop(context, block.resume)
-              let mode = RunningShell(occured, run)
-              #(
-                State(..state, context:, mode:),
-                list.append(effects, inner_effects),
-              )
-            }
-            // If the module is a bad one the running state stays the same. it's up for the view to render the status
-            Ok(Error(_)) -> #(State(..state, context:), effects)
-            Error(Nil) -> #(State(..state, context:), effects)
-          }
-        }
-        _ -> #(State(..state, context:), effects)
+        Editing -> todo
+        Manipulating(_) -> todo
+        RunningShell(occured:, status:) -> todo
+        WritingToClipboard -> todo
+        ReadingFromClipboard(rebuild:) -> todo
+        SigningPayload(popup:, payload:) -> todo
       }
-    }
-    PullPackagesCompleted(result) -> {
-      let cache = state.context.cache
-      let cache = case result {
-        Ok(entries) -> {
-          list.fold(entries, cache, fn(cache, entry) {
-            let assert Ok(payload) =
-              json.parse(entry.payload, publisher.decoder())
-
-            let publisher.Release(package:, version:, module:) = payload.content
-            let release = release.Release(package:, version:, module:)
-            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
-            cache
-          })
-        }
-        Error(_reason) -> {
-          cache.Cache(..cache, cursor_status: cache.Pulled)
-        }
-      }
-      let context = run.Context(..state.context, cache:)
-      let #(context, effects) = run.flush(context)
-      #(State(..state, context:), effects)
     }
   }
 }
 
 fn loop(return, state) {
-  let occured = []
-  let State(context:, ..) = state
-  let #(run, context, effects) = run.loop(return, context, block.resume)
-  let state = case run {
-    run.Concluded(#(value, scope)) -> {
-      // Type is shell entry
-      echo "todo effects"
-      let entry =
-        run.Previous(value:, effects: list.reverse([]), buffer: state.repl)
-      let previous = [entry, ..state.previous]
+  todo
+  "copy from documentation"
+  // let occured = []
+  // let State(context:, ..) = state
+  // let #(run, context, effects) = run.loop(return, context, block.resume)
+  // let state = case run {
+  //   run.Concluded(#(value, scope)) -> {
+  //     // Type is shell entry
+  //     echo "todo effects"
+  //     let entry =
+  //       run.Previous(value:, effects: list.reverse([]), buffer: state.repl)
+  //     let previous = [entry, ..state.previous]
 
-      let repl = buffer.empty(ctx(State(..state, scope:), Repl))
-      State(..state, mode: Editing, previous:, scope:, repl:)
-    }
-    _ -> {
-      let mode = RunningShell(occured, run)
-      State(..state, context:, mode:)
-    }
-  }
-  #(state, effects)
+  //     let repl = buffer.empty(ctx(State(..state, scope:), Repl))
+  //     State(..state, mode: Editing, previous:, scope:, repl:)
+  //   }
+  //   _ -> {
+  //     let mode = RunningShell(occured, run)
+  //     State(..state, context:, mode:)
+  //   }
+  // }
+  // #(state, effects)
 }
 
 fn user_pressed_key(state, key) {
@@ -391,7 +378,9 @@ fn user_pressed_command_key(state, key) {
     // TODO mode is authenticating
     // you won't see much on the front page
     "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
-      browser.OpenPopup("/sign", resume: OpenPopupCompleted),
+      browser.OpenPopup("/sign", resume: fn(result) {
+        browser.Done(OpenPopupCompleted(result))
+      }),
     ])
     "i" -> edit(state, m.insert())
     "o" -> edit(state, m.overwrite())
@@ -497,7 +486,9 @@ fn copy(state) {
 
       let state = State(..state, mode: WritingToClipboard)
       #(state, [
-        browser.WriteToClipboard(text:, resume: ClipboardWriteCompleted),
+        browser.WriteToClipboard(text:, resume: fn(result) {
+          browser.Done(ClipboardWriteCompleted(result))
+        }),
       ])
     }
     _ -> fail(state, "copy")
@@ -508,7 +499,9 @@ fn paste(state) {
   let buffer = active(state)
   use rebuild <- try(buffer.set_expression(buffer), state, "paste")
   #(State(..state, mode: ReadingFromClipboard(rebuild:)), [
-    browser.ReadFromClipboard(resume: ClipboardReadCompleted),
+    browser.ReadFromClipboard(resume: fn(result) {
+      browser.Done(ClipboardReadCompleted(result))
+    }),
   ])
 }
 
@@ -569,7 +562,7 @@ fn window_received_message_event(state, event) {
             #("exchange", json.string(exchange)),
             #("payload", json.object([#("foo", json.string("123"))])),
           ]),
-          resume: fn(_: Nil) { Ignore },
+          resume: fn(_: Nil) { browser.Done(Ignore) },
         ),
       ])
     }
@@ -581,7 +574,11 @@ fn window_received_message_event(state, event) {
 }
 
 fn link_filesystem(state) {
-  #(state, [browser.ShowDirectoryPicker(resume: ShowDirectoryPickerCompleted)])
+  #(state, [
+    browser.ShowDirectoryPicker(resume: fn(result) {
+      browser.Done(ShowDirectoryPickerCompleted(result))
+    }),
+  ])
 }
 
 fn link_filesystem_completed(state, result) {

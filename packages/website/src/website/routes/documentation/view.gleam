@@ -474,36 +474,37 @@ pub fn render(state) {
 }
 
 fn errors_or_value(buffer: buffer.Buffer, context: run.Context(_)) {
-  case infer.all_errors(buffer.analysis) {
-    [] -> {
-      let #(return, _contex, _effects) =
-        expression.execute(buffer.source(buffer), [])
-        |> run.loop(context, expression.resume)
-      case return {
-        // same as if it was running
-        run.Concluded(_) | run.Exception(_) | run.Aborted(_) ->
-          ui.Running(return)
-        run.Handling(..) -> ui.Pending
-        run.Pending(..) -> ui.Pending
-      }
-    }
-    errors -> {
-      let errors =
-        list.map(errors, fn(error) {
-          let #(_, reason) = error
-          debug.pretty_reason(reason)
-        })
-      ui.Errors(errors)
-    }
-  }
+  todo as "this should not run"
+  // case infer.all_errors(buffer.analysis) {
+  //   [] -> {
+  //     let #(return, _contex, _effects) =
+  //       expression.execute(buffer.source(buffer), [])
+  //       |> run.loop(context, expression.resume)
+  //     case return {
+  //       // same as if it was running
+  //       run.Concluded(_) | run.Exception(_) | run.Aborted(_) ->
+  //         ui.Running(return)
+  //       run.Handling(..) -> ui.Pending
+  //       run.Pending(..) -> ui.Pending
+  //     }
+  //   }
+  //   errors -> {
+  //     let errors =
+  //       list.map(errors, fn(error) {
+  //         let #(_, reason) = error
+  //         debug.pretty_reason(reason)
+  //       })
+  //     ui.Errors(errors)
+  //   }
+  // }
 }
 
 fn example(state, id) {
-  let state.State(mode:, context:, ..) = state
+  let state.State(mode:, cache:, ..) = state
   let buffer = state.get_example(state, id)
   render_example(
     mode,
-    context,
+    cache,
     buffer,
     id,
     state.UserClickedCode(id, _),
@@ -514,25 +515,26 @@ fn example(state, id) {
 
 pub fn render_example(
   mode,
-  context,
+  cache,
   buffer,
   id,
   user_clicked_code: fn(List(Int)) -> m,
   picker_message: fn(picker.Message) -> m,
   input_message: fn(input.Message) -> m,
 ) {
-  let state = case mode {
-    state.Navigating(id: focused, failure: Some(reason)) if focused == id ->
-      ui.Errors([command.fail_message(reason)])
-    state.Navigating(id: _, failure: _) -> errors_or_value(buffer, context)
-    state.Manipulating(id: focused, input:) if focused == id -> ui.Editing(input)
-    state.Manipulating(..) -> errors_or_value(buffer, context)
-    state.ReadingFromClipboard(..) -> errors_or_value(buffer, context)
-    state.Running(id: focused, status: status) if focused == id ->
-      ui.Running(status)
-    state.Running(..) -> errors_or_value(buffer, context)
-    state.UnFocused -> errors_or_value(buffer, context)
-  }
+  let state = todo as "pass in cache"
+  //  = case mode {
+  //   state.Navigating(id: focused, failure: Some(reason)) if focused == id ->
+  //     ui.Errors([command.fail_message(reason)])
+  //   state.Navigating(id: _, failure: _) -> errors_or_value(buffer, context)
+  //   state.Manipulating(id: focused, input:) if focused == id -> ui.Editing(input)
+  //   state.Manipulating(..) -> errors_or_value(buffer, context)
+  //   state.ReadingFromClipboard(..) -> errors_or_value(buffer, context)
+  //   state.Running(id: focused, status: status) if focused == id ->
+  //     ui.Running(status)
+  //   state.Running(..) -> errors_or_value(buffer, context)
+  //   state.UnFocused -> errors_or_value(buffer, context)
+  // }
 
   ui.example(buffer, state, user_clicked_code, picker_message, input_message)
 }

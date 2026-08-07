@@ -1,20 +1,23 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/hub/cache
 import eyg/hub/schema
 import eyg/interpreter/state
 import eyg/ir/tree as ir
+import gleam/option.{type Option}
 import morph/buffer
 import multiformats/cid/v1
-import pal/run
+import ogre/origin
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import website/config
 
 pub type State {
   State(
-    previous: List(run.Previous),
+    previous: List(Previous),
     scope: List(state.Value(Meta)),
     buffer: buffer.Buffer,
-    context: run.Context(Message),
+    cache: cache.Cache(Meta),
+    origin: origin.Origin,
     display_help: Bool,
   )
 }
@@ -26,17 +29,16 @@ pub fn init(config) {
   let config.Config(origin:) = config
 
   let buffer = buffer.from_source(ir.vacant(), infer.pure())
-  let context =
-    run.empty(
-      origin,
-      EffectHandled,
-      SpotlessConnectCompleted,
-      ModuleLookupCompleted,
-      PullPackagesCompleted,
-    )
-    |> run.pull()
+  let cache = cache.ready()
   let state =
-    State(previous: [], scope: [], buffer:, context:, display_help: False)
+    State(
+      previous: [],
+      scope: [],
+      buffer:,
+      cache:,
+      origin:,
+      display_help: False,
+    )
   #(state, [])
 }
 
@@ -73,3 +75,14 @@ pub fn update(state: State, message) -> #(State, List(_)) {
     // }
   }
 }
+
+pub type Previous {
+  Previous(
+    value: Option(state.Value(List(Int))),
+    effects: List(Effect),
+    buffer: buffer.Buffer,
+  )
+}
+
+pub type Effect =
+  #(String, #(state.Value(List(Int)), state.Value(List(Int))))

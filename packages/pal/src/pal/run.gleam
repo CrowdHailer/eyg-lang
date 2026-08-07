@@ -21,12 +21,15 @@
 import eyg/analysis/type_/binding
 import eyg/hub/cache
 import eyg/hub/client
+import eyg/hub/publisher
+import eyg/hub/release
 import eyg/interpreter/break
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/http/request.{Request}
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -35,6 +38,8 @@ import morph/buffer
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
+
+// TODO import as system
 import pal/browser
 import spotless/oauth_2_1/token
 import touch_grass/copy
@@ -136,78 +141,82 @@ pub fn loop(
     Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
       let Context(counter: c, ..) = context
       let updated = Context(..context, counter: c + 1)
+
       case harness.cast(label, lift) {
-        Ok(harness.Abort(reason)) -> #(Aborted(reason), context, [])
-        Ok(harness.Alert(message)) ->
-          browser.Alert(message, fn() { context.handled(c, v.unit()) })
-          |> handle(env, k, c, updated)
-        Ok(harness.Copy(text)) ->
-          browser.WriteToClipboard(text, handled(c, copy.encode, context))
-          |> handle(env, k, c, updated)
-        Ok(harness.DecodeJson(raw)) ->
-          loop(resume(decode_json.sync(raw), env, k), context, resume)
-        Ok(harness.Download(input)) ->
-          browser.Download(input, fn() { context.handled(c, v.unit()) })
-          |> handle(env, k, c, updated)
-        Ok(harness.Fetch(request)) ->
-          browser.fetch(request, handled(c, fetch.encode, context))
-          |> handle(env, k, c, updated)
-        Ok(harness.Flip) ->
-          flip.encode(flip.sync())
-          |> resume(env, k)
-          |> loop(context, resume)
-        Ok(harness.Now) ->
-          now.encode(now.sync())
-          |> resume(env, k)
-          |> loop(context, resume)
-        Ok(harness.Paste) ->
-          browser.ReadFromClipboard(handled(c, paste.encode, context))
-          |> handle(env, k, c, updated)
-        Ok(harness.Print(message)) ->
-          print.encode(print.sync(message))
-          |> resume(env, k)
-          |> loop(context, resume)
-        Ok(harness.Prompt(question)) ->
-          browser.Prompt(question, handled(c, prompt.encode, context))
-          |> handle(env, k, c, updated)
-        Ok(harness.Random(max)) ->
-          random.encode(random.sync(max))
-          |> resume(env, k)
-          |> loop(context, resume)
-        // Ok(harness.Sleep(max)) -> todo
-        // sleep.encode(sleep.sync(max))
-        // |> resume(env, k)
-        // |> loop(context, resume)
-        Ok(harness.Visit(uri)) ->
-          browser.Visit(uri:, resume: fn(result) {
-            let value = case result {
-              Ok(_) -> v.ok(v.unit())
-              Error(reason) -> v.error(v.String(reason))
-            }
-            context.handled(c, value)
-          })
-          |> handle(env, k, c, updated)
-        Ok(harness.Spotless(service:, operation:)) ->
-          case token(context, service) {
-            Ok(token) -> {
-              let request =
-                service_request(service, operation, token, context.hub_origin)
-              browser.fetch(request, handled(c, fetch.encode, context))
-              |> handle(env, k, c, updated)
-            }
-            Error(_) -> {
-              let connecting =
-                list.append(updated.connecting, [#(c, service, operation)])
-              let updated = Context(..updated, connecting:)
-              #(Handling(c, env, k), updated, [
-                browser.Spotless(
-                  service,
-                  context.hub_origin,
-                  context.connect_completed(service, _),
-                ),
-              ])
-            }
-          }
+        Ok(x) -> {
+          todo
+        }
+        //   Ok(harness.Abort(reason)) -> #(Aborted(reason), context, [])
+        //   Ok(harness.Alert(message)) ->
+        //     browser.Alert(message, fn() { context.handled(c, v.unit()) })
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.Copy(text)) ->
+        //     browser.WriteToClipboard(text, handled(c, copy.encode, context))
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.DecodeJson(raw)) ->
+        //     loop(resume(decode_json.sync(raw), env, k), context, resume)
+        //   Ok(harness.Download(input)) ->
+        //     browser.Download(input, fn() { context.handled(c, v.unit()) })
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.Fetch(request)) ->
+        //     browser.fetch(request, handled(c, fetch.encode, context))
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.Flip) ->
+        //     flip.encode(flip.sync())
+        //     |> resume(env, k)
+        //     |> loop(context, resume)
+        //   Ok(harness.Now) ->
+        //     now.encode(now.sync())
+        //     |> resume(env, k)
+        //     |> loop(context, resume)
+        //   Ok(harness.Paste) ->
+        //     browser.ReadFromClipboard(handled(c, paste.encode, context))
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.Print(message)) ->
+        //     print.encode(print.sync(message))
+        //     |> resume(env, k)
+        //     |> loop(context, resume)
+        //   Ok(harness.Prompt(question)) ->
+        //     browser.Prompt(question, handled(c, prompt.encode, context))
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.Random(max)) ->
+        //     random.encode(random.sync(max))
+        //     |> resume(env, k)
+        //     |> loop(context, resume)
+        //   // Ok(harness.Sleep(max)) -> todo
+        //   // sleep.encode(sleep.sync(max))
+        //   // |> resume(env, k)
+        //   // |> loop(context, resume)
+        //   Ok(harness.Visit(uri)) ->
+        //     browser.Visit(uri:, resume: fn(result) {
+        //       let value = case result {
+        //         Ok(_) -> v.ok(v.unit())
+        //         Error(reason) -> v.error(v.String(reason))
+        //       }
+        //       context.handled(c, value)
+        //     })
+        //     |> handle(env, k, c, updated)
+        //   Ok(harness.Spotless(service:, operation:)) ->
+        //     case token(context, service) {
+        //       Ok(token) -> {
+        //         let request =
+        //           service_request(service, operation, token, context.hub_origin)
+        //         browser.fetch(request, handled(c, fetch.encode, context))
+        //         |> handle(env, k, c, updated)
+        //       }
+        //       Error(_) -> {
+        //         let connecting =
+        //           list.append(updated.connecting, [#(c, service, operation)])
+        //         let updated = Context(..updated, connecting:)
+        //         #(Handling(c, env, k), updated, [
+        //           browser.Spotless(
+        //             service,
+        //             context.hub_origin,
+        //             context.connect_completed(service, _),
+        //           ),
+        //         ])
+        //       }
+        //     }
         Error(reason) -> #(Exception(reason), context, [])
       }
     }
@@ -228,6 +237,38 @@ pub fn loop(
         )
         cache.Unsound(reason) -> #(Exception(reason), context, [])
       }
+    Error(#(break.UndefinedRelease(package:, release:, module:), _meta, env, k)) -> {
+      let version = release
+      let release = release.Release(package:, version:, module:)
+      case cache.release(context.cache, release) {
+        cache.Available(module) ->
+          case cache.module(context.cache, module) {
+            cache.Available(cache.Module(value:, ..)) ->
+              value
+              |> resume(env, k)
+              |> loop(context, resume)
+            cache.Unknown -> #(
+              Pending(cache.Release(release), env:, k:),
+              context,
+              [],
+            )
+            cache.Unavailable(reason) -> #(Exception(reason), context, [])
+          }
+
+        cache.Unknown ->
+          // cache.loop is called above and so the context.cache is already pulling
+          #(Pending(cache.Release(release), env:, k:), context, [])
+        cache.Unavailable(Nil) -> {
+          let reason =
+            Exception(break.UndefinedRelease(
+              package:,
+              release: version,
+              module:,
+            ))
+          #(reason, context, [])
+        }
+      }
+    }
     Error(#(break, _, _, _)) -> #(Exception(break), context, [])
   }
 }
@@ -241,8 +282,8 @@ pub fn connect_completed(
     Ok(token.Response(access_token: token, ..)) -> {
       let Context(authentiction:, ..) = context
       let authentiction = dict.insert(authentiction, service, token)
-      let #(connecting, effects) =
-        service_tasks(context.connecting, service, [], [], token, context)
+      let #(connecting, effects) = todo
+      // service_tasks(context.connecting, service, [], [], token, context)
       let context = Context(..context, connecting:, authentiction:)
 
       #(context, effects)
@@ -259,8 +300,8 @@ fn service_tasks(tasks, service, acc, effects, token, context: Context(_)) {
       let request =
         service_request(service, operation, token, context.hub_origin)
 
-      let effect =
-        browser.fetch(request, handled(task_id, fetch.encode, context))
+      let effect = todo
+      // browser.fetch(request, handled(task_id, fetch.encode, context))
       service_tasks(rest, service, acc, [effect, ..effects], token, context)
     }
     [other, ..rest] ->
@@ -293,57 +334,10 @@ pub fn flush(context: Context(m)) -> #(Context(m), List(browser.Effect(m))) {
   let context = Context(..context, cache:)
   let effects =
     list.map(effects, fn(effect) {
-      case effect {
-        cache.FetchModule(cid) ->
-          fetch_module(cid, hub_origin, context.module_lookup_completed)
-        cache.PullPackages(offset:) ->
-          pull_packages(offset, hub_origin, context.pull_packages_completed)
-      }
+      cache.compute(effect, hub_origin, browser.fetch)(browser.Done)
     })
-  #(context, effects)
-}
-
-/// The browser effect to fetch a module
-fn fetch_module(
-  cid: v1.Cid,
-  hub_origin: origin.Origin,
-  module_lookup_completed: fn(v1.Cid, Result(ir.Node(Nil), String)) -> m,
-) -> browser.Effect(m) {
-  let request = client.fetch_module_request(cid, hub_origin)
-
-  browser.Fetch(request, fn(result) {
-    let result = case result {
-      Ok(response) ->
-        case client.fetch_module_response(response) {
-          Ok(Some(source)) -> Ok(source)
-          Ok(None) -> Error("no module")
-          Error(_) -> Error("bad module lookup")
-        }
-      Error(reason) -> Error(string.inspect(reason))
-    }
-    module_lookup_completed(cid, result)
-  })
-}
-
-fn pull_packages(since, hub_origin, pull_packages_completed) {
-  let request =
-    client.pull_packages_request(
-      schema.PullParameters(since:, limit: 1000, entities: []),
-      hub_origin,
-    )
-
-  browser.Fetch(request, fn(result) {
-    let result = case result {
-      Ok(response) ->
-        case client.pull_packages_response(response) {
-          Ok(schema.PullResponse(entries:)) -> Ok(entries)
-
-          Error(_) -> Error("bad module lookup")
-        }
-      Error(reason) -> Error(string.inspect(reason))
-    }
-    pull_packages_completed(result)
-  })
+  todo
+  // #(context, effects)
 }
 
 pub fn get_module_completed(
@@ -355,6 +349,120 @@ pub fn get_module_completed(
   let #(cache, resolutions) =
     cache.fetch_module_completed(context.cache, cid, result)
   #(Context(..context, cache:), resolutions)
+}
+
+pub fn apply_ready_modules(
+  run: Run(t),
+  context: Context(m),
+  // TODO move resume to run?
+  resume: fn(state.Value(Meta), state.Env(Meta), state.Stack(Meta)) ->
+    Result(t, state.Debug(Meta)),
+  done: List(#(v1.Cid, Result(state.Value(Meta), state.Reason(Meta)))),
+) -> #(Run(t), Context(m), List(browser.Effect(m))) {
+  case run {
+    Pending(cache.Content(module), env:, k:) -> {
+      case list.key_find(done, module) {
+        Ok(Ok(value)) -> {
+          resume(value, env, k)
+          |> loop(context, resume)
+        }
+        Ok(Error(reason)) -> {
+          #(Exception(reason), context, [])
+        }
+        Error(Nil) -> #(run, context, [])
+      }
+    }
+    Pending(cache.Release(release), env:, k:) -> {
+      case cache.release(context.cache, release) {
+        cache.Available(module) -> {
+          case list.key_find(done, module) {
+            Ok(Ok(value)) -> {
+              resume(value, env, k)
+              |> loop(context, resume)
+            }
+            Ok(Error(reason)) -> {
+              #(Exception(reason), context, [])
+            }
+            Error(Nil) -> #(run, context, [])
+          }
+        }
+        cache.Unknown -> #(run, context, [])
+        cache.Unavailable(Nil) ->
+          // This is the situation when the release is a different pin
+          #(
+            Exception(break.UndefinedRelease(
+              release.package,
+              release.version,
+              release.module,
+            )),
+            context,
+            [],
+          )
+      }
+    }
+    _ -> #(run, context, [])
+  }
+}
+
+pub fn pull_releases_completed(
+  context: Context(m),
+  result: Result(List(schema.ArchivedEntry), String),
+) -> #(Context(m), List(cache.Resolution(Meta))) {
+  let cache = context.cache
+  let #(cache, done) = cache.pull_packages_completed(cache, result)
+  #(Context(..context, cache:), done)
+}
+
+pub fn new_releases(result: Result(List(schema.ArchivedEntry), String)) {
+  result
+  |> result.unwrap([])
+  |> list.map(fn(entry) {
+    let assert Ok(payload) = json.parse(entry.payload, publisher.decoder())
+
+    let publisher.Release(package:, version:, module:) = payload.content
+    release.Release(package:, version:, module:)
+  })
+}
+
+pub fn apply_new_releases(
+  run: Run(t),
+  context: Context(m),
+  resume: fn(state.Value(Meta), state.Env(Meta), state.Stack(Meta)) ->
+    Result(t, state.Debug(Meta)),
+  releases: List(release.Release),
+) -> #(Run(t), Context(m), List(browser.Effect(m))) {
+  case run {
+    Pending(cache.Release(release), env, k) -> {
+      let release.Release(package:, version:, module:) = release
+      case
+        list.find(releases, fn(r) {
+          r.package == package && r.version == version
+        })
+      {
+        Ok(release.Release(module: m, ..)) if m == module -> {
+          case cache.module(context.cache, m) {
+            cache.Available(module) -> {
+              resume(module.value, env, k)
+              |> loop(context, resume)
+            }
+            cache.Unknown -> #(run, context, [])
+            cache.Unavailable(reason) -> #(Exception(reason), context, [])
+          }
+        }
+        Ok(release.Release(module: _, ..)) -> {
+          let run =
+            Exception(break.UndefinedRelease(
+              release.package,
+              release.version,
+              release.module,
+            ))
+          #(run, context, [])
+        }
+        Error(_) -> #(run, context, [])
+      }
+    }
+    _ -> #(run, context, [])
+  }
 }
 
 fn service_request(service, operation, token, hub_origin) {

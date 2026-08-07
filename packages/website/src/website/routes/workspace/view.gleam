@@ -98,7 +98,7 @@ pub fn render(state: state.State) {
             state.Repl -> [
               h.text("Shell"),
               editor_view.render_previous(
-                state.previous,
+                todo as "state.previous",
                 state.PreviousMessage,
                 state.UserSelectedPrevious,
               ),

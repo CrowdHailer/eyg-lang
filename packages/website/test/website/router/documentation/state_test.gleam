@@ -1,5 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/error
+import eyg/hub/cache
 import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -12,8 +13,6 @@ import morph/picker
 import multiformats/cid/v1
 import ogre/origin
 import pal/browser
-import pal/run
-
 import website/manipulation
 import website/routes/documentation/state.{State}
 
@@ -31,9 +30,10 @@ pub fn analyse_reference_test() {
   let state = with_source(source)
   let assert [#([1], reason)] = infer.all_errors(default(state).analysis)
   assert error.MissingReference(cid) == reason
-  let assert #(_context, [_pull, effect]) = run.flush(state.context)
+  let assert #(_context, [_pull, effect]) =
+    state.flush_cache(state.cache, origin.https("eyg.test"))
   let assert browser.Fetch(_request, resume:) = effect
-  let message = resume(Ok(module_response(lib)))
+  let assert browser.Done(message) = resume(Ok(module_response(lib)))
   let #(state, _effects) = state.update(state, message)
 
   let assert [] = infer.all_errors(default(state).analysis)
@@ -54,7 +54,7 @@ pub fn insert_reference_test() {
   let assert [#([], reason)] = infer.all_errors(default(state).analysis)
   assert error.MissingReference(cid) == reason
   let assert browser.Fetch(_request, resume:) = effect
-  let message = resume(Ok(module_response(lib)))
+  let assert browser.Done(message) = resume(Ok(module_response(lib)))
   let assert #(state, []) = state.update(state, message)
   let assert [] = infer.all_errors(default(state).analysis)
 }
@@ -68,11 +68,17 @@ fn default(state) {
 fn with_source(source) {
   let sources = [#("default", editable.from_annotated(source))]
 
-  let #(examples, context) =
-    state.init_collection(sources, state.context(origin.https("eyg.test")))
+  let #(examples, cache) = state.init_collection(sources, cache.ready())
 
   let mode = state.Navigating(id: "default", failure: None)
-  let state = State(mode:, examples:, context: context)
+  let state =
+    State(
+      mode:,
+      examples:,
+      cache: cache,
+      hub: origin.https("eyg.test"),
+      counter: 0,
+    )
   state
 }
 

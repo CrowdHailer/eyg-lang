@@ -14,6 +14,7 @@ gleam_http = ">= 4.3.0 and < 5.0.0"
 gleam_javascript = ">= 1.0.1 and < 2.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_x = { path = "../gleam_x" }
+midas = ">= 3.0.0 and < 4.0.0"
 morph = { path = "../morph" }
 multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
@@ -24,3 +25,4 @@ untethered = { path = "../untethered" }
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+dag_json = ">= 3.0.0 and < 4.0.0"

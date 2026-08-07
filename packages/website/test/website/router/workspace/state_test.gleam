@@ -35,7 +35,8 @@ pub fn execute_async_effect_test() {
   let assert #(state, [effect]) = command(state, "Enter")
   let assert state.RunningShell([], run.Handling(0, ..)) = state.mode
   let assert browser.Alert("Beep", resume) = effect
-  let assert #(state, []) = state.update(state, resume())
+  let assert browser.Done(message) = resume()
+  let assert #(state, []) = state.update(state, message)
 
   assert state.Editing == state.mode
   let assert [run.Previous(value:, effects:, ..)] = state.previous

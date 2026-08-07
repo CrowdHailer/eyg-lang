@@ -14,6 +14,8 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import gleam/uri
+import midas/continuation.{type Continuation as K}
+import midas/effect
 import ogre/origin
 import plinth/browser/clipboard
 import plinth/browser/crypto
@@ -37,58 +39,76 @@ import touch_grass/harness/browser as harness
 /// 
 /// This could return a list of effects for asynchrony or a Done(m) to allow serial effects
 pub type Effect(m) {
-  Alert(message: String, resume: fn() -> m)
-  Download(input: download.Input, resume: fn() -> m)
+  Done(m)
+  Alert(message: String, resume: fn() -> Effect(m))
+  Download(input: download.Input, resume: fn() -> Effect(m))
   Fetch(
     request: request.Request(BitArray),
-    resume: fn(Result(response.Response(BitArray), fetch.FetchError)) -> m,
+    resume: fn(Result(response.Response(BitArray), effect.FetchError)) ->
+      Effect(m),
   )
   FetchStreamResponse(
     request: request.Request(BitArray),
-    resume: fn(Result(response.Response(Reader), fetch.FetchError)) -> m,
+    resume: fn(Result(response.Response(Reader), fetch.FetchError)) -> Effect(m),
   )
-  // Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> m)
+  // Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> Effect(m))
   // FocusOnInput(resume:)
   LoadFiles(handle: file_system.DirectoryHandle)
   OpenPopup(
     location: String,
-    resume: fn(Result(window_proxy.WindowProxy, String)) -> m,
+    resume: fn(Result(window_proxy.WindowProxy, String)) -> Effect(m),
   )
   PostMessage(
     target: window_proxy.WindowProxy,
     payload: Json,
-    resume: fn(Nil) -> m,
+    resume: fn(Nil) -> Effect(m),
   )
-  Prompt(question: String, resume: fn(Result(String, Nil)) -> m)
-  ReadFromClipboard(resume: fn(Result(String, String)) -> m)
+  Prompt(question: String, resume: fn(Result(String, Nil)) -> Effect(m))
+  ReadFromClipboard(resume: fn(Result(String, String)) -> Effect(m))
   ReadChunk(
     reader: Reader,
-    resume: fn(Result(Option(BitArray), fetch.FetchError)) -> m,
+    resume: fn(Result(Option(BitArray), fetch.FetchError)) -> Effect(m),
   )
   SaveFile(
     handle: file_system.DirectoryHandle,
     filename: String,
     content: BitArray,
-    resume: fn(Result(Nil, String)) -> m,
+    resume: fn(Result(Nil, String)) -> Effect(m),
   )
   ShowDirectoryPicker(
-    resume: fn(Result(file_system.Handle(file_system.D), String)) -> m,
+    resume: fn(Result(file_system.Handle(file_system.D), String)) -> Effect(m),
   )
   // TODO move to Follow etc but needs secure random and ability to combine effects
   // TODO browser shouldn't rely on harness but no circular dependency yet
   Spotless(
     service: harness.Service,
     origin: origin.Origin,
-    resume: fn(Result(token.Response, String)) -> m,
+    resume: fn(Result(token.Response, String)) -> Effect(m),
   )
-  Visit(uri: uri.Uri, resume: fn(Result(window_proxy.WindowProxy, String)) -> m)
-  WriteToClipboard(text: String, resume: fn(Result(Nil, String)) -> m)
+  Visit(
+    uri: uri.Uri,
+    resume: fn(Result(window_proxy.WindowProxy, String)) -> Effect(m),
+  )
+  WriteToClipboard(text: String, resume: fn(Result(Nil, String)) -> Effect(m))
 }
 
-pub fn fetch(request, resume) {
-  Fetch(request:, resume: fn(result) {
-    resume(result.map_error(result, string.inspect))
-  })
+pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
+  case effect {
+    Done(value) -> func(value)
+    Fetch(request, resume) ->
+      Fetch(request, fn(response) { then(resume(response), func) })
+    _ -> todo
+  }
+}
+
+pub fn map(effect: Effect(a), func: fn(a) -> b) -> Effect(b) {
+  then(effect, fn(value) { Done(func(value)) })
+}
+
+pub fn fetch(
+  request: request.Request(BitArray),
+) -> K(Effect(r), Result(response.Response(BitArray), effect.FetchError)) {
+  fn(resume) { Fetch(request:, resume:) }
 }
 
 pub type Reader =
@@ -117,30 +137,39 @@ pub type Reader =
 // Use an ignore event if we don't want a message
 pub fn run(effect: Effect(m)) -> Promise(m) {
   case effect {
+    Done(value) -> promise.resolve(value)
     Alert(message:, resume:) -> {
       window.alert(message)
-      promise.resolve(resume())
+      run(resume())
     }
     Download(input:, resume:) -> {
       download_file(input)
-      promise.resolve(resume())
+      run(resume())
     }
     Fetch(request:, resume:) -> {
-      use result <- promise.map(fetchx.send_bits(request))
-      resume(result)
+      use result <- promise.await(fetchx.send_bits(request))
+      let result =
+        result.map_error(result, fn(reason) {
+          case reason {
+            fetch.NetworkError(detail) -> effect.NetworkError(detail)
+            fetch.UnableToReadBody -> effect.UnableToReadBody
+            fetch.InvalidJsonBody -> effect.UnableToReadBody
+          }
+        })
+      run(resume(result))
     }
     FetchStreamResponse(request:, resume:) -> {
-      use result <- promise.map(fetch.send_bits(request))
+      use result <- promise.await(fetch.send_bits(request))
       case result {
         Ok(response) ->
           case fetch.stream_body(response) {
             Ok(reader) -> {
               let reader = fn() { fetch.read_chunk(reader) }
-              resume(Ok(Response(..response, body: reader)))
+              run(resume(Ok(Response(..response, body: reader))))
             }
-            Error(reason) -> resume(Error(reason))
+            Error(reason) -> run(resume(Error(reason)))
           }
-        Error(reason) -> resume(Error(reason))
+        Error(reason) -> run(resume(Error(reason)))
       }
     }
     // Follow(uri:, resume:) -> todo
@@ -170,37 +199,36 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       // todo
     }
     OpenPopup(location:, resume:) -> {
-      promise.resolve(resume(open(location, #(650, 800))))
+      run(resume(open(location, #(650, 800))))
     }
-    Prompt(question:, resume:) ->
-      promise.resolve(resume(window.prompt(question)))
+    Prompt(question:, resume:) -> run(resume(window.prompt(question)))
 
     PostMessage(target:, payload:, resume:) ->
-      promise.resolve(resume(window_proxy.post_message(target, payload, "*")))
+      run(resume(window_proxy.post_message(target, payload, "*")))
     ReadChunk(reader, resume) -> {
-      use result <- promise.map(reader())
-      resume(result)
+      use result <- promise.await(reader())
+      run(resume(result))
     }
     ReadFromClipboard(resume) -> {
-      use result <- promise.map(clipboard.read_text())
-      resume(result)
+      use result <- promise.await(clipboard.read_text())
+      run(resume(result))
     }
     SaveFile(handle: _, filename: _, content: _, resume: _) ->
       panic as "unsupported browser effect"
     ShowDirectoryPicker(resume:) -> {
-      use result <- promise.map(show_save_directory_picker())
-      resume(result)
+      use result <- promise.await(show_save_directory_picker())
+      run(resume(result))
     }
     Visit(uri:, resume:) -> {
-      promise.resolve(resume(open(uri.to_string(uri), #(800, 400))))
+      run(resume(open(uri.to_string(uri), #(800, 400))))
     }
     WriteToClipboard(text:, resume:) -> {
-      use result <- promise.map(clipboard.write_text(text))
-      resume(result)
+      use result <- promise.await(clipboard.write_text(text))
+      run(resume(result))
     }
     Spotless(service:, origin:, resume:) -> {
-      use result <- promise.map(spotless(origin, service))
-      resume(result)
+      use result <- promise.await(spotless(origin, service))
+      run(resume(result))
     }
   }
 }
@@ -371,3 +399,21 @@ fn do_random(length) {
     Error(Nil) -> Error("no crypto")
   }
 }
+// A loop that returns run and any effects needs a pattern match of run
+// To separate return
+// Maybe(a new cache status or not.)
+// Done
+// Tasked(but whats in here) it also needs mapping
+
+// Yes this works but what if I want the parsed effect in the history
+// pub type Working {
+//   Done
+//   Effect
+//   Dependency
+// }
+
+// fn handle(return: #(Return, Working)) {
+//   case return {
+//     #(Error(break.UnhandledEffect(label)), Effect) -> todo
+//   }
+// }

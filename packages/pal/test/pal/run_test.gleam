@@ -1,4 +1,7 @@
+import dag_json as codec
 import eyg/hub/cache
+import eyg/hub/publisher
+import eyg/hub/release
 import eyg/hub/schema
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -6,18 +9,22 @@ import eyg/interpreter/value as v
 import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/crypto
 import gleam/dict
 import gleam/http/request
 import gleam/http/response
+import gleam/int
+import gleam/json
 import gleam/option.{None}
 import multiformats/cid/v1
+import multiformats/hashes
 import ogre/origin
 import pal/browser
-import pal/run
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import touch_grass/http
+import untethered/ledger/schema as ledger_schema
 
 pub type Message {
   EffectHandled(task_id: Int, value: run.Value)
@@ -26,7 +33,7 @@ pub type Message {
   PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
 }
 
-fn context() {
+fn empty_context() {
   run.empty(
     origin.https("eyg.test"),
     EffectHandled,
@@ -50,7 +57,7 @@ fn continue(value, env, k, context) {
 
 pub fn pure_program_test() {
   let source = ir.add(ir.integer(1), ir.integer(2))
-  let initial = context()
+  let initial = empty_context()
   let assert #(run.Concluded(value), updated, []) = execute(source, initial)
   assert v.Integer(3) == value
   assert initial == updated
@@ -58,7 +65,7 @@ pub fn pure_program_test() {
 
 pub fn synchronous_effect_test() {
   let source = ir.call(ir.perform("Random"), [ir.integer(1)])
-  let initial = context()
+  let initial = empty_context()
   let assert #(run.Concluded(value), updated, []) = execute(source, initial)
   assert v.Integer(0) == value
   assert initial == updated
@@ -66,7 +73,7 @@ pub fn synchronous_effect_test() {
 
 pub fn asynchronous_effect_test() {
   let source = ir.call(ir.perform("Alert"), [ir.string("hi")])
-  let initial = context()
+  let initial = empty_context()
   let assert #(run.Handling(0, env:, k:), updated, [task]) =
     execute(source, initial)
   assert 1 == updated.counter
@@ -86,7 +93,7 @@ pub fn spotless_effect_test() {
       #("body", ir.binary(<<>>)),
     ])
   let source = ir.call(ir.perform("DNSimple"), [operation])
-  let initial = context()
+  let initial = empty_context()
   let assert #(run.Handling(0, env:, k:), updated, [effect]) =
     execute(source, initial)
   assert 1 == updated.counter
@@ -138,7 +145,7 @@ pub fn valid_reference_test() {
   let cid = cid_from_tree(lib)
 
   let source = ir.get(ir.reference(cid), "count")
-  let initial = context()
+  let initial = empty_context()
   let assert #(run.Pending(dep, env:, k:), updated, []) =
     execute(source, initial)
   assert cache.Content(cid) == dep
@@ -165,7 +172,7 @@ pub fn invalid_reference_test() {
   let cid = cid_from_tree(lib)
 
   let source = ir.get(ir.reference(cid), "count")
-  let initial = context()
+  let initial = empty_context()
   let assert #(run.Pending(dep:, env: _, k: _), updated, []) =
     execute(source, initial)
   assert cache.Content(cid) == dep
@@ -190,14 +197,155 @@ pub fn invalid_reference_test() {
   assert updated == updated2
 }
 
+// run builds atop cache
+// Tests to show all the statuses
+
+pub fn release_lazy_loads_test() {
+  let #(release, source) = simple_package(int.random(100))
+  let context = empty_context()
+  assert cache.Pulled == context.cache.cursor_status
+  let #(run, context, effects) = execute(release_to_source(release), context)
+  let assert run.Pending(dep:, env: _, k: _) = run
+  assert cache.Release(release) == dep
+
+  // running a function with an unknown package always tries to re pull
+  assert cache.ReadyToPull == context.cache.cursor_status
+
+  // There should be no program effects
+  assert [] == effects
+
+  let #(context, effects) = run.flush(context)
+  assert cache.Pulling == context.cache.cursor_status
+  let assert [browser.Fetch(request, resume)] = effects
+  assert "/packages/pull" == request.path
+
+  let entries = [archived_package(release)]
+  let assert PullPackagesCompleted(result) = resume(Ok(pull_response(entries)))
+  assert Ok(entries) == result
+
+  let #(context, done) = run.pull_releases_completed(context, result)
+  assert [] == done
+  assert cache.Pulled == context.cache.cursor_status
+
+  let #(context, effects) = run.flush(context)
+  assert cache.Pulled == context.cache.cursor_status
+  let assert [browser.Fetch(request, resume)] = effects
+  assert "/modules/" <> v1.to_string(release.module) == request.path
+  assert ModuleLookupCompleted(release.module, Ok(source))
+    == resume(Ok(module_response(source)))
+}
+
+pub fn already_loaded_module_completes_on_release_test() {
+  let number = int.random(100)
+  let #(release, source) = simple_package(number)
+  let context =
+    empty_context()
+    |> with_module(source)
+  let #(run, context, effects) = execute(release_to_source(release), context)
+  assert [] == effects
+
+  let entries = [archived_package(release)]
+  let #(context, done) = run.pull_releases_completed(context, Ok(entries))
+  assert [] == done
+
+  let done = run.new_releases(Ok(entries))
+  let #(run, _context, effects) =
+    run.apply_new_releases(run, context, expression.resume, done)
+  assert [] == effects
+  assert run.Concluded(v.Integer(number)) == run
+}
+
+// TODO test that if returned module is wrong then state updates
+// fn with_module
+// dn with_release("a",1,source)
+
+fn with_module(
+  context: run.Context(a),
+  source: #(ir.Expression(meta), meta),
+) -> run.Context(a) {
+  let source = ir.map_annotation(source, fn(_) { [] })
+  let run.Context(cache:, ..) = context
+  let #(cache, done) = cache.with_module(cache, cid_from_tree(source), source)
+  let assert [_] = done
+  run.Context(..context, cache:)
+}
+
+fn simple_package(number) {
+  let source = ir.integer(number)
+  let cid = cid_from_tree(source)
+  let package = "my_package"
+  let release = release.Release(package:, version: 1, module: cid)
+  #(release, source)
+}
+
+fn release_to_source(release) {
+  let release.Release(package:, version:, module:) = release
+  ir.release(package, version, module)
+}
+
+// fn inactive_context() {
+//   // let #(context, effects) = run.flush(context() |> run.pull())
+//   // // original fetch to pull
+//   // let assert [_] = effects
+//   // echo context.cache.cursor_status
+//   empty_context()
+// }
+
+fn archived_package(release: release.Release) {
+  let assert 1 = release.version
+  let entry =
+    publisher.first(random_cid(), "abc", release.package, release.module)
+  // let entries = [
+  ledger_schema.ArchivedEntry(
+    cursor: 1,
+    cid: random_cid(),
+    payload: json.to_string(publisher.encode(entry)),
+    entity: random_cid(),
+    sequence: 100,
+    previous: None,
+    type_: "todo",
+  )
+  // ]
+  // let assert PullPackagesCompleted(result) = resume(Ok(pull_response(entries)))
+  // assert Ok(entries) == result
+}
+
+// fn payload_encode(payload) {
+//   case payload {
+//     release.Release(package:, version:, module:) -> {
+//       #(
+//         "release",
+//         codec.object([
+//           #("package", codec.string(package)),
+//           #("version", codec.int(version)),
+//           #("module", codec.cid(module)),
+//         ]),
+//       )
+//     }
+//   }
+// }
+
 pub fn cid_from_tree(source) {
   let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
   resume(crypto.hash(crypto.Sha256, bytes))
 }
 
+fn random_cid() {
+  let multihash =
+    hashes.Multihash(hashes.Sha256, crypto.strong_random_bytes(10))
+  v1.Cid(codec.code(), multihash)
+}
+
 pub fn cid_from_block(block) {
   let cid.Sha256(bytes:, resume:) = cid.from_block(block)
   resume(crypto.hash(crypto.Sha256, bytes))
+}
+
+pub fn pull_response(entries) {
+  schema.entries_response_encode(entries)
+  |> json.to_string
+  |> bit_array.from_string
+  |> response.set_body(response.new(200), _)
 }
 
 pub fn module_response(source) {
