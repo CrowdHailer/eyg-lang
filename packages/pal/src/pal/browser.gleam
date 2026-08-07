@@ -53,7 +53,7 @@ pub type Effect(m) {
   )
   // Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> Effect(m))
   // FocusOnInput(resume:)
-  LoadFiles(handle: file_system.DirectoryHandle)
+  // LoadFiles(handle: file_system.DirectoryHandle)
   OpenPopup(
     location: String,
     resume: fn(Result(window_proxy.WindowProxy, String)) -> Effect(m),
@@ -97,7 +97,30 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
     Done(value) -> func(value)
     Fetch(request, resume) ->
       Fetch(request, fn(response) { then(resume(response), func) })
-    _ -> todo
+    Alert(message, resume) -> Alert(message, fn() { then(resume(), func) })
+    Download(input, resume) -> Download(input, fn() { then(resume(), func) })
+    FetchStreamResponse(request, resume) ->
+      FetchStreamResponse(request, fn(response) { then(resume(response), func) })
+    // LoadFiles(handle) -> todo
+    OpenPopup(location, resume) ->
+      OpenPopup(location, fn(x) { then(resume(x), func) })
+    PostMessage(target, payload, resume) ->
+      PostMessage(target, payload, fn(x) { then(resume(x), func) })
+    Prompt(question, resume) ->
+      Prompt(question, fn(x) { then(resume(x), func) })
+    ReadFromClipboard(resume) ->
+      ReadFromClipboard(fn(x) { then(resume(x), func) })
+    ReadChunk(reader, resume) ->
+      ReadChunk(reader, fn(x) { then(resume(x), func) })
+    SaveFile(handle, filename, content, resume) ->
+      SaveFile(handle, filename, content, fn(x) { then(resume(x), func) })
+    ShowDirectoryPicker(resume) ->
+      ShowDirectoryPicker(fn(x) { then(resume(x), func) })
+    Spotless(service, origin, resume) ->
+      Spotless(service, origin, fn(x) { then(resume(x), func) })
+    Visit(uri, resume) -> Visit(uri, fn(x) { then(resume(x), func) })
+    WriteToClipboard(text, resume) ->
+      WriteToClipboard(text, fn(x) { then(resume(x), func) })
   }
 }
 
@@ -113,26 +136,6 @@ pub fn fetch(
 
 pub type Reader =
   fn() -> Promise(Result(Option(BitArray), fetch.FetchError))
-
-// helpers like save_buffer
-
-// pub type Action {
-
-//   RunEffect(reference: Int, effect: Effect)
-//   SyncAction(client.Action)
-//   SetFlushTimer(reference: Int)
-//   SpotlessConnect(
-//     effect_counter: Int,
-//     origin: origin.Origin,
-//     service: harness.Service,
-//   )
-// }
-//     state.OpenPopup(location) -> {
-//       effect.from(fn(dispatch) {
-//         dispatch(state.OpenPopupCompleted())
-//         Nil
-//       })
-//     }
 
 // Use an ignore event if we don't want a message
 pub fn run(effect: Effect(m)) -> Promise(m) {
@@ -172,32 +175,31 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
         Error(reason) -> run(resume(Error(reason)))
       }
     }
+
     // Follow(uri:, resume:) -> todo
-    LoadFiles(handle: _) -> {
-      panic as "this shouldn't read every file"
-      // use #(_, files) <- promise.await(file_system.all_entries(handle))
-      // use results <- promise.await(
-      //   promise.await_list(
-      //     list.filter_map(array.to_list(files), fn(entry) {
-      //       let name = file_system.name(entry)
-      //       use filename <- result.map(
-      //         case string.split_once(name, ".eyg.json") {
-      //           Ok(#(name, "")) -> Ok(#(name, state.EygJson))
-      //           _ -> Error(Nil)
-      //         },
-      //       )
-
-      //       use file <- promise.await(file_system.get_file(entry))
-      //       let assert Ok(file) = file
-      //       use b <- promise.await(file.bytes(file))
-
-      //       promise.resolve(#(filename, dag_json.from_block(b)))
-      //     }),
-      //   ),
-      // )
-      // promise.resolve(Ok(results))
-      // todo
-    }
+    // LoadFiles(handle: _) -> {
+    //   panic as "this shouldn't read every file"
+    // use #(_, files) <- promise.await(file_system.all_entries(handle))
+    // use results <- promise.await(
+    //   promise.await_list(
+    //     list.filter_map(array.to_list(files), fn(entry) {
+    //       let name = file_system.name(entry)
+    //       use filename <- result.map(
+    //         case string.split_once(name, ".eyg.json") {
+    //           Ok(#(name, "")) -> Ok(#(name, state.EygJson))
+    //           _ -> Error(Nil)
+    //         },
+    //       )
+    //       use file <- promise.await(file_system.get_file(entry))
+    //       let assert Ok(file) = file
+    //       use b <- promise.await(file.bytes(file))
+    //       promise.resolve(#(filename, dag_json.from_block(b)))
+    //     }),
+    //   ),
+    // )
+    // promise.resolve(Ok(results))
+    // todo
+    // }
     OpenPopup(location:, resume:) -> {
       run(resume(open(location, #(650, 800))))
     }
