@@ -1,24 +1,23 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
-import eyg/hub/publisher
 import eyg/hub/release
-import eyg/hub/schema
+import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/dag_json
-import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import morph/buffer
 import morph/editable as e
 import morph/input
 import morph/picker
 import multiformats/cid/v1
-import pal/browser
-import pal/run
+import ogre/origin
+import pal/platform/browser as platform
+import pal/system
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import website/command
@@ -34,46 +33,28 @@ pub type State {
   State(
     mode: doc.Mode,
     examples: Dict(String, buffer.Buffer),
-    context: run.Context(Message),
+    origin: origin.Origin,
+    cache: cache.Cache(Meta),
+    counter: Int,
+    spotless_origin: origin.Origin,
+    tokens: Dict(harness.Service, String),
   )
 }
 
 pub fn init(config) {
   let config.Config(origin:) = config
-  let context =
-    run.empty(
-      origin,
-      EffectHandled,
-      SpotlessConnectCompleted,
-      ModuleLookupCompleted,
-      PullPackagesCompleted,
+  let #(examples, cache) = doc.init_collection(examples.all(), cache.ready())
+  let #(cache, effects) = flush_cache(cache, origin)
+  let state =
+    State(
+      mode: doc.UnFocused,
+      examples:,
+      origin:,
+      cache:,
+      counter: 0,
+      spotless_origin: origin.https("spotless.run"),
+      tokens: dict.new(),
     )
-    |> run.pull()
-
-  let #(examples, context) = doc.init_collection(examples.all(), context)
-  let #(context, effects) = run.flush(context)
-
-  // TODO move to a reload_buffer.create 
-  // typing should be able to do a typecheck against, that would show the actual required type
-  // let assert Ok(buffer) = dict.get(examples, examples.hot_reload_key)
-
-  // let #(run, context, _effects) =
-  //   expression.execute(buffer.source(buffer), [])
-  //   |> run.loop(context, expression.resume)
-  // case run {
-  //   run.Concluded(mod) -> {
-  //     case expression.call_field(mod, "init", [], []) {
-  //       Ok(app_state) -> todo
-  //       Error(_) -> todo
-  //     }
-  //   }
-  //   run.Exception(_) -> todo
-  //   run.Aborted(_) -> todo
-  //   run.Handling(task_id:, env:, k:) -> todo
-  //   run.Fetching(module:, env:, k:) -> todo
-  // }
-
-  let state = State(doc.UnFocused, examples:, context:)
   #(state, effects)
 }
 
@@ -87,15 +68,17 @@ pub fn set_example(state: State, id, buffer) {
   State(..state, examples: dict.insert(state.examples, id, buffer))
 }
 
-fn continue(state, id, gen) {
-  let State(context:, ..) = state
-  let buffer = gen(infer_context(context))
+fn continue(
+  state: State,
+  id: String,
+  gen: fn(infer.Context) -> buffer.Buffer,
+) -> #(State, List(system.Effect(Message))) {
+  let State(cache:, origin:, ..) = state
+  let buffer = gen(doc.infer_context(cache))
   let state = set_example(state, id, buffer)
-  // reload key or type in the example or metadata 
-  let missing_references = infer.missing_references(buffer.analysis)
-  let context = run.fetch_all(missing_references, context)
-  let #(context, effects) = run.flush(context)
-  let state = State(..state, mode: doc.Navigating(id:, failure: None), context:)
+  let cache = cache.prepare(cache, buffer.source(buffer))
+  let #(cache, effects) = flush_cache(cache, origin)
+  let state = State(..state, mode: doc.Navigating(id:, failure: None), cache:)
   #(state, effects)
 }
 
@@ -108,9 +91,8 @@ pub type Message {
   ClipboardReadCompleted(Result(String, String))
   Ignore
   EffectHandled(task_id: Int, value: state.Value(Meta))
-  SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
-  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
-  PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
+  SpotlessConnectCompleted(task_id: Int, result: Result(token.Response, String))
+  CacheMessage(cache.ActionCompleted)
 }
 
 pub fn update(state: State, message) {
@@ -124,9 +106,9 @@ pub fn update(state: State, message) {
       #(state, [])
     }
     UserPressedKey(key:), doc.Navigating(id, _)
-    | UserPressedKey(key:), doc.Running(id, run.Concluded(_))
-    | UserPressedKey(key:), doc.Running(id, run.Aborted(_))
-    | UserPressedKey(key:), doc.Running(id, run.Exception(_))
+    | UserPressedKey(key:), doc.Running(id, doc.Successful(_))
+    | UserPressedKey(key:), doc.Running(id, doc.Aborted(_))
+    | UserPressedKey(key:), doc.Running(id, doc.Exception(_))
     ->
       // don't wrap this up in shared behaviour taking (context, buffer) as the top level key commands will change
       user_pressed_key(state, id, key)
@@ -202,7 +184,7 @@ pub fn update(state: State, message) {
           #(State(..state, mode:), [])
         }
         picker.Decided(text) -> {
-          case cache.package(state.context.cache, text) {
+          case cache.package(state.cache, text) {
             Ok(#(v, m)) -> continue(state, id, rebuild(#(text, v, m), _))
             Error(_) -> {
               echo "need error message for bad cid"
@@ -229,70 +211,75 @@ pub fn update(state: State, message) {
     ClipboardReadCompleted(_), _ -> #(state, [])
     Ignore, _ -> #(state, [])
     EffectHandled(task_id: tid, value:),
-      doc.Running(id:, status: run.Handling(task_id:, env:, k:))
+      doc.Running(id:, run: doc.Handling(task_id:, work: doc.Effect, env:, k:))
       if tid == task_id
     -> {
-      let #(mode, context, effects) =
+      let #(run, counter, effect) =
         expression.resume(value, env, k)
-        |> run.loop(state.context, expression.resume)
-      let mode = doc.Running(id, mode)
-      #(State(..state, mode:, context:), effects)
+        |> loop(state)
+      let mode = doc.Running(id, run)
+      #(State(..state, mode:, counter:), case effect {
+        Some(effect) -> [effect]
+        None -> []
+      })
     }
     EffectHandled(_, _), _ -> #(state, [])
-    SpotlessConnectCompleted(service, result), _ -> {
-      let #(context, effects) =
-        run.connect_completed(state.context, service, result)
-      #(State(..state, context:), effects)
-    }
-    ModuleLookupCompleted(cid, result), _ -> {
-      let #(context, done) =
-        run.get_module_completed(state.context, cid, result)
-      let examples = doc.reanalyse_examples(state.examples, done, context)
-      let state = State(..state, examples:)
-      // use the completed cid not the looked up cid as dependencies might have resolved
-      let #(context, effects) = run.flush(context)
-      case state.mode {
-        doc.Running(id, run.Pending(cache.Content(module), env:, k:)) -> {
-          case list.key_find(done, module) {
-            Ok(Ok(value)) -> {
-              let #(run, context, inner_effects) =
-                expression.resume(value, env, k)
-                |> run.loop(context, expression.resume)
-              let mode = doc.Running(id, run)
-              #(
-                State(..state, context:, mode:),
-                list.append(effects, inner_effects),
-              )
-            }
-            // If the module is a bad one the running state stays the same. it's up for the view to render the status
-            Ok(Error(_)) -> #(State(..state, context:), effects)
-            Error(Nil) -> #(State(..state, context:), effects)
-          }
-        }
-        _ -> #(State(..state, context:), effects)
-      }
-    }
-    PullPackagesCompleted(result), _ -> {
-      let cache = state.context.cache
-      let cache = case result {
-        Ok(entries) -> {
-          list.fold(entries, cache, fn(cache, entry) {
-            let assert Ok(payload) =
-              json.parse(entry.payload, publisher.decoder())
+    SpotlessConnectCompleted(task_id: tid, result:), mode ->
+      case mode {
+        doc.Running(
+          id:,
+          run: doc.Handling(
+            task_id:,
+            work: doc.Connect(service:, operation:),
+            env:,
+            k:,
+          ),
+        )
+          if tid == task_id
+        ->
+          case result {
+            Ok(token) -> {
+              let request =
+                doc.service_request(
+                  service,
+                  operation,
+                  token.access_token,
+                  state.origin,
+                )
+              let effect = platform.fetch(request)
+              // TODO manage the 400 error case
+              let effect = system.map(effect, EffectHandled(task_id, _))
+              let run = doc.Handling(task_id, doc.Effect, env, k)
 
-            let publisher.Release(package:, version:, module:) = payload.content
-            let release = release.Release(package:, version:, module:)
-            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
-            cache
-          })
-        }
-        Error(_reason) -> {
-          cache.Cache(..cache, cursor_status: cache.Pulled)
-        }
+              let mode = doc.Running(id, run)
+              #(State(..state, mode:), [effect])
+            }
+            Error(reason) -> {
+              let run = doc.Aborted("failed to authorize: " <> reason)
+              let mode = doc.Running(id, run)
+              #(State(..state, mode:), [])
+            }
+          }
+        _ -> #(state, [])
       }
-      let context = run.Context(..state.context, cache:)
-      let #(context, effects) = run.flush(context)
-      #(State(..state, context:), effects)
+    CacheMessage(message), _ -> {
+      let #(cache, done) = cache.update(state.cache, message, fn(_) { [] })
+      let examples = doc.reanalyse_examples(state.examples, done, cache)
+      let #(cache, effects) = flush_cache(cache, state.origin)
+      let state = State(..state, examples:, cache:)
+      case state.mode {
+        doc.Running(id, run) -> {
+          let #(run, counter, effect) = restart(run, state)
+          let mode = doc.Running(id, run)
+          let state = State(..state, counter:, mode:)
+          let effects = case effect {
+            Some(effect) -> [effect, ..effects]
+            None -> effects
+          }
+          #(state, effects)
+        }
+        _ -> #(state, effects)
+      }
     }
   }
 }
@@ -332,7 +319,7 @@ fn user_pressed_key(state, id, key) {
     "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> edit(state, m.create_empty_list())
     "l" -> edit(state, m.create_list())
-    "@" -> edit(state, m.choose_release(state.context.cache))
+    "@" -> edit(state, m.choose_release(state.cache))
     "#" -> edit(state, m.insert_reference())
     "Z" -> edit(state, m.redo())
     "z" -> edit(state, m.undo())
@@ -385,7 +372,7 @@ fn copy(state: State) {
   use id, buffer <- is_editing(state)
   case buffer.copy_source(buffer) {
     Ok(text) -> #(state, [
-      browser.WriteToClipboard(text:, resume: fn(_) { Ignore }),
+      system.WriteToClipboard(text:, resume: fn(_) { system.Done(Ignore) }),
     ])
     Error(Nil) -> action_failed(state, id, "copy")
   }
@@ -396,7 +383,11 @@ fn paste(state: State) {
   case buffer.set_expression(buffer) {
     Ok(rebuild) -> {
       let state = State(..state, mode: doc.ReadingFromClipboard(id:, rebuild:))
-      #(state, [browser.ReadFromClipboard(ClipboardReadCompleted)])
+      #(state, [
+        system.ReadFromClipboard(fn(result) {
+          system.Done(ClipboardReadCompleted(result))
+        }),
+      ])
     }
     Error(Nil) -> action_failed(state, id, "copy")
   }
@@ -404,18 +395,24 @@ fn paste(state: State) {
 
 fn confirm(state: State) {
   use id, buffer <- is_editing(state)
-  let #(mode, context, effects) =
-    expression.execute(buffer.source(buffer), [])
-    |> run.loop(state.context, expression.resume)
-  let mode = doc.Running(id, mode)
-  #(State(..state, mode:, context:), effects)
+  let source = buffer.source(buffer)
+  let cache = cache.prepare(state.cache, source)
+  let #(run, counter, effect) =
+    expression.execute(source, [])
+    |> loop(state)
+  let mode = doc.Running(id, run)
+  let effects = case effect {
+    Some(effect) -> [effect]
+    None -> []
+  }
+  #(State(..state, cache:, mode:, counter:), effects)
 }
 
 /// is_editing or concluded
 fn is_editing(state: State, then) {
   case state.mode {
     doc.Navigating(id:, failure: _) -> then(id, get_example(state, id))
-    doc.Running(id:, status: _) -> then(id, get_example(state, id))
+    doc.Running(id:, ..) -> then(id, get_example(state, id))
     _ -> #(state, [])
   }
 }
@@ -429,6 +426,111 @@ fn action_failed(state, id, name) {
   #(state, [])
 }
 
-fn infer_context(context: run.Context(_)) {
-  harness.infer_context(run.module_types(context))
+fn flush_cache(cache, origin) {
+  let #(cache, effects) = cache.flush(cache)
+  let effects =
+    list.map(effects, fn(effect) {
+      cache.compute(effect, origin, system.fetch)(fn(return) {
+        system.Done(CacheMessage(return))
+      })
+    })
+  #(cache, effects)
+}
+
+pub fn loop(
+  return: Result(state.Value(Meta), state.Debug(Meta)),
+  state: State,
+) -> #(doc.Run, Int, Option(system.Effect(Message))) {
+  case return {
+    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
+      case platform.cast(label, lift) {
+        Ok(effect) -> {
+          case platform.extrinsic(effect) {
+            platform.Work(system.Done(value)) -> loop(Ok(value), state)
+            platform.Work(effect) -> {
+              let counter = state.counter
+              let effect = system.map(effect, EffectHandled(counter, _))
+              let run = doc.Handling(counter, doc.Effect, env, k)
+              #(run, counter + 1, Some(effect))
+            }
+            platform.Abort(reason) -> #(
+              doc.Aborted(reason),
+              state.counter,
+              None,
+            )
+            platform.Spotless(service:, operation:) ->
+              // This could be called vault.proxy as a stateful entity it would take an ID or something.
+              case dict.get(state.tokens, service) {
+                Ok(token) -> {
+                  let request =
+                    doc.service_request(service, operation, token, state.origin)
+                  let effect = platform.fetch(request)
+                  // TODO manage the 400 error case
+                  let counter = state.counter
+                  let effect = system.map(effect, EffectHandled(counter, _))
+                  let run = doc.Handling(counter, doc.Effect, env, k)
+                  #(run, counter + 1, Some(effect))
+                }
+                // No memory of connecting because there's only one
+                // Connecting/Proxying is a state in run 
+                Error(Nil) -> {
+                  let work = doc.Connect(service:, operation:)
+                  let run = doc.Handling(state.counter, work, env, k)
+                  let effect =
+                    system.Spotless(
+                      service:,
+                      origin: state.spotless_origin,
+                      resume: fn(result) {
+                        system.Done(SpotlessConnectCompleted(
+                          state.counter,
+                          result,
+                        ))
+                      },
+                    )
+                  #(run, state.counter + 1, Some(effect))
+                }
+              }
+          }
+        }
+        Error(reason) -> #(doc.Exception(reason), state.counter, None)
+      }
+    }
+    Error(#(break.UndefinedReference(cid), _, env, k)) ->
+      case cache.get_module(state.cache, cid) {
+        Ok(cache.Module(value:, ..)) ->
+          loop(expression.resume(value, env, k), state)
+        // All dependencies are marked as blocked the view shows error vs running status
+        Error(_) -> {
+          let run = doc.Blocked(cache.Content(cid), env, k)
+          #(run, state.counter, None)
+        }
+      }
+    Error(#(break.UndefinedRelease(package:, release:, module:), _, env, k)) -> {
+      let release = release.Release(package:, version: release, module:)
+      case cache.release_code(state.cache, release) {
+        Ok(cache.Module(value:, ..)) ->
+          loop(expression.resume(value, env, k), state)
+        _ -> {
+          let run = doc.Blocked(cache.Release(release), env, k)
+          #(run, state.counter, None)
+        }
+      }
+    }
+    Ok(value) -> #(doc.Successful(value), state.counter, None)
+    Error(#(reason, _, _, _)) -> #(doc.Exception(reason), state.counter, None)
+  }
+}
+
+pub fn restart(
+  run: doc.Run,
+  state: State,
+) -> #(doc.Run, Int, Option(system.Effect(Message))) {
+  case run {
+    doc.Blocked(dep:, env:, k:) -> {
+      let reason = cache.dep_to_reason(dep)
+      let return = Error(#(reason, [], env, k))
+      loop(return, state)
+    }
+    _ -> #(run, state.counter, None)
+  }
 }

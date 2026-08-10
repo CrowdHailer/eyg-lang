@@ -4,12 +4,12 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
+import eyg/hub/cache
 import eyg/interpreter/state.{type Value}
 import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import morph/analysis
-import pal/run
 
 // helpers
 
@@ -24,7 +24,7 @@ fn render_t(state) {
 }
 
 pub fn type_check(
-  context: run.Context(a),
+  cache: cache.Cache(_),
   source: ir.Node(List(Int)),
   value: Option(Value(Nil)),
 ) -> #(analysis.Analysis, Bool) {
@@ -36,7 +36,7 @@ pub fn type_check(
     }
     None -> binding.mono(1, bindings)
   }
-  let types = run.module_types(context)
+  let types = cache.types(cache)
 
   do_check_against_state(bindings, types, source, app_state_t)
 }

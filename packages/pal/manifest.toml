@@ -44,6 +44,7 @@ packages = [
 ]
 
 [requirements]
+dag_json = { version = ">= 3.0.0 and < 4.0.0" }
 eyg_analysis = { version = ">= 1.2.2 and < 2.0.0" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 6.0.0 and < 7.0.0" }
@@ -56,6 +57,7 @@ gleam_json = { version = ">= 3.1.0 and < 4.0.0" }
 gleam_stdlib = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_x = { path = "../gleam_x" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
+midas = { version = ">= 3.0.0 and < 4.0.0" }
 morph = { path = "../morph" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 ogre = { version = ">= 1.1.0 and < 2.0.0" }

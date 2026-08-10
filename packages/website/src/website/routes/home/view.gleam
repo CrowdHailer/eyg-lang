@@ -9,13 +9,13 @@ import website/routes/home/examples
 import website/routes/home/state
 
 fn example(state: state.State, id) {
-  let state.State(mode:, context:, ..) = state
+  let state.State(mode:, cache:, ..) = state
   let buffer = state.get_example(state, id)
   view.render_example(
-    mode,
-    context,
     buffer,
     id,
+    mode,
+    cache,
     state.UserClickedCode(id, _),
     state.PickerMessage,
     state.InputMessage,

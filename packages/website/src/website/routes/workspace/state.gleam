@@ -1,10 +1,9 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
-import eyg/hub/publisher
 import eyg/hub/release
-import eyg/hub/schema
 import eyg/interpreter/block
+import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -22,8 +21,9 @@ import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
 import multiformats/hashes
-import pal/browser
-import pal/run
+import ogre/origin
+import pal/platform/browser as platform
+import pal/system
 import plinth/browser/file_system
 import plinth/browser/message_event
 import plinth/browser/window_proxy
@@ -38,7 +38,7 @@ pub type State {
     mode: Mode,
     user_error: Option(command.Failure),
     focused: Target,
-    previous: List(run.Previous),
+    previous: List(Previous),
     after: Option(p.Projection),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
@@ -46,8 +46,29 @@ pub type State {
     mounted_directory: Option(file_system.DirectoryHandle),
     flush_counter: Int,
     dirty: Dict(Filename, Nil),
-    context: run.Context(Message),
+    origin: origin.Origin,
+    cache: cache.Cache(Meta),
+    counter: Int,
   )
+}
+
+pub type EffectRecord =
+  #(String, #(istate.Value(Meta), istate.Value(Meta)))
+
+pub type Previous {
+  Previous(
+    value: Option(istate.Value(List(Int))),
+    effects: List(EffectRecord),
+    buffer: buffer.Buffer,
+  )
+}
+
+// This run is different to a doc run, it doesn't have a success case
+pub type Run {
+  Exception(istate.Reason(Meta))
+  Aborted(String)
+  Handling(task_id: Int, env: istate.Env(Meta), k: istate.Stack(Meta))
+  Blocked(dep: cache.Dependency, env: istate.Env(Meta), k: istate.Stack(Meta))
 }
 
 pub type Mode {
@@ -55,10 +76,7 @@ pub type Mode {
   Manipulating(m.UserInput)
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
-  RunningShell(
-    occured: List(#(String, #(istate.Value(Meta), istate.Value(Meta)))),
-    status: run.Run(#(Option(istate.Value(Meta)), istate.Scope(Meta))),
-  )
+  RunningShell(occured: List(EffectRecord), status: Run)
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))
   SigningPayload(popup: Option(window_proxy.WindowProxy), payload: String)
@@ -161,18 +179,10 @@ fn set_buffer(state, buffer) {
   }
 }
 
-pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
+pub fn init(config: config.Config) -> #(State, List(system.Effect(Message))) {
   let config.Config(origin:) = config
-  let context =
-    run.empty(
-      origin,
-      EffectHandled,
-      SpotlessConnectCompleted,
-      ModuleLookupCompleted,
-      PullPackagesCompleted,
-    )
-    |> run.pull()
-  let #(context, effects) = run.flush(context)
+  let cache = cache.ready()
+  let #(cache, effects) = flush_cache(cache, origin)
   let scope = []
   let modules = dict.new()
   let state =
@@ -188,9 +198,22 @@ pub fn init(config: config.Config) -> #(State, List(browser.Effect(Message))) {
       mounted_directory: None,
       flush_counter: 0,
       dirty: dict.new(),
-      context:,
+      origin:,
+      cache:,
+      counter: 0,
     )
   #(state, effects)
+}
+
+pub fn flush_cache(cache, origin) {
+  let #(cache, effects) = cache.flush(cache)
+  let effects =
+    list.map(effects, fn(effect) {
+      cache.compute(effect, origin, system.fetch)(fn(return) {
+        system.Done(CacheMessage(return))
+      })
+    })
+  #(cache, effects)
 }
 
 fn active(state) {
@@ -235,14 +258,10 @@ pub type Message {
   Ignore
   EffectHandled(task_id: Int, value: istate.Value(Meta))
   SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
-  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
-  PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
+  CacheMessage(cache.ActionCompleted)
 }
 
-pub fn update(
-  state: State,
-  message,
-) -> #(State, List(browser.Effect(Message))) {
+pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
   case message {
     UserPressedCommandKey(key:) -> user_pressed_key(state, key)
     WindowReceivedMessageEvent(event:) ->
@@ -268,90 +287,68 @@ pub fn update(
     Ignore -> #(state, [])
     EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        RunningShell(_occured, run.Handling(task_id:, env:, k:))
-          if tid == task_id
-        ->
-          block.resume(value, env, k)
-          |> loop(state)
-        _ -> #(state, [])
-      }
-    SpotlessConnectCompleted(service, result) -> {
-      let #(context, effects) =
-        run.connect_completed(state.context, service, result)
-      #(State(..state, context:), effects)
-    }
-    ModuleLookupCompleted(cid, result) -> {
-      let #(context, done) =
-        run.get_module_completed(state.context, cid, result)
-      // use the completed cid not the looked up cid as dependencies might have resolved
-      let #(context, effects) = run.flush(context)
-      case state.mode {
-        RunningShell(occured, run.Pending(cache.Content(module), env:, k:)) -> {
-          case list.key_find(done, module) {
-            Ok(Ok(value)) -> {
-              let #(run, context, inner_effects) =
-                block.resume(value, env, k)
-                |> run.loop(context, block.resume)
-              let mode = RunningShell(occured, run)
-              #(
-                State(..state, context:, mode:),
-                list.append(effects, inner_effects),
-              )
+        RunningShell(_occured, Handling(task_id:, env:, k:)) if tid == task_id -> {
+          let output =
+            block.resume(value, env, k)
+            |> loop(state)
+
+          case output {
+            Stop(value:, scope:) -> {
+              let entry =
+                Previous(value:, effects: list.reverse([]), buffer: state.repl)
+              let previous = [entry, ..state.previous]
+
+              let repl = buffer.empty(ctx(State(..state, scope:), Repl))
+              #(State(..state, mode: Editing, previous:, scope:, repl:), [])
             }
-            // If the module is a bad one the running state stays the same. it's up for the view to render the status
-            Ok(Error(_)) -> #(State(..state, context:), effects)
-            Error(Nil) -> #(State(..state, context:), effects)
+            Running(run, counter, effect) -> {
+              let mode = RunningShell([], run)
+              let effects = case effect {
+                Some(effect) -> [effect]
+                None -> []
+              }
+              #(State(..state, mode:, counter:), effects)
+            }
           }
         }
-        _ -> #(State(..state, context:), effects)
+        _ -> #(state, [])
+      }
+    SpotlessConnectCompleted(_service, _result) -> {
+      fail(state, "Connect unsupported")
+      // let #(context, effects) =
+      //   run.connect_completed(state.context, service, result)
+      // #(State(..state, context:), effects)
+    }
+    CacheMessage(message) -> {
+      let #(cache, _done) = cache.update(state.cache, message, fn(_) { [] })
+      let state = State(..state, cache:)
+      // reanalyse modules
+      case state.mode {
+        RunningShell(occured: _, status:) -> {
+          let output = restart(status, state)
+          case output {
+            Stop(value:, scope:) -> {
+              let entry =
+                Previous(value:, effects: list.reverse([]), buffer: state.repl)
+              let previous = [entry, ..state.previous]
+
+              let repl = buffer.empty(ctx(State(..state, scope:), Repl))
+              #(State(..state, mode: Editing, previous:, scope:, repl:), [])
+            }
+            Running(run, counter, effect) -> {
+              let mode = RunningShell([], run)
+              let effects = case effect {
+                Some(effect) -> [effect]
+                None -> []
+              }
+              #(State(..state, mode:, counter:), effects)
+            }
+          }
+        }
+        _ -> #(state, [])
       }
     }
-    PullPackagesCompleted(result) -> {
-      let cache = state.context.cache
-      let cache = case result {
-        Ok(entries) -> {
-          list.fold(entries, cache, fn(cache, entry) {
-            let assert Ok(payload) =
-              json.parse(entry.payload, publisher.decoder())
-
-            let publisher.Release(package:, version:, module:) = payload.content
-            let release = release.Release(package:, version:, module:)
-            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
-            cache
-          })
-        }
-        Error(_reason) -> {
-          cache.Cache(..cache, cursor_status: cache.Pulled)
-        }
-      }
-      let context = run.Context(..state.context, cache:)
-      let #(context, effects) = run.flush(context)
-      #(State(..state, context:), effects)
-    }
   }
-}
-
-fn loop(return, state) {
-  let occured = []
-  let State(context:, ..) = state
-  let #(run, context, effects) = run.loop(return, context, block.resume)
-  let state = case run {
-    run.Concluded(#(value, scope)) -> {
-      // Type is shell entry
-      echo "todo effects"
-      let entry =
-        run.Previous(value:, effects: list.reverse([]), buffer: state.repl)
-      let previous = [entry, ..state.previous]
-
-      let repl = buffer.empty(ctx(State(..state, scope:), Repl))
-      State(..state, mode: Editing, previous:, scope:, repl:)
-    }
-    _ -> {
-      let mode = RunningShell(occured, run)
-      State(..state, context:, mode:)
-    }
-  }
-  #(state, effects)
 }
 
 fn user_pressed_key(state, key) {
@@ -391,7 +388,9 @@ fn user_pressed_command_key(state, key) {
     // TODO mode is authenticating
     // you won't see much on the front page
     "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
-      browser.OpenPopup("/sign", resume: OpenPopupCompleted),
+      system.OpenPopup("/sign", resume: fn(result) {
+        system.Done(OpenPopupCompleted(result))
+      }),
     ])
     "i" -> edit(state, m.insert())
     "o" -> edit(state, m.overwrite())
@@ -406,7 +405,7 @@ fn user_pressed_command_key(state, key) {
     "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> edit(state, m.create_empty_list())
     "l" -> edit(state, m.create_list())
-    "@" -> edit(state, m.choose_release(state.context.cache))
+    "@" -> edit(state, m.choose_release(state.cache))
     "#" -> edit(state, m.insert_reference())
     "Z" -> edit(state, m.redo())
     "z" -> edit(state, m.undo())
@@ -462,7 +461,7 @@ fn move_up(state) {
     }
     Error(Nil) ->
       case state.focused == Repl, state.previous, state.after {
-        True, [run.Previous(buffer: repl, ..), ..], None -> {
+        True, [Previous(buffer: repl, ..), ..], None -> {
           #(State(..state, repl:, after: Some(state.repl.projection)), [])
         }
         _, _, _ -> fail(state, "move above")
@@ -497,7 +496,9 @@ fn copy(state) {
 
       let state = State(..state, mode: WritingToClipboard)
       #(state, [
-        browser.WriteToClipboard(text:, resume: ClipboardWriteCompleted),
+        system.WriteToClipboard(text:, resume: fn(result) {
+          system.Done(ClipboardWriteCompleted(result))
+        }),
       ])
     }
     _ -> fail(state, "copy")
@@ -508,7 +509,9 @@ fn paste(state) {
   let buffer = active(state)
   use rebuild <- try(buffer.set_expression(buffer), state, "paste")
   #(State(..state, mode: ReadingFromClipboard(rebuild:)), [
-    browser.ReadFromClipboard(resume: ClipboardReadCompleted),
+    system.ReadFromClipboard(resume: fn(result) {
+      system.Done(ClipboardReadCompleted(result))
+    }),
   ])
 }
 
@@ -528,15 +531,34 @@ fn try(result, state, message, then) {
   }
 }
 
-fn confirm(state) {
+fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
   let State(focused:, ..) = state
   case focused {
     Repl -> {
-      state.repl.projection
-      |> p.rebuild()
-      |> e.to_annotated([])
-      |> block.execute(state.scope)
-      |> loop(state)
+      let output =
+        state.repl.projection
+        |> p.rebuild()
+        |> e.to_annotated([])
+        |> block.execute(state.scope)
+        |> loop(state)
+      case output {
+        Stop(value:, scope:) -> {
+          let entry =
+            Previous(value:, effects: list.reverse([]), buffer: state.repl)
+          let previous = [entry, ..state.previous]
+
+          let repl = buffer.empty(ctx(State(..state, scope:), Repl))
+          #(State(..state, mode: Editing, previous:, scope:, repl:), [])
+        }
+        Running(run, counter, effect) -> {
+          let mode = RunningShell([], run)
+          let effects = case effect {
+            Some(effect) -> [effect]
+            None -> []
+          }
+          #(State(..state, mode:, counter:), effects)
+        }
+      }
     }
     _ -> fail(state, "Can't execute module")
   }
@@ -562,14 +584,14 @@ fn window_received_message_event(state, event) {
         })
       echo exchange
       #(state, [
-        browser.PostMessage(
+        system.PostMessage(
           target:,
           payload: json.object([
             #("type", json.string("payload")),
             #("exchange", json.string(exchange)),
             #("payload", json.object([#("foo", json.string("123"))])),
           ]),
-          resume: fn(_: Nil) { Ignore },
+          resume: fn(_: Nil) { system.Done(Ignore) },
         ),
       ])
     }
@@ -581,13 +603,18 @@ fn window_received_message_event(state, event) {
 }
 
 fn link_filesystem(state) {
-  #(state, [browser.ShowDirectoryPicker(resume: ShowDirectoryPickerCompleted)])
+  #(state, [
+    system.ShowDirectoryPicker(resume: fn(result) {
+      system.Done(ShowDirectoryPickerCompleted(result))
+    }),
+  ])
 }
 
 fn link_filesystem_completed(state, result) {
   use dir_handle <- try(result, state, "link filesystem")
   #(State(..state, mounted_directory: Some(dir_handle)), [
-    browser.LoadFiles(dir_handle),
+    // system.LoadFiles(dir_handle),
+    panic as "unsupported",
   ])
 }
 
@@ -619,7 +646,7 @@ fn flush_timeout(state, reference) {
           panic
           // let filename = 
           // let content = panic
-          // browser.SaveFile(handle:, filename:, content:, resume: fn(_) {
+          // system.SaveFile(handle:, filename:, content:, resume: fn(_) {
           //   Ignore
           // })
         })
@@ -748,7 +775,7 @@ fn picker_message(state, message) {
           #(State(..state, mode:), [])
         }
         picker.Decided(text) -> {
-          case cache.package(state.context.cache, text) {
+          case cache.package(state.cache, text) {
             Ok(#(v, m)) ->
               State(..state, mode: Editing)
               |> replace_buffer(rebuild(#(text, v, m), _))
@@ -784,4 +811,76 @@ fn open_popup_completed(state: State, result) {
       #(state, [])
     }
   }
+}
+
+/// loop is effectful, it is only ever invoked if the state is already RunningShell
+/// This means loop handles completions being pushed into the proxy
+fn loop(
+  return: Result(#(Option(istate.Value(Meta)), List(_)), istate.Debug(Meta)),
+  state: State,
+) -> StopOrRunning {
+  case return {
+    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
+      case platform.cast(label, lift) {
+        Ok(effect) -> {
+          case platform.extrinsic(effect) {
+            platform.Work(system.Done(value)) -> {
+              loop(block.resume(value, env, k), state)
+            }
+            platform.Work(effect) -> {
+              let effect = system.map(effect, EffectHandled(state.counter, _))
+              let run = Handling(state.counter, env, k)
+              Running(run, state.counter + 1, Some(effect))
+            }
+            platform.Abort(reason) ->
+              Running(Aborted(reason), state.counter, None)
+            platform.Spotless(service: _, operation: _) ->
+              Running(Aborted("unsupported"), state.counter, None)
+          }
+        }
+        Error(reason) -> Running(Exception(reason), state.counter, None)
+      }
+    }
+    Error(#(break.UndefinedReference(cid), _, env, k)) ->
+      case cache.get_module(state.cache, cid) {
+        Ok(cache.Module(value:, ..)) -> loop(block.resume(value, env, k), state)
+        // All dependencies are marked as blocked the view shows error vs running status
+        Error(_) -> {
+          let run = Blocked(cache.Content(cid), env, k)
+          Running(run, state.counter, None)
+        }
+      }
+    Error(#(break.UndefinedRelease(package:, release:, module:), _, env, k)) -> {
+      let release = release.Release(package:, version: release, module:)
+      case cache.release_code(state.cache, release) {
+        Ok(cache.Module(value:, ..)) -> loop(block.resume(value, env, k), state)
+        _ -> {
+          let run = Blocked(cache.Release(release), env, k)
+          Running(run, state.counter, None)
+        }
+      }
+    }
+    Ok(#(value, scope)) -> {
+      Stop(value, scope)
+    }
+    Error(#(reason, _, _, _)) -> Running(Exception(reason), state.counter, None)
+  }
+}
+
+pub fn restart(run: Run, state: State) -> StopOrRunning {
+  case run {
+    Blocked(dep:, env:, k:) -> {
+      let reason = cache.dep_to_reason(dep)
+      let return = Error(#(reason, [], env, k))
+      loop(return, state)
+    }
+    _ -> Running(run, state.counter, None)
+  }
+}
+
+/// This is a bad name as running is in error cases
+/// Really Stop means clear and push onto history
+pub type StopOrRunning {
+  Stop(value: Option(istate.Value(Meta)), scope: istate.Scope(Meta))
+  Running(Run, Int, Option(system.Effect(Message)))
 }

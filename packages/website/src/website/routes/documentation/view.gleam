@@ -1,6 +1,11 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
+import eyg/hub/cache
+import eyg/hub/release
+import eyg/interpreter/break
 import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
+import eyg/interpreter/state as istate
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -10,9 +15,10 @@ import lustre/element/html as h
 import morph/buffer
 import morph/input
 import morph/picker
-import pal/run
+import touch_grass/harness/browser
 import website/command
 import website/components
+import website/manipulation
 import website/routes/documentation/examples
 import website/routes/documentation/state
 import website/ui
@@ -154,7 +160,7 @@ pub fn render(state) {
           "2",
           "Numbers",
           [
-            example(state, examples.int_key),
+            doc_example(state, examples.int_key),
             p("Numbers are a positive or negative whole number, of any size."),
             p(
               "Several builtin functions are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
@@ -170,7 +176,7 @@ pub fn render(state) {
           "3",
           "Text",
           [
-            example(state, examples.text_key),
+            doc_example(state, examples.text_key),
             p(
               "Text segment of any length made up of characters, whitespace and special characters",
             ),
@@ -188,7 +194,7 @@ pub fn render(state) {
           "4",
           "Lists",
           [
-            example(state, examples.lists_key),
+            doc_example(state, examples.lists_key),
             p(
               "Lists are an ordered collection of value.
           All the values in a list must be of the same type, for example only Numbers or only Text.
@@ -213,7 +219,7 @@ pub fn render(state) {
           "5",
           "Records",
           [
-            example(state, examples.records_key),
+            doc_example(state, examples.records_key),
             p(
               "Records gather related values with each value having a name in the record.
               Different names can store values of different types.",
@@ -223,7 +229,7 @@ pub fn render(state) {
             ),
             // Here the greet function accepts any record with a name field,
             // we can pass the alice or bob record to this function, the extra height field on bob will be ignored.",
-            example(state, examples.overwrite_key),
+            doc_example(state, examples.overwrite_key),
             p(
               "New records can be created with a subset of their fields overwritten.",
             ),
@@ -241,7 +247,7 @@ pub fn render(state) {
           "6",
           "Unions",
           [
-            example(state, examples.unions_key),
+            doc_example(state, examples.unions_key),
             p(
               "Unions are used when a value is one of a selection of possibilities.
             For example when parsing a number from some text, the result might be ok and we have a number or there is no number and so we have a value representing the error.",
@@ -252,7 +258,7 @@ pub fn render(state) {
             p(
               "Case statements are used to match on each of the tags that are in the union.",
             ),
-            example(state, examples.open_case_key),
+            doc_example(state, examples.open_case_key),
             p(
               "Case statements can be open and if so, they have a final fallback that is called if none of the previous ones match the tag of the value.",
             ),
@@ -271,7 +277,7 @@ pub fn render(state) {
           "7",
           "Functions",
           [
-            example(state, examples.functions_key),
+            doc_example(state, examples.functions_key),
             p(
               "Functions allow you to create reusable behaviour in your application.",
             ),
@@ -279,7 +285,7 @@ pub fn render(state) {
               "All functions, including builtins, can be called with only some of the arguments and will return a function that accepts the remaining arguments.",
             ),
             p("All functions can be passed to other functions"),
-            example(state, examples.fix_key),
+            doc_example(state, examples.fix_key),
             p(
               "fix is a fixpoint operator, use it to write recursive functions.",
             ),
@@ -294,7 +300,7 @@ pub fn render(state) {
           "8",
           "Builtins",
           [
-            example(state, examples.builtins_key),
+            doc_example(state, examples.builtins_key),
             p(
               "Builtins are the base functions that your program is built up from.",
             ),
@@ -317,7 +323,7 @@ pub fn render(state) {
           "9",
           "Named references",
           [
-            example(state, examples.references_key),
+            doc_example(state, examples.references_key),
             p(
               "Rely on packages directly in your program with immutable references. No need for any package manifest or lockfile.",
             ),
@@ -352,7 +358,7 @@ pub fn render(state) {
           "8",
           "Perform effect",
           [
-            example(state, examples.perform_key),
+            doc_example(state, examples.perform_key),
             p(
               "A useful program must eventally interact with the world outside the computer.
             Running the example above will prompt the user for there name.
@@ -380,7 +386,7 @@ pub fn render(state) {
           "9",
           "Handle effect",
           [
-            example(state, examples.handle_key),
+            doc_example(state, examples.handle_key),
             p(
               "Handlers are a mechanism to intercept effects performed within a function.
               In this example, running the code will show that the inner function performs two alerts, without us having to dismiss the two alerts manually.",
@@ -399,7 +405,7 @@ pub fn render(state) {
           "10",
           "Multiple resumptions",
           [
-            example(state, examples.multiple_resume_key),
+            doc_example(state, examples.multiple_resume_key),
             p(
               "Handlers give the ability to resume code multiple times.
               In this example the function resumes the remaining code with both True and False values.
@@ -473,18 +479,107 @@ pub fn render(state) {
   ])
 }
 
-fn errors_or_value(buffer: buffer.Buffer, context: run.Context(_)) {
+fn doc_example(
+  state: state.State,
+  id: String,
+) -> element.Element(state.Message) {
+  let state.State(mode:, cache:, ..) = state
+  let buffer = state.get_example(state, id)
+  let user_clicked_code = state.UserClickedCode(id, _)
+  let picker_message = state.PickerMessage
+  let input_message = state.InputMessage
+  render_example(
+    buffer,
+    id,
+    mode,
+    cache,
+    user_clicked_code,
+    picker_message,
+    input_message,
+  )
+}
+
+pub fn render_example(
+  buffer: buffer.Buffer,
+  id: String,
+  mode: state.Mode,
+  cache: cache.Cache(List(Int)),
+  user_clicked_code: fn(List(Int)) -> m,
+  picker_message: fn(picker.Message) -> m,
+  input_message: fn(input.Message) -> m,
+) -> element.Element(m) {
+  h.div([a.styles(ui.embed_area_styles)], [
+    ui.code(buffer.projection, buffer.analysis, user_clicked_code),
+    case mode {
+      state.Navigating(id: focused, failure: Some(reason)) if focused == id ->
+        render_errors([command.fail_message(reason)])
+      state.Navigating(..) -> render_default(buffer, cache)
+      state.Manipulating(id: focused, input:) if focused == id ->
+        render_manipulating(input, picker_message, input_message)
+      state.Manipulating(..) -> render_default(buffer, cache)
+      state.ReadingFromClipboard(..) -> render_default(buffer, cache)
+      state.Running(id: focused, run:) if focused == id -> render_run(run, cache)
+      state.Running(..) -> render_default(buffer, cache)
+      state.UnFocused -> render_default(buffer, cache)
+    },
+  ])
+}
+
+fn render_run(
+  run: state.Run,
+  cache: cache.Cache(state.Meta),
+) -> element.Element(m) {
+  case run {
+    state.Successful(value) -> render_value(value)
+    state.Exception(reason) -> render_exception(reason)
+    state.Aborted(reason) -> render_aborted(reason)
+    state.Handling(..) -> render_handling()
+    state.Blocked(dep:, ..) -> render_blocked(dep, cache)
+  }
+}
+
+fn render_handling() -> element.Element(m) {
+  h.div(
+    [
+      a.class("border-2 border-blue-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    [
+      h.text("running"),
+    ],
+  )
+}
+
+/// Show information about at example when it is unfocused or there is nothing more to show.
+/// Whether focused or not clicking will still start a run
+fn render_default(
+  buffer: buffer.Buffer,
+  cache: cache.Cache(List(Int)),
+) -> element.Element(m) {
   case infer.all_errors(buffer.analysis) {
     [] -> {
-      let #(return, _contex, _effects) =
-        expression.execute(buffer.source(buffer), [])
-        |> run.loop(context, expression.resume)
+      let return =
+        buffer.source(buffer)
+        |> expression.execute([])
+        |> cache.static_loop(cache, expression.resume)
       case return {
-        // same as if it was running
-        run.Concluded(_) | run.Exception(_) | run.Aborted(_) ->
-          ui.Running(return)
-        run.Handling(..) -> ui.Pending
-        run.Pending(..) -> ui.Pending
+        Ok(value) -> render_value(value)
+        Error(#(break.UnhandledEffect(label, lift), _, _, _)) ->
+          case browser.cast(label, lift) {
+            Ok(browser.Abort(reason)) -> render_aborted(reason)
+            Ok(_) -> render_pending()
+            Error(reason) -> render_exception(reason)
+          }
+        Error(#(break.UndefinedReference(reference), _, _, _)) ->
+          render_blocked(cache.Content(reference), cache)
+        Error(#(break.UndefinedRelease(package:, release:, module:), _, _, _)) ->
+          render_blocked(
+            cache.Release(release.Release(package:, version: release, module:)),
+            cache,
+          )
+        Error(#(break.UndefinedRelative(location: _) as reason, _, _, _)) ->
+          render_exception(reason)
+        Error(#(reason, _, _, _)) -> render_exception(reason)
       }
     }
     errors -> {
@@ -493,46 +588,110 @@ fn errors_or_value(buffer: buffer.Buffer, context: run.Context(_)) {
           let #(_, reason) = error
           debug.pretty_reason(reason)
         })
-      ui.Errors(errors)
+      render_errors(errors)
     }
   }
 }
 
-fn example(state, id) {
-  let state.State(mode:, context:, ..) = state
-  let buffer = state.get_example(state, id)
-  render_example(
-    mode,
-    context,
-    buffer,
-    id,
-    state.UserClickedCode(id, _),
-    state.PickerMessage,
-    state.InputMessage,
+fn render_blocked(
+  _dependency: cache.Dependency,
+  _cache: cache.Cache(_),
+) -> element.Element(a) {
+  h.div(
+    [
+      a.class("border-2 border-blue-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    [
+      h.text("loading"),
+    ],
   )
 }
 
-pub fn render_example(
-  mode,
-  context,
-  buffer,
-  id,
-  user_clicked_code: fn(List(Int)) -> m,
+fn render_exception(reason: istate.Reason(state.Meta)) -> element.Element(a) {
+  h.div(
+    [
+      a.class("border-2 border-orange-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    [
+      h.text(simple_debug.describe(reason)),
+    ],
+  )
+}
+
+fn render_aborted(reason: String) -> element.Element(a) {
+  h.div(
+    [
+      a.class("border-2 border-orange-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    [
+      h.text(reason),
+    ],
+  )
+}
+
+fn render_pending() -> element.Element(a) {
+  h.div(
+    [
+      a.class("border-2 border-blue-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    [
+      h.text("Enter to run."),
+    ],
+  )
+}
+
+fn render_value(value: istate.Value(state.Meta)) -> element.Element(a) {
+  h.pre(
+    [
+      a.class("border-2 border-green-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    [
+      h.text(simple_debug.inspect(value)),
+    ],
+  )
+}
+
+fn render_errors(errors) {
+  h.div(
+    [
+      a.class("border-2 border-orange-3 px-2"),
+      a.styles([#("overflow-x", "auto")]),
+    ],
+    list.map(errors, fn(reason) {
+      // let #(_path, reason) = error
+      h.div(
+        [
+          // event.on_click(state.SnippetMessage(
+        //   state.hot_reload_key,
+        //   snippet.UserClickedPath(path),
+        // )),
+        ],
+        [element.text(reason)],
+      )
+    }),
+  )
+}
+
+fn render_manipulating(
+  input: manipulation.UserInput,
   picker_message: fn(picker.Message) -> m,
   input_message: fn(input.Message) -> m,
-) {
-  let state = case mode {
-    state.Navigating(id: focused, failure: Some(reason)) if focused == id ->
-      ui.Errors([command.fail_message(reason)])
-    state.Navigating(id: _, failure: _) -> errors_or_value(buffer, context)
-    state.Manipulating(id: focused, input:) if focused == id -> ui.Editing(input)
-    state.Manipulating(..) -> errors_or_value(buffer, context)
-    state.ReadingFromClipboard(..) -> errors_or_value(buffer, context)
-    state.Running(id: focused, status: status) if focused == id ->
-      ui.Running(status)
-    state.Running(..) -> errors_or_value(buffer, context)
-    state.UnFocused -> errors_or_value(buffer, context)
+) -> element.Element(m) {
+  case input {
+    manipulation.PickSingle(picker, _) ->
+      picker.render(picker) |> element.map(picker_message)
+    manipulation.PickCid(picker, _) ->
+      picker.render(picker) |> element.map(picker_message)
+    manipulation.EnterText(value, _) ->
+      input.render_text(value) |> element.map(input_message)
+    manipulation.EnterInteger(value, _) ->
+      input.render_number(value) |> element.map(input_message)
+    manipulation.PickRelease(picker, _) ->
+      picker.render(picker) |> element.map(picker_message)
   }
-
-  ui.example(buffer, state, user_clicked_code, picker_message, input_message)
 }

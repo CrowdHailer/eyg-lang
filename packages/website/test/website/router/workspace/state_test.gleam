@@ -4,8 +4,7 @@ import eyg/ir/tree as ir
 import gleam/option.{Some}
 import morph/buffer
 import ogre/origin
-import pal/browser
-import pal/run
+import pal/system
 import website/config
 import website/routes/workspace/state.{State}
 
@@ -13,7 +12,7 @@ pub fn execute_expression_test() {
   let state = with_source(ir.add(ir.integer(7), ir.integer(21)))
   let assert #(state, []) = command(state, "Enter")
   assert state.Editing == state.mode
-  let assert [run.Previous(value:, effects:, ..)] = state.previous
+  let assert [state.Previous(value:, effects:, ..)] = state.previous
   assert Some(v.Integer(28)) == value
   assert [] == effects
 }
@@ -23,7 +22,7 @@ pub fn execute_sync_effect_test() {
   let state = with_source(source)
   let assert #(state, []) = command(state, "Enter")
   assert state.Editing == state.mode
-  let assert [run.Previous(value:, effects:, ..)] = state.previous
+  let assert [state.Previous(value:, effects:, ..)] = state.previous
   assert Some(v.Integer(0)) == value
   // TODO keep list of effects
   assert [] == effects
@@ -33,12 +32,13 @@ pub fn execute_async_effect_test() {
   let source = ir.call(ir.perform("Alert"), [ir.string("Beep")])
   let state = with_source(source)
   let assert #(state, [effect]) = command(state, "Enter")
-  let assert state.RunningShell([], run.Handling(0, ..)) = state.mode
-  let assert browser.Alert("Beep", resume) = effect
-  let assert #(state, []) = state.update(state, resume())
+  let assert state.RunningShell([], state.Handling(0, ..)) = state.mode
+  let assert system.Alert("Beep", resume) = effect
+  let assert system.Done(message) = resume()
+  let assert #(state, []) = state.update(state, message)
 
   assert state.Editing == state.mode
-  let assert [run.Previous(value:, effects:, ..)] = state.previous
+  let assert [state.Previous(value:, effects:, ..)] = state.previous
   assert Some(v.unit()) == value
   // TODO keep list of effects
   assert [] == effects

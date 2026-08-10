@@ -63,6 +63,14 @@ pub type Dependency {
   Release(release.Release)
 }
 
+pub fn dep_to_reason(dep: Dependency) {
+  case dep {
+    Content(cid:) -> break.UndefinedReference(cid)
+    Release(release.Release(package:, version:, module:)) ->
+      break.UndefinedRelease(package:, release: version, module:)
+  }
+}
+
 pub type CursorStatus {
   ReadyToPull
   Pulling
@@ -141,6 +149,20 @@ pub fn ready() -> Cache(meta) {
   )
 }
 
+pub fn get_module(
+  cache: Cache(meta),
+  ref: v1.Cid,
+) -> Result(Module(meta), FetchStatus(meta)) {
+  let Cache(modules:, fetching_modules:, ..) = cache
+  case dict.get(modules, ref) {
+    Ok(module) -> Ok(module)
+    Error(Nil) ->
+      dict.get(fetching_modules, ref)
+      |> result.unwrap(NotRequested)
+      |> Error()
+  }
+}
+
 /// Find the associated module for a cid.
 pub fn fetch_module(cache: Cache(meta), cid: v1.Cid) -> Status(meta) {
   let Cache(modules:, fetching_modules:, ..) = cache
@@ -169,6 +191,17 @@ pub fn module(
     Error(Nil), Ok(Failed(_)) -> Unknown
     Error(Nil), Ok(Invalid(reason)) -> Unavailable(reason)
     Error(Nil), Error(Nil) -> Unknown
+  }
+}
+
+pub fn release_code(
+  cache: Cache(meta),
+  release: release.Release,
+) -> Result(Module(meta), Nil) {
+  let release.Release(package:, version:, module:) = release
+  case dict.get(cache.releases, #(package, version)) {
+    Ok(cid) if cid == module -> dict.get(cache.modules, cid)
+    _ -> Error(Nil)
   }
 }
 
@@ -232,6 +265,10 @@ pub fn fetch(cache: Cache(meta), cid: v1.Cid) -> Cache(meta) {
     _, Ok(Failed(_)) -> set_status(cache, cid, NotRequested)
     _, Ok(Invalid(_)) -> cache
   }
+}
+
+pub fn fetch_all(cache: Cache(meta), cids: List(v1.Cid)) -> Cache(meta) {
+  list.fold(cids, cache, fetch)
 }
 
 pub fn pull(cache: Cache(meta)) -> Cache(meta) {
@@ -343,6 +380,25 @@ pub fn fetch_module_completed(
   }
 }
 
+pub fn prepare(cache: Cache(meta), source: ir.Node(_)) {
+  let references = ir.list_references(source)
+  let cache = fetch_all(cache, references)
+  let releases = ir.list_named_references(source)
+  pull_if_any_missing(cache, releases)
+}
+
+fn pull_if_any_missing(cache: Cache(meta), releases) {
+  case releases {
+    [#(package, version, module), ..releases] ->
+      case dict.get(cache.releases, #(package, version)) {
+        Ok(cid) if cid == module -> pull_if_any_missing(cache, releases)
+        Ok(_) -> pull_if_any_missing(cache, releases)
+        Error(_) -> pull(cache)
+      }
+    [] -> cache
+  }
+}
+
 pub fn with_module(
   cache: Cache(meta),
   cid: v1.Cid,
@@ -415,7 +471,8 @@ pub fn pulled(
   }
 }
 
-fn loop(
+/// Execute code in an environment with no effects implemented
+pub fn loop(
   return: Result(a, state.Debug(meta)),
   cache: Cache(meta),
   resume: fn(state.Value(meta), state.Env(meta), state.Stack(meta)) ->
@@ -442,6 +499,36 @@ fn loop(
       }
     }
     _ -> #(return, cache)
+  }
+}
+
+/// execute code without lookup up new values if not present
+pub fn static_loop(
+  return: Result(a, state.Debug(meta)),
+  cache: Cache(meta),
+  resume: fn(state.Value(meta), state.Env(meta), state.Stack(meta)) ->
+    Result(a, state.Debug(meta)),
+) -> Result(a, state.Debug(meta)) {
+  case return {
+    Error(#(break.UndefinedReference(cid), _, env, k)) -> {
+      case dict.get(cache.modules, cid) {
+        Ok(Module(value:, ..)) ->
+          static_loop(resume(value, env, k), cache, resume)
+        Error(Nil) -> return
+      }
+    }
+    Error(#(break.UndefinedRelease(package:, release:, module:), _meta, env, k)) -> {
+      case dict.get(cache.releases, #(package, release)) {
+        Ok(cid) if cid == module ->
+          case dict.get(cache.modules, cid) {
+            Ok(Module(value:, ..)) ->
+              static_loop(resume(value, env, k), cache, resume)
+            Error(Nil) -> return
+          }
+        _ -> return
+      }
+    }
+    _ -> return
   }
 }
 

@@ -1,12 +1,10 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
-import eyg/hub/publisher
 import eyg/hub/release
-import eyg/hub/schema
+import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/dag_json
-import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
@@ -18,8 +16,10 @@ import morph/input
 import morph/navigation
 import morph/picker
 import multiformats/cid/v1
-import pal/browser
-import pal/run
+import ogre/operation
+import ogre/origin
+import pal/platform/browser as platform
+import pal/system
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import website/command
@@ -31,7 +31,12 @@ pub type State {
   State(
     mode: Mode,
     examples: Dict(String, buffer.Buffer),
-    context: run.Context(Message),
+    // hub and current page origin.
+    origin: origin.Origin,
+    cache: cache.Cache(Meta),
+    counter: Int,
+    spotless_origin: origin.Origin,
+    tokens: Dict(harness.Service, String),
   )
 }
 
@@ -42,9 +47,25 @@ pub type Mode {
   Navigating(id: String, failure: Option(command.Failure))
   Manipulating(id: String, input: m.UserInput)
   ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
-  Running(id: String, status: run.Run(state.Value(Meta)))
+  Running(id: String, run: Run)
   UnFocused
 }
+
+pub type Run {
+  Successful(state.Value(Meta))
+  Exception(state.Reason(Meta))
+  Aborted(String)
+  Handling(task_id: Int, work: Work, env: state.Env(Meta), k: state.Stack(Meta))
+  Blocked(dep: cache.Dependency, env: state.Env(Meta), k: state.Stack(Meta))
+}
+
+pub type Work {
+  Effect
+  Connect(service: harness.Service, operation: operation.Operation(BitArray))
+}
+
+pub type Return =
+  Result(state.Value(Meta), state.Debug(Meta))
 
 pub type Meta =
   List(Int)
@@ -54,13 +75,11 @@ pub type Message {
   UserPressedKey(key: String)
   InputMessage(input.Message)
   PickerMessage(picker.Message)
-
   ClipboardReadCompleted(Result(String, String))
   Ignore
   EffectHandled(task_id: Int, value: state.Value(Meta))
-  SpotlessConnectCompleted(harness.Service, Result(token.Response, String))
-  ModuleLookupCompleted(v1.Cid, Result(ir.Node(Nil), String))
-  PullPackagesCompleted(Result(List(schema.ArchivedEntry), String))
+  SpotlessConnectCompleted(task_id: Int, result: Result(token.Response, String))
+  CacheMessage(cache.ActionCompleted)
 }
 
 pub fn get_example(state: State, id) {
@@ -72,32 +91,58 @@ pub fn set_example(state: State, id, snippet) {
   State(..state, examples: dict.insert(state.examples, id, snippet))
 }
 
-fn continue(state, id, gen) {
-  let State(context:, ..) = state
-  let buffer = gen(infer_context(context))
+fn continue(
+  state: State,
+  id: String,
+  gen: fn(infer.Context) -> buffer.Buffer,
+) -> #(State, List(system.Effect(Message))) {
+  let State(cache:, ..) = state
+  let buffer = gen(infer_context(cache))
   let state = set_example(state, id, buffer)
-  let missing_references = infer.missing_references(buffer.analysis)
-  let context = run.fetch_all(missing_references, context)
-  let #(context, effects) = run.flush(context)
-  let state = State(..state, mode: Navigating(id:, failure: None), context:)
+  let cache = cache.prepare(cache, buffer.source(buffer))
+  let #(cache, effects) = flush_cache(cache, state.origin)
+  let state = State(..state, mode: Navigating(id:, failure: None), cache:)
   #(state, effects)
 }
 
 // snippet failure goes at top level
-pub fn init(config) {
+pub fn init(config: config.Config) -> #(State, List(system.Effect(Message))) {
   let config.Config(origin:) = config
-  let #(examples, context) = init_collection(examples.all(), context(origin))
-  let #(context, effects) = run.flush(context)
-  let state = State(UnFocused, examples, context)
+  let #(examples, cache) = init_collection(examples.all(), cache.ready())
+  let #(cache, effects) = flush_cache(cache, origin)
+  let state =
+    State(
+      mode: UnFocused,
+      examples:,
+      origin:,
+      cache:,
+      counter: 0,
+      spotless_origin: origin.https("spotless.run"),
+      tokens: dict.new(),
+    )
   #(state, effects)
 }
 
-pub fn init_collection(sources, context) {
+pub fn flush_cache(cache, origin) {
+  let #(cache, effects) = cache.flush(cache)
+  let effects =
+    list.map(effects, fn(effect) {
+      cache.compute(effect, origin, system.fetch)(fn(return) {
+        system.Done(CacheMessage(return))
+      })
+    })
+  #(cache, effects)
+}
+
+pub fn init_collection(
+  sources: List(#(a, e.Expression)),
+  cache: cache.Cache(Meta),
+) -> #(Dict(a, buffer.Buffer), cache.Cache(Meta)) {
   let examples =
     list.map(sources, fn(example) {
       let #(key, editable) = example
       let editable = e.open_all(editable)
-      let buffer = buffer(editable, context)
+      let buffer = buffer(editable, cache)
       #(key, buffer)
     })
   let missing_references =
@@ -106,25 +151,15 @@ pub fn init_collection(sources, context) {
       infer.missing_references(buffer.analysis)
     })
   let examples = dict.from_list(examples)
-  let context = run.fetch_all(missing_references, context)
-  #(examples, context)
+
+  let cache = cache.fetch_all(cache, missing_references)
+  #(examples, cache)
 }
 
-pub fn context(hub_origin) {
-  run.empty(
-    hub_origin,
-    EffectHandled,
-    SpotlessConnectCompleted,
-    ModuleLookupCompleted,
-    PullPackagesCompleted,
-  )
-  |> run.pull()
-}
-
-fn buffer(editable, context) {
+fn buffer(editable: e.Expression, cache: cache.Cache(Meta)) -> buffer.Buffer {
   let projection = navigation.first(editable)
   // keep evaluation on example, if it runs don't print type errors. but show them in the code
-  buffer.from_projection(projection, infer_context(context))
+  buffer.from_projection(projection, infer_context(cache))
 }
 
 pub fn update(state: State, message) {
@@ -212,7 +247,7 @@ pub fn update(state: State, message) {
               #(State(..state, mode:), [])
             }
             picker.Decided(text) -> {
-              case cache.package(state.context.cache, text) {
+              case cache.package(state.cache, text) {
                 Ok(#(v, m)) -> continue(state, id, rebuild(#(text, v, m), _))
                 Error(_) -> {
                   echo "need error message for bad cid"
@@ -248,83 +283,84 @@ pub fn update(state: State, message) {
     Ignore -> #(state, [])
     EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        Running(id:, status: run.Handling(task_id:, env:, k:))
+        Running(id:, run: Handling(task_id:, work: Effect, env:, k:))
           if tid == task_id
         -> {
-          let #(mode, context, effects) =
+          let #(run, counter, effect) =
             expression.resume(value, env, k)
-            |> run.loop(state.context, expression.resume)
-          let mode = Running(id, mode)
-          #(State(..state, mode:, context:), effects)
+            |> loop(state)
+          let mode = Running(id, run)
+          #(State(..state, mode:, counter:), case effect {
+            Some(effect) -> [effect]
+            None -> []
+          })
         }
         _ -> #(state, [])
       }
-    SpotlessConnectCompleted(service, result) -> {
-      let #(context, effects) =
-        run.connect_completed(state.context, service, result)
-      #(State(..state, context:), effects)
-    }
-    ModuleLookupCompleted(cid, result) -> {
-      let #(context, done) =
-        run.get_module_completed(state.context, cid, result)
-      let examples = reanalyse_examples(state.examples, done, context)
-      let state = State(..state, examples:)
-      // use the completed cid not the looked up cid as dependencies might have resolved
-      let #(context, effects) = run.flush(context)
+    SpotlessConnectCompleted(task_id: tid, result:) ->
       case state.mode {
-        Running(id, run.Pending(cache.Content(module), env:, k:)) -> {
-          case list.key_find(done, module) {
-            Ok(Ok(value)) -> {
-              let #(run, context, inner_effects) =
-                expression.resume(value, env, k)
-                |> run.loop(context, expression.resume)
+        Running(
+          id:,
+          run: Handling(task_id:, work: Connect(service:, operation:), env:, k:),
+        )
+          if tid == task_id
+        -> {
+          case result {
+            Ok(token) -> {
+              let request =
+                service_request(
+                  service,
+                  operation,
+                  token.access_token,
+                  state.origin,
+                )
+              let effect = platform.fetch(request)
+              // TODO manage the 400 error case
+              let effect = system.map(effect, EffectHandled(task_id, _))
+              let run = Handling(task_id, Effect, env, k)
+
               let mode = Running(id, run)
-              #(
-                State(..state, context:, mode:),
-                list.append(effects, inner_effects),
-              )
+              #(State(..state, mode:), [effect])
             }
-            // If the module is a bad one the running state stays the same. it's up for the view to render the status
-            Ok(Error(_)) -> #(State(..state, context:), effects)
-            Error(Nil) -> #(State(..state, context:), effects)
+            Error(reason) -> {
+              let run = Aborted("failed to authorize: " <> reason)
+              let mode = Running(id, run)
+              #(State(..state, mode:), [])
+            }
           }
         }
-        _ -> #(State(..state, context:), effects)
+        _ -> #(state, [])
       }
-    }
-    PullPackagesCompleted(result) -> {
-      let cache = state.context.cache
-      let cache = case result {
-        Ok(entries) -> {
-          list.fold(entries, cache, fn(cache, entry) {
-            let assert Ok(payload) =
-              json.parse(entry.payload, publisher.decoder())
-
-            let publisher.Release(package:, version:, module:) = payload.content
-            let release = release.Release(package:, version:, module:)
-            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
-            cache
-          })
+    CacheMessage(message) -> {
+      let #(cache, done) = cache.update(state.cache, message, fn(_) { [] })
+      let examples = reanalyse_examples(state.examples, done, cache)
+      let #(cache, effects) = flush_cache(cache, state.origin)
+      let state = State(..state, examples:, cache:)
+      case state.mode {
+        Running(id, run) -> {
+          let #(run, counter, effect) = restart(run, state)
+          let mode = Running(id, run)
+          let state = State(..state, counter:, mode:)
+          let effects = case effect {
+            Some(effect) -> [effect, ..effects]
+            None -> effects
+          }
+          #(state, effects)
         }
-        Error(_reason) -> {
-          cache.Cache(..cache, cursor_status: cache.Pulled)
-        }
+        _ -> #(state, effects)
       }
-      let context = run.Context(..state.context, cache:)
-      let #(context, effects) = run.flush(context)
-      #(State(..state, context:), effects)
     }
   }
 }
 
-fn infer_context(context: run.Context(_)) {
-  harness.infer_context(run.module_types(context))
+pub fn infer_context(cache: cache.Cache(Meta)) -> infer.Context {
+  harness.infer_context(cache.types(cache))
 }
 
 pub fn reanalyse_examples(
   examples: dict.Dict(String, buffer.Buffer),
   _done: List(#(v1.Cid, Result(a, b))),
-  context: run.Context(_),
+  cache: cache.Cache(Meta),
 ) -> Dict(String, buffer.Buffer) {
   // reanalyse everything
   // filtering for just cid's doesn't catch the missing releases that should be reevaluated
@@ -341,7 +377,7 @@ pub fn reanalyse_examples(
     let update = !list.is_empty(infer.all_errors(buffer.analysis))
     // list.any(ok, list.contains(infer.missing_references(buffer.analysis), _))
     case update {
-      True -> buffer.reanalyse(buffer, infer_context(context))
+      True -> buffer.reanalyse(buffer, infer_context(cache))
       False -> buffer
     }
   })
@@ -383,7 +419,7 @@ fn user_pressed_key(state, key) {
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
     _, "L" -> edit(state, m.create_empty_list())
     _, "l" -> edit(state, m.create_list())
-    _, "@" -> edit(state, m.choose_release(state.context.cache))
+    _, "@" -> edit(state, m.choose_release(state.cache))
     _, "#" -> edit(state, m.insert_reference())
     _, "Z" -> edit(state, m.redo())
     _, "z" -> edit(state, m.undo())
@@ -404,7 +440,7 @@ fn user_pressed_key(state, key) {
     }
     UnFocused, _ -> #(state, [])
     ReadingFromClipboard(id: _, rebuild: _), _ -> #(state, [])
-    Running(id: _, status: _), _ -> #(state, [])
+    Running(..), _ -> #(state, [])
     Manipulating(id: _, input: _), _ -> #(state, [])
   }
 }
@@ -440,7 +476,7 @@ fn copy(state: State) {
   use id, buffer <- is_editing(state)
   case buffer.copy_source(buffer) {
     Ok(text) -> #(state, [
-      browser.WriteToClipboard(text:, resume: fn(_) { Ignore }),
+      system.WriteToClipboard(text:, resume: fn(_) { system.Done(Ignore) }),
     ])
     Error(Nil) -> action_failed(state, id, "copy")
   }
@@ -451,7 +487,11 @@ fn paste(state: State) {
   case buffer.set_expression(buffer) {
     Ok(rebuild) -> {
       let state = State(..state, mode: ReadingFromClipboard(id:, rebuild:))
-      #(state, [browser.ReadFromClipboard(ClipboardReadCompleted)])
+      #(state, [
+        system.ReadFromClipboard(fn(result) {
+          system.Done(ClipboardReadCompleted(result))
+        }),
+      ])
     }
     Error(Nil) -> action_failed(state, id, "copy")
   }
@@ -459,11 +499,17 @@ fn paste(state: State) {
 
 fn confirm(state: State) {
   use id, buffer <- is_editing(state)
-  let #(mode, context, effects) =
-    expression.execute(buffer.source(buffer), [])
-    |> run.loop(state.context, expression.resume)
-  let mode = Running(id, mode)
-  #(State(..state, mode:, context:), effects)
+  let source = buffer.source(buffer)
+  let cache = cache.prepare(state.cache, source)
+  let #(run, counter, effect) =
+    expression.execute(source, [])
+    |> loop(state)
+  let mode = Running(id, run)
+  let effects = case effect {
+    Some(effect) -> [effect]
+    None -> []
+  }
+  #(State(..state, cache:, mode:, counter:), effects)
 }
 
 fn is_editing(state: State, then) {
@@ -480,4 +526,120 @@ fn action_failed(state, id, name) {
       mode: Navigating(id:, failure: Some(command.ActionFailed(name))),
     )
   #(state, [])
+}
+
+// This loop assumes values have been looked for.
+// Used on the homepage as well.
+pub fn loop(
+  return: Result(state.Value(Meta), state.Debug(Meta)),
+  state: State,
+) -> #(Run, Int, Option(system.Effect(Message))) {
+  case return {
+    Error(#(break.UnhandledEffect(label, lift), _meta, env, k)) -> {
+      case platform.cast(label, lift) {
+        Ok(effect) -> {
+          case platform.extrinsic(effect) {
+            platform.Work(system.Done(value)) -> loop(Ok(value), state)
+            platform.Work(effect) -> {
+              let counter = state.counter
+              let effect = system.map(effect, EffectHandled(counter, _))
+              let run = Handling(counter, Effect, env, k)
+              #(run, counter + 1, Some(effect))
+            }
+            platform.Abort(reason) -> #(Aborted(reason), state.counter, None)
+            platform.Spotless(service:, operation:) ->
+              // This could be called vault.proxy as a stateful entity it would take an ID or something.
+              case dict.get(state.tokens, service) {
+                Ok(token) -> {
+                  let request =
+                    service_request(service, operation, token, state.origin)
+                  let effect = platform.fetch(request)
+                  // TODO manage the 400 error case
+                  let counter = state.counter
+                  let effect = system.map(effect, EffectHandled(counter, _))
+                  let run = Handling(counter, Effect, env, k)
+                  #(run, counter + 1, Some(effect))
+                }
+                // No memory of connecting because there's only one
+                // Connecting/Proxying is a state in run 
+                Error(Nil) -> {
+                  let work = Connect(service:, operation:)
+                  let run = Handling(state.counter, work, env, k)
+                  let effect =
+                    system.Spotless(
+                      service:,
+                      origin: state.spotless_origin,
+                      resume: fn(result) {
+                        system.Done(SpotlessConnectCompleted(
+                          state.counter,
+                          result,
+                        ))
+                      },
+                    )
+                  #(run, state.counter + 1, Some(effect))
+                }
+              }
+          }
+        }
+        Error(reason) -> #(Exception(reason), state.counter, None)
+      }
+    }
+    Error(#(break.UndefinedReference(cid), _, env, k)) ->
+      case cache.get_module(state.cache, cid) {
+        Ok(cache.Module(value:, ..)) ->
+          loop(expression.resume(value, env, k), state)
+        // All dependencies are marked as blocked the view shows error vs running status
+        Error(_) -> {
+          let run = Blocked(cache.Content(cid), env, k)
+          #(run, state.counter, None)
+        }
+      }
+    Error(#(break.UndefinedRelease(package:, release:, module:), _, env, k)) -> {
+      let release = release.Release(package:, version: release, module:)
+      case cache.release_code(state.cache, release) {
+        Ok(cache.Module(value:, ..)) ->
+          loop(expression.resume(value, env, k), state)
+        _ -> {
+          let run = Blocked(cache.Release(release), env, k)
+          #(run, state.counter, None)
+        }
+      }
+    }
+    Ok(value) -> #(Successful(value), state.counter, None)
+    Error(#(reason, _, _, _)) -> #(Exception(reason), state.counter, None)
+  }
+}
+
+pub fn restart(
+  run: Run,
+  state: State,
+) -> #(Run, Int, Option(system.Effect(Message))) {
+  case run {
+    Blocked(dep:, env:, k:) -> {
+      let reason = cache.dep_to_reason(dep)
+      let return = Error(#(reason, [], env, k))
+      loop(return, state)
+    }
+    _ -> #(run, state.counter, None)
+  }
+}
+
+// TODO move to vault
+pub fn service_request(service, operation, token, hub_origin) {
+  case service {
+    harness.DNSimple ->
+      operation
+      |> operation.prefix_path("/proxy/dnsimple")
+      |> operation.set_header("authorization", "Bearer " <> token)
+      |> operation.to_request(hub_origin)
+    harness.GitHub ->
+      operation
+      |> operation.set_header("authorization", "Bearer " <> token)
+      |> operation.to_request(origin.https("api.github.com"))
+
+    harness.Vimeo ->
+      operation
+      |> operation.set_header("authorization", "Bearer " <> token)
+      |> operation.to_request(origin.https("api.vimeo.com"))
+  }
 }
