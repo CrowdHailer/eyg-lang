@@ -36,7 +36,7 @@ pub type State {
     origin: origin.Origin,
     cache: cache.Cache(Meta),
     counter: Int,
-    spotless_origin: origin.Origin,
+    // spotless_origin: origin.Origin,
     tokens: Dict(harness.Service, String),
   )
 }
@@ -52,7 +52,7 @@ pub fn init(config) {
       origin:,
       cache:,
       counter: 0,
-      spotless_origin: origin.https("spotless.run"),
+      // spotless_origin: origin.https("spotless.run"),
       tokens: dict.new(),
     )
   #(state, effects)
@@ -479,7 +479,7 @@ pub fn loop(
                   let effect =
                     system.Spotless(
                       service:,
-                      origin: state.spotless_origin,
+                      origin: state.origin,
                       resume: fn(result) {
                         system.Done(SpotlessConnectCompleted(
                           state.counter,
