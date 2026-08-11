@@ -9,10 +9,13 @@ import overlay/llm/provider/ollama
 import overlay/public/view
 import overlay/web/state
 import pal/system
+import plinth/browser/location
+import plinth/browser/window
 
 pub fn main() -> Nil {
   let app = lustre.application(do_init, do_update, view.render)
-  let assert Ok(origin) = origin.from_string(browser_origin())
+  let browser_origin = location.origin(window.location(window.self()))
+  let assert Ok(origin) = origin.from_string(browser_origin)
   let ollama_config = case ollama_api_key() {
     "" -> ollama.Config(origin:, api_key: None)
     api_key ->
@@ -32,9 +35,6 @@ fn ollama_api_key() -> String
 
 @external(javascript, "./public_ffi.mjs", "isDevelopment")
 fn is_development() -> Bool
-
-@external(javascript, "./public_ffi.mjs", "browserOrigin")
-fn browser_origin() -> String
 
 fn do_init(config) {
   let #(state, actions) = state.init(config)

@@ -63,4 +63,5 @@ overlay_llm = { version = ">= 0.1.0 and < 1.0.0" }
 overlay_web = { path = "../overlay_web" }
 pal = { path = "../pal" }
 pamphlet = { version = ">= 1.0.0 and < 2.0.0" }
+plinth = { version = ">= 0.10.2 and < 1.0.0" }
 splitter = { version = ">= 1.2.0 and < 2.0.0" }

@@ -5,7 +5,3 @@ export function ollamaApiKey() {
 export function isDevelopment() {
   return import.meta.env.DEV;
 }
-
-export function browserOrigin() {
-  return globalThis.location.origin;
-}
