@@ -22,6 +22,7 @@ import plinth/browser/crypto
 import plinth/browser/file
 import plinth/browser/file_system
 import plinth/browser/location
+import plinth/browser/web_storage
 import plinth/browser/window
 import plinth/browser/window_proxy
 import spotless
@@ -51,6 +52,14 @@ pub type Effect(m) {
     request: request.Request(BitArray),
     resume: fn(Result(response.Response(Reader), fetch.FetchError)) -> Effect(m),
   )
+  GetLocalStorageItem(
+    key: String,
+    resume: fn(Result(Option(String), String)) -> Effect(m),
+  )
+  GetSessionStorageItem(
+    key: String,
+    resume: fn(Result(Option(String), String)) -> Effect(m),
+  )
   // Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> Effect(m))
   // FocusOnInput(resume:)
   // LoadFiles(handle: file_system.DirectoryHandle)
@@ -78,6 +87,16 @@ pub type Effect(m) {
   ShowDirectoryPicker(
     resume: fn(Result(file_system.Handle(file_system.D), String)) -> Effect(m),
   )
+  SetLocalStorageItem(
+    key: String,
+    value: String,
+    resume: fn(Result(Nil, String)) -> Effect(m),
+  )
+  SetSessionStorageItem(
+    key: String,
+    value: String,
+    resume: fn(Result(Nil, String)) -> Effect(m),
+  )
   // TODO move to Follow etc but needs secure random and ability to combine effects
   // TODO browser shouldn't rely on harness but no circular dependency yet
   Spotless(
@@ -101,6 +120,10 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
     Download(input, resume) -> Download(input, fn() { then(resume(), func) })
     FetchStreamResponse(request, resume) ->
       FetchStreamResponse(request, fn(response) { then(resume(response), func) })
+    GetLocalStorageItem(key, resume) ->
+      GetLocalStorageItem(key, fn(value) { then(resume(value), func) })
+    GetSessionStorageItem(key, resume) ->
+      GetSessionStorageItem(key, fn(value) { then(resume(value), func) })
     // LoadFiles(handle) -> todo
     OpenPopup(location, resume) ->
       OpenPopup(location, fn(x) { then(resume(x), func) })
@@ -116,6 +139,12 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       SaveFile(handle, filename, content, fn(x) { then(resume(x), func) })
     ShowDirectoryPicker(resume) ->
       ShowDirectoryPicker(fn(x) { then(resume(x), func) })
+    SetLocalStorageItem(key, value, resume) ->
+      SetLocalStorageItem(key, value, fn(result) { then(resume(result), func) })
+    SetSessionStorageItem(key, value, resume) ->
+      SetSessionStorageItem(key, value, fn(result) {
+        then(resume(result), func)
+      })
     Spotless(service, origin, resume) ->
       Spotless(service, origin, fn(x) { then(resume(x), func) })
     Visit(uri, resume) -> Visit(uri, fn(x) { then(resume(x), func) })
@@ -175,6 +204,10 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
         Error(reason) -> run(resume(Error(reason)))
       }
     }
+    GetLocalStorageItem(key:, resume:) ->
+      run(resume(get_storage_item(web_storage.local(), key)))
+    GetSessionStorageItem(key:, resume:) ->
+      run(resume(get_storage_item(web_storage.session(), key)))
 
     // Follow(uri:, resume:) -> todo
     // LoadFiles(handle: _) -> {
@@ -221,6 +254,10 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       use result <- promise.await(show_save_directory_picker())
       run(resume(result))
     }
+    SetLocalStorageItem(key:, value:, resume:) ->
+      run(resume(set_storage_item(web_storage.local(), key, value)))
+    SetSessionStorageItem(key:, value:, resume:) ->
+      run(resume(set_storage_item(web_storage.session(), key, value)))
     Visit(uri:, resume:) -> {
       run(resume(open(uri.to_string(uri), #(800, 400))))
     }
@@ -233,6 +270,23 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       run(resume(result))
     }
   }
+}
+
+fn get_storage_item(
+  storage_result: Result(web_storage.Storage, String),
+  key: String,
+) -> Result(Option(String), String) {
+  use store <- result.try(storage_result)
+  web_storage.get_item(store, key)
+}
+
+fn set_storage_item(
+  storage_result: Result(web_storage.Storage, String),
+  key: String,
+  value: String,
+) -> Result(Nil, String) {
+  use store <- result.try(storage_result)
+  web_storage.set_item(store, key, value)
 }
 
 fn spotless(
