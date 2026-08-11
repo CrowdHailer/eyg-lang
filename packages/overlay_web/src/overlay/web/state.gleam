@@ -42,7 +42,11 @@ pub type State {
 pub type AgentStatus {
   Waiting
   Asking(messages: List(chat.Message(tool.Call)))
-  Streaming(reader: system.Reader, completion: chat.Completion(tool.Call))
+  Streaming(
+    reader: system.Reader,
+    completion: chat.Completion(tool.Call),
+    remaining: BitArray,
+  )
   Executing(calls: List(#(String, tools.Call)))
 }
 
@@ -103,7 +107,10 @@ pub type Message {
   UserUpdatedInput(String)
   UserSubmittedPrompt
   LlmStartedStreaming(reader: system.Reader)
-  LlmStreamedCompletion(List(chat.Completion(tool.Call)))
+  LlmStreamedCompletion(
+    completions: List(chat.Completion(tool.Call)),
+    remaining: BitArray,
+  )
   LlmStreamFinished(Result(Nil, String))
   UserClickedExpand(Int)
   UserClickedShrink(Int)
@@ -151,19 +158,24 @@ pub fn update(
           let history = list.append(messages, state.history)
 
           let state =
-            State(..state, status: Streaming(reader, chat.fresh()), history:)
-          let action = stream_next_chunk(state.llm.provider, reader)
+            State(
+              ..state,
+              status: Streaming(reader, chat.fresh(), <<>>),
+              history:,
+            )
+          let action = stream_next_chunk(state.llm.provider, reader, <<>>)
           #(state, [action])
         }
         _ -> #(state, [])
       }
     }
-    LlmStreamedCompletion(new) -> {
+    LlmStreamedCompletion(new, remaining) -> {
       case state.status {
-        Streaming(reader:, completion:) -> {
+        Streaming(reader:, completion:, remaining: _) -> {
           let completion = chat.append_chunks(completion, new)
-          let state = State(..state, status: Streaming(reader:, completion:))
-          let action = stream_next_chunk(state.llm.provider, reader)
+          let state =
+            State(..state, status: Streaming(reader:, completion:, remaining:))
+          let action = stream_next_chunk(state.llm.provider, reader, remaining)
           #(state, [action])
         }
         _ -> #(state, [])
@@ -171,7 +183,7 @@ pub fn update(
     }
     LlmStreamFinished(Ok(Nil)) -> {
       case state.status {
-        Streaming(reader: _, completion:) -> {
+        Streaming(reader: _, completion:, remaining: _) -> {
           let message = chat.from_completion(completion)
           let history = [message, ..state.history]
 
@@ -275,13 +287,13 @@ fn fetch_completion(state, messages) {
   |> system.Done
 }
 
-fn stream_next_chunk(provider, reader) {
+fn stream_next_chunk(provider, reader, remaining) {
   use chunk <- system.ReadChunk(reader)
   case chunk {
     Ok(Some(chunk)) -> {
-      let #(completions, _rest) =
-        provider.completion_chunk_parse(provider, <<>>, chunk)
-      LlmStreamedCompletion(completions)
+      let #(completions, remaining) =
+        provider.completion_chunk_parse(provider, remaining, chunk)
+      LlmStreamedCompletion(completions, remaining)
     }
     Ok(None) -> LlmStreamFinished(Ok(Nil))
     Error(reason) -> LlmStreamFinished(Error(string.inspect(reason)))

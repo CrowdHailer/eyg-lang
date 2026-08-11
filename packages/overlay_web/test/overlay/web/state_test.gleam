@@ -1,5 +1,6 @@
 import eyg/hub/cache
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/dict
 import gleam/fetch
 import gleam/http/response
@@ -69,7 +70,7 @@ pub fn submit_prompt_test() {
       |> Ok,
     )
   let #(state, actions) = state.update(state, message)
-  let assert state.Streaming(_r, _) = state.status
+  let assert state.Streaming(_r, _, _) = state.status
   let assert [message] = state.history
   assert chat.UserMessage(text: "hello", images: []) == message
 
@@ -79,7 +80,7 @@ pub fn submit_prompt_test() {
     resume(Ok(Some(helpers.ollama_chunk_encode("Hi there"))))
 
   let #(state, actions) = state.update(state, message)
-  let assert state.Streaming(_r, _) = state.status
+  let assert state.Streaming(_r, _, _) = state.status
   let assert [system.ReadChunk(_, resume)] = actions
   let assert system.Done(message) = resume(Ok(None))
 
@@ -127,13 +128,37 @@ pub fn interrupted_stream_test() {
 
 pub fn streamed_completion_while_not_streaming_test() {
   let state = init()
-  let #(s2, actions) = state.update(state, state.LlmStreamedCompletion([]))
+  let #(s2, actions) =
+    state.update(state, state.LlmStreamedCompletion([], <<>>))
   assert s2 == state
   assert [] == actions
 }
 
 // TODO invalid chunks from parsing
-// Test partial chunks
+
+pub fn preserves_partial_stream_chunks_test() {
+  let #(state, actions) = submit_first_prompt("hello")
+  let assert [system.FetchStreamResponse(_request, resume)] = actions
+  let response =
+    Ok(response.new(200) |> response.set_body(new_reader([], Ok(Nil))))
+  let assert system.Done(message) = resume(response)
+  let #(state, actions) = state.update(state, message)
+  let assert [system.ReadChunk(_reader, resume)] = actions
+
+  let first = bit_array.from_string("{\"message\":{\"content\":\"Hi")
+  let assert system.Done(message) = resume(Ok(Some(first)))
+  let #(state, actions) = state.update(state, message)
+  let assert state.Streaming(_, completion, remaining) = state.status
+  assert "" == completion.content
+  assert first == remaining
+  let assert [system.ReadChunk(_reader, resume)] = actions
+
+  let second = bit_array.from_string(" there\"}}\n")
+  let assert system.Done(message) = resume(Ok(Some(second)))
+  let #(state, _actions) = state.update(state, message)
+  let assert state.Streaming(_, completion, <<>>) = state.status
+  assert "Hi there" == completion.content
+}
 
 pub fn network_error_from_provider_test() {
   let #(state, actions) = submit_first_prompt("hello")
@@ -383,7 +408,7 @@ pub fn malformed_tool_arguments_test() {
 }
 
 fn streaming(completion) {
-  state.Streaming(reader: new_reader([], Ok(Nil)), completion:)
+  state.Streaming(reader: new_reader([], Ok(Nil)), completion:, remaining: <<>>)
 }
 
 fn chat_completion(content) {

@@ -9,7 +9,7 @@ pub fn messages(state: State) {
   let messages = case status {
     state.Waiting -> history
     state.Asking(messages:) -> list.append(messages, state.history)
-    state.Streaming(reader: _, completion:) -> {
+    state.Streaming(reader: _, completion:, remaining: _) -> {
       let chat.Completion(thinking:, content:, tool_calls:) = completion
       let message = chat.AssistantMessage(thinking:, text: content, tool_calls:)
       [message, ..history]
