@@ -15,7 +15,16 @@ pub fn render(
     render_area_input(value, placeholder, handle_input, handle_submit, ignore),
     h.div([a.class("hstack split")], [
       h.div([], []),
-      h.div([], [h.button([a.class("button")], [h.text("send")])]),
+      h.div([], [
+        h.button(
+          [
+            a.class("button"),
+            a.type_("button"),
+            event.on_click(handle_submit),
+          ],
+          [h.text("send")],
+        ),
+      ]),
     ]),
   ])
 }
