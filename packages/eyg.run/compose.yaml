@@ -33,6 +33,16 @@ services:
       - website-build:/opt/packages/website/build
       - website-node_modules:/opt/packages/website/node_modules
       - website-dist:/opt/packages/website/dist
+  overlay:
+    build:
+      context: ..
+      dockerfile: ./overlay_public/Dockerfile
+    command: build
+    volumes:
+      - ..:/opt/packages
+      - overlay-build:/opt/packages/overlay_public/build
+      - overlay-node_modules:/opt/packages/overlay_public/node_modules
+      - overlay-dist:/opt/packages/overlay_public/dist
   proxy:  
     image: docker.io/library/caddy:2-alpine
     env_file: .env
@@ -44,16 +54,22 @@ services:
       - caddy-data:/data
       - caddy-config:/config
       - website-dist:/var/eyg
+      - overlay-dist:/var/overlay
     depends_on:
       backend:
         condition: service_started
       frontend:
+        condition: service_completed_successfully
+      overlay:
         condition: service_completed_successfully
 
 volumes:
   caddy-data:
   caddy-config:
   hub-build:
+  overlay-build:
+  overlay-dist:
+  overlay-node_modules:
   postgres-data:
   website-build:
   website-node_modules:

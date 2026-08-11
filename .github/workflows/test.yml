@@ -118,6 +118,8 @@ jobs:
           "gleam_parser",
           "gleam_x",
           "morph",
+          "overlay_public",
+          "overlay_web",
           "pal",
           "topological",
           "touch_grass",

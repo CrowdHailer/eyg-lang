@@ -7,6 +7,8 @@ services:
       - "5432:5432"
   frontend:
     command: dev
+  overlay:
+    command: dev
   proxy:
     environment:
       - FRONTEND=development
@@ -18,4 +20,5 @@ services:
     depends_on:
       frontend:
         condition: service_started
-  
+      overlay:
+        condition: service_started

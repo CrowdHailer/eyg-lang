@@ -11,6 +11,12 @@
 	handle /proxy/* {
 		reverse_proxy backend:8080
 	}
+	handle /overlay {
+		redir * /overlay/
+	}
+	handle /overlay/* {
+		reverse_proxy overlay:5173
+	}
 
 	handle {
 		header Access-Control-Allow-Origin "*"

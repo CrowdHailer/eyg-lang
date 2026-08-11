@@ -1,0 +1,4 @@
+#!/bin/sh
+
+npm install --package-lock=false
+npm run "$@"

@@ -14,6 +14,14 @@
 	handle /install {
 		redir https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh
 	}
+	handle /overlay {
+		redir * /overlay/
+	}
+	handle_path /overlay/* {
+		root * /var/overlay
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
 
 	handle {
 		root * /var/eyg
