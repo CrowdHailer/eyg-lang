@@ -11,7 +11,8 @@ ogre = ">= 1.1.0 and < 2.0.0"
 overlay_llm = ">= 0.1.0 and < 1.0.0"
 overlay_web = { path = "../overlay_web" }
 pal = { path = "../pal" }
-pamphlet = ">= 1.0.0 and < 2.0.0"
+# pamphlet = ">= 1.0.0 and < 2.0.0"
+pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "d0fcb68" }
 plinth = ">= 0.10.2 and < 1.0.0"
 splitter = ">= 1.2.0 and < 2.0.0"
 

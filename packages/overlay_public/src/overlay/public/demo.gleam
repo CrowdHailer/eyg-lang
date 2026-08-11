@@ -1,19 +1,12 @@
 import gleam/dict
-import gleam/option.{None}
 import oas/generator/utils
 import ogre/origin
 import overlay/llm/chat
-import overlay/llm/provider
-import overlay/llm/provider/ollama
 import overlay/llm/tool
 import overlay/web/state
 
 fn config() -> state.Config {
-  let origin = origin.https("eyg.test")
-  state.Config(
-    provider: provider.Ollama(ollama.Config(origin:, api_key: None)),
-    origin:,
-  )
+  state.Config(origin: origin.https("eyg.test"))
 }
 
 pub fn state() {

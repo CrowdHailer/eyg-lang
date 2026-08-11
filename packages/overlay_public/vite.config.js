@@ -3,7 +3,6 @@ import gleam from 'vite-gleam'
 
 export default defineConfig({
   base: '/overlay/',
-  envPrefix: 'OLLAMA_',
   plugins: [gleam()],
   server: {
     host: '0.0.0.0',

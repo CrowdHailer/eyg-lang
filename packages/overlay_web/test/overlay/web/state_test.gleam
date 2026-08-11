@@ -13,32 +13,54 @@ import oas/generator/utils
 import ogre/origin
 import overlay/helpers.{init, new_reader, submit_first_prompt}
 import overlay/llm/chat
-import overlay/llm/provider
-import overlay/llm/provider/mistral
-import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/web/provider_setup
 import overlay/web/state.{State}
 import overlay/web/tools
 import pal/system
 
-pub fn init_with_ollama_cloud_test() {
-  let api_key = "ollama-api-key"
-
-  let provider = provider.Ollama(ollama.cloud(api_key))
-  let config = state.Config(provider:, origin: origin.https("eyg.test"))
+pub fn init_loads_provider_settings_test() {
+  let config = state.Config(origin: origin.https("eyg.test"))
   let #(state, actions) = state.init(config)
-  let assert [_] = actions
-  assert provider == state.llm.provider
+  let assert [system.GetSessionStorageItem("overlay.llm.provider", _), _] =
+    actions
+  assert True == state.provider_setup.restoring
 }
 
-pub fn can_select_new_llm_test() {
-  let state = init()
-  let provider = provider.Mistral(mistral.Config(api_key: "123"))
-  let model = "madeup-mistral"
-  let llm = provider.Llm(provider:, model:)
-  let #(state, actions) = state.update(state, state.SelectLlm(llm))
+pub fn provider_setup_selects_new_llm_test() {
+  let config = state.Config(origin: origin.https("eyg.test"))
+  let #(state, _) = state.init(config)
+  let #(state, actions) =
+    state.update(
+      state,
+      state.ProviderSetupMessage(provider_setup.SessionSettingsLoaded(
+        "mistral",
+        "mistral-small-latest",
+        "test-key",
+      )),
+    )
   assert [] == actions
-  assert llm == state.llm
+  assert "mistral-small-latest" == state.llm.model
+  assert True == state.provider_setup.configured
+}
+
+pub fn submit_without_provider_opens_settings_test() {
+  let config = state.Config(origin: origin.https("eyg.test"))
+  let #(state, _) = state.init(config)
+  let #(state, _) =
+    state.update(
+      state,
+      state.ProviderSetupMessage(provider_setup.SessionSettingsLoaded(
+        "",
+        "",
+        "",
+      )),
+    )
+  let #(state, actions) = state.update(state, state.UserSubmittedPrompt)
+
+  assert [] == actions
+  assert True == state.provider_setup.settings_open
+  let assert Some(_) = state.provider_setup.error
 }
 
 // input is separate component
@@ -174,11 +196,12 @@ pub fn denied_error_from_provider_test() {
   let #(state, actions) = submit_first_prompt("hello")
   let assert [system.FetchStreamResponse(_request, resume)] = actions
   let response =
-    Ok(response.new(400) |> response.set_body(new_reader([], Ok(Nil))))
+    Ok(response.new(401) |> response.set_body(new_reader([], Ok(Nil))))
   let assert system.Done(message) = resume(response)
   let #(state, actions) = state.update(state, message)
   assert [] == actions
-  let assert Some(_) = state.input_error
+  assert state.Waiting == state.status
+  assert Some("Provider rejected the API token (401).") == state.input_error
 }
 
 pub fn stream_finished_while_not_streaming_test() {

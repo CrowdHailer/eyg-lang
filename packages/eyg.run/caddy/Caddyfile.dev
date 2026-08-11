@@ -17,7 +17,11 @@
 	handle /overlay/* {
 		reverse_proxy overlay:5173
 	}
-
+	handle /api/chat {
+		reverse_proxy https://ollama.com {
+			header_up Host ollama.com
+		}
+	}
 	handle {
 		header Access-Control-Allow-Origin "*"
 		reverse_proxy frontend:8080

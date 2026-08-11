@@ -10,15 +10,16 @@ import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
 import overlay/public/input
+import overlay/public/provider_setup as provider_view
 import overlay/web/state
 import overlay/web/view
 import pamphlet
 import pamphlet/lustre
 import splitter
 
-pub fn render(state: state.State) {
+pub fn render(model: state.State) {
   // let state = demo()
-  let messages = view.messages(state)
+  let messages = view.messages(model)
   h.div([a.class("layout")], [
     h.div([a.class("chat")], [
       h.header(
@@ -28,6 +29,7 @@ pub fn render(state: state.State) {
         ],
         [
           h.h1([a.class("impact-heading")], [h.text("Overlay")]),
+          provider_view.render(model),
         ],
       ),
       case messages {
@@ -35,15 +37,15 @@ pub fn render(state: state.State) {
         history ->
           h.div(
             [a.class("messages")],
-            list.flat_map(history, render_chat(_, state.expanded)),
+            list.flat_map(history, render_chat(_, model.expanded)),
           )
       },
-      case state.input_error {
+      case model.input_error {
         Some(error) -> h.div([a.class("failure-message")], [h.text(error)])
         None -> element.none()
       },
       input.render(
-        state.input,
+        model.input,
         "Ask anything...",
         state.UserUpdatedInput,
         state.UserSubmittedPrompt,

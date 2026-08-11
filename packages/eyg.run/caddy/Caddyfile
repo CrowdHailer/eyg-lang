@@ -17,6 +17,11 @@
 	handle /overlay {
 		redir * /overlay/
 	}
+	handle /api/chat {
+		reverse_proxy https://ollama.com {
+			header_up Host ollama.com
+		}
+	}
 	handle_path /overlay/* {
 		root * /var/overlay
 		try_files {path} {path}/index.html /index.html

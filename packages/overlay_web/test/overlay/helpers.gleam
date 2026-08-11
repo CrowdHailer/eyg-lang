@@ -9,9 +9,8 @@ import gleam/option.{None, Some}
 import gleam/string
 import javascript/mutable_reference
 import ogre/origin
-import overlay/llm/provider
-import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/web/provider_setup
 import overlay/web/state
 
 pub fn new_reader(items, tail) {
@@ -94,15 +93,18 @@ pub fn submit_first_prompt(prompt) {
 
 // init default
 pub fn init() {
-  let config =
-    state.Config(
-      provider: provider.Ollama(ollama.Config(
-        origin: origin.https("eyg.test"),
-        api_key: None,
-      )),
-      origin: origin.https("eyg.test"),
-    )
+  let config = state.Config(origin: origin.https("eyg.test"))
   let #(state, actions) = state.init(config)
-  let assert [_] = actions
+  let assert [_, _] = actions
+  let #(state, actions) =
+    state.update(
+      state,
+      state.ProviderSetupMessage(provider_setup.SessionSettingsLoaded(
+        "ollama",
+        "qwen3.5:397b",
+        "test-key",
+      )),
+    )
+  assert [] == actions
   state
 }

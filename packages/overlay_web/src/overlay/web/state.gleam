@@ -1,7 +1,9 @@
 import castor
 import eyg/analysis/type_/binding/debug as t_debug
 import eyg/hub/cache
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state as istate
+import eyg/interpreter/value as v
 import eyg/parser/parser as _
 import gleam/http/response.{Response}
 import gleam/int
@@ -15,19 +17,22 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/web/provider_setup
 import overlay/web/tools
 import pal/system
 import touch_grass/harness/browser as harness
+import touch_grass/http
 import touch_grass/interface
 
 pub type Config {
-  Config(provider: provider.Provider, origin: origin.Origin)
+  Config(origin: origin.Origin)
 }
 
 // The system prompt and tools are not part of the state as they are built from readme and always one tool
 pub type State {
   State(
     llm: provider.Llm,
+    provider_setup: provider_setup.State,
     status: AgentStatus,
     history: List(chat.Message(tool.Call)),
     input: String,
@@ -51,11 +56,16 @@ pub type AgentStatus {
 }
 
 pub fn new(config: Config) -> State {
-  let Config(provider:, origin:) = config
-  let llm = provider.Llm(provider:, model: default_model(provider))
+  let Config(origin:) = config
+  let llm =
+    provider.Llm(
+      provider: provider.Ollama(ollama.Config(origin:, api_key: None)),
+      model: "",
+    )
   let cache = cache.ready()
   State(
     llm:,
+    provider_setup: provider_setup.new(),
     status: Waiting,
     history: [],
     input: "",
@@ -67,17 +77,13 @@ pub fn new(config: Config) -> State {
   )
 }
 
-fn default_model(provider) {
-  case provider {
-    provider.Ollama(ollama.Config(api_key: None, ..)) -> "qwen3.5:35b"
-    provider.Ollama(ollama.Config(api_key: Some(_), ..)) -> "qwen3.5:397b-cloud"
-    provider.Mistral(_) -> "ministral-3b-2512"
-  }
-}
-
 pub fn init(config) {
-  new(config)
-  |> flush()
+  let state = new(config)
+  let #(_, provider_effects) = provider_setup.init()
+  let #(state, effects) = flush(state)
+  let provider_effects =
+    list.map(provider_effects, system.map(_, ProviderSetupMessage))
+  #(state, list.append(provider_effects, effects))
 }
 
 pub type Effect(t) {
@@ -103,7 +109,7 @@ fn flush(state: State) {
 }
 
 pub type Message {
-  SelectLlm(provider.Llm)
+  ProviderSetupMessage(provider_setup.Message)
   UserUpdatedInput(String)
   UserSubmittedPrompt
   LlmStartedStreaming(reader: system.Reader)
@@ -125,17 +131,38 @@ pub fn update(
   message: Message,
 ) -> #(State, List(system.Effect(Message))) {
   case message {
-    SelectLlm(llm) -> {
-      let state = State(..state, llm:)
-      #(state, [])
+    ProviderSetupMessage(message) -> {
+      let can_save = case state.status {
+        Waiting -> True
+        _ -> False
+      }
+      let #(setup, actions, llm) =
+        provider_setup.update(
+          state.provider_setup,
+          message,
+          state.origin,
+          can_save,
+        )
+      let state = State(..state, provider_setup: setup)
+      let state = case llm {
+        Some(llm) -> State(..state, llm:)
+        None -> state
+      }
+      let actions = list.map(actions, system.map(_, ProviderSetupMessage))
+      #(state, actions)
     }
     UserUpdatedInput(input) -> {
       let state = State(..state, input:)
       #(state, [])
     }
     UserSubmittedPrompt ->
-      case state.status {
-        Waiting -> {
+      case state.provider_setup.configured, state.status {
+        False, _ -> {
+          let provider_setup =
+            provider_setup.require_configuration(state.provider_setup)
+          #(State(..state, provider_setup:), [])
+        }
+        True, Waiting -> {
           case string.trim(state.input) {
             "" -> #(State(..state, input_error: Some("")), [])
             input -> {
@@ -146,7 +173,7 @@ pub fn update(
             }
           }
         }
-        _ -> {
+        True, _ -> {
           let state =
             State(..state, input_error: Some("Cant send another message"))
           #(state, [])
@@ -201,7 +228,7 @@ pub fn update(
       }
     }
     LlmStreamFinished(Error(reason)) -> {
-      let state = State(..state, input_error: Some(reason))
+      let state = State(..state, status: Waiting, input_error: Some(reason))
       #(state, [])
     }
     UserClickedExpand(index) -> {
@@ -242,6 +269,13 @@ pub fn update(
   }
 }
 
+pub fn can_save_provider(state: State) {
+  case state.provider_setup.restoring, state.status {
+    False, Waiting -> True
+    _, _ -> False
+  }
+}
+
 // cache state doesn't update during the eval but needs to resume later if everything fetched at the beginning
 
 fn current_context(state) {
@@ -279,9 +313,12 @@ fn fetch_completion(state, messages) {
 
   case response {
     Ok(Response(200, body:, ..)) -> LlmStartedStreaming(body)
-    Ok(Response(status:, body: _, ..)) -> {
-      LlmStreamFinished(Error("bad response" <> int.to_string(status)))
-    }
+    Ok(Response(status: 401, body: _, ..)) ->
+      LlmStreamFinished(Error("Provider rejected the API token (401)."))
+    Ok(Response(status:, body: _, ..)) ->
+      LlmStreamFinished(Error(
+        "Provider returned HTTP " <> int.to_string(status) <> ".",
+      ))
     Error(reason) -> LlmStreamFinished(Error(string.inspect(reason)))
   }
   |> system.Done
@@ -303,12 +340,17 @@ fn stream_next_chunk(provider, reader, remaining) {
 
 fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
   let tools = [spec()]
-  let context = provider.Context(system_prompt: system_prompt(), tools:)
+  let context =
+    provider.Context(system_prompt: system_prompt(state.origin), tools:)
   let history = list.append(messages, state.history) |> list.reverse
   provider.stream_completion_request(state.llm, context, history)
 }
 
-fn system_prompt() {
+fn system_prompt(origin: origin.Origin) -> String {
+  let scheme = http.scheme_to_eyg(origin.scheme)
+  let host = v.String(origin.host)
+  let port = v.option(origin.port, v.Integer)
+
   "You are an expery automation assistant.
 You help users by executing EYG scripts to interact with the users system.
 DO NOT guess any function of effects. Only use what you have seen explained and use guide to learn more about writing EYG code.
@@ -321,9 +363,9 @@ ALWAYS fetch the EYG syntax guide before writing scripts
 ```eyg
 let request = {
   method: GET({}),
-  scheme: HTTP({}),
-  host: \"localhost\",
-  port: Some(5173),
+  scheme: " <> simple_debug.inspect(scheme) <> ",
+  host: " <> simple_debug.inspect(host) <> ",
+  port: " <> simple_debug.inspect(port) <> ",
   path: \"/guides/eyg-syntax-guide.md\",
   query: None({}),
   headers: [],
@@ -361,8 +403,7 @@ This environment has the following effects
       <> t_debug.mono(lower_type)
     })
     |> string.join("\n"),
-  )
-  <> "
+  ) <> "
 
 Remember to always use perform to call an effect.
 
