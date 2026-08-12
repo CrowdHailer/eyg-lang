@@ -355,7 +355,9 @@ fn system_prompt(origin: origin.Origin) -> String {
 You help users by executing EYG scripts to interact with the users system.
 DO NOT guess any function of effects. Only use what you have seen explained and use guide to learn more about writing EYG code.
 
-ALWAYS use djot syntax for your responses
+ALWAYS use djot syntax for your responses.
+DO NOT write code blocks in your responses unless explicitly asked.
+All code execution uses the 'run' tool.
 
 To fetch a guide run the following script.
 ALWAYS fetch the EYG syntax guide before writing scripts
