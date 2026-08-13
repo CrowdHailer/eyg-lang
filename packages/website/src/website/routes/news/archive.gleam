@@ -70,6 +70,170 @@ I would like to build a scriptable task list or add scripting to a [game](https:
 ",
   ),
   Edition(
+    "2026-08-14",
+    "Generating programs to look for the rest of the soundness bugs",
+    "
+Fixing the two holes in `!fix` raised the obvious question: what else is in there?
+Reading the rules again only finds the bugs you can already imagine, so this time the search is automatic.
+
+`eyg_analysis` 1.4.0 is the result, along with a new package in the repository that does the searching.
+
+## The property
+
+Every way eval can fail is a type error.
+There is no null, no exception, no partial function that gives up on some input.
+So the property to test is short.
+*A program that type checks in a pure context runs to a value of that type, or does not terminate.*
+
+Non termination is the one honest outcome that is not a value, so eval gets a fixed amount of fuel and a program that runs out is set aside.
+The value that comes back is checked against the type as well, because a program that returns a String where the analysis promised an Integer has not failed yet, it will fail later in a larger program.
+
+## Generating programs worth running
+
+Generating random programs finds nothing.
+About 199 in 200 are rejected by the analysis, and the two hundredth is something like `5`.
+The programs where the interesting questions live, a recursive function built under one handler and called under another, are never reached at all.
+
+So the generator builds programs from the type rules instead.
+It takes the type of every builtin from the analysis' own table, and the shapes inference gives to lambdas, records, unions, `!fix` and handlers, and produces programs that are well typed by construction.
+The analysis accepting them proves nothing, that is what they were built for.
+Any of them failing to run means a rule promises something eval does not honour.
+
+The part that matters is that generation is indexed by the effects allowed at each point.
+A function type carries its own effect row, so the generator can build a function that performs `Log` in a pure part of a program, pass it around, and call it somewhere `Log` is handled.
+That is the shape both `!fix` bugs were hiding in.
+
+Twenty thousand programs later, the search is quiet.
+It found one thing on the way.
+
+## A record cannot have two fields with the same name
+
+```
+> /type {a: 1, a: \"s\"}
+{a: Integer, a: String}
+
+> {a: 1, a: \"s\"}
+{a: 1}
+```
+
+The analysis describes a record with two `a` fields. The value has one.
+
+A record in EYG is a map from label to value, the same shape a dag-json map has, and a map has one entry per key.
+The type system had been treating rows as scoped labels, where a repeated label shadows the one behind it, which is a coherent design, but not the one the runtime implements.
+No program can crash on this, `select` and `overwrite` both reach the first of the two rows, so the second is unreachable rather than dangerous.
+It is still the analysis describing a value that does not exist, which is the thing the analysis exists not to do.
+
+Records that name a label twice are now rejected.
+Unions are left as they are: a union value carries one tag, and `case` peels one row at a time, so `[Ok: Integer | Ok: String]` is a real type, the second row being what the otherwise branch of a match on `Ok` receives.
+Products need every field they name, sums need one, which is what makes the same row legal in one and not the other.
+That is now written down in the [specification](https://github.com/CrowdHailer/eyg-lang/blob/main/spec/README.md).
+
+## Where this leaves things
+
+Three bugs, all in the gap between a rule and what eval does with it.
+The search now runs as part of the test suite, so the next change to the analysis or to eval gets checked against several thousand programs.
+
+The generator has blind spots I know about.
+It uses a fixed pair of effects, so two handlers for the same effect always agree about the types it carries, and the only polymorphism it reaches is through a handful of let bound templates, `(x) -> { x }` and `(r) -> { r.a }` among them.
+Both are worth widening, and if you would like to point it at something, the package is `packages/soundness` and every counterexample it prints comes with the program that caused it.
+",
+  ),
+
+  Edition(
+    "2026-08-13",
+    "Two soundness holes in the fix builtin",
+    "
+EYG aspires to type soundness.
+If the analyzer accepts a program then running it should never fail with a type error.
+Recursion is the one place that promise was broken, in two separate ways.
+
+Both are fixed in `eyg_analysis` 1.3.0.
+Programs that were already correct are unaffected, every package in this repository type checks exactly as it did before.
+
+## Recursion in EYG
+
+EYG has no named function definitions and therefore no way for a function to name itself.
+Recursion is built from the `!fix` builtin, which passes a function the ability to call itself.
+
+```eyg
+let factorial = !fix((self, n) -> {
+  match !int_compare(n, 0) {
+    Gt(_) -> { !int_multiply(n, self(!int_subtract(n, 1))) }
+    | (_) -> { 1 }
+  }
+})
+factorial(5)
+```
+
+`!fix` takes a constructor, here `(self) -> (n) -> ...`, and hands it the finished function.
+At runtime the value handed over is `fixed(constructor)`.
+Applying that value evaluates `constructor(self)` all over again and applies the result to the argument.
+Two facts follow, and the old type respected neither of them.
+
+## A fixed point that is not a function
+
+The type of `!fix` used to be `((a) -> a) -> a`, the standard fixed point type, with nothing said about `a`.
+Nothing forced the constructor to build a function, so this type checked.
+
+```
+> /type !fix((x) -> { !int_add(x, 1) })
+Integer
+
+> !fix((x) -> { !int_add(x, 1) })
+error: unexpected term, expected: Integer got: Partial(Builtin2(\"fixed\"), fn(x) { ... })
+```
+
+The analyzer says `Integer` and eval disagrees, because `x` is the self reference, which is always a function.
+Thanks to [Ray Myers](https://github.com/raymyers) who found this while proving soundness of EYG in the Lean prover and [reported it](https://github.com/CrowdHailer/eyg-lang/issues/97).
+
+The self reference is a function, so the value built from it has to be a function too.
+
+```
+!fix : (((a) -> b) -> (a) -> b) -> (a) -> b
+```
+
+Every recursive function ever written in EYG already has this shape.
+
+## Effects escaping through the constructor
+
+Looking for more of the same class turned up a second hole, this time in the effect row.
+
+Because applying the self reference runs the constructor again, an effect performed by the constructor happens once for every recursive call.
+The old type only accounted for it once, where `!fix` was called, so a handler installed around the definition made the effect vanish from the type of a function that still performs it.
+
+```eyg
+let f = handle Log((lift, resume) -> { resume({}) }, (_) -> {
+  !fix((self) -> {
+    let _ = perform Log({})
+    let loop = (n) -> { match !int_compare(n, 0) {
+      Gt(_) -> { self(!int_subtract(n, 1)) }
+      | (_) -> { 0 }
+    } }
+    loop
+  })
+})
+f(3)
+```
+
+That program checked as `Integer` and then died with `unhandled effect Log`.
+
+The fix is to require a pure constructor.
+The alternative, tying the effects of the constructor to the effects of the function it builds, is sound as well but it makes every effectful recursive function declare its effects where it is defined rather than where it is called.
+A constructor that only wraps a function in another function, which is what every use of `!fix` looks like, is pure already.
+
+## Semantics, written down
+
+The lesson from both holes is the same.
+The constructor is not called once to build a value, it is called again on every recursive step.
+
+That is now recorded in the [builtins reference](https://eyg.run/guides/builtins-reference) as part of the definition of `!fix` rather than left as an accident of the interpreter.
+If you have code where the constructor does real work before returning the function, move that work outside `!fix`, otherwise it is repeated on every recursive call.
+
+The hunt for the rest of the class continues, with a generator building random programs and comparing what the analyzer says against what eval does.
+",
+  ),
+
+  Edition(
     "2026-05-24",
     "A host of CLI improvements, new guides and new effects",
     "

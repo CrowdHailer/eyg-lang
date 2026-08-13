@@ -1,0 +1,17 @@
+name = "soundness"
+version = "1.0.0"
+target = "javascript"
+
+description = "Property tests that look for programs the analysis accepts and eval rejects."
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
+eyg_interpreter = ">= 6.0.0 and < 7.0.0"
+eyg_ir = ">= 2.2.0 and < 3.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+
+[javascript]
+runtime = "bun"
