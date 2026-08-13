@@ -348,6 +348,58 @@ pub fn builtin_test() {
   |> should.equal([#(Error(error.MissingBuiltin("not_a_thing")), "0", "")])
 }
 
+pub fn fix_test() {
+  "!fix"
+  |> calc(t.Empty)
+  |> should.equal([
+    ok("(((0 <..1>) -> 2, 0 <..1>) -> 2, 0 <..1>) -> 2", ""),
+  ])
+
+  "!fix((self, x) -> { !int_add(x, 1) })"
+  |> calc(t.Empty)
+  |> list.first
+  |> should.equal(Ok(ok("(Integer) -> Integer", "")))
+}
+
+pub fn fix_of_non_function_test() {
+  "!fix((x) -> { !int_add(x, 1) })"
+  |> calc(t.Empty)
+  |> list.first
+  |> should.equal(
+    Ok(#(
+      Error(error.TypeMismatch(t.Integer, t.Fun(t.Var(0), t.Var(1), t.Var(2)))),
+      "12",
+      "",
+    )),
+  )
+}
+
+pub fn recursive_function_test() {
+  "!fix((self, n) -> {
+    match !int_compare(n, 0) {
+      Gt(_) -> { !int_multiply(n, self(!int_subtract(n, 1))) }
+      | (_) -> { 1 }
+    }
+  })"
+  |> calc(t.Empty)
+  |> list.first
+  |> should.equal(Ok(ok("(Integer) -> Integer", "")))
+}
+
+// Applying the self reference runs the constructor again, so an effectful
+// constructor performs its effects on every recursive call, where the type of
+// the built function does not describe them. The constructor has to be pure.
+pub fn fix_of_effectful_constructor_test() {
+  "!fix((self) -> {
+    let _ = perform Log(1)
+    let loop = (x) -> { x }
+    loop
+  })"
+  |> calc(t.EffectExtend("Log", #(t.Integer, t.unit), t.Empty))
+  |> list.first
+  |> should.equal(Ok(#(Error(error.MissingRow("Log")), "15", "")))
+}
+
 // (x) -<Log String {}, Alert String 0, ..1> List(x)
 pub fn perform_test() {
   let state = j.new_state()

@@ -490,6 +490,15 @@ pub fn case_(label) {
   pure2(branch, otherwise, exec)
 }
 
+// The value built by fix is always applied to the self reference, which at
+// runtime is a function. Therefore the fixed value must be a function,
+// `((a) -> b)` and the constructor has type `((a) -> b) -> ((a) -> b)`.
+// The constructor itself is pure.
+pub fn fix() {
+  let self = t.Fun(q(0), q(1), q(2))
+  t.Fun(t.Fun(self, t.Empty, self), t.Empty, self)
+}
+
 pub fn nocases() {
   pure1(t.Union(t.Empty), q(0))
 }
@@ -526,8 +535,9 @@ pub fn builtins() {
 
     // debug is an effect because the format is not fully specified
     // #("debug", pure1(q(0), t.String)),
-    // if the passed in constructor raises an effect then fix does too
-    #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
+    // the self reference passed to the constructor is always a function,
+    // so the fixed value must be a function too
+    #("fix", fix()),
     // TODO do we want a never type
     #("never", pure1(t.Never, q(1))),
 
