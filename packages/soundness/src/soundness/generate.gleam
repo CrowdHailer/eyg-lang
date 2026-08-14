@@ -3,9 +3,10 @@
 //// The programs are well scoped, every variable is bound, but they are not
 //// well typed. The analysis is the oracle that decides which of them count,
 //// so a generated program that does not type check is simply discarded.
-//// Builtins and the nodes that take arguments, `Case`, `Handle`, `Extend` and
-//// friends, are always generated fully applied. A partially applied `Case` is
-//// a valid program but it is a value, and values do not run.
+//// Every reference-free expression form accepted by analysis is reachable.
+//// Vacant is deliberately excluded because analysis rejects it as incomplete,
+//// and references need resolution before they can be evaluated. Primitives
+//// and builtins may be bare, partially applied, or fully applied.
 
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/ir/tree as ir
@@ -71,6 +72,24 @@ fn constants() {
   [#(4, Int), #(2, Str), #(1, Bin), #(2, EmptyList), #(2, EmptyRecord)]
 }
 
+/// Every IR primitive that is not a literal or a general language form.
+///
+/// The number is its full arity. Generation chooses any arity from zero up to
+/// this number, so bare and partially applied primitives are reachable too.
+pub fn primitives() {
+  [
+    #(ir.cons(), 2),
+    #(ir.extend("a"), 2),
+    #(ir.select("a"), 1),
+    #(ir.overwrite("a"), 2),
+    #(ir.tag("Ok"), 1),
+    #(ir.case_("Ok"), 3),
+    #(ir.nocases(), 1),
+    #(ir.perform("Log"), 1),
+    #(ir.handle("Log"), 2),
+  ]
+}
+
 type Leaf {
   Var
   Int
@@ -89,21 +108,20 @@ type Form {
 }
 
 fn forms() {
-  [
-    #(6, Function),
-    #(8, Application),
-    #(6, Binding),
-    #(3, Applied(ir.Cons, 2)),
-    #(3, Applied(ir.Extend("a"), 2)),
-    #(3, Applied(ir.Select("a"), 1)),
-    #(2, Applied(ir.Overwrite("a"), 2)),
-    #(3, Applied(ir.Tag("Ok"), 1)),
-    #(3, Applied(ir.Case("Ok"), 3)),
-    #(1, Applied(ir.NoCases, 1)),
-    #(3, Applied(ir.Perform("Log"), 1)),
-    #(4, Applied(ir.Handle("Log"), 2)),
-    #(10, AppliedBuiltin),
-  ]
+  let primitives =
+    list.map(primitives(), fn(primitive) {
+      let #(expression, arity) = primitive
+      #(3, Applied(expression.0, arity))
+    })
+  list.append(
+    [
+      #(6, Function),
+      #(8, Application),
+      #(6, Binding),
+      #(10, AppliedBuiltin),
+    ],
+    primitives,
+  )
 }
 
 fn branch(seed, scope, size, depth) {
@@ -129,10 +147,12 @@ fn branch(seed, scope, size, depth) {
     }
     Applied(expression, arity) -> {
       let #(expression, seed) = relabel(seed, expression)
+      let #(arity, seed) = random.int(seed, arity + 1)
       applied(seed, scope, size, depth, #(expression, Nil), arity)
     }
     AppliedBuiltin -> {
       let #(#(name, arity), seed) = random.pick(seed, builtins())
+      let #(arity, seed) = random.int(seed, arity + 1)
       applied(seed, scope, size, depth, ir.builtin(name), arity)
     }
   }

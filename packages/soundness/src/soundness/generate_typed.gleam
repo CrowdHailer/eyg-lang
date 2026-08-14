@@ -52,9 +52,19 @@ pub fn everything() {
 }
 
 pub fn program(seed, config, size) {
-  let #(type_, seed) = sample_type(seed, config, 2)
-  let #(node, seed) = term(seed, config, Scope([], []), type_, [], size)
-  #(node, type_, seed)
+  let #(choice, seed) = random.int(seed, 4)
+  case choice {
+    0 -> {
+      let #(#(name, _scheme), seed) = random.pick(seed, j.builtins())
+      let assert Ok(generated) = builtin_program(seed, config, size, name)
+      generated
+    }
+    _ -> {
+      let #(type_, seed) = sample_type(seed, config, 2)
+      let #(node, seed) = term(seed, config, Scope([], []), type_, [], size)
+      #(node, type_, seed)
+    }
+  }
 }
 
 /// Variables of a known type, and variables bound to a polymorphic function.
@@ -140,7 +150,7 @@ pub fn sample_type(seed, config: Config, depth) {
       }
     }
     False -> {
-      let #(choice, seed) = random.int(seed, 9)
+      let #(choice, seed) = random.int(seed, 16)
       case choice {
         0 -> #(t.Integer, seed)
         1 -> #(t.String, seed)
@@ -160,6 +170,28 @@ pub fn sample_type(seed, config: Config, depth) {
           let #(label, seed) = random.pick(seed, tags)
           #(t.union([#(label, inner)]), seed)
         }
+        7 -> #(t.boolean, seed)
+        8 -> #(
+          t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)]),
+          seed,
+        )
+        9 -> #(t.result(t.Integer, t.unit), seed)
+        10 -> #(t.result(t.String, t.unit), seed)
+        11 -> #(
+          t.record([#("head", t.String), #("tail", t.List(t.String))]),
+          seed,
+        )
+        12 -> #(
+          t.result(t.record([#("pre", t.String), #("post", t.String)]), t.unit),
+          seed,
+        )
+        13 -> #(
+          t.result(
+            t.record([#("head", t.Integer), #("tail", t.List(t.Integer))]),
+            t.unit,
+          ),
+          seed,
+        )
         _ -> {
           let #(argument, seed) = sample_type(seed, config, depth - 1)
           let #(return, seed) = sample_type(seed, config, depth - 1)
@@ -280,6 +312,7 @@ type Form {
   Select
   Match
   Cons
+  Overwrite
   Recurse
   Handled
   Performed
@@ -291,6 +324,7 @@ fn forms(config: Config, scope: Scope(_), type_, in_scope) {
   let structural = case type_ {
     t.Fun(_, _, _) -> [#(8, Function), #(2, Literal)]
     t.List(_) -> [#(6, Cons), #(2, Literal)]
+    t.Record(t.RowExtend(_, _, _)) -> [#(3, Overwrite), #(3, Literal)]
     _ -> [#(3, Literal)]
   }
   let recursion = case config.fix, type_ {
@@ -407,6 +441,22 @@ fn build(seed, config: Config, scope, type_, ambient, size, form) {
       let #(head, seed) = term(seed, config, scope, element, ambient, size / 2)
       let #(tail, seed) = term(seed, config, scope, type_, ambient, size / 2)
       #(ir.apply(ir.apply(ir.cons(), head), tail), seed)
+    }
+    Overwrite -> {
+      let assert t.Record(t.RowExtend(label, replacement_type, tail)) = type_
+      let #(old_type, seed) = sample_type(seed, config, 1)
+      let #(replacement, seed) =
+        term(seed, config, scope, replacement_type, ambient, { size - 1 } / 2)
+      let #(record, seed) =
+        term(
+          seed,
+          config,
+          scope,
+          t.Record(t.RowExtend(label, old_type, tail)),
+          ambient,
+          { size - 1 } / 2,
+        )
+      #(ir.apply(ir.apply(ir.overwrite(label), replacement), record), seed)
     }
     Recurse -> {
       // fix is typed `((self) -> self) -> self`, the constructor is pure and
@@ -618,7 +668,8 @@ fn inhabited(type_) {
     t.Never -> False
     t.Union(t.Empty) -> False
     t.Promise(_) -> False
-    t.List(inner) -> inhabited(inner)
+    // The empty list inhabits a list regardless of its element type.
+    t.List(_) -> True
     t.Record(rows) -> inhabited(rows)
     t.RowExtend(_, value, tail) -> inhabited(value) && inhabited(tail)
     t.Fun(_, _, return) -> inhabited(return)
@@ -627,17 +678,83 @@ fn inhabited(type_) {
 }
 
 fn peel(scheme, arguments, wanted) {
-  case scheme {
-    t.Fun(argument, _effect, return) ->
-      case match(return, wanted, []) {
-        Ok(substitution) ->
-          Ok(
-            list.reverse([argument, ..arguments])
-            |> list.map(substitute(_, substitution, wanted)),
-          )
-        Error(Nil) -> peel(return, [argument, ..arguments], wanted)
+  case match(scheme, wanted, []) {
+    Ok(substitution) ->
+      Ok(
+        list.reverse(arguments)
+        |> list.map(substitute(_, substitution, wanted)),
+      )
+    Error(Nil) ->
+      case scheme {
+        t.Fun(argument, _effect, return) ->
+          peel(return, [argument, ..arguments], wanted)
+        _ -> Error(Nil)
       }
-    _ -> Error(Nil)
+  }
+}
+
+/// Generate a fully applied use of one builtin wherever its arguments are
+/// inhabited. `never` therefore remains bare, as no closed value of `Never`
+/// exists. Quantified variables are instantiated consistently with Integer
+/// and quantified effect rows are closed.
+pub fn builtin_program(seed, config, size, name) {
+  case list.key_find(j.builtins(), name) {
+    Error(Nil) -> Error(Nil)
+    Ok(scheme) -> {
+      let type_ = concrete(scheme)
+      let #(node, type_, seed) =
+        apply_inhabited(seed, config, ir.builtin(name), type_, size)
+      Ok(#(node, type_, seed))
+    }
+  }
+}
+
+fn apply_inhabited(seed, config, node, type_, size) {
+  case type_ {
+    t.Fun(argument, t.Empty, return) ->
+      case inhabited(argument) {
+        True -> {
+          let #(value, seed) =
+            term(seed, config, Scope([], []), argument, [], size / 2)
+          apply_inhabited(seed, config, ir.apply(node, value), return, size / 2)
+        }
+        False -> #(node, type_, seed)
+      }
+    _ -> #(node, type_, seed)
+  }
+}
+
+fn concrete(type_) {
+  case type_ {
+    t.Var(_) -> t.Integer
+    t.Fun(argument, effect, return) ->
+      t.Fun(concrete(argument), concrete_effect(effect), concrete(return))
+    t.List(inner) -> t.List(concrete(inner))
+    t.Record(rows) -> t.Record(concrete(rows))
+    t.Union(rows) -> t.Union(concrete(rows))
+    t.RowExtend(label, value, tail) ->
+      t.RowExtend(label, concrete(value), concrete(tail))
+    t.EffectExtend(label, #(lift, reply), tail) ->
+      t.EffectExtend(
+        label,
+        #(concrete(lift), concrete(reply)),
+        concrete_effect(tail),
+      )
+    t.Promise(inner) -> t.Promise(concrete(inner))
+    other -> other
+  }
+}
+
+fn concrete_effect(effect) {
+  case effect {
+    t.Var(_) -> t.Empty
+    t.EffectExtend(label, #(lift, reply), tail) ->
+      t.EffectExtend(
+        label,
+        #(concrete(lift), concrete(reply)),
+        concrete_effect(tail),
+      )
+    other -> other
   }
 }
 

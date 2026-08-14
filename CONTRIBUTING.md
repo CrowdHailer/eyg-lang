@@ -11,7 +11,7 @@ done
 ```
 To test all the packages on the JavaScript environment.
 ```sh
-for pkg in packages/{gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,morph,topological,touch_grass,untethered,website}; do
+for pkg in packages/{gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,morph,soundness,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
 done
 ```
@@ -19,6 +19,13 @@ Test all the eyg packages.
 ```sh
 eyg script entry.eyg
 ```
+
+### Looking for soundness bugs
+
+`packages/soundness` generates programs from the type rules and checks that
+every program the analysis accepts also runs. Its test suite is the search,
+run it like any other package. A change to the analysis or to eval should be
+run past it.
 
 ## Writing EYG packages
 
