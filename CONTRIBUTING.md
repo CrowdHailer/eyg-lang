@@ -11,7 +11,7 @@ done
 ```
 To test the core JavaScript packages. The [CI matrix](./.github/workflows/test.yml) also covers the native SDKs, browser tooling and application examples.
 ```sh
-for pkg in packages/{glasshouse,gleam_analysis,gleam_cli,gleam_compiler,gleam_compiled_runtime,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,loam,morph,otel,overlay_llm,overlay_web,plinthx,topological,touch_grass,untethered,website}; do
+for pkg in packages/{glasshouse,gleam_analysis,gleam_cli,gleam_compiler,gleam_compiled_runtime,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,loam,morph,otel,overlay_llm,overlay_web,plinthx,soundness,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
 done
 ```
@@ -24,6 +24,12 @@ packages/gleam_cli/dist/eyg script entry.eyg
 For `embed_js`, `opencode_plugin` and `pi_extension`, install their pinned JavaScript dependencies and run `gleam run -m build` before the Gleam tests. Test those bundles with both `gleam test --runtime bun` and `gleam test --runtime node`. Run `gleam run -m generate -- --check` from `packages/gleam_compiled_runtime` to verify the compiler's generated runtime.
 
 The artifact integration check owns its hub and Vite process groups and cleans them up on failure. With a local PostgreSQL instance configured through `POSTGRES_HOST`, `POSTGRES_PORT` and `POSTGRES_PASSWORD`, install browser dependencies from `packages/tracing`, regenerate bundles from `packages/overlay_puppet` with `gleam run -m bundle`, then run `gleam run -m tracing/artifact_check` from `packages/tracing`. `CHROME_BIN` selects an existing Chromium binary. The check uses local scripted model responses.
+
+### Looking for soundness bugs
+
+The soundness package generates programs from the type rules and checks that
+every program the analysis accepts also runs. Run its test suite after changing
+the analysis or interpreter.
 
 ## Writing EYG packages
 

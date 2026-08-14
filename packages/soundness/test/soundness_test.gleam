@@ -1,3 +1,4 @@
+import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/int
@@ -6,8 +7,10 @@ import gleam/list
 import gleeunit
 import gleeunit/should
 import soundness
+import soundness/generate
 import soundness/generate_typed
 import soundness/property
+import soundness/random
 
 pub fn main() {
   gleeunit.main()
@@ -29,9 +32,70 @@ pub fn typed_search_test() {
     io.println(
       "size " <> int.to_string(size) <> " " <> soundness.render(summary),
     )
+    list.each(summary.rejections, io.println)
+    summary.rejected
+    |> should.equal(0)
     summary.counterexamples
     |> should.equal([])
   })
+}
+
+/// The recursive grammar contains every expression that can be checked and
+/// evaluated directly. Variables, lambdas, application and let are general
+/// forms; literals are leaves; this is the remaining finite set of primitives.
+pub fn every_primitive_is_generated_test() {
+  generate.primitives()
+  |> list.map(fn(primitive) { primitive.0 })
+  |> should.equal([
+    ir.cons(),
+    ir.extend("a"),
+    ir.select("a"),
+    ir.overwrite("a"),
+    ir.tag("Ok"),
+    ir.case_("Ok"),
+    ir.nocases(),
+    ir.perform("Log"),
+    ir.handle("Log"),
+  ])
+}
+
+/// Do not depend on random target-type selection to exercise a builtin. Every
+/// analyzer builtin is constructed and applied as far as its inhabited inputs
+/// allow, then checked against eval.
+pub fn every_builtin_is_generated_test() {
+  let config =
+    generate_typed.Config(
+      fix: False,
+      effects: False,
+      shadowed_rows: False,
+      polymorphism: False,
+    )
+  j.builtins()
+  |> list.index_map(fn(entry, index) {
+    let #(name, _scheme) = entry
+    let assert Ok(#(source, _type, _seed)) =
+      generate_typed.builtin_program(random.seed(index + 1), config, 30, name)
+    #(name, property.check(source, fuel))
+  })
+  |> list.each(fn(result) {
+    case result {
+      #(_name, property.Sound) | #(_name, property.Exhausted) -> Nil
+      #(name, outcome) -> {
+        io.println(name <> ": " <> outcome_string(outcome))
+        panic as "generated builtin program is not sound"
+      }
+    }
+  })
+}
+
+fn outcome_string(outcome) {
+  case outcome {
+    property.Rejected(reason) -> "rejected: " <> reason
+    property.Exhausted -> "exhausted"
+    property.Sound -> "sound"
+    property.Failed(reason:, type_: _) -> "failed: " <> reason
+    property.Mismatched(value:, type_: _) -> "mismatched: " <> value
+  }
 }
 
 /// Programs built at random are nearly all rejected by the analysis, the few
