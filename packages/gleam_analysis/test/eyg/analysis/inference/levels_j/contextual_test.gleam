@@ -408,6 +408,26 @@ pub fn fix_of_effectful_constructor_test() {
   |> should.equal(Ok(#(Error(error.MissingRow("Log")), "15", "")))
 }
 
+// A record is a map from label to value, a type that names a label twice
+// describes a value that cannot be built.
+pub fn duplicate_row_test() {
+  "{a: 1, b: \"\"}"
+  |> calc(t.Empty)
+  |> list.first
+  |> should.equal(Ok(ok("{a: Integer, b: String}", "")))
+
+  let analysis = j.check(j.pure(), parse("{a: 1, a: \"\"}"))
+  j.all_errors(analysis)
+  |> list.map(fn(error) { error.1 })
+  |> list.first
+  |> should.equal(Ok(error.DuplicateRow("a")))
+
+  // The same label at two levels of nesting is a different row each time.
+  let analysis = j.check(j.pure(), parse("{a: 1, b: {a: \"\"}}"))
+  j.all_errors(analysis)
+  |> should.equal([])
+}
+
 // (x) -<Log String {}, Alert String 0, ..1> List(x)
 pub fn perform_test() {
   let state = j.new_state()

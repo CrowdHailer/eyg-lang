@@ -91,6 +91,39 @@ References are encoded as Content IDentifiers (CIDs).
 {"0": "#", "p": string, "r": integer, "l": cid}
 ```
 
+## Values
+
+### Records
+
+A record is a map from label to value, the same structure a dag-json map has,
+so a record has at most one field for any label.
+`extend` on a record that already has the label replaces the value.
+
+A record type must not name the same label twice.
+A type such as `{a: Integer, a: String}` describes a value that cannot be
+built, and every operation on the record reaches the first of the two, so the
+second is a promise nothing can keep.
+The analysis rejects programs where such a type is inferred.
+
+### Unions
+
+A union value is one tag and one value, and `case` peels one row at a time, so
+a union type may name the same label more than once.
+In `[Ok: Integer | Ok: String]` the second row is the type of the value the
+`otherwise` branch of a match on `Ok` receives.
+
+### Recursion
+
+`fix` takes a constructor and passes it the function being built.
+Applying that self reference runs the constructor again, so:
+
+- the constructor must return a function, the self reference is always one
+- the constructor must be pure, otherwise its effects are performed again on
+  every recursive call, somewhere the type of the built function cannot
+  describe
+
+Work that only needs doing once belongs outside `fix`.
+
 ## Builtins
 
 Builtins must behave the same way for all implementations.
@@ -112,4 +145,3 @@ It is possible to track use of builtins if you want these gurantees.
 For example a program without `fix` is total an guaranteed to terminate.
 It is a non-goal of the eyg libraries to support all these usecases.
 However if you have a need for them please reach out.
-

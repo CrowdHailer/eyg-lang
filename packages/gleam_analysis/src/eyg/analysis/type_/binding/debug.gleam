@@ -88,6 +88,7 @@ pub fn render_reason(reason) {
     error.UndefinedRelease(package, release, _cid) ->
       "release undefined: @" <> package <> ":" <> int.to_string(release)
     error.MissingRow(label) -> "missing row '" <> label <> "'"
+    error.DuplicateRow(label) -> "duplicate row '" <> label <> "'"
     error.TypeMismatch(expected, given) ->
       "type mismatch given: "
       <> render_type(given)
@@ -115,6 +116,8 @@ pub fn hint(reason) {
     error.UndefinedRelease(_, _, _) -> "the package release is not available"
     error.MissingRow(label) ->
       "the record or union is missing '" <> label <> "'"
+    error.DuplicateRow(label) ->
+      "a record can only have one '" <> label <> "' field"
     error.TypeMismatch(_expected, _given) ->
       "check the expression matches the expected type"
     error.Recursive ->
