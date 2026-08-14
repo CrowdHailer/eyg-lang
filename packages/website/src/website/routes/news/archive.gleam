@@ -1,6 +1,74 @@
 import website/routes/news/edition.{Edition}
 
+// I am very proud of what I built but it is a long way short of my full vision.
+// My vision includes removing the impedance missmatch between EYG and query languages such as SQL all the way up to building a new web of trust on the EYG package manager.
+
+// To clarify what EYG is about and share the principles I have.
+// The EYG project is one among many new things you could spend your attention on.
 pub const published = [
+  Edition(
+    "2026-08-14",
+    "Strong foundations, a blog post and a conference talk.",
+    "The last few months have been about building strong foundations and ergonomic improvements.
+I wrote about why I built the language, and EYG got a shoutout in a conference talk.
+This shout out wasn't even from me.
+
+## A programming language for humans
+
+I wrote a [post](https://crowdhailer.me/2026-06-08/a-programming-language-for-humans/) about why I started EYG, what it's all about and the principles I believe in.
+In summary, EYG will always be about maximising the ability of humans to get computers to work for them.
+
+This was not the only time EYG was talked about.
+Ray, who has been following EYG for a while, featured it in his [talk](https://www.youtube.com/watch?v=mZgglPK8Rg0) at the Software Should Work conference.
+
+## A collection of improvements
+
+- Run content-addressed modules and published packages directly with commands such as `eyg eval @standard` or `eyg check #abc1234`.
+
+- Imports and filesystem effects are consistent with each other and resolve from the file containing the expression.
+  If the current working directory is needed, use the new `CWD` effect.
+  This keeps the process location explicit and allows runtimes to drop the concept of a current working directory entirely.
+  The complete rules and examples are in the [file resolution guide](https://eyg.run/guides/file-resolution).
+
+- A new `eyg parse` command to print the canonical DAG-JSON IR.
+  ```sh
+  eyg parse -c '{answer: 42}'
+  // {\"0\":\"a\",\"a\":{\"0\":\"u\"},\"f\":{\"0\":\"a\",\"a\":{\"0\":\"i\",\"v\":42},\"f\":{\"0\":\"e\",\"l\":\"answer\"}}}
+  ```
+  
+- EYG programs can parse source text with the `EYGParse` effect.
+  This effect can be used to write transpilers or interpreters in EYG.
+
+- UTF-8 now works correctly in strings and comments, and the lexer is substantially faster by working on bitarrays and not strings.
+
+- Interpreter values no longer contain JavaScript promises.
+  This allows the interpreter to run on the BEAM runtime.
+  The JavaScript runtimes will reject integers outside the max safe range instead of silently rounding them.
+
+- A better foundation clarifying the role of harness, platform and system inspired by the Hardware Abstraction Layer (HAL) from the Rust ecosystem.
+  I will have more to write about this in the future.
+  If you want to dive in now check out the [pal package](https://github.com/CrowdHailer/eyg-lang/tree/main/packages/pal)
+
+## New guides
+
+A [guide for making web requests](https://eyg.run/guides/http-fetch) using the `@standard.fetch` module.
+
+The `aok` testing package now separates value assertions from expectations about effects.
+Follow the guide to [writing EYG tests](https://eyg.run/guides/writing-tests-with-aok).
+
+## One more thing
+
+I have been experimenting on a next implementation of Overlay, my agent harness.
+This time it runs EYG code in the browser, allowing the agent to use browser specific effects such as `Download`.
+
+This [video](https://vimeo.com/1217620400) shows it in action.
+You can try it at [eyg.run/overlay](https://eyg.run/overlay); you will need to bring your own API token.
+
+Both Overlay and the [editor](https://eyg.run/editor) have the same effects available to the EYG scripts because they use exactly the same harness.
+My next goal is to make some more interesting harnesses, to prove how easy it is to embed EYG in all kinds of applications.
+I would like to build a scriptable task list or add scripting to a [game](https://hashi.giacomocavalieri.me/).
+",
+  ),
   Edition(
     "2026-05-24",
     "A host of CLI improvements, new guides and new effects",
@@ -158,8 +226,6 @@ This was a large change in how the runner worked and I'm pleased to have landed 
 With the backend work to pull packages and modules completed writing useful EYG scripts is much easier.
 Once you are writing scripts the next step is to share them.
 Development priority is now to build functionality around sharing and publishing packages.
-
-
 ",
   ),
   Edition(

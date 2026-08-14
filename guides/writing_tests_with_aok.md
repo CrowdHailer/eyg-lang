@@ -31,7 +31,7 @@ let my_func = (name) -> {
 [
   {name: "addition",
     test: (_) -> {
-      let {lift: message, resume} = expect(my_func, "Bill")
+      let {lift: message, resume} = expect.print(my_func, "Bill")
       let _ = assert.equal(message, "Hello, Bob") 
       assert.equal(resume({}), {})
   }},
