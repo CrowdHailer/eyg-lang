@@ -22,7 +22,6 @@ Conventions:
 |-------------|------------------------------|--------------------------------------------------------|
 | `!equal`    | `(a, a) -> True({}) | False` | Returns `True({})` or `False({})`.                     |
 | `!fix`      | `((self) -> self) -> self`, where `self` is `(a) -> b` | Y-combinator. Use for self-recursive closures. The constructor is passed the function it builds, so it has to return a function. |
-| `!fixed`    | `(f, f)`                     | Lower-level fixed-point pair; prefer `!fix`.           |
 | `!never`    | `(Never) -> a`               | Conventionally used with `!never(perform Abort(msg))`.         |
 
 ## Integers
