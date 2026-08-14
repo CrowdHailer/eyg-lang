@@ -343,6 +343,14 @@ pub fn builtin_test() {
     #(Ok(Nil), "Integer", ""),
   ])
 
+  "match !string_split_once(\"a:b\", \":\") {
+    Ok(parts) -> { parts.pre }
+    Error(_) -> { \"\" }
+  }"
+  |> calc(t.Empty)
+  |> list.first
+  |> should.equal(Ok(ok("String", "")))
+
   "!not_a_thing"
   |> calc(t.Empty)
   |> should.equal([#(Error(error.MissingBuiltin("not_a_thing")), "0", "")])

@@ -575,7 +575,7 @@ pub fn builtins() {
       pure2(t.String, t.String, return)
     }),
     #("string_split_once", {
-      let return = t.record([#("head", t.String), #("tail", t.String)])
+      let return = t.record([#("pre", t.String), #("post", t.String)])
       pure2(t.String, t.String, t.result(return, t.unit))
     }),
     #("string_replace", pure3(t.String, t.String, t.String, t.String)),
