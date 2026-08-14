@@ -149,12 +149,76 @@ pub fn all_errors(inference) {
 
   info
   |> list.filter_map(fn(pair) {
-    let #(meta, #(result, _type, _eff, _scope)) = pair
+    let #(meta, #(result, type_, _eff, _scope)) = pair
     case result {
-      Ok(Nil) -> Error(Nil)
+      Ok(Nil) ->
+        case duplicate_row(binding.resolve(type_, bindings)) {
+          Ok(label) -> Ok(#(meta, error.DuplicateRow(label)))
+          Error(Nil) -> Error(Nil)
+        }
       Error(reason) -> Ok(#(meta, error.resolve(reason, bindings)))
     }
   })
+}
+
+/// The first label a record type names twice.
+///
+/// A record value is a map from label to value. A type that says a record has
+/// two `name` fields describes a value that cannot be built, and every
+/// operation on the record reaches the first of the two, so the second is a
+/// promise nothing can keep. Union rows are different, a value carries one
+/// tag, and `Case` peels one row at a time, so a repeated tag is meaningful
+/// there.
+pub fn duplicate_row(type_) {
+  case type_ {
+    t.Record(rows) ->
+      case repeated(rows, []) {
+        Ok(label) -> Ok(label)
+        Error(Nil) -> duplicate_in_rows(rows)
+      }
+    t.Union(rows) -> duplicate_in_rows(rows)
+    t.List(element) -> duplicate_row(element)
+    t.Promise(inner) -> duplicate_row(inner)
+    t.Fun(argument, effect, return) ->
+      case duplicate_row(argument) {
+        Ok(label) -> Ok(label)
+        Error(Nil) ->
+          case duplicate_row(effect) {
+            Ok(label) -> Ok(label)
+            Error(Nil) -> duplicate_row(return)
+          }
+      }
+    t.EffectExtend(_, #(lift, reply), tail) ->
+      case duplicate_row(lift) {
+        Ok(label) -> Ok(label)
+        Error(Nil) ->
+          case duplicate_row(reply) {
+            Ok(label) -> Ok(label)
+            Error(Nil) -> duplicate_row(tail)
+          }
+      }
+    t.RowExtend(_, value, tail) ->
+      case duplicate_row(value) {
+        Ok(label) -> Ok(label)
+        Error(Nil) -> duplicate_row(tail)
+      }
+    _ -> Error(Nil)
+  }
+}
+
+fn duplicate_in_rows(rows) {
+  duplicate_row(rows)
+}
+
+fn repeated(rows, seen) {
+  case rows {
+    t.RowExtend(label, _value, tail) ->
+      case list.contains(seen, label) {
+        True -> Ok(label)
+        False -> repeated(tail, [label, ..seen])
+      }
+    _ -> Error(Nil)
+  }
 }
 
 /// Information attached to one node. Types in status, type and effect are

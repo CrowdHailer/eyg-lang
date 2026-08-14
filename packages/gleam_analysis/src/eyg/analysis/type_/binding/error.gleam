@@ -9,6 +9,9 @@ pub type Reason {
   MissingReference(reference: ir.Reference)
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
+  /// A record is a map from label to value, so a record type that names the
+  /// same label twice describes a value that cannot exist.
+  DuplicateRow(String)
   Recursive
   SameTail(binding.Mono, binding.Mono)
 }
