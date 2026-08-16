@@ -402,6 +402,11 @@ A bare `@standard` references the latest pulled release of that package.
 Pin a version (`@standard:3`) for reproducible scripts.
 Provide a hash (`@standard:3:…`) to not require trust in the package hub.
 
+A module that is shared or published must use the pinned form. A content
+identifier promises that the same id is always the same program, and an
+unpinned reference breaks that promise the next time the package it names is
+released. The hub refuses a module that carries one.
+
 ---
 
 ## Imports

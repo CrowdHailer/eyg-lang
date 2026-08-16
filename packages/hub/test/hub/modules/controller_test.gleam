@@ -1,6 +1,7 @@
 import eyg/hub/client
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/http
 import gleam/http/request
 import gleam/json
@@ -33,6 +34,40 @@ pub fn share_fragment_is_idempotent_test() {
   assert response.status == 200
 }
 
+pub fn share_fragment_with_transitive_references_test() {
+  use context <- helpers.web_context()
+
+  let leaf = ir.integer(1)
+  let response = dispatch(client.share_module(leaf), context)
+  let assert Ok(leaf_cid) = client.share_response(response)
+
+  let middle = ir.reference(leaf_cid)
+  let response = dispatch(client.share_module(middle), context)
+  let assert Ok(middle_cid) = client.share_response(response)
+
+  let source = ir.add(ir.reference(middle_cid), ir.integer(1))
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 200
+}
+
+pub fn reject_reference_to_unshared_fragment_test() {
+  use context <- helpers.web_context()
+  let source = ir.reference(helpers.random_cid())
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 422
+  let assert Ok(body) = bit_array.to_string(response.body)
+  assert string.contains(body, "has not been shared")
+}
+
+pub fn reject_unpinned_package_reference_test() {
+  use context <- helpers.web_context()
+  let source = ir.release("standard", 0, dag_json.vacant_cid)
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 422
+  let assert Ok(body) = bit_array.to_string(response.body)
+  assert string.contains(body, "must pin the version and hash")
+}
+
 pub fn reject_invalid_json_test() {
   use context <- helpers.web_context()
   let block = <<"not json!">>
@@ -60,6 +95,8 @@ pub fn reject_unsound_fragment_test() {
   let source = ir.let_("x", ir.integer(0), ir.variable("y"))
   let response = dispatch(client.share_module(source), context)
   assert response.status == 422
+  let assert Ok(body) = bit_array.to_string(response.body)
+  assert string.contains(body, "module does not type check")
 }
 
 pub fn reject_impure_fragment_test() {
@@ -67,6 +104,8 @@ pub fn reject_impure_fragment_test() {
   use context <- helpers.web_context()
   let response = dispatch(client.share_module(source), context)
   assert response.status == 422
+  let assert Ok(body) = bit_array.to_string(response.body)
+  assert string.contains(body, "module performs effects to build its value")
 }
 
 pub fn reject_too_large_fragment_test() {
