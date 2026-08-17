@@ -1,6 +1,8 @@
+import eyg/ir/utils
 import gleam/io
 import gleam/list
 import gleam/string
+import midas/continuation.{type Continuation as K}
 import multiformats/cid/v1
 
 pub type Node(m) =
@@ -205,215 +207,69 @@ pub fn multiply(a, b) {
   apply(apply(builtin("int_multiply"), a), b)
 }
 
-pub fn get_annotation(in) {
-  let acc = do_get_annotation(in, [])
-  list.reverse(acc)
+pub fn get_annotation(node: Node(a)) {
+  fold(node, [], fn(acc, node) { continuation.return([node.1, ..acc]) })(
+    list.reverse,
+  )
 }
 
-fn do_get_annotation(in, acc) -> List(_) {
-  let #(exp, meta) = in
-  let acc = [meta, ..acc]
-  case exp {
-    Variable(_label) -> acc
-    Lambda(_label, body) -> do_get_annotation(body, acc)
-    Apply(func, arg) -> {
-      let acc = do_get_annotation(func, acc)
-      let acc = do_get_annotation(arg, acc)
-      acc
-    }
-    Let(_label, value, then) -> {
-      let acc = do_get_annotation(value, acc)
-      let acc = do_get_annotation(then, acc)
-      acc
-    }
-    Binary(_value) -> acc
-    Integer(_value) -> acc
-    String(_value) -> acc
-
-    Tail -> acc
-    Cons -> acc
-
-    Vacant -> acc
-
-    Empty -> acc
-    Extend(_label) -> acc
-    Select(_label) -> acc
-    Overwrite(_label) -> acc
-    Tag(_label) -> acc
-    Case(_label) -> acc
-    NoCases -> acc
-
-    Perform(_label) -> acc
-    Handle(_label) -> acc
-
-    Builtin(_identifier) -> acc
-    ContentReference(_identifier) -> acc
-    ReleaseReference(_package, _release, _identifier) -> acc
-    RelativeReference(_location) -> acc
-  }
-}
-
-pub fn map_annotation(
-  in: #(Expression(a), a),
-  f: fn(a) -> b,
-) -> #(Expression(b), b) {
-  let #(exp, meta) = in
-  case exp {
-    Variable(label) -> #(Variable(label), f(meta))
-    Lambda(label, body) -> {
-      let body = map_annotation(body, f)
-      #(Lambda(label, body), f(meta))
-    }
-    Apply(func, arg) -> {
-      let func = map_annotation(func, f)
-      let arg = map_annotation(arg, f)
-      #(Apply(func, arg), f(meta))
-    }
-    Let(label, value, then) -> {
-      let value = map_annotation(value, f)
-      let then = map_annotation(then, f)
-      #(Let(label, value, then), f(meta))
-    }
-    Binary(value) -> #(Binary(value), f(meta))
-    Integer(value) -> #(Integer(value), f(meta))
-    String(value) -> #(String(value), f(meta))
-
-    Tail -> #(Tail, f(meta))
-    Cons -> #(Cons, f(meta))
-
-    Vacant -> #(Vacant, f(meta))
-
-    Empty -> #(Empty, f(meta))
-    Extend(label) -> #(Extend(label), f(meta))
-    Select(label) -> #(Select(label), f(meta))
-    Overwrite(label) -> #(Overwrite(label), f(meta))
-    Tag(label) -> #(Tag(label), f(meta))
-    Case(label) -> #(Case(label), f(meta))
-    NoCases -> #(NoCases, f(meta))
-
-    Perform(label) -> #(Perform(label), f(meta))
-    Handle(label) -> #(Handle(label), f(meta))
-
-    Builtin(identifier) -> #(Builtin(identifier), f(meta))
-    ContentReference(identifier) -> #(ContentReference(identifier), f(meta))
-    ReleaseReference(package, release, identifier) -> #(
-      ReleaseReference(package, release, identifier),
-      f(meta),
-    )
-    RelativeReference(location:) -> #(RelativeReference(location:), f(meta))
-  }
+pub fn map_annotation(in: Node(a), f: fn(a) -> b) -> Node(b) {
+  rewrite_meta(in, fn(m) { continuation.return(f(m)) })(fn(x) { x })
 }
 
 pub fn clear_annotation(source) {
   map_annotation(source, fn(_) { Nil })
 }
 
-pub fn list_builtins(exp) {
-  do_list_builtins(exp, [])
+pub fn list_builtins(node: Node(a)) {
+  {
+    use acc, #(exp, _meta) <- fold(node, [])
+    case exp {
+      Builtin(i) -> utils.push_new(acc, i)
+      _ -> acc
+    }
+    |> continuation.return
+  }(list.reverse)
 }
 
-// do later node first in Let/Call statements so no need to reverse
-fn do_list_builtins(exp, found) {
-  let #(exp, _meta) = exp
-  case exp {
-    Builtin(identifier) ->
-      case list.contains(found, identifier) {
-        True -> found
-        False -> [identifier, ..found]
+pub fn list_references(node: Node(a)) -> List(v1.Cid) {
+  {
+    use acc, #(exp, _meta) <- fold(node, [])
+    case exp {
+      ReleaseReference(_, _, i) | ContentReference(i) -> utils.push_new(acc, i)
+      _ -> acc
+    }
+    |> continuation.return
+  }(list.reverse)
+}
+
+pub fn list_named_references(node: Node(a)) -> List(#(String, Int, v1.Cid)) {
+  {
+    use acc, #(exp, _meta) <- fold(node, [])
+    case exp {
+      ReleaseReference(p, r, i) -> utils.push_new(acc, #(p, r, i))
+      _ -> acc
+    }
+    |> continuation.return
+  }(list.reverse)
+}
+
+pub fn map_release(
+  node: Node(m),
+  mapper: fn(String, Int, v1.Cid) -> #(String, Int, v1.Cid),
+) -> Node(m) {
+  rewrite(node, fn(node) {
+    let #(exp, meta) = node
+    case exp {
+      ReleaseReference(package, release, identifier) -> {
+        let #(package, release, identifier) =
+          mapper(package, release, identifier)
+        #(ReleaseReference(package, release, identifier), meta)
       }
-    Let(_label, value, then) -> {
-      let found = do_list_builtins(then, found)
-      do_list_builtins(value, found)
+      _ -> node
     }
-    Lambda(_label, body) -> do_list_builtins(body, found)
-    Apply(func, arg) -> {
-      let found = do_list_builtins(arg, found)
-      do_list_builtins(func, found)
-    }
-    _ -> found
-  }
-}
-
-pub fn list_references(exp) {
-  do_list_references(exp, [])
-}
-
-// do later node first in Let/Call statements so no need to reverse
-fn do_list_references(exp, found) {
-  let #(exp, _meta) = exp
-  case exp {
-    ReleaseReference(_, _, identifier) ->
-      case list.contains(found, identifier) {
-        True -> found
-        False -> [identifier, ..found]
-      }
-    ContentReference(identifier) ->
-      case list.contains(found, identifier) {
-        True -> found
-        False -> [identifier, ..found]
-      }
-    Let(_label, value, then) -> {
-      let found = do_list_references(then, found)
-      do_list_references(value, found)
-    }
-    Lambda(_label, body) -> do_list_references(body, found)
-    Apply(func, arg) -> {
-      let found = do_list_references(arg, found)
-      do_list_references(func, found)
-    }
-    _ -> found
-  }
-}
-
-pub fn list_named_references(exp) {
-  do_list_named_references(exp, [])
-}
-
-// do later node first in Let/Call statements so no need to reverse
-fn do_list_named_references(exp, found) {
-  let #(exp, _meta) = exp
-  case exp {
-    ReleaseReference(package, release, identifier) ->
-      case list.contains(found, #(package, release, identifier)) {
-        True -> found
-        False -> [#(package, release, identifier), ..found]
-      }
-    Let(_label, value, then) -> {
-      let found = do_list_named_references(then, found)
-      do_list_named_references(value, found)
-    }
-    Lambda(_label, body) -> do_list_named_references(body, found)
-    Apply(func, arg) -> {
-      let found = do_list_named_references(arg, found)
-      do_list_named_references(func, found)
-    }
-    _ -> found
-  }
-}
-
-pub fn map_release(exp, mapper) {
-  let #(exp, meta) = exp
-  case exp {
-    ReleaseReference(package, release, identifier) -> {
-      let #(package, release, identifier) = mapper(package, release, identifier)
-      #(ReleaseReference(package, release, identifier), meta)
-    }
-    Let(label, value, then) -> {
-      let value = map_release(value, mapper)
-      let then = map_release(then, mapper)
-      #(Let(label, value, then), meta)
-    }
-    Lambda(label, body) -> {
-      let body = map_release(body, mapper)
-      #(Lambda(label, body), meta)
-    }
-    Apply(func, arg) -> {
-      let func = map_release(func, mapper)
-      let arg = map_release(arg, mapper)
-      #(Apply(func, arg), meta)
-    }
-    _ -> #(exp, meta)
-  }
+    |> continuation.return()
+  })(fn(x) { x })
 }
 
 /// The variables that are free in this expressions.
@@ -517,4 +373,130 @@ pub fn do_gather_snippets(node, comments, assigns, acc) {
 // returnes reversed assignments
 pub fn gather_snippets(source) {
   do_gather_snippets(source, [], [], [])
+}
+
+/// Return the children of the given node in canonical order.
+pub fn children(node: Node(a)) -> List(Node(a)) {
+  let #(exp, _meta) = node
+  case exp {
+    Lambda(label: _, body:) -> [body]
+    Apply(func:, argument:) -> [func, argument]
+    Let(label: _, definition:, body:) -> [definition, body]
+    _ -> []
+  }
+}
+
+/// Apply a function f to the children of an expression.
+/// 
+/// Note `map_children` works over expressions, not nodes.
+/// This allows the returned metadata type to be transformed by the `f`.
+/// The parent metadata is mapped explicitly when rebuilding `Node(b)`
+pub fn map_children(
+  exp: Expression(a),
+  f: fn(Node(a)) -> K(t, Node(b)),
+) -> K(t, Expression(b)) {
+  case exp {
+    Lambda(parameter, body) -> {
+      use body <- continuation.then(f(body))
+      continuation.return(Lambda(parameter, body))
+    }
+    Apply(function, argument) -> {
+      use function <- continuation.then(f(function))
+      use argument <- continuation.then(f(argument))
+      continuation.return(Apply(function, argument))
+    }
+    Let(label, definition, body) -> {
+      use definition <- continuation.then(f(definition))
+      use body <- continuation.then(f(body))
+      continuation.return(Let(label, definition, body))
+    }
+    Variable(label:) -> continuation.return(Variable(label:))
+    Binary(value:) -> continuation.return(Binary(value:))
+    Integer(value:) -> continuation.return(Integer(value:))
+    String(value:) -> continuation.return(String(value:))
+    Tail -> continuation.return(Tail)
+    Cons -> continuation.return(Cons)
+    Vacant -> continuation.return(Vacant)
+    Empty -> continuation.return(Empty)
+    Extend(label:) -> continuation.return(Extend(label:))
+    Select(label:) -> continuation.return(Select(label:))
+    Overwrite(label:) -> continuation.return(Overwrite(label:))
+    Tag(label:) -> continuation.return(Tag(label:))
+    Case(label:) -> continuation.return(Case(label:))
+    NoCases -> continuation.return(NoCases)
+    Perform(label:) -> continuation.return(Perform(label:))
+    Handle(label:) -> continuation.return(Handle(label:))
+    Builtin(identifier:) -> continuation.return(Builtin(identifier:))
+    ContentReference(identifier:) ->
+      continuation.return(ContentReference(identifier:))
+    ReleaseReference(package:, version:, identifier:) ->
+      continuation.return(ReleaseReference(package:, version:, identifier:))
+    RelativeReference(location:) ->
+      continuation.return(RelativeReference(location:))
+  }
+}
+
+/// Visit each node in a pre-order depth-first traversal and accumulate a value
+pub fn fold(node: Node(a), acc: b, f: fn(b, Node(a)) -> K(t, b)) -> K(t, b) {
+  do_fold([node], acc, f)
+}
+
+fn do_fold(
+  nodes: List(Node(a)),
+  acc: b,
+  f: fn(b, Node(a)) -> K(t, b),
+) -> K(t, b) {
+  case nodes {
+    [] -> continuation.return(acc)
+    [n, ..rest] -> {
+      let rest = list.append(children(n), rest)
+      use acc <- continuation.then(f(acc, n))
+      do_fold(rest, acc, f)
+    }
+  }
+}
+
+/// Visit each node in a post-order depth-first traversal and accumulate a value
+pub fn fold_post_order(
+  node: Node(a),
+  acc: b,
+  f: fn(b, Node(a)) -> K(t, b),
+) -> K(t, b) {
+  do_fold_post_order([node], acc, f)
+}
+
+fn do_fold_post_order(
+  nodes: List(Node(a)),
+  acc: b,
+  f: fn(b, Node(a)) -> K(t, b),
+) -> K(t, b) {
+  case nodes {
+    [] -> continuation.return(acc)
+    [n, ..rest] -> {
+      use acc <- continuation.then(do_fold_post_order(children(n), acc, f))
+      use acc <- continuation.then(f(acc, n))
+      do_fold_post_order(rest, acc, f)
+    }
+  }
+}
+
+/// Transform each node in a tree.
+/// The transformation function `f` sees any children as already rewritten.
+pub fn rewrite(
+  node: Node(a),
+  f: fn(#(Expression(b), a)) -> K(t, Node(b)),
+) -> K(t, Node(b)) {
+  let recur = fn(child) { rewrite(child, f) }
+  let #(exp, meta) = node
+  use rebuilt <- continuation.then(map_children(exp, recur))
+  f(#(rebuilt, meta))
+}
+
+/// Transform just the metadata in each node.
+pub fn rewrite_meta(node: Node(a), f: fn(a) -> K(t, b)) -> K(t, Node(b)) {
+  rewrite(node, fn(node) {
+    let #(exp, meta) = node
+    use meta <- continuation.then(f(meta))
+    continuation.return(#(exp, meta))
+  })
 }

@@ -14,42 +14,18 @@ fn assign_to(source: ir.Node(Nil), label) {
   }
 }
 
-pub fn render(exp: ir.Node(Nil)) {
-  let used = builtins_used(exp, [])
+pub fn render(exp: ir.Node(Nil)) -> String {
+  let used = ir.list_builtins(exp)
 
   let program = case list.contains(used, "bind") {
     False -> do_render(exp)
     // brackets to handle let statements, render with one extra indent
     True -> do_render(assign_to(exp, "program"))
   }
-  [program, ..list.map(used, render_builtin)]
+  [program, ..list.map(list.reverse(used), render_builtin)]
   |> list.reverse
   |> list.intersperse(";\n")
   |> string.concat
-}
-
-fn builtins_used(source, acc) {
-  let #(exp, _meta) = source
-  case exp {
-    ir.Apply(func, arg) ->
-      acc
-      |> builtins_used(func, _)
-      |> builtins_used(arg, _)
-    ir.Let(_, value, then) ->
-      acc
-      |> builtins_used(value, _)
-      |> builtins_used(then, _)
-    ir.Lambda(_, body) ->
-      acc
-      |> builtins_used(body, _)
-    ir.Handle(_label) -> ["handle", ..acc]
-    ir.Builtin(i) ->
-      case list.contains(acc, i) {
-        True -> acc
-        False -> [i, ..acc]
-      }
-    _ -> acc
-  }
 }
 
 fn do_render(source) {
