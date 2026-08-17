@@ -135,30 +135,6 @@ fn capture_defunc(switch, args, env, meta) {
   })
 }
 
-fn vars_used(exp, env) {
-  list.reverse(do_vars_used(exp, env, []))
-}
-
-// env is the environment at this in a walk through the tree so these should not be added
-fn do_vars_used(tree, env, found) {
-  let #(exp, _meta) = tree
-  case exp {
-    ir.Variable(v) ->
-      case !list.contains(env, v) && !list.contains(found, v) {
-        True -> [v, ..found]
-        False -> found
-      }
-    ir.Lambda(param, body) -> do_vars_used(body, [param, ..env], found)
-    ir.Apply(func, arg) -> {
-      let found = do_vars_used(func, env, found)
-      do_vars_used(arg, env, found)
-    }
-    // in recursive label also overwritten in value
-    ir.Let(label, value, then) -> {
-      let found = do_vars_used(value, env, found)
-      do_vars_used(then, [label, ..env], found)
-    }
-    // everything else is simple, because first class, and will not add variables
-    _ -> found
-  }
+fn vars_used(exp: ir.Node(a), env: List(String)) -> List(String) {
+  ir.free_variables(exp, env)
 }

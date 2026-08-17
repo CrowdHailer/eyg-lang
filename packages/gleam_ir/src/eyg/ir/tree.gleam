@@ -416,12 +416,14 @@ pub fn map_release(exp, mapper) {
   }
 }
 
-pub fn free_variables(exp) {
-  do_free_variables(exp, [], [])
+/// The variables that are free in this expressions.
+/// Free variables need to be in an environment of the expression may crash.
+pub fn free_variables(node: Node(a), ignore: List(String)) -> List(String) {
+  do_free_variables(node, [], ignore) |> list.reverse()
 }
 
-fn do_free_variables(exp, found, ignore) {
-  let #(exp, _meta) = exp
+fn do_free_variables(node, found, ignore) {
+  let #(exp, _meta) = node
   case exp {
     Variable(var) ->
       case list.contains(found, var) || list.contains(ignore, var) {
@@ -429,12 +431,12 @@ fn do_free_variables(exp, found, ignore) {
         False -> [var, ..found]
       }
     Let(var, value, then) -> {
-      let found = do_free_variables(then, found, ignore)
+      let found = do_free_variables(value, found, ignore)
       let ignore = case list.contains(ignore, var) {
         True -> ignore
         False -> [var, ..ignore]
       }
-      do_free_variables(value, found, ignore)
+      do_free_variables(then, found, ignore)
     }
     Lambda(var, body) -> {
       let ignore = case list.contains(ignore, var) {
@@ -444,8 +446,8 @@ fn do_free_variables(exp, found, ignore) {
       do_free_variables(body, found, ignore)
     }
     Apply(func, arg) -> {
-      let found = do_free_variables(arg, found, ignore)
-      do_free_variables(func, found, ignore)
+      let found = do_free_variables(func, found, ignore)
+      do_free_variables(arg, found, ignore)
     }
     _ -> found
   }
