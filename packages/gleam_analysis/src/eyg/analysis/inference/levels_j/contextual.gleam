@@ -152,7 +152,7 @@ pub fn poly_type(inference) {
   let Analysis(bindings, acc, _source) = inference
   let #(_tree, #(_error, type_, _eff, _env)) = acc
   let mono = binding.resolve(type_, bindings)
-  binding.gen(mono, 1, bindings)
+  binding.gen(mono, 0, bindings)
 }
 
 // --- old direct code

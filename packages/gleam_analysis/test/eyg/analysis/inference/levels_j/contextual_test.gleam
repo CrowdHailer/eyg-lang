@@ -128,6 +128,12 @@ pub fn simple_function_test() {
   ])
 }
 
+pub fn top_level_polymorphic_function_test() {
+  let identity = j.check(j.pure(), ir.lambda("x", ir.variable("x")))
+  assert t.Fun(t.Var(#(True, 0)), t.Empty, t.Var(#(True, 0)))
+    == j.poly_type(identity)
+}
+
 pub fn let_test() {
   "let x = 5
   let y = \"\"
