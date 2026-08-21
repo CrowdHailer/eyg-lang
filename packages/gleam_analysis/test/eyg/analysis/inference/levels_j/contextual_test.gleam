@@ -626,3 +626,28 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "Integer", ""),
   ])
 }
+
+pub fn deep_let_test() {
+  let wrap = fn(node) { ir.let_("x", ir.integer(0), node) }
+  let source = repeat_build(100, ir.variable("x"), wrap)
+  let analysis = j.check(j.pure(), source)
+  assert [] == j.all_errors(analysis)
+}
+
+pub fn deep_apply_test() {
+  let wrap = fn(node) { ir.lambda("x", ir.apply(node, ir.variable("x"))) }
+  let source = repeat_build(100, ir.builtin("int_absolute"), wrap)
+  let analysis = j.check(j.pure(), source)
+  assert [] == j.all_errors(analysis)
+}
+
+fn repeat_build(
+  times: Int,
+  node: ir.Node(a),
+  wrap: fn(ir.Node(a)) -> ir.Node(a),
+) -> ir.Node(a) {
+  case times <= 0 {
+    True -> node
+    False -> repeat_build(times - 1, wrap(node), wrap)
+  }
+}
