@@ -35,7 +35,7 @@ pub type Call {
   Exception(state.Reason(Meta))
   Aborted(String)
   Handling(task_id: Int, env: state.Env(Meta), k: state.Stack(Meta))
-  Pending(dep: cache.Dependency, env: state.Env(Meta), k: state.Stack(Meta))
+  Pending(dep: ir.Reference, env: state.Env(Meta), k: state.Stack(Meta))
 }
 
 pub type Calls =
@@ -88,17 +88,25 @@ fn loop(
   ctx: Context,
 ) -> #(Context, Call) {
   case return {
-    Error(#(break.UndefinedReference(ref) as break, _m, env, k)) -> {
-      // TODO use the direct fetch status
-      case cache.fetch_module(ctx.cache, ref) {
-        cache.Ready(cache.Module(value:, type_: _)) ->
-          loop(expression.resume(value, env, k), ctx)
-        cache.Working(cache) -> {
+    Error(#(break.UndefinedReference(reference) as reason, _m, env, k)) -> {
+      case cache.reference(ctx.cache, reference) {
+        cache.Available(cid) ->
+          case cache.fetch_module(ctx.cache, cid) {
+            cache.Ready(cache.Module(value:, type_: _)) ->
+              loop(expression.resume(value, env, k), ctx)
+            cache.Working(cache) -> {
+              let ctx = Context(..ctx, cache:)
+              #(ctx, Pending(reference, env, k))
+            }
+            cache.NotFound(at: _) -> #(ctx, Exception(reason))
+            cache.Unsound(reason:) -> #(ctx, Exception(reason))
+          }
+        cache.Unknown -> {
+          let cache = cache.pull(ctx.cache)
           let ctx = Context(..ctx, cache:)
-          #(ctx, Pending(cache.Content(ref), env, k))
+          #(ctx, Pending(reference, env, k))
         }
-        cache.NotFound(at: _) -> #(ctx, Exception(break))
-        cache.Unsound(reason:) -> #(ctx, Exception(reason))
+        cache.Unavailable(Nil) -> #(ctx, Exception(reason))
       }
     }
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {

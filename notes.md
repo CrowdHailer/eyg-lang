@@ -216,3 +216,16 @@ The canonical `ir.Release` also removes positional package/version/module record
 - Reused `ir.Release` in package query results and added a release-module query.
 - Kept `vacant_cid` only as a decoder failure value and missing-CID test input, never as reference state.
 - Ran migrations successfully and passed all 50 PostgreSQL-backed tests with warnings treated as errors; the temporary database service was stopped afterward.
+
+## `overlay_web`
+
+### Assessment
+
+The explicit model improves tool execution state by replacing the hub cache's removed partial dependency type with `ir.Reference`. Pending content, package, version, and pinned requests retain their identity; unavailable relative references fail explicitly rather than being interpreted as content fetches.
+
+### Changes and tests
+
+- Pointed five direct migration-stack dependencies at local packages; hub and Pal were already local.
+- Resolved interpreter breaks through the cache's exhaustive reference resolver before fetching content or pulling packages.
+- Updated pending-state assertions and added a pinned-release regression.
+- Passed 31 JavaScript/Bun tests with warnings treated as errors.

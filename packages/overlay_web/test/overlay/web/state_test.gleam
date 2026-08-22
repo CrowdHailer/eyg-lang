@@ -290,7 +290,7 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
   let assert state.Executing([call]) = state.status
 
   let assert tools.Pending(dep:, ..) = call.1
-  assert cache.Content(cid) == dep
+  assert ir.Content(cid) == dep
   assert [] == actions
 
   let #(state, actions) =
@@ -312,6 +312,25 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
   assert state.Asking([chat.ToolResultMessage(second_id, "53", [])])
     == state.status
   let assert [system.FetchStreamResponse(..)] = actions
+}
+
+pub fn pinned_release_waits_for_canonical_reference_test() {
+  let assert Ok(#(cid, _)) =
+    v1.from_string(
+      "bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy",
+    )
+  let id = "abc"
+  let code = "@standard:3:" <> v1.to_string(cid)
+  let status = chat_completion("") |> with_code(id, code) |> streaming
+  let state = State(..init(), status:)
+
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+
+  let assert state.Executing([#(returned_id, tools.Pending(dep:, ..))]) =
+    state.status
+  assert id == returned_id
+  assert ir.Pinned(ir.Release("standard", 3, cid)) == dep
+  assert [] == actions
 }
 
 pub fn module_returned_while_not_running_test() {
