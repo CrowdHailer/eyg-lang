@@ -105,3 +105,16 @@ UI-specific transformations remain narrow: content-CID and pinned-release picker
 - Updated navigation, rendering, actions, transformations, and current analysis calls.
 - Added five-form round-trip, navigation, and transformation coverage using a non-vacant CID.
 - Passed 29 tests on both configured/default and explicit JavaScript/Bun runs with warnings treated as errors.
+
+## `touch_grass`
+
+### Assessment
+
+The reflected EYG AST mapping is clearer and now exhaustive. Each `ir.Reference` variant maps directly to its public AST tag, so package-only and version-only forms are no longer collapsed into `ReleaseReference` records containing fake values. The outer `Reference` wrapper remains an implementation detail; EYG consumers receive the five useful semantic forms.
+
+### Changes and tests
+
+- Pointed `eyg_ir`, `eyg_analysis`, and `eyg_interpreter` at local packages.
+- Added direct encodings for `ContentReference`, `PackageReference`, `VersionReference`, `ReleaseReference`, and `RelativeReference`.
+- Added one focused encoding test per form using a real non-vacant CID.
+- Passed 24 tests on both Erlang and JavaScript/Bun with warnings treated as errors.

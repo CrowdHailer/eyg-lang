@@ -8,9 +8,9 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-eyg_analysis = ">= 1.1.0 and < 2.0.0"
-eyg_interpreter = ">= 1.1.0 and < 7.0.0"
-eyg_ir = ">= 2.2.0 and < 3.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
 gleam_http = ">= 4.3.0 and < 5.0.0"
 gleam_time = ">= 1.8.0 and < 2.0.0"
 julienne = ">= 1.0.0 and < 2.0.0"
