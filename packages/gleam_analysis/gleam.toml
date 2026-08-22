@@ -9,8 +9,8 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-eyg_ir = ">= 1.0.0 and < 3.0.0"
-eyg_parser = ">= 0.1.0 and < 2.0.0"
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
 glam = ">= 2.0.0 and < 3.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
 

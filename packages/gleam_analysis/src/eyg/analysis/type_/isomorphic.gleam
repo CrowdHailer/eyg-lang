@@ -85,6 +85,11 @@ pub fn ast() {
       #("Handle", String),
       #("Builtin", String),
       #("ContentReference", String),
+      #("PackageReference", String),
+      #(
+        "VersionReference",
+        record([#("package", String), #("version", Integer)]),
+      ),
       #(
         "ReleaseReference",
         record([

@@ -42,3 +42,18 @@ The explicit variants substantially improve parser clarity. Each syntax form now
 - Pointed `eyg_ir` at the local package so this migration is tested against the new API.
 - Mapped content, latest package, exact version, pinned release, and relative import syntax to their matching variants.
 - Updated parser expectations and added a version-zero rejection case.
+
+## `eyg_analysis`
+
+### Assessment
+
+The core reference change improves analysis diagnostics and removes a misleading code path. Previously relative references were reported as an undefined release with their path stored as a package, version `0`, and `vacant_cid`; package and version-only references were likewise indistinguishable from pinned releases. Analysis now reports `UndefinedPackage`, `UndefinedVersion`, `UndefinedRelease(Release)`, and `UndefinedRelative` directly.
+
+The existing CID dictionary can resolve only content and pinned references. Keeping that limitation explicit is clearer than pretending it resolves all forms. The later `fetch-refs` work should replace this dictionary boundary with a resolver that receives the exact `Reference` variant.
+
+### Changes and tests
+
+- Pointed both `eyg_ir` and `eyg_parser` at their local packages.
+- Preserved the original reference variant in the analyzed tree instead of rewriting successful and failed lookups to content references.
+- Expanded the reflected AST type with package-only and version-only tags.
+- Added coverage for all five reference diagnostics and successful concrete-CID lookup.

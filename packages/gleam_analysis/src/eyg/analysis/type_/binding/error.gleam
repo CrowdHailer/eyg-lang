@@ -1,4 +1,5 @@
 import eyg/analysis/type_/binding
+import eyg/ir/tree as ir
 import gleam/list
 import multiformats/cid/v1
 
@@ -7,7 +8,10 @@ pub type Reason {
   MissingVariable(String)
   MissingBuiltin(String)
   MissingReference(v1.Cid)
-  UndefinedRelease(package: String, release: Int, module: v1.Cid)
+  UndefinedPackage(package: String)
+  UndefinedVersion(package: String, version: Int)
+  UndefinedRelease(release: ir.Release)
+  UndefinedRelative(location: String)
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
   Recursive

@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
 import gleam/dict
@@ -132,6 +133,36 @@ pub fn top_level_polymorphic_function_test() {
   let identity = j.check(j.pure(), ir.lambda("x", ir.variable("x")))
   assert t.Fun(t.Var(#(True, 0)), t.Empty, t.Var(#(True, 0)))
     == j.poly_type(identity)
+}
+
+pub fn explicit_reference_errors_test() {
+  let cid = dag_json.vacant_cid
+  let cases = [
+    #(ir.reference(cid), error.MissingReference(cid)),
+    #(ir.package("standard"), error.UndefinedPackage("standard")),
+    #(ir.version("standard", 3), error.UndefinedVersion("standard", 3)),
+    #(
+      ir.release("standard", 3, cid),
+      error.UndefinedRelease(ir.Release("standard", 3, cid)),
+    ),
+    #(ir.relative("./module.eyg"), error.UndefinedRelative("./module.eyg")),
+  ]
+
+  cases
+  |> list.each(fn(case_) {
+    let #(source, reason) = case_
+    assert [#(Nil, reason)] == j.check(j.pure(), source) |> j.all_errors
+  })
+}
+
+pub fn concrete_reference_lookup_test() {
+  let cid = dag_json.vacant_cid
+  let references = dict.from_list([#(cid, t.Integer)])
+  let analysis =
+    j.check(j.pure() |> j.with_references(references), ir.reference(cid))
+
+  assert [] == j.all_errors(analysis)
+  assert t.Integer == j.type_(analysis)
 }
 
 pub fn let_test() {

@@ -1,5 +1,6 @@
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/tree as ir
 import glam/doc.{type Document}
 import gleam/int
 import gleam/io
@@ -85,8 +86,13 @@ pub fn render_reason(reason) {
     error.MissingBuiltin(label) -> "missing variable '!" <> label <> "'"
     error.MissingReference(label) ->
       "missing reference #" <> v1.to_string(label)
-    error.UndefinedRelease(package, release, _cid) ->
-      "release undefined: @" <> package <> ":" <> int.to_string(release)
+    error.UndefinedPackage(package) -> "package undefined: @" <> package
+    error.UndefinedVersion(package, version) ->
+      "version undefined: @" <> package <> ":" <> int.to_string(version)
+    error.UndefinedRelease(ir.Release(package, version, _module)) ->
+      "release undefined: @" <> package <> ":" <> int.to_string(version)
+    error.UndefinedRelative(location) ->
+      "relative reference undefined: " <> location
     error.MissingRow(label) -> "missing row '" <> label <> "'"
     error.TypeMismatch(expected, given) ->
       "type mismatch given: "
@@ -112,7 +118,10 @@ pub fn hint(reason) {
     error.MissingVariable(label) -> "check '" <> label <> "' is defined"
     error.MissingBuiltin(label) -> "check the builtin '!" <> label <> "' exists"
     error.MissingReference(_) -> "the referenced module is not available"
-    error.UndefinedRelease(_, _, _) -> "the package release is not available"
+    error.UndefinedPackage(_) -> "the package is not available"
+    error.UndefinedVersion(_, _) -> "the package version is not available"
+    error.UndefinedRelease(_) -> "the package release is not available"
+    error.UndefinedRelative(_) -> "the relative module is not available"
     error.MissingRow(label) ->
       "the record or union is missing '" <> label <> "'"
     error.TypeMismatch(_expected, _given) ->
