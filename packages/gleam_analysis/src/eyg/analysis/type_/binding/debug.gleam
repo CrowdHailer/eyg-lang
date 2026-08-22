@@ -1,5 +1,6 @@
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/tree as ir
 import glam/doc.{type Document}
 import gleam/int
 import gleam/io
@@ -83,10 +84,8 @@ pub fn render_reason(reason) {
     error.Todo -> "code incomplete"
     error.MissingVariable(label) -> "missing variable '" <> label <> "'"
     error.MissingBuiltin(label) -> "missing variable '!" <> label <> "'"
-    error.MissingReference(label) ->
-      "missing reference #" <> v1.to_string(label)
-    error.UndefinedRelease(package, release, _cid) ->
-      "release undefined: @" <> package <> ":" <> int.to_string(release)
+    error.MissingReference(reference) ->
+      "missing reference " <> render_reference(reference)
     error.MissingRow(label) -> "missing row '" <> label <> "'"
     error.TypeMismatch(expected, given) ->
       "type mismatch given: "
@@ -102,6 +101,23 @@ pub fn render_reason(reason) {
   }
 }
 
+fn render_reference(reference: ir.Reference) -> String {
+  case reference {
+    ir.Content(cid:) -> "#" <> v1.to_string(cid)
+    ir.Package(package:) -> "@" <> package
+    ir.Version(package:, version:) ->
+      "@" <> package <> ":" <> int.to_string(version)
+    ir.Pinned(ir.Release(package:, version:, module:)) ->
+      "@"
+      <> package
+      <> ":"
+      <> int.to_string(version)
+      <> ":"
+      <> v1.to_string(module)
+    ir.Relative(location:) -> location
+  }
+}
+
 pub fn pretty_reason(reason) {
   render_reason(reason)
 }
@@ -112,7 +128,6 @@ pub fn hint(reason) {
     error.MissingVariable(label) -> "check '" <> label <> "' is defined"
     error.MissingBuiltin(label) -> "check the builtin '!" <> label <> "' exists"
     error.MissingReference(_) -> "the referenced module is not available"
-    error.UndefinedRelease(_, _, _) -> "the package release is not available"
     error.MissingRow(label) ->
       "the record or union is missing '" <> label <> "'"
     error.TypeMismatch(_expected, _given) ->

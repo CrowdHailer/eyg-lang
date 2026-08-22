@@ -2,20 +2,17 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
-import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result.{try}
 import gleam/set
-import multiformats/cid/v1
 
 // None of context is tested
 pub type Context {
   Context(
     env: List(#(String, binding.Poly)),
     eff: binding.Mono,
-    refs: Dict(v1.Cid, binding.Poly),
     level: Int,
     bindings: Dict(Int, binding.Binding),
   )
@@ -24,21 +21,15 @@ pub type Context {
 /// pure creates a new inference context to infer an expression with no effects.
 /// Any effect from the expression will be a type error
 pub fn pure() {
-  let bindings = new_state()
-  Context([], t.Empty, dict.new(), 1, bindings)
+  let bindings = dict.new()
+  Context([], t.Empty, 1, bindings)
 }
 
 /// unpure creates a new inference context which accepts any effect.
 pub fn unpure() {
-  let bindings = new_state()
+  let bindings = dict.new()
   let #(t, bindings) = binding.mono(1, bindings)
-  Context([], t, dict.new(), 1, bindings)
-}
-
-/// Pass in a dictionary of reference to types.
-/// This dictionary is also used to look up the types of releases by there cid.
-pub fn with_references(context, refs) {
-  Context(..context, refs:)
+  Context([], t, 1, bindings)
 }
 
 pub fn with_effect(context, label, lift, lower) {
@@ -69,12 +60,42 @@ pub type Analysis(meta) {
   )
 }
 
-pub fn check(context, source) -> Analysis(_) {
-  let Context(env:, eff:, refs:, level:, bindings:) = context
-  let #(bindings, _type, _eff, tree) =
-    do_infer(source, env, eff, refs, level, bindings)
+pub fn check(context: Context, source: ir.Node(a)) -> Step(Analysis(_)) {
+  let Context(env:, eff:, level:, bindings:) = context
+  use #(bindings, _type, _eff, tree) <- bind(do_infer(
+    source,
+    env,
+    eff,
+    level,
+    bindings,
+  ))
   // TODO make opaque analysis
-  Analysis(bindings:, tree:, original: source)
+  Done(Analysis(bindings:, tree:, original: source))
+}
+
+pub fn check_with_references(context: Context, refs, source: ir.Node(_)) {
+  let Context(env:, eff:, level:, bindings:) = context
+  loop_with_references(
+    do_infer(source, env, eff, level, bindings),
+    source,
+    refs,
+  )
+}
+
+fn loop_with_references(step, original, refs) {
+  case step {
+    Done(#(bindings, _type, _eff, tree)) ->
+      Analysis(bindings:, tree:, original: original)
+    Lookup(reference:, resume:) -> {
+      let result = case reference {
+        ir.Content(cid) | ir.Pinned(ir.Release(module: cid, ..)) ->
+          dict.get(refs, cid)
+
+        _ -> Error(Nil)
+      }
+      loop_with_references(resume(result), original, refs)
+    }
+  }
 }
 
 pub fn missing_references(inference) {
@@ -157,17 +178,6 @@ pub fn poly_type(inference) {
 
 // --- old direct code
 
-pub fn new_state() {
-  dict.new()
-}
-
-pub fn infer(source, eff, refs, level, bindings) {
-  let source = source
-  let #(bindings, _type, _eff, acc) =
-    do_infer(source, [], eff, refs, level, bindings)
-  #(acc, bindings)
-}
-
 fn open_effect(eff, level, bindings) {
   case eff {
     t.Empty -> binding.mono(level, bindings)
@@ -246,7 +256,23 @@ fn eff_tail(eff) {
 pub type Env =
   List(#(String, binding.Poly))
 
-pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
+pub type Step(a) {
+  Done(a)
+  Lookup(
+    reference: ir.Reference,
+    resume: fn(Result(binding.Poly, Nil)) -> Step(a),
+  )
+}
+
+pub fn bind(step: Step(a), f: fn(a) -> Step(b)) -> Step(b) {
+  case step {
+    Done(value) -> f(value)
+    Lookup(reference:, resume:) ->
+      Lookup(reference:, resume: fn(answer) { bind(resume(answer), f) })
+  }
+}
+
+pub fn do_infer(source, env, eff, level, bindings) -> Step(_) {
   let #(exp, _meta) = source
   case exp {
     ir.Variable(x) ->
@@ -255,12 +281,12 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
           let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
           let #(type_, bindings) = open(type_, level, bindings)
           let meta = #(Ok(Nil), type_, t.Empty, env)
-          #(bindings, type_, eff, #(ir.Variable(x), meta))
+          Done(#(bindings, type_, eff, #(ir.Variable(x), meta)))
         }
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
           let meta = #(Error(error.MissingVariable(x)), type_, t.Empty, env)
-          #(bindings, type_, eff, #(ir.Variable(x), meta))
+          Done(#(bindings, type_, eff, #(ir.Variable(x), meta)))
         }
       }
     ir.Lambda(x, body) -> {
@@ -270,23 +296,38 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let level = level + 1
       let #(type_eff, bindings) = binding.mono(level, bindings)
 
-      let #(bindings, type_r, type_eff, inner) =
-        do_infer(body, [#(x, scheme_x), ..env], type_eff, refs, level, bindings)
+      use #(bindings, type_r, type_eff, inner) <- bind(do_infer(
+        body,
+        [#(x, scheme_x), ..env],
+        type_eff,
+        level,
+        bindings,
+      ))
 
       let type_ = t.Fun(type_x, type_eff, type_r)
       let level = level - 1
       let record = close(type_, level, bindings)
       let meta = #(Ok(Nil), record, t.Empty, env)
-      #(bindings, type_, eff, #(ir.Lambda(x, inner), meta))
+      Done(#(bindings, type_, eff, #(ir.Lambda(x, inner), meta)))
     }
     ir.Apply(fun, arg) -> {
       // Effects are passed to inner infer because they are effect for creating evaluatin the func and arg,
       // not the effect of applying them
       let level = level + 1
-      let #(bindings, ty_fun, eff, fun) =
-        do_infer(fun, env, eff, refs, level, bindings)
-      let #(bindings, ty_arg, eff, arg) =
-        do_infer(arg, env, eff, refs, level, bindings)
+      use #(bindings, ty_fun, eff, fun) <- bind(do_infer(
+        fun,
+        env,
+        eff,
+        level,
+        bindings,
+      ))
+      use #(bindings, ty_arg, eff, arg) <- bind(do_infer(
+        arg,
+        env,
+        eff,
+        level,
+        bindings,
+      ))
 
       let #(ty_ret, bindings) = binding.mono(level, bindings)
       let #(test_eff, bindings) = binding.mono(level, bindings)
@@ -331,25 +372,35 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let meta = #(result, record, raised, env)
 
       // This returns the raised effect even if error
-      #(bindings, ty_ret, eff, #(ir.Apply(fun, arg), meta))
+      Done(#(bindings, ty_ret, eff, #(ir.Apply(fun, arg), meta)))
     }
     ir.Let(label, value, then) -> {
       let level = level + 1
-      let #(bindings, ty_value, eff, value) =
-        do_infer(value, env, eff, refs, level, bindings)
+      use #(bindings, ty_value, eff, value) <- bind(do_infer(
+        value,
+        env,
+        eff,
+        level,
+        bindings,
+      ))
       let level = level - 1
       let sch_value =
         binding.gen(close(ty_value, level, bindings), level, bindings)
 
-      let #(bindings, ty_then, eff, then) =
-        do_infer(then, [#(label, sch_value), ..env], eff, refs, level, bindings)
+      use #(bindings, ty_then, eff, then) <- bind(do_infer(
+        then,
+        [#(label, sch_value), ..env],
+        eff,
+        level,
+        bindings,
+      ))
       let meta = #(Ok(Nil), ty_then, t.Empty, env)
-      #(bindings, ty_then, eff, #(ir.Let(label, value, then), meta))
+      Done(#(bindings, ty_then, eff, #(ir.Let(label, value, then), meta)))
     }
     ir.Vacant -> {
       let #(type_, bindings) = binding.mono(level, bindings)
       let meta = #(Error(error.Todo), type_, t.Empty, env)
-      #(bindings, type_, eff, #(ir.Vacant, meta))
+      Done(#(bindings, type_, eff, #(ir.Vacant, meta)))
     }
     ir.Integer(value) ->
       prim(t.Integer, env, eff, level, bindings, ir.Integer(value))
@@ -380,61 +431,37 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
           let meta = #(Error(error.MissingBuiltin(id)), type_, t.Empty, env)
-          #(bindings, type_, eff, #(ir.Builtin(id), meta))
+          Done(#(bindings, type_, eff, #(ir.Builtin(id), meta)))
         }
       }
-    ir.ContentReference(cid) ->
-      lookup_ref(
-        refs,
-        error.MissingReference(cid),
-        cid,
-        env,
-        eff,
-        level,
-        bindings,
-      )
-    ir.ReleaseReference(package, release, cid) ->
-      lookup_ref(
-        refs,
-        error.UndefinedRelease(package, release, cid),
-        cid,
-        env,
-        eff,
-        level,
-        bindings,
-      )
-    ir.RelativeReference(location:) -> {
-      // TODO this should get a error of it's own and own lookup path
-      let cid = dag_json.vacant_cid
-      lookup_ref(
-        refs,
-        error.UndefinedRelease(location, 0, cid),
-        cid,
-        env,
-        eff,
-        level,
-        bindings,
-      )
-    }
+    ir.Reference(reference) -> lookup_ref(reference, env, eff, level, bindings)
   }
 }
 
-fn lookup_ref(refs, reason, id, env, eff, level, bindings) {
-  case dict.get(refs, id) {
-    Ok(poly) -> prim(poly, env, eff, level, bindings, ir.ContentReference(id))
-    Error(Nil) -> {
-      let #(type_, bindings) = binding.mono(level, bindings)
-      let meta = #(Error(reason), type_, t.Empty, env)
-      #(bindings, type_, eff, #(ir.ContentReference(id), meta))
+fn lookup_ref(reference, env, eff, level, bindings) {
+  Lookup(reference:, resume: fn(result) {
+    case result {
+      Ok(poly) ->
+        prim(poly, env, eff, level, bindings, ir.Reference(reference:))
+      Error(Nil) -> {
+        let #(type_, bindings) = binding.mono(level, bindings)
+        let meta = #(
+          Error(error.MissingReference(reference:)),
+          type_,
+          t.Empty,
+          env,
+        )
+        Done(#(bindings, type_, eff, #(ir.Reference(reference), meta)))
+      }
     }
-  }
+  })
 }
 
 fn prim(scheme, env, eff, level, bindings, exp) {
   let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
   let #(t, bindings) = open(type_, level, bindings)
   let meta = #(Ok(Nil), type_, t.Empty, env)
-  #(bindings, t, eff, #(exp, meta))
+  Done(#(bindings, t, eff, #(exp, meta)))
 }
 
 fn pure1(arg1, ret) {
