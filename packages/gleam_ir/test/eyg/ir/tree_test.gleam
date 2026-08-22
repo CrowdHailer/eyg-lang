@@ -95,7 +95,15 @@ pub fn reference_lists_test() {
       tree.relative("./module.eyg"),
     ])
 
-  assert [cid] == tree.list_references(source)
+  assert [
+      tree.Content(cid),
+      tree.Package("standard"),
+      tree.Version("standard", 3),
+      tree.Pinned(tree.Release("standard", 3, cid)),
+      tree.Relative("./module.eyg"),
+    ]
+    == tree.list_references(source)
+  assert [cid] == tree.list_content_references(source)
   assert [tree.Release("standard", 3, cid)]
     == tree.list_named_references(source)
 }

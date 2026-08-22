@@ -257,16 +257,26 @@ pub fn list_builtins(node: Node(a)) {
   }(list.reverse)
 }
 
-pub fn list_references(node: Node(a)) -> List(v1.Cid) {
+pub fn list_references(node: Node(a)) -> List(Reference) {
   {
     use acc, #(exp, _meta) <- fold(node, [])
     case exp {
-      Reference(Content(cid)) | Reference(Pinned(Release(_, _, cid))) ->
-        utils.push_new(acc, cid)
+      Reference(reference) -> utils.push_new(acc, reference)
       _ -> acc
     }
     |> continuation.return
   }(list.reverse)
+}
+
+pub fn list_content_references(node: Node(a)) -> List(v1.Cid) {
+  list_references(node)
+  |> list.filter_map(fn(reference) {
+    case reference {
+      Content(cid) | Pinned(Release(_, _, cid)) -> Ok(cid)
+      Package(_) | Version(_, _) | Relative(_) -> Error(Nil)
+    }
+  })
+  |> list.unique
 }
 
 pub fn list_named_references(node: Node(a)) -> List(Release) {

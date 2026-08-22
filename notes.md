@@ -31,6 +31,10 @@ Existing pinned releases retain their encoding and content identifiers. Content 
 - Added tests for helper construction, concrete/reference collection, typed release mapping, all reference round trips, and invalid package encodings.
 - Bumped `eyg_ir` to `3.0.0` because replacing public expression constructors is a breaking API change.
 
+### Dependent-review refinement
+
+Migrating the hub cache showed that the old `list_references` contract silently omitted references without CIDs. That name is misleading with the explicit model. It now returns every `Reference`; `list_content_references` is the explicit projection for content and pinned module CIDs. This keeps dependency discovery exhaustive while making CID-only consumers state their restriction.
+
 ## `eyg_parser`
 
 ### Assessment
