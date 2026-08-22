@@ -1,3 +1,4 @@
+import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
 import gleam/listx
@@ -292,33 +293,27 @@ pub fn expression(exp, rev, errors) {
       frame.Inline([
         h.span([a.class(builtin), exp_key(rev)], [text("!"), text(identifier)]),
       ])
-    e.Reference(identifier) ->
-      frame.Inline([
-        h.span([a.class(reference), exp_key(rev)], [
-          text(v1.to_string(identifier)),
-        ]),
-      ])
-    e.Relative(location) ->
-      frame.Inline([
-        h.span(
-          [
-            a.class(reference),
-            exp_key(rev),
-          ],
-          [text(location)],
-        ),
-      ])
-    e.Release(package, release, _) ->
-      frame.Inline([
-        h.span(
-          [
-            a.class(reference),
-            exp_key(rev),
-            a.title("release = " <> int.to_string(release)),
-          ],
-          [text("@" <> package <> ":" <> int.to_string(release))],
-        ),
-      ])
+    e.Reference(explicit) -> {
+      let #(content, title) = case explicit {
+        ir.Content(identifier) -> #(v1.to_string(identifier), None)
+        ir.Package(package) -> #("@" <> package, None)
+        ir.Version(package, version) -> #(
+          "@" <> package <> ":" <> int.to_string(version),
+          None,
+        )
+        ir.Pinned(ir.Release(package, version, module)) -> #(
+          "@" <> package <> ":" <> int.to_string(version),
+          Some("module = " <> v1.to_string(module)),
+        )
+        ir.Relative(location) -> #(location, None)
+      }
+      let attributes = [a.class(reference), exp_key(rev)]
+      let attributes = case title {
+        Some(title) -> [a.title(title), ..attributes]
+        None -> attributes
+      }
+      frame.Inline([h.span(attributes, [text(content)])])
+    }
   }
   case list.key_find(errors, rev), exp {
     _, e.Vacant -> frame

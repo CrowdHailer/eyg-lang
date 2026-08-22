@@ -1,9 +1,12 @@
 import eyg/ir/dag_json
 import gleam/json
-import gleam/option.{None}
+import gleam/list
+import gleam/option.{None, Some}
 import gleeunit/should
 import morph/editable as e
 import morph/projection as p
+import morph/reference
+import morph/transformation
 
 pub fn from_string(source) {
   source
@@ -103,4 +106,25 @@ pub fn case_test() {
   |> should.equal(p.Exp(e.Function([e.Bind("y")], e.Variable("y"))))
   rebuild(scope)
   |> should.equal(source)
+}
+
+pub fn explicit_reference_transformation_test() {
+  let assert #(None, rebuild) =
+    transformation.insert_explicit_reference(#(p.Exp(e.Vacant), []))
+    |> should.be_ok()
+
+  reference.all()
+  |> list.each(fn(reference) {
+    let projection = #(p.Exp(e.Reference(reference)), [])
+    rebuild(reference)
+    |> should.equal(projection)
+
+    let assert #(Some(current), rebuild_current) =
+      transformation.insert_explicit_reference(projection)
+      |> should.be_ok()
+    current
+    |> should.equal(reference)
+    rebuild_current(reference)
+    |> should.equal(projection)
+  })
 }

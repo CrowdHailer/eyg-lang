@@ -89,3 +89,19 @@ The review also exposed an ordering requirement for latest-package resolution. A
 - Made preparation and runtime resolution exhaustive across all reference forms; relative references are deliberately unavailable in a hub cache and produce no network action.
 - Added focused tests for reference lookup, package/version evaluation, missing-package pulls, relative rejection, preparation actions, and latest selection across one pull batch.
 - Passed 31 tests on both Erlang and JavaScript/Bun with warnings treated as errors.
+
+## `morph`
+
+### Assessment
+
+The explicit model greatly improves the editable tree. Morph previously duplicated only three IR constructors and therefore could not represent latest-package and version-only references without sentinels. Its editable expression now stores `ir.Reference` directly, making IR conversion lossless and reducing three conversion branches to one in each direction.
+
+UI-specific transformations remain narrow: content-CID and pinned-release pickers match only the forms they can edit, while `insert_explicit_reference` supports all forms. This separation is clearer than allowing a picker to construct partially meaningful triples.
+
+### Changes and tests
+
+- Pointed `eyg_ir`, `eyg_analysis`, and `eyg_interpreter` at local packages.
+- Reused `ir.Reference` and `ir.Release` in editable and analysis models.
+- Updated navigation, rendering, actions, transformations, and current analysis calls.
+- Added five-form round-trip, navigation, and transformation coverage using a non-vacant CID.
+- Passed 29 tests on both configured/default and explicit JavaScript/Bun runs with warnings treated as errors.

@@ -1,3 +1,4 @@
+import eyg/ir/tree as ir
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
@@ -297,12 +298,16 @@ pub fn insert_named_reference(projection) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let current = case exp {
-        e.Release(package, release, cid) -> Some(#(package, release, cid))
+        e.Reference(ir.Pinned(ir.Release(package, release, cid))) ->
+          Some(#(package, release, cid))
         _ -> None
       }
       Ok(
         #(current, fn(package, release, cid) {
-          #(p.Exp(e.Release(package, release, cid)), zoom)
+          #(
+            p.Exp(e.Reference(ir.Pinned(ir.Release(package, release, cid)))),
+            zoom,
+          )
         }),
       )
     }

@@ -17,12 +17,8 @@ import multiformats/cid/v1
 pub type References =
   Dict(v1.Cid, binding.Poly)
 
-pub type Release {
-  Release(package: String, version: Int, module: v1.Cid)
-}
-
 pub type Index =
-  List(Release)
+  List(ir.Release)
 
 pub type Context {
   Context(
@@ -78,9 +74,11 @@ pub fn with_index(context, index) {
 pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
-      let #(#(_, #(_, type_, _, _)), bindings) =
+      let inferred =
         capture.capture(value, meta)
-        |> infer.infer(t.Empty, dict.new(), 0, bindings)
+        |> infer.check(infer.Context([], t.Empty, dict.new(), 0, bindings), _)
+      let infer.Analysis(bindings:, tree:, ..) = inferred
+      let #(_, #(_, type_, _, _)) = tree
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Binary(_) -> #(t.Binary, bindings)
@@ -180,8 +178,10 @@ pub fn do_analyse(editable, context) -> Analysis {
     })
 
   let source = e.to_annotated(editable, [])
-  let #(bindings, _top_type, _top_eff, tree) =
-    infer.do_infer(source, scope, eff, context.references, 0, bindings)
+  let inferred =
+    infer.Context(scope, eff, context.references, 0, bindings)
+    |> infer.check(source)
+  let infer.Analysis(bindings:, tree:, ..) = inferred
   let types = ir.get_annotation(tree)
   let paths = ir.get_annotation(e.to_annotated(editable, []))
   Analysis(bindings, list.zip(paths, types), context)

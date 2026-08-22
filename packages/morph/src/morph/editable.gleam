@@ -2,7 +2,6 @@ import eyg/ir/tree as ir
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import multiformats/cid/v1
 
 pub type Pattern {
   Bind(String)
@@ -30,9 +29,7 @@ pub type Expression {
   Perform(String)
   Deep(String)
   Builtin(String)
-  Reference(v1.Cid)
-  Release(package: String, release: Int, identifer: v1.Cid)
-  Relative(location: String)
+  Reference(reference: ir.Reference)
 }
 
 pub type Assignments =
@@ -168,9 +165,7 @@ pub fn from_annotated(node) {
     ir.Handle(label) -> Deep(label)
 
     ir.Builtin(identifier) -> Builtin(identifier)
-    ir.ContentReference(identifier) -> Reference(identifier)
-    ir.ReleaseReference(package, release, id) -> Release(package, release, id)
-    ir.RelativeReference(location) -> Relative(location)
+    ir.Reference(reference) -> Reference(reference)
   }
 }
 
@@ -426,11 +421,6 @@ pub fn to_annotated(source, rev) {
     Perform(label) -> #(ir.Perform(label), rev)
     Deep(label) -> #(ir.Handle(label), rev)
     Builtin(identifier) -> #(ir.Builtin(identifier), rev)
-    Reference(identifier) -> #(ir.ContentReference(identifier), rev)
-    Release(package, release, id) -> #(
-      ir.ReleaseReference(package, release, id),
-      rev,
-    )
-    Relative(location:) -> #(ir.RelativeReference(location:), rev)
+    Reference(reference) -> #(ir.Reference(reference), rev)
   }
 }

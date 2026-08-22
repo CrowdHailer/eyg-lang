@@ -1,6 +1,8 @@
 import eyg/ir/tree as ir
+import gleam/list
 import gleeunit/should
 import morph/editable as et
+import morph/reference
 
 fn should_equal(given, expected) {
   should.equal(given, expected)
@@ -107,4 +109,17 @@ pub fn unbound_case_test() {
   |> et.to_annotated([])
   |> ir.clear_annotation()
   |> should_equal(source)
+}
+
+pub fn explicit_reference_round_trip_test() {
+  reference.all()
+  |> list.each(fn(reference) {
+    let source = #(ir.Reference(reference), Nil)
+    source
+    |> et.from_annotated
+    |> should_equal(et.Reference(reference))
+    |> et.to_annotated([])
+    |> ir.clear_annotation()
+    |> should_equal(source)
+  })
 }

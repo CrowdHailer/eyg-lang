@@ -1,7 +1,9 @@
 import eyg/ir/tree as ir
+import gleam/list
 import morph/editable as e
 import morph/navigation
 import morph/projection as p
+import morph/reference
 
 pub fn no_next_vacant_test() {
   assert Error(Nil)
@@ -17,4 +19,15 @@ pub fn nex_vacant_test() {
     |> e.from_annotated()
     |> navigation.first()
     |> navigation.next_vacant()
+}
+
+pub fn explicit_references_are_navigation_leaves_test() {
+  reference.all()
+  |> list.each(fn(reference) {
+    let expression = e.Reference(reference)
+    let projection = #(p.Exp(expression), [])
+    assert projection == navigation.first(expression)
+    assert projection == navigation.next(projection)
+    assert projection == navigation.previous(projection)
+  })
 }
