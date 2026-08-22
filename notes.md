@@ -57,3 +57,15 @@ The existing CID dictionary can resolve only content and pinned references. Keep
 - Preserved the original reference variant in the analyzed tree instead of rewriting successful and failed lookups to content references.
 - Expanded the reflected AST type with package-only and version-only tags.
 - Added coverage for all five reference diagnostics and successful concrete-CID lookup.
+
+## `eyg_interpreter`
+
+### Assessment
+
+The explicit reference model simplifies interpreter suspension. Three runtime break variants are replaced by `UndefinedReference(ir.Reference)`, preserving the exact unresolved request without duplicating reference structure in the interpreter. Rendering still gives form-specific messages and hints by matching the nested variant.
+
+### Changes and tests
+
+- Pointed `eyg_ir` at the local package.
+- Suspended every reference expression with its complete `Reference` value.
+- Added execution coverage for all five variants.

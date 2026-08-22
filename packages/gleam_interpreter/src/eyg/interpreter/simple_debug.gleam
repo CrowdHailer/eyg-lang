@@ -7,6 +7,7 @@
 
 import eyg/interpreter/break
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import glam/doc.{type Document}
 import gleam/bit_array
 import gleam/dict
@@ -29,10 +30,15 @@ pub fn describe(reason) -> String {
   case reason {
     break.UndefinedVariable(var) -> "variable undefined: " <> var
     break.UndefinedBuiltin(var) -> "builtin undefined: !" <> var
-    break.UndefinedReference(id) -> "reference undefined: #" <> v1.to_string(id)
-    break.UndefinedRelease(package, release, _cid) ->
-      "release undefined: @" <> package <> ":" <> int.to_string(release)
-    break.UndefinedRelative(location:) ->
+    break.UndefinedReference(ir.Content(id)) ->
+      "reference undefined: #" <> v1.to_string(id)
+    break.UndefinedReference(ir.Package(package)) ->
+      "package undefined: @" <> package
+    break.UndefinedReference(ir.Version(package, version)) ->
+      "version undefined: @" <> package <> ":" <> int.to_string(version)
+    break.UndefinedReference(ir.Pinned(ir.Release(package, version, _module))) ->
+      "release undefined: @" <> package <> ":" <> int.to_string(version)
+    break.UndefinedReference(ir.Relative(location)) ->
       "relative location undefined: " <> location
     break.IncorrectTerm(expected, got) ->
       "unexpected term, expected: " <> expected <> " got: " <> inspect(got)
@@ -55,11 +61,13 @@ pub fn hint(reason) -> String {
       "check the variable name or add a `let` binding before it is used"
     break.UndefinedBuiltin(_) ->
       "check the builtin name against the builtins reference"
-    break.UndefinedReference(_) ->
+    break.UndefinedReference(ir.Content(_)) ->
       "make sure the referenced module is available in the configured package hub"
-    break.UndefinedRelease(_, _, _) ->
+    break.UndefinedReference(ir.Package(_))
+    | break.UndefinedReference(ir.Version(_, _))
+    | break.UndefinedReference(ir.Pinned(_)) ->
       "publish the release or pin the reference to an available module"
-    break.UndefinedRelative(_) ->
+    break.UndefinedReference(ir.Relative(_)) ->
       "run the program from the directory that contains the relative module"
     break.IncorrectTerm(_, _) ->
       "check the value passed to this operation has the expected shape"
