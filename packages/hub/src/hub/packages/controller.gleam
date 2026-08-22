@@ -1,5 +1,6 @@
 import eyg/hub/publisher
 import eyg/hub/signatory
+import eyg/ir/tree as ir
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
@@ -57,8 +58,10 @@ pub fn submit(request, context: context.Context) {
   )
   assert signatory.Admin == permission
 
+  let publisher.Release(package:, version:, module:) = entry.content
+  let release = ir.Release(package:, version:, module:)
   use Nil <- utils.try_untethered(check_package_ownership(
-    entry.content,
+    release,
     signatory_entity,
     context.db,
   ))
@@ -77,11 +80,11 @@ fn validate_payload(payload) {
 }
 
 fn check_package_ownership(
-  content: publisher.Event,
+  release: ir.Release,
   entity_id: String,
   db: pog.Connection,
 ) -> Result(Nil, server.Denied) {
-  let publisher.Release(package:, ..) = content
+  let ir.Release(package:, ..) = release
   case pog.execute(data.get_current_owner(package), db) {
     Ok(pog.Returned(rows: [owner], ..)) if owner.entity_id == entity_id ->
       Ok(Nil)

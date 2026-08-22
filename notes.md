@@ -200,3 +200,19 @@ The first integration attempt copied a subset of Pal into a website-local vendor
 - Added direct relative workspace lookup without fake CIDs, plus tests for insertion and execution.
 - Added rendering coverage for all five reference forms; existing desktop/mobile structure and snapshots remain unchanged.
 - Passed 14 JavaScript/Bun tests with warnings treated as errors.
+
+## `hub`
+
+### Assessment
+
+The explicit types improve publication validation because stability is now structural. Shared modules may contain `Content` and correctly published `Pinned(Release)` references; `Package`, `Version`, and `Relative` are rejected as not pinned without inspecting version numbers or special CIDs. Diagnostics can name the exact invalid form.
+
+The canonical `ir.Release` also removes positional package/version/module records from database-facing package models while preserving SQL and wire representations at their boundaries.
+
+### Changes and tests
+
+- Pointed `eyg_ir` and `eyg_analysis` at local packages; `eyg_hub` was already local.
+- Added recursive reference type resolution for shared modules, including pinned-release database validation and precise rejection reasons.
+- Reused `ir.Release` in package query results and added a release-module query.
+- Kept `vacant_cid` only as a decoder failure value and missing-CID test input, never as reference state.
+- Ran migrations successfully and passed all 50 PostgreSQL-backed tests with warnings treated as errors; the temporary database service was stopped afterward.

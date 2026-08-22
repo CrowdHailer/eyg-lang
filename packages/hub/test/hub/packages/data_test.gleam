@@ -7,7 +7,6 @@ import hub/fixtures
 import hub/generators as g
 import hub/helpers
 import hub/packages/data
-import multiformats/cid/v1
 import pog
 import untethered/substrate
 
@@ -31,13 +30,8 @@ pub fn insert_multiple_releases_test() {
   let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, conn)
 
   let assert [r2, r1] = rows
-  assert r2.package == package1
-  assert r2.version == 2
-  assert r2.module == cid2 |> v1.to_string
-
-  assert r1.package == package1
-  assert r1.version == 1
-  assert r1.module == cid1 |> v1.to_string
+  assert r2.release == ir.Release(package1, 2, cid2)
+  assert r1.release == ir.Release(package1, 1, cid1)
 }
 
 pub fn insert_multiple_packages_test() {
@@ -60,15 +54,12 @@ pub fn insert_multiple_packages_test() {
   let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, conn)
 
   // packages are inserted simultaneously because of transaction
-  let assert Ok(p1) = list.find(rows, fn(p) { p.id == package1 })
-  let assert Ok(p2) = list.find(rows, fn(p) { p.id == package2 })
-  assert p2.id == package2
-  assert p2.version == 1
-  assert p2.module == cid2 |> v1.to_string
-
-  assert p1.id == package1
-  assert p1.version == 1
-  assert p1.module == cid1 |> v1.to_string
+  let release1 = ir.Release(package1, 1, cid1)
+  let release2 = ir.Release(package2, 1, cid2)
+  let assert Ok(p1) = list.find(rows, fn(p) { p.release == release1 })
+  let assert Ok(p2) = list.find(rows, fn(p) { p.release == release2 })
+  assert p2.release == release2
+  assert p1.release == release1
 }
 
 pub fn reject_release_with_nonexistant_fragment_test() {

@@ -1,4 +1,5 @@
 import eyg/hub/publisher
+import eyg/ir/tree as ir
 import gleam/dynamic/decode
 import gleam/json
 import hub/cid
@@ -75,15 +76,18 @@ fn archived_entry_decoder() -> decode.Decoder(schema.ArchivedEntry) {
 }
 
 pub type Package {
-  Package(id: String, version: Int, module: String, released_at: utils.DateTime)
+  Package(release: ir.Release, released_at: utils.DateTime)
 }
 
 fn package_decoder() -> decode.Decoder(Package) {
-  use id <- decode.field(0, decode.string)
+  use package <- decode.field(0, decode.string)
   use version <- decode.field(1, decode.int)
-  use module <- decode.field(2, decode.string)
+  use module <- decode.field(2, utils.cid_decoder())
   use released_at <- decode.field(3, utils.datetime_decoder())
-  decode.success(Package(id:, version:, module:, released_at:))
+  decode.success(Package(
+    release: ir.Release(package:, version:, module:),
+    released_at:,
+  ))
 }
 
 pub fn list_packages() -> pog.Query(Package) {
@@ -95,21 +99,19 @@ pub fn list_packages() -> pog.Query(Package) {
 }
 
 pub type Release {
-  Release(
-    package: String,
-    version: Int,
-    module: String,
-    released_at: utils.DateTime,
-  )
+  Release(release: ir.Release, released_at: utils.DateTime)
 }
 
 fn release_decoder() -> decode.Decoder(Release) {
   use package <- decode.field(0, decode.string)
   use version <- decode.field(1, decode.int)
-  use module <- decode.field(2, decode.string)
+  use module <- decode.field(2, utils.cid_decoder())
   use released_at <- decode.field(3, utils.datetime_decoder())
 
-  decode.success(Release(package:, version:, module:, released_at:))
+  decode.success(Release(
+    release: ir.Release(package:, version:, module:),
+    released_at:,
+  ))
 }
 
 pub fn list_releases(entity: String) -> pog.Query(Release) {
@@ -150,4 +152,17 @@ ORDER BY seq ASC;"
   |> pog.query
   |> pog.parameter(pog.text(v1.to_string(entry_id)))
   |> pog.returning(archived_entry_decoder())
+}
+
+pub fn get_release_module(package: String, version: Int) -> pog.Query(v1.Cid) {
+  "SELECT module
+  FROM releases
+  WHERE package = $1 AND version_ = $2"
+  |> pog.query()
+  |> pog.parameter(pog.text(package))
+  |> pog.parameter(pog.int(version))
+  |> pog.returning({
+    use module <- decode.field(0, utils.cid_decoder())
+    decode.success(module)
+  })
 }

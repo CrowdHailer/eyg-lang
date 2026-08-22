@@ -6,6 +6,7 @@ import gleam/http/response.{type Response}
 import gleam/json
 import gleam/string
 import hub/modules/data
+import hub/modules/references
 import hub/server/context.{type Context}
 import hub/web/utils
 import multiformats/cid/v1
@@ -20,8 +21,9 @@ pub fn share(
   use data <- wisp.require_string_body(request)
   use <- check_size(data, 50_000)
   use source <- utils.do_decode(data, dag_json.decoder(Nil))
-  use <- check_soundness(source)
-  use <- check_purity(source)
+  use types <- resolve_references(source, context.db)
+  use <- check_soundness(source, types)
+  use <- check_purity(source, types)
   // echo request
   let ip = "123.1.1.1"
   // wisp.accepted
@@ -43,16 +45,31 @@ fn check_size(data, max, then) {
   }
 }
 
-fn check_soundness(source, then) {
-  let inference = infer.unpure() |> infer.check(source)
+fn resolve_references(source, db, then) {
+  case references.resolve(source, db) {
+    Ok(types) -> then(types)
+    Error(reason) ->
+      wisp.json_response(
+        json.to_string(
+          json.object([#("reason", json.string(references.describe(reason)))]),
+        ),
+        422,
+      )
+  }
+}
+
+fn check_soundness(source, types, then) {
+  let inference =
+    infer.unpure() |> infer.with_references(types) |> infer.check(source)
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()
   }
 }
 
-fn check_purity(source, then) {
-  let inference = infer.pure() |> infer.check(source)
+fn check_purity(source, types, then) {
+  let inference =
+    infer.pure() |> infer.with_references(types) |> infer.check(source)
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()

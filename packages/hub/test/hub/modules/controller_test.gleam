@@ -1,14 +1,20 @@
 import eyg/hub/client
+import eyg/hub/publisher
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http
 import gleam/http/request
 import gleam/json
+import gleam/list
 import gleam/string
+import hub/fixtures
+import hub/generators as g
 import hub/helpers.{dispatch}
+import hub/packages/data as packages
 import hub/router
 import hub/web/utils
 import ogre/operation
+import pog
 import wisp/simulate
 
 pub fn share_valid_fragment_test() {
@@ -31,6 +37,66 @@ pub fn share_fragment_is_idempotent_test() {
   assert response.status == 200
   let response = dispatch(client.share_module(source), context)
   assert response.status == 200
+}
+
+pub fn share_fragment_with_transitive_content_references_test() {
+  use context <- helpers.web_context()
+  let leaf = ir.integer(1)
+  let response = dispatch(client.share_module(leaf), context)
+  let assert Ok(leaf_cid) = client.share_response(response)
+
+  let middle = ir.reference(leaf_cid)
+  let response = dispatch(client.share_module(middle), context)
+  let assert Ok(middle_cid) = client.share_response(response)
+
+  let source = ir.add(ir.reference(middle_cid), ir.integer(1))
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 200
+}
+
+pub fn reject_reference_to_unshared_fragment_test() {
+  use context <- helpers.web_context()
+  let response =
+    dispatch(client.share_module(ir.reference(helpers.random_cid())), context)
+  assert response.status == 422
+}
+
+pub fn share_fragment_with_pinned_release_test() {
+  use context <- helpers.web_context()
+  let package = g.package()
+  let assert Ok(module) = fixtures.module(context.db)
+  publish(package, module, context.db)
+
+  let response =
+    dispatch(client.share_module(ir.release(package, 1, module)), context)
+  assert response.status == 200
+}
+
+pub fn reject_mispinned_release_test() {
+  use context <- helpers.web_context()
+  let package = g.package()
+  let assert Ok(published) = fixtures.module(context.db)
+  let assert Ok(pinned) = fixtures.module(context.db)
+  publish(package, published, context.db)
+
+  let response =
+    dispatch(client.share_module(ir.release(package, 1, pinned)), context)
+  assert response.status == 422
+}
+
+pub fn reject_unpinned_explicit_references_test() {
+  use context <- helpers.web_context()
+  let references = [
+    ir.package("standard"),
+    ir.version("standard", 1),
+    ir.relative("./local.eyg"),
+  ]
+
+  references
+  |> list.each(fn(source) {
+    let response = dispatch(client.share_module(source), context)
+    assert response.status == 422
+  })
 }
 
 pub fn reject_invalid_json_test() {
@@ -95,4 +161,12 @@ pub fn fetch_with_invalid_cid_test() {
   let operation = operation.get("/modules/xyz")
   let response = dispatch(operation, context)
   assert response.status == 400
+}
+
+fn publish(package, module, db) {
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(db)
+  let entry = publisher.first(signatory.entity, keypair.key_id, package, module)
+  let assert Ok(pog.Returned(rows: [_], ..)) =
+    pog.execute(packages.insert_release(entry), db)
+  Nil
 }
