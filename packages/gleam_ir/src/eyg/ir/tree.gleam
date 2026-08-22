@@ -35,9 +35,22 @@ pub type Expression(m) {
   Handle(label: String)
 
   Builtin(identifier: String)
-  ContentReference(identifier: v1.Cid)
-  ReleaseReference(package: String, version: Int, identifier: v1.Cid)
-  RelativeReference(location: String)
+  Reference(reference: Reference)
+}
+
+pub type Reference {
+  Content(cid: v1.Cid)
+  // Package is an inline reference with only the package name.
+  // This will resolve to the latest version fetched by a local cache in most instances.
+  // Package, Version and Relative cannot be published clients will be expected to use concrete references.
+  Package(package: String)
+  Version(package: String, version: Int)
+  Pinned(release: Release)
+  Relative(location: String)
+}
+
+pub type Release {
+  Release(package: String, version: Int, module: v1.Cid)
 }
 
 pub fn variable(label) {
