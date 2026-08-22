@@ -584,9 +584,7 @@ fn handle_return(
       // The cid doesn't need removing from fetching modules because it was cleared when taking all unblocked modules
       let fetching_modules = dict.delete(cache.fetching_modules, cid)
       let type_ =
-        infer.pure()
-        |> infer.with_references(types(cache))
-        |> infer.check(source)
+        infer.check_with_references(infer.pure(), types(cache), source)
         |> infer.poly_type
       let new = Module(value:, type_:)
       let modules = dict.insert(cache.modules, cid, new)
