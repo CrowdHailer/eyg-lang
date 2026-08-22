@@ -11,12 +11,12 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 argv = ">= 1.0.2 and < 2.0.0"
 envoy = ">= 1.1.0 and < 2.0.0"
-eyg_analysis = ">= 1.2.0 and < 2.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_compiler = { path = "../gleam_compiler" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 4.0.0 and < 7.0.0"
-eyg_ir = ">= 2.0.0 and < 3.0.0"
-eyg_parser = ">= 0.4.0 and < 1.0.0"
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
 filepath = ">= 1.1.2 and < 2.0.0"
 gleam_crypto = ">= 1.5.1 and < 2.0.0"
 gleam_fetch = ">= 1.4.0 and < 2.0.0"
@@ -33,7 +33,7 @@ ogre = ">= 1.1.0 and < 2.0.0"
 shellout = ">= 1.8.0 and < 2.0.0"
 simplifile = ">= 2.4.0 and < 3.0.0"
 spotless = ">= 7.0.0 and < 8.0.0"
-touch_grass = ">= 0.2.11 and < 1.0.0"
+touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }
 
 [dev_dependencies]

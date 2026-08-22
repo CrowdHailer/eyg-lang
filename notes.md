@@ -156,3 +156,19 @@ The `to_js` API still accepts CID-to-type information for analysis but no corres
 - Migrated effect inference to the current analysis context/check API.
 - Added exact panic-message coverage for content, package, version, pinned, and relative references.
 - Passed 13 JavaScript/Bun tests with warnings treated as errors.
+
+## `gleam_cli`
+
+### Assessment
+
+The CLI is the clearest demonstration that the core change is worthwhile. Its old release lookup decoded three meanings from `version == 0` and `module == vacant_cid`; it now dispatches directly on `Content`, `Package`, `Version`, `Pinned`, and `Relative`. The interpreter's single explicit-reference break also reduces three duplicated loop branches to one.
+
+Reference-to-CID resolution remains centralized in `eyg_hub.cache.reference`; the CLI delegates to it rather than repeating package rules. A pin to the vacant module CID is consequently a real pinned release and cannot be mistaken for an unpinned package/version request.
+
+### Changes and tests
+
+- Pointed all seven direct migration-stack dependencies at local packages.
+- Replaced old constructors, release DTOs, break variants, and sentinel dispatch throughout execution, IR helpers, and source origins.
+- Preserved relative import resolution by matching `Relative(location)` explicitly.
+- Added focused resolution and source-origin tests, including the vacant-CID pin regression; no snapshots changed.
+- Passed 70 JavaScript/Bun tests with warnings treated as errors.

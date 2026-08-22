@@ -5,14 +5,12 @@ import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/hub/cache.{type Cache}
 import eyg/hub/publisher
-import eyg/hub/release
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
-import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser/location
 import filepath
@@ -225,17 +223,9 @@ pub fn loop(
           let output = write_file(meta.origin, input)
           loop(block.resume(write_file.encode(output), env, k), state)
         }
-        break.UndefinedReference(cid) -> {
-          use value <- try_await(lookup_reference(cid, state), meta, env, k)
-          loop(block.resume(value, env, k), state)
-        }
-        break.UndefinedRelease(package: p, release: v, module: m) -> {
-          use value <- try_await(lookup_release(p, v, m, state), meta, env, k)
-          loop(block.resume(value, env, k), state)
-        }
-        break.UndefinedRelative(location:) -> {
+        break.UndefinedReference(reference) -> {
           use value <- try_await(
-            lookup_relative(location, meta.origin, state),
+            lookup_reference(reference, meta.origin, state),
             meta,
             env,
             k,
@@ -305,7 +295,7 @@ fn apply(
               json.parse(entry.payload, publisher.decoder())
 
             let publisher.Release(package:, version:, module:) = payload.content
-            let release = release.Release(package:, version:, module:)
+            let release = ir.Release(package:, version:, module:)
             let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
             cache
           })
@@ -317,10 +307,7 @@ fn apply(
   }
 }
 
-fn lookup_reference(
-  cid: v1.Cid,
-  state: State,
-) -> Promise(Result(Value, Reason)) {
+fn lookup_content(cid: v1.Cid, state: State) -> Promise(Result(Value, Reason)) {
   use state <- promise.map(update(state))
   case cache.module(state.cache, cid) {
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
@@ -341,49 +328,52 @@ fn lookup_reference(
   }
 }
 
-fn lookup_release(package, version, module, state: State) {
-  let unbound = module == dag_json.vacant_cid
-  case package, version, unbound {
-    _, 0, True -> {
-      let cache = cache.pull(state.cache)
-      use state <- promise.await(update(State(..state, cache:)))
-      case cache.package(state.cache, package) {
-        Ok(#(_, module)) -> lookup_reference(module, state)
-        Error(Nil) -> {
-          abort("package not found: @" <> package)
-          |> Error
-          |> promise.resolve
-        }
-      }
-    }
-    p, v, True -> {
-      let cache = cache.pull(state.cache)
-      use state <- promise.await(update(State(..state, cache:)))
-      case cache.unbound_release(state.cache, p, v) {
-        Ok(module) -> lookup_reference(module, state)
-        Error(Nil) ->
-          abort("package not found: @" <> p <> ":" <> int.to_string(v))
-          |> Error
-          |> promise.resolve
-      }
-    }
-    _, _, _ -> {
-      let cache = cache.pull(state.cache)
-      use state <- promise.await(update(State(..state, cache:)))
-      let release = release.Release(package:, version:, module:)
-      case cache.release(state.cache, release) {
-        cache.Available(resolved) -> lookup_reference(resolved, state)
-        cache.Unknown -> {
-          abort("module not found for package: @" <> package)
-          |> Error
-          |> promise.resolve
-        }
-        cache.Unavailable(Nil) ->
-          break.UndefinedRelease(package:, release: version, module:)
-          |> Error
-          |> promise.resolve
-      }
-    }
+fn lookup_reference(
+  reference: ir.Reference,
+  origin: source.Origin,
+  state: State,
+) -> Promise(Result(Value, Reason)) {
+  case reference {
+    ir.Content(cid) -> lookup_content(cid, state)
+    ir.Package(_) | ir.Version(_, _) | ir.Pinned(_) ->
+      lookup_named_reference(reference, state)
+    ir.Relative(location) -> lookup_relative(location, origin, state)
+  }
+}
+
+fn lookup_named_reference(reference: ir.Reference, state: State) {
+  let cache = cache.pull(state.cache)
+  use state <- promise.await(update(State(..state, cache:)))
+  case resolve_reference(state.cache, reference) {
+    cache.Available(cid) -> lookup_content(cid, state)
+    cache.Unknown ->
+      missing_reference(reference)
+      |> abort
+      |> Error
+      |> promise.resolve
+    cache.Unavailable(Nil) ->
+      break.UndefinedReference(reference)
+      |> Error
+      |> promise.resolve
+  }
+}
+
+pub fn resolve_reference(
+  context: Cache(meta),
+  reference: ir.Reference,
+) -> cache.Resource(v1.Cid, Nil) {
+  cache.reference(context, reference)
+}
+
+fn missing_reference(reference: ir.Reference) -> String {
+  case reference {
+    ir.Content(cid) -> "module not found: #" <> v1.to_string(cid)
+    ir.Package(package) -> "package not found: @" <> package
+    ir.Version(package, version) ->
+      "package not found: @" <> package <> ":" <> int.to_string(version)
+    ir.Pinned(ir.Release(package:, ..)) ->
+      "module not found for package: @" <> package
+    ir.Relative(location) -> "module not found at: " <> location
   }
 }
 
@@ -423,7 +413,8 @@ fn lookup_relative(
           |> promise.resolve
       }
     }
-    Error(_) -> promise.resolve(Error(break.UndefinedRelative(location:)))
+    Error(_) ->
+      promise.resolve(Error(break.UndefinedReference(ir.Relative(location))))
   }
 }
 
@@ -435,17 +426,9 @@ pub fn pure_loop(
     Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, meta, env, k)) ->
       case reason {
-        break.UndefinedReference(cid) -> {
-          use value <- try_await(lookup_reference(cid, state), meta, env, k)
-          pure_loop(expression.resume(value, env, k), state)
-        }
-        break.UndefinedRelease(package: p, release: v, module: m) -> {
-          use value <- try_await(lookup_release(p, v, m, state), meta, env, k)
-          pure_loop(expression.resume(value, env, k), state)
-        }
-        break.UndefinedRelative(location:) -> {
+        break.UndefinedReference(reference) -> {
           use value <- try_await(
-            lookup_relative(location, meta.origin, state),
+            lookup_reference(reference, meta.origin, state),
             meta,
             env,
             k,
@@ -699,7 +682,7 @@ fn find_focus(frames: List(Frame), i: Int) -> Option(Int) {
     [] -> None
     [Frame(source.Location(origin, _), _), ..rest] ->
       case origin {
-        source.Content(_) | source.Release(..) -> find_focus(rest, i + 1)
+        source.Content(_) | source.Release(_) -> find_focus(rest, i + 1)
         _ -> Some(i)
       }
   }
@@ -767,7 +750,7 @@ fn origin_label(origin: source.Origin, cwd: String) -> String {
     source.Inline -> "<inline>"
     source.Repl -> "<repl>"
     source.Content(cid:) -> "#" <> v1.to_string(cid)
-    source.Release(package:, version:, cid: _) ->
+    source.Release(ir.Release(package:, version:, module: _)) ->
       "@" <> package <> ":" <> int.to_string(version)
   }
 }

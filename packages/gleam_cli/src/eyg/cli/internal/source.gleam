@@ -23,7 +23,7 @@ pub type Origin {
   Inline
   Repl
   Content(cid: v1.Cid)
-  Release(package: String, version: Int, cid: v1.Cid)
+  Release(release: ir.Release)
 }
 
 pub type Location {

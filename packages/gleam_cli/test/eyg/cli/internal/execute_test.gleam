@@ -1,17 +1,20 @@
 import birdie
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
+import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict
 import gleam/list
 import gleam/string
 import kryptos/eddsa
 import multiformats/cid/v1
+import multiformats/hashes
 import simplifile
 import touch_grass/cryptography/create_key
 import touch_grass/cryptography/sign
@@ -21,6 +24,39 @@ import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 
 const origin = source.Disk("./test/fixtures/entry.eyg")
+
+pub fn explicit_reference_resolution_test() {
+  let latest_cid = v1.Cid(297, hashes.Multihash(hashes.Sha256, <<1:size(256)>>))
+  let #(context, _) =
+    cache.pulled(
+      cache.empty(),
+      1,
+      ir.Release("standard", 1, dag_json.vacant_cid),
+    )
+  let #(context, _) =
+    cache.pulled(context, 2, ir.Release("standard", 2, latest_cid))
+
+  assert cache.Available(dag_json.vacant_cid)
+    == execute.resolve_reference(context, ir.Content(dag_json.vacant_cid))
+  assert cache.Available(latest_cid)
+    == execute.resolve_reference(context, ir.Package("standard"))
+  assert cache.Available(dag_json.vacant_cid)
+    == execute.resolve_reference(context, ir.Version("standard", 1))
+  assert cache.Available(dag_json.vacant_cid)
+    == execute.resolve_reference(
+      context,
+      ir.Pinned(ir.Release("standard", 1, dag_json.vacant_cid)),
+    )
+  assert cache.Unavailable(Nil)
+    == execute.resolve_reference(
+      context,
+      ir.Pinned(ir.Release("standard", 2, dag_json.vacant_cid)),
+    )
+  assert cache.Available(latest_cid)
+    == execute.resolve_reference(context, ir.Version("standard", 2))
+  assert cache.Unavailable(Nil)
+    == execute.resolve_reference(context, ir.Relative("./local.eyg"))
+}
 
 pub fn read_whole_file_test() {
   let input = read_file.Input(path: "hello.txt", offset: 0, limit: 1_000_000)
@@ -226,7 +262,10 @@ fn at_content(cid: v1.Cid) -> source.Location {
 
 /// A hub-fetched Release origin with no recoverable source.
 fn at_release(package: String, version: Int, cid: v1.Cid) -> source.Location {
-  source.Location(source.Release(package, version, cid), source.Json)
+  source.Location(
+    source.Release(ir.Release(package, version, cid)),
+    source.Json,
+  )
 }
 
 const main_eyg = "let lib = import \"./lib.eyg\"
