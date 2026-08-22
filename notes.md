@@ -172,3 +172,15 @@ Reference-to-CID resolution remains centralized in `eyg_hub.cache.reference`; th
 - Preserved relative import resolution by matching `Relative(location)` explicitly.
 - Added focused resolution and source-origin tests, including the vacant-CID pin regression; no snapshots changed.
 - Passed 70 JavaScript/Bun tests with warnings treated as errors.
+
+## `pal`
+
+### Assessment
+
+Pal does not inspect IR references directly, so the core type change neither improves nor harms its source clarity. Its value in this migration is integration coverage: local dependency wiring proves that the upgraded hub, analysis, interpreter, Morph, touch_grass, and IR APIs compose without a vendored compatibility copy.
+
+### Changes and tests
+
+- Pointed `eyg_ir`, `eyg_analysis`, `eyg_interpreter`, and `touch_grass` at local packages; other local stack packages remain path dependencies.
+- No source or behavioral changes were needed.
+- Passed its JavaScript/Bun test with warnings treated as errors.

@@ -4,10 +4,10 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
-eyg_analysis = ">= 1.2.2 and < 2.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 6.0.0 and < 7.0.0"
-eyg_ir = ">= 2.2.0 and < 3.0.0"
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
 gleam_crypto = ">= 1.6.0 and < 2.0.0"
 gleam_fetch = ">= 1.4.0 and < 2.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"
@@ -20,7 +20,7 @@ multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 plinth = ">= 0.11.0 and < 1.0.0"
 spotless = ">= 7.0.0 and < 8.0.0"
-touch_grass = ">= 0.2.12 and < 1.0.0"
+touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }
 
 [dev_dependencies]
