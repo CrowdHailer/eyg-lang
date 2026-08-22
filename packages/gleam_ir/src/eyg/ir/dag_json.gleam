@@ -4,6 +4,7 @@ import eyg/ir/tree as ir
 import gleam/dynamic
 import gleam/dynamic/decode as d
 import gleam/json
+import gleam/option.{None, Some}
 import multiformats/cid/v1
 import multiformats/hashes
 
@@ -111,18 +112,32 @@ pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
       use cid <- d.field("l", codec.decode_cid())
-      d.success(#(ir.ContentReference(cid), meta))
+      d.success(#(ir.Reference(ir.Content(cid)), meta))
     }
     "@" -> {
       use package <- d.field("p", d.string)
       // version field used to be called release, so still uses r field in serialized code
-      use version <- d.field("r", d.int)
-      use cid <- d.field("l", codec.decode_cid())
-      d.success(#(ir.ReleaseReference(package, version, cid), meta))
+      use version <- d.optional_field("r", None, d.map(d.int, Some))
+      use module <- d.optional_field("l", None, d.map(codec.decode_cid(), Some))
+      case version, module {
+        None, None -> d.success(#(ir.Reference(ir.Package(package)), meta))
+        Some(version), None ->
+          d.success(#(ir.Reference(ir.Version(package, version)), meta))
+        Some(version), Some(module) ->
+          d.success(#(
+            ir.Reference(ir.Pinned(ir.Release(package, version, module))),
+            meta,
+          ))
+        None, Some(_) ->
+          d.failure(
+            #(ir.Vacant, meta),
+            "a version when a module CID is present",
+          )
+      }
     }
     "." -> {
       use location <- d.field("i", d.string)
-      d.success(#(ir.RelativeReference(location), meta))
+      d.success(#(ir.Reference(ir.Relative(location)), meta))
     }
     _ -> {
       d.failure(#(ir.Vacant, meta), "valid node key")
@@ -183,16 +198,23 @@ pub fn to_data_model(tree: ir.Node(meta)) -> json.Json {
     ir.Perform(x) -> node("p", [label(x)])
     ir.Handle(x) -> node("h", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
-    ir.ContentReference(identifier) ->
-      node("#", [#("l", codec.cid(identifier))])
-    ir.ReleaseReference(p, r, i) ->
-      node("@", [
-        #("p", codec.string(p)),
-        #("r", codec.int(r)),
-        #("l", codec.cid(i)),
-      ])
-    ir.RelativeReference(identifier) ->
-      node(".", [#("i", codec.string(identifier))])
+    ir.Reference(reference) ->
+      case reference {
+        ir.Content(identifier) -> node("#", [#("l", codec.cid(identifier))])
+        ir.Package(package) -> node("@", [#("p", codec.string(package))])
+        ir.Version(package, version) ->
+          node("@", [
+            #("p", codec.string(package)),
+            #("r", codec.int(version)),
+          ])
+        ir.Pinned(ir.Release(package, version, module)) ->
+          node("@", [
+            #("p", codec.string(package)),
+            #("r", codec.int(version)),
+            #("l", codec.cid(module)),
+          ])
+        ir.Relative(location) -> node(".", [#("i", codec.string(location))])
+      }
   }
 }
 

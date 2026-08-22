@@ -5,9 +5,11 @@ import gleam/string
 import midas/continuation.{type Continuation as K}
 import multiformats/cid/v1
 
+/// A node consists of an expression and associated metadata
 pub type Node(m) =
   #(Expression(m), m)
 
+/// The entire structure of an EYG program is specified in the following expression nodes.
 pub type Expression(m) {
   Variable(label: String)
   Lambda(label: String, body: #(Expression(m), m))
@@ -35,9 +37,27 @@ pub type Expression(m) {
   Handle(label: String)
 
   Builtin(identifier: String)
-  ContentReference(identifier: v1.Cid)
-  ReleaseReference(package: String, version: Int, identifier: v1.Cid)
-  RelativeReference(location: String)
+  Reference(reference: Reference)
+}
+
+/// A reference to another eyg module.
+///
+/// Content and Pinned are verifyable against a given module, any shared/or published module can only use these references.
+/// Version is fixed, the EYG hub does not accept republishing modules.
+/// Package refers only to a package by name. In most instances this will resolve to the latest release in a local cache.
+/// Relative is specific to the workspace running the program.
+/// This is often the filesystem but can be other things i.e. the location can be cells in a spreadsheet using EYG for scripting.
+pub type Reference {
+  Content(cid: v1.Cid)
+  Package(package: String)
+  Version(package: String, version: Int)
+  Pinned(release: Release)
+  Relative(location: String)
+}
+
+/// The identifier of a fully qualified release.
+pub type Release {
+  Release(package: String, version: Int, module: v1.Cid)
 }
 
 pub fn variable(label) {
@@ -121,11 +141,23 @@ pub fn builtin(identifier) {
 }
 
 pub fn reference(identifier) {
-  #(ContentReference(identifier), Nil)
+  #(Reference(Content(identifier)), Nil)
 }
 
-pub fn release(package, release, identifier) {
-  #(ReleaseReference(package, release, identifier), Nil)
+pub fn package(package) {
+  #(Reference(Package(package)), Nil)
+}
+
+pub fn version(package, version) {
+  #(Reference(Version(package, version)), Nil)
+}
+
+pub fn release(package, version, module) {
+  #(Reference(Pinned(Release(package, version, module))), Nil)
+}
+
+pub fn relative(location) {
+  #(Reference(Relative(location)), Nil)
 }
 
 pub fn func(params, body) {
@@ -232,44 +264,15 @@ pub fn list_builtins(node: Node(a)) {
   }(list.reverse)
 }
 
-pub fn list_references(node: Node(a)) -> List(v1.Cid) {
+pub fn list_references(node: Node(a)) -> List(Reference) {
   {
     use acc, #(exp, _meta) <- fold(node, [])
     case exp {
-      ReleaseReference(_, _, i) | ContentReference(i) -> utils.push_new(acc, i)
+      Reference(reference) -> utils.push_new(acc, reference)
       _ -> acc
     }
     |> continuation.return
   }(list.reverse)
-}
-
-pub fn list_named_references(node: Node(a)) -> List(#(String, Int, v1.Cid)) {
-  {
-    use acc, #(exp, _meta) <- fold(node, [])
-    case exp {
-      ReleaseReference(p, r, i) -> utils.push_new(acc, #(p, r, i))
-      _ -> acc
-    }
-    |> continuation.return
-  }(list.reverse)
-}
-
-pub fn map_release(
-  node: Node(m),
-  mapper: fn(String, Int, v1.Cid) -> #(String, Int, v1.Cid),
-) -> Node(m) {
-  rewrite(node, fn(node) {
-    let #(exp, meta) = node
-    case exp {
-      ReleaseReference(package, release, identifier) -> {
-        let #(package, release, identifier) =
-          mapper(package, release, identifier)
-        #(ReleaseReference(package, release, identifier), meta)
-      }
-      _ -> node
-    }
-    |> continuation.return()
-  })(fn(x) { x })
 }
 
 /// The variables that are free in this expressions.
@@ -427,12 +430,7 @@ pub fn map_children(
     Perform(label:) -> continuation.return(Perform(label:))
     Handle(label:) -> continuation.return(Handle(label:))
     Builtin(identifier:) -> continuation.return(Builtin(identifier:))
-    ContentReference(identifier:) ->
-      continuation.return(ContentReference(identifier:))
-    ReleaseReference(package:, version:, identifier:) ->
-      continuation.return(ReleaseReference(package:, version:, identifier:))
-    RelativeReference(location:) ->
-      continuation.return(RelativeReference(location:))
+    Reference(reference:) -> continuation.return(Reference(reference:))
   }
 }
 

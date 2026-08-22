@@ -2,13 +2,16 @@
 
 During development it is useful to reference an unpublished module that might be mutated as part of the current development.
 
-The EYG IR has two inbuilt references kinds.
+The EYG IR has five reference kinds.
 
-1. `Reference` Modules identified just by hash
-2. `Release` Published modules identified by a package name an version with a hash as a checksum.
+1. `Content` identifies an immutable module by CID.
+2. `Package` identifies the latest available release of a package.
+3. `Version` identifies one package version without pinning its module CID.
+4. `Pinned` identifies a published `Release` by package, version, and module CID.
+5. `Relative` identifies a module within the current workspace.
 
-A `Reference` is immutable and a `Release` has been published to the EYG Hub.
-Neither work for an in development module.
+Content and pinned references are stable. Package and version references require
+registry resolution. Relative references are resolved by the current workspace.
 
 ## Unpublished releases
 Also called `relative references` or `path references`
@@ -20,24 +23,20 @@ Workspaces are normally the files on your computer so the address is normally a 
 
 ## IR Representation
 
-To publish a EYG module it must contain only valid references and releases.
-Unpublished releases are represented as structurally valid releases but without a valid version or hash
+To publish an EYG module it must contain only content references and pinned releases.
+Workspace modules use the explicit `Relative` variant.
 
 ```gleam
-let relative = Release(package: "./index.eyg.json", version: 0, identifier: dag_json.vacant_cid)
-let relative = Release(package: "/lib/http.eyg.json", version: 0, identifier: dag_json.vacant_cid)
+let relative = Relative("./index.eyg.json")
+let absolute = Relative("/lib/http.eyg.json")
 ```
 
-These releases are unpublishable for all the following reasons:
-- the name contains `.` and `/`
-- the version is less than 1
-- the indentifier doesn't match the module content.
-
-When implementing EYG is a workspace it's standard to check for a version 0 to recognise a workspace module.
+The variant itself records that the reference is workspace-relative and cannot
+be published. No version or CID placeholder is involved.
 
 ## Text Representation
 
-Releases are identified with `@` and references with `#`.
+Packages are identified with `@`, content references with `#`, and relative references with `import`.
 The early version of unpublished packages used literals starting with `./` or `/`.
 This was unworkable as the format of the address is defined by the workspace.
 For example a file name might contain whitespace and most likely does contain `.` which can be confused with field selection.
