@@ -84,16 +84,30 @@ pub fn ast() {
       #("Perform", String),
       #("Handle", String),
       #("Builtin", String),
-      #("ContentReference", String),
-      #(
-        "ReleaseReference",
-        record([
-          #("package", String),
-          #("version", Integer),
-          #("cid", String),
-        ]),
-      ),
-      #("RelativeReference", String),
+      #("Reference", reference()),
     ]),
   )
+}
+
+pub fn reference() {
+  union([
+    #("Content", String),
+    #("Package", String),
+    #(
+      "Version",
+      record([
+        #("package", String),
+        #("version", Integer),
+      ]),
+    ),
+    #(
+      "Pinned",
+      record([
+        #("package", String),
+        #("version", Integer),
+        #("cid", String),
+      ]),
+    ),
+    #("Relative", String),
+  ])
 }
