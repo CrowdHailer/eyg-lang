@@ -1,4 +1,3 @@
-import eyg/ir/dag_json
 import eyg/ir/integer
 import eyg/ir/tree as ir
 import eyg/parser/token as t
@@ -306,7 +305,7 @@ pub fn expression(tokens) {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
           case v1.from_string(label) {
-            Ok(#(cid, _)) -> Ok(#(#(ir.ContentReference(cid), span), rest))
+            Ok(#(cid, _)) -> Ok(#(#(ir.Reference(ir.Content(cid)), span), rest))
             Error(_) -> Error(InvalidCidReference(end))
           }
         }
@@ -320,30 +319,30 @@ pub fn expression(tokens) {
             [#(t.Colon, _), #(t.Integer(raw), int_at), ..rest] -> {
               let assert Ok(version) = int.parse(raw)
               let after_version = int_at + string.length(raw)
-              case rest {
-                [#(t.Colon, _), #(t.Name(cid_label), cid_at), ..rest] -> {
+              case version > 0, rest {
+                False, _ -> Error(InvalidReleaseVersion(int_at))
+                True, [#(t.Colon, _), #(t.Name(cid_label), cid_at), ..rest] -> {
                   let after_cid = cid_at + string.length(cid_label)
                   let span = #(start, after_cid)
                   case v1.from_string(cid_label) {
                     Ok(#(cid, _)) ->
                       Ok(#(
-                        #(ir.ReleaseReference(label, version, cid), span),
+                        #(
+                          ir.Reference(
+                            ir.Pinned(ir.Release(label, version, cid)),
+                          ),
+                          span,
+                        ),
                         rest,
                       ))
                     Error(_) -> Error(InvalidCidReference(cid_at))
                   }
                 }
-                [#(t.Colon, hash_at), ..] ->
+                True, [#(t.Colon, hash_at), ..] ->
                   Error(InvalidCidReference(hash_at + 1))
-                _ -> {
+                True, _ -> {
                   let span = #(start, after_version)
-                  Ok(#(
-                    #(
-                      ir.ReleaseReference(label, version, dag_json.vacant_cid),
-                      span,
-                    ),
-                    rest,
-                  ))
+                  Ok(#(#(ir.Reference(ir.Version(label, version)), span), rest))
                 }
               }
             }
@@ -351,10 +350,7 @@ pub fn expression(tokens) {
               Error(InvalidReleaseVersion(colon_at + 1))
             _ -> {
               let span = #(start, after_name)
-              Ok(#(
-                #(ir.ReleaseReference(label, 0, dag_json.vacant_cid), span),
-                rest,
-              ))
+              Ok(#(#(ir.Reference(ir.Package(label)), span), rest))
             }
           }
         }
@@ -364,7 +360,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.String(value), end), ..rest] -> {
           let span = #(start, end + string.length(value) + 2)
-          Ok(#(#(ir.RelativeReference(value), span), rest))
+          Ok(#(#(ir.Reference(ir.Relative(value)), span), rest))
         }
         _ -> Error(InvalidImportPath(next_pos(rest, start + 6)))
       }

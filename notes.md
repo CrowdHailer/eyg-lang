@@ -30,3 +30,15 @@ Existing pinned releases retain their encoding and content identifiers. Content 
 - Updated traversal and rewriting for the wrapper `Reference` expression.
 - Added tests for helper construction, concrete/reference collection, typed release mapping, all reference round trips, and invalid package encodings.
 - Bumped `eyg_ir` to `3.0.0` because replacing public expression constructors is a breaking API change.
+
+## `eyg_parser`
+
+### Assessment
+
+The explicit variants substantially improve parser clarity. Each syntax form now maps directly to one constructor, so parsing no longer imports DAG-JSON solely to manufacture placeholder values. The parser also rejects version `0`, matching the documented positive-integer syntax and preventing the old sentinel from re-entering the IR as an ordinary version.
+
+### Changes and tests
+
+- Pointed `eyg_ir` at the local package so this migration is tested against the new API.
+- Mapped content, latest package, exact version, pinned release, and relative import syntax to their matching variants.
+- Updated parser expectations and added a version-zero rejection case.
