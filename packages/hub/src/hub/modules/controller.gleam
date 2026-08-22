@@ -59,8 +59,7 @@ fn resolve_references(source, db, then) {
 }
 
 fn check_soundness(source, types, then) {
-  let inference =
-    infer.unpure() |> infer.with_references(types) |> infer.check(source)
+  let inference = infer.check_with_references(infer.unpure(), types, source)
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()
@@ -68,8 +67,7 @@ fn check_soundness(source, types, then) {
 }
 
 fn check_purity(source, types, then) {
-  let inference =
-    infer.pure() |> infer.with_references(types) |> infer.check(source)
+  let inference = infer.check_with_references(infer.pure(), types, source)
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()

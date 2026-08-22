@@ -97,10 +97,7 @@ fn add(cid, types, db) {
     False -> {
       use source <- try(read(cid, db))
       use types <- try(add_all(ir.list_references(source), types, db))
-      let analysis =
-        infer.pure()
-        |> infer.with_references(types)
-        |> infer.check(source)
+      let analysis = infer.check_with_references(infer.pure(), types, source)
       case infer.all_errors(analysis) {
         [] -> Ok(dict.insert(types, cid, infer.poly_type(analysis)))
         _ -> Error(Invalid(cid))
