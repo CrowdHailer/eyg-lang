@@ -265,3 +265,5 @@ The old branch had a second three-variant request type based on the removed cont
 The analysis tree preserves the source reference form after resolution. This keeps analysis honest about source identity without requiring a resolver to mutate trees or hide selected releases in side effects. Callers that need concrete publication dependencies resolve them at their own boundary, as the server hub already does.
 
 `eyg_analysis` is bumped to `2.0.0` because `Context` and `check` are breaking APIs. The private inference implementation uses heap frames for long let/application spines so suspended references do not grow the JavaScript stack. The 56-test suite includes all five forms, ordering, exact errors, polymorphic reuse, narrow-adapter behavior, and a 10,000-level nested reference.
+
+The compiler still receives types keyed by CID, so it now uses `check_with_references`; its 13 JavaScript/Bun tests pass. This accurately preserves its existing concrete-reference limitation.
