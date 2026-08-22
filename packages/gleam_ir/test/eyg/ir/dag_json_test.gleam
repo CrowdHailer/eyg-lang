@@ -1,6 +1,7 @@
 import eyg/ir/cid
 import eyg/ir/dag_json as codec
 import eyg/ir/integer
+import eyg/ir/tree
 import gleam/crypto
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
@@ -69,4 +70,35 @@ pub fn decode_out_of_safe_range_integer_test() {
 pub fn decode_in_range_integer_test() {
   json.parse("{\"0\":\"i\",\"v\":5}", codec.decoder(Nil))
   |> should.be_ok
+}
+
+pub fn reference_round_trip_test() {
+  let cid = codec.vacant_cid
+  let references = [
+    tree.reference(cid),
+    tree.package("standard"),
+    tree.version("standard", 3),
+    tree.release("standard", 3, cid),
+    tree.relative("./module.eyg"),
+  ]
+
+  references
+  |> list.each(fn(reference) {
+    reference
+    |> codec.to_string
+    |> json.parse(codec.decoder(Nil))
+    |> should.equal(Ok(reference))
+  })
+}
+
+pub fn reject_pinned_reference_without_version_test() {
+  let source =
+    "{\"0\":\"@\",\"p\":\"standard\",\"l\":{\"/\":\""
+    <> v1.to_string(codec.vacant_cid)
+    <> "\"}}"
+
+  source
+  |> json.parse(codec.decoder(Nil))
+  |> result.is_error
+  |> should.be_true
 }

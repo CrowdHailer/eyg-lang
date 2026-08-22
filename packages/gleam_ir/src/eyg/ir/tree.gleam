@@ -134,11 +134,23 @@ pub fn builtin(identifier) {
 }
 
 pub fn reference(identifier) {
-  #(ContentReference(identifier), Nil)
+  #(Reference(Content(identifier)), Nil)
 }
 
-pub fn release(package, release, identifier) {
-  #(ReleaseReference(package, release, identifier), Nil)
+pub fn package(package) {
+  #(Reference(Package(package)), Nil)
+}
+
+pub fn version(package, version) {
+  #(Reference(Version(package, version)), Nil)
+}
+
+pub fn release(package, version, module) {
+  #(Reference(Pinned(Release(package, version, module))), Nil)
+}
+
+pub fn relative(location) {
+  #(Reference(Relative(location)), Nil)
 }
 
 pub fn func(params, body) {
@@ -249,36 +261,30 @@ pub fn list_references(node: Node(a)) -> List(v1.Cid) {
   {
     use acc, #(exp, _meta) <- fold(node, [])
     case exp {
-      ReleaseReference(_, _, i) | ContentReference(i) -> utils.push_new(acc, i)
+      Reference(Content(cid)) | Reference(Pinned(Release(_, _, cid))) ->
+        utils.push_new(acc, cid)
       _ -> acc
     }
     |> continuation.return
   }(list.reverse)
 }
 
-pub fn list_named_references(node: Node(a)) -> List(#(String, Int, v1.Cid)) {
+pub fn list_named_references(node: Node(a)) -> List(Release) {
   {
     use acc, #(exp, _meta) <- fold(node, [])
     case exp {
-      ReleaseReference(p, r, i) -> utils.push_new(acc, #(p, r, i))
+      Reference(Pinned(release)) -> utils.push_new(acc, release)
       _ -> acc
     }
     |> continuation.return
   }(list.reverse)
 }
 
-pub fn map_release(
-  node: Node(m),
-  mapper: fn(String, Int, v1.Cid) -> #(String, Int, v1.Cid),
-) -> Node(m) {
+pub fn map_release(node: Node(m), mapper: fn(Release) -> Release) -> Node(m) {
   rewrite(node, fn(node) {
     let #(exp, meta) = node
     case exp {
-      ReleaseReference(package, release, identifier) -> {
-        let #(package, release, identifier) =
-          mapper(package, release, identifier)
-        #(ReleaseReference(package, release, identifier), meta)
-      }
+      Reference(Pinned(release)) -> #(Reference(Pinned(mapper(release))), meta)
       _ -> node
     }
     |> continuation.return()
@@ -440,12 +446,7 @@ pub fn map_children(
     Perform(label:) -> continuation.return(Perform(label:))
     Handle(label:) -> continuation.return(Handle(label:))
     Builtin(identifier:) -> continuation.return(Builtin(identifier:))
-    ContentReference(identifier:) ->
-      continuation.return(ContentReference(identifier:))
-    ReleaseReference(package:, version:, identifier:) ->
-      continuation.return(ReleaseReference(package:, version:, identifier:))
-    RelativeReference(location:) ->
-      continuation.return(RelativeReference(location:))
+    Reference(reference:) -> continuation.return(Reference(reference:))
   }
 }
 

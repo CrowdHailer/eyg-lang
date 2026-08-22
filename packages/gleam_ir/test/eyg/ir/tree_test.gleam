@@ -1,3 +1,4 @@
+import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/int
 import gleam/list
@@ -67,6 +68,51 @@ pub fn map_children_test() {
     )
   assert exp
     == tree.map_children(exp, fn(node) { continuation.return(node) })(identity)
+}
+
+pub fn reference_helpers_test() {
+  let cid = dag_json.vacant_cid
+
+  assert #(tree.Reference(tree.Content(cid)), Nil) == tree.reference(cid)
+  assert #(tree.Reference(tree.Package("standard")), Nil)
+    == tree.package("standard")
+  assert #(tree.Reference(tree.Version("standard", 3)), Nil)
+    == tree.version("standard", 3)
+  assert #(tree.Reference(tree.Pinned(tree.Release("standard", 3, cid))), Nil)
+    == tree.release("standard", 3, cid)
+  assert #(tree.Reference(tree.Relative("./module.eyg")), Nil)
+    == tree.relative("./module.eyg")
+}
+
+pub fn reference_lists_test() {
+  let cid = dag_json.vacant_cid
+  let source =
+    tree.list([
+      tree.reference(cid),
+      tree.package("standard"),
+      tree.version("standard", 3),
+      tree.release("standard", 3, cid),
+      tree.relative("./module.eyg"),
+    ])
+
+  assert [cid] == tree.list_references(source)
+  assert [tree.Release("standard", 3, cid)]
+    == tree.list_named_references(source)
+}
+
+pub fn map_release_test() {
+  let cid = dag_json.vacant_cid
+  let source =
+    tree.list([
+      tree.version("standard", 3),
+      tree.release("standard", 3, cid),
+    ])
+
+  assert tree.list([
+      tree.version("standard", 3),
+      tree.release("renamed", 4, cid),
+    ])
+    == tree.map_release(source, fn(_) { tree.Release("renamed", 4, cid) })
 }
 
 pub fn fold_test() {
