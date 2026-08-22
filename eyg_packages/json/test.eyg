@@ -61,6 +61,16 @@ let nested_score_decoder = json.decode.object(
    test: (_) -> { assert.equal(
      json.parse("{\"name\":\"Ada\"}", json.decode.object(json.decode.field("name", json.decode.string))),
      Ok("Ada")
+    ) }},
+  {name: "json decodes present optional field",
+   test: (_) -> { assert.equal(
+     json.parse("{\"name\":\"Ada\"}", json.decode.object(json.decode.optional_field("name", json.decode.string))),
+     Ok(Some("Ada"))
+   ) }},
+  {name: "json decodes missing optional field",
+   test: (_) -> { assert.equal(
+     json.parse("{}", json.decode.object(json.decode.optional_field("name", json.decode.string))),
+     Ok(None({}))
    ) }},
   {name: "json decodes multiple object fields",
    test: (_) -> { assert.equal(

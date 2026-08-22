@@ -118,3 +118,14 @@ The reflected EYG AST mapping is clearer and now exhaustive. Each `ir.Reference`
 - Added direct encodings for `ContentReference`, `PackageReference`, `VersionReference`, `ReleaseReference`, and `RelativeReference`.
 - Added one focused encoding test per form using a real non-vacant CID.
 - Passed 24 tests on both Erlang and JavaScript/Bun with warnings treated as errors.
+
+## EYG `json`
+
+### Assessment
+
+The explicit reference wire format needs to distinguish `@package`, `@package:version`, and a pinned release by field presence. Adding a general `optional_field` decoder is preferable to reintroducing sentinels or creating reference-specific JSON parsing logic.
+
+### Changes and tests
+
+- Added `json.decode.optional_field`, returning `Some(value)` when present and `None({})` when absent.
+- Added tests for present and absent fields.

@@ -156,6 +156,20 @@ let field = (label, decoder) -> {
   }
 }
 
+let optional_field = (label, decoder) -> {
+  (parsed) -> {
+    match !list_pop(parsed) {
+      Error(_) -> { None({}) }
+      Ok({head}) -> {
+        match do_field(parsed, head.depth, label) {
+          Ok(rest) -> { Some(decoder(rest).value) }
+          Error(_) -> { None({}) }
+        }
+      }
+    }
+  }
+}
+
 let object = (decoder) -> {
   (parsed) -> {
     let {head, tail} = take(parsed)
@@ -190,6 +204,7 @@ let decode = {
   string,
   list,
   field,
+  optional_field,
   object
 }
 
