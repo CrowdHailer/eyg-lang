@@ -279,3 +279,5 @@ CLI checks without a resolver finish through `unresolved`; the shell uses `check
 Morph retains its editor/session CID map but passes it explicitly through `check_with_references`; resolver-less closure and buffer checks use `unresolved`. Its 29 JavaScript/Bun tests pass without broader editor API churn.
 
 Website reload preserves custom bindings through `check_with_references`. Documentation examples perform a narrow cached-reference reanalysis after Morph creates the buffer; this small second pass avoids threading resolver arguments through every editor rebuild closure. Package/version/relative forms continue through the existing runtime resolver. All 14 JavaScript/Bun tests pass.
+
+Pal, Overlay Web, and Overlay Public require no analysis call changes; their manifests now lock local `eyg_analysis` 2.0.0. Their 1, 31, and 1 JavaScript/Bun tests pass respectively.
