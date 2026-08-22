@@ -1,13 +1,11 @@
 import eyg/interpreter/value as v
-import multiformats/cid/v1
+import eyg/ir/tree as ir
 
 pub type Reason(m, c) {
   NotAFunction(v.Value(m, c))
   UndefinedVariable(String)
   UndefinedBuiltin(String)
-  UndefinedReference(v1.Cid)
-  UndefinedRelease(package: String, release: Int, module: v1.Cid)
-  UndefinedRelative(location: String)
+  UndefinedReference(ir.Reference)
   Vacant
   NoMatch(term: v.Value(m, c))
   UnhandledEffect(String, v.Value(m, c))

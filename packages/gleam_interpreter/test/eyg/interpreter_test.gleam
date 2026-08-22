@@ -196,3 +196,21 @@ pub fn evaluation_suite_test() {
     check_evaluated(name, final, expected)
   })
 }
+
+pub fn explicit_reference_breaks_test() {
+  let cid = codec.vacant_cid
+  let references = [
+    ir.Content(cid),
+    ir.Package("standard"),
+    ir.Version("standard", 3),
+    ir.Pinned(ir.Release("standard", 3, cid)),
+    ir.Relative("./module.eyg"),
+  ]
+
+  references
+  |> list.each(fn(reference) {
+    let result = r.execute(#(ir.Reference(reference), Nil), [])
+    let assert Error(#(reason, _, _, _)) = result
+    assert break.UndefinedReference(reference) == reason
+  })
+}
