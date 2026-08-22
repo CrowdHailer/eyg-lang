@@ -1,9 +1,9 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
-import eyg/hub/release
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/expression
 import eyg/interpreter/state as istate
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -13,6 +13,7 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import morph/analysis
 import morph/buffer.{type Buffer}
 import morph/editable as e
@@ -20,7 +21,6 @@ import morph/input
 import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
-import multiformats/hashes
 import ogre/origin
 import pal/platform/browser as platform
 import pal/system
@@ -68,7 +68,7 @@ pub type Run {
   Exception(istate.Reason(Meta))
   Aborted(String)
   Handling(task_id: Int, env: istate.Env(Meta), k: istate.Stack(Meta))
-  Blocked(dep: cache.Dependency, env: istate.Env(Meta), k: istate.Stack(Meta))
+  Blocked(dep: ir.Reference, env: istate.Env(Meta), k: istate.Stack(Meta))
 }
 
 pub type Mode {
@@ -121,31 +121,13 @@ pub fn repl_context(
 
 fn module_context(
   scope: List(#(String, istate.Value(Meta))),
-  modules: Dict(Filename, Buffer),
+  _modules: Dict(Filename, Buffer),
 ) {
   let #(bindings, tenv) = analysis.env_to_tenv(scope, [])
-  let relative =
-    dict.to_list(modules)
-    |> list.filter_map(fn(entry) {
-      let #(#(name, ext), buffer) = entry
-
-      case ext {
-        EygJson -> Ok(#(relative_cid(name), infer.poly_type(buffer.analysis)))
-      }
-    })
-    |> dict.from_list()
-  let references = dict.merge(relative, dict.new())
   // TODO use a helper in infer that can accept this env to tenv environment 
   // but it requires moving the function out of morph analysis
   // infer.pure()
   infer.Context(tenv, t.Empty, dict.new(), 1, bindings)
-  |> infer.with_references(references)
-}
-
-/// This is a fake hash that is used to lookup specifically in the case of relative dependencies.
-/// Publishing code with this reference will fail
-pub fn relative_cid(name) {
-  v1.Cid(297, hashes.Multihash(hashes.Sha256, <<{ "./" <> name }:utf8>>))
 }
 
 /// replaces buffer in the tree
@@ -768,19 +750,19 @@ fn picker_message(state, message) {
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
 
-    Manipulating(m.PickRelease(_picker, rebuild)) ->
+    Manipulating(m.PickReference(_picker, choices, rebuild)) ->
       case message {
         picker.Updated(picker:) -> {
-          let mode = Manipulating(m.PickRelease(picker, rebuild))
+          let mode = Manipulating(m.PickReference(picker, choices, rebuild))
           #(State(..state, mode:), [])
         }
         picker.Decided(text) -> {
-          case cache.package(state.cache, text) {
-            Ok(#(v, m)) ->
+          case dict.get(choices, text) {
+            Ok(reference) ->
               State(..state, mode: Editing)
-              |> replace_buffer(rebuild(#(text, v, m), _))
+              |> replace_buffer(rebuild(reference, _))
             Error(_) -> {
-              echo "need error message for bad cid"
+              echo "need error message for unknown reference"
               #(state, [])
             }
           }
@@ -841,30 +823,69 @@ fn loop(
         Error(reason) -> Running(Exception(reason), state.counter, None)
       }
     }
-    Error(#(break.UndefinedReference(cid), _, env, k)) ->
-      case cache.get_module(state.cache, cid) {
-        Ok(cache.Module(value:, ..)) -> loop(block.resume(value, env, k), state)
-        // All dependencies are marked as blocked the view shows error vs running status
-        Error(_) -> {
-          let run = Blocked(cache.Content(cid), env, k)
-          Running(run, state.counter, None)
-        }
+    Error(#(break.UndefinedReference(reference), _, env, k)) ->
+      case reference_value(state, reference) {
+        Ok(value) -> loop(block.resume(value, env, k), state)
+        Error(Nil) ->
+          case reference {
+            ir.Relative(_) ->
+              Running(
+                Exception(break.UndefinedReference(reference)),
+                state.counter,
+                None,
+              )
+            _ -> Running(Blocked(reference, env, k), state.counter, None)
+          }
       }
-    Error(#(break.UndefinedRelease(package:, release:, module:), _, env, k)) -> {
-      let release = release.Release(package:, version: release, module:)
-      case cache.release_code(state.cache, release) {
-        Ok(cache.Module(value:, ..)) -> loop(block.resume(value, env, k), state)
-        _ -> {
-          let run = Blocked(cache.Release(release), env, k)
-          Running(run, state.counter, None)
-        }
-      }
-    }
     Ok(#(value, scope)) -> {
       Stop(value, scope)
     }
     Error(#(reason, _, _, _)) -> Running(Exception(reason), state.counter, None)
   }
+}
+
+fn reference_value(state: State, reference: ir.Reference) {
+  case reference {
+    ir.Relative(location) ->
+      case local_module(state.modules, location) {
+        Ok(buffer) ->
+          module_value(expression.execute(buffer.source(buffer), []), state)
+        Error(Nil) -> Error(Nil)
+      }
+    _ ->
+      case cache.reference(state.cache, reference) {
+        cache.Available(cid) ->
+          case cache.get_module(state.cache, cid) {
+            Ok(cache.Module(value:, ..)) -> Ok(value)
+            Error(_) -> Error(Nil)
+          }
+        cache.Unknown | cache.Unavailable(Nil) -> Error(Nil)
+      }
+  }
+}
+
+fn module_value(return, state) {
+  case return {
+    Ok(value) -> Ok(value)
+    Error(#(break.UndefinedReference(reference), _, env, k)) ->
+      case reference_value(state, reference) {
+        Ok(value) -> module_value(expression.resume(value, env, k), state)
+        Error(Nil) -> Error(Nil)
+      }
+    Error(_) -> Error(Nil)
+  }
+}
+
+fn local_module(modules, location) {
+  let name = case string.starts_with(location, "./") {
+    True -> string.drop_start(location, 2)
+    False -> location
+  }
+  let name = case string.ends_with(name, ".eyg.json") {
+    True -> string.drop_end(name, 9)
+    False -> name
+  }
+  dict.get(modules, #(name, EygJson))
 }
 
 pub fn restart(run: Run, state: State) -> StopOrRunning {

@@ -1,11 +1,11 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/hub/cache
-import eyg/hub/release
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state as istate
+import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -570,15 +570,10 @@ fn render_default(
             Ok(_) -> render_pending()
             Error(reason) -> render_exception(reason)
           }
-        Error(#(break.UndefinedReference(reference), _, _, _)) ->
-          render_blocked(cache.Content(reference), cache)
-        Error(#(break.UndefinedRelease(package:, release:, module:), _, _, _)) ->
-          render_blocked(
-            cache.Release(release.Release(package:, version: release, module:)),
-            cache,
-          )
-        Error(#(break.UndefinedRelative(location: _) as reason, _, _, _)) ->
+        Error(#(break.UndefinedReference(ir.Relative(_)) as reason, _, _, _)) ->
           render_exception(reason)
+        Error(#(break.UndefinedReference(reference), _, _, _)) ->
+          render_blocked(reference, cache)
         Error(#(reason, _, _, _)) -> render_exception(reason)
       }
     }
@@ -594,7 +589,7 @@ fn render_default(
 }
 
 fn render_blocked(
-  _dependency: cache.Dependency,
+  _dependency: ir.Reference,
   _cache: cache.Cache(_),
 ) -> element.Element(a) {
   h.div(
@@ -691,7 +686,7 @@ fn render_manipulating(
       input.render_text(value) |> element.map(input_message)
     manipulation.EnterInteger(value, _) ->
       input.render_number(value) |> element.map(input_message)
-    manipulation.PickRelease(picker, _) ->
+    manipulation.PickReference(picker, _, _) ->
       picker.render(picker) |> element.map(picker_message)
   }
 }

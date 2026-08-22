@@ -184,3 +184,19 @@ Pal does not inspect IR references directly, so the core type change neither imp
 - Pointed `eyg_ir`, `eyg_analysis`, `eyg_interpreter`, and `touch_grass` at local packages; other local stack packages remain path dependencies.
 - No source or behavioral changes were needed.
 - Passed its JavaScript/Bun test with warnings treated as errors.
+
+## `website`
+
+### Assessment
+
+The explicit model improves both rendering and workspace behavior. Tree output names all five forms distinctly, editor pickers carry `ir.Reference` values rather than triples, and runtime blocked state uses the same reference value as the interpreter and cache. Relative workspace modules are now resolved by their path directly; the previous synthetic SHA-256 CID convention has been removed.
+
+The first integration attempt copied a subset of Pal into a website-local vendor directory to bypass Pal's old dependency constraint. That obscured the real dependency graph and duplicated code, so it was rejected. Upgrading Pal separately allowed the website to retain its normal `../pal` dependency.
+
+### Changes and tests
+
+- Pointed seven direct migration-stack dependencies at local packages while retaining the workspace Pal package.
+- Updated tree rendering, editor menus/pickers, manipulation state, runtime break handling, and canonical release usage.
+- Added direct relative workspace lookup without fake CIDs, plus tests for insertion and execution.
+- Added rendering coverage for all five reference forms; existing desktop/mobile structure and snapshots remain unchanged.
+- Passed 14 JavaScript/Bun tests with warnings treated as errors.

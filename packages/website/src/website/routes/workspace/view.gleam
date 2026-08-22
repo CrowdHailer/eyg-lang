@@ -34,7 +34,7 @@ pub fn render(state: state.State) {
             editor_view.render_picker(picker)
             |> element.map(state.PickerMessage),
           ])
-        state.Manipulating(manipulation.PickRelease(picker, _)) ->
+        state.Manipulating(manipulation.PickReference(picker, _, _)) ->
           modal([
             editor_view.render_picker(picker)
             |> element.map(state.PickerMessage),

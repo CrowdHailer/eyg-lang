@@ -1,8 +1,10 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/option.{Some}
 import morph/buffer
+import morph/picker
 import ogre/origin
 import pal/system
 import website/config
@@ -42,6 +44,34 @@ pub fn execute_async_effect_test() {
   assert Some(v.unit()) == value
   // TODO keep list of effects
   assert [] == effects
+}
+
+pub fn insert_relative_workspace_reference_test() {
+  let module = buffer.from_source(ir.integer(42), infer.pure())
+  let state = with_source(ir.vacant())
+  let modules = dict.from_list([#(#("local", state.EygJson), module)])
+  let state = State(..state, modules:)
+
+  let assert #(state, []) = command(state, "q")
+  let assert state.Manipulating(..) = state.mode
+  let assert #(state, []) =
+    state.update(state, state.PickerMessage(picker.Decided("local")))
+  let assert #(ir.Reference(ir.Relative(location)), _) =
+    buffer.source(state.repl)
+
+  assert "./local.eyg.json" == location
+}
+
+pub fn execute_relative_workspace_reference_test() {
+  let module = buffer.from_source(ir.integer(42), infer.pure())
+  let state = with_source(ir.relative("./local.eyg.json"))
+  let modules = dict.from_list([#(#("local", state.EygJson), module)])
+  let state = State(..state, modules:)
+
+  let assert #(state, []) = command(state, "Enter")
+  let assert [state.Previous(value:, ..)] = state.previous
+
+  assert Some(v.Integer(42)) == value
 }
 
 fn command(state, key) {

@@ -1,10 +1,10 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
-import eyg/hub/release
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
@@ -56,7 +56,7 @@ pub type Run {
   Exception(state.Reason(Meta))
   Aborted(String)
   Handling(task_id: Int, work: Work, env: state.Env(Meta), k: state.Stack(Meta))
-  Blocked(dep: cache.Dependency, env: state.Env(Meta), k: state.Stack(Meta))
+  Blocked(dep: ir.Reference, env: state.Env(Meta), k: state.Stack(Meta))
 }
 
 pub type Work {
@@ -240,17 +240,18 @@ pub fn update(state: State, message) {
             )
           }
 
-        Manipulating(id, m.PickRelease(_picker, rebuild)) ->
+        Manipulating(id, m.PickReference(_picker, choices, rebuild)) ->
           case message {
             picker.Updated(picker:) -> {
-              let mode = Manipulating(id, m.PickRelease(picker, rebuild))
+              let mode =
+                Manipulating(id, m.PickReference(picker, choices, rebuild))
               #(State(..state, mode:), [])
             }
             picker.Decided(text) -> {
-              case cache.package(state.cache, text) {
-                Ok(#(v, m)) -> continue(state, id, rebuild(#(text, v, m), _))
+              case dict.get(choices, text) {
+                Ok(reference) -> continue(state, id, rebuild(reference, _))
                 Error(_) -> {
-                  echo "need error message for bad cid"
+                  echo "need error message for unknown reference"
                   #(state, [])
                 }
               }
@@ -584,27 +585,21 @@ pub fn loop(
         Error(reason) -> #(Exception(reason), state.counter, None)
       }
     }
-    Error(#(break.UndefinedReference(cid), _, env, k)) ->
-      case cache.get_module(state.cache, cid) {
-        Ok(cache.Module(value:, ..)) ->
-          loop(expression.resume(value, env, k), state)
-        // All dependencies are marked as blocked the view shows error vs running status
-        Error(_) -> {
-          let run = Blocked(cache.Content(cid), env, k)
-          #(run, state.counter, None)
-        }
+    Error(#(break.UndefinedReference(reference), _, env, k)) ->
+      case cache.reference(state.cache, reference) {
+        cache.Available(cid) ->
+          case cache.get_module(state.cache, cid) {
+            Ok(cache.Module(value:, ..)) ->
+              loop(expression.resume(value, env, k), state)
+            Error(_) -> #(Blocked(reference, env, k), state.counter, None)
+          }
+        cache.Unknown -> #(Blocked(reference, env, k), state.counter, None)
+        cache.Unavailable(Nil) -> #(
+          Exception(break.UndefinedReference(reference)),
+          state.counter,
+          None,
+        )
       }
-    Error(#(break.UndefinedRelease(package:, release:, module:), _, env, k)) -> {
-      let release = release.Release(package:, version: release, module:)
-      case cache.release_code(state.cache, release) {
-        Ok(cache.Module(value:, ..)) ->
-          loop(expression.resume(value, env, k), state)
-        _ -> {
-          let run = Blocked(cache.Release(release), env, k)
-          #(run, state.counter, None)
-        }
-      }
-    }
     Ok(value) -> #(Successful(value), state.counter, None)
     Error(#(reason, _, _, _)) -> #(Exception(reason), state.counter, None)
   }

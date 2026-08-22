@@ -14,6 +14,7 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/hub/cache
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -22,6 +23,7 @@ import gleam/result
 import gleam/string
 import morph/buffer.{type Buffer}
 import morph/picker
+import morph/transformation
 import multiformats/cid/v1
 import touch_grass/harness/browser as harness
 
@@ -44,7 +46,11 @@ pub type Continue {
 pub type UserInput {
   PickSingle(picker.Picker, Rebuild(String))
   PickCid(picker.Picker, Rebuild(v1.Cid))
-  PickRelease(picker.Picker, Rebuild(#(String, Int, v1.Cid)))
+  PickReference(
+    picker.Picker,
+    choices: dict.Dict(String, ir.Reference),
+    rebuild: Rebuild(ir.Reference),
+  )
   EnterText(String, Rebuild(String))
   EnterInteger(Int, Rebuild(Int))
 }
@@ -330,13 +336,31 @@ pub fn choose_module(modules) {
 }
 
 fn do_choose_module(buffer, modules: dict.Dict(_, buffer.Buffer)) {
-  use rebuild <- result.map(buffer.insert_release(buffer))
-  let hints =
+  use rebuild <- result.map(insert_explicit_reference(buffer))
+  let options =
     list.map(dict.to_list(modules), fn(module) {
       let #(#(name, _ext), buffer) = module
-      #(name, poly(infer.poly_type(buffer.analysis)))
+      #(
+        name,
+        poly(infer.poly_type(buffer.analysis)),
+        ir.Relative("./" <> name <> ".eyg.json"),
+      )
     })
-  UserInput(PickRelease(picker.new("", hints), rebuild))
+  let hints =
+    list.map(options, fn(option) {
+      let #(name, hint, _) = option
+      #(name, hint)
+    })
+  let choices =
+    list.map(options, fn(option) {
+      let #(name, _, reference) = option
+      #(name, reference)
+    })
+  UserInput(PickReference(
+    picker.new("", hints),
+    dict.from_list(choices),
+    rebuild,
+  ))
 }
 
 pub fn choose_release(cache) {
@@ -344,15 +368,42 @@ pub fn choose_release(cache) {
 }
 
 fn do_choose_release(buffer, cache: cache.Cache(m)) {
-  use rebuild <- result.map(buffer.insert_release(buffer))
+  use rebuild <- result.map(insert_explicit_reference(buffer))
 
-  let hints =
+  let options =
     list.map(dict.to_list(cache.packages), fn(release) {
-      let #(package, #(version, _module)) = release
-      #(package, int.to_string(version))
+      let #(package, #(version, module)) = release
+      #(
+        package,
+        int.to_string(version),
+        ir.Pinned(ir.Release(package, version, module)),
+      )
     })
 
-  UserInput(PickRelease(picker.new("", hints), rebuild))
+  let hints =
+    list.map(options, fn(option) {
+      let #(package, hint, _) = option
+      #(package, hint)
+    })
+  let choices =
+    list.map(options, fn(option) {
+      let #(package, _, reference) = option
+      #(package, reference)
+    })
+  UserInput(PickReference(
+    picker.new("", hints),
+    dict.from_list(choices),
+    rebuild,
+  ))
+}
+
+fn insert_explicit_reference(buffer: Buffer) {
+  use #(_, rebuild) <- result.map(transformation.insert_explicit_reference(
+    buffer.projection,
+  ))
+  fn(reference, context) {
+    buffer.update_code(buffer, rebuild(reference), context)
+  }
 }
 
 /// create an operation from better actions that always resolve
