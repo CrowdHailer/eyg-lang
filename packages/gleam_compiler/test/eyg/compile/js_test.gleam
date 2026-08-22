@@ -23,6 +23,9 @@ fn list(items, encode) {
 @external(javascript, "./js_ffi.mjs", "object")
 fn do_object(items: Array(#(String, Dynamic))) -> Dynamic
 
+@external(javascript, "./js_ffi.mjs", "panicMessage")
+fn panic_message(callback: fn() -> a) -> String
+
 fn object(items) {
   items
   |> array.from_list
@@ -73,6 +76,30 @@ num$0",
 str$0",
     dynamic.string("hello"),
   )
+}
+
+pub fn references_are_rejected_test() {
+  let cid = "bafkreifw7plhl6mofk6sfvhnfh64qmkq73oeqwl6sloru6rehaoujituke"
+  let references = [
+    "#" <> cid,
+    "@standard",
+    "@standard:3",
+    "@standard:3:" <> cid,
+    "import \"./module.eyg\"",
+  ]
+
+  references
+  |> list.each(fn(source) {
+    let program =
+      source
+      |> parser.from_string()
+      |> should.be_ok()
+      |> pair.first()
+
+    fn() { compiler.to_js(program, dict.new()) }
+    |> panic_message()
+    |> should.equal("references are unsupported compilation inputs")
+  })
 }
 
 pub fn let_assignment_test() {

@@ -17,9 +17,8 @@ pub fn to_js(program, refs) {
 }
 
 fn infer_effects(program, refs) {
-  let #(exp, bindings) =
-    program
-    |> j.infer(t.Empty, refs, 0, j.new_state())
+  let context = j.pure() |> j.with_references(refs)
+  let j.Analysis(bindings:, tree: exp, ..) = j.check(context, program)
 
   tree.map_annotation(exp, fn(types) {
     let #(_, _, effect, _) = types

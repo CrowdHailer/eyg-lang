@@ -141,3 +141,18 @@ The EYG-side AST now has the same five semantic forms as Gleam and the reflected
 - Decoded the three `@` encodings by field presence.
 - Encoded package-only and version-only AST values without placeholder fields.
 - Added package, version, and relative round-trip tests while retaining the pinned release fixture/CID test.
+
+## `gleam_compiler`
+
+### Assessment
+
+The explicit model makes the compiler's current limitation clearer. JavaScript generation cannot link module values, so every reference form is now rejected through an exhaustive `ir.Reference` match with one stable diagnostic instead of falling into a generic expression wildcard. A future reference variant will force this behavior to be reviewed at compile time.
+
+The `to_js` API still accepts CID-to-type information for analysis but no corresponding linked values for code generation. That pre-existing mismatch remains outside this reference representation migration.
+
+### Changes and tests
+
+- Pointed `eyg_ir`, `eyg_analysis`, and `eyg_parser` at local packages.
+- Migrated effect inference to the current analysis context/check API.
+- Added exact panic-message coverage for content, package, version, pinned, and relative references.
+- Passed 13 JavaScript/Bun tests with warnings treated as errors.

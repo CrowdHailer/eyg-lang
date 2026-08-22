@@ -96,9 +96,21 @@ fn do_render(source) {
     ir.Handle(label) -> string.concat(["handle (\"", label, "\")"])
     ir.Builtin(identifier) -> identifier
     ir.Vacant -> "throw TODO"
+    ir.Reference(reference) -> unsupported_reference(reference)
     _ -> {
       panic as "unsupported compilation expression"
     }
+  }
+}
+
+fn unsupported_reference(reference: ir.Reference) -> String {
+  case reference {
+    ir.Content(_) -> panic as "references are unsupported compilation inputs"
+    ir.Package(_) -> panic as "references are unsupported compilation inputs"
+    ir.Version(_, _) -> panic as "references are unsupported compilation inputs"
+    ir.Pinned(ir.Release(_, _, _)) ->
+      panic as "references are unsupported compilation inputs"
+    ir.Relative(_) -> panic as "references are unsupported compilation inputs"
   }
 }
 

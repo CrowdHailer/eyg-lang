@@ -17,3 +17,12 @@ export function list(items) {
 export function object(entries) {
   return Object.fromEntries(entries)
 }
+
+export function panicMessage(callback) {
+  try {
+    callback();
+    return "";
+  } catch (error) {
+    return error.message;
+  }
+}
