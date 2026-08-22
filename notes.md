@@ -273,3 +273,5 @@ The hub cache likewise has a complete CID-to-type map after runtime dependency r
 The server hub recursively resolves and validates publishable references before analysis, then uses the same narrow adapter. All 50 PostgreSQL-backed tests pass and the temporary database service was stopped.
 
 The touch_grass browser harness has a concrete CID type map and uses `check_with_references`; its 24 tests pass on both Erlang and JavaScript/Bun.
+
+CLI checks without a resolver finish through `unresolved`; the shell uses `check_with_references` for its concrete cached types. All 70 JavaScript/Bun tests pass.

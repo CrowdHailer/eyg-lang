@@ -188,10 +188,8 @@ pub fn type_of(argument: String, defs, references) -> String {
                 #(tree.Let(label, value, acc), at)
               },
             )
-          let context =
-            infer.unpure()
-            |> infer.with_references(references)
-          let analysis = infer.check(context, source)
+          let analysis =
+            infer.check_with_references(infer.unpure(), references, source)
           case infer.all_errors(analysis) {
             [] ->
               type_debug.render_type(infer.type_(analysis))

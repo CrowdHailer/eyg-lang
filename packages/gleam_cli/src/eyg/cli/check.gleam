@@ -15,7 +15,7 @@ pub fn execute(
   use source <- promisex.try_sync(source.parse_input(code, input))
 
   let context = infer.unpure()
-  let analysis = infer.check(context, source)
+  let analysis = infer.check(context, source) |> infer.unresolved
   let errors = infer.all_errors(analysis)
 
   case errors {
