@@ -281,3 +281,5 @@ Morph retains its editor/session CID map but passes it explicitly through `check
 Website reload preserves custom bindings through `check_with_references`. Documentation examples perform a narrow cached-reference reanalysis after Morph creates the buffer; this small second pass avoids threading resolver arguments through every editor rebuild closure. Package/version/relative forms continue through the existing runtime resolver. All 14 JavaScript/Bun tests pass.
 
 Pal, Overlay Web, and Overlay Public require no analysis call changes; their manifests now lock local `eyg_analysis` 2.0.0. Their 1, 31, and 1 JavaScript/Bun tests pass respectively.
+
+The completed fetch-ref stack passes all supported package target matrices, the 50-test PostgreSQL hub suite, and the repository EYG suite via `eyg run entry.eyg`. The server hub is Erlang-only; a JavaScript build is unsupported by its PostgreSQL and network externals and is not part of that matrix.
