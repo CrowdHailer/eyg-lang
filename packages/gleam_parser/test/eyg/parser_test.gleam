@@ -620,7 +620,7 @@ pub fn reference_test() {
   { "#" <> dag_json.vacant_cid |> v1.to_string }
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(ir.ContentReference(dag_json.vacant_cid), #(0, 62)))
+  |> should.equal(#(ir.Reference(ir.Content(dag_json.vacant_cid)), #(0, 62)))
 }
 
 pub fn invalid_reference_test() {
@@ -634,20 +634,14 @@ pub fn named_reference_test() {
   "@standard"
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(
-    ir.ReleaseReference("standard", 0, dag_json.vacant_cid),
-    #(0, 9),
-  ))
+  |> should.equal(#(ir.Reference(ir.Package("standard")), #(0, 9)))
 }
 
 pub fn versioned_named_reference_test() {
   "@standard:3"
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(
-    ir.ReleaseReference("standard", 3, dag_json.vacant_cid),
-    #(0, 11),
-  ))
+  |> should.equal(#(ir.Reference(ir.Version("standard", 3)), #(0, 11)))
 }
 
 pub fn pinned_named_reference_test() {
@@ -656,7 +650,7 @@ pub fn pinned_named_reference_test() {
   |> parser.all_from_string()
   |> should.be_ok()
   |> should.equal(#(
-    ir.ReleaseReference("standard", 3, dag_json.vacant_cid),
+    ir.Reference(ir.Pinned(ir.Release("standard", 3, dag_json.vacant_cid))),
     #(0, 73),
   ))
 }
@@ -668,6 +662,11 @@ pub fn invalid_versioned_named_reference_test() {
   |> should.equal(InvalidReleaseVersion(10))
 
   "@standard:foo"
+  |> parser.all_from_string()
+  |> should.be_error()
+  |> should.equal(InvalidReleaseVersion(10))
+
+  "@standard:0"
   |> parser.all_from_string()
   |> should.be_error()
   |> should.equal(InvalidReleaseVersion(10))
@@ -689,7 +688,7 @@ pub fn unpublished_import_test() {
   { "import \"./index.eyg.json\"" }
   |> parser.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(ir.RelativeReference("./index.eyg.json"), #(0, 25)))
+  |> should.equal(#(ir.Reference(ir.Relative("./index.eyg.json")), #(0, 25)))
 }
 
 pub fn invalid_unpublished_import_test() {
