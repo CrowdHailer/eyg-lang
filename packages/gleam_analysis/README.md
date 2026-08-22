@@ -30,10 +30,31 @@ Analyse a pure, no side effects, expression.
 pub fn main() {
   let source = ir.let_("x", ir.integer(5), ir.variable("x"))
 
-  let analysis = infer.check(infer.pure(), source)
+  let analysis = infer.check(infer.pure(), source) |> infer.unresolved
   let assert [] = infer.all_errors(analysis)
   assert t.Integer == infer.type_(analysis)
 }
+```
+
+`check` returns a `Step`: `Done(analysis)` when inference completes, or
+`Lookup(reference, resume)` when it needs the type of an exact
+`ir.Reference`. Resume with `Result(binding.Poly, error.Reason)`, or use a
+synchronous driver:
+
+- `resolve` calls a resolver for every lookup and preserves resolver errors.
+- `unresolved` completes with each reference's explicit undefined error.
+- `required` returns requested `ir.Reference` values in source order.
+- `check_with_references` is a narrow adapter for a dictionary keyed by module
+  CID. It resolves only `Content` and `Pinned`; package, version and relative
+  forms remain undefined.
+
+```gleam
+let analysis =
+  infer.check(infer.pure(), source)
+  |> infer.resolve(fn(_reference) {
+    // A real resolver fetches and analyses the referenced module.
+    Ok(t.Integer)
+  })
 ```
 
 When there are type inconsistencies in a program the inference algorithm will continue.
@@ -44,7 +65,7 @@ In this example the value of `x` doesn't effect the expression type and so it is
 ```gleam
 let source = ir.let_("x", ir.vacant(), ir.integer(1))
 
-let analysis = infer.check(infer.pure(), source)
+let analysis = infer.check(infer.pure(), source) |> infer.unresolved
 assert [#(Nil, error.Todo)] == infer.all_errors(analysis)
 assert t.Integer == infer.type_(analysis)
 ```
@@ -58,7 +79,7 @@ let context =
   |> infer.with_effect("Log", t.String, t.unit)
 
 let source = ir.call(ir.perform("Log"), [ir.string("hello")])
-let analysis = infer.check(context, source)
+let analysis = infer.check(context, source) |> infer.unresolved
 assert [] == infer.all_errors(analysis)
 assert t.Record(t.Empty) == infer.type_(analysis)
 ```
@@ -77,7 +98,7 @@ In this example we manually assign string values to each node in the tree.
 ```gleam
 let source = #(ir.Let("x", #(ir.Integer(10), "b"), #(ir.Vacant, "c")), "a")
 
-let analysis = infer.check(infer.pure(), source)
+let analysis = infer.check(infer.pure(), source) |> infer.unresolved
 // The type of the whole expression is unknown.
 let assert Ok(type_a) = infer.type_at(analysis, "a")
 let assert t.Var(_) = type_a

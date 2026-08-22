@@ -253,3 +253,15 @@ The workspace-module guide still instructed runtimes to recognize relative refer
 - Omitted local consumers were verified separately: hub 50 PostgreSQL tests, Pal 1 test, Overlay Web 31 tests, Overlay Public 1 test and a Vite production build.
 - The repository-level EYG suite passes all 138 tests.
 - Every direct `eyg_ir` dependency is now a local path and every package manifest resolves local `eyg_ir` 3.0.0; no Hex copy remains.
+
+## `fetch-refs` rework
+
+### Analysis API
+
+The old branch had a second three-variant request type based on the removed content/release/relative constructors. Replaying it would lose the distinction between latest package, exact version, and pinned release. The reworked `Step.Lookup` carries `ir.Reference` directly, and resolver failures remain typed analysis errors.
+
+`Context` now contains only typing state. `check` returns `Done(Analysis)` or `Lookup(reference, resume)`; `resolve`, `unresolved`, and `required` drive common synchronous cases. `check_with_references` is intentionally narrow and resolves only `Content` and `Pinned` forms from a CID dictionary. Package, version, and relative resolution belongs to callers that have the necessary registry or workspace context.
+
+The analysis tree preserves the source reference form after resolution. This keeps analysis honest about source identity without requiring a resolver to mutate trees or hide selected releases in side effects. Callers that need concrete publication dependencies resolve them at their own boundary, as the server hub already does.
+
+`eyg_analysis` is bumped to `2.0.0` because `Context` and `check` are breaking APIs. The private inference implementation uses heap frames for long let/application spines so suspended references do not grow the JavaScript stack. The 56-test suite includes all five forms, ordering, exact errors, polymorphic reuse, narrow-adapter behavior, and a 10,000-level nested reference.

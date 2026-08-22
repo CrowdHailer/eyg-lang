@@ -48,18 +48,20 @@ fn do_render(results) {
 }
 
 fn calc(source, eff) {
-  source
-  |> parse
-  |> j.infer(eff, dict.new(), 0, j.new_state())
+  let source = parse(source)
+  let j.Analysis(bindings:, tree:, ..) =
+    j.check(j.Context([], eff, 0, dict.new()), source) |> j.unresolved
+  #(tree, bindings)
   |> do_resolve()
   |> drop_env()
   |> do_render()
 }
 
 fn do_calc(source, eff, state) {
-  source
-  |> parse
-  |> j.infer(eff, dict.new(), 0, state)
+  let source = parse(source)
+  let j.Analysis(bindings:, tree:, ..) =
+    j.check(j.Context([], eff, 0, state), source) |> j.unresolved
+  #(tree, bindings)
   |> do_resolve()
   |> drop_env()
   |> do_render()
@@ -130,7 +132,8 @@ pub fn simple_function_test() {
 }
 
 pub fn top_level_polymorphic_function_test() {
-  let identity = j.check(j.pure(), ir.lambda("x", ir.variable("x")))
+  let identity =
+    j.check(j.pure(), ir.lambda("x", ir.variable("x"))) |> j.unresolved
   assert t.Fun(t.Var(#(True, 0)), t.Empty, t.Var(#(True, 0)))
     == j.poly_type(identity)
 }
@@ -151,7 +154,8 @@ pub fn explicit_reference_errors_test() {
   cases
   |> list.each(fn(case_) {
     let #(source, reason) = case_
-    assert [#(Nil, reason)] == j.check(j.pure(), source) |> j.all_errors
+    assert [#(Nil, reason)]
+      == j.check(j.pure(), source) |> j.unresolved |> j.all_errors
   })
 }
 
@@ -159,7 +163,7 @@ pub fn concrete_reference_lookup_test() {
   let cid = dag_json.vacant_cid
   let references = dict.from_list([#(cid, t.Integer)])
   let analysis =
-    j.check(j.pure() |> j.with_references(references), ir.reference(cid))
+    j.check_with_references(j.pure(), references, ir.reference(cid))
 
   assert [] == j.all_errors(analysis)
   assert t.Integer == j.type_(analysis)
@@ -368,7 +372,7 @@ pub fn builtin_test() {
     ok("Integer", ""),
   ])
 
-  let state = j.new_state()
+  let state = dict.new()
   let #(var, state) = binding.mono(0, state)
   "!int_add(1, 2)"
   |> do_calc(var, state)
@@ -447,7 +451,7 @@ pub fn fix_of_effectful_constructor_test() {
 
 // (x) -<Log String {}, Alert String 0, ..1> List(x)
 pub fn perform_test() {
-  let state = j.new_state()
+  let state = dict.new()
   let #(var, state) = binding.mono(0, state)
   "perform Log(\"thing\")"
   |> do_calc(var, state)
@@ -573,7 +577,7 @@ pub fn combine_unknown_effect_test() {
 }
 
 pub fn first_class_function_with_effects_test() {
-  let state = j.new_state()
+  let state = dict.new()
   let #(var, state) = binding.mono(0, state)
   "(f) -> {
     f({})
@@ -661,14 +665,14 @@ pub fn poly_in_effect_test() {
 pub fn deep_let_test() {
   let wrap = fn(node) { ir.let_("x", ir.integer(0), node) }
   let source = repeat_build(100, ir.variable("x"), wrap)
-  let analysis = j.check(j.pure(), source)
+  let analysis = j.check(j.pure(), source) |> j.unresolved
   assert [] == j.all_errors(analysis)
 }
 
 pub fn deep_apply_test() {
   let wrap = fn(node) { ir.lambda("x", ir.apply(node, ir.variable("x"))) }
   let source = repeat_build(100, ir.builtin("int_absolute"), wrap)
-  let analysis = j.check(j.pure(), source)
+  let analysis = j.check(j.pure(), source) |> j.unresolved
   assert [] == j.all_errors(analysis)
 }
 
