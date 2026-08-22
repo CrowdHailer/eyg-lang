@@ -15,11 +15,9 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/value as v
-import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/list
 import gleam/uri
-import multiformats/cid/v1
 import ogre/operation
 import touch_grass as tg
 import touch_grass/download
@@ -132,11 +130,8 @@ pub fn types(
   })
 }
 
-pub fn infer_context(
-  references: dict.Dict(v1.Cid, t.Type(#(Bool, Int))),
-) -> infer.Context {
+pub fn infer_context() -> infer.Context {
   infer.pure()
-  |> infer.with_references(references)
   |> infer.with_effects(types(effects()))
 }
 

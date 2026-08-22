@@ -68,26 +68,35 @@ fn flatten(node: ir.Node(m), rest: List(v.Value(a, b))) -> List(v.Value(a, b)) {
     ir.Perform(label) -> [tagged("Perform", v.String(label)), ..rest]
     ir.Handle(label) -> [tagged("Handle", v.String(label)), ..rest]
     ir.Builtin(identifier) -> [tagged("Builtin", v.String(identifier)), ..rest]
-    ir.ContentReference(identifier) -> [
-      tagged("ContentReference", v.String(v1.to_string(identifier))),
-      ..rest
-    ]
-    ir.ReleaseReference(package, version, identifier) -> [
-      tagged(
-        "ReleaseReference",
-        v.Record(
-          dict.from_list([
-            #("package", v.String(package)),
-            #("version", v.Integer(version)),
-            #("cid", v.String(v1.to_string(identifier))),
-          ]),
-        ),
-      ),
-      ..rest
-    ]
-    ir.RelativeReference(location) -> [
-      tagged("RelativeReference", v.String(location)),
-      ..rest
-    ]
+    ir.Reference(reference) -> {
+      let reference = case reference {
+        ir.Content(identifier) ->
+          tagged("Content", v.String(v1.to_string(identifier)))
+        ir.Package(package) -> tagged("Package", v.String(package))
+        ir.Version(package, version) ->
+          tagged(
+            "Version",
+            v.Record(
+              dict.from_list([
+                #("package", v.String(package)),
+                #("version", v.Integer(version)),
+              ]),
+            ),
+          )
+        ir.Pinned(ir.Release(package, version, identifier)) ->
+          tagged(
+            "Release",
+            v.Record(
+              dict.from_list([
+                #("package", v.String(package)),
+                #("version", v.Integer(version)),
+                #("cid", v.String(v1.to_string(identifier))),
+              ]),
+            ),
+          )
+        ir.Relative(location) -> tagged("Relative", v.String(location))
+      }
+      [tagged("Reference", reference), ..rest]
+    }
   }
 }
