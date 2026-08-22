@@ -74,6 +74,7 @@ fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {
 
   context
   |> infer.check(source)
+  |> infer.unresolved
 }
 
 pub fn empty(context) {

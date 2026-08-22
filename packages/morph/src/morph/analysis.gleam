@@ -76,7 +76,11 @@ pub fn value_to_type(value, bindings, meta: t) {
     v.Closure(_, _, _) -> {
       let inferred =
         capture.capture(value, meta)
-        |> infer.check(infer.Context([], t.Empty, dict.new(), 0, bindings), _)
+        |> infer.check(
+          infer.Context(env: [], eff: t.Empty, level: 0, bindings: bindings),
+          _,
+        )
+        |> infer.unresolved
       let infer.Analysis(bindings:, tree:, ..) = inferred
       let #(_, #(_, type_, _, _)) = tree
       #(binding.gen(type_, -1, bindings), bindings)
@@ -155,7 +159,7 @@ pub fn value_to_type(value, bindings, meta: t) {
 }
 
 pub fn env_to_tenv(scope, meta) {
-  let bindings = infer.new_state()
+  let bindings = dict.new()
 
   list.map_fold(scope, bindings, fn(bindings, pair) {
     let #(var, value) = pair
@@ -179,8 +183,8 @@ pub fn do_analyse(editable, context) -> Analysis {
 
   let source = e.to_annotated(editable, [])
   let inferred =
-    infer.Context(scope, eff, context.references, 0, bindings)
-    |> infer.check(source)
+    infer.Context(env: scope, eff: eff, level: 0, bindings: bindings)
+    |> infer.check_with_references(context.references, source)
   let infer.Analysis(bindings:, tree:, ..) = inferred
   let types = ir.get_annotation(tree)
   let paths = ir.get_annotation(e.to_annotated(editable, []))

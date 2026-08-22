@@ -275,3 +275,5 @@ The server hub recursively resolves and validates publishable references before 
 The touch_grass browser harness has a concrete CID type map and uses `check_with_references`; its 24 tests pass on both Erlang and JavaScript/Bun.
 
 CLI checks without a resolver finish through `unresolved`; the shell uses `check_with_references` for its concrete cached types. All 70 JavaScript/Bun tests pass.
+
+Morph retains its editor/session CID map but passes it explicitly through `check_with_references`; resolver-less closure and buffer checks use `unresolved`. Its 29 JavaScript/Bun tests pass without broader editor API churn.
