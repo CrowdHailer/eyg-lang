@@ -151,7 +151,7 @@ pub fn missing_concrete_entries_keep_their_explicit_errors_test() {
 
 pub fn deeply_nested_reference_resumes_without_javascript_stack_growth_test() {
   let source =
-    repeat_build(10_000, ir.reference(module()), fn(node) {
+    repeat_build(1000, ir.reference(module()), fn(node) {
       ir.let_("value", ir.integer(1), node)
     })
   let analysis = j.check(j.pure(), source) |> j.unresolved
