@@ -1,8 +1,7 @@
-import eyg/ir/cid
 import eyg/ir/dag_json as codec
+import eyg/ir/helpers
 import eyg/ir/integer
 import eyg/ir/tree
-import gleam/crypto
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/io
@@ -42,9 +41,10 @@ pub fn ir_suite_test() {
     let source =
       decode.run(raw, codec.decoder(Nil))
       |> should.be_ok
-    let cid.Sha256(bytes, resume) = cid.from_tree(source)
-    let hash = crypto.hash(crypto.Sha256, bytes)
-    let calculated = resume(hash) |> v1.to_string
+
+    let calculated =
+      helpers.cid_from_tree(source)
+      |> v1.to_string
 
     case calculated == expected {
       True -> Nil

@@ -1,21 +1,23 @@
 import dag_json
 import eyg/ir/dag_json as djson
+import eyg/ir/tree as ir
+import midas/continuation.{type Continuation as K}
 import multiformats/cid/v1
 import multiformats/hashes
 
-/// To make the gleam_ir library portable over browser, node and erlang you need to bring your own sha implementation
-pub type Effect(t) {
-  Sha256(bytes: BitArray, resume: fn(BitArray) -> t)
-}
-
-pub fn from_tree(source) {
+pub fn from_tree(
+  source: ir.Node(a),
+  hash_sha256: fn(BitArray) -> K(t, BitArray),
+) -> K(t, v1.Cid) {
   let bytes = djson.to_block(source)
-  from_block(bytes)
+  from_block(bytes, hash_sha256)
 }
 
-pub fn from_block(bytes) {
-  Sha256(bytes:, resume: fn(digest) {
-    let multihash = hashes.Multihash(hashes.Sha256, digest)
-    v1.Cid(dag_json.code(), multihash)
-  })
+pub fn from_block(
+  bytes: BitArray,
+  hash_sha256: fn(BitArray) -> K(t, BitArray),
+) -> K(t, v1.Cid) {
+  use digest <- continuation.then(hash_sha256(bytes))
+  let multihash = hashes.Multihash(hashes.Sha256, digest)
+  continuation.return(v1.Cid(dag_json.code(), multihash))
 }
