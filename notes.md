@@ -73,3 +73,19 @@ The explicit reference model simplifies interpreter suspension. Three runtime br
 - Pointed `eyg_ir` at the local package.
 - Suspended every reference expression with its complete `Reference` value.
 - Added execution coverage for all five variants.
+
+## `eyg_hub`
+
+### Assessment
+
+The explicit types materially simplify the cache. `FetchStatus.DependsOn` now stores `ir.Reference` directly instead of a partial duplicate `Dependency`, and the hub's duplicate release type has been removed in favor of `ir.Release`. Resolution is one exhaustive match over `Content`, `Package`, `Version`, `Pinned`, and `Relative`; no version or CID sentinel checks remain.
+
+The review also exposed an ordering requirement for latest-package resolution. A pull batch must register every release before resuming `Package` dependencies, otherwise an early release in the batch could be mistaken for the latest one. The cache now resolves named dependencies only after registration and records the highest fetched version.
+
+### Changes and tests
+
+- Pointed `eyg_ir`, `eyg_analysis`, and `eyg_interpreter` at local packages.
+- Reused `ir.Reference` for suspended dependencies and `ir.Release` for release APIs.
+- Made preparation and runtime resolution exhaustive across all reference forms; relative references are deliberately unavailable in a hub cache and produce no network action.
+- Added focused tests for reference lookup, package/version evaluation, missing-package pulls, relative rejection, preparation actions, and latest selection across one pull batch.
+- Passed 31 tests on both Erlang and JavaScript/Bun with warnings treated as errors.

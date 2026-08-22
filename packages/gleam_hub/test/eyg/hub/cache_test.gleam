@@ -1,13 +1,18 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
-import eyg/hub/release
+import eyg/hub/publisher
+import eyg/hub/schema
 import eyg/interpreter/break
 import eyg/interpreter/value as v
 import eyg/ir/cid
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/crypto
 import gleam/dict
 import gleam/int
+import gleam/list
+import gleam/option.{None}
+import untethered/substrate
 
 pub fn empty_cache_has_no_effects_test() {
   let cache = cache.empty()
@@ -78,7 +83,7 @@ pub fn fetch_dependent_references_test() {
     cache.fetch_module_completed(cache, parent_cid, Ok(parent))
   let assert Ok(cache.DependsOn(dep:, ..)) =
     dict.get(cache.fetching_modules, parent_cid)
-  assert cache.Content(child_cid) == dep
+  assert ir.Content(child_cid) == dep
   assert [] == done
 
   let assert #(cache, [effect]) = cache.flush(cache)
@@ -162,7 +167,7 @@ pub fn fetch_dependent_invalid_references_test() {
     cache.fetch_module_completed(cache, parent_cid, Ok(parent))
   let assert Ok(cache.DependsOn(dep:, ..)) =
     dict.get(cache.fetching_modules, parent_cid)
-  assert cache.Content(child_cid) == dep
+  assert ir.Content(child_cid) == dep
   assert [] == done
 
   let assert #(cache, [effect]) = cache.flush(cache)
@@ -461,13 +466,13 @@ pub fn successfully_pull_release_test() {
     cache.fetch_module_completed(cache, parent_cid, Ok(parent))
   let assert Ok(cache.DependsOn(dep:, ..)) =
     dict.get(cache.fetching_modules, parent_cid)
-  assert cache.Release(release.Release("std", 1, child_cid)) == dep
+  assert ir.Pinned(ir.Release("std", 1, child_cid)) == dep
   assert [] == done
 
   let assert #(cache, [effect]) = cache.flush(cache)
 
   assert cache.PullPackages(0) == effect
-  let release = release.Release("std", 1, child_cid)
+  let release = ir.Release("std", 1, child_cid)
   assert cache.Unknown == cache.release(cache, release)
   let #(cache, done) = cache.pulled(cache, 1, release)
   assert [] == done
@@ -483,9 +488,9 @@ pub fn successfully_pull_release_test() {
 
   assert cache.Available(child_cid) == cache.release(cache, release)
   assert dict.new() == cache.fetching_modules
-  let release = release.Release("std", 1, child_cid)
+  let release = ir.Release("std", 1, child_cid)
   let #(other_cid, _) = random_code()
-  let release = release.Release(..release, module: other_cid)
+  let release = ir.Release(..release, module: other_cid)
   assert cache.Unavailable(Nil) == cache.release(cache, release)
 }
 
@@ -533,14 +538,13 @@ pub fn successful_pull_cascades_test() {
   assert [] == done
   let #(cache, effects) = cache.flush(cache)
   assert [cache.PullPackages(0)] == effects
-  let assert Ok(cache.DependsOn(cache.Release(release), ..)) =
+  let assert Ok(cache.DependsOn(ir.Pinned(release), ..)) =
     dict.get(cache.fetching_modules, child_cid)
-  assert release.Release("bar", 1, base_cid) == release
-  let assert Ok(cache.DependsOn(cache.Content(c), ..)) =
+  assert ir.Release("bar", 1, base_cid) == release
+  let assert Ok(cache.DependsOn(ir.Content(c), ..)) =
     dict.get(cache.fetching_modules, parent_cid)
   assert child_cid == c
-  let #(cache, done) =
-    cache.pulled(cache, 1, release.Release("bar", 1, base_cid))
+  let #(cache, done) = cache.pulled(cache, 1, ir.Release("bar", 1, base_cid))
   assert dict.from_list([
       #(bad_parent_cid, Error(break.Vacant)),
       #(parent_cid, Ok(v.Integer(num + 100))),
@@ -575,17 +579,17 @@ pub fn bad_pull_cascades_test() {
   assert [] == done
   let assert Ok(cache.DependsOn(dep, ..)) =
     dict.get(cache.fetching_modules, parent_cid)
-  assert cache.Content(child_cid) == dep
+  assert ir.Content(child_cid) == dep
 
-  let assert Ok(cache.DependsOn(cache.Release(release), ..)) =
+  let assert Ok(cache.DependsOn(ir.Pinned(release), ..)) =
     dict.get(cache.fetching_modules, child_cid)
-  assert release.Release("bar", 1, other_cid) == release
+  assert ir.Release("bar", 1, other_cid) == release
 
-  let #(_cache, done) =
-    cache.pulled(cache, 1, release.Release("bar", 1, base_cid))
+  let #(_cache, done) = cache.pulled(cache, 1, ir.Release("bar", 1, base_cid))
 
   let done = dict.from_list(done)
-  let reason = break.UndefinedRelease("bar", 1, other_cid)
+  let reason =
+    break.UndefinedReference(ir.Pinned(ir.Release("bar", 1, other_cid)))
   assert Ok(Error(reason)) == dict.get(done, child_cid)
   assert Ok(Error(reason)) == dict.get(done, parent_cid)
 }
@@ -609,11 +613,15 @@ pub fn both_fail_an_invalid_parents_cascade_test() {
   let #(cache, _done) = cache.fetch_module_completed(cache, p1_cid, Ok(p1))
   let #(cache, _done) = cache.fetch_module_completed(cache, p2_cid, Ok(p2))
 
-  let release = release.Release("foo", 1, base_cid)
+  let release = ir.Release("foo", 1, base_cid)
   let #(_cache, done) = cache.pulled(cache, 1, release)
   let done = dict.from_list(done)
   assert Ok(Ok(v.Integer(num + 1))) == dict.get(done, p1_cid)
-  assert Ok(Error(break.UndefinedRelease("foo", 1, other_cid)))
+  assert Ok(
+      Error(
+        break.UndefinedReference(ir.Pinned(ir.Release("foo", 1, other_cid))),
+      ),
+    )
     == dict.get(done, p2_cid)
 }
 
@@ -633,12 +641,12 @@ pub fn resumption_to_bad_release_fails_test() {
     cache.fetch_module_completed(cache, parent_cid, Ok(parent))
   let assert Ok(cache.DependsOn(dep:, ..)) =
     dict.get(cache.fetching_modules, parent_cid)
-  assert cache.Release(release.Release("std", 1, child_cid)) == dep
+  assert ir.Pinned(ir.Release("std", 1, child_cid)) == dep
   assert [] == done
 
   let assert #(cache, [effect]) = cache.flush(cache)
   assert cache.PullPackages(0) == effect
-  let release = release.Release("std", 1, child_cid)
+  let release = ir.Release("std", 1, child_cid)
   let #(cache, done) = cache.pulled(cache, 1, release)
   assert [] == done
   let #(cache, effects) = cache.flush(cache)
@@ -647,16 +655,172 @@ pub fn resumption_to_bad_release_fails_test() {
   let #(cache, done) = cache.fetch_module_completed(cache, child_cid, Ok(child))
   let done = dict.from_list(done)
   assert Ok(Ok(v.Integer(num))) == dict.get(done, child_cid)
-  let reason = break.UndefinedRelease("std", 1, other_cid)
+  let reason =
+    break.UndefinedReference(ir.Pinned(ir.Release("std", 1, other_cid)))
   assert Ok(Error(reason)) == dict.get(done, parent_cid)
 
   assert dict.from_list([
-      #(parent_cid, cache.Invalid(break.UndefinedRelease("std", 1, other_cid))),
+      #(
+        parent_cid,
+        cache.Invalid(
+          break.UndefinedReference(ir.Pinned(ir.Release("std", 1, other_cid))),
+        ),
+      ),
     ])
     == cache.fetching_modules
 }
 
+pub fn explicit_reference_lookup_test() {
+  let #(first_cid, _) = code(1)
+  let #(latest_cid, _) = code(2)
+  let cache = cache.empty()
+
+  assert cache.Available(first_cid)
+    == cache.reference(cache, ir.Content(first_cid))
+  assert cache.Unknown == cache.reference(cache, ir.Package("std"))
+  assert cache.Unknown == cache.reference(cache, ir.Version("std", 1))
+  assert cache.Unavailable(Nil) == cache.reference(cache, ir.Version("std", 0))
+  assert cache.Unknown
+    == cache.reference(cache, ir.Pinned(ir.Release("std", 1, first_cid)))
+  assert cache.Unavailable(Nil)
+    == cache.reference(cache, ir.Pinned(ir.Release("std", 0, first_cid)))
+  assert cache.Unavailable(Nil)
+    == cache.reference(cache, ir.Relative("./local.eyg"))
+
+  let assert #(cache, []) =
+    cache.pulled(cache, 2, ir.Release("std", 2, latest_cid))
+  let assert #(cache, []) =
+    cache.pulled(cache, 1, ir.Release("std", 1, first_cid))
+  assert cache.Available(latest_cid)
+    == cache.reference(cache, ir.Package("std"))
+  assert cache.Available(first_cid)
+    == cache.reference(cache, ir.Version("std", 1))
+  assert cache.Available(first_cid)
+    == cache.reference(cache, ir.Pinned(ir.Release("std", 1, first_cid)))
+  assert cache.Unavailable(Nil)
+    == cache.reference(cache, ir.Pinned(ir.Release("std", 1, latest_cid)))
+}
+
+pub fn package_and_version_references_resolve_test() {
+  let #(first_cid, first) = code(10)
+  let #(latest_cid, latest) = code(20)
+  let cache = cache.empty()
+  let #(cache, _) = cache.fetch_module_completed(cache, first_cid, Ok(first))
+  let #(cache, _) = cache.fetch_module_completed(cache, latest_cid, Ok(latest))
+  let #(cache, _) = cache.pulled(cache, 1, ir.Release("std", 1, first_cid))
+  let #(cache, _) = cache.pulled(cache, 2, ir.Release("std", 2, latest_cid))
+  let source =
+    ir.add(ir.package("std"), ir.version("std", 1))
+    |> ir.map_annotation(fn(_) { [] })
+  let source_cid = cid_from_tree(source)
+
+  let #(cache, done) =
+    cache.fetch_module_completed(cache, source_cid, Ok(source))
+
+  assert [#(source_cid, Ok(v.Integer(30)))] == done
+  assert cache.Available(cache.Module(v.Integer(30), t.Integer))
+    == cache.module(cache, source_cid)
+}
+
+pub fn missing_package_is_pulled_and_resolved_test() {
+  let #(child_cid, child) = code(42)
+  let source = ir.package("new") |> ir.map_annotation(fn(_) { [] })
+  let source_cid = cid_from_tree(source)
+  let #(cache, done) =
+    cache.fetch_module_completed(cache.empty(), source_cid, Ok(source))
+  assert [] == done
+  let assert Ok(cache.DependsOn(ir.Package("new"), ..)) =
+    dict.get(cache.fetching_modules, source_cid)
+  let #(cache, effects) = cache.flush(cache)
+  assert [cache.PullPackages(0)] == effects
+
+  let #(cache, done) = cache.pulled(cache, 1, ir.Release("new", 1, child_cid))
+  assert [] == done
+  let #(cache, effects) = cache.flush(cache)
+  assert [cache.FetchModule(child_cid)] == effects
+  let #(cache, done) = cache.fetch_module_completed(cache, child_cid, Ok(child))
+  assert [#(source_cid, Ok(v.Integer(42))), #(child_cid, Ok(v.Integer(42)))]
+    == done
+  assert dict.new() == cache.fetching_modules
+}
+
+pub fn relative_reference_is_rejected_without_effects_test() {
+  let reference = ir.Relative("./local.eyg")
+  let source = ir.relative("./local.eyg") |> ir.map_annotation(fn(_) { [] })
+  let source_cid = cid_from_tree(source)
+  let #(cache, done) =
+    cache.fetch_module_completed(cache.empty(), source_cid, Ok(source))
+  let reason = break.UndefinedReference(reference)
+
+  assert [#(source_cid, Error(reason))] == done
+  assert cache.Unavailable(reason) == cache.module(cache, source_cid)
+  assert #(cache, []) == cache.flush(cache)
+}
+
+pub fn prepare_handles_every_reference_form_test() {
+  let #(content_cid, _) = code(1)
+  let #(pinned_cid, _) = code(2)
+  let source =
+    ir.list([
+      ir.reference(content_cid),
+      ir.package("latest"),
+      ir.version("versioned", 1),
+      ir.release("pinned", 1, pinned_cid),
+      ir.relative("./local.eyg"),
+    ])
+  let #(cache, effects) = cache.prepare(cache.empty(), source) |> cache.flush
+
+  assert 3 == list.length(effects)
+  assert True == list.contains(effects, cache.FetchModule(content_cid))
+  assert True == list.contains(effects, cache.FetchModule(pinned_cid))
+  assert True == list.contains(effects, cache.PullPackages(0))
+  assert cache.Pulling == cache.cursor_status
+}
+
+pub fn package_uses_latest_release_from_one_pull_test() {
+  let #(first_cid, first) = code(1)
+  let #(latest_cid, latest) = code(2)
+  let cache = cache.empty()
+  let #(cache, _) = cache.fetch_module_completed(cache, first_cid, Ok(first))
+  let #(cache, _) = cache.fetch_module_completed(cache, latest_cid, Ok(latest))
+  let source = ir.package("std") |> ir.map_annotation(fn(_) { [] })
+  let source_cid = cid_from_tree(source)
+  let #(cache, _) = cache.fetch_module_completed(cache, source_cid, Ok(source))
+  let entries = [
+    archived_release(1, ir.Release("std", 1, first_cid)),
+    archived_release(2, ir.Release("std", 2, latest_cid)),
+  ]
+
+  let #(cache, done) = cache.pull_packages_completed(cache, Ok(entries))
+
+  assert [#(source_cid, Ok(v.Integer(2)))] == done
+  assert Ok(#(2, latest_cid)) == cache.package(cache, "std")
+  assert cache.Pulled == cache.cursor_status
+}
+
 // test resumption with bad module value in part of an addition
+
+fn archived_release(cursor, release) {
+  let ir.Release(package:, version:, module:) = release
+  let entry =
+    substrate.Entry(
+      sequence: version,
+      previous: None,
+      signatory: module,
+      key: "test",
+      content: publisher.Release(package:, version:, module:),
+    )
+  let assert Ok(payload) = publisher.to_bytes(entry) |> bit_array.to_string
+  schema.package_entry(
+    cursor:,
+    cid: module,
+    payload:,
+    entity: module,
+    sequence: version,
+    previous: None,
+    type_: "release",
+  )
+}
 
 fn code(i) {
   let source =
