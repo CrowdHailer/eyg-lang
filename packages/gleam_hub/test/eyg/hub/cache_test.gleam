@@ -673,3 +673,17 @@ pub fn cid_from_tree(source) {
   let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
   resume(crypto.hash(crypto.Sha256, bytes))
 }
+
+/// A response is a completed pull whether or not it holds releases.
+pub fn an_empty_successful_pull_is_complete_test() {
+  let cache = cache.pull(cache.empty())
+  let assert #(cache, [_effect]) = cache.flush(cache)
+
+  let #(cache, done) = cache.pull_packages_completed(cache, Ok([]))
+  assert [] == done
+  assert cache.Pulled == cache.cursor_status
+
+  // A later refresh can now queue another pull.
+  let #(_cache, effects) = cache.pull(cache) |> cache.flush
+  assert [cache.PullPackages(0)] == effects
+}

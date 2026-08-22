@@ -346,16 +346,19 @@ pub fn pull_packages_completed(
 ) -> #(Cache(meta), List(Resolution(meta))) {
   case result {
     Ok(entries) -> {
-      list.fold(entries, #(cache, []), fn(acc, entry) {
-        let #(cache, done) = acc
-        let assert Ok(payload) = json.parse(entry.payload, publisher.decoder())
+      let #(cache, done) =
+        list.fold(entries, #(cache, []), fn(acc, entry) {
+          let #(cache, done) = acc
+          let assert Ok(payload) =
+            json.parse(entry.payload, publisher.decoder())
 
-        let publisher.Release(package:, version:, module:) = payload.content
-        let release = release.Release(package:, version:, module:)
-        let #(cache, new) = pulled(cache, entry.cursor, release)
+          let publisher.Release(package:, version:, module:) = payload.content
+          let release = release.Release(package:, version:, module:)
+          let #(cache, new) = pulled(cache, entry.cursor, release)
 
-        #(cache, list.append(done, new))
-      })
+          #(cache, list.append(done, new))
+        })
+      #(Cache(..cache, cursor_status: Pulled), done)
     }
     Error(_reason) -> {
       // TODO need error status in here
@@ -443,8 +446,7 @@ pub fn pulled(
     })
   let releases = dict.insert(cache.releases, #(p, v), m)
   let packages = dict.insert(cache.packages, p, #(v, m))
-  let cache =
-    Cache(..cache, releases:, packages:, cursor:, cursor_status: Pulled)
+  let cache = Cache(..cache, releases:, packages:, cursor:)
   // Need to handle the case of returning done releases
   case dict.get(cache.modules, m) {
     Ok(Module(value:, ..)) -> {
