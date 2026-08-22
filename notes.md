@@ -241,3 +241,15 @@ This package does not inspect references, so the core change has no direct clari
 - Regenerated the manifest against local migrated dependencies; no source changes were needed.
 - Passed its JavaScript/Bun test and warnings-as-errors build.
 - Passed a Vite production build to `/tmp/opencode/overlay_public-dist-verify`; the package's existing `dist` directory is root-owned and not writable.
+
+## Documentation
+
+The workspace-module guide still instructed runtimes to recognize relative references through version `0` and `vacant_cid`. It now documents all five variants and states publication/resolution rules structurally. This removes the last normative recommendation to use the old sentinels.
+
+## Integrated verification
+
+- The complete Erlang package matrix from `CONTRIBUTING.md` passes, including 21 `eyg_ir` tests.
+- The complete JavaScript/Bun package matrix from `CONTRIBUTING.md` passes.
+- Omitted local consumers were verified separately: hub 50 PostgreSQL tests, Pal 1 test, Overlay Web 31 tests, Overlay Public 1 test and a Vite production build.
+- The repository-level EYG suite passes all 138 tests.
+- Every direct `eyg_ir` dependency is now a local path and every package manifest resolves local `eyg_ir` 3.0.0; no Hex copy remains.
