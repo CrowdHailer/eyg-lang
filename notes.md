@@ -229,3 +229,15 @@ The explicit model improves tool execution state by replacing the hub cache's re
 - Resolved interpreter breaks through the cache's exhaustive reference resolver before fetching content or pulling packages.
 - Updated pending-state assertions and added a pinned-release regression.
 - Passed 31 JavaScript/Bun tests with warnings treated as errors.
+
+## `overlay_public`
+
+### Assessment
+
+This package does not inspect references, so the core change has no direct clarity effect. Updating its manifest verifies that the migrated local Overlay and Pal dependency graph resolves through `eyg_ir` 3.0.0 without compatibility copies.
+
+### Changes and tests
+
+- Regenerated the manifest against local migrated dependencies; no source changes were needed.
+- Passed its JavaScript/Bun test and warnings-as-errors build.
+- Passed a Vite production build to `/tmp/opencode/overlay_public-dist-verify`; the package's existing `dist` directory is root-owned and not writable.
