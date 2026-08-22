@@ -15,6 +15,7 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/list
@@ -132,11 +133,15 @@ pub fn types(
   })
 }
 
-pub fn infer_context(
+pub fn infer(
+  source: ir.Node(a),
   references: dict.Dict(v1.Cid, t.Type(#(Bool, Int))),
-) -> infer.Context {
+) -> infer.Analysis(a) {
+  infer.check_with_references(infer_context(), references, source)
+}
+
+pub fn infer_context() -> infer.Context {
   infer.pure()
-  |> infer.with_references(references)
   |> infer.with_effects(types(effects()))
 }
 
