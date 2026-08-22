@@ -97,7 +97,7 @@ fn continue(
   gen: fn(infer.Context) -> buffer.Buffer,
 ) -> #(State, List(system.Effect(Message))) {
   let State(cache:, ..) = state
-  let buffer = gen(infer_context(cache))
+  let buffer = gen(infer_context(cache)) |> reanalyse(cache)
   let state = set_example(state, id, buffer)
   let cache = cache.prepare(cache, buffer.source(buffer))
   let #(cache, effects) = flush_cache(cache, state.origin)
@@ -160,6 +160,7 @@ fn buffer(editable: e.Expression, cache: cache.Cache(Meta)) -> buffer.Buffer {
   let projection = navigation.first(editable)
   // keep evaluation on example, if it runs don't print type errors. but show them in the code
   buffer.from_projection(projection, infer_context(cache))
+  |> reanalyse(cache)
 }
 
 pub fn update(state: State, message) {
@@ -354,8 +355,18 @@ pub fn update(state: State, message) {
   }
 }
 
-pub fn infer_context(cache: cache.Cache(Meta)) -> infer.Context {
-  harness.infer_context(cache.types(cache))
+pub fn infer_context(_cache: cache.Cache(Meta)) -> infer.Context {
+  harness.infer_context()
+}
+
+pub fn reanalyse(snippet: buffer.Buffer, cache: cache.Cache(Meta)) {
+  let analysis =
+    infer.check_with_references(
+      infer_context(cache),
+      cache.types(cache),
+      buffer.source(snippet),
+    )
+  buffer.Buffer(..snippet, analysis:)
 }
 
 pub fn reanalyse_examples(
@@ -378,7 +389,7 @@ pub fn reanalyse_examples(
     let update = !list.is_empty(infer.all_errors(buffer.analysis))
     // list.any(ok, list.contains(infer.missing_references(buffer.analysis), _))
     case update {
-      True -> buffer.reanalyse(buffer, infer_context(cache))
+      True -> reanalyse(buffer, cache)
       False -> buffer
     }
   })

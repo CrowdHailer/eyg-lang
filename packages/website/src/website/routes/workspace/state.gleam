@@ -127,7 +127,7 @@ fn module_context(
   // TODO use a helper in infer that can accept this env to tenv environment 
   // but it requires moving the function out of morph analysis
   // infer.pure()
-  infer.Context(tenv, t.Empty, dict.new(), 1, bindings)
+  infer.Context(env: tenv, eff: t.Empty, level: 1, bindings: bindings)
 }
 
 /// replaces buffer in the tree

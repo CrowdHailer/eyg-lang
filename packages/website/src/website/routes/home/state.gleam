@@ -73,7 +73,7 @@ fn continue(
   gen: fn(infer.Context) -> buffer.Buffer,
 ) -> #(State, List(system.Effect(Message))) {
   let State(cache:, origin:, ..) = state
-  let buffer = gen(doc.infer_context(cache))
+  let buffer = gen(doc.infer_context(cache)) |> doc.reanalyse(cache)
   let state = set_example(state, id, buffer)
   let cache = cache.prepare(cache, buffer.source(buffer))
   let #(cache, effects) = flush_cache(cache, origin)
