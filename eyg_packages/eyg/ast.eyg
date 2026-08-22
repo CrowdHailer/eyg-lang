@@ -77,11 +77,23 @@ let source_decoder = !fix((self, parsed) -> {
       {tag: "b", decode: (_) -> { [Builtin(d.field("l", d.string, fields))] }},
       {tag: "#", decode: (_) -> { [ContentReference(d.field("l", link_decoder, fields))] }},
       {tag: "@", decode: (_) -> {
-        [ReleaseReference({
-          package: d.field("p", d.string, fields),
-          version: d.field("r", d.integer, fields),
-          cid: d.field("l", link_decoder, fields)
-        })]
+        let package = d.field("p", d.string, fields)
+        let version = d.optional_field("r", d.integer, fields)
+        let cid = d.optional_field("l", link_decoder, fields)
+        match version {
+          None(_) -> {
+            match cid {
+              None(_) -> { [PackageReference(package)] }
+              Some(_) -> { !never(perform Abort("A pinned package reference requires a version")) }
+            }
+          }
+          Some(version) -> {
+            match cid {
+              None(_) -> { [VersionReference({package, version})] }
+              Some(cid) -> { [ReleaseReference({package, version, cid})] }
+            }
+          }
+        }
       }},
       {tag: ".", decode: (_) -> { [RelativeReference(d.field("i", d.string, fields))] }}
     ]
@@ -155,6 +167,18 @@ let parse = !fix((self, nodes) -> {
         ContentReference(value) -> {
           {value: node("#", [dag_json.field("l", dag_json.link(value))]), rest: tail}
         }
+        PackageReference(value) -> {
+          {value: node("@", [dag_json.field("p", dag_json.string(value))]), rest: tail}
+        }
+        VersionReference(value) -> {
+          {
+            value: node("@", [
+              dag_json.field("p", dag_json.string(value.package)),
+              dag_json.field("r", dag_json.integer(value.version))
+            ]),
+            rest: tail
+          }
+        }
         ReleaseReference(value) -> {
           {
             value: node("@", [
@@ -193,4 +217,3 @@ let ast_to_string = (nodes) -> {
   source_json_to_ast,
   source_json_bytes_to_ast
 }
-

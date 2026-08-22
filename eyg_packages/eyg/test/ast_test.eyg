@@ -19,6 +19,12 @@ let check = (json, nodes, expected_cid) -> {
   {}
 }
 
+let check_round_trip = (json, nodes) -> {
+  let decoded = assert.ok(ast.source_json_to_ast(json))
+  let _ = assert.equal(decoded, nodes)
+  assert.equal_string(ast.ast_to_string(decoded), json)
+}
+
 let list_cid = "baguqeeraqyvjt4lhfr66jw66yhg37xaj7tvdde5pifx7eqdq2a4zgzpffwaq"
 
 let test_variable = (_) -> {
@@ -189,6 +195,27 @@ let test_release = (_) -> {
   )
 }
 
+let test_package_reference = (_) -> {
+  check_round_trip(
+    "{\"0\":\"@\",\"p\":\"welcome\"}",
+    [PackageReference("welcome")]
+  )
+}
+
+let test_version_reference = (_) -> {
+  check_round_trip(
+    "{\"0\":\"@\",\"p\":\"welcome\",\"r\":1}",
+    [VersionReference({package: "welcome", version: 1})]
+  )
+}
+
+let test_relative_reference = (_) -> {
+  check_round_trip(
+    "{\"0\":\".\",\"i\":\"./module.eyg\"}",
+    [RelativeReference("./module.eyg")]
+  )
+}
+
 [
   {name: "ast ir suite variable", test: test_variable},
   {name: "ast ir suite function", test: test_function},
@@ -210,5 +237,8 @@ let test_release = (_) -> {
   {name: "ast ir suite handle effect", test: test_handle_effect},
   {name: "ast ir suite add integer builtin", test: test_add_integer_builtin},
   {name: "ast ir suite cid reference", test: test_cid_reference},
-  {name: "ast ir suite release", test: test_release}
+  {name: "ast ir suite release", test: test_release},
+  {name: "ast package reference", test: test_package_reference},
+  {name: "ast version reference", test: test_version_reference},
+  {name: "ast relative reference", test: test_relative_reference}
 ]

@@ -129,3 +129,15 @@ The explicit reference wire format needs to distinguish `@package`, `@package:ve
 
 - Added `json.decode.optional_field`, returning `Some(value)` when present and `None({})` when absent.
 - Added tests for present and absent fields.
+
+## EYG `eyg` AST
+
+### Assessment
+
+The EYG-side AST now has the same five semantic forms as Gleam and the reflected type. Optional DAG-JSON fields are interpreted once at the decode boundary; the rest of the package works with explicit `PackageReference`, `VersionReference`, and `ReleaseReference` values. This is clearer and rejects the malformed CID-without-version combination rather than assigning hidden defaults.
+
+### Changes and tests
+
+- Decoded the three `@` encodings by field presence.
+- Encoded package-only and version-only AST values without placeholder fields.
+- Added package, version, and relative round-trip tests while retaining the pinned release fixture/CID test.
