@@ -7,6 +7,7 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
 import eyg/interpreter/state.{type Value}
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import morph/analysis
@@ -28,7 +29,7 @@ pub fn type_check(
   source: ir.Node(List(Int)),
   value: Option(Value(Nil)),
 ) -> #(analysis.Analysis, Bool) {
-  let bindings = infer.new_state()
+  let bindings = dict.new()
   let #(app_state_t, bindings) = case value {
     Some(v) -> {
       let #(poly, bindings) = analysis.value_to_type(v, bindings, Nil)
@@ -44,7 +45,9 @@ pub fn type_check(
 fn do_check_against_state(b, refs, source, old) {
   let level = 1
   let context = analysis.Context(b, [], [], refs, [])
-  let #(tree, b) = infer.infer(source, t.Empty, refs, level, b)
+  let icontext = infer.Context([], t.Empty, level, b)
+  let infer.Analysis(bindings: b, tree:, original: _) =
+    infer.check_with_references(icontext, refs, source)
 
   let #(inner, meta) = tree
   let #(original_err, program, _, _) = meta

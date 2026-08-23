@@ -76,11 +76,29 @@ fn do_print(source) {
       string.concat(["builtin(", identifier, ")"]),
       [],
     )
-    ir.ContentReference(identifier) -> #(
+    ir.Reference(ir.Content(identifier)) -> #(
       string.concat(["content(", v1.to_string(identifier), ")"]),
       [],
     )
-    ir.ReleaseReference(package, release, identifier) -> #(
+    ir.Reference(reference: ir.Package(package:)) -> #(
+      string.concat([
+        "release(",
+        package,
+        ")",
+      ]),
+      [],
+    )
+    ir.Reference(reference: ir.Version(package:, version:)) -> #(
+      string.concat([
+        "release(",
+        package,
+        ", ",
+        int.to_string(version),
+        ")",
+      ]),
+      [],
+    )
+    ir.Reference(ir.Pinned(ir.Release(package, release, identifier))) -> #(
       string.concat([
         "release(",
         package,
@@ -92,7 +110,7 @@ fn do_print(source) {
       ]),
       [],
     )
-    ir.RelativeReference(location) -> #(
+    ir.Reference(ir.Relative(location)) -> #(
       string.concat(["relative(", location, ")"]),
       [],
     )

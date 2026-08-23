@@ -1,3 +1,4 @@
+import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
 import gleam/listx
@@ -292,13 +293,13 @@ pub fn expression(exp, rev, errors) {
       frame.Inline([
         h.span([a.class(builtin), exp_key(rev)], [text("!"), text(identifier)]),
       ])
-    e.Reference(identifier) ->
+    e.Reference(ir.Content(cid)) ->
       frame.Inline([
         h.span([a.class(reference), exp_key(rev)], [
-          text(v1.to_string(identifier)),
+          text(v1.to_string(cid)),
         ]),
       ])
-    e.Relative(location) ->
+    e.Reference(ir.Relative(location)) ->
       frame.Inline([
         h.span(
           [
@@ -308,15 +309,36 @@ pub fn expression(exp, rev, errors) {
           [text(location)],
         ),
       ])
-    e.Release(package, release, _) ->
+    e.Reference(ir.Package(package:)) ->
       frame.Inline([
         h.span(
           [
             a.class(reference),
             exp_key(rev),
-            a.title("release = " <> int.to_string(release)),
           ],
-          [text("@" <> package <> ":" <> int.to_string(release))],
+          [text(package)],
+        ),
+      ])
+    e.Reference(ir.Version(package:, version:)) ->
+      frame.Inline([
+        h.span(
+          [
+            a.class(reference),
+            exp_key(rev),
+            a.title("release = " <> int.to_string(version)),
+          ],
+          [text("@" <> package <> ":" <> int.to_string(version))],
+        ),
+      ])
+    e.Reference(ir.Pinned(ir.Release(package:, version:, module: _))) ->
+      frame.Inline([
+        h.span(
+          [
+            a.class(reference),
+            exp_key(rev),
+            a.title("release = " <> int.to_string(version)),
+          ],
+          [text("@" <> package <> ":" <> int.to_string(version))],
         ),
       ])
   }

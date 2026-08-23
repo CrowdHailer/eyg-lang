@@ -29,6 +29,7 @@ pub type Context {
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
     effects: List(#(String, #(binding.Mono, binding.Mono))),
+    // TODO remove
     references: References,
     index: Index,
   )
@@ -78,9 +79,12 @@ pub fn with_index(context, index) {
 pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
-      let #(#(_, #(_, type_, _, _)), bindings) =
+      let icontext = infer.Context([], t.Empty, 0, bindings)
+      // let #(#(_, #(_, type_, _, _)), bindings) 
+      let infer.Analysis(bindings:, tree:, original: _) =
         capture.capture(value, meta)
-        |> infer.infer(t.Empty, dict.new(), 0, bindings)
+        |> infer.check_with_references(icontext, dict.new(), _)
+      let #(_, type_, _, _) = tree.1
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Binary(_) -> #(t.Binary, bindings)
@@ -157,7 +161,7 @@ pub fn value_to_type(value, bindings, meta: t) {
 }
 
 pub fn env_to_tenv(scope, meta) {
-  let bindings = infer.new_state()
+  let bindings = dict.new()
 
   list.map_fold(scope, bindings, fn(bindings, pair) {
     let #(var, value) = pair
@@ -180,8 +184,9 @@ pub fn do_analyse(editable, context) -> Analysis {
     })
 
   let source = e.to_annotated(editable, [])
-  let #(bindings, _top_type, _top_eff, tree) =
-    infer.do_infer(source, scope, eff, context.references, 0, bindings)
+  let icontext = infer.Context(scope, eff, 0, bindings)
+  let infer.Analysis(bindings:, tree:, original: _) =
+    infer.check_with_references(icontext, context.references, source)
   let types = ir.get_annotation(tree)
   let paths = ir.get_annotation(e.to_annotated(editable, []))
   Analysis(bindings, list.zip(paths, types), context)

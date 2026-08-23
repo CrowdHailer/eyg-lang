@@ -28,8 +28,8 @@ type Meta =
 pub fn init(config) {
   let config.Config(origin:) = config
 
-  let buffer = buffer.from_source(ir.vacant(), infer.pure())
   let cache = cache.ready()
+  let buffer = buffer.from_source(ir.vacant(), infer.pure(), cache.types(cache))
   let state =
     State(
       previous: [],

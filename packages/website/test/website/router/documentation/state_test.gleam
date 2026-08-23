@@ -8,6 +8,7 @@ import gleam/crypto
 import gleam/dict
 import gleam/http/response
 import gleam/option.{None}
+import midas/continuation
 import morph/editable
 import morph/picker
 import multiformats/cid/v1
@@ -29,7 +30,7 @@ pub fn analyse_reference_test() {
   let source = ir.get(ir.reference(cid), "count")
   let state = with_source(source)
   let assert [#([1], reason)] = infer.all_errors(default(state).analysis)
-  assert error.MissingReference(cid) == reason
+  assert error.MissingReference(ir.Content(cid)) == reason
   let assert #(_context, [_pull, effect]) =
     state.flush_cache(state.cache, origin.https("eyg.test"))
   let assert system.Fetch(_request, resume:) = effect
@@ -52,7 +53,7 @@ pub fn insert_reference_test() {
   let message = state.PickerMessage(picker.Decided(v1.to_string(cid)))
   let assert #(state, [_pull, effect]) = state.update(state, message)
   let assert [#([], reason)] = infer.all_errors(default(state).analysis)
-  assert error.MissingReference(cid) == reason
+  assert error.MissingReference(ir.Content(cid)) == reason
   let assert system.Fetch(_request, resume:) = effect
   let assert system.Done(message) = resume(Ok(module_response(lib)))
   let assert #(state, []) = state.update(state, message)
@@ -90,7 +91,14 @@ fn module_response(source) {
   |> response.set_body(body)
 }
 
-pub fn cid_from_tree(source) {
-  let cid.Sha256(bytes:, resume:) = cid.from_tree(source)
-  resume(crypto.hash(crypto.Sha256, bytes))
+fn hash_sha256(bytes) {
+  continuation.return(crypto.hash(crypto.Sha256, bytes))
+}
+
+pub fn cid_from_block(bytes: BitArray) -> v1.Cid {
+  cid.from_block(bytes, hash_sha256)(fn(x) { x })
+}
+
+pub fn cid_from_tree(source: ir.Node(_)) -> v1.Cid {
+  cid.from_tree(source, hash_sha256)(fn(x) { x })
 }

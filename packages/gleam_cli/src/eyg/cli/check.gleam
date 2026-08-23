@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/debug
 import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/parser
+import gleam/dict
 import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
@@ -15,7 +16,8 @@ pub fn execute(
   use source <- promisex.try_sync(source.parse_input(code, input))
 
   let context = infer.unpure()
-  let analysis = infer.check(context, source)
+  // TODO follow all references
+  let analysis = infer.check_with_references(context, dict.new(), source)
   let errors = infer.all_errors(analysis)
 
   case errors {

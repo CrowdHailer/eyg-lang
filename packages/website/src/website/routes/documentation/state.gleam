@@ -1,10 +1,11 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/hub/cache
-import eyg/hub/release
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
@@ -41,7 +42,7 @@ pub type State {
 }
 
 pub type Rebuild(t) =
-  fn(t, infer.Context) -> buffer.Buffer
+  fn(t, infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer
 
 pub type Mode {
   Navigating(id: String, failure: Option(command.Failure))
@@ -94,10 +95,10 @@ pub fn set_example(state: State, id, snippet) {
 fn continue(
   state: State,
   id: String,
-  gen: fn(infer.Context) -> buffer.Buffer,
+  gen: fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer,
 ) -> #(State, List(system.Effect(Message))) {
   let State(cache:, ..) = state
-  let buffer = gen(infer_context(cache))
+  let buffer = gen(harness.infer_context(), cache.types(state.cache))
   let state = set_example(state, id, buffer)
   let cache = cache.prepare(cache, buffer.source(buffer))
   let #(cache, effects) = flush_cache(cache, state.origin)
@@ -150,16 +151,27 @@ pub fn init_collection(
       let #(_key, buffer) = example
       infer.missing_references(buffer.analysis)
     })
+  let missing_cids =
+    list.filter_map(missing_references, fn(ref) {
+      case ref {
+        ir.Content(cid) -> Ok(cid)
+        _ -> Error(Nil)
+      }
+    })
   let examples = dict.from_list(examples)
 
-  let cache = cache.fetch_all(cache, missing_references)
+  let cache = cache.fetch_all(cache, missing_cids)
   #(examples, cache)
 }
 
 fn buffer(editable: e.Expression, cache: cache.Cache(Meta)) -> buffer.Buffer {
   let projection = navigation.first(editable)
   // keep evaluation on example, if it runs don't print type errors. but show them in the code
-  buffer.from_projection(projection, infer_context(cache))
+  buffer.from_projection(
+    projection,
+    harness.infer_context(),
+    cache.types(cache),
+  )
 }
 
 pub fn update(state: State, message) {
@@ -182,7 +194,10 @@ pub fn update(state: State, message) {
               let state = State(..state, mode:)
               #(state, [])
             }
-            input.Confirmed(value) -> continue(state, id, rebuild(value, _))
+            input.Confirmed(value) ->
+              continue(state, id, fn(context, refs) {
+                rebuild(value, context, refs)
+              })
             input.Cancelled -> {
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
@@ -195,7 +210,10 @@ pub fn update(state: State, message) {
               let state = State(..state, mode:)
               #(state, [])
             }
-            input.Confirmed(value) -> continue(state, id, rebuild(value, _))
+            input.Confirmed(value) ->
+              continue(state, id, fn(context, refs) {
+                rebuild(value, context, refs)
+              })
             input.Cancelled -> {
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
@@ -213,7 +231,10 @@ pub fn update(state: State, message) {
               let mode = Manipulating(id, m.PickSingle(picker, rebuild))
               #(State(..state, mode:), [])
             }
-            picker.Decided(label) -> continue(state, id, rebuild(label, _))
+            picker.Decided(label) ->
+              continue(state, id, fn(context, refs) {
+                rebuild(label, context, refs)
+              })
             picker.Dismissed -> #(
               State(..state, mode: Navigating(id:, failure: None)),
               [],
@@ -227,7 +248,10 @@ pub fn update(state: State, message) {
             }
             picker.Decided(text) -> {
               case v1.from_string(text) {
-                Ok(#(cid, _)) -> continue(state, id, rebuild(cid, _))
+                Ok(#(cid, _)) ->
+                  continue(state, id, fn(context, refs) {
+                    rebuild(cid, context, refs)
+                  })
                 Error(_) -> {
                   echo "need error message for bad cid"
                   #(state, [])
@@ -248,7 +272,10 @@ pub fn update(state: State, message) {
             }
             picker.Decided(text) -> {
               case cache.package(state.cache, text) {
-                Ok(#(v, m)) -> continue(state, id, rebuild(#(text, v, m), _))
+                Ok(#(v, m)) ->
+                  continue(state, id, fn(context, refs) {
+                    rebuild(ir.Release(text, v, m), context, refs)
+                  })
                 Error(_) -> {
                   echo "need error message for bad cid"
                   #(state, [])
@@ -271,7 +298,9 @@ pub fn update(state: State, message) {
             Ok(text) ->
               case json.parse(text, dag_json.decoder(Nil)) {
                 Ok(expression) ->
-                  continue(state, id, rebuild(e.from_annotated(expression), _))
+                  continue(state, id, fn(context, refs) {
+                    rebuild(e.from_annotated(expression), context, refs)
+                  })
                 Error(_) -> action_failed(state, id, "paste")
               }
             Error(_) -> action_failed(state, id, "paste")
@@ -353,10 +382,6 @@ pub fn update(state: State, message) {
   }
 }
 
-pub fn infer_context(cache: cache.Cache(Meta)) -> infer.Context {
-  harness.infer_context(cache.types(cache))
-}
-
 pub fn reanalyse_examples(
   examples: dict.Dict(String, buffer.Buffer),
   _done: List(#(v1.Cid, Result(a, b))),
@@ -377,7 +402,8 @@ pub fn reanalyse_examples(
     let update = !list.is_empty(infer.all_errors(buffer.analysis))
     // list.any(ok, list.contains(infer.missing_references(buffer.analysis), _))
     case update {
-      True -> buffer.reanalyse(buffer, infer_context(cache))
+      True ->
+        buffer.reanalyse(buffer, harness.infer_context(), cache.types(cache))
       False -> buffer
     }
   })
@@ -584,7 +610,7 @@ pub fn loop(
         Error(reason) -> #(Exception(reason), state.counter, None)
       }
     }
-    Error(#(break.UndefinedReference(cid), _, env, k)) ->
+    Error(#(break.UndefinedReference(ir.Content(cid)), _, env, k)) ->
       case cache.get_module(state.cache, cid) {
         Ok(cache.Module(value:, ..)) ->
           loop(expression.resume(value, env, k), state)
@@ -594,13 +620,12 @@ pub fn loop(
           #(run, state.counter, None)
         }
       }
-    Error(#(break.UndefinedRelease(package:, release:, module:), _, env, k)) -> {
-      let release = release.Release(package:, version: release, module:)
+    Error(#(break.UndefinedReference(ir.Pinned(release)), _, env, k)) -> {
       case cache.release_code(state.cache, release) {
         Ok(cache.Module(value:, ..)) ->
           loop(expression.resume(value, env, k), state)
         _ -> {
-          let run = Blocked(cache.Release(release), env, k)
+          let run = Blocked(cache.Pinned(release), env, k)
           #(run, state.counter, None)
         }
       }

@@ -88,7 +88,7 @@ fn loop(
   ctx: Context,
 ) -> #(Context, Call) {
   case return {
-    Error(#(break.UndefinedReference(ref) as break, _m, env, k)) -> {
+    Error(#(break.UndefinedReference(ir.Content(ref)) as break, _m, env, k)) -> {
       // TODO use the direct fetch status
       case cache.fetch_module(ctx.cache, ref) {
         cache.Ready(cache.Module(value:, type_: _)) ->

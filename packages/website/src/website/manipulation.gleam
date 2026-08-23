@@ -14,6 +14,7 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/hub/cache
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -37,20 +38,20 @@ pub type Operation {
 /// has been initiated. `Resolved` means no further input is needed;
 /// the other variants carry the choices the user must pick from.
 pub type Continue {
-  Resolved(fn(infer.Context) -> buffer.Buffer)
+  Resolved(fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer)
   UserInput(UserInput)
 }
 
 pub type UserInput {
   PickSingle(picker.Picker, Rebuild(String))
   PickCid(picker.Picker, Rebuild(v1.Cid))
-  PickRelease(picker.Picker, Rebuild(#(String, Int, v1.Cid)))
+  PickRelease(picker.Picker, Rebuild(ir.Release))
   EnterText(String, Rebuild(String))
   EnterInteger(Int, Rebuild(Int))
 }
 
 pub type Rebuild(t) =
-  fn(t, infer.Context) -> buffer.Buffer
+  fn(t, infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer
 
 // CORE
 
@@ -131,7 +132,7 @@ pub fn call_function() {
 fn do_call_function(buffer) {
   use rebuild <- result.map(buffer.call_many(buffer))
   let arity = buffer.target_arity(buffer) |> result.unwrap(1)
-  Resolved(rebuild(arity, _))
+  Resolved(fn(context, refs) { rebuild(arity, context, refs) })
 }
 
 pub fn call_with() {
@@ -161,10 +162,11 @@ fn do_create_record(buffer) {
   let hints = buffer.fields(buffer)
   case hints {
     [] -> {
-      let rebuild = fn(label, context) { rebuild([label], context) }
+      let rebuild = fn(label, context, refs) { rebuild([label], context, refs) }
       UserInput(PickSingle(picker.new("", []), rebuild))
     }
-    _ -> Resolved(rebuild(listx.keys(hints), _))
+    _ ->
+      Resolved(fn(context, refs) { rebuild(listx.keys(hints), context, refs) })
   }
 }
 
@@ -212,10 +214,11 @@ fn do_insert_case(buffer) {
   let hints = listx.value_map(buffer.varients(buffer), debug.mono)
   case hints {
     [] -> {
-      let rebuild = fn(label, context) { rebuild([label], context) }
+      let rebuild = fn(label, context, refs) { rebuild([label], context, refs) }
       UserInput(PickSingle(picker.new("", []), rebuild))
     }
-    _ -> Resolved(rebuild(listx.keys(hints), _))
+    _ ->
+      Resolved(fn(context, refs) { rebuild(listx.keys(hints), context, refs) })
   }
 }
 

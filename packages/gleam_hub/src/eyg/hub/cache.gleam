@@ -15,7 +15,6 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/hub/client
 import eyg/hub/publisher
-import eyg/hub/release
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
@@ -58,16 +57,16 @@ pub type FetchStatus(meta) {
   )
 }
 
+/// A dependency for modules in a cache is the references that are fully specified
 pub type Dependency {
   Content(cid: v1.Cid)
-  Release(release.Release)
+  Pinned(ir.Release)
 }
 
 pub fn dep_to_reason(dep: Dependency) {
   case dep {
-    Content(cid:) -> break.UndefinedReference(cid)
-    Release(release.Release(package:, version:, module:)) ->
-      break.UndefinedRelease(package:, release: version, module:)
+    Content(cid:) -> break.UndefinedReference(ir.Content(cid:))
+    Pinned(release) -> break.UndefinedReference(ir.Pinned(release))
   }
 }
 
@@ -92,12 +91,14 @@ pub type ActionCompleted {
 pub type Resolution(meta) =
   #(v1.Cid, Result(state.Value(meta), state.Reason(meta)))
 
+// TODO remove
 pub type Resource(value, reason) {
   Available(value)
   Unknown
   Unavailable(reason)
 }
 
+// TODO remove
 pub type Status(meta) {
   Ready(Module(meta))
   Working(Cache(meta))
@@ -196,9 +197,9 @@ pub fn module(
 
 pub fn release_code(
   cache: Cache(meta),
-  release: release.Release,
+  release: ir.Release,
 ) -> Result(Module(meta), Nil) {
-  let release.Release(package:, version:, module:) = release
+  let ir.Release(package:, version:, module:) = release
   case dict.get(cache.releases, #(package, version)) {
     Ok(cid) if cid == module -> dict.get(cache.modules, cid)
     _ -> Error(Nil)
@@ -208,9 +209,10 @@ pub fn release_code(
 /// Find a release if it is valid.
 pub fn release(
   cache: Cache(meta),
-  release: release.Release,
+  release: ir.Release,
 ) -> Resource(v1.Cid, Nil) {
-  let release.Release(package:, version:, module:) = release
+  let ir.Release(package:, version:, module:) = release
+  // TODO return Unavailable if version not > 0
   case dict.get(cache.releases, #(package, version)) {
     Ok(cid) if cid == module -> Available(module)
     Ok(_) -> Unavailable(Nil)
@@ -353,7 +355,7 @@ pub fn pull_packages_completed(
             json.parse(entry.payload, publisher.decoder())
 
           let publisher.Release(package:, version:, module:) = payload.content
-          let release = release.Release(package:, version:, module:)
+          let release = ir.Release(package:, version:, module:)
           let #(cache, new) = pulled(cache, entry.cursor, release)
 
           #(cache, list.append(done, new))
@@ -385,24 +387,43 @@ pub fn fetch_module_completed(
 
 pub fn prepare(cache: Cache(meta), source: ir.Node(_)) {
   let references = ir.list_references(source)
-  let cache = fetch_all(cache, references)
-  let releases = ir.list_named_references(source)
-  pull_if_any_missing(cache, releases)
+  let cids =
+    list.filter_map(references, fn(ref) {
+      case ref {
+        ir.Content(cid:) -> Ok(cid)
+        ir.Package(..) -> Error(Nil)
+        ir.Version(..) -> Error(Nil)
+        ir.Pinned(release:) -> Ok(release.module)
+        ir.Relative(..) -> Error(Nil)
+      }
+    })
+  let cache = fetch_all(cache, cids)
+  let versions =
+    list.filter_map(references, fn(ref) {
+      case ref {
+        ir.Content(..) -> Error(Nil)
+        ir.Package(..) -> Error(Nil)
+        ir.Version(package:, version:) -> Ok(#(package, version))
+        ir.Pinned(release:) -> Ok(#(release.package, release.version))
+        ir.Relative(..) -> Error(Nil)
+      }
+    })
+
+  pull_if_any_missing(cache, versions)
 }
 
-fn pull_if_any_missing(cache: Cache(meta), releases) {
-  case releases {
-    [#(package, version, module), ..releases] ->
+fn pull_if_any_missing(cache: Cache(meta), versions) {
+  case versions {
+    [#(package, version), ..versions] ->
       case dict.get(cache.releases, #(package, version)) {
-        Ok(cid) if cid == module -> pull_if_any_missing(cache, releases)
-        Ok(_) -> pull_if_any_missing(cache, releases)
+        Ok(_) -> pull_if_any_missing(cache, versions)
         Error(_) -> pull(cache)
       }
     [] -> cache
   }
 }
 
-pub fn with_module(
+fn with_module(
   cache: Cache(meta),
   cid: v1.Cid,
   source: ir.Node(meta),
@@ -416,24 +437,19 @@ pub fn with_module(
 pub fn pulled(
   cache: Cache(meta),
   cursor: Int,
-  release: release.Release,
+  release: ir.Release,
 ) -> #(Cache(meta), List(Resolution(meta))) {
-  let release.Release(package: p, version: v, module: m) = release
+  let ir.Release(package: p, version: v, module: m) = release
   let #(unblocked, invalid) =
     dict.fold(cache.fetching_modules, #([], []), fn(acc, module, status) {
       let #(resumable, invalid) = acc
       case status {
-        DependsOn(Release(dep), env, k, source)
+        DependsOn(Pinned(dep), env, k, source)
           if dep.package == p && dep.version == v && dep.module == m
         -> #([#(module, env, k, source), ..resumable], invalid)
-        DependsOn(Release(dep), ..) if dep.package == p && dep.version == v -> {
+        DependsOn(Pinned(dep), ..) if dep.package == p && dep.version == v -> {
           // don't deconstruct dep as the module variable will clash with the module for the caller.
-          let reason =
-            break.UndefinedRelease(
-              package: dep.package,
-              release: dep.version,
-              module: dep.module,
-            )
+          let reason = break.UndefinedReference(ir.Pinned(dep))
           #(resumable, [#(module, Error(reason)), ..invalid])
         }
         _ -> #(resumable, invalid)
@@ -481,21 +497,22 @@ pub fn loop(
     Result(a, state.Debug(meta)),
 ) -> #(Result(a, state.Debug(meta)), Cache(meta)) {
   case return {
-    Error(#(break.UndefinedReference(cid), _, env, k)) -> {
+    Error(#(break.UndefinedReference(ir.Content(cid)), _, env, k)) -> {
       case dict.get(cache.modules, cid) {
         Ok(Module(value:, ..)) -> loop(resume(value, env, k), cache, resume)
         Error(Nil) -> #(return, fetch(cache, cid))
       }
     }
-    Error(#(break.UndefinedRelease(package:, release:, module:), _meta, env, k)) -> {
-      case dict.get(cache.releases, #(package, release)) {
+    Error(#(break.UndefinedReference(ir.Pinned(release)), _meta, env, k)) -> {
+      let ir.Release(package, version, module) = release
+      case dict.get(cache.releases, #(package, version)) {
         Ok(cid) if cid == module ->
           case dict.get(cache.modules, cid) {
             Ok(Module(value:, ..)) -> loop(resume(value, env, k), cache, resume)
             Error(Nil) -> #(return, fetch(cache, cid))
           }
         Ok(_) -> #(return, cache)
-        Error(_) if release > 0 -> #(return, pull(cache))
+        Error(_) if version > 0 -> #(return, pull(cache))
         // Don't look for releases with invalid version number
         Error(_) -> #(return, cache)
       }
@@ -512,15 +529,16 @@ pub fn static_loop(
     Result(a, state.Debug(meta)),
 ) -> Result(a, state.Debug(meta)) {
   case return {
-    Error(#(break.UndefinedReference(cid), _, env, k)) -> {
+    Error(#(break.UndefinedReference(ir.Content(cid)), _, env, k)) -> {
       case dict.get(cache.modules, cid) {
         Ok(Module(value:, ..)) ->
           static_loop(resume(value, env, k), cache, resume)
         Error(Nil) -> return
       }
     }
-    Error(#(break.UndefinedRelease(package:, release:, module:), _meta, env, k)) -> {
-      case dict.get(cache.releases, #(package, release)) {
+    Error(#(break.UndefinedReference(ir.Pinned(release)), _meta, env, k)) -> {
+      let ir.Release(package, version, module) = release
+      case dict.get(cache.releases, #(package, version)) {
         Ok(cid) if cid == module ->
           case dict.get(cache.modules, cid) {
             Ok(Module(value:, ..)) ->
@@ -546,7 +564,8 @@ fn blocked_by(fetching_modules, resolved_cid) {
   })
 }
 
-// Returns a list of only ever 1 or none
+/// When the evaluation of a module is unblocked by the return of a cid
+/// Only ever resolves 1 or none, so returns a list that is flat mapped over
 fn handle_return(
   cache: Cache(meta),
   cid: v1.Cid,
@@ -560,15 +579,14 @@ fn handle_return(
       let fetching_modules = dict.delete(cache.fetching_modules, cid)
       let type_ =
         infer.pure()
-        |> infer.with_references(types(cache))
-        |> infer.check(source)
+        |> infer.check_with_references(types(cache), source)
         |> infer.poly_type
       let new = Module(value:, type_:)
       let modules = dict.insert(cache.modules, cid, new)
       let cache = Cache(..cache, modules:, fetching_modules:)
       #(cache, [#(cid, Ok(value))])
     }
-    Error(#(break.UndefinedReference(dep), _, env, k)) ->
+    Error(#(break.UndefinedReference(ir.Content(dep)), _, env, k)) ->
       case dict.get(cache.fetching_modules, dep) {
         Ok(Invalid(reason)) -> {
           let cache = set_status(cache, cid, Invalid(reason))
@@ -580,19 +598,20 @@ fn handle_return(
           #(cache, [])
         }
       }
-    Error(#(break.UndefinedRelease(package:, release:, module:) as r, _, env, k)) ->
-      case dict.get(cache.releases, #(package, release)) {
+    Error(#(break.UndefinedReference(ir.Pinned(release)) as r, _, env, k)) -> {
+      let ir.Release(package, version, module) = release
+      case dict.get(cache.releases, #(package, version)) {
         Ok(dep) if dep != module -> {
           let cache = set_status(cache, cid, Invalid(r))
           #(cache, [#(cid, Error(r))])
         }
         _ -> {
-          let release = release.Release(package:, version: release, module:)
-          let status = DependsOn(Release(release), env, k, source)
+          let status = DependsOn(Pinned(release), env, k, source)
           let cache = set_status(cache, cid, status)
           #(cache, [])
         }
       }
+    }
     Error(#(reason, _, _, _)) -> {
       let cache = set_status(cache, cid, Invalid(reason))
       #(cache, [#(cid, Error(reason))])

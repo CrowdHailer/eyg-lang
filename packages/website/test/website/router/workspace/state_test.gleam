@@ -1,4 +1,5 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/hub/cache
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/option.{Some}
@@ -50,7 +51,14 @@ fn command(state, key) {
 
 fn with_source(source) {
   let assert #(state, [_pull]) = state.init(config())
-  State(..state, repl: buffer.from_source(source, repl_context(state)))
+  State(
+    ..state,
+    repl: buffer.from_source(
+      source,
+      repl_context(state),
+      cache.types(state.cache),
+    ),
+  )
 }
 
 fn repl_context(_state) {

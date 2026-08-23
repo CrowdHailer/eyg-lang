@@ -85,15 +85,15 @@ pub fn builtin(identifier) {
 }
 
 pub fn reference(identifier) {
-  #(ir.ContentReference(identifier), meta)
+  #(ir.Reference(ir.Content(identifier)), meta)
 }
 
 pub fn release(package, release, identifier) {
-  #(ir.ReleaseReference(package, release, identifier), meta)
+  #(ir.Reference(ir.Pinned(ir.Release(package, release, identifier))), meta)
 }
 
 pub fn relative(location) {
-  #(ir.RelativeReference(location), meta)
+  #(ir.Reference(ir.Relative(location)), meta)
 }
 
 pub fn func(params, body) {

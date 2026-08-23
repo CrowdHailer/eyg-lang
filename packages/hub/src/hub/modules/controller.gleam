@@ -1,10 +1,12 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/schema
 import eyg/ir/dag_json
+import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
 import gleam/string
+import hub/cid
 import hub/modules/data
 import hub/server/context.{type Context}
 import hub/web/utils
@@ -26,7 +28,7 @@ pub fn share(
   let ip = "123.1.1.1"
   // wisp.accepted
 
-  let cid = utils.cid_from_tree(source)
+  let cid = cid.from_tree(source)
   case pog.execute(data.insert(cid, source, ip), context.db) {
     Ok(_) ->
       wisp.ok()
@@ -44,7 +46,8 @@ fn check_size(data, max, then) {
 }
 
 fn check_soundness(source, then) {
-  let inference = infer.unpure() |> infer.check(source)
+  let inference =
+    infer.unpure() |> infer.check_with_references(dict.new(), source)
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()
@@ -52,7 +55,8 @@ fn check_soundness(source, then) {
 }
 
 fn check_purity(source, then) {
-  let inference = infer.pure() |> infer.check(source)
+  let inference =
+    infer.pure() |> infer.check_with_references(dict.new(), source)
   case infer.all_errors(inference) {
     [] -> then()
     _ -> wisp.unprocessable_content()

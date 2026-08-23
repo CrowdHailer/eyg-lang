@@ -1,3 +1,4 @@
+import eyg/ir/tree as ir
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
@@ -645,10 +646,10 @@ pub fn insert_reference(projection) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let current = case exp {
-        e.Reference(id) -> v1.to_string(id)
+        e.Reference(ir.Content(cid)) -> v1.to_string(cid)
         _ -> ""
       }
-      Ok(#(current, fn(id) { #(p.Exp(e.Reference(id)), zoom) }))
+      Ok(#(current, fn(id) { #(p.Exp(e.Reference(ir.Content(id))), zoom) }))
     }
     _ -> Error(Nil)
   }
@@ -658,15 +659,10 @@ pub fn insert_release(projection) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let current = case exp {
-        e.Release(package, release, cid) -> Some(#(package, release, cid))
+        e.Reference(ir.Pinned(release)) -> Some(release)
         _ -> None
       }
-      Ok(
-        #(current, fn(new) {
-          let #(package, release, cid) = new
-          #(p.Exp(e.Release(package, release, cid)), zoom)
-        }),
-      )
+      Ok(#(current, fn(new) { #(p.Exp(e.Reference(ir.Pinned(new))), zoom) }))
     }
     _ -> Error(Nil)
   }

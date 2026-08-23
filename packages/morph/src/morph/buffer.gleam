@@ -6,8 +6,10 @@
 //// A top level application might create an enum of editing modes
 
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic as iso
 import eyg/ir/dag_json
+import gleam/dict
 import gleam/list
 import gleam/option.{None}
 import gleam/result
@@ -18,6 +20,7 @@ import morph/editable as e
 import morph/navigation
 import morph/projection as p
 import morph/transformation as t
+import multiformats/cid/v1
 
 pub type Buffer {
   Buffer(
@@ -47,8 +50,12 @@ pub fn undo(buffer) {
     [first, ..rest] -> {
       let redo = [projection, ..history.redo]
       let history = History(undo: rest, redo:)
-      Ok(fn(context) {
-        Buffer(history:, projection: first, analysis: analyse(first, context))
+      Ok(fn(context, refs) {
+        Buffer(
+          history:,
+          projection: first,
+          analysis: analyse(first, context, refs),
+        )
       })
     }
     [] -> Error(Nil)
@@ -61,58 +68,65 @@ pub fn redo(buffer) {
     [first, ..rest] -> {
       let undo = [projection, ..history.undo]
       let history = History(undo:, redo: rest)
-      Ok(fn(context) {
-        Buffer(history:, projection: first, analysis: analyse(first, context))
+      Ok(fn(context, refs) {
+        Buffer(
+          history:,
+          projection: first,
+          analysis: analyse(first, context, refs),
+        )
       })
     }
     [] -> Error(Nil)
   }
 }
 
-fn analyse(projection, context: infer.Context) -> infer.Analysis(List(Int)) {
+fn analyse(
+  projection: p.Projection,
+  context: infer.Context,
+  refs,
+) -> infer.Analysis(List(Int)) {
   let source = e.to_annotated(p.rebuild(projection), [])
-
-  context
-  |> infer.check(source)
+  infer.check_with_references(context, refs, source)
 }
 
-pub fn empty(context) {
-  from_projection(p.empty, context)
+pub fn empty(context, refs) {
+  from_projection(p.empty, context, refs)
 }
 
-pub fn from_source(source, context) {
+pub fn from_source(source, context, refs) {
   source
   |> e.from_annotated
   |> p.all()
-  |> from_projection(context)
+  |> from_projection(context, refs)
 }
 
-pub fn from_projection(projection, context) {
+pub fn from_projection(projection, context, refs) {
   Buffer(
     history: empty_history,
     projection:,
-    analysis: analyse(projection, context),
+    analysis: analyse(projection, context, refs),
   )
 }
 
-pub fn reanalyse(buffer: Buffer, context: infer.Context) -> Buffer {
-  Buffer(..buffer, analysis: analyse(buffer.projection, context))
+pub fn reanalyse(buffer: Buffer, context: infer.Context, refs) -> Buffer {
+  Buffer(..buffer, analysis: analyse(buffer.projection, context, refs))
 }
 
-pub fn update_code(buffer, new, context) {
+pub fn update_code(buffer, new, context, refs) {
   let Buffer(history:, projection: old, ..) = buffer
   let history = history_new_entry(old, history)
-  Buffer(history:, projection: new, analysis: analyse(new, context))
+  Buffer(history:, projection: new, analysis: analyse(new, context, refs))
 }
 
 pub fn update_position(buffer, projection) {
   Buffer(..buffer, projection:)
 }
 
-pub fn add_references(buffer, new, context) {
+pub fn add_references(buffer, new, context, refs) {
   let Buffer(analysis:, ..) = buffer
   case list.any(infer.missing_references(analysis), set.contains(new, _)) {
-    True -> Buffer(..buffer, analysis: analyse(buffer.projection, context))
+    True ->
+      Buffer(..buffer, analysis: analyse(buffer.projection, context, refs))
     False -> buffer
   }
 }
@@ -203,14 +217,18 @@ pub fn focus_at_reversed(buffer: Buffer, reversed) {
 // ------------------------- Transformations
 
 pub type Continue {
-  Done(fn(infer.Context) -> Buffer)
-  WithString(fn(String, infer.Context) -> Buffer)
+  Done(fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> Buffer)
+  WithString(
+    fn(String, infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> Buffer,
+  )
 }
 
 pub fn set_expression(buffer: Buffer) {
   case buffer.projection {
     #(p.Exp(_old), zoom) ->
-      Ok(fn(new, context) { update_code(buffer, #(p.Exp(new), zoom), context) })
+      Ok(fn(new, context, refs) {
+        update_code(buffer, #(p.Exp(new), zoom), context, refs)
+      })
     _ -> Error(Nil)
   }
 }
@@ -222,17 +240,19 @@ pub fn insert(buffer: Buffer) {
     }
     _ -> p.text(buffer.projection)
   })
-  #(value, fn(new, context) { update_code(buffer, rebuild(new), context) })
+  #(value, fn(new, context, refs) {
+    update_code(buffer, rebuild(new), context, refs)
+  })
 }
 
 pub fn insert_before(buffer: Buffer) {
   use new <- result.map(action.extend_before(buffer.projection))
   case new {
     action.Updated(new) ->
-      Done(fn(context) { update_code(buffer, new, context) })
+      Done(fn(context, refs) { update_code(buffer, new, context, refs) })
     action.Choose(rebuild:, ..) ->
-      WithString(fn(label, context) {
-        update_code(buffer, rebuild(label), context)
+      WithString(fn(label, context, refs) {
+        update_code(buffer, rebuild(label), context, refs)
       })
   }
 }
@@ -241,47 +261,53 @@ pub fn insert_after(buffer: Buffer) {
   use new <- result.map(action.extend_after(buffer.projection))
   case new {
     action.Updated(new) ->
-      Done(fn(context) { update_code(buffer, new, context) })
+      Done(fn(context, refs) { update_code(buffer, new, context, refs) })
     action.Choose(rebuild:, ..) ->
-      WithString(fn(label, context) {
-        update_code(buffer, rebuild(label), context)
+      WithString(fn(label, context, refs) {
+        update_code(buffer, rebuild(label), context, refs)
       })
   }
 }
 
 pub fn assign(buffer: Buffer) {
   use rebuild <- result.map(t.assign(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(e.Bind(new)), context) }
+  fn(new, context, refs) {
+    update_code(buffer, rebuild(e.Bind(new)), context, refs)
+  }
 }
 
 pub fn assign_before(buffer: Buffer) {
   use rebuild <- result.map(t.assign_before(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(e.Bind(new)), context) }
+  fn(new, context, refs) {
+    update_code(buffer, rebuild(e.Bind(new)), context, refs)
+  }
 }
 
 pub fn insert_variable(buffer: Buffer) {
   use rebuild <- result.map(t.variable(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn insert_function(buffer: Buffer) {
   use rebuild <- result.map(t.function(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn call_once(buffer: Buffer) {
   use new <- result.map(t.call(buffer.projection))
-  fn(context) { update_code(buffer, new, context) }
+  fn(context, refs) { update_code(buffer, new, context, refs) }
 }
 
 pub fn call_many(buffer: Buffer) {
   use rebuild <- result.map(t.call_many(buffer.projection))
-  fn(count, context) { update_code(buffer, rebuild(count), context) }
+  fn(count, context, refs) {
+    update_code(buffer, rebuild(count), context, refs)
+  }
 }
 
 pub fn call_with(buffer: Buffer) {
   use new <- result.map(t.call_with(buffer.projection))
-  fn(context) { update_code(buffer, new, context) }
+  fn(context, refs) { update_code(buffer, new, context, refs) }
 }
 
 pub fn source(buffer: Buffer) {
@@ -303,29 +329,33 @@ pub fn copy_source(buffer: Buffer) {
 
 pub fn insert_integer(buffer: Buffer) {
   use #(value, rebuild) <- result.map(t.integer(buffer.projection))
-  #(value, fn(new, context) { update_code(buffer, rebuild(new), context) })
+  #(value, fn(new, context, refs) {
+    update_code(buffer, rebuild(new), context, refs)
+  })
 }
 
 pub fn insert_string(buffer: Buffer) {
   use #(value, rebuild) <- result.map(t.string(buffer.projection))
-  #(value, fn(new, context) { update_code(buffer, rebuild(new), context) })
+  #(value, fn(new, context, refs) {
+    update_code(buffer, rebuild(new), context, refs)
+  })
 }
 
 pub fn insert_binary(buffer: Buffer) {
   use rebuild <- result.map(set_expression(buffer))
-  rebuild(e.Binary(<<>>), _)
+  fn(context, refs) { rebuild(e.Binary(<<>>), context, refs) }
 }
 
 pub fn create_list(buffer: Buffer) {
   use new <- result.map(t.list(buffer.projection))
-  fn(context) { update_code(buffer, new, context) }
+  fn(context, refs) { update_code(buffer, new, context, refs) }
 }
 
 pub fn create_empty_list(buffer: Buffer) {
   case buffer.projection {
     #(p.Exp(_old), zoom) -> {
       let new = #(p.Exp(e.List([], None)), zoom)
-      Ok(fn(context) { update_code(buffer, new, context) })
+      Ok(fn(context, refs) { update_code(buffer, new, context, refs) })
     }
     _ -> Error(Nil)
   }
@@ -333,65 +363,65 @@ pub fn create_empty_list(buffer: Buffer) {
 
 pub fn spread(buffer: Buffer) {
   use new <- result.map(t.make_extensible(buffer.projection))
-  fn(context) { update_code(buffer, new, context) }
+  fn(context, refs) { update_code(buffer, new, context, refs) }
 }
 
 pub fn create_record(buffer: Buffer) {
   use rebuild <- result.map(t.record(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn create_empty_record(buffer: Buffer) {
   use rebuild <- result.map(set_expression(buffer))
-  rebuild(e.Record([], None), _)
+  fn(context, refs) { rebuild(e.Record([], None), context, refs) }
 }
 
 pub fn overwrite(buffer: Buffer) {
   use rebuild <- result.map(t.overwrite(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn select_field(buffer: Buffer) {
   use rebuild <- result.map(t.select_field(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn tag(buffer: Buffer) {
   use rebuild <- result.map(t.tag(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn match(buffer: Buffer) {
   use rebuild <- result.map(t.insert_match(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn perform(buffer: Buffer) {
   use rebuild <- result.map(t.perform(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn insert_handle(buffer: Buffer) {
   use rebuild <- result.map(t.handle(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn insert_builtin(buffer: Buffer) {
   use #(_, rebuild) <- result.map(t.builtin(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn insert_reference(buffer: Buffer) {
   use #(_, rebuild) <- result.map(t.insert_reference(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn insert_release(buffer: Buffer) {
   use #(_, rebuild) <- result.map(t.insert_release(buffer.projection))
-  fn(new, context) { update_code(buffer, rebuild(new), context) }
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
 pub fn delete(buffer: Buffer) {
   use new <- result.map(t.delete(buffer.projection))
-  fn(context) { update_code(buffer, new, context) }
+  fn(context, refs) { update_code(buffer, new, context, refs) }
 }

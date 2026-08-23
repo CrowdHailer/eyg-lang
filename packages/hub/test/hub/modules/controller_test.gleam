@@ -5,9 +5,9 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/string
+import hub/cid
 import hub/helpers.{dispatch}
 import hub/router
-import hub/web/utils
 import ogre/operation
 import wisp/simulate
 
@@ -17,7 +17,7 @@ pub fn share_valid_fragment_test() {
   let response = dispatch(client.share_module(source), context)
   assert response.status == 200
   let assert Ok(cid) = client.share_response(response)
-  assert utils.cid_from_tree(source) == cid
+  assert cid.from_tree(source) == cid
 
   let response = dispatch(client.fetch_module_operation(cid), context)
   assert response.status == 200

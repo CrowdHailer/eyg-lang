@@ -1,6 +1,7 @@
 import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/hub/cache
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
@@ -140,6 +141,7 @@ pub fn render(state: state.State) {
                     buffer.from_projection(
                       projection.all(editable.Vacant),
                       contextual.pure(),
+                      cache.types(state.cache),
                     )
                 }
                 [
