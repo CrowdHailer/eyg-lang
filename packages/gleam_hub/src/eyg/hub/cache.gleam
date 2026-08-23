@@ -212,11 +212,14 @@ pub fn release(
   release: ir.Release,
 ) -> Resource(v1.Cid, Nil) {
   let ir.Release(package:, version:, module:) = release
-  // TODO return Unavailable if version not > 0
-  case dict.get(cache.releases, #(package, version)) {
-    Ok(cid) if cid == module -> Available(module)
-    Ok(_) -> Unavailable(Nil)
-    Error(_) -> Unknown
+  case version > 0 {
+    False -> Unavailable(Nil)
+    True ->
+      case dict.get(cache.releases, #(package, version)) {
+        Ok(cid) if cid == module -> Available(module)
+        Ok(_) -> Unavailable(Nil)
+        Error(_) -> Unknown
+      }
   }
 }
 

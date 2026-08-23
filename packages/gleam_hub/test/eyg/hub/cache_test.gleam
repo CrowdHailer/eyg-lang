@@ -3,6 +3,7 @@ import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/value as v
 import eyg/ir/cid
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/crypto
 import gleam/dict
@@ -699,4 +700,10 @@ pub fn an_empty_successful_pull_is_complete_test() {
   // A later refresh can now queue another pull.
   let #(_cache, effects) = cache.pull(cache) |> cache.flush
   assert [cache.PullPackages(0)] == effects
+}
+
+pub fn non_positive_release_is_unavailable_test() {
+  let release = ir.Release("standard", 0, dag_json.vacant_cid)
+
+  assert cache.Unavailable(Nil) == cache.release(cache.empty(), release)
 }
