@@ -707,3 +707,14 @@ pub fn non_positive_release_is_unavailable_test() {
 
   assert cache.Unavailable(Nil) == cache.release(cache.empty(), release)
 }
+
+pub fn older_release_does_not_replace_latest_package_test() {
+  let #(first_cid, _) = code(1)
+  let #(latest_cid, _) = code(2)
+  let assert #(cache, []) =
+    cache.pulled(cache.empty(), 2, ir.Release("standard", 2, latest_cid))
+  let assert #(cache, []) =
+    cache.pulled(cache, 1, ir.Release("standard", 1, first_cid))
+
+  assert Ok(#(2, latest_cid)) == cache.package(cache, "standard")
+}

@@ -464,7 +464,10 @@ pub fn pulled(
       set_status(cache, module, Invalid(reason))
     })
   let releases = dict.insert(cache.releases, #(p, v), m)
-  let packages = dict.insert(cache.packages, p, #(v, m))
+  let packages = case dict.get(cache.packages, p) {
+    Ok(#(latest, _)) if latest > v -> cache.packages
+    _ -> dict.insert(cache.packages, p, #(v, m))
+  }
   let cache = Cache(..cache, releases:, packages:, cursor:)
   // Need to handle the case of returning done releases
   case dict.get(cache.modules, m) {
