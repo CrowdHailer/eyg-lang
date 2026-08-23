@@ -448,6 +448,19 @@ pub fn pure_loop(
           use value <- try_await(lookup_reference(cid, state), meta, env, k)
           pure_loop(expression.resume(value, env, k), state)
         }
+        break.UndefinedReference(ir.Package(package)) -> {
+          use value <- try_await(lookup_package(package, state), meta, env, k)
+          pure_loop(expression.resume(value, env, k), state)
+        }
+        break.UndefinedReference(ir.Version(package, version)) -> {
+          use value <- try_await(
+            lookup_version(package, version, state),
+            meta,
+            env,
+            k,
+          )
+          pure_loop(expression.resume(value, env, k), state)
+        }
         break.UndefinedReference(ir.Pinned(release)) -> {
           use value <- try_await(lookup_pinned(release, state), meta, env, k)
           pure_loop(expression.resume(value, env, k), state)
