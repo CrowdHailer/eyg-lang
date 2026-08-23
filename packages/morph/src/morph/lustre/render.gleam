@@ -316,7 +316,7 @@ pub fn expression(exp, rev, errors) {
             a.class(reference),
             exp_key(rev),
           ],
-          [text(package)],
+          [text("@" <> package)],
         ),
       ])
     e.Reference(ir.Version(package:, version:)) ->
@@ -330,13 +330,13 @@ pub fn expression(exp, rev, errors) {
           [text("@" <> package <> ":" <> int.to_string(version))],
         ),
       ])
-    e.Reference(ir.Pinned(ir.Release(package:, version:, module: _))) ->
+    e.Reference(ir.Pinned(ir.Release(package:, version:, module:))) ->
       frame.Inline([
         h.span(
           [
             a.class(reference),
             exp_key(rev),
-            a.title("release = " <> int.to_string(version)),
+            a.title("module = " <> v1.to_string(module)),
           ],
           [text("@" <> package <> ":" <> int.to_string(version))],
         ),
