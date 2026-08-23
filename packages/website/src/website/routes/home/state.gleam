@@ -282,7 +282,7 @@ pub fn update(state: State, message) {
       }
     CacheMessage(message), _ -> {
       let #(cache, done) = cache.update(state.cache, message, fn(_) { [] })
-      let examples = doc.reanalyse_examples(state.examples, done, state.cache)
+      let examples = doc.reanalyse_examples(state.examples, done, cache)
       let #(cache, effects) = flush_cache(cache, state.origin)
       let state = State(..state, examples:, cache:)
       case state.mode {
