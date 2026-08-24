@@ -115,7 +115,10 @@ fn decode_blocks(body, acc) {
 pub fn encode(car: Car) -> Result(BitArray, String) {
   let Car(header:, blocks:) = car
   use header <- try(
+    // Written in the order the CARv1 spec's own archives use, so an archive
+    // read and written again is byte for byte the same one.
     gbor.CBMap([
+      #(gbor.CBString("version"), gbor.CBInt(header.version)),
       #(
         gbor.CBString("roots"),
         gbor.CBArray(
@@ -124,7 +127,6 @@ pub fn encode(car: Car) -> Result(BitArray, String) {
           }),
         ),
       ),
-      #(gbor.CBString("version"), gbor.CBInt(header.version)),
     ])
     |> encode.to_bit_array
     |> result.map_error(fn(reason) {
@@ -137,7 +139,7 @@ pub fn encode(car: Car) -> Result(BitArray, String) {
       let #(cid, content) = block
       framed(<<v1.to_bytes(cid):bits, content:bits>>)
     })
-  Ok(bit_array.concat([header, ..blocks]))
+  Ok(bit_array.concat([framed(header), ..blocks]))
 }
 
 // Wrap an array of bytes in an leb128 prefixed frame

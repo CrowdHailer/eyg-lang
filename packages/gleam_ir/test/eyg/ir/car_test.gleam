@@ -18,4 +18,6 @@ pub fn decode_hello_test() {
   let expected = helpers.cid_from_block(<<"\"hello world\"">>)
   assert [expected] == archive.header.roots
   assert [#(expected, <<"\"hello world\"">>)] == archive.blocks
+
+  assert Ok(bytes) == car.encode(archive)
 }
