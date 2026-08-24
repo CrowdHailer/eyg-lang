@@ -354,14 +354,19 @@ pub fn pull_packages_completed(
       let #(cache, done) =
         list.fold(entries, #(cache, []), fn(acc, entry) {
           let #(cache, done) = acc
-          let assert Ok(payload) =
-            json.parse(entry.payload, publisher.decoder())
+          case json.parse(entry.payload, publisher.decoder()) {
+            Ok(payload) -> {
+              let publisher.Release(package:, version:, module:) =
+                payload.content
+              let release = ir.Release(package:, version:, module:)
+              let #(cache, new) = pulled(cache, entry.cursor, release)
 
-          let publisher.Release(package:, version:, module:) = payload.content
-          let release = ir.Release(package:, version:, module:)
-          let #(cache, new) = pulled(cache, entry.cursor, release)
-
-          #(cache, list.append(done, new))
+              #(cache, list.append(done, new))
+            }
+            // failing to pass entry is unexpected but this fallback prevents locking the cache.
+            // Better diagnostics should be added in the future.
+            Error(_) -> #(Cache(..cache, cursor: entry.cursor), done)
+          }
         })
       #(Cache(..cache, cursor_status: Pulled), done)
     }

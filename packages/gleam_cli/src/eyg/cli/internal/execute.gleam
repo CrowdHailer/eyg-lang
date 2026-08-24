@@ -4,7 +4,6 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/hub/cache.{type Cache}
-import eyg/hub/publisher
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -19,7 +18,6 @@ import gleam/fetchx
 import gleam/http/request
 import gleam/int
 import gleam/javascript/promise.{type Promise}
-import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
@@ -308,23 +306,10 @@ fn apply(
       let #(cache, _done) = cache.fetch_module_completed(cache, cid, result)
       cache
     }
-    Pulled(result:) ->
-      case result {
-        Ok(entries) -> {
-          list.fold(entries, cache, fn(cache, entry) {
-            let assert Ok(payload) =
-              json.parse(entry.payload, publisher.decoder())
-
-            let publisher.Release(package:, version:, module:) = payload.content
-            let release = ir.Release(package:, version:, module:)
-            let #(cache, _done) = cache.pulled(cache, entry.cursor, release)
-            cache
-          })
-        }
-        Error(_reason) -> {
-          cache.Cache(..cache, cursor_status: cache.Pulled)
-        }
-      }
+    Pulled(result:) -> {
+      let #(cache, _done) = cache.pull_packages_completed(cache, result)
+      cache
+    }
   }
 }
 

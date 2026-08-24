@@ -1,5 +1,6 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
+import eyg/hub/publisher
 import eyg/interpreter/break
 import eyg/interpreter/value as v
 import eyg/ir/cid
@@ -8,8 +9,12 @@ import eyg/ir/tree as ir
 import gleam/crypto
 import gleam/dict
 import gleam/int
+import gleam/json
+import gleam/option.{None}
 import midas/continuation
 import multiformats/cid/v1
+import untethered/ledger/schema
+import untethered/substrate
 
 pub fn empty_cache_has_no_effects_test() {
   let cache = cache.empty()
@@ -726,4 +731,59 @@ pub fn pulling_a_release_does_not_fetch_its_module_test() {
 
   assert [] == done
   assert #(cache, []) == cache.flush(cache)
+}
+
+/// An entry this version cannot read must not hide the rest of the ledger,
+/// and the cursor must pass it so pulling still makes progress.
+pub fn an_unreadable_entry_is_skipped_test() {
+  let malformed =
+    schema.ArchivedEntry(..archived("standard", 2, 2), payload: "{")
+  let entries = [archived("standard", 1, 1), malformed, archived("other", 1, 3)]
+  let #(cache, _) = cache.pull_packages_completed(cache.empty(), Ok(entries))
+
+  assert Ok(module_cid("standard", 1))
+    == cache.unbound_release(cache, "standard", 1)
+  assert Ok(module_cid("other", 1)) == cache.unbound_release(cache, "other", 1)
+  assert Error(Nil) == cache.unbound_release(cache, "standard", 2)
+  assert 3 == cache.cursor
+}
+
+/// An entry as the hub archives it, at a position in the ledger.
+fn archived(
+  package: String,
+  sequence: Int,
+  cursor: Int,
+) -> schema.ArchivedEntry {
+  archived_naming(package, sequence, cursor, module_cid(package, sequence))
+}
+
+/// An entry releasing a given module.
+fn archived_naming(
+  package: String,
+  sequence: Int,
+  cursor: Int,
+  module: v1.Cid,
+) -> schema.ArchivedEntry {
+  let signatory = cid_from_tree(ir.integer(10))
+  let entry =
+    substrate.Entry(
+      sequence:,
+      previous: None,
+      signatory:,
+      key: "test-key",
+      content: publisher.Release(package:, version: sequence, module:),
+    )
+  schema.ArchivedEntry(
+    cursor:,
+    cid: cid_from_tree(ir.string(package <> "@" <> int.to_string(sequence))),
+    payload: json.to_string(publisher.encode(entry)),
+    entity: signatory,
+    sequence:,
+    previous: None,
+    type_: "release",
+  )
+}
+
+fn module_cid(package: String, version: Int) -> v1.Cid {
+  cid_from_tree(ir.string(package <> int.to_string(version)))
 }
