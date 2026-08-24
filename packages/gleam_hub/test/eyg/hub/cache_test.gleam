@@ -810,6 +810,67 @@ pub fn a_package_without_a_release_has_no_entry_test() {
   assert Error(Nil) == cache.package(cache, "standard")
 }
 
+/// A module is fetched because something pinned to it, so the module that
+/// pinned it has to be resumed when it arrives.
+///
+/// Reading the ledger names the module of a release without fetching it, so a
+/// reference pinned to a release the ledger already holds is waiting for that
+/// module, not for another pull. A pull it is waiting on has been and gone.
+pub fn a_pinned_reference_is_resumed_when_its_module_arrives_test() {
+  let #(child_cid, child) = code(7)
+  let parent =
+    ir.add(ir.release("std", 1, child_cid), ir.integer(1))
+    |> ir.map_annotation(fn(_) { [] })
+  let parent_cid = cid_from_tree(parent)
+
+  // the ledger is read before the module that references it arrives
+  let #(cache, _) =
+    cache.pulled(cache.empty(), 1, ir.Release("std", 1, child_cid))
+
+  let cache = cache.fetch(cache, parent_cid)
+  let #(cache, _) = cache.flush(cache)
+  let #(cache, done) =
+    cache.fetch_module_completed(cache, parent_cid, Ok(parent))
+  assert [] == done
+
+  // it waits on the module the ledger named, and that module is asked for
+  let assert Ok(cache.DependsOn(dep:, ..)) =
+    dict.get(cache.fetching_modules, parent_cid)
+  assert cache.Content(child_cid) == dep
+  let #(cache, effects) = cache.flush(cache)
+  assert [cache.FetchModule(child_cid)] == effects
+
+  let #(_cache, done) =
+    cache.fetch_module_completed(cache, child_cid, Ok(child))
+  assert [#(parent_cid, Ok(v.Integer(8))), #(child_cid, Ok(v.Integer(7)))]
+    == done
+}
+
+pub fn an_already_invalid_pinned_reference_cascades_to_parent_test() {
+  let child =
+    ir.call(ir.perform("Zing"), [ir.unit()])
+    |> ir.map_annotation(fn(_) { [] })
+  let child_cid = cid_from_tree(child)
+  let parent =
+    ir.add(ir.release("std", 1, child_cid), ir.integer(1))
+    |> ir.map_annotation(fn(_) { [] })
+  let parent_cid = cid_from_tree(parent)
+
+  let #(cache, _) =
+    cache.fetch_module_completed(cache.empty(), child_cid, Ok(child))
+  let reason = break.UnhandledEffect("Zing", v.unit())
+  assert cache.Unavailable(reason) == cache.module(cache, child_cid)
+
+  let #(cache, _) = cache.pulled(cache, 1, ir.Release("std", 1, child_cid))
+  let #(cache, done) =
+    cache.fetch_module_completed(cache, parent_cid, Ok(parent))
+
+  assert Ok(cache.Invalid(reason))
+    == dict.get(cache.fetching_modules, parent_cid)
+  assert [#(parent_cid, Error(reason))] == done
+  assert #(cache, []) == cache.flush(cache)
+}
+
 /// An entry as the hub archives it, at a position in the ledger.
 fn archived(
   package: String,

@@ -645,7 +645,18 @@ fn handle_return(
           let cache = set_status(cache, cid, Invalid(r))
           #(cache, [#(cid, Error(r))])
         }
-        _ -> {
+        Ok(dep) ->
+          case dict.get(cache.fetching_modules, dep) {
+            Ok(Invalid(reason)) -> {
+              let cache = set_status(cache, cid, Invalid(reason))
+              #(cache, [#(cid, Error(reason))])
+            }
+            _ -> {
+              let status = DependsOn(Content(dep), env:, k:, source:)
+              #(set_status(cache, cid, status), [])
+            }
+          }
+        Error(Nil) -> {
           let status = DependsOn(Pinned(release), env, k, source)
           let cache = set_status(cache, cid, status)
           #(cache, [])
