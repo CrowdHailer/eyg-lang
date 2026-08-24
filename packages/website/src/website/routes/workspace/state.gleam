@@ -774,10 +774,10 @@ fn picker_message(state, message) {
         }
         picker.Decided(text) -> {
           case cache.package(state.cache, text) {
-            Ok(#(v, m)) ->
+            Ok(cache.Entry(version:, module:, ..)) ->
               State(..state, mode: Editing)
               |> replace_buffer(fn(context, refs) {
-                rebuild(ir.Release(text, v, m), context, refs)
+                rebuild(ir.Release(text, version, module), context, refs)
               })
             Error(_) -> {
               echo "need error message for bad cid"

@@ -113,16 +113,27 @@ pub type Status(meta) {
 /// .fetching_modules is a dict of module CID to a status of NotRequested | Requested | Failed | Invalid | DependsOn(Content | Release)
 /// .cursor is a number offset with a status, Pulling | Pulled | ReadyToPull
 /// .releases is a dictionary of #(package, version) -> cid
+/// .packages is a dictionary of package -> its latest entry
 /// 
 pub type Cache(meta) {
   Cache(
     modules: Dict(v1.Cid, Module(meta)),
     fetching_modules: Dict(v1.Cid, FetchStatus(meta)),
     releases: Dict(#(String, Int), v1.Cid),
-    packages: Dict(String, #(Int, v1.Cid)),
+    packages: Dict(String, Entry),
     cursor: Int,
     cursor_status: CursorStatus,
   )
+}
+
+/// A package release as it appears in the hub ledger
+///
+/// `version` and `module` are the public interface to the release.
+/// `cid` is the identifier for the entry object, not module, in the ledger.
+/// `sequence` is the position in the untethered entity which is a history over a single package.
+/// `cursor` is the entry's position in the ledger, a single counter over every release on the hub
+pub type Entry {
+  Entry(version: Int, module: v1.Cid, cursor: Int, sequence: Int, cid: v1.Cid)
 }
 
 /// Create a new empty cache useful in tests.
@@ -231,21 +242,8 @@ pub fn unbound_release(
   dict.get(cache.releases, #(package, version))
 }
 
-pub fn package(
-  cache: Cache(meta),
-  package: String,
-) -> Result(#(Int, v1.Cid), Nil) {
-  // dict.to_list(cache.releases)
-  // |> list.filter_map(fn(entry) {
-  //   let #(#(p, v), m) = entry
-  //   case p == package {
-  //     True -> Ok(#(v, m))
-  //     False -> Error(Nil)
-  //   }
-  // })
-  // |> list.sort(fn(r1, r2) { int.compare(pair.first(r1), pair.first(r2)) })
-  // |> list.reverse
-  // |> list.first
+/// The latest release of a package.
+pub fn package(cache: Cache(meta), package: String) -> Result(Entry, Nil) {
   dict.get(cache.packages, package)
 }
 
@@ -359,6 +357,7 @@ pub fn pull_packages_completed(
               let publisher.Release(package:, version:, module:) =
                 payload.content
               let release = ir.Release(package:, version:, module:)
+              let cache = record_latest(cache, release, entry)
               let #(cache, new) = pulled(cache, entry.cursor, release)
 
               #(cache, list.append(done, new))
@@ -375,6 +374,25 @@ pub fn pull_packages_completed(
       #(Cache(..cache, cursor_status: Pulled), [])
     }
   }
+}
+
+fn record_latest(
+  cache: Cache(meta),
+  release: ir.Release,
+  entry: schema.ArchivedEntry,
+) -> Cache(meta) {
+  let ir.Release(package:, version:, module:) = release
+  let schema.ArchivedEntry(cursor:, cid:, sequence:, ..) = entry
+  let packages = case dict.get(cache.packages, package) {
+    Ok(Entry(cursor: seen, ..)) if seen >= cursor -> cache.packages
+    _ ->
+      dict.insert(
+        cache.packages,
+        package,
+        Entry(version:, module:, cursor:, sequence:, cid:),
+      )
+  }
+  Cache(..cache, packages:)
 }
 
 /// Evaluates a newly arrived module and attempts to resolve anything waiting on it.
@@ -469,11 +487,7 @@ pub fn pulled(
       set_status(cache, module, Invalid(reason))
     })
   let releases = dict.insert(cache.releases, #(p, v), m)
-  let packages = case dict.get(cache.packages, p) {
-    Ok(#(latest, _)) if latest > v -> cache.packages
-    _ -> dict.insert(cache.packages, p, #(v, m))
-  }
-  let cache = Cache(..cache, releases:, packages:, cursor:)
+  let cache = Cache(..cache, releases:, cursor:)
   // Need to handle the case of returning done releases
   case dict.get(cache.modules, m) {
     Ok(Module(value:, ..)) -> {

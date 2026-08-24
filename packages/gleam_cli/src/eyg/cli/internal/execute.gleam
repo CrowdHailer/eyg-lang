@@ -343,7 +343,7 @@ fn lookup_package(package, state: State) {
   let cache = cache.pull(state.cache)
   use state <- promise.await(update(State(..state, cache:)))
   case cache.package(state.cache, package) {
-    Ok(#(_, module)) -> lookup_reference(module, state)
+    Ok(cache.Entry(module:, ..)) -> lookup_reference(module, state)
     Error(Nil) -> {
       abort("package not found: @" <> package)
       |> Error

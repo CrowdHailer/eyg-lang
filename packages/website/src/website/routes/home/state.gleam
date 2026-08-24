@@ -198,9 +198,9 @@ pub fn update(state: State, message) {
         }
         picker.Decided(text) -> {
           case cache.package(state.cache, text) {
-            Ok(#(v, m)) ->
+            Ok(cache.Entry(version:, module:, ..)) ->
               continue(state, id, fn(context, refs) {
-                rebuild(ir.Release(text, v, m), context, refs)
+                rebuild(ir.Release(text, version, module), context, refs)
               })
             Error(_) -> {
               echo "need error message for bad cid"

@@ -713,17 +713,6 @@ pub fn non_positive_release_is_unavailable_test() {
   assert cache.Unavailable(Nil) == cache.release(cache.empty(), release)
 }
 
-pub fn older_release_does_not_replace_latest_package_test() {
-  let #(first_cid, _) = code(1)
-  let #(latest_cid, _) = code(2)
-  let assert #(cache, []) =
-    cache.pulled(cache.empty(), 2, ir.Release("standard", 2, latest_cid))
-  let assert #(cache, []) =
-    cache.pulled(cache, 1, ir.Release("standard", 1, first_cid))
-
-  assert Ok(#(2, latest_cid)) == cache.package(cache, "standard")
-}
-
 pub fn pulling_a_release_does_not_fetch_its_module_test() {
   let #(module_cid, _) = code(1)
   let #(cache, done) =
@@ -746,6 +735,47 @@ pub fn an_unreadable_entry_is_skipped_test() {
   assert Ok(module_cid("other", 1)) == cache.unbound_release(cache, "other", 1)
   assert Error(Nil) == cache.unbound_release(cache, "standard", 2)
   assert 3 == cache.cursor
+}
+
+pub fn the_latest_release_is_the_last_entry_for_that_package_test() {
+  let entries = [
+    archived("other", 7, 1),
+    archived("standard", 1, 2),
+    archived("standard", 2, 3),
+    archived("other", 8, 4),
+  ]
+  let #(cache, _) = cache.pull_packages_completed(cache.empty(), Ok(entries))
+
+  let schema.ArchivedEntry(cid: expected, ..) = archived("standard", 2, 3)
+  assert Ok(cache.Entry(
+      version: 2,
+      module: module_cid("standard", 2),
+      cursor: 3,
+      sequence: 2,
+      cid: expected,
+    ))
+    == cache.package(cache, "standard")
+}
+
+pub fn an_earlier_entry_does_not_replace_the_latest_release_test() {
+  let #(cache, _) =
+    cache.pull_packages_completed(
+      cache.empty(),
+      Ok([archived("standard", 2, 3)]),
+    )
+  let #(cache, _) =
+    cache.pull_packages_completed(cache, Ok([archived("standard", 1, 2)]))
+
+  let assert Ok(cache.Entry(version:, cursor:, ..)) =
+    cache.package(cache, "standard")
+  assert #(2, 3) == #(version, cursor)
+}
+
+pub fn a_package_without_a_release_has_no_entry_test() {
+  let #(cache, _) =
+    cache.pull_packages_completed(cache.empty(), Ok([archived("other", 1, 1)]))
+
+  assert Error(Nil) == cache.package(cache, "standard")
 }
 
 /// An entry as the hub archives it, at a position in the ledger.

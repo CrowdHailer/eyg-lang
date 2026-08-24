@@ -351,7 +351,7 @@ fn do_choose_release(buffer, cache: cache.Cache(m)) {
 
   let hints =
     list.map(dict.to_list(cache.packages), fn(release) {
-      let #(package, #(version, _module)) = release
+      let #(package, cache.Entry(version:, ..)) = release
       #(package, int.to_string(version))
     })
 
