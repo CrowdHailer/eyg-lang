@@ -2,10 +2,10 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/cli/internal/store
+import eyg/hub/cache
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/option.{None, Some}
-import untethered/ledger/schema
 
 pub fn execute(
   package: String,
@@ -23,12 +23,15 @@ pub fn execute(
   use source <- promisex.try_sync(source.parse_input(code, source.File(file)))
   use module <- promise.try_await(client.share_module(source, config.client))
 
-  use entries <- promise.try_await(client.pull_package(package, client))
-  let previous = case entries {
-    [] -> None
-    [schema.ArchivedEntry(cid:, sequence:, ..), ..] -> Some(#(sequence, cid))
+  use index <- promise.await(client.run_all(cache.pull(cache.empty())))
+  use index <- promisex.try_sync(case index.cursor_status {
+    cache.PullFailed(reason) -> Error(reason)
+    _ -> Ok(index)
+  })
+  let previous = case cache.package(index, package) {
+    Ok(cache.Entry(sequence:, cid:, ..)) -> Some(#(sequence, cid))
+    Error(Nil) -> None
   }
-  // Lookup package state from cache
   use _response <- promise.try_await(client.submit_release(
     signatory,
     package,

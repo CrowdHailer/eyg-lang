@@ -136,8 +136,13 @@ Good names are personal, work, etc.
 ### Share
 
 ```sh
-eyg share path/to/file.eyg.json
+eyg share path/to/file.eyg
 ```
 
+### Publish
+
+```sh
+eyg publish package-name path/to/file.eyg
+```
 
 

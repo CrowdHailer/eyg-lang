@@ -707,6 +707,38 @@ pub fn an_empty_successful_pull_is_complete_test() {
   assert [cache.PullPackages(0)] == effects
 }
 
+pub fn a_non_empty_successful_pull_queues_the_next_page_test() {
+  let cache = cache.pull(cache.empty())
+  let assert #(cache, [_effect]) = cache.flush(cache)
+
+  let #(cache, done) =
+    cache.pull_packages_completed(cache, Ok([archived("standard", 1, 1)]))
+  assert [] == done
+  assert cache.ReadyToPull == cache.cursor_status
+
+  let assert #(cache, [effect]) = cache.flush(cache)
+  assert cache.PullPackages(1) == effect
+
+  let #(cache, done) = cache.pull_packages_completed(cache, Ok([]))
+  assert [] == done
+  assert cache.Pulled == cache.cursor_status
+  assert #(cache, []) == cache.flush(cache)
+}
+
+pub fn a_failed_pull_can_be_retried_from_the_same_cursor_test() {
+  let cache = cache.pull(cache.empty())
+  let assert #(cache, [_effect]) = cache.flush(cache)
+
+  let #(cache, done) = cache.pull_packages_completed(cache, Error("offline"))
+  assert [] == done
+  assert cache.PullFailed("offline") == cache.cursor_status
+  assert #(cache, []) == cache.flush(cache)
+
+  let #(cache, effects) = cache.pull(cache) |> cache.flush
+  assert [cache.PullPackages(0)] == effects
+  assert cache.Pulling == cache.cursor_status
+}
+
 pub fn non_positive_release_is_unavailable_test() {
   let release = ir.Release("standard", 0, dag_json.vacant_cid)
 

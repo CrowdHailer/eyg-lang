@@ -35,7 +35,7 @@ pub type Module(meta) {
 }
 
 /// Has a module reference been requested, evaluated, failed, pending or none of the above
-/// 
+///
 /// - `NotRequested` is equivalent to a reference not being in the collection of modules or fetching modules.
 /// - `Requested` An action to request the module by it's reference has been created.
 ///   Requesting a module is idempotent so there is no tracking information of the request.
@@ -70,10 +70,14 @@ pub fn dep_to_reason(dep: Dependency) {
   }
 }
 
+/// A cache starts with status Pulled, combined with cursor 0 this is the state
+/// for a cache that has replicated an empty hub.
+///
 pub type CursorStatus {
   ReadyToPull
   Pulling
   Pulled
+  PullFailed(String)
 }
 
 pub type Action {
@@ -111,7 +115,7 @@ pub type Status(meta) {
 /// It is parameterised by the metadata type of the code it stores.
 /// .modules is a dict of module CID to module value and type
 /// .fetching_modules is a dict of module CID to a status of NotRequested | Requested | Failed | Invalid | DependsOn(Content | Release)
-/// .cursor is a number offset with a status, Pulling | Pulled | ReadyToPull
+/// .cursor is a number offset with a status, Pulling | Pulled | ReadyToPull | PullFailed
 /// .releases is a dictionary of #(package, version) -> cid
 /// .packages is a dictionary of package -> its latest entry
 /// 
@@ -274,12 +278,15 @@ pub fn fetch_all(cache: Cache(meta), cids: List(v1.Cid)) -> Cache(meta) {
   list.fold(cids, cache, fetch)
 }
 
+/// Start pulling packages. Each non-empty response queues the next page, and
+/// an empty response completes the pull.
 pub fn pull(cache: Cache(meta)) -> Cache(meta) {
   let Cache(cursor_status:, ..) = cache
   let cursor_status = case cursor_status {
     ReadyToPull -> ReadyToPull
     Pulling -> Pulling
     Pulled -> ReadyToPull
+    PullFailed(_) -> ReadyToPull
   }
   Cache(..cache, cursor_status:)
 }
@@ -303,6 +310,7 @@ pub fn flush(cache: Cache(meta)) -> #(Cache(meta), List(Action)) {
     ReadyToPull -> #(Pulling, [PullPackages(cursor), ..effects])
     Pulling -> #(Pulling, effects)
     Pulled -> #(Pulled, effects)
+    PullFailed(reason) -> #(PullFailed(reason), effects)
   }
   #(Cache(..cache, cursor_status:, fetching_modules:), effects)
 }
@@ -349,6 +357,10 @@ pub fn pull_packages_completed(
 ) -> #(Cache(meta), List(Resolution(meta))) {
   case result {
     Ok(entries) -> {
+      let cursor_status = case entries {
+        [] -> Pulled
+        _ -> ReadyToPull
+      }
       let #(cache, done) =
         list.fold(entries, #(cache, []), fn(acc, entry) {
           let #(cache, done) = acc
@@ -367,12 +379,9 @@ pub fn pull_packages_completed(
             Error(_) -> #(Cache(..cache, cursor: entry.cursor), done)
           }
         })
-      #(Cache(..cache, cursor_status: Pulled), done)
+      #(Cache(..cache, cursor_status:), done)
     }
-    Error(_reason) -> {
-      // TODO need error status in here
-      #(Cache(..cache, cursor_status: Pulled), [])
-    }
+    Error(reason) -> #(Cache(..cache, cursor_status: PullFailed(reason)), [])
   }
 }
 

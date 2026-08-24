@@ -33,6 +33,13 @@ pub fn fetch(
   }
 }
 
+pub fn wait(milliseconds: Int) -> Async(t, Nil) {
+  fn(resume) {
+    use _ <- promise.await(promise.wait(milliseconds))
+    resume(Nil)
+  }
+}
+
 pub fn follow(uri: Uri) -> Async(t, Result(Uri, String)) {
   fn(resume) {
     use reply <- promise.await(do_follow(uri))

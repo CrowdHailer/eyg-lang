@@ -1,6 +1,8 @@
+import envoy
 import eyg/cli/internal/bun_platform
 import eyg/cli/internal/crypto
 import eyg/cli/internal/store
+import eyg/hub/cache.{type Cache}
 import eyg/hub/client
 import eyg/hub/publisher
 import eyg/hub/signatory
@@ -10,12 +12,18 @@ import gleam/javascript/promise.{type Promise}
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import midas/continuation.{type Continuation}
+import midas/effect
 import multiformats/cid/v1
 import ogre/operation
 import ogre/origin
 import untethered/keypair
 import untethered/ledger/schema
 import untethered/substrate
+
+const max_pull_retries = 3
+
+const pull_retry_delay = 5000
 
 pub type Client {
   Client(origin: origin.Origin)
@@ -106,17 +114,6 @@ pub fn submit_release(
   }
 }
 
-pub fn pull_package(
-  package: String,
-  client: Client,
-) -> Promise(Result(List(schema.ArchivedEntry), String)) {
-  let parameters =
-    schema.PullParameters(since: 0, limit: 1000, entities: [package])
-  client.pull_packages(parameters, client.origin, bun_platform.fetch)(
-    promise.resolve,
-  )
-}
-
 pub fn pull_packages(
   since: Int,
   client: Client,
@@ -125,4 +122,80 @@ pub fn pull_packages(
   client.pull_packages(parameters, client.origin, bun_platform.fetch)(
     promise.resolve,
   )
+}
+
+/// Run cache actions until the cache has no more work to do.
+/// Failed pulls are retried up to three times, five seconds apart.
+pub fn run_all(cache: Cache(Nil)) -> Promise(Cache(Nil)) {
+  run_all_with(
+    cache,
+    configured_origin(),
+    bun_platform.fetch,
+    bun_platform.wait,
+  )(promise.resolve)
+}
+
+/// Run cache actions with explicit dependencies for deterministic tests.
+pub fn run_all_with(
+  cache: Cache(Nil),
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+  wait: fn(Int) -> Continuation(t, Nil),
+) -> Continuation(t, Cache(Nil)) {
+  run_with_retries(cache, origin, fetch, wait, max_pull_retries)
+}
+
+fn run_with_retries(
+  cache: Cache(Nil),
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+  wait: fn(Int) -> Continuation(t, Nil),
+  retries: Int,
+) -> Continuation(t, Cache(Nil)) {
+  use cache <- continuation.then(run_until_idle(cache, origin, fetch))
+  case cache.cursor_status {
+    cache.PullFailed(_) if retries > 0 -> {
+      use _ <- continuation.then(wait(pull_retry_delay))
+      run_with_retries(cache.pull(cache), origin, fetch, wait, retries - 1)
+    }
+    _ -> continuation.return(cache)
+  }
+}
+
+fn run_until_idle(
+  cache: Cache(Nil),
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+) -> Continuation(t, Cache(Nil)) {
+  let #(cache, actions) = cache.flush(cache)
+  case actions {
+    [] -> continuation.return(cache)
+    _ -> {
+      use cache <- continuation.then(run_actions(actions, cache, origin, fetch))
+      run_until_idle(cache, origin, fetch)
+    }
+  }
+}
+
+fn configured_origin() {
+  envoy.get("EYG_ORIGIN")
+  |> result.try(origin.from_string)
+  |> result.unwrap(origin.https("eyg.run"))
+}
+
+fn run_actions(
+  actions: List(cache.Action),
+  cache: Cache(Nil),
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+) -> Continuation(t, Cache(Nil)) {
+  case actions {
+    [] -> continuation.return(cache)
+    [action, ..rest] -> {
+      use completed <- continuation.then(cache.compute(action, origin, fetch))
+      let #(cache, _resolved) =
+        cache.update(cache, completed, fn(meta) { meta })
+      run_actions(rest, cache, origin, fetch)
+    }
+  }
 }
