@@ -433,28 +433,24 @@ pub fn prepare(cache: Cache(meta), source: ir.Node(_)) {
       }
     })
   let cache = fetch_all(cache, cids)
-  let versions =
-    list.filter_map(references, fn(ref) {
-      case ref {
-        ir.Content(..) -> Error(Nil)
-        ir.Package(..) -> Error(Nil)
-        ir.Version(package:, version:) -> Ok(#(package, version))
-        ir.Pinned(release:) -> Ok(#(release.package, release.version))
-        ir.Relative(..) -> Error(Nil)
-      }
-    })
-
-  pull_if_any_missing(cache, versions)
+  case list.any(references, requires_pull(cache, _)) {
+    True -> pull(cache)
+    False -> cache
+  }
 }
 
-fn pull_if_any_missing(cache: Cache(meta), versions) {
-  case versions {
-    [#(package, version), ..versions] ->
-      case dict.get(cache.releases, #(package, version)) {
-        Ok(_) -> pull_if_any_missing(cache, versions)
-        Error(_) -> pull(cache)
-      }
-    [] -> cache
+fn requires_pull(cache: Cache(meta), reference: ir.Reference) -> Bool {
+  case reference {
+    // Names its own module, or is placed by the workspace rather than the hub.
+    ir.Content(..) -> False
+    ir.Relative(..) -> False
+    ir.Package(package:) -> result.is_error(dict.get(cache.packages, package))
+    ir.Version(package:, version:) ->
+      result.is_error(dict.get(cache.releases, #(package, version)))
+    ir.Pinned(release:) ->
+      result.is_error(
+        dict.get(cache.releases, #(release.package, release.version)),
+      )
   }
 }
 
@@ -561,7 +557,7 @@ pub fn loop(
   }
 }
 
-/// execute code without lookup up new values if not present
+/// execute code without looking up new values if not already present in the cache.
 pub fn static_loop(
   return: Result(a, state.Debug(meta)),
   cache: Cache(meta),
@@ -576,6 +572,26 @@ pub fn static_loop(
         Error(Nil) -> return
       }
     }
+    Error(#(break.UndefinedReference(ir.Package(package)), _meta, env, k)) ->
+      case dict.get(cache.packages, package) {
+        Ok(Entry(module:, ..)) ->
+          case dict.get(cache.modules, module) {
+            Ok(Module(value:, ..)) ->
+              static_loop(resume(value, env, k), cache, resume)
+            Error(Nil) -> return
+          }
+        Error(Nil) -> return
+      }
+    Error(#(break.UndefinedReference(ir.Version(package, version)), _m, env, k)) ->
+      case dict.get(cache.releases, #(package, version)) {
+        Ok(cid) ->
+          case dict.get(cache.modules, cid) {
+            Ok(Module(value:, ..)) ->
+              static_loop(resume(value, env, k), cache, resume)
+            Error(Nil) -> return
+          }
+        Error(Nil) -> return
+      }
     Error(#(break.UndefinedReference(ir.Pinned(release)), _meta, env, k)) -> {
       let ir.Release(package, version, module) = release
       case dict.get(cache.releases, #(package, version)) {

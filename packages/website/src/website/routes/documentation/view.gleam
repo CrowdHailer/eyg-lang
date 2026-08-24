@@ -518,23 +518,20 @@ pub fn render_example(
         render_manipulating(input, picker_message, input_message)
       state.Manipulating(..) -> render_default(buffer, cache)
       state.ReadingFromClipboard(..) -> render_default(buffer, cache)
-      state.Running(id: focused, run:) if focused == id -> render_run(run, cache)
+      state.Running(id: focused, run:) if focused == id -> render_run(run)
       state.Running(..) -> render_default(buffer, cache)
       state.UnFocused -> render_default(buffer, cache)
     },
   ])
 }
 
-fn render_run(
-  run: state.Run,
-  cache: cache.Cache(state.Meta),
-) -> element.Element(m) {
+fn render_run(run: state.Run) -> element.Element(m) {
   case run {
     state.Successful(value) -> render_value(value)
     state.Exception(reason) -> render_exception(reason)
     state.Aborted(reason) -> render_aborted(reason)
     state.Handling(..) -> render_handling()
-    state.Blocked(dep:, ..) -> render_blocked(dep, cache)
+    state.Blocked(..) -> render_blocked()
   }
 }
 
@@ -570,10 +567,16 @@ fn render_default(
             Ok(_) -> render_pending()
             Error(reason) -> render_exception(reason)
           }
-        Error(#(break.UndefinedReference(ir.Content(reference)), _, _, _)) ->
-          render_blocked(cache.Content(reference), cache)
-        Error(#(break.UndefinedReference(ir.Pinned(release)), _, _, _)) ->
-          render_blocked(cache.Pinned(release), cache)
+        // A reference the cache has not placed yet is still being read for,
+        // not a fault in the example.
+        Error(#(break.UndefinedReference(ir.Content(..)), _, _, _)) ->
+          render_blocked()
+        Error(#(break.UndefinedReference(ir.Pinned(..)), _, _, _)) ->
+          render_blocked()
+        Error(#(break.UndefinedReference(ir.Package(..)), _, _, _)) ->
+          render_blocked()
+        Error(#(break.UndefinedReference(ir.Version(..)), _, _, _)) ->
+          render_blocked()
         Error(#(break.UndefinedReference(ir.Relative(..)) as reason, _, _, _)) ->
           render_exception(reason)
         Error(#(reason, _, _, _)) -> render_exception(reason)
@@ -590,10 +593,7 @@ fn render_default(
   }
 }
 
-fn render_blocked(
-  _dependency: cache.Dependency,
-  _cache: cache.Cache(_),
-) -> element.Element(a) {
+fn render_blocked() -> element.Element(a) {
   h.div(
     [
       a.class("border-2 border-blue-3 px-2"),

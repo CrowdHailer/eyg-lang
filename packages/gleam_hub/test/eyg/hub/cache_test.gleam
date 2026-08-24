@@ -2,6 +2,7 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
 import eyg/hub/publisher
 import eyg/interpreter/break
+import eyg/interpreter/expression
 import eyg/interpreter/value as v
 import eyg/ir/cid
 import eyg/ir/dag_json
@@ -869,6 +870,81 @@ pub fn an_already_invalid_pinned_reference_cascades_to_parent_test() {
     == dict.get(cache.fetching_modules, parent_cid)
   assert [#(parent_cid, Error(reason))] == done
   assert #(cache, []) == cache.flush(cache)
+}
+
+pub fn a_package_reference_runs_the_latest_release_test() {
+  let #(old_cid, old) = code(1)
+  let #(new_cid, new) = code(2)
+  let source = ir.package("std") |> ir.map_annotation(fn(_) { [] })
+
+  let entries = [
+    archived_naming("std", 1, 1, old_cid),
+    archived_naming("std", 2, 2, new_cid),
+  ]
+  let #(cache, _) = cache.pull_packages_completed(cache.empty(), Ok(entries))
+  let cache = cache.fetch_all(cache, [old_cid, new_cid])
+  let #(cache, _) = cache.flush(cache)
+  let #(cache, _) = cache.fetch_module_completed(cache, old_cid, Ok(old))
+  let #(cache, _) = cache.fetch_module_completed(cache, new_cid, Ok(new))
+
+  assert Ok(v.Integer(2))
+    == expression.execute(source, [])
+    |> cache.static_loop(cache, expression.resume)
+}
+
+pub fn a_version_reference_runs_the_associated_release_test() {
+  let #(child_cid, child) = code(7)
+  let source =
+    ir.add(ir.version("std", 3), ir.integer(1))
+    |> ir.map_annotation(fn(_) { [] })
+
+  let #(cache, _) =
+    cache.pull_packages_completed(
+      cache.empty(),
+      Ok([archived_naming("std", 3, 1, child_cid)]),
+    )
+  let cache = cache.fetch(cache, child_cid)
+  let #(cache, _) = cache.flush(cache)
+  let #(cache, _) = cache.fetch_module_completed(cache, child_cid, Ok(child))
+
+  assert Ok(v.Integer(8))
+    == expression.execute(source, [])
+    |> cache.static_loop(cache, expression.resume)
+}
+
+pub fn a_package_reference_is_unresolved_before_the_ledger_is_read_test() {
+  let source = ir.package("std") |> ir.map_annotation(fn(_) { [] })
+
+  let assert Error(#(reason, _, _, _)) =
+    expression.execute(source, [])
+    |> cache.static_loop(cache.empty(), expression.resume)
+  assert break.UndefinedReference(ir.Package("std")) == reason
+}
+
+pub fn preparing_a_package_reference_reads_the_ledger_test() {
+  let source = ir.package("std") |> ir.map_annotation(fn(_) { [] })
+
+  let cache = cache.prepare(cache.empty(), source)
+  let #(_cache, effects) = cache.flush(cache)
+  assert [cache.PullPackages(0)] == effects
+}
+
+/// A package the ledger has already placed is not a reason to read it again.
+pub fn preparing_wth_a_known_package_doesn_need_pull_test() {
+  let #(child_cid, _) = code(7)
+  let source = ir.package("std") |> ir.map_annotation(fn(_) { [] })
+
+  let #(cache, _) =
+    cache.pull_packages_completed(
+      cache.empty(),
+      Ok([archived_naming("std", 1, 1, child_cid)]),
+    )
+  // Flush to complete pulling from the single completed package
+  let assert #(cache, [_]) = cache.flush(cache)
+
+  let cache = cache.prepare(cache, source)
+  let #(_cache, effects) = cache.flush(cache)
+  assert [] == effects
 }
 
 /// An entry as the hub archives it, at a position in the ledger.
