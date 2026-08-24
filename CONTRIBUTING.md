@@ -100,6 +100,8 @@ EYG_ORIGIN=http://localhost:8001 gleam run -- share ../../eyg_packages/standard/
 
 ### Publish a package
 
+**An administrator must grant a package name to a signatory entity before the hub any published entries.**
+
 Upload a module that can be referenced by hash.
 
 ```sh
