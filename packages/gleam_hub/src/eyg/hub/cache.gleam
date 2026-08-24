@@ -483,7 +483,13 @@ pub fn pulled(
       cascade(cache, list.append(resolved, invalid), [])
     }
     Error(Nil) -> {
-      let cache = fetch(cache, m)
+      // Pulling a release does not require the associated module to be fetched.
+      // A module might be explicitly fetch by a caller or as a dependency of one explicitly fetched.
+      // If pulling a release unblocks any inprogress evaluation then it is a dependency and the module should be fetched.
+      let cache = case unblocked {
+        [] -> cache
+        _ -> fetch(cache, m)
+      }
       let cache =
         list.fold(unblocked, cache, fn(cache, unblocked) {
           let #(module, env, k, source) = unblocked

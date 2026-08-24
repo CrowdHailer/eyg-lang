@@ -332,7 +332,9 @@ fn lookup_reference(
   cid: v1.Cid,
   state: State,
 ) -> Promise(Result(Value, Reason)) {
-  use state <- promise.map(update(state))
+  // A pulled release does not fetch its module, so ask for the one being read.
+  let cache = cache.fetch(state.cache, cid)
+  use state <- promise.map(update(State(..state, cache:)))
   case cache.module(state.cache, cid) {
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
     cache.Unavailable(reason) -> Error(reason)

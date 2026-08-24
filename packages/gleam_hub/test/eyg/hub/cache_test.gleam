@@ -718,3 +718,12 @@ pub fn older_release_does_not_replace_latest_package_test() {
 
   assert Ok(#(2, latest_cid)) == cache.package(cache, "standard")
 }
+
+pub fn pulling_a_release_does_not_fetch_its_module_test() {
+  let #(module_cid, _) = code(1)
+  let #(cache, done) =
+    cache.pulled(cache.empty(), 1, ir.Release("standard", 1, module_cid))
+
+  assert [] == done
+  assert #(cache, []) == cache.flush(cache)
+}
