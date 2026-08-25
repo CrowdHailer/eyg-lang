@@ -618,7 +618,10 @@ fn locate_references(
     let #(exp, meta) = node
     case exp {
       Reference(Relative(location:)) -> {
-        let path = filepath.join(root, location)
+        let path = case filepath.is_absolute(location) {
+          True -> location
+          False -> filepath.join(root, location)
+        }
         case filepath.expand(path) {
           Ok(path) ->
             case cycle_check(visited, path) {

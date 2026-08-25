@@ -242,6 +242,18 @@ pub fn locate_deduplicates_sources_test() {
   assert located == [#("/project/dependency.eyg", dependency)]
 }
 
+pub fn locate_absolute_source_test() {
+  let dependency = tree.integer(1)
+  let load = fs([#("/shared/dependency.eyg", dependency)])
+  let assert Ok(#(located, source)) =
+    tree.locate(tree.relative("/shared/dependency.eyg"), "/project", load, fail)(
+      Ok,
+    )
+
+  assert source == tree.relative("/shared/dependency.eyg")
+  assert located == [#("/shared/dependency.eyg", dependency)]
+}
+
 pub fn fail_on_cycles_test() {
   let source = tree.relative("a.eyg")
   let load =
