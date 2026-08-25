@@ -1,6 +1,7 @@
 import eyg/ir/utils
 import gleam/io
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import midas/continuation.{type Continuation as K, return, then}
 import multiformats/cid/v1
@@ -549,4 +550,39 @@ pub fn rewrite_meta(node: Node(a), f: fn(a) -> K(t, b)) -> K(t, Node(b)) {
     use meta <- then(f(meta))
     return(#(exp, meta))
   })
+}
+
+/// Replace package and version references with pinned references.
+/// Each transformed nodes metadata is returned.
+pub fn pin(
+  source: Node(a),
+  resolve: fn(String, Option(Int)) -> K(t, Release),
+) -> K(t, #(List(#(a, Release)), Node(a))) {
+  use #(found, source) <- then(
+    rewrite_with(source, [], fn(releases, node) {
+      let #(exp, meta) = node
+      case exp {
+        Reference(reference) ->
+          case reference {
+            Package(package:) -> {
+              use release <- continuation.then(resolve(package, None))
+              continuation.return(#(
+                [#(meta, release), ..releases],
+                #(Reference(Pinned(release)), meta),
+              ))
+            }
+            Version(package:, version:) -> {
+              use release <- continuation.then(resolve(package, Some(version)))
+              continuation.return(#(
+                [#(meta, release), ..releases],
+                #(Reference(Pinned(release)), meta),
+              ))
+            }
+            _ -> continuation.return(#(releases, node))
+          }
+        _ -> continuation.return(#(releases, node))
+      }
+    }),
+  )
+  return(#(list.reverse(found), source))
 }

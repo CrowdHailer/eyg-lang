@@ -1,6 +1,8 @@
+import eyg/ir/dag_json
 import eyg/ir/tree
 import gleam/int
 import gleam/list
+import gleam/option
 import midas/continuation
 
 pub fn lambda_free_variable_test() {
@@ -175,4 +177,22 @@ pub fn rewrite_with_metadata_test() {
   assert argument.1 == 1
   assert apply_id == 2
   assert count == 3
+}
+
+pub fn pin_returns_metadata_and_releases_test() {
+  let first = #(tree.Reference(tree.Package("a")), "first")
+  let second = #(tree.Reference(tree.Version("b", 2)), "second")
+  let source = #(tree.Apply(first, second), "root")
+  let pin = fn(package, version) {
+    let version = option.unwrap(version, 1)
+    continuation.return(tree.Release(package, version, dag_json.vacant_cid))
+  }
+  let #(releases, source) = tree.pin(source, pin)(fn(x) { x })
+  let assert #(tree.Apply(first, second), _) = source
+  let first_pinned = tree.Release("a", 1, dag_json.vacant_cid)
+  let second_pinned = tree.Release("b", 2, dag_json.vacant_cid)
+  assert #(tree.Reference(tree.Pinned(first_pinned)), "first") == first
+  assert #(tree.Reference(tree.Pinned(second_pinned)), "second") == second
+
+  assert releases == [#("first", first_pinned), #("second", second_pinned)]
 }
