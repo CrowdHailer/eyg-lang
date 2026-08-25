@@ -196,3 +196,65 @@ pub fn pin_returns_metadata_and_releases_test() {
 
   assert releases == [#("first", first_pinned), #("second", second_pinned)]
 }
+
+fn fs(files) {
+  fn(path) { continuation.return(list.key_find(files, path)) }
+}
+
+fn fail(reason) {
+  fn(_) { Error(reason) }
+}
+
+pub fn locate_relative_sources_test() {
+  let source = tree.relative("lib/middle.eyg")
+  let middle = tree.relative("../leaf.eyg")
+  let leaf = tree.integer(1)
+  let load =
+    fs([
+      #("/project/lib/middle.eyg", middle),
+      #("/project/leaf.eyg", leaf),
+    ])
+  let assert Ok(#(located, source)) =
+    tree.locate(source, "/project", load, fail)(Ok)
+  let assert [#(middle_path, located_middle), #(leaf_path, located_leaf)] =
+    located
+
+  assert source == tree.relative("/project/lib/middle.eyg")
+  assert leaf_path == "/project/leaf.eyg"
+  assert located_leaf == leaf
+  assert middle_path == "/project/lib/middle.eyg"
+  assert located_middle == tree.relative("/project/leaf.eyg")
+}
+
+pub fn locate_deduplicates_sources_test() {
+  let source =
+    tree.apply(tree.relative("dependency.eyg"), tree.relative("dependency.eyg"))
+  let dependency = tree.integer(1)
+  let load = fn(_path) { continuation.return(Ok(dependency)) }
+  let assert Ok(#(located, source)) =
+    tree.locate(source, "/project", load, fail)(Ok)
+
+  assert source
+    == tree.apply(
+      tree.relative("/project/dependency.eyg"),
+      tree.relative("/project/dependency.eyg"),
+    )
+  assert located == [#("/project/dependency.eyg", dependency)]
+}
+
+pub fn fail_on_cycles_test() {
+  let source = tree.relative("a.eyg")
+  let load =
+    fs([
+      #("/project/a.eyg", tree.relative("b.eyg")),
+      #("/project/b.eyg", tree.relative("a.eyg")),
+    ])
+  let assert Error(tree.ReferenceCycle(cycle)) =
+    tree.locate(source, "/project", load, fail)(Ok)
+
+  assert cycle
+    == [
+      "/project/a.eyg",
+      "/project/b.eyg",
+    ]
+}

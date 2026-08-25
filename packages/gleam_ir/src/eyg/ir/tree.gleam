@@ -1,4 +1,5 @@
 import eyg/ir/utils
+import filepath
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -585,4 +586,83 @@ pub fn pin(
     }),
   )
   return(#(list.reverse(found), source))
+}
+
+/// Rewrite relative references to absolute paths and load their sources.
+/// Located sources are before their dependencies.
+/// The root directory must be absolute.
+pub fn locate(
+  source: Node(a),
+  root: String,
+  resolve: fn(String) -> K(t, Result(Node(a), s)),
+  halt: fn(DependencyError(s)) -> K(t, _),
+) -> K(t, #(List(#(String, Node(a))), Node(a))) {
+  locate_references(source, root, [], [], resolve, halt)
+}
+
+pub type DependencyError(t) {
+  InvalidPath(String)
+  BadReference(t)
+  ReferenceCycle(List(String))
+}
+
+fn locate_references(
+  source: Node(a),
+  root: String,
+  located: List(#(String, Node(a))),
+  visited: List(String),
+  resolve: fn(String) -> K(t, Result(Node(a), s)),
+  halt: fn(DependencyError(s)) -> K(t, _),
+) -> K(t, #(List(#(String, Node(a))), Node(a))) {
+  rewrite_with(source, located, fn(located, node) {
+    let #(exp, meta) = node
+    case exp {
+      Reference(Relative(location:)) -> {
+        let path = filepath.join(root, location)
+        case filepath.expand(path) {
+          Ok(path) ->
+            case cycle_check(visited, path) {
+              Ok(Nil) ->
+                case list.key_find(located, path) {
+                  Ok(_) ->
+                    return(#(located, #(Reference(Relative(path)), meta)))
+                  Error(Nil) -> {
+                    use dependency <- then(resolve(path))
+                    case dependency {
+                      Ok(dependency) -> {
+                        use #(located, dependency) <- then(locate_references(
+                          dependency,
+                          filepath.directory_name(path),
+                          located,
+                          [path, ..visited],
+                          resolve,
+                          halt,
+                        ))
+                        let located = [#(path, dependency), ..located]
+                        return(#(located, #(Reference(Relative(path)), meta)))
+                      }
+                      Error(reason) -> halt(BadReference(reason))
+                    }
+                  }
+                }
+              Error(cycle) -> halt(ReferenceCycle(cycle))
+            }
+          Error(Nil) -> halt(InvalidPath(path))
+        }
+      }
+      _ -> return(#(located, node))
+    }
+  })
+}
+
+fn cycle_check(visited, path) {
+  do_cycle_check(visited, path, [])
+}
+
+fn do_cycle_check(visited, path, acc) {
+  case visited {
+    [] -> Ok(Nil)
+    [parent, ..] if parent == path -> Error([path, ..acc])
+    [parent, ..rest] -> do_cycle_check(rest, path, [parent, ..acc])
+  }
 }
