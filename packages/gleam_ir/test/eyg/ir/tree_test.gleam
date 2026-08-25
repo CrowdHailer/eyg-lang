@@ -137,3 +137,42 @@ pub fn rewrite_apply_test() {
   }
   assert tree.integer(1) == tree.rewrite(node, remove)(identity)
 }
+
+pub fn rewrite_with_order_test() {
+  let node =
+    tree.let_(
+      "x",
+      tree.apply(tree.variable("a"), tree.integer(1)),
+      tree.lambda("f", tree.integer(2)),
+    )
+  let #(nodes, rewritten) =
+    tree.rewrite_with(node, [], fn(nodes, node) {
+      continuation.return(#([print(node.0), ..nodes], node))
+    })(identity)
+
+  assert rewritten == node
+  assert list.reverse(nodes)
+    == [
+      "Variable: a",
+      "Integer: 1",
+      "Apply",
+      "Integer: 2",
+      "Lambda: f",
+      "Let: x",
+    ]
+}
+
+pub fn rewrite_with_metadata_test() {
+  let node = tree.apply(tree.variable("f"), tree.integer(1))
+  let #(count, rewritten) =
+    tree.rewrite_with(node, 0, fn(id, node) {
+      let #(exp, _meta) = node
+      continuation.return(#(id + 1, #(exp, id)))
+    })(identity)
+  let assert #(tree.Apply(function, argument), apply_id) = rewritten
+
+  assert function.1 == 0
+  assert argument.1 == 1
+  assert apply_id == 2
+  assert count == 3
+}

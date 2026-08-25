@@ -2,7 +2,7 @@ import eyg/ir/utils
 import gleam/io
 import gleam/list
 import gleam/string
-import midas/continuation.{type Continuation as K}
+import midas/continuation.{type Continuation as K, return, then}
 import multiformats/cid/v1
 
 /// A node consists of an expression and associated metadata
@@ -240,13 +240,11 @@ pub fn multiply(a, b) {
 }
 
 pub fn get_annotation(node: Node(a)) {
-  fold(node, [], fn(acc, node) { continuation.return([node.1, ..acc]) })(
-    list.reverse,
-  )
+  fold(node, [], fn(acc, node) { return([node.1, ..acc]) })(list.reverse)
 }
 
 pub fn map_annotation(in: Node(a), f: fn(a) -> b) -> Node(b) {
-  rewrite_meta(in, fn(m) { continuation.return(f(m)) })(fn(x) { x })
+  rewrite_meta(in, fn(m) { return(f(m)) })(fn(x) { x })
 }
 
 pub fn clear_annotation(source) {
@@ -260,7 +258,7 @@ pub fn list_builtins(node: Node(a)) {
       Builtin(i) -> utils.push_new(acc, i)
       _ -> acc
     }
-    |> continuation.return
+    |> return
   }(list.reverse)
 }
 
@@ -271,7 +269,7 @@ pub fn list_references(node: Node(a)) -> List(Reference) {
       Reference(reference) -> utils.push_new(acc, reference)
       _ -> acc
     }
-    |> continuation.return
+    |> return
   }(list.reverse)
 }
 
@@ -400,37 +398,37 @@ pub fn map_children(
 ) -> K(t, Expression(b)) {
   case exp {
     Lambda(parameter, body) -> {
-      use body <- continuation.then(f(body))
-      continuation.return(Lambda(parameter, body))
+      use body <- then(f(body))
+      return(Lambda(parameter, body))
     }
     Apply(function, argument) -> {
-      use function <- continuation.then(f(function))
-      use argument <- continuation.then(f(argument))
-      continuation.return(Apply(function, argument))
+      use function <- then(f(function))
+      use argument <- then(f(argument))
+      return(Apply(function, argument))
     }
     Let(label, definition, body) -> {
-      use definition <- continuation.then(f(definition))
-      use body <- continuation.then(f(body))
-      continuation.return(Let(label, definition, body))
+      use definition <- then(f(definition))
+      use body <- then(f(body))
+      return(Let(label, definition, body))
     }
-    Variable(label:) -> continuation.return(Variable(label:))
-    Binary(value:) -> continuation.return(Binary(value:))
-    Integer(value:) -> continuation.return(Integer(value:))
-    String(value:) -> continuation.return(String(value:))
-    Tail -> continuation.return(Tail)
-    Cons -> continuation.return(Cons)
-    Vacant -> continuation.return(Vacant)
-    Empty -> continuation.return(Empty)
-    Extend(label:) -> continuation.return(Extend(label:))
-    Select(label:) -> continuation.return(Select(label:))
-    Overwrite(label:) -> continuation.return(Overwrite(label:))
-    Tag(label:) -> continuation.return(Tag(label:))
-    Case(label:) -> continuation.return(Case(label:))
-    NoCases -> continuation.return(NoCases)
-    Perform(label:) -> continuation.return(Perform(label:))
-    Handle(label:) -> continuation.return(Handle(label:))
-    Builtin(identifier:) -> continuation.return(Builtin(identifier:))
-    Reference(reference:) -> continuation.return(Reference(reference:))
+    Variable(label:) -> return(Variable(label:))
+    Binary(value:) -> return(Binary(value:))
+    Integer(value:) -> return(Integer(value:))
+    String(value:) -> return(String(value:))
+    Tail -> return(Tail)
+    Cons -> return(Cons)
+    Vacant -> return(Vacant)
+    Empty -> return(Empty)
+    Extend(label:) -> return(Extend(label:))
+    Select(label:) -> return(Select(label:))
+    Overwrite(label:) -> return(Overwrite(label:))
+    Tag(label:) -> return(Tag(label:))
+    Case(label:) -> return(Case(label:))
+    NoCases -> return(NoCases)
+    Perform(label:) -> return(Perform(label:))
+    Handle(label:) -> return(Handle(label:))
+    Builtin(identifier:) -> return(Builtin(identifier:))
+    Reference(reference:) -> return(Reference(reference:))
   }
 }
 
@@ -445,10 +443,10 @@ fn do_fold(
   f: fn(b, Node(a)) -> K(t, b),
 ) -> K(t, b) {
   case nodes {
-    [] -> continuation.return(acc)
+    [] -> return(acc)
     [n, ..rest] -> {
       let rest = list.append(children(n), rest)
-      use acc <- continuation.then(f(acc, n))
+      use acc <- then(f(acc, n))
       do_fold(rest, acc, f)
     }
   }
@@ -469,10 +467,10 @@ fn do_fold_post_order(
   f: fn(b, Node(a)) -> K(t, b),
 ) -> K(t, b) {
   case nodes {
-    [] -> continuation.return(acc)
+    [] -> return(acc)
     [n, ..rest] -> {
-      use acc <- continuation.then(do_fold_post_order(children(n), acc, f))
-      use acc <- continuation.then(f(acc, n))
+      use acc <- then(do_fold_post_order(children(n), acc, f))
+      use acc <- then(f(acc, n))
       do_fold_post_order(rest, acc, f)
     }
   }
@@ -486,15 +484,69 @@ pub fn rewrite(
 ) -> K(t, Node(b)) {
   let recur = fn(child) { rewrite(child, f) }
   let #(exp, meta) = node
-  use rebuilt <- continuation.then(map_children(exp, recur))
+  use rebuilt <- then(map_children(exp, recur))
   f(#(rebuilt, meta))
+}
+
+/// Transform each node in a tree while passing an accumlated value in post order.
+/// The transformation function `f` sees any children as already rewritten.
+pub fn rewrite_with(
+  node: Node(a),
+  with acc: c,
+  using f: fn(c, #(Expression(b), a)) -> K(t, #(c, Node(b))),
+) -> K(t, #(c, Node(b))) {
+  let #(exp, meta) = node
+  use #(acc, rebuilt) <- then(map_children_with(exp, acc, f))
+  f(acc, #(rebuilt, meta))
+}
+
+/// Like `map_children` but with an accumulator value passed to f with each node in order.
+pub fn map_children_with(
+  exp: Expression(a),
+  acc: c,
+  f: fn(c, #(Expression(b), a)) -> K(t, #(c, Node(b))),
+) -> K(t, #(c, Expression(b))) {
+  case exp {
+    Lambda(parameter, body) -> {
+      use #(acc, body) <- then(rewrite_with(body, acc, f))
+      return(#(acc, Lambda(parameter, body)))
+    }
+    Apply(function, argument) -> {
+      use #(acc, function) <- then(rewrite_with(function, acc, f))
+      use #(acc, argument) <- then(rewrite_with(argument, acc, f))
+      return(#(acc, Apply(function, argument)))
+    }
+    Let(label, definition, body) -> {
+      use #(acc, definition) <- then(rewrite_with(definition, acc, f))
+      use #(acc, body) <- then(rewrite_with(body, acc, f))
+      return(#(acc, Let(label, definition, body)))
+    }
+    Variable(label:) -> return(#(acc, Variable(label:)))
+    Binary(value: bytes) -> return(#(acc, Binary(value: bytes)))
+    Integer(value: integer) -> return(#(acc, Integer(value: integer)))
+    String(value: string) -> return(#(acc, String(value: string)))
+    Tail -> return(#(acc, Tail))
+    Cons -> return(#(acc, Cons))
+    Vacant -> return(#(acc, Vacant))
+    Empty -> return(#(acc, Empty))
+    Extend(label:) -> return(#(acc, Extend(label:)))
+    Select(label:) -> return(#(acc, Select(label:)))
+    Overwrite(label:) -> return(#(acc, Overwrite(label:)))
+    Tag(label:) -> return(#(acc, Tag(label:)))
+    Case(label:) -> return(#(acc, Case(label:)))
+    NoCases -> return(#(acc, NoCases))
+    Perform(label:) -> return(#(acc, Perform(label:)))
+    Handle(label:) -> return(#(acc, Handle(label:)))
+    Builtin(identifier:) -> return(#(acc, Builtin(identifier:)))
+    Reference(reference:) -> return(#(acc, Reference(reference:)))
+  }
 }
 
 /// Transform just the metadata in each node.
 pub fn rewrite_meta(node: Node(a), f: fn(a) -> K(t, b)) -> K(t, Node(b)) {
   rewrite(node, fn(node) {
     let #(exp, meta) = node
-    use meta <- continuation.then(f(meta))
-    continuation.return(#(exp, meta))
+    use meta <- then(f(meta))
+    return(#(exp, meta))
   })
 }
