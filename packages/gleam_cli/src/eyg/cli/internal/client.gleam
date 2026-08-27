@@ -68,7 +68,7 @@ pub fn share_module(
   case result {
     Ok(response) ->
       client.share_response(response) |> result.map_error(string.inspect)
-    Error(reason) -> Error(reason)
+    Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
   |> system.Done
 }
@@ -86,7 +86,7 @@ pub fn submit_release(
   module: v1.Cid,
   previous: Option(#(Int, v1.Cid)),
   client: Client,
-) -> Promise(Result(schema.ArchivedEntry, String)) {
+) -> system.Effect(Result(schema.ArchivedEntry, String)) {
   let #(sequence, previous) = case previous {
     Some(#(sequence, cid)) -> #(sequence + 1, Some(cid))
     None -> #(1, None)
@@ -106,14 +106,15 @@ pub fn submit_release(
   let signature = crypto.sign(payload, keypair)
   let operation = client.submit_package(entry, signature)
   let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
+  use result <- system.then(system.fetch(request))
   case result {
     Ok(response) ->
       client.submit_package_response(response)
       |> result.map_error(string.inspect)
       |> result.flatten
-    Error(reason) -> Error(string.inspect(reason))
+    Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
+  |> system.Done
 }
 
 pub fn pull_packages(
@@ -128,13 +129,13 @@ pub fn pull_packages(
 
 /// Run cache actions until the cache has no more work to do.
 /// Failed pulls are retried up to three times, five seconds apart.
-pub fn run_all(cache: Cache(Nil)) -> Promise(Cache(Nil)) {
+pub fn run_all(cache: Cache(Nil)) -> system.Effect(Cache(Nil)) {
   run_all_with(
     cache,
     configured_origin(),
-    bun_platform.fetch,
-    bun_platform.wait,
-  )(promise.resolve)
+    fn(request) { fn(resume) { system.Fetch(request, resume) } },
+    fn(duration) { fn(resume) { system.Wait(duration, resume) } },
+  )(system.Done)
 }
 
 /// Run cache actions with explicit dependencies for deterministic tests.

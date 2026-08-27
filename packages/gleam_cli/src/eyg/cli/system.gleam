@@ -1,24 +1,28 @@
-import gleam/fetchx
+import eyg/cli/internal/bun_platform
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/result
-import gleam/string
+import midas/effect
 import simplifile
 
 // This exists for testing as the runner can be defined straight away.
 pub type Effect(a) {
   Done(a)
-  Fetch(Request(BitArray), fn(Result(Response(BitArray), String)) -> Effect(a))
+  Fetch(
+    Request(BitArray),
+    fn(Result(Response(BitArray), effect.FetchError)) -> Effect(a),
+  )
   ReadFile(String, fn(Result(String, String)) -> Effect(a))
   Stdin(fn(Result(String, String)) -> Effect(a))
   Stdout(String, fn(Nil) -> Effect(a))
+  Wait(Int, fn(Nil) -> Effect(a))
 }
 
 pub fn fetch(
   request: Request(BitArray),
-) -> Effect(Result(Response(BitArray), String)) {
+) -> Effect(Result(Response(BitArray), effect.FetchError)) {
   Fetch(request, Done)
 }
 
@@ -44,6 +48,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
     Stdin(resume) -> Stdin(fn(response) { then(resume(response), func) })
     Stdout(text, resume) ->
       Stdout(text, fn(response) { then(resume(response), func) })
+    Wait(timeout, resume) ->
+      Wait(timeout, fn(response) { then(resume(response), func) })
   }
 }
 
@@ -71,18 +77,17 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
   case effect {
     Done(value) -> promise.resolve(value)
     Fetch(request, resume) -> {
-      use response <- promise.await(send_bits(request))
+      use response <- promise.await(bun_platform.fetch(request)(promise.resolve))
       run(resume(response))
     }
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
     Stdin(resume) -> run(resume(read_stdin()))
     Stdout(text, resume) -> run(resume(io.println(text)))
+    Wait(duration, resume) -> {
+      use response <- promise.await(bun_platform.wait(duration)(promise.resolve))
+      run(resume(response))
+    }
   }
-}
-
-fn send_bits(request) {
-  use response <- promise.map(fetchx.send_bits(request))
-  result.map_error(response, string.inspect)
 }
 
 fn format_file_error(path: String, err: simplifile.FileError) -> String {

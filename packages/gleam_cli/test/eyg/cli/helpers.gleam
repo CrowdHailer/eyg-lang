@@ -14,6 +14,7 @@ import gleam/list
 import gleam/option.{None}
 import gleam/result
 import midas/continuation
+import midas/effect
 import multiformats/cid/v1
 import ogre/origin
 
@@ -33,7 +34,7 @@ pub type Sandbox(a) {
     files: dict.Dict(String, String),
     network_state: a,
     network: fn(request.Request(BitArray), a) ->
-      #(Result(response.Response(BitArray), String), a),
+      #(Result(response.Response(BitArray), effect.FetchError), a),
   )
 }
 
@@ -43,7 +44,7 @@ pub fn sandbox() -> Sandbox(Nil) {
     stdout: [],
     files: dict.new(),
     network_state: Nil,
-    network: fn(_, _) { #(Error("No network"), Nil) },
+    network: fn(_, _) { #(Error(effect.NetworkError("None provided")), Nil) },
   )
 }
 
@@ -70,7 +71,7 @@ pub fn with_file(
 pub fn with_network(
   sandbox: Sandbox(_),
   network: fn(request.Request(BitArray), a) ->
-    #(Result(response.Response(BitArray), String), a),
+    #(Result(response.Response(BitArray), effect.FetchError), a),
   network_state: a,
 ) -> Sandbox(a) {
   Sandbox(..sandbox, network:, network_state:)
@@ -105,6 +106,7 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       let sandbox = Sandbox(..sandbox, stdout:)
       run(resume(Nil), sandbox)
     }
+    system.Wait(_, resume) -> run(resume(Nil), sandbox)
   }
 }
 
