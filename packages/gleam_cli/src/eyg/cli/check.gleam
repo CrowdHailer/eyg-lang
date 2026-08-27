@@ -2,18 +2,17 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/cli/internal/config
 import eyg/cli/internal/source
+import eyg/cli/system
 import eyg/parser
 import gleam/dict
-import gleam/io
-import gleam/javascript/promise.{type Promise}
-import gleam/javascript/promisex
 
 pub fn execute(
   input: source.Input,
   _config: config.Config,
-) -> Promise(Result(Int, String)) {
-  use code <- promisex.try_sync(source.read_input(input))
-  use source <- promisex.try_sync(source.parse_input(code, input))
+) -> system.Effect(Result(Int, String)) {
+  use code <- system.then(source.read_input_effect(input))
+  use code <- system.try(code)
+  use source <- system.try(source.parse_input(code, input))
 
   let context = infer.unpure()
   // TODO follow all references
@@ -22,14 +21,16 @@ pub fn execute(
 
   case errors {
     [] -> {
-      io.println(debug.render_type(infer.type_(analysis)))
-      promise.resolve(Ok(0))
+      use Nil <- system.then(
+        system.stdout(debug.render_type(infer.type_(analysis))),
+      )
+      system.Done(Ok(0))
     }
     [#(location, reason), ..] -> {
       let message = debug.render_reason(reason)
       let hint = debug.hint(reason)
       Error(parser.render_error(message, hint, code, source.span(location)))
-      |> promise.resolve
+      |> system.Done
     }
   }
 }
