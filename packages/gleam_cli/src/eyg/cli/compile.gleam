@@ -1,17 +1,16 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/source
+import eyg/cli/system
 import eyg/compiler
 import gleam/dict
-import gleam/io
-import gleam/javascript/promise
-import gleam/javascript/promisex
 
 pub fn execute(
   input: source.Input,
   _config: config.Config,
-) -> promise.Promise(Result(Int, String)) {
-  use code <- promisex.try_sync(source.read_input(input))
-  use source <- promisex.try_sync(source.parse_input(code, input))
-  io.println(compiler.to_js(source, dict.new()))
-  promise.resolve(Ok(0))
+) -> system.Effect(Result(Int, String)) {
+  use code <- system.then(source.read_input_effect(input))
+  use code <- system.try(code)
+  use source <- system.try(source.parse_input(code, input))
+  use Nil <- system.then(system.stdout(compiler.to_js(source, dict.new())))
+  system.Done(Ok(0))
 }

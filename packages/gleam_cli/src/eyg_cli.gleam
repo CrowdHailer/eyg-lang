@@ -12,6 +12,7 @@ import eyg/cli/script
 import eyg/cli/share
 import eyg/cli/shell
 import eyg/cli/signatory
+import eyg/cli/system
 import eyg/cli/version
 import gleam/io
 import gleam/javascript/promise.{type Promise}
@@ -60,7 +61,7 @@ fn with_config(parsed) {
     args.Script(input:, arguments:) -> script.execute(input, arguments, config)
     args.Eval(input:) -> eval.execute(input, config)
     args.Check(input:) -> check.execute(input, config)
-    args.Compile(input:) -> compile.execute(input, config)
+    args.Compile(input:) -> system.run(compile.execute(input, config))
     args.Parse(input:) -> parse.execute(input, config)
     args.Share(file:) -> share.execute(file, config)
     args.Fetch(cid:) -> fetch.execute(cid, config)

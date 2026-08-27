@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { Result$Ok, Result$Error } from "../../../gleam.mjs";
+import { Result$Ok, Result$Error } from "../../gleam.mjs";
 
 export function readStdin() {
   try {

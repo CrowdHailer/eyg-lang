@@ -1,3 +1,4 @@
+import eyg/cli/system
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
@@ -8,7 +9,6 @@ import gleam/option
 import gleam/result.{try}
 import gleam/string
 import multiformats/cid/v1
-import simplifile
 
 pub type Input {
   File(path: String)
@@ -36,22 +36,28 @@ pub type Source {
   Json
 }
 
+pub fn read_input_effect(
+  input: Input,
+) -> system.Effect(Result(String, String)) {
+  case input {
+    File(path:) -> system.read_file(path)
+    Code(code:) -> system.Done(Ok(code))
+    Stdin -> system.stdin()
+  }
+}
+
+// TODO remove
 pub fn read_input(input: Input) -> Result(String, String) {
   case input {
     File(path:) -> read_file(path)
     Code(code:) -> Ok(code)
-    Stdin -> read_stdin()
+    Stdin -> system.read_stdin()
   }
 }
 
-@external(javascript, "./source_ffi.mjs", "readStdin")
-fn read_stdin() -> Result(String, String)
-
+// TODO remove
 pub fn read_file(file: String) -> Result(String, String) {
-  use code <- try(
-    simplifile.read(file)
-    |> result.map_error(fn(err) { format_file_error(file, err) }),
-  )
+  use code <- try(system.do_read_file(file))
   case string.starts_with(code, "#!") {
     True -> {
       case string.split_once(code, "\n") {
@@ -61,28 +67,6 @@ pub fn read_file(file: String) -> Result(String, String) {
     }
     False -> Ok(code)
   }
-}
-
-fn format_file_error(path: String, err: simplifile.FileError) -> String {
-  let #(description, hint) = case err {
-    simplifile.Enoent -> #(
-      "no such file: " <> path,
-      "check the path and that the file exists, relative to the current working directory",
-    )
-    simplifile.Eisdir -> #(
-      "expected a file but found a directory: " <> path,
-      "pass the path to a source file, not a directory",
-    )
-    simplifile.Eacces -> #(
-      "permission denied reading: " <> path,
-      "check the file is readable by the current user",
-    )
-    _ -> #(
-      "could not read " <> path <> ": " <> simplifile.describe_error(err),
-      "check the path is correct and readable",
-    )
-  }
-  "error: " <> description <> "\nhint: " <> hint
 }
 
 /// parse the code adding it's span to an origin identifier
