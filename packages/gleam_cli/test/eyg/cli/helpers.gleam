@@ -2,14 +2,18 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/platform
 import eyg/cli/system
+import eyg/hub/schema
 import eyg/ir/cid
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/crypto
 import gleam/dict
 import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{None}
 import gleam/result
@@ -75,6 +79,23 @@ pub fn with_network(
   network_state: a,
 ) -> Sandbox(a) {
   Sandbox(..sandbox, network:, network_state:)
+}
+
+pub fn save_and_return(sandbox, response) {
+  with_network(
+    sandbox,
+    fn(request, acc) { #(Ok(response), [request, ..acc]) },
+    [],
+  )
+}
+
+pub fn vacant_cid_response() {
+  response.new(200)
+  |> response.set_body(
+    schema.share_response_encode(dag_json.vacant_cid)
+    |> json.to_string
+    |> bit_array.from_string,
+  )
 }
 
 pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {

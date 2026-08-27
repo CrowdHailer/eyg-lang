@@ -1,6 +1,7 @@
 import eyg/hub/publisher
 import eyg/hub/schema
 import eyg/hub/signatory
+import eyg/ir/car
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http/request.{type Request}
@@ -131,6 +132,44 @@ pub fn share_response(
       }
     _ -> Error(client.UnexpectedStatus(status:))
   }
+}
+
+pub fn share_bundle_operation(bundle) -> operation.Operation(BitArray) {
+  let #(#(cid, block), dependencies) = bundle
+  let assert Ok(body) =
+    car.Car(header: car.Header(version: 1, roots: [cid]), blocks: [
+      #(cid, block),
+      ..dependencies
+    ])
+    |> car.encode
+  operation.post("/modules/share")
+  |> operation.set_header("content-type", car.content_type)
+  |> operation.set_body(body)
+}
+
+pub fn share_bundle_request(bundle, origin) {
+  share_bundle_operation(bundle)
+  |> operation.to_request(origin)
+}
+
+pub fn share_bundle(
+  bundle,
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+) -> K(t, Result(v1.Cid, String)) {
+  let request = share_bundle_request(bundle, origin)
+
+  use result <- continuation.then(fetch(request))
+  let result = case result {
+    Ok(response) ->
+      case share_response(response) {
+        Ok(cid) -> Ok(cid)
+
+        Error(_) -> Error("bad module lookup")
+      }
+    Error(reason) -> Error(string.inspect(reason))
+  }
+  continuation.return(result)
 }
 
 pub fn submit_package(

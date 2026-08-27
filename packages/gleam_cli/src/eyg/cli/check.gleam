@@ -121,7 +121,7 @@ fn check_loop(
                               filepath.directory_name(path),
                               dependency,
                               errors,
-                              visited,
+                              [path, ..visited],
                             )
                           use #(poly, _type_, errors) <- system.then(check)
                           resume(Ok(poly))
@@ -152,7 +152,7 @@ fn check_loop(
   }
 }
 
-fn cycle_check(visited, path) {
+pub fn cycle_check(visited, path) {
   do_cycle_check(visited, path, [])
 }
 

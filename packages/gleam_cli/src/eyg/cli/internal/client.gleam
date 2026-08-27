@@ -73,6 +73,15 @@ pub fn share_module(
   |> system.Done
 }
 
+pub fn share_bundle(
+  bundle: #(#(v1.Cid, BitArray), List(#(v1.Cid, BitArray))),
+  client: Client,
+) -> system.Effect(Result(v1.Cid, String)) {
+  client.share_bundle(bundle, client.origin, fn(request) {
+    system.Fetch(request, _)
+  })(system.Done)
+}
+
 pub fn get_module(
   cid: v1.Cid,
   client: Client,
