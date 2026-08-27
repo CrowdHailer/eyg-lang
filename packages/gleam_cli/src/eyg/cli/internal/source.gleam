@@ -114,6 +114,14 @@ pub fn block_expression(code) {
   })
 }
 
+pub fn code(location: Location) {
+  let Location(_origin, source) = location
+  case source {
+    Text(code:, span: _) -> code
+    Json -> ""
+  }
+}
+
 pub fn span(location: Location) {
   let Location(_origin, source) = location
   case source {

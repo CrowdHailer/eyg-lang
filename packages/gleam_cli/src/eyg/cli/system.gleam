@@ -34,6 +34,16 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
   }
 }
 
+pub fn each(effects: List(Effect(Nil))) -> Effect(Nil) {
+  case effects {
+    [] -> Done(Nil)
+    [effect, ..effects] -> {
+      use Nil <- then(effect)
+      each(effects)
+    }
+  }
+}
+
 pub fn try(
   result: Result(a, b),
   then: fn(a) -> Effect(Result(c, b)),

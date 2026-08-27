@@ -476,7 +476,7 @@ pub fn normalize_input(working_directory, input: source.Input) {
   }
 }
 
-fn resolve_relative(root, relative) {
+pub fn resolve_relative(root, relative) {
   let joined = case filepath.is_absolute(relative) {
     True -> relative
     False -> filepath.join(root, relative)

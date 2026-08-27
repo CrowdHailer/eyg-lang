@@ -2,11 +2,17 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/platform
 import eyg/cli/system
+import eyg/ir/cid
+import eyg/ir/tree as ir
+import gleam/crypto
 import gleam/dict
 import gleam/http
+import gleam/int
 import gleam/list
 import gleam/option.{None}
 import gleam/result
+import midas/continuation
+import multiformats/cid/v1
 import ogre/origin
 
 const eyg_origin: client.Client = client.Client(
@@ -66,4 +72,22 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox) -> #(a, Sandbox) {
       run(resume(Nil), sandbox)
     }
   }
+}
+
+fn code(i) {
+  let source = ir.integer(i)
+  // |> ir.map_annotation(fn(_) { [] })
+  #(cid_from_tree(source), source)
+}
+
+pub fn random_code() {
+  code(int.random(1_000_000))
+}
+
+fn hash_sha256(bytes) {
+  continuation.return(crypto.hash(crypto.Sha256, bytes))
+}
+
+pub fn cid_from_tree(source: ir.Node(_)) -> v1.Cid {
+  cid.from_tree(source, hash_sha256)(fn(x) { x })
 }
