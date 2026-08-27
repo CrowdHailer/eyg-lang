@@ -2,6 +2,7 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/cli/internal/store
+import eyg/cli/system
 import eyg/hub/cache
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -21,7 +22,9 @@ pub fn execute(
   })
   use code <- promisex.try_sync(source.read_file(file))
   use source <- promisex.try_sync(source.parse_input(code, source.File(file)))
-  use module <- promise.try_await(client.share_module(source, config.client))
+  use module <- promise.try_await(
+    system.run(client.share_module(source, config.client)),
+  )
 
   use index <- promise.await(client.run_all(cache.pull(cache.empty())))
   use index <- promisex.try_sync(case index.cursor_status {

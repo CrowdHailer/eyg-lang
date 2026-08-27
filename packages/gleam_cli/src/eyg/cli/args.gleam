@@ -9,7 +9,7 @@ pub type Args {
   Check(input: source.Input)
   Compile(input: source.Input)
   Parse(input: source.Input)
-  Share(file: String)
+  Share(input: source.Input)
   Fetch(cid: String)
   SignatoryInitial(name: String)
   Publish(package: String, file: String)
@@ -63,7 +63,10 @@ pub fn parse(args) {
     ["parse", "#" <> _ as code] | ["parse", "@" <> _ as code] ->
       Parse(source.Code(code))
     ["parse", file] -> Parse(source.File(file))
-    ["share", file] -> Share(file:)
+    ["share", "-c", code] | ["share", "--code", code] ->
+      Share(source.Code(code))
+    ["share", "-"] | ["share", "--stdin"] -> Share(source.Stdin)
+    ["share", file] -> Share(source.File(file))
     ["fetch", cid] -> Fetch(cid:)
     ["publish", package, file] -> Publish(package:, file:)
     ["signatory", "initial", name] -> SignatoryInitial(name:)
@@ -112,7 +115,9 @@ commands:
   parse -, --stdin       parse EYG source read from stdin and write JSON to stdout
   parse -c, --code <code>parse inline EYG source and write JSON to stdout
   parse #<mod>, @<pkg>   parse a module or package and write JSON to stdout
-  share <file>           share an IR module with the hub
+  share <file>           share EYG source from file
+  share -, --stdin       share EYG source read from stdin
+  share -c, --code <code>share inline EYG source
   fetch <cid>            fetch a module by content id
   publish <pkg> <file>   publish a module under a package name
   signatory initial <n>  create a signatory principal called <n>

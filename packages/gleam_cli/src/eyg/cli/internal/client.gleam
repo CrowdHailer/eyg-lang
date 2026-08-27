@@ -2,6 +2,7 @@ import envoy
 import eyg/cli/internal/bun_platform
 import eyg/cli/internal/crypto
 import eyg/cli/internal/store
+import eyg/cli/system
 import eyg/hub/cache.{type Cache}
 import eyg/hub/client
 import eyg/hub/publisher
@@ -60,15 +61,16 @@ pub fn pull_principal(client: Client) {
 pub fn share_module(
   source: ir.Node(_),
   client: Client,
-) -> Promise(Result(v1.Cid, String)) {
+) -> system.Effect(Result(v1.Cid, String)) {
   let operation = client.share_module(source)
   let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
+  use result <- system.then(system.fetch(request))
   case result {
     Ok(response) ->
       client.share_response(response) |> result.map_error(string.inspect)
-    Error(reason) -> Error(string.inspect(reason))
+    Error(reason) -> Error(reason)
   }
+  |> system.Done
 }
 
 pub fn get_module(

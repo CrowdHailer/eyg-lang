@@ -1,14 +1,25 @@
+import gleam/fetchx
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
 import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/result
+import gleam/string
 import simplifile
 
 // This exists for testing as the runner can be defined straight away.
 pub type Effect(a) {
   Done(a)
+  Fetch(Request(BitArray), fn(Result(Response(BitArray), String)) -> Effect(a))
   ReadFile(String, fn(Result(String, String)) -> Effect(a))
   Stdin(fn(Result(String, String)) -> Effect(a))
   Stdout(String, fn(Nil) -> Effect(a))
+}
+
+pub fn fetch(
+  request: Request(BitArray),
+) -> Effect(Result(Response(BitArray), String)) {
+  Fetch(request, Done)
 }
 
 pub fn read_file(path) {
@@ -26,6 +37,8 @@ pub fn stdout(text) {
 pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
   case effect {
     Done(value) -> func(value)
+    Fetch(request, resume) ->
+      Fetch(request, fn(response) { then(resume(response), func) })
     ReadFile(path, resume) ->
       ReadFile(path, fn(response) { then(resume(response), func) })
     Stdin(resume) -> Stdin(fn(response) { then(resume(response), func) })
@@ -57,10 +70,19 @@ pub fn try(
 pub fn run(effect: Effect(a)) -> Promise(a) {
   case effect {
     Done(value) -> promise.resolve(value)
+    Fetch(request, resume) -> {
+      use response <- promise.await(send_bits(request))
+      run(resume(response))
+    }
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
     Stdin(resume) -> run(resume(read_stdin()))
     Stdout(text, resume) -> run(resume(io.println(text)))
   }
+}
+
+fn send_bits(request) {
+  use response <- promise.map(fetchx.send_bits(request))
+  result.map_error(response, string.inspect)
 }
 
 fn format_file_error(path: String, err: simplifile.FileError) -> String {

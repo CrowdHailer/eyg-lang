@@ -1,18 +1,18 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
-import gleam/io
-import gleam/javascript/promise.{type Promise}
-import gleam/javascript/promisex
+import eyg/cli/system
 import multiformats/cid/v1
 
 pub fn execute(
-  file: String,
+  input: source.Input,
   config: config.Config,
-) -> Promise(Result(Int, String)) {
-  use code <- promisex.try_sync(source.read_file(file))
-  use source <- promisex.try_sync(source.parse_input(code, source.File(file)))
-  use cid <- promise.try_await(client.share_module(source, config.client))
-  io.println(v1.to_string(cid))
-  promise.resolve(Ok(0))
+) -> system.Effect(Result(Int, String)) {
+  use code <- system.then(source.read_input_effect(input))
+  use code <- system.try(code)
+  use source <- system.try(source.parse_input(code, input))
+  use cid <- system.then(client.share_module(source, config.client))
+  use cid <- system.try(cid)
+  use Nil <- system.then(system.stdout(v1.to_string(cid)))
+  system.Done(Ok(0))
 }
