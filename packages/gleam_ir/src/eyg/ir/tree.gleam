@@ -1,5 +1,6 @@
 import eyg/ir/utils
 import filepath
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -57,9 +58,25 @@ pub type Reference {
   Relative(location: String)
 }
 
+pub fn reference_to_string(reference: Reference) -> String {
+  case reference {
+    Content(cid:) -> "#" <> v1.to_string(cid)
+    Package(package:) -> "@" <> package
+    Version(package:, version:) ->
+      "@" <> package <> ":" <> int.to_string(version)
+    Pinned(release) -> release_to_string(release)
+    Relative(location:) -> location
+  }
+}
+
 /// The identifier of a fully qualified release.
 pub type Release {
   Release(package: String, version: Int, module: v1.Cid)
+}
+
+pub fn release_to_string(release) {
+  let Release(package:, version:, module:) = release
+  "@" <> package <> ":" <> int.to_string(version) <> ":" <> v1.to_string(module)
 }
 
 pub fn variable(label) {

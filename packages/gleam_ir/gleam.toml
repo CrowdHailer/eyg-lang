@@ -1,5 +1,5 @@
 name = "eyg_ir"
-version = "3.1.1"
+version = "3.2.0"
 
 description = "Data structures for the EYG IR"
 licences = ["Apache-2.0"]
