@@ -106,7 +106,7 @@ eyg run -c '!print("hello")'
 To run source from stdin, pass `-` or `--stdin`.
 
 ```sh
-printf 'perform Print("hello")' | eyg run -
+printf 'perform StandardOut("hello")' | eyg run -
 ```
 
 
