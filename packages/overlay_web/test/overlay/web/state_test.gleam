@@ -274,6 +274,17 @@ pub fn side_effect_test() {
   assert #("tool", "{}") == message
 }
 
+pub fn synchronous_effect_resumes_the_program_test() {
+  let status =
+    chat_completion("")
+    |> with_code("abc", "let _ = perform Random(1) 5")
+    |> streaming
+  let state = State(..init(), status:)
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  assert state.Asking([chat.ToolResultMessage("abc", "5", [])]) == state.status
+  let assert [system.FetchStreamResponse(..)] = actions
+}
+
 pub fn module_remains_in_context_for_second_tool_call_test() {
   let assert Ok(#(cid, _)) =
     v1.from_string(

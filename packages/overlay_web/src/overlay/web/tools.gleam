@@ -106,7 +106,8 @@ fn loop(
         Ok(effect) -> {
           case browser.extrinsic(effect) {
             browser.Abort(reason) -> #(ctx, Aborted(reason))
-            browser.Work(system.Done(value)) -> loop(Ok(value), ctx)
+            browser.Work(system.Done(value)) ->
+              loop(expression.resume(value, env, k), ctx)
             browser.Work(effect) -> {
               let id = ctx.counter
 
