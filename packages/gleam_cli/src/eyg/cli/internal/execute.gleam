@@ -24,6 +24,7 @@ import gleam/result.{try}
 import gleam/string
 import kryptos/eddsa
 import multiformats/cid/v1
+import shellout
 import simplifile
 import touch_grass/cryptography/create_key
 import touch_grass/cryptography/hash
@@ -35,9 +36,11 @@ import touch_grass/fetch
 import touch_grass/file_system/append_file
 import touch_grass/file_system/cwd
 import touch_grass/file_system/delete_file
+import touch_grass/file_system/make_directory
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
+import touch_grass/flip
 import touch_grass/harness/computer
 import touch_grass/interface
 import touch_grass/now
@@ -126,6 +129,9 @@ pub fn extrinsic(
       env_effect.encode(result)
       |> promise.resolve
     }
+    computer.Exit(status:) -> {
+      exit(status)
+    }
     computer.EygParse(source:) -> {
       let result = source.parse(source, origin)
       eyg_parse.encode(result)
@@ -136,7 +142,15 @@ pub fn extrinsic(
       let result = result.map_error(result, string.inspect)
       fetch.encode(result)
     }
+    computer.Flip ->
+      flip.sync()
+      |> flip.encode
+      |> promise.resolve
     computer.Hash(input) -> hash.encode(hash(input)) |> promise.resolve
+    computer.MakeDirectory(input) ->
+      make_directory(input)
+      |> make_directory.encode
+      |> promise.resolve
     computer.Now -> {
       let millis = now.sync()
       now.encode(millis)
@@ -503,6 +517,11 @@ pub fn hash(input) {
   }
 }
 
+pub fn make_directory(path: String) -> Result(Nil, String) {
+  simplifile.create_directory_all(path)
+  |> result.map_error(simplifile.describe_error)
+}
+
 pub fn create_key(request) {
   case request {
     create_key.Eddsa -> {
@@ -591,6 +610,13 @@ pub fn delete_file(origin: source.Origin, path) {
   use path <- try(resolve_filepath(origin, path))
   simplifile.delete(path)
   |> result.map_error(simplifile.describe_error)
+}
+
+/// Stop the process. Nothing follows, which is why the harness lowers `Exit`
+/// to `Never`.
+fn exit(status: Int) -> a {
+  shellout.exit(status)
+  panic as "the process did not stop"
 }
 
 // fn spotless_context() -> context.Context(Promise(t), Nil) {
