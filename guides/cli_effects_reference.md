@@ -74,6 +74,20 @@ perform AppendFile({path: "log.txt", contents: !string_to_binary("a line\n")})
 
 Returns `Result({}, String)`.
 
+### `MakeDirectory`
+
+Create a directory and every missing directory above it.
+Relative paths use the same source-expression directory rules as the other file effects.
+
+```eyg
+match perform MakeDirectory("build/output") {
+  Ok(_) -> { "ready" }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+```
+
+Making a directory that already exists succeeds. Returns `Result({}, String)`.
+
 ### `ReadDirectory`
 
 List entries in a directory. Excludes `.` and `..`.
@@ -113,15 +127,56 @@ let millis = perform Now({})
 
 Argument is unit (`{}`). Returns `Int`.
 
-### `Print`
+### `StandardOut`
 
 Write a string to stdout. No newline is added.
 
 ```eyg
-perform Print("hello\n")
+perform StandardOut("hello\n")
 ```
 
 Returns `{}`.
+
+### `StandardError`
+
+Write a string to stderr.
+
+```eyg
+perform StandardError("reading 3 files\n")
+```
+
+Returns `{}`.
+
+### `StandardIn`
+
+Read everything given to the program on standard input.
+The bytes are read to the end rather than one line at a time.
+
+```eyg
+match perform StandardIn({}) {
+  Ok(bytes) -> {
+    match !string_from_binary(bytes) {
+      Ok(text) -> { text }
+      Error(_) -> { !never(perform Abort("input is not utf-8")) }
+    }
+  }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+```
+
+Argument is unit (`{}`). Returns `Ok(Binary) | Error(String)`.
+
+### `Exit`
+
+Stop the process immediately with an integer status.
+A script's final integer value is already its status, this effect is for a program that exits early.
+
+```eyg
+perform Exit(1)
+```
+
+Nothing follows it, so its return type is `Never`.
+
 
 ### `Random`
 
@@ -131,7 +186,20 @@ Returns a uniformly random integer greater than 0 and less than max.
 let dice = !int_add(perform Random(6), 1)
 ```
 
-Argument is unit (`{}`). Returns `Int`.
+Argument is `Int` (the exclusive upper bound). Returns `Int`.
+
+### `Flip`
+
+Returns a random boolean.
+
+```eyg
+match perform Flip({}) {
+  True({}) -> { "heads" }
+  False({}) -> { "tails" }
+}
+```
+
+Argument is unit (`{}`). Returns `True({}) | False({})`.
 
 ### `Sleep`
 
