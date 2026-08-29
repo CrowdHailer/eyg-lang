@@ -25,6 +25,7 @@ import morph/buffer.{type Buffer}
 import morph/picker
 import multiformats/cid/v1
 import touch_grass/harness/browser as harness
+import touch_grass/interface
 
 /// Represents an available manipulation that can be performed on the AST.
 /// `name` is the human-readable label (e.g. "Delete", "Insert Variable").
@@ -291,7 +292,7 @@ fn do_insert_handle(buffer) {
 }
 
 fn effect_hints() {
-  list.map(harness.types(harness.effects()), fn(effect) {
+  list.map(interface.types(harness.effects()), fn(effect) {
     let #(key, types) = effect
     #(key, render_effect(types))
   })

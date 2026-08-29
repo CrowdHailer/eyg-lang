@@ -16,6 +16,7 @@ import morph/buffer
 import morph/input
 import morph/picker
 import touch_grass/harness/browser
+import touch_grass/interface
 import website/command
 import website/components
 import website/manipulation
@@ -562,7 +563,7 @@ fn render_default(
       case return {
         Ok(value) -> render_value(value)
         Error(#(break.UnhandledEffect(label, lift), _, _, _)) ->
-          case browser.cast(label, lift) {
+          case interface.cast(browser.effects(), label, lift) {
             Ok(browser.Abort(reason)) -> render_aborted(reason)
             Ok(_) -> render_pending()
             Error(reason) -> render_exception(reason)

@@ -11,6 +11,7 @@ import touch_grass/decode_json
 import touch_grass/fetch
 import touch_grass/flip
 import touch_grass/harness/browser
+import touch_grass/interface
 import touch_grass/now
 import touch_grass/paste
 import touch_grass/print
@@ -22,7 +23,7 @@ pub fn cast(
   label: String,
   lift: state.Value(m),
 ) -> Result(browser.Effect, state.Reason(m)) {
-  browser.cast(label, lift)
+  interface.cast(browser.effects(), label, lift)
 }
 
 fn done(encode) {

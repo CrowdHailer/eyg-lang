@@ -21,6 +21,7 @@ import pal/platform/browser as platform
 import pal/system
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
+import touch_grass/interface
 import website/command
 import website/config
 import website/manipulation as m
@@ -75,7 +76,11 @@ fn continue(
   gen: fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer,
 ) -> #(State, List(system.Effect(Message))) {
   let State(cache:, origin:, ..) = state
-  let buffer = gen(harness.infer_context(), cache.types(state.cache))
+  let buffer =
+    gen(
+      infer.pure() |> infer.with_effects(interface.types(harness.effects())),
+      cache.types(state.cache),
+    )
   let state = set_example(state, id, buffer)
   let cache = cache.prepare(cache, buffer.source(buffer))
   let #(cache, effects) = flush_cache(cache, origin)

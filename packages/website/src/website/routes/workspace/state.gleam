@@ -29,6 +29,7 @@ import plinth/browser/message_event
 import plinth/browser/window_proxy
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
+import touch_grass/interface
 import website/command
 import website/config
 import website/manipulation as m
@@ -116,7 +117,7 @@ pub fn repl_context(
 ) -> infer.Context {
   let #(bindings, env) = analysis.env_to_tenv(scope, [])
   infer.Context(env:, eff: t.Empty, level: 0, bindings:)
-  |> infer.with_effects(harness.types(harness.effects()))
+  |> infer.with_effects(interface.types(harness.effects()))
 }
 
 /// This is a fake hash that is used to lookup specifically in the case of relative dependencies.
