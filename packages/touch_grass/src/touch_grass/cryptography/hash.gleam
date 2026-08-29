@@ -1,8 +1,11 @@
 //// Computes a cryptographic digest of a binary.
 
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/result.{try}
+
+pub const label = "Hash"
 
 pub type Algorithm {
   Sha256
@@ -10,6 +13,17 @@ pub type Algorithm {
 
 pub type Input {
   Input(algorithm: Algorithm, bytes: BitArray)
+}
+
+pub fn lift() {
+  t.record([
+    #("algorithm", t.union([#("SHA256", t.unit)])),
+    #("bytes", t.Binary),
+  ])
+}
+
+pub fn lower() {
+  t.Binary
 }
 
 pub fn decode(lift) {

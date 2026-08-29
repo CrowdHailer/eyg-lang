@@ -3,12 +3,27 @@
 //// Accepts a limit by default, this should be large.
 //// The effect doesn't assume a file is kept open and so streaming very large files should be handled as a different effect.
 
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/result.{try}
 
+pub const label = "ReadFile"
+
 pub type Input {
   Input(path: String, offset: Int, limit: Int)
+}
+
+pub fn lift() {
+  t.record([
+    #("path", t.String),
+    #("offset", t.Integer),
+    #("limit", t.Integer),
+  ])
+}
+
+pub fn lower() {
+  t.result(t.Binary, t.String)
 }
 
 pub fn decode(input) {

@@ -1,12 +1,23 @@
 //// Append contents to a file, starts at beginning if file is empty or does not exist.
 //// Should be safe for concurrent appends.
 
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import gleam/result.{try}
 
+pub const label = "AppendFile"
+
 pub type Input {
   Input(path: String, contents: BitArray)
+}
+
+pub fn lift() {
+  t.record([#("path", t.String), #("contents", t.Binary)])
+}
+
+pub fn lower() {
+  t.result(t.unit, t.String)
 }
 
 pub fn decode(input) {

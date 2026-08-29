@@ -3,8 +3,19 @@
 //// Deleting a file that does not exist is an error, surfaced via the
 //// `Result` return type.
 
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
+
+pub const label = "DeleteFile"
+
+pub fn lift() {
+  t.String
+}
+
+pub fn lower() {
+  t.result(t.unit, t.String)
+}
 
 pub fn decode(input) {
   cast.as_string(input)

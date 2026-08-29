@@ -11,12 +11,8 @@
 //// The harness specification is not shared with the cli specification because there are a few differences in effects available.
 //// Consistency accross platforms is managed by resusing touch_grass interfaces
 
-import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
-import eyg/interpreter/break
-import eyg/interpreter/value as v
 import gleam/http/request.{type Request}
-import gleam/list
 import gleam/uri
 import ogre/operation
 import touch_grass as tg
@@ -63,11 +59,7 @@ pub fn effect_label(service: Service) -> String {
 // Prompt should work as a Readline in the cli
 // OAuth 2.0 + MCP can be another effect if no server registration is required
 
-/// The harness types concretly implementing the browser harness effect types
-pub type Harness(a, b) =
-  List(interface.Interface(Effect, a, b))
-
-fn spotless(service: Service) -> interface.Interface(Effect, a, b) {
+fn spotless(service: Service) -> interface.Interface(Effect, a) {
   Interface(
     name: effect_label(service),
     lift_type: http.operation(),
@@ -82,7 +74,7 @@ fn spotless(service: Service) -> interface.Interface(Effect, a, b) {
 // 
 // examples can use a smaller number of effects, down to zero,
 // but continue to use this type.
-pub fn effects() -> Harness(a, b) {
+pub fn effects() -> interface.Harness(Effect, a) {
   [
     tg.abort() |> tg.map(Abort),
     tg.alert() |> tg.map(Alert),
@@ -102,42 +94,4 @@ pub fn effects() -> Harness(a, b) {
     spotless(GitHub),
     spotless(Vimeo),
   ]
-}
-
-pub fn take(labels) {
-  list.filter(effects(), fn(interface) {
-    let Interface(name:, ..) = interface
-    list.any(labels, fn(l) { l == name })
-  })
-}
-
-pub fn cast(
-  label: String,
-  input: v.Value(a, b),
-) -> Result(Effect, break.Reason(a, b)) {
-  case list.find(effects(), fn(i) { i.name == label }) {
-    Ok(Interface(decode:, ..)) -> decode(input)
-    Error(Nil) -> Error(break.UnhandledEffect(label, input))
-  }
-}
-
-pub fn types(
-  harness: Harness(_, _),
-) -> List(#(String, #(t.Type(Int), t.Type(Int)))) {
-  list.map(harness, fn(interface) {
-    let Interface(name:, lift_type:, lower_type:, ..) = interface
-    #(name, #(lift_type, lower_type))
-  })
-}
-
-pub fn infer_context() -> infer.Context {
-  infer.pure()
-  |> infer.with_effects(types(effects()))
-}
-
-pub fn decode_list(harness) {
-  list.map(harness, fn(interface) {
-    let Interface(name:, decode:, ..) = interface
-    #(name, decode)
-  })
 }
