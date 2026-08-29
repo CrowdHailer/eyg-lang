@@ -85,8 +85,8 @@ pub fn share_bundle(
 pub fn get_module(
   cid: v1.Cid,
   client: Client,
-) -> Promise(Result(ir.Node(Nil), String)) {
-  client.fetch_module(cid, client.origin, bun_platform.fetch)(promise.resolve)
+) -> system.Effect(Result(ir.Node(Nil), String)) {
+  client.fetch_module(cid, client.origin, fetch)(system.Done)
 }
 
 pub fn submit_release(
@@ -139,12 +139,9 @@ pub fn pull_packages(
 /// Run cache actions until the cache has no more work to do.
 /// Failed pulls are retried up to three times, five seconds apart.
 pub fn run_all(cache: Cache(Nil)) -> system.Effect(Cache(Nil)) {
-  run_all_with(
-    cache,
-    configured_origin(),
-    fn(request) { fn(resume) { system.Fetch(request, resume) } },
-    fn(duration) { fn(resume) { system.Wait(duration, resume) } },
-  )(system.Done)
+  run_all_with(cache, configured_origin(), fetch, fn(duration) {
+    fn(resume) { system.Wait(duration, resume) }
+  })(system.Done)
 }
 
 /// Run cache actions with explicit dependencies for deterministic tests.
@@ -210,4 +207,8 @@ fn run_actions(
       run_actions(rest, cache, origin, fetch)
     }
   }
+}
+
+fn fetch(request) {
+  system.Fetch(request, _)
 }

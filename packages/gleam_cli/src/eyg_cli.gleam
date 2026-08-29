@@ -64,7 +64,7 @@ fn with_config(parsed) {
     args.Compile(input:) -> system.run(compile.execute(input, config))
     args.Parse(input:) -> system.run(parse.execute(input, config))
     args.Share(input:) -> system.run(share.execute(input, config))
-    args.Fetch(cid:) -> fetch.execute(cid, config)
+    args.Fetch(cid:) -> system.run(fetch.execute(cid, config))
     args.Publish(package:, file:) -> publish.execute(package, file, config)
     args.SignatoryInitial(name:) -> signatory.initial(name, config)
   }

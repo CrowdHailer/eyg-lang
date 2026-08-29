@@ -259,7 +259,7 @@ fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
   let client = state.config.client
   case effect {
     cache.FetchModule(dep) -> {
-      use result <- promise.map(client.get_module(dep, client))
+      use result <- promise.map(system.run(client.get_module(dep, client)))
 
       case result {
         Ok(source) ->
