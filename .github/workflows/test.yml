@@ -11,7 +11,7 @@ permissions:
 env:
   POSTGRES_PASSWORD: banana-penguin-truck
   SECRET_KEY_BASE: word-button-noodle
-  EYG_CLI_VERSION: gleam_cli-v0.0.1
+  EYG_CLI_VERSION: gleam_cli-v0.0.4
 
 jobs:
   test-beam:

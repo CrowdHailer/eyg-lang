@@ -72,7 +72,7 @@ The following effects can be managed.
 - `AppendFile`
 - `DeleteFile`
 
-Non-result effects such as `Print`, `Now`, `Random`, and `Sleep` are not managed by this package.
+Non-result effects such as `StandardOut`, `Now`, `Random`, and `Sleep` are not managed by this package.
 
 This library introduces no new control flow, denied effects will be handled in the same way by the executing function as any other failure.
 

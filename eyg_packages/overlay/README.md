@@ -24,6 +24,6 @@ The handlers intercept:
 - `ReadFile`, `ReadDirectory`
 - `WriteFile`, `AppendFile`, `DeleteFile`
 
-Non-result effects (`Print`, `Now`, `Random`, `Sleep`) are not
+Non-result effects (`StandardOut`, `Now`, `Random`, `Sleep`) are not
 managed. They pass through unchanged.
 

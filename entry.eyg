@@ -19,7 +19,7 @@ let debug = aok.debug(tests)
 
 {
   script: (arguments) -> {
-    let _ = perform Print("welcome to the EYG repo\n")
+    let _ = perform StandardOut("welcome to the EYG repo\n")
     let counts = test({})
     match !equal(counts.failed, 0) {
       True({}) -> { 0 }

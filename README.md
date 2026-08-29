@@ -14,7 +14,7 @@ A hello world example script.
 #!/usr/bin/env eyg
 {
   script: (_) -> {
-    let _ = perform Print("Hello, World!\n")
+    let _ = perform StandardOut("Hello, World!\n")
     0
   }
 }

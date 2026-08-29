@@ -3,7 +3,7 @@ let contains = list_helpers.contains
 let reverse = list_helpers.reverse
 
 let print_line = (line) -> {
-  perform Print(!string_append(line, "\n"))
+  perform StandardOut(!string_append(line, "\n"))
 }
 
 let path_join = (before, after) -> {

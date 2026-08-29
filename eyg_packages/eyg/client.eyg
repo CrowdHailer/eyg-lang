@@ -8,7 +8,7 @@ let expect = (result, message) -> {
 }
 
 let print_line = (line) -> {
-  perform Print(!string_append(line, "\n"))
+  perform StandardOut(!string_append(line, "\n"))
 }
 
 let origin = {scheme: HTTPS({}), host: "eyg.run", port: None({})}

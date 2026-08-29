@@ -142,12 +142,12 @@ Functions always require at least one parameter, it can be discarded using `_`:
 
 ```eyg
 // incorrect, no parameters
-() -> { perform Print("hello\n") }
+() -> { perform StandardOut("hello\n") }
 ```
 
 ```eyg
 // correct, at least one parameter
-(_) -> { perform Print("hello\n") }
+(_) -> { perform StandardOut("hello\n") }
 ```
 
 ### Calling Functions
@@ -452,7 +452,7 @@ let parse_age = (s) -> {
 }
 
 match parse_age("42") {
-  Ok(age) -> { perform Print(age) }
-  Error(msg) -> { perform Print(msg) }
+  Ok(age) -> { perform StandardOut(!int_to_string(age)) }
+  Error(msg) -> { perform StandardOut(msg) }
 }
 ```

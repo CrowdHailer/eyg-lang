@@ -25,18 +25,21 @@ Use `aok.expect` to write tests that assert an effect is raised.
 
 ```eyg
 let my_func = (name) -> {
-  perform Print(!string_append("Hello, ", name))
+  perform StandardOut(!string_append("Hello, ", name))
 }
 
 [
-  {name: "addition",
+  {name: "greeting",
     test: (_) -> {
-      let {lift: message, resume} = expect.print(my_func, "Bill")
-      let _ = assert.equal(message, "Hello, Bob") 
-      assert.equal(resume({}), {})
+      let {lift: message} = expect.standard_out(my_func, "Bill")
+      assert.equal(message, "Hello, Bill")
   }},
 ]
 ```
+
+The record also carries `resume`, which runs the rest of the function under
+test. It answers with the next `{lift, resume}` if the function performs the
+effect again, and aborts if it finishes without doing so.
 
 ## Running test
 

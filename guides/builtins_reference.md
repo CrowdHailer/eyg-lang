@@ -78,7 +78,7 @@ There is no dedicated `each` builtin — fold with a discard accumulator:
 
 ```eyg
 let _ = !list_fold(items, {}, (item, _) -> {
-  perform Print(!string_append(item, "\n"))
+  perform StandardOut(!string_append(item, "\n"))
 })
 ```
 

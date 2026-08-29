@@ -15,7 +15,7 @@ Write the complete contents of a file
 let edit = import "../eyg_packages/edit/index.eyg"
 
 match edit.write_text({path: "./notes.txt", text: "first draft\n"}) {
-  Ok(_) -> { perform Print("written\n") }
+  Ok(_) -> { perform StandardOut("written\n") }
   Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
@@ -28,7 +28,7 @@ Find and replace all occurances of a string within a file.
 let edit = import "../eyg_packages/edit/index.eyg"
 
 match edit.patch({path: "./config.json", find: "\"debug\": false", replace: "\"debug\": true"}) {
-  Ok(_) -> { perform Print("config updated\n") }
+  Ok(_) -> { perform StandardOut("config updated\n") }
   Error(reason) -> { !never(perform Abort(reason)) }
 }
 ```
@@ -90,8 +90,8 @@ let source_files = list.filter((path) -> { string.ends_with(path, ".gleam") }, f
 
 list.each((path) -> {
   match edit.patch({path, find: "version = \"1.0\"", replace: "version = \"2.0\""}) {
-    Ok(_) -> { perform Print(!string_append("patched: ", path)) }
-    Error(_) -> { perform Print(!string_append("skipped: ", path)) }
+    Ok(_) -> { perform StandardOut(!string_append("patched: ", path)) }
+    Error(_) -> { perform StandardOut(!string_append("skipped: ", path)) }
   }
 }, source_files)
 ```

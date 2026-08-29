@@ -67,12 +67,12 @@ let expect = {
       !never(perform Abort("expected `Log` effect, none was performed"))
     })
   },
-  print: (f, arg) -> {
-    handle Print((lift, resume) -> {
+  standard_out: (f, arg) -> {
+    handle StandardOut((lift, resume) -> {
       {lift, resume}
     }, (_) -> {
       let _ = f(arg)
-      !never(perform Abort("expected `Print` effect, none was performed"))
+      !never(perform Abort("expected `StandardOut` effect, none was performed"))
     })
   },
   abort: (f, arg) -> {
@@ -115,11 +115,11 @@ let run_all = (tests) -> {
 }
 
 let print_line = (line) -> {
-  perform Print(!string_append(line, "\n"))
+  perform StandardOut(!string_append(line, "\n"))
 }
 
 // Run every test and print a one-line PASS/FAIL report per test plus
-// a trailing summary. Performs `Print` for reporting but catches
+// a trailing summary. Performs `StandardOut` for reporting but catches
 // `Abort` per test, so the program only ever observes the abort
 // message - not the stack. Returns `{passed, failed}`.
 //
