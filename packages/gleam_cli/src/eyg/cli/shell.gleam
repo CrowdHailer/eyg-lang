@@ -5,6 +5,7 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/cli/internal/execute
 import eyg/cli/internal/ir
 import eyg/cli/internal/source
+import eyg/cli/system
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/simple_debug
@@ -30,7 +31,7 @@ pub fn execute(input, config) {
         |> result.map_error(simplifile.describe_error),
       )
       use input <- promisex.try_sync(execute.normalize_input(cwd, input))
-      use code <- promisex.try_sync(source.read_input(input))
+      use code <- promise.try_await(system.run(source.read_input(input)))
       use source <- promisex.try_sync(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
       use result <- promise.await(execute.block(source, [], state))

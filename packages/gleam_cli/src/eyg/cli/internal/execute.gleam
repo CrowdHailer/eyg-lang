@@ -393,7 +393,7 @@ fn lookup_relative(
 ) -> Promise(Result(Value, Reason)) {
   case resolve_filepath(origin, location) {
     Ok(path) -> {
-      case source.read_file(path) {
+      case system.do_read_file(path) {
         Ok(code) ->
           case source.parse(code, source.Disk(path:)) {
             Ok(source) -> {

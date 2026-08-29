@@ -23,7 +23,7 @@ pub fn execute(
   })
   {
     let input = source.File(file)
-    use code <- system.then(source.read_input_effect(input))
+    use code <- system.then(source.read_input(input))
     use code <- system.try(code)
     use source <- system.try(source.parse_input(code, source.File(file)))
     use module <- system.then(client.share_module(source, config.client))

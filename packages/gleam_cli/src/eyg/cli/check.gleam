@@ -15,7 +15,7 @@ pub fn execute(
   input: source.Input,
   _config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
-  use code <- system.then(source.read_input_effect(input))
+  use code <- system.then(source.read_input(input))
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
 

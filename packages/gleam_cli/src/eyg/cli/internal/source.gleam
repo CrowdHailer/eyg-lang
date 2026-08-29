@@ -6,7 +6,7 @@ import eyg/parser/location
 import gleam/json
 import gleam/list
 import gleam/option
-import gleam/result.{try}
+import gleam/result
 import gleam/string
 import multiformats/cid/v1
 
@@ -36,36 +36,31 @@ pub type Source {
   Json
 }
 
-pub fn read_input_effect(
-  input: Input,
-) -> system.Effect(Result(String, String)) {
+/// Read the source a command was given, from a file, standard input, or the
+/// command line.
+pub fn read_input(input: Input) -> system.Effect(Result(String, String)) {
   case input {
-    File(path:) -> system.read_file(path)
+    File(path:) -> {
+      use code <- system.then(system.read_file(path))
+      system.Done(result.map(code, strip_shebang))
+    }
     Code(code:) -> system.Done(Ok(code))
     Stdin -> system.stdin()
   }
 }
 
-// TODO remove
-pub fn read_input(input: Input) -> Result(String, String) {
-  case input {
-    File(path:) -> read_file(path)
-    Code(code:) -> Ok(code)
-    Stdin -> system.read_stdin()
-  }
-}
-
-// TODO remove
-pub fn read_file(file: String) -> Result(String, String) {
-  use code <- try(system.do_read_file(file))
+/// Drop the `#!` line a script file starts with.
+///
+/// The line makes a module runnable as a command and is not part of the
+/// source, so every reader of a file drops it.
+pub fn strip_shebang(code: String) -> String {
   case string.starts_with(code, "#!") {
-    True -> {
+    True ->
       case string.split_once(code, "\n") {
-        Ok(#(_, rest)) -> Ok(rest)
-        Error(Nil) -> Ok("")
+        Ok(#(_, rest)) -> rest
+        Error(Nil) -> ""
       }
-    }
-    False -> Ok(code)
+    False -> code
   }
 }
 
