@@ -1,8 +1,8 @@
 import envoy
-import eyg/cli/internal/bun_platform
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
+import eyg/cli/system
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -13,9 +13,9 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser/location
 import filepath
+import gleam/bit_array
 import gleam/crypto
 import gleam/fetchx
-import gleam/http/request
 import gleam/int
 import gleam/javascript/promise.{type Promise}
 import gleam/list
@@ -24,13 +24,7 @@ import gleam/result.{try}
 import gleam/string
 import kryptos/eddsa
 import multiformats/cid/v1
-import ogre/operation
-import ogre/origin
 import simplifile
-import spotless
-import spotless/context
-import spotless/oauth_2_1/token
-import spotless/proof_key_for_code_exchange as pkce
 import touch_grass/cryptography/create_key
 import touch_grass/cryptography/hash
 import touch_grass/cryptography/sign
@@ -44,11 +38,14 @@ import touch_grass/file_system/delete_file
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
-import touch_grass/http
+import touch_grass/harness/computer
+import touch_grass/interface
 import touch_grass/now
-import touch_grass/print
 import touch_grass/random
 import touch_grass/sleep
+import touch_grass/standard_error
+import touch_grass/standard_in
+import touch_grass/standard_out
 import untethered/ledger/schema
 
 pub type Value =
@@ -82,20 +79,6 @@ pub type CacheUpdate {
   Pulled(result: Result(List(schema.ArchivedEntry), String))
 }
 
-// helper that rebuilds debug context of error
-fn try_sync(
-  result: Result(t, Reason),
-  meta: source.Location,
-  env: Env,
-  k: Stack,
-  then: fn(t) -> Promise(Result(#(Option(Value), Scope), Debug)),
-) -> Promise(Result(#(Option(Value), Scope), Debug)) {
-  case result {
-    Ok(value) -> then(value)
-    Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
-  }
-}
-
 fn try_await(
   result: Promise(Result(t, Reason)),
   meta: source.Location,
@@ -110,6 +93,101 @@ fn try_await(
   }
 }
 
+/// The implementation of the harness/computer effects.
+/// Implemented as promises, not based on system.Effect.
+pub fn extrinsic(
+  effect: computer.Effect,
+  origin: source.Origin,
+) -> Promise(v.Value(a, b)) {
+  case effect {
+    computer.AppendFile(input) -> {
+      let output = append_file(origin, input)
+      append_file.encode(output)
+      |> promise.resolve
+    }
+    computer.CreateKey(request) -> {
+      let output = create_key(request)
+      create_key.encode(output)
+      |> promise.resolve
+    }
+    computer.Cwd -> {
+      let output = cwd()
+      cwd.encode(output)
+      |> promise.resolve
+    }
+    computer.DecodeJson(encoded) -> decode_json.sync(encoded) |> promise.resolve
+    computer.DeleteFile(path:) -> {
+      let output = delete_file(origin, path)
+      delete_file.encode(output)
+      |> promise.resolve
+    }
+    computer.Env(name:) -> {
+      let result = envoy.get(name) |> option.from_result
+      env_effect.encode(result)
+      |> promise.resolve
+    }
+    computer.EygParse(source:) -> {
+      let result = source.parse(source, origin)
+      eyg_parse.encode(result)
+      |> promise.resolve
+    }
+    computer.Fetch(request) -> {
+      use result <- promise.map(fetchx.send_bits(request))
+      let result = result.map_error(result, string.inspect)
+      fetch.encode(result)
+    }
+    computer.Hash(input) -> hash.encode(hash(input)) |> promise.resolve
+    computer.Now -> {
+      let millis = now.sync()
+      now.encode(millis)
+      |> promise.resolve
+    }
+    computer.Random(max) -> {
+      let n = random.sync(max)
+      random.encode(n) |> promise.resolve
+    }
+    computer.ReadDirectory(path:) -> {
+      let output = read_directory(origin, path)
+      read_directory.encode(output)
+      |> promise.resolve
+    }
+    computer.ReadFile(input) -> {
+      let output = read_file(origin, input)
+      read_file.encode(output) |> promise.resolve
+    }
+    computer.Sign(request) -> {
+      let output = sign(request)
+      sign.encode(output)
+      |> promise.resolve
+    }
+    computer.Sleep(ms) -> {
+      use Nil <- promise.map(promise.wait(ms))
+      sleep.encode(Nil)
+    }
+    computer.StandardError(text) -> {
+      standard_error.sync(text)
+      |> standard_error.encode
+      |> promise.resolve
+    }
+    computer.StandardIn -> {
+      system.read_stdin()
+      |> result.map(bit_array.from_string)
+      |> standard_in.encode()
+      |> promise.resolve
+    }
+    computer.StanardOut(text) -> {
+      standard_out.sync(text)
+      |> standard_out.encode
+      |> promise.resolve
+    }
+    computer.WriteFile(input) -> {
+      let output = write_file(origin, input)
+      write_file.encode(output)
+      |> promise.resolve
+    }
+  }
+}
+
 pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
@@ -118,109 +196,16 @@ pub fn loop(
     Ok(return) -> promise.resolve(Ok(return))
     Error(#(reason, meta, env, k)) ->
       case reason {
-        break.UnhandledEffect("AppendFile", lift) -> {
-          use input <- try_sync(append_file.decode(lift), meta, env, k)
-          let output = append_file(meta.origin, input)
-          loop(block.resume(append_file.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("CreateKey", lift) -> {
-          use request <- try_sync(create_key.decode(lift), meta, env, k)
-          let output = create_key(request)
-          loop(block.resume(create_key.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("CWD", lift) -> {
-          use Nil <- try_sync(cwd.decode(lift), meta, env, k)
-          let output = cwd()
-          loop(block.resume(cwd.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("DecodeJSON", lift) -> {
-          use encoded <- try_sync(decode_json.decode(lift), meta, env, k)
-          loop(block.resume(decode_json.sync(encoded), env, k), state)
-        }
-        break.UnhandledEffect("DeleteFile", lift) -> {
-          use path <- try_sync(delete_file.decode(lift), meta, env, k)
-          let output = delete_file(meta.origin, path)
-          loop(block.resume(delete_file.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("DNSimple", lift) -> {
-          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
-          use result <- promise.try_await(service_fetch("dnsimple", operation))
-          loop(block.resume(fetch.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("Env", lift) -> {
-          use name <- try_sync(env_effect.decode(lift), meta, env, k)
-          let result = envoy.get(name) |> option.from_result
-          loop(block.resume(env_effect.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("EYGParse", lift) -> {
-          use code <- try_sync(eyg_parse.decode(lift), meta, env, k)
-          let result = source.parse(code, meta.origin)
-          loop(block.resume(eyg_parse.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("Fetch", lift) -> {
-          use request <- try_sync(fetch.decode(lift), meta, env, k)
-          use result <- promise.await(fetchx.send_bits(request))
-          let result = result.map_error(result, string.inspect)
-          loop(block.resume(fetch.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("GitHub", lift) -> {
-          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
-          use result <- promise.try_await(service_fetch("github", operation))
-          loop(block.resume(fetch.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("Hash", lift) -> {
-          use input <- try_sync(hash.decode(lift), meta, env, k)
-          loop(block.resume(hash.encode(hash(input)), env, k), state)
-        }
-        break.UnhandledEffect("Netlify", lift) -> {
-          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
-          use result <- promise.try_await(service_fetch("netlify", operation))
-          loop(block.resume(fetch.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("Now", _lift) -> {
-          let millis = now.sync()
-          loop(block.resume(now.encode(millis), env, k), state)
-        }
-        break.UnhandledEffect("Print", lift) -> {
-          use message <- try_sync(print.decode(lift), meta, env, k)
-          print.sync(message)
-          loop(block.resume(print.encode(Nil), env, k), state)
-        }
-        break.UnhandledEffect("Random", lift) -> {
-          use max <- try_sync(random.decode(lift), meta, env, k)
-          let n = random.sync(max)
-          loop(block.resume(random.encode(n), env, k), state)
-        }
-        break.UnhandledEffect("ReadDirectory", lift) -> {
-          use input <- try_sync(read_directory.decode(lift), meta, env, k)
-          let output = read_directory(meta.origin, input)
-          loop(block.resume(read_directory.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("ReadFile", lift) -> {
-          use input <- try_sync(read_file.decode(lift), meta, env, k)
-          let output = read_file(meta.origin, input)
-          loop(block.resume(read_file.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("Sign", lift) -> {
-          use request <- try_sync(sign.decode(lift), meta, env, k)
-          let output = sign(request)
-          loop(block.resume(sign.encode(output), env, k), state)
-        }
-        break.UnhandledEffect("Sleep", lift) -> {
-          use ms <- try_sync(sleep.decode(lift), meta, env, k)
-          use Nil <- promise.await(promise.wait(ms))
-          loop(block.resume(sleep.encode(Nil), env, k), state)
-        }
-        break.UnhandledEffect("Vimeo", lift) -> {
-          use operation <- try_sync(http.operation_to_gleam(lift), meta, env, k)
-          use result <- promise.try_await(service_fetch("vimeo", operation))
-          loop(block.resume(fetch.encode(result), env, k), state)
-        }
-        break.UnhandledEffect("WriteFile", lift) -> {
-          use input <- try_sync(write_file.decode(lift), meta, env, k)
-          let output = write_file(meta.origin, input)
-          loop(block.resume(write_file.encode(output), env, k), state)
-        }
+        break.UnhandledEffect(label, lift) ->
+          case interface.cast(computer.effects(), label, lift) {
+            Ok(effect) -> {
+              use value <- promise.await(extrinsic(effect, meta.origin))
+              loop(block.resume(value, env, k), state)
+            }
+
+            Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
+          }
+
         break.UndefinedReference(ir.Content(cid)) -> {
           use value <- try_await(lookup_reference(cid, state), meta, env, k)
           loop(block.resume(value, env, k), state)
@@ -608,52 +593,52 @@ pub fn delete_file(origin: source.Origin, path) {
   |> result.map_error(simplifile.describe_error)
 }
 
-fn spotless_context() -> context.Context(Promise(t), Nil) {
-  context.Context(
-    export_jwk: fn(_key) { panic as "export_jwk not implemented" },
-    follow: bun_platform.follow,
-    fetch: bun_platform.fetch,
-    hash: bun_platform.hash,
-    sign: fn(_, _, _) { panic as "sign not implemented" },
-    strong_random: bun_platform.strong_random,
-    unix_now: fn() { panic as "unix_now not implemented" },
-  )
-}
+// fn spotless_context() -> context.Context(Promise(t), Nil) {
+//   context.Context(
+//     export_jwk: fn(_key) { panic as "export_jwk not implemented" },
+//     follow: bun_platform.follow,
+//     fetch: bun_platform.fetch,
+//     hash: bun_platform.hash,
+//     sign: fn(_, _, _) { panic as "sign not implemented" },
+//     strong_random: bun_platform.strong_random,
+//     unix_now: fn() { panic as "unix_now not implemented" },
+//   )
+// }
 
-fn service_fetch(service, operation) {
-  let port = 8080
-  use result <- promise.await(spotless.authenticate(
-    service,
-    [],
-    "",
-    port,
-    pkce.S256,
-    spotless_context(),
-  )(promise.resolve))
-  use result <- promise.await(case result {
-    Ok(token.Response(access_token:, ..)) -> {
-      let request = service_request(service, operation, access_token)
-      use result <- promise.map(fetchx.send_bits(request))
-      result.map_error(result, string.inspect)
-    }
-    Error(reason) -> promise.resolve(Error(reason))
-  })
-  promise.resolve(Ok(result))
-}
+// fn service_fetch(service, operation) {
+//   let port = 8080
+//   use result <- promise.await(spotless.authenticate(
+//     service,
+//     [],
+//     "",
+//     port,
+//     pkce.S256,
+//     spotless_context(),
+//   )(promise.resolve))
+//   use result <- promise.await(case result {
+//     Ok(token.Response(access_token:, ..)) -> {
+//       let request = service_request(service, operation, access_token)
+//       use result <- promise.map(fetchx.send_bits(request))
+//       result.map_error(result, string.inspect)
+//     }
+//     Error(reason) -> promise.resolve(Error(reason))
+//   })
+//   promise.resolve(Ok(result))
+// }
 
-fn service_request(service, operation, token) {
-  let origin = case service {
-    "dnsimple" -> origin.https("api.dnsimple.com")
-    "github" -> origin.https("api.github.com")
-    "netlify" -> origin.https("api.netlify.com")
-    "tavily" -> origin.https("api.tavily.com")
-    "vimeo" -> origin.https("api.vimeo.com")
-    // TODO this could be fixed by passing an enum of services through.
-    _ -> panic as "unknown service"
-  }
-  operation.to_request(operation, origin)
-  |> request.set_header("authorization", "Bearer " <> token)
-}
+// fn service_request(service, operation, token) {
+//   let origin = case service {
+//     "dnsimple" -> origin.https("api.dnsimple.com")
+//     "github" -> origin.https("api.github.com")
+//     "netlify" -> origin.https("api.netlify.com")
+//     "tavily" -> origin.https("api.tavily.com")
+//     "vimeo" -> origin.https("api.vimeo.com")
+//     // TODO this could be fixed by passing an enum of services through.
+//     _ -> panic as "unknown service"
+//   }
+//   operation.to_request(operation, origin)
+//   |> request.set_header("authorization", "Bearer " <> token)
+// }
 
 /// One frame of the runtime stack trace - the failing expression's
 /// meta (with `arg: None`) plus every closure call recorded by a
