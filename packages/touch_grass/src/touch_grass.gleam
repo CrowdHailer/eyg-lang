@@ -9,6 +9,7 @@ import touch_grass/cryptography/sign
 import touch_grass/decode_json
 import touch_grass/download
 import touch_grass/env
+import touch_grass/exit
 import touch_grass/eyg_parse
 import touch_grass/fetch
 import touch_grass/file_system/append_file
@@ -90,6 +91,10 @@ pub fn download() -> Interface(download.Input, a) {
 
 pub fn env() -> Interface(String, a) {
   Interface(env.label, env.lift(), env.lower(), env.decode)
+}
+
+pub fn exit() -> Interface(Int, a) {
+  Interface(exit.label, exit.lift(), exit.lower(), exit.decode)
 }
 
 pub fn eyg_parse() -> Interface(String, a) {
