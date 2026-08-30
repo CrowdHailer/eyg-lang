@@ -261,8 +261,8 @@ pub fn side_effect_test() {
   let state = State(..init(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Executing([call]) = state.status
-  assert id == call.0
-  let assert tools.Handling(..) = call.1
+  assert id == call.id
+  let assert tools.Handling(..) = call.call
   let assert [system.Alert("Hello World", resume:)] = actions
   let assert system.Done(message) = resume()
   let #(state, actions) = state.update(state, message)
@@ -300,7 +300,7 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Executing([call]) = state.status
 
-  let assert tools.Pending(dep:, ..) = call.1
+  let assert tools.Pending(dep:, ..) = call.call
   assert cache.Content(cid) == dep
   assert [] == actions
 
@@ -470,4 +470,54 @@ fn run_code(id, code) {
       ]),
     ),
   )
+}
+
+pub fn printed_output_is_returned_to_the_agent_test() {
+  let code =
+    "let _ = perform Print(\"first\") let _ = perform Print(\"second\") 5"
+  let status = chat_completion("") |> with_code("abc", code) |> streaming
+  let state = State(..init(), status:)
+  let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  assert state.Asking([
+      chat.ToolResultMessage("abc", "Output:\nfirstsecond\nResult:\n5", []),
+    ])
+    == state.status
+}
+
+pub fn printing_before_an_effect_suspends_test() {
+  let code = "let _ = perform Print(\"before\") perform Alert(\"hi\")"
+  let status = chat_completion("") |> with_code("abc", code) |> streaming
+  let state = State(..init(), status:)
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  let assert [system.Alert("hi", resume:)] = actions
+  let assert system.Done(message) = resume()
+  let #(state, _actions) = state.update(state, message)
+  assert state.Asking([
+      chat.ToolResultMessage("abc", "Output:\nbefore\nResult:\n{}", []),
+    ])
+    == state.status
+}
+
+pub fn printing_before_a_module_suspends_test() {
+  let assert Ok(#(cid, _)) =
+    v1.from_string(
+      "bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy",
+    )
+  let code =
+    "let _ = perform Print(\"before\") !int_add(#"
+    <> v1.to_string(cid)
+    <> ", 1)"
+  let status = chat_completion("") |> with_code("abc", code) |> streaming
+  let state = State(..init(), status:)
+  let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+
+  let #(state, _) =
+    state.update(
+      state,
+      state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(ir.integer(6)))),
+    )
+  assert state.Asking([
+      chat.ToolResultMessage("abc", "Output:\nbefore\nResult:\n7", []),
+    ])
+    == state.status
 }

@@ -52,7 +52,7 @@ pub type AgentStatus {
     completion: chat.Completion(tool.Call),
     remaining: BitArray,
   )
-  Executing(calls: List(#(String, tools.Call)))
+  Executing(calls: tools.Calls)
 }
 
 pub fn new(config: Config) -> State {
