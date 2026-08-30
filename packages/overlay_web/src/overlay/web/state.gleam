@@ -296,6 +296,10 @@ fn resolve_calls(return, state: State) {
       }),
     )
 
+  let state = State(..state, cache:, counter:)
+  let #(state, cache_effects) = flush(state)
+  let effects = list.append(cache_effects, effects)
+
   let #(status, effects) = case tools.all_returns(calls) {
     Error(Nil) -> #(Executing(calls), effects)
     Ok(messages) -> #(Asking(messages), [
@@ -304,8 +308,7 @@ fn resolve_calls(return, state: State) {
     ])
   }
 
-  let state = State(..state, status:, cache:, counter:)
-  #(state, effects)
+  #(State(..state, status:), effects)
 }
 
 fn fetch_completion(state, messages) {

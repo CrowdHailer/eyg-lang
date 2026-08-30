@@ -302,7 +302,8 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
 
   let assert tools.Pending(dep:, ..) = call.call
   assert cache.Content(cid) == dep
-  assert [] == actions
+  let assert [system.Fetch(request:, ..)] = actions
+  assert "/modules/" <> v1.to_string(cid) == request.path
 
   let #(state, actions) =
     state.update(
@@ -509,7 +510,8 @@ pub fn printing_before_a_module_suspends_test() {
     <> ", 1)"
   let status = chat_completion("") |> with_code("abc", code) |> streaming
   let state = State(..init(), status:)
-  let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  let assert [system.Fetch(..)] = actions
 
   let #(state, _) =
     state.update(
