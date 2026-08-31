@@ -108,6 +108,7 @@ pub type Effect(m) {
     uri: uri.Uri,
     resume: fn(Result(window_proxy.WindowProxy, String)) -> Effect(m),
   )
+  Wait(milliseconds: Int, resume: fn() -> Effect(m))
   WriteToClipboard(text: String, resume: fn(Result(Nil, String)) -> Effect(m))
 }
 
@@ -148,6 +149,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
     Spotless(service, origin, resume) ->
       Spotless(service, origin, fn(x) { then(resume(x), func) })
     Visit(uri, resume) -> Visit(uri, fn(x) { then(resume(x), func) })
+    Wait(milliseconds, resume) ->
+      Wait(milliseconds, fn() { then(resume(), func) })
     WriteToClipboard(text, resume) ->
       WriteToClipboard(text, fn(x) { then(resume(x), func) })
   }
@@ -260,6 +263,10 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       run(resume(set_storage_item(web_storage.session(), key, value)))
     Visit(uri:, resume:) -> {
       run(resume(open(uri.to_string(uri), #(800, 400))))
+    }
+    Wait(milliseconds:, resume:) -> {
+      use Nil <- promise.await(promise.wait(milliseconds))
+      run(resume())
     }
     WriteToClipboard(text:, resume:) -> {
       use result <- promise.await(clipboard.write_text(text))
