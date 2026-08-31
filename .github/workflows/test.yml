@@ -2,7 +2,6 @@ name: test
 
 on:
   push:
-    branches:
   pull_request:
 
 permissions:
@@ -12,6 +11,7 @@ env:
   POSTGRES_PASSWORD: banana-penguin-truck
   SECRET_KEY_BASE: word-button-noodle
   EYG_CLI_VERSION: gleam_cli-v0.0.4
+  HEXPM_READ_API_KEY: ${{ secrets.HEXPM_READ_API_KEY }}
 
 jobs:
   test-beam:
