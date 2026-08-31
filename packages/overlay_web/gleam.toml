@@ -23,6 +23,8 @@ overlay_llm = ">= 0.2.0 and < 1.0.0"
 pal = { path = "../pal" }
 spotless = ">= 7.0.0 and < 8.0.0"
 touch_grass = ">= 0.2.11 and < 1.0.0"
+untethered = { path = "../untethered" }
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+gleam_crypto = ">= 1.6.0 and < 2.0.0"

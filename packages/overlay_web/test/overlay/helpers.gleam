@@ -1,5 +1,9 @@
 import castor
+import eyg/hub/cache
+import eyg/ir/cid
+import eyg/ir/tree as ir
 import gleam/bit_array
+import gleam/crypto
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/javascript/promise
@@ -8,6 +12,8 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import javascript/mutable_reference
+import midas/continuation
+import multiformats/cid/v1
 import ogre/origin
 import overlay/llm/tool
 import overlay/web/provider_setup
@@ -107,4 +113,27 @@ pub fn init() {
     )
   assert [] == actions
   state
+}
+
+pub fn pulled(state: state.State, releases: List(ir.Release)) -> state.State {
+  let cache =
+    list.index_fold(releases, state.cache, fn(cache, release, index) {
+      cache.pulled(cache, index, release).0
+    })
+
+  // Need to set pulled as the cache.pulled function assumes a follow up pull
+  let cache = cache.Cache(..cache, cursor_status: cache.Pulled)
+  state.State(..state, cache:)
+}
+
+fn hash_sha256(bytes) {
+  continuation.return(crypto.hash(crypto.Sha256, bytes))
+}
+
+pub fn cid_from_block(bytes: BitArray) -> v1.Cid {
+  cid.from_block(bytes, hash_sha256)(fn(x) { x })
+}
+
+pub fn cid_from_tree(source: ir.Node(_)) -> v1.Cid {
+  cid.from_tree(source, hash_sha256)(fn(x) { x })
 }

@@ -53,6 +53,7 @@ eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 6.0.0 and < 8.0.0" }
 eyg_ir = { version = ">= 3.0.0 and < 4.0.0" }
 eyg_parser = { version = ">= 0.5.1 and < 1.0.0" }
+gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_fetch = { version = ">= 1.4.0 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_javascript = { version = ">= 1.0.1 and < 2.0.0" }
@@ -68,3 +69,4 @@ overlay_llm = { version = ">= 0.2.0 and < 1.0.0" }
 pal = { path = "../pal" }
 spotless = { version = ">= 7.0.0 and < 8.0.0" }
 touch_grass = { version = ">= 0.2.11 and < 1.0.0" }
+untethered = { path = "../untethered" }

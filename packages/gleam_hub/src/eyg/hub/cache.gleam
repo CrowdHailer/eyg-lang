@@ -199,6 +199,7 @@ pub fn release_code(
 }
 
 /// Find a release if it is valid.
+/// TODO remove
 pub fn release(
   cache: Cache(meta),
   release: ir.Release,

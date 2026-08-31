@@ -1,9 +1,12 @@
 import eyg/hub/cache
+import eyg/hub/publisher
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dict
 import gleam/fetch
 import gleam/http/response
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
@@ -18,6 +21,8 @@ import overlay/web/provider_setup
 import overlay/web/state.{State}
 import overlay/web/tools
 import pal/system
+import untethered/ledger/schema
+import untethered/substrate
 
 pub fn init_loads_provider_settings_test() {
   let config = state.Config(origin: origin.https("eyg.test"))
@@ -301,7 +306,7 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
   let assert state.Executing([call]) = state.status
 
   let assert tools.Pending(dep:, ..) = call.call
-  assert cache.Content(cid) == dep
+  assert ir.Content(cid) == dep
   let assert [system.Fetch(request:, ..)] = actions
   assert "/modules/" <> v1.to_string(cid) == request.path
 
@@ -364,7 +369,7 @@ pub fn module_lookup_failure_test() {
   let assert state.Asking(messages) = state.status
   let assert [chat.ToolResultMessage(tool_call_id:, text:, images:)] = messages
   assert id == tool_call_id
-  assert "failed to fetch reference: #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy"
+  assert "failed to fetch: #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy"
     == text
   assert [] == images
 }
@@ -397,6 +402,128 @@ pub fn invalid_module_is_reported_to_llm_test() {
 // package is pulled and then module
 // module is pulled and then package
 // packages failed to pull, shows retry button
+
+pub fn unknown_package_pulls_cache_test() {
+  let id = "abc"
+  let code = "@foo"
+  let status = chat_completion("") |> with_code(id, code) |> streaming
+  let state = State(..init() |> helpers.pulled([]), status:)
+
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  let assert [system.Fetch(request:, resume: _)] = actions
+  assert "/packages/pull" == request.path
+  let #(sig, key) = new_signatory()
+  let number = int.random(1_000_000)
+  let source = ir.integer(number)
+  let cid = helpers.cid_from_tree(source)
+  let entry = publisher.first(sig, key, "foo", cid)
+  let archived = archive_entry(entry, 1)
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([archived])))
+  let #(state, actions) = state.update(state, message)
+  // pulls again as got some values
+  let assert [_pulls, system.Fetch(request:, resume: _)] = actions
+  assert "/modules/" <> v1.to_string(cid) == request.path
+  let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
+  let #(state, actions) = state.update(state, message)
+  assert state.Asking([chat.ToolResultMessage(id, int.to_string(number), [])])
+    == state.status
+  let assert [system.FetchStreamResponse(request:, resume: _)] = actions
+  let assert Ok([_system, _agent_message, message]) =
+    json.parse_bits(request.body, helpers.ollama_messages_decoder())
+  assert #("tool", int.to_string(number)) == message
+}
+
+pub fn unknown_version_pulls_cache_test() {
+  let #(sig, key) = new_signatory()
+  let number = int.random(1_000_000)
+  let source = ir.integer(number)
+  let cid = helpers.cid_from_tree(source)
+  let entry = publisher.first(sig, key, "foo", cid)
+  let archived = archive_entry(entry, 1)
+  let release = ir.Release("foo", 1, cid)
+  let id = "abc"
+  let code = "@foo:2"
+  let status = chat_completion("") |> with_code(id, code) |> streaming
+  let state = State(..init() |> helpers.pulled([release]), status:)
+  assert cache.Pulled == state.cache.cursor_status
+
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  let assert [system.Fetch(request:, resume: _)] = actions
+  assert "/packages/pull" == request.path
+  let #(sig, key) = new_signatory()
+  let number = int.random(1_000_000)
+  let source = ir.integer(number)
+  let cid = helpers.cid_from_tree(source)
+  let entry = publisher.follow(sig, key, "foo", cid, archived)
+  let archived = archive_entry(entry, 1)
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([archived])))
+  let #(state, actions) = state.update(state, message)
+  // pulls again as got some values
+  let assert [_pulls, system.Fetch(request:, resume: _)] = actions
+  assert "/modules/" <> v1.to_string(cid) == request.path
+  let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
+  let #(state, actions) = state.update(state, message)
+  assert state.Asking([chat.ToolResultMessage(id, int.to_string(number), [])])
+    == state.status
+  let assert [system.FetchStreamResponse(request:, resume: _)] = actions
+  let assert Ok([_system, _agent_message, message]) =
+    json.parse_bits(request.body, helpers.ollama_messages_decoder())
+  assert #("tool", int.to_string(number)) == message
+}
+
+pub fn incorrect_release_cache_test() {
+  let #(sig, key) = new_signatory()
+  let number = int.random(1_000_000)
+  let source = ir.integer(number)
+  let cid = helpers.cid_from_tree(source)
+  let entry = publisher.first(sig, key, "foo", cid)
+  let _archived = archive_entry(entry, 1)
+  let release = ir.Release("foo", 1, cid)
+  let id = "abc"
+  let code = "@foo:1:" <> v1.to_string(dag_json.vacant_cid)
+  let status = chat_completion("") |> with_code(id, code) |> streaming
+  let state = State(..init() |> helpers.pulled([release]), status:)
+  assert cache.Pulled == state.cache.cursor_status
+
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  assert state.Asking([
+      chat.ToolResultMessage(
+        id,
+        "invalid hash for reference: @foo:1:baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma",
+        [],
+      ),
+    ])
+    == state.status
+  let assert [system.FetchStreamResponse(request:, resume: _)] = actions
+  let assert Ok([_system, _agent_message, message]) =
+    json.parse_bits(request.body, helpers.ollama_messages_decoder())
+  assert #(
+      "tool",
+      "invalid hash for reference: @foo:1:baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma",
+    )
+    == message
+}
+
+/// returns entity (cid) and key (string)
+fn new_signatory() {
+  #(dag_json.vacant_cid, "key")
+}
+
+fn archive_entry(release: publisher.Entry, cursor: Int) {
+  let substrate.Entry(sequence:, previous:, signatory:, key: _, content: _) =
+    release
+  let block = publisher.to_bytes(release)
+  let assert Ok(payload) = block |> bit_array.to_string
+  schema.ArchivedEntry(
+    cursor:,
+    cid: helpers.cid_from_block(block),
+    payload:,
+    entity: signatory,
+    sequence:,
+    previous:,
+    type_: "release",
+  )
+}
 
 pub fn invalid_source_code_test() {
   let id = "abc"

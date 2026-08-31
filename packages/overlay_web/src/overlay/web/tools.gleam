@@ -11,7 +11,6 @@ import eyg/parser/parser.{type Reason} as _
 import gleam/dynamic/decode
 import gleam/list
 import gleam/string
-import multiformats/cid/v1
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
@@ -39,7 +38,7 @@ pub type Call {
   Exception(state.Reason(Meta))
   Aborted(String)
   Handling(task_id: Int, env: state.Env(Meta), k: state.Stack(Meta))
-  Pending(dep: cache.Dependency, env: state.Env(Meta), k: state.Stack(Meta))
+  Pending(dep: ir.Reference, env: state.Env(Meta), k: state.Stack(Meta))
 }
 
 /// A tool call state and any output printed.
@@ -107,24 +106,141 @@ fn loop(
   output: List(String),
 ) -> #(Context, List(String), Call) {
   case return {
-    Error(#(break.UndefinedReference(ir.Content(ref)), _m, env, k)) -> {
-      case cache.get_module(ctx.cache, ref) {
-        Ok(cache.Module(value:, ..)) ->
-          loop(expression.resume(value, env, k), ctx, output)
-        Error(cache.NotRequested) -> {
-          let cache = cache.fetch(ctx.cache, ref)
-          let ctx = Context(..ctx, cache:)
-          let call = Pending(cache.Content(ref), env, k)
-          #(ctx, output, call)
+    Error(#(break.UndefinedReference(reference), _m, env, k)) -> {
+      case reference {
+        ir.Content(ref) ->
+          case cache.get_module(ctx.cache, ref) {
+            Ok(cache.Module(value:, ..)) ->
+              loop(expression.resume(value, env, k), ctx, output)
+            Error(cache.NotRequested) -> {
+              let cache = cache.fetch(ctx.cache, ref)
+              let ctx = Context(..ctx, cache:)
+              let call = Pending(reference, env, k)
+              #(ctx, output, call)
+            }
+            Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
+              #(ctx, output, Pending(reference, env, k))
+            }
+            Error(cache.Failed(_reason)) -> {
+              let message =
+                "failed to fetch: " <> ir.reference_to_string(reference)
+              #(ctx, output, Aborted(message))
+            }
+            Error(cache.Invalid(reason)) -> #(ctx, output, Exception(reason))
+          }
+        ir.Package(package:) -> {
+          case cache.package(ctx.cache, package) {
+            Ok(cache.Entry(module:, ..)) ->
+              case cache.get_module(ctx.cache, module) {
+                Ok(cache.Module(value:, ..)) ->
+                  loop(expression.resume(value, env, k), ctx, output)
+                Error(cache.NotRequested) -> {
+                  let cache = cache.fetch(ctx.cache, module)
+                  let ctx = Context(..ctx, cache:)
+                  let call = Pending(reference, env, k)
+                  #(ctx, output, call)
+                }
+                Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
+                  #(ctx, output, Pending(reference, env, k))
+                }
+                Error(cache.Failed(_reason)) -> {
+                  let message =
+                    "failed to fetch: " <> ir.reference_to_string(reference)
+                  #(ctx, output, Aborted(message))
+                }
+                Error(cache.Invalid(reason)) -> #(
+                  ctx,
+                  output,
+                  Exception(reason),
+                )
+              }
+            Error(Nil) -> {
+              let cache = cache.pull(ctx.cache)
+              let ctx = Context(..ctx, cache:)
+              let call = Pending(reference, env, k)
+              #(ctx, output, call)
+            }
+          }
         }
-        Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
-          #(ctx, output, Pending(cache.Content(ref), env, k))
-        }
-        Error(cache.Failed(_reason)) -> {
-          let message = "failed to fetch reference: #" <> v1.to_string(ref)
+        ir.Version(package:, version:) ->
+          case cache.unbound_release(ctx.cache, package, version) {
+            Ok(module) ->
+              case cache.get_module(ctx.cache, module) {
+                Ok(cache.Module(value:, ..)) ->
+                  loop(expression.resume(value, env, k), ctx, output)
+                Error(cache.NotRequested) -> {
+                  let cache = cache.fetch(ctx.cache, module)
+                  let ctx = Context(..ctx, cache:)
+                  let call = Pending(reference, env, k)
+                  #(ctx, output, call)
+                }
+                Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
+                  #(ctx, output, Pending(reference, env, k))
+                }
+                Error(cache.Failed(_reason)) -> {
+                  let message =
+                    "failed to fetch: " <> ir.reference_to_string(reference)
+                  #(ctx, output, Aborted(message))
+                }
+                Error(cache.Invalid(reason)) -> #(
+                  ctx,
+                  output,
+                  Exception(reason),
+                )
+              }
+            Error(Nil) -> {
+              let cache = cache.pull(ctx.cache)
+              let ctx = Context(..ctx, cache:)
+              let call = Pending(reference, env, k)
+              #(ctx, output, call)
+            }
+          }
+        ir.Pinned(release:) ->
+          case
+            cache.unbound_release(ctx.cache, release.package, release.version)
+          {
+            Ok(module) if module == release.module ->
+              case cache.get_module(ctx.cache, module) {
+                Ok(cache.Module(value:, ..)) ->
+                  loop(expression.resume(value, env, k), ctx, output)
+                Error(cache.NotRequested) -> {
+                  let cache = cache.fetch(ctx.cache, module)
+                  let ctx = Context(..ctx, cache:)
+                  let call = Pending(reference, env, k)
+                  #(ctx, output, call)
+                }
+                Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
+                  #(ctx, output, Pending(reference, env, k))
+                }
+                Error(cache.Failed(_reason)) -> {
+                  let message =
+                    "failed to fetch: " <> ir.reference_to_string(reference)
+                  #(ctx, output, Aborted(message))
+                }
+                Error(cache.Invalid(reason)) -> #(
+                  ctx,
+                  output,
+                  Exception(reason),
+                )
+              }
+            Ok(_module) -> {
+              let message =
+                "invalid hash for reference: "
+                <> ir.reference_to_string(reference)
+              #(ctx, output, Aborted(message))
+            }
+            Error(Nil) -> {
+              let cache = cache.pull(ctx.cache)
+              let ctx = Context(..ctx, cache:)
+              let call = Pending(reference, env, k)
+              #(ctx, output, call)
+            }
+          }
+
+        ir.Relative(location:) -> {
+          let message = "unable to load source from location: " <> location
           #(ctx, output, Aborted(message))
         }
-        Error(cache.Invalid(reason)) -> #(ctx, output, Exception(reason))
       }
     }
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {
@@ -222,7 +338,7 @@ pub fn restart(ctx: Context, progress: Progress) -> #(Context, Progress) {
   let Progress(id:, output:, call:) = progress
   case call {
     Pending(dep:, env:, k:) -> {
-      let reason = cache.dep_to_reason(dep)
+      let reason = break.UndefinedReference(dep)
       let #(ctx, output, call) = loop(Error(#(reason, [], env, k)), ctx, output)
       #(ctx, Progress(id:, output:, call:))
     }
