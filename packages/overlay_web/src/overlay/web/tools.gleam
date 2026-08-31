@@ -11,6 +11,7 @@ import eyg/parser/parser.{type Reason} as _
 import gleam/dynamic/decode
 import gleam/list
 import gleam/string
+import multiformats/cid/v1
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
@@ -93,24 +94,37 @@ fn cast_run(arguments) {
 
 // context can include tasks
 // If we don't keep track of errors we'll keep calculating
+// prepare and fetch all need to look at relative references
+// Or we just type check and lookup
+// There's multiple ways to do this, pick one.
+// 1. reset failed
+// 2. reset pulled
+// document/state
+
 fn loop(
   return: Result(state.Value(Meta), state.Debug(Meta)),
   ctx: Context,
   output: List(String),
 ) -> #(Context, List(String), Call) {
   case return {
-    Error(#(break.UndefinedReference(ir.Content(ref)) as break, _m, env, k)) -> {
-      // TODO use the direct fetch status
-      case cache.fetch_module(ctx.cache, ref) {
-        cache.Ready(cache.Module(value:, type_: _)) ->
+    Error(#(break.UndefinedReference(ir.Content(ref)), _m, env, k)) -> {
+      case cache.get_module(ctx.cache, ref) {
+        Ok(cache.Module(value:, ..)) ->
           loop(expression.resume(value, env, k), ctx, output)
-        cache.Working(cache) -> #(
-          Context(..ctx, cache:),
-          output,
-          Pending(cache.Content(ref), env, k),
-        )
-        cache.NotFound(at: _) -> #(ctx, output, Exception(break))
-        cache.Unsound(reason:) -> #(ctx, output, Exception(reason))
+        Error(cache.NotRequested) -> {
+          let cache = cache.fetch(ctx.cache, ref)
+          let ctx = Context(..ctx, cache:)
+          let call = Pending(cache.Content(ref), env, k)
+          #(ctx, output, call)
+        }
+        Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
+          #(ctx, output, Pending(cache.Content(ref), env, k))
+        }
+        Error(cache.Failed(_reason)) -> {
+          let message = "failed to fetch reference: #" <> v1.to_string(ref)
+          #(ctx, output, Aborted(message))
+        }
+        Error(cache.Invalid(reason)) -> #(ctx, output, Exception(reason))
       }
     }
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {

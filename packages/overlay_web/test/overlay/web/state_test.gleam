@@ -364,7 +364,7 @@ pub fn module_lookup_failure_test() {
   let assert state.Asking(messages) = state.status
   let assert [chat.ToolResultMessage(tool_call_id:, text:, images:)] = messages
   assert id == tool_call_id
-  assert "reference undefined: #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy"
+  assert "failed to fetch reference: #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy"
     == text
   assert [] == images
 }

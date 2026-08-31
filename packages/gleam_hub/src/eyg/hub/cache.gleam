@@ -102,15 +102,6 @@ pub type Resource(value, reason) {
   Unavailable(reason)
 }
 
-// TODO remove
-pub type Status(meta) {
-  Ready(Module(meta))
-  Working(Cache(meta))
-  NotFound(at: Int)
-  // Maybe another decode error
-  Unsound(reason: state.Reason(meta))
-}
-
 /// The state of the cache.
 /// It is parameterised by the metadata type of the code it stores.
 /// .modules is a dict of module CID to module value and type
@@ -176,20 +167,6 @@ pub fn get_module(
       dict.get(fetching_modules, ref)
       |> result.unwrap(NotRequested)
       |> Error()
-  }
-}
-
-/// Find the associated module for a cid.
-pub fn fetch_module(cache: Cache(meta), cid: v1.Cid) -> Status(meta) {
-  let Cache(modules:, fetching_modules:, ..) = cache
-  case dict.get(modules, cid), dict.get(fetching_modules, cid) {
-    Ok(module), _ -> Ready(module)
-    Error(Nil), Ok(NotRequested) -> Working(fetch(cache, cid))
-    Error(Nil), Ok(Requested) -> Working(cache)
-    Error(Nil), Ok(DependsOn(..)) -> Working(cache)
-    Error(Nil), Ok(Failed(_)) -> NotFound(0)
-    Error(Nil), Ok(Invalid(reason)) -> Unsound(reason)
-    Error(Nil), Error(Nil) -> Working(fetch(cache, cid))
   }
 }
 
