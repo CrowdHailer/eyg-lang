@@ -16,6 +16,7 @@ import midas/continuation
 import multiformats/cid/v1
 import ogre/origin
 import overlay/llm/tool
+import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/state
 
@@ -91,28 +92,32 @@ pub fn ollama_chunk_encode(content) {
 }
 
 pub fn submit_first_prompt(prompt) {
-  let state = init()
+  let state = init_default()
   let #(state, actions) = state.update(state, state.UserUpdatedInput(prompt))
   assert [] == actions
   state.update(state, state.UserSubmittedPrompt)
 }
 
 // init default
-pub fn init() {
-  let config = state.Config(origin: origin.https("eyg.test"))
-  let #(state, actions) = state.init(config)
-  let assert [_, _] = actions
-  let #(state, actions) =
-    state.update(
-      state,
-      state.ProviderSetupMessage(provider_setup.SessionSettingsLoaded(
-        "ollama",
-        "qwen3.5:397b",
-        "test-key",
-      )),
-    )
+pub fn init_default() {
+  let #(state, actions) = init(context.Default)
   assert [] == actions
   state
+}
+
+pub fn init(context) {
+  let config = state.Config(origin: origin.https("eyg.test"), context:)
+  let #(state, actions) = state.init(config)
+  let assert [_settings, _pull] = actions
+
+  state.update(
+    state,
+    state.ProviderSetupMessage(provider_setup.SessionSettingsLoaded(
+      "ollama",
+      "qwen3.5:397b",
+      "test-key",
+    )),
+  )
 }
 
 pub fn pulled(state: state.State, releases: List(ir.Release)) -> state.State {

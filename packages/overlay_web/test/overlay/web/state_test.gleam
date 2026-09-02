@@ -14,9 +14,10 @@ import gleam/string
 import multiformats/cid/v1
 import oas/generator/utils
 import ogre/origin
-import overlay/helpers.{init, new_reader, submit_first_prompt}
+import overlay/helpers.{init, init_default, new_reader, submit_first_prompt}
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/state.{State}
 import overlay/web/tools
@@ -25,7 +26,8 @@ import untethered/ledger/schema
 import untethered/substrate
 
 pub fn init_loads_provider_settings_test() {
-  let config = state.Config(origin: origin.https("eyg.test"))
+  let config =
+    state.Config(origin: origin.https("eyg.test"), context: context.Default)
   let #(state, actions) = state.init(config)
   let assert [system.GetSessionStorageItem("overlay.llm.provider", _), _] =
     actions
@@ -33,7 +35,8 @@ pub fn init_loads_provider_settings_test() {
 }
 
 pub fn provider_setup_selects_new_llm_test() {
-  let config = state.Config(origin: origin.https("eyg.test"))
+  let config =
+    state.Config(origin: origin.https("eyg.test"), context: context.Default)
   let #(state, _) = state.init(config)
   let #(state, actions) =
     state.update(
@@ -50,7 +53,8 @@ pub fn provider_setup_selects_new_llm_test() {
 }
 
 pub fn submit_without_provider_opens_settings_test() {
-  let config = state.Config(origin: origin.https("eyg.test"))
+  let config =
+    state.Config(origin: origin.https("eyg.test"), context: context.Default)
   let #(state, _) = state.init(config)
   let #(state, _) =
     state.update(
@@ -122,7 +126,7 @@ pub fn submit_prompt_test() {
 pub fn cant_submit_if_busy_test() {
   let state =
     State(
-      ..init(),
+      ..init_default(),
       status: state.Asking([chat.UserMessage("Hi there", [])]),
       input: "something",
     )
@@ -132,7 +136,7 @@ pub fn cant_submit_if_busy_test() {
 }
 
 pub fn started_streaming_while_not_asking_test() {
-  let state = init()
+  let state = init_default()
   let #(s2, actions) =
     state.update(state, state.LlmStartedStreaming(new_reader([], Ok(Nil))))
   assert s2 == state
@@ -154,7 +158,7 @@ pub fn interrupted_stream_test() {
 }
 
 pub fn streamed_completion_while_not_streaming_test() {
-  let state = init()
+  let state = init_default()
   let #(s2, actions) =
     state.update(state, state.LlmStreamedCompletion([], <<>>))
   assert s2 == state
@@ -210,7 +214,7 @@ pub fn denied_error_from_provider_test() {
 }
 
 pub fn stream_finished_while_not_streaming_test() {
-  let state = init()
+  let state = init_default()
   let #(s2, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   assert s2 == state
   assert [] == actions
@@ -220,7 +224,7 @@ pub fn eval_response_from_llm_test() {
   let id = "abc"
   let code = "!int_add(2, 3)"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   assert state.Asking([chat.ToolResultMessage(id, "5", [])]) == state.status
   let assert [system.FetchStreamResponse(request:, resume: _)] = actions
@@ -234,7 +238,7 @@ pub fn eval_error_test() {
   let id = "abc"
   let code = "x"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   assert state.Asking([chat.ToolResultMessage(id, "missing variable 'x'", [])])
     == state.status
@@ -249,7 +253,7 @@ pub fn eval_aborted_test() {
   let id = "abc"
   let code = "perform Abort(\"STOP\")"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   assert state.Asking([chat.ToolResultMessage(id, "STOP", [])]) == state.status
   let assert [system.FetchStreamResponse(request:, resume: _)] = actions
@@ -263,7 +267,7 @@ pub fn side_effect_test() {
   let id = "abc"
   let code = "perform Alert(\"Hello World\")"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Executing([call]) = state.status
   assert id == call.id
@@ -284,7 +288,7 @@ pub fn synchronous_effect_resumes_the_program_test() {
     chat_completion("")
     |> with_code("abc", "let _ = perform Random(1) 5")
     |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   assert state.Asking([chat.ToolResultMessage("abc", "5", [])]) == state.status
   let assert [system.FetchStreamResponse(..)] = actions
@@ -300,7 +304,7 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
   let first_id = "first"
   let code = "!int_add(" <> ref <> ", 1)"
   let status = chat_completion("") |> with_code(first_id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
 
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Executing([call]) = state.status
@@ -336,7 +340,7 @@ pub fn module_returned_while_not_running_test() {
     v1.from_string(
       "bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy",
     )
-  let state = init()
+  let state = init_default()
   let #(state, actions) =
     state.update(
       state,
@@ -354,7 +358,7 @@ pub fn module_lookup_failure_test() {
   let id = "abc"
   let code = "!int_add(#" <> v1.to_string(cid) <> ", 1)"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, _) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert [chat.AssistantMessage(tool_calls: [call], ..)] = state.history
   assert id == call.id
@@ -382,7 +386,7 @@ pub fn invalid_module_is_reported_to_llm_test() {
   let id = "abc"
   let code = "!int_add(#" <> v1.to_string(cid) <> ", 1)"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, _) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
 
   let #(state, actions) =
@@ -417,7 +421,7 @@ pub fn unknown_package_pulls_cache_test() {
   let id = "abc"
   let code = "@foo"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init() |> helpers.pulled([]), status:)
+  let state = State(..init_default() |> helpers.pulled([]), status:)
 
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert [system.Fetch(request:, resume: _)] = actions
@@ -459,7 +463,7 @@ pub fn unknown_version_pulls_cache_test() {
   let id = "abc"
   let code = "@foo:2"
   let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init() |> helpers.pulled([release]), status:)
+  let state = State(..init_default() |> helpers.pulled([release]), status:)
   assert cache.Pulled == state.cache.cursor_status
 
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
@@ -514,7 +518,7 @@ fn archive_entry(release: publisher.Entry, cursor: Int) {
 pub fn invalid_source_code_test() {
   let id = "abc"
   let status = chat_completion("") |> with_code(id, "$") |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Asking([
     chat.ToolResultMessage(tool_call_id:, text:, images:),
@@ -540,7 +544,7 @@ pub fn malformed_tool_arguments_test() {
       ),
     )
   let status = chat_completion("") |> with_call(call) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Asking([
     chat.ToolResultMessage(tool_call_id:, text:, images:),
@@ -590,7 +594,7 @@ pub fn printed_output_is_returned_to_the_agent_test() {
   let code =
     "let _ = perform Print(\"first\") let _ = perform Print(\"second\") 5"
   let status = chat_completion("") |> with_code("abc", code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   assert state.Asking([
       chat.ToolResultMessage("abc", "Output:\nfirstsecond\nResult:\n5", []),
@@ -601,7 +605,7 @@ pub fn printed_output_is_returned_to_the_agent_test() {
 pub fn printing_before_an_effect_suspends_test() {
   let code = "let _ = perform Print(\"before\") perform Alert(\"hi\")"
   let status = chat_completion("") |> with_code("abc", code) |> streaming
-  let state = State(..init(), status:)
+  let state = State(..init_default(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert [system.Alert("hi", resume:)] = actions
   let assert system.Done(message) = resume()
@@ -618,7 +622,7 @@ pub fn incorrect_release_cache_test() {
   let release = ir.Release("foo", 1, cid)
   let code = "@foo:1:" <> v1.to_string(dag_json.vacant_cid)
   let status = chat_completion("") |> with_code("abc", code) |> streaming
-  let state = State(..init() |> helpers.pulled([release]), status:)
+  let state = State(..init_default() |> helpers.pulled([release]), status:)
   assert cache.Pulled == state.cache.cursor_status
 
   let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
@@ -631,4 +635,97 @@ pub fn incorrect_release_cache_test() {
       ),
     ])
     == state.status
+}
+
+pub fn default_context_is_in_scope_test() {
+  let code = "context.readme"
+  let status = chat_completion("") |> with_code("abc", code) |> streaming
+  let state = State(..init_default() |> helpers.pulled([]), status:)
+  assert cache.Pulled == state.cache.cursor_status
+
+  let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+
+  let assert state.Asking([chat.ToolResultMessage("abc", response, [])]) =
+    state.status
+  assert string.contains(response, "overlay agent")
+}
+
+pub fn reference_context_test() {
+  let source = ir.record([#("readme", ir.string("hi"))])
+  let cid = helpers.cid_from_tree(source)
+  let config =
+    state.Config(
+      origin: origin.https("eyg.test"),
+      context: context.Reference(cid),
+    )
+  let #(state, actions) = state.init(config)
+  assert context.Fetching([cid], ir.Content(cid)) == state.context
+  let assert [_settings, _pull, system.Fetch(request:, resume: _)] = actions
+  assert "/modules/" <> v1.to_string(cid) == request.path
+
+  let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert "hi" == context.readme(state.context)
+}
+
+pub fn cant_submit_while_context_loading_test() {
+  let #(state, _actions) = init(context.Package("foo", None))
+  let #(state, actions) = state.update(state, state.UserUpdatedInput("hello"))
+  assert [] == actions
+
+  let #(state, actions) = state.update(state, state.UserSubmittedPrompt)
+  assert [] == actions
+  assert Some("Context is still loading") == state.input_error
+  assert state.Waiting == state.status
+}
+
+pub fn unknown_package_context_test() {
+  let #(state, _actions) = init(context.Package("foo", None))
+  assert context.Pulling(ir.Package("foo")) == state.context
+
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([])))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  assert context.Errored("missing reference @foo") == state.context
+  // The session carries on with the default context
+  assert context.default_readme == context.readme(state.context)
+}
+
+pub fn package_context_test() {
+  let context = context.Package("foo", Some(1))
+  let #(state, actions) = init(context)
+  assert context.Pulling(ir.Version("foo", 1)) == state.context
+  // The test init always checks an action for getting LLM info and a pull
+  assert [] == actions
+  let #(sig, key) = new_signatory()
+  let source = ir.record([#("readme", ir.string("hi"))])
+  let cid = helpers.cid_from_tree(source)
+  let entry = publisher.first(sig, key, "foo", cid)
+  let archived = archive_entry(entry, 1)
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([archived])))
+  let #(state, actions) = state.update(state, message)
+  // pulls again as got some values
+  let assert [system.Fetch(request:, resume: _)] = actions
+  assert "/packages/pull" == request.path
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([])))
+  let #(state, actions) = state.update(state, message)
+  let assert context.Fetching(..) = state.context
+
+  let assert [system.Fetch(request:, resume: _)] = actions
+  assert "/modules/" <> v1.to_string(cid) == request.path
+  let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
+  let #(state, actions) = state.update(state, message)
+  assert [] == actions
+  let assert context.Loaded(_) = state.context
+  assert "hi" == context.readme(state.context)
+
+  // The loaded module, and not the default, is in scope for the agent
+  let status =
+    chat_completion("") |> with_code("abc", "context.readme") |> streaming
+  let #(state, _actions) =
+    state.update(State(..state, status:), state.LlmStreamFinished(Ok(Nil)))
+  let assert state.Asking([chat.ToolResultMessage("abc", response, [])]) =
+    state.status
+  assert "\"hi\"" == response
 }

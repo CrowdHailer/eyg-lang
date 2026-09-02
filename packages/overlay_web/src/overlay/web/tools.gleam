@@ -1,4 +1,5 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug as analysis_debug
 import eyg/analysis/type_/binding/error
 import eyg/hub/cache
@@ -29,6 +30,7 @@ pub type Context {
     cache: cache.Cache(Meta),
     counter: Int,
     effects: List(system.Effect(#(Int, state.Value(Meta)))),
+    context: cache.Module(Meta),
   )
 }
 
@@ -75,11 +77,11 @@ fn execute_single(ctx: Context, call: tool.Call) -> #(Context, Progress) {
           case parser.all_from_string(code) {
             Ok(source) -> {
               let source = ir.map_annotation(source, fn(_) { [] })
-              case check_single(source, ctx.cache) {
+              case check_single(source, ctx.cache, ctx.context) {
                 [] -> {
                   let #(ctx, output, call) =
                     source
-                    |> expression.execute([])
+                    |> execute(ctx.context)
                     |> loop(ctx, [])
                   #(ctx, Progress(id:, output:, call:))
                 }
@@ -113,16 +115,30 @@ fn execute_single(ctx: Context, call: tool.Call) -> #(Context, Progress) {
   }
 }
 
-fn check_single(source: #(ir.Expression(a), a), cache: cache.Cache(b)) {
+fn check_single(
+  source: #(ir.Expression(a), a),
+  cache: cache.Cache(b),
+  context: cache.Module(_),
+) -> List(#(a, error.Reason)) {
   let analysis =
     infer.pure()
+    |> with_scope([#("context", context.type_)])
     |> infer.with_effects(interface.types(harness.effects()))
     |> infer.check(source)
     |> cache.infer_sync(cache)
   infer.all_errors(analysis)
 }
 
-fn missing_references(errors) {
+// TODO move to infer module
+fn with_scope(
+  context: infer.Context,
+  scope: List(#(String, binding.Poly)),
+) -> infer.Context {
+  let infer.Context(env:, ..) = context
+  infer.Context(..context, env: list.append(scope, env))
+}
+
+pub fn missing_references(errors) {
   list.filter_map(errors, fn(error) {
     let #(_, error) = error
     case error {
@@ -157,7 +173,7 @@ fn requires_pull(refs, cache) {
   }
 }
 
-fn to_fetch(
+pub fn to_fetch(
   refs: List(ir.Reference),
   cache: cache.Cache(a),
   acc: List(v1.Cid),
@@ -336,11 +352,11 @@ pub fn pulled(ctx: Context, progress: Progress) -> #(Context, Progress) {
   case call {
     Pulling(source) -> {
       // TODO move to cache.infer_sync that will gather need to pull and to fetch references
-      case check_single(source, ctx.cache) {
+      case check_single(source, ctx.cache, ctx.context) {
         [] -> {
           let #(ctx, output, call) =
             source
-            |> expression.execute([])
+            |> execute(ctx.context)
             // output should always be empty going into this loop.
             // Maybe output should move into a running state of call
             |> loop(ctx, output)
@@ -364,6 +380,10 @@ pub fn pulled(ctx: Context, progress: Progress) -> #(Context, Progress) {
   }
 }
 
+fn execute(source: ir.Node(Meta), context: cache.Module(Meta)) {
+  expression.execute(source, [#("context", context.value)])
+}
+
 pub fn check_fetching(
   ctx: Context,
   progress: Progress,
@@ -374,11 +394,11 @@ pub fn check_fetching(
       let cids = list.filter(cids, still_fetching(_, ctx.cache))
       case cids {
         [] ->
-          case check_single(source, ctx.cache) {
+          case check_single(source, ctx.cache, ctx.context) {
             [] -> {
               let #(ctx, output, call) =
                 source
-                |> expression.execute([])
+                |> execute(ctx.context)
                 // output should always be empty going into this loop.
                 // Maybe output should move into a running state of call
                 |> loop(ctx, output)
@@ -393,7 +413,8 @@ pub fn check_fetching(
   }
 }
 
-fn still_fetching(cid, cache) {
+// TODO move this to cache
+pub fn still_fetching(cid, cache) {
   case cache.get_module(cache, cid) {
     Ok(_) -> False
     // Not requested is the state given by fetch and before flush.

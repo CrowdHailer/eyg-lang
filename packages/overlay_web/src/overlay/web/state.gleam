@@ -17,6 +17,7 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/tools
 import pal/system
@@ -25,7 +26,7 @@ import touch_grass/http
 import touch_grass/interface
 
 pub type Config {
-  Config(origin: origin.Origin)
+  Config(origin: origin.Origin, context: context.Source)
 }
 
 // The system prompt and tools are not part of the state as they are built from readme and always one tool
@@ -33,6 +34,7 @@ pub type State {
   State(
     llm: provider.Llm,
     provider_setup: provider_setup.State,
+    context: context.Status,
     status: AgentStatus,
     history: List(chat.Message(tool.Call)),
     input: String,
@@ -56,16 +58,18 @@ pub type AgentStatus {
 }
 
 pub fn new(config: Config) -> State {
-  let Config(origin:) = config
+  let Config(origin:, context:) = config
   let llm =
     provider.Llm(
       provider: provider.Ollama(ollama.Config(origin:, api_key: None)),
       model: "",
     )
   let cache = cache.ready()
+  let #(context, cache) = context.load(context, cache)
   State(
     llm:,
     provider_setup: provider_setup.new(),
+    context:,
     status: Waiting,
     history: [],
     input: "",
@@ -156,13 +160,24 @@ pub fn update(
       #(state, [])
     }
     UserSubmittedPrompt ->
-      case state.provider_setup.configured, state.status {
-        False, _ -> {
+      case
+        state.provider_setup.configured,
+        state.status,
+        context.loading(state.context)
+      {
+        False, _, _ -> {
           let provider_setup =
             provider_setup.require_configuration(state.provider_setup)
           #(State(..state, provider_setup:), [])
         }
-        True, Waiting -> {
+        // The readme is part of the system prompt, so a session cannot start
+        // before the context it is for has arrived.
+        True, Waiting, True -> {
+          let state =
+            State(..state, input_error: Some("Context is still loading"))
+          #(state, [])
+        }
+        True, Waiting, False -> {
           case string.trim(state.input) {
             "" -> #(State(..state, input_error: Some("")), [])
             input -> {
@@ -173,7 +188,7 @@ pub fn update(
             }
           }
         }
-        True, _ -> {
+        True, _, _ -> {
           let state =
             State(..state, input_error: Some("Cant send another message"))
           #(state, [])
@@ -259,8 +274,14 @@ pub fn update(
         cache.cursor_status != cache.Pulling
         && cache.cursor_status != cache.ReadyToPull
       let stopped_pulling = was_pulling && not_pulling
-      let state = State(..state, cache: cache)
 
+      let #(context, cache) = case stopped_pulling {
+        True -> context.pulled(state.context, cache)
+        False -> #(state.context, cache)
+      }
+      let context = context.check_fetching(context, cache)
+
+      let state = State(..state, cache:, context:)
       case state.status {
         Executing(calls) -> {
           let ctx = current_context(state)
@@ -289,9 +310,9 @@ pub fn can_save_provider(state: State) {
 
 // cache state doesn't update during the eval but needs to resume later if everything fetched at the beginning
 
-fn current_context(state) {
-  let State(cache:, counter:, ..) = state
-  tools.Context(cache:, counter:, effects: [])
+fn current_context(state: State) {
+  let State(cache:, counter:, context:, ..) = state
+  tools.Context(cache:, counter:, effects: [], context: context.module(context))
 }
 
 /// If a stream message is completed, and effect is handled or a cache message received then resolve calls sees what stage tool calls are in.
@@ -299,7 +320,7 @@ fn current_context(state) {
 fn run_effects_if_any_remain_to_do(return, state: State) {
   let #(ctx, calls) = return
 
-  let tools.Context(cache:, counter:, effects: inner) = ctx
+  let tools.Context(cache:, counter:, effects: inner, context: _) = ctx
   let effects =
     list.map(
       inner,
@@ -357,13 +378,13 @@ fn stream_next_chunk(provider, reader, remaining) {
 
 fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
   let tools = [spec()]
-  let context =
-    provider.Context(system_prompt: system_prompt(state.origin), tools:)
+  let context = provider.Context(system_prompt: system_prompt(state), tools:)
   let history = list.append(messages, state.history) |> list.reverse
   provider.stream_completion_request(state.llm, context, history)
 }
 
-fn system_prompt(origin: origin.Origin) -> String {
+fn system_prompt(state: State) -> String {
+  let origin = state.origin
   let scheme = http.scheme_to_eyg(origin.scheme)
   let host = v.String(origin.host)
   let port = v.option(origin.port, v.Integer)
@@ -375,6 +396,7 @@ DO NOT guess any function of effects. Only use what you have seen explained and 
 ALWAYS use djot syntax for your responses.
 DO NOT write code blocks in your responses unless explicitly asked.
 All code execution uses the 'run' tool.
+Every program has the variable context in scope, it is the module described in the Context section at the end of this prompt.
 
 To fetch a guide run the following script.
 ALWAYS fetch the EYG syntax guide before writing scripts
@@ -427,7 +449,11 @@ This environment has the following effects
 Remember to always use perform to call an effect.
 
 Use the service effects, such as DNSimple, to call service API's these do not require the scheme, host or port to be set.
-They do not require an API token this will be added by the platform."
+They do not require an API token this will be added by the platform.
+
+# Context
+
+" <> context.readme(state.context)
 }
 
 pub fn spec() {
