@@ -170,6 +170,50 @@ pub fn get_module(
   }
 }
 
+fn follow_reference(
+  cache: Cache(meta),
+  reference: ir.Reference,
+) -> Result(v1.Cid, Nil) {
+  case reference {
+    ir.Content(cid:) -> Ok(cid)
+    ir.Package(package:) -> {
+      use Entry(module:, ..) <- result.map(dict.get(cache.packages, package))
+      module
+    }
+    ir.Version(package:, version:) ->
+      dict.get(cache.releases, #(package, version))
+    ir.Pinned(release: ir.Release(package:, version:, module:)) ->
+      case dict.get(cache.releases, #(package, version)) {
+        Ok(cid) if cid == module -> Ok(cid)
+        // The hub has another module for that release, the pin is wrong.
+        Ok(_) -> Error(Nil)
+        Error(Nil) -> Error(Nil)
+      }
+    ir.Relative(..) -> Error(Nil)
+  }
+}
+
+/// Get the module associated with any kind of reference if the cache has it.
+pub fn get_reference(
+  cache: Cache(meta),
+  reference: ir.Reference,
+) -> Result(Module(meta), Nil) {
+  use cid <- result.try(follow_reference(cache, reference))
+  dict.get(cache.modules, cid)
+}
+
+/// Check a source with the cache as is
+pub fn infer_sync(return: infer.Step(a), cache: Cache(meta)) -> a {
+  case return {
+    infer.Lookup(reference:, resume:) ->
+      case get_reference(cache, reference) {
+        Ok(Module(type_:, ..)) -> infer_sync(resume(Ok(type_)), cache)
+        Error(Nil) -> infer_sync(resume(Error(Nil)), cache)
+      }
+    infer.Done(analysis) -> analysis
+  }
+}
+
 /// Find the associated module for a cid.
 pub fn module(
   cache: Cache(meta),

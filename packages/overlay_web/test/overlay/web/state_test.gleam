@@ -236,13 +236,13 @@ pub fn eval_error_test() {
   let status = chat_completion("") |> with_code(id, code) |> streaming
   let state = State(..init(), status:)
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
-  assert state.Asking([chat.ToolResultMessage(id, "variable undefined: x", [])])
+  assert state.Asking([chat.ToolResultMessage(id, "missing variable 'x'", [])])
     == state.status
   let assert [system.FetchStreamResponse(request:, resume: _)] = actions
   assert "eyg.test" == request.host
   let assert Ok([_system, _agent_message, message]) =
     json.parse_bits(request.body, helpers.ollama_messages_decoder())
-  assert #("tool", "variable undefined: x") == message
+  assert #("tool", "missing variable 'x'") == message
 }
 
 pub fn eval_aborted_test() {
@@ -305,8 +305,8 @@ pub fn module_remains_in_context_for_second_tool_call_test() {
   let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
   let assert state.Executing([call]) = state.status
 
-  let assert tools.Pending(dep:, ..) = call.call
-  assert ir.Content(cid) == dep
+  let assert tools.Fetching(cids:, ..) = call.call
+  assert [cid] == cids
   let assert [system.Fetch(request:, ..)] = actions
   assert "/modules/" <> v1.to_string(cid) == request.path
 
@@ -369,7 +369,7 @@ pub fn module_lookup_failure_test() {
   let assert state.Asking(messages) = state.status
   let assert [chat.ToolResultMessage(tool_call_id:, text:, images:)] = messages
   assert id == tool_call_id
-  assert "failed to fetch: #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy"
+  assert "missing reference #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy"
     == text
   assert [] == images
 }
@@ -391,12 +391,22 @@ pub fn invalid_module_is_reported_to_llm_test() {
       state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(ir.vacant()))),
     )
 
-  assert state.Asking([chat.ToolResultMessage(id, "tried to run a todo", [])])
+  assert state.Asking([
+      chat.ToolResultMessage(
+        id,
+        "missing reference #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy",
+        [],
+      ),
+    ])
     == state.status
   let assert [system.FetchStreamResponse(request:, resume: _)] = actions
   let assert Ok([_system, _agent_message, message]) =
     json.parse_bits(request.body, helpers.ollama_messages_decoder())
-  assert #("tool", "tried to run a todo") == message
+  assert #(
+      "tool",
+      "missing reference #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy",
+    )
+    == message
 }
 
 // package is pulled and then module
@@ -421,7 +431,12 @@ pub fn unknown_package_pulls_cache_test() {
   let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([archived])))
   let #(state, actions) = state.update(state, message)
   // pulls again as got some values
-  let assert [_pulls, system.Fetch(request:, resume: _)] = actions
+  let assert [system.Fetch(request:, resume: _)] = actions
+  assert "/packages/pull" == request.path
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([])))
+  let #(state, actions) = state.update(state, message)
+
+  let assert [system.Fetch(request:, resume: _)] = actions
   assert "/modules/" <> v1.to_string(cid) == request.path
   let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
   let #(state, actions) = state.update(state, message)
@@ -458,8 +473,12 @@ pub fn unknown_version_pulls_cache_test() {
   let archived = archive_entry(entry, 1)
   let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([archived])))
   let #(state, actions) = state.update(state, message)
-  // pulls again as got some values
-  let assert [_pulls, system.Fetch(request:, resume: _)] = actions
+  let assert [system.Fetch(request:, resume: _)] = actions
+  assert "/packages/pull" == request.path
+  let message = state.CacheMessage(cache.PullPackagesCompleted(Ok([])))
+  let #(state, actions) = state.update(state, message)
+
+  let assert [system.Fetch(request:, resume: _)] = actions
   assert "/modules/" <> v1.to_string(cid) == request.path
   let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
   let #(state, actions) = state.update(state, message)
@@ -469,39 +488,6 @@ pub fn unknown_version_pulls_cache_test() {
   let assert Ok([_system, _agent_message, message]) =
     json.parse_bits(request.body, helpers.ollama_messages_decoder())
   assert #("tool", int.to_string(number)) == message
-}
-
-pub fn incorrect_release_cache_test() {
-  let #(sig, key) = new_signatory()
-  let number = int.random(1_000_000)
-  let source = ir.integer(number)
-  let cid = helpers.cid_from_tree(source)
-  let entry = publisher.first(sig, key, "foo", cid)
-  let _archived = archive_entry(entry, 1)
-  let release = ir.Release("foo", 1, cid)
-  let id = "abc"
-  let code = "@foo:1:" <> v1.to_string(dag_json.vacant_cid)
-  let status = chat_completion("") |> with_code(id, code) |> streaming
-  let state = State(..init() |> helpers.pulled([release]), status:)
-  assert cache.Pulled == state.cache.cursor_status
-
-  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
-  assert state.Asking([
-      chat.ToolResultMessage(
-        id,
-        "invalid hash for reference: @foo:1:baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma",
-        [],
-      ),
-    ])
-    == state.status
-  let assert [system.FetchStreamResponse(request:, resume: _)] = actions
-  let assert Ok([_system, _agent_message, message]) =
-    json.parse_bits(request.body, helpers.ollama_messages_decoder())
-  assert #(
-      "tool",
-      "invalid hash for reference: @foo:1:baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma",
-    )
-    == message
 }
 
 /// returns entity (cid) and key (string)
@@ -626,27 +612,23 @@ pub fn printing_before_an_effect_suspends_test() {
     == state.status
 }
 
-pub fn printing_before_a_module_suspends_test() {
-  let assert Ok(#(cid, _)) =
-    v1.from_string(
-      "bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy",
-    )
-  let code =
-    "let _ = perform Print(\"before\") !int_add(#"
-    <> v1.to_string(cid)
-    <> ", 1)"
+pub fn incorrect_release_cache_test() {
+  let source = ir.integer(int.random(1_000_000))
+  let cid = helpers.cid_from_tree(source)
+  let release = ir.Release("foo", 1, cid)
+  let code = "@foo:1:" <> v1.to_string(dag_json.vacant_cid)
   let status = chat_completion("") |> with_code("abc", code) |> streaming
-  let state = State(..init(), status:)
-  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
-  let assert [system.Fetch(..)] = actions
+  let state = State(..init() |> helpers.pulled([release]), status:)
+  assert cache.Pulled == state.cache.cursor_status
 
-  let #(state, _) =
-    state.update(
-      state,
-      state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(ir.integer(6)))),
-    )
+  let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+
   assert state.Asking([
-      chat.ToolResultMessage("abc", "Output:\nbefore\nResult:\n7", []),
+      chat.ToolResultMessage(
+        "abc",
+        "missing reference @foo:1:baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma",
+        [],
+      ),
     ])
     == state.status
 }

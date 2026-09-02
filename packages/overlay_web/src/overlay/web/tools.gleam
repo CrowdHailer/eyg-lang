@@ -1,3 +1,6 @@
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug as analysis_debug
+import eyg/analysis/type_/binding/error
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -5,18 +8,21 @@ import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
+import eyg/ir/utils.{push_new} as _
 import eyg/parser
 import eyg/parser/debug
 import eyg/parser/parser.{type Reason} as _
 import gleam/dynamic/decode
 import gleam/list
 import gleam/string
+import multiformats/cid/v1
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
 import pal/platform/browser
 import pal/system
 import touch_grass/harness/browser as harness
+import touch_grass/interface
 
 pub type Context {
   Context(
@@ -34,11 +40,13 @@ pub type Call {
   UnknownTool(name: String)
   BadArguments(List(decode.DecodeError))
   InvalidCode(Reason)
+  Pulling(ir.Node(Meta))
+  Fetching(cids: List(v1.Cid), source: ir.Node(Meta))
   Successful(state.Value(Meta))
+  Errored(List(#(Meta, error.Reason)))
   Exception(state.Reason(Meta))
   Aborted(String)
   Handling(task_id: Int, env: state.Env(Meta), k: state.Stack(Meta))
-  Pending(dep: ir.Reference, env: state.Env(Meta), k: state.Stack(Meta))
 }
 
 /// A tool call state and any output printed.
@@ -66,18 +74,120 @@ fn execute_single(ctx: Context, call: tool.Call) -> #(Context, Progress) {
         Ok(code) ->
           case parser.all_from_string(code) {
             Ok(source) -> {
-              let #(ctx, output, call) =
-                source
-                |> ir.map_annotation(fn(_) { [] })
-                |> expression.execute([])
-                |> loop(ctx, [])
-              #(ctx, Progress(id:, output:, call:))
+              let source = ir.map_annotation(source, fn(_) { [] })
+              case check_single(source, ctx.cache) {
+                [] -> {
+                  let #(ctx, output, call) =
+                    source
+                    |> expression.execute([])
+                    |> loop(ctx, [])
+                  #(ctx, Progress(id:, output:, call:))
+                }
+                errors -> {
+                  let references = missing_references(errors)
+                  case requires_pull(references, ctx.cache) {
+                    True -> {
+                      let cache = cache.pull(ctx.cache)
+                      let ctx = Context(..ctx, cache:)
+                      #(ctx, failed(id, Pulling(source)))
+                    }
+                    False -> {
+                      case to_fetch(references, ctx.cache, []) {
+                        [] -> #(ctx, failed(id, Errored(errors)))
+                        needed -> {
+                          let cache = cache.fetch_all(ctx.cache, needed)
+                          let ctx = Context(..ctx, cache:)
+                          #(ctx, failed(id, Fetching(needed, source)))
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
             Error(reason) -> #(ctx, failed(id, InvalidCode(reason)))
           }
         Error(reason) -> #(ctx, failed(id, BadArguments(reason)))
       }
     _ -> #(ctx, failed(id, UnknownTool(name)))
+  }
+}
+
+fn check_single(source: #(ir.Expression(a), a), cache: cache.Cache(b)) {
+  let analysis =
+    infer.pure()
+    |> infer.with_effects(interface.types(harness.effects()))
+    |> infer.check(source)
+    |> cache.infer_sync(cache)
+  infer.all_errors(analysis)
+}
+
+fn missing_references(errors) {
+  list.filter_map(errors, fn(error) {
+    let #(_, error) = error
+    case error {
+      error.MissingReference(reference:) -> Ok(reference)
+      _ -> Error(Nil)
+    }
+  })
+}
+
+fn requires_pull(refs, cache) {
+  case refs {
+    [] -> False
+    [reference, ..rest] ->
+      case reference {
+        ir.Content(..) | ir.Relative(..) -> requires_pull(rest, cache)
+        ir.Package(package:) ->
+          case cache.package(cache, package) {
+            Ok(_) -> requires_pull(rest, cache)
+            Error(_) -> True
+          }
+        ir.Version(package:, version:) ->
+          case cache.unbound_release(cache, package, version) {
+            Ok(_) -> requires_pull(rest, cache)
+            Error(_) -> True
+          }
+        ir.Pinned(release: ir.Release(package:, version:, module: _)) ->
+          case cache.unbound_release(cache, package, version) {
+            Ok(_) -> requires_pull(rest, cache)
+            Error(_) -> True
+          }
+      }
+  }
+}
+
+fn to_fetch(
+  refs: List(ir.Reference),
+  cache: cache.Cache(a),
+  acc: List(v1.Cid),
+) -> List(v1.Cid) {
+  case refs {
+    [] -> acc
+    [reference, ..rest] -> {
+      let acc = case reference {
+        ir.Content(cid:) -> push_new(acc, cid)
+        ir.Package(package:) ->
+          case cache.package(cache, package) {
+            Ok(cache.Entry(module:, ..)) -> push_new(acc, module)
+            Error(_) -> acc
+          }
+        ir.Version(package:, version:) ->
+          case cache.unbound_release(cache, package, version) {
+            Ok(cid) -> push_new(acc, cid)
+            Error(_) -> acc
+          }
+        // Only the release log can make a pin right, so there is nothing to
+        // gain from fetching a module it does not name for that release.
+        ir.Pinned(release: ir.Release(package:, version:, module:)) ->
+          case cache.unbound_release(cache, package, version) {
+            Ok(cid) if cid == module -> push_new(acc, module)
+            _ -> acc
+          }
+        ir.Relative(..) -> acc
+      }
+      to_fetch(rest, cache, acc)
+    }
   }
 }
 
@@ -106,141 +216,18 @@ fn loop(
   output: List(String),
 ) -> #(Context, List(String), Call) {
   case return {
-    Error(#(break.UndefinedReference(reference), _m, env, k)) -> {
+    Error(#(break.UndefinedReference(reference) as break, _m, env, k)) -> {
       case reference {
-        ir.Content(ref) ->
-          case cache.get_module(ctx.cache, ref) {
-            Ok(cache.Module(value:, ..)) ->
-              loop(expression.resume(value, env, k), ctx, output)
-            Error(cache.NotRequested) -> {
-              let cache = cache.fetch(ctx.cache, ref)
-              let ctx = Context(..ctx, cache:)
-              let call = Pending(reference, env, k)
-              #(ctx, output, call)
-            }
-            Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
-              #(ctx, output, Pending(reference, env, k))
-            }
-            Error(cache.Failed(_reason)) -> {
-              let message =
-                "failed to fetch: " <> ir.reference_to_string(reference)
-              #(ctx, output, Aborted(message))
-            }
-            Error(cache.Invalid(reason)) -> #(ctx, output, Exception(reason))
-          }
-        ir.Package(package:) -> {
-          case cache.package(ctx.cache, package) {
-            Ok(cache.Entry(module:, ..)) ->
-              case cache.get_module(ctx.cache, module) {
-                Ok(cache.Module(value:, ..)) ->
-                  loop(expression.resume(value, env, k), ctx, output)
-                Error(cache.NotRequested) -> {
-                  let cache = cache.fetch(ctx.cache, module)
-                  let ctx = Context(..ctx, cache:)
-                  let call = Pending(reference, env, k)
-                  #(ctx, output, call)
-                }
-                Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
-                  #(ctx, output, Pending(reference, env, k))
-                }
-                Error(cache.Failed(_reason)) -> {
-                  let message =
-                    "failed to fetch: " <> ir.reference_to_string(reference)
-                  #(ctx, output, Aborted(message))
-                }
-                Error(cache.Invalid(reason)) -> #(
-                  ctx,
-                  output,
-                  Exception(reason),
-                )
-              }
-            Error(Nil) -> {
-              let cache = cache.pull(ctx.cache)
-              let ctx = Context(..ctx, cache:)
-              let call = Pending(reference, env, k)
-              #(ctx, output, call)
-            }
-          }
-        }
-        ir.Version(package:, version:) ->
-          case cache.unbound_release(ctx.cache, package, version) {
-            Ok(module) ->
-              case cache.get_module(ctx.cache, module) {
-                Ok(cache.Module(value:, ..)) ->
-                  loop(expression.resume(value, env, k), ctx, output)
-                Error(cache.NotRequested) -> {
-                  let cache = cache.fetch(ctx.cache, module)
-                  let ctx = Context(..ctx, cache:)
-                  let call = Pending(reference, env, k)
-                  #(ctx, output, call)
-                }
-                Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
-                  #(ctx, output, Pending(reference, env, k))
-                }
-                Error(cache.Failed(_reason)) -> {
-                  let message =
-                    "failed to fetch: " <> ir.reference_to_string(reference)
-                  #(ctx, output, Aborted(message))
-                }
-                Error(cache.Invalid(reason)) -> #(
-                  ctx,
-                  output,
-                  Exception(reason),
-                )
-              }
-            Error(Nil) -> {
-              let cache = cache.pull(ctx.cache)
-              let ctx = Context(..ctx, cache:)
-              let call = Pending(reference, env, k)
-              #(ctx, output, call)
-            }
-          }
-        ir.Pinned(release:) ->
-          case
-            cache.unbound_release(ctx.cache, release.package, release.version)
-          {
-            Ok(module) if module == release.module ->
-              case cache.get_module(ctx.cache, module) {
-                Ok(cache.Module(value:, ..)) ->
-                  loop(expression.resume(value, env, k), ctx, output)
-                Error(cache.NotRequested) -> {
-                  let cache = cache.fetch(ctx.cache, module)
-                  let ctx = Context(..ctx, cache:)
-                  let call = Pending(reference, env, k)
-                  #(ctx, output, call)
-                }
-                Error(cache.DependsOn(..)) | Error(cache.Requested) -> {
-                  #(ctx, output, Pending(reference, env, k))
-                }
-                Error(cache.Failed(_reason)) -> {
-                  let message =
-                    "failed to fetch: " <> ir.reference_to_string(reference)
-                  #(ctx, output, Aborted(message))
-                }
-                Error(cache.Invalid(reason)) -> #(
-                  ctx,
-                  output,
-                  Exception(reason),
-                )
-              }
-            Ok(_module) -> {
-              let message =
-                "invalid hash for reference: "
-                <> ir.reference_to_string(reference)
-              #(ctx, output, Aborted(message))
-            }
-            Error(Nil) -> {
-              let cache = cache.pull(ctx.cache)
-              let ctx = Context(..ctx, cache:)
-              let call = Pending(reference, env, k)
-              #(ctx, output, call)
-            }
-          }
-
         ir.Relative(location:) -> {
           let message = "unable to load source from location: " <> location
           #(ctx, output, Aborted(message))
         }
+        _ ->
+          case cache.get_reference(ctx.cache, reference) {
+            Ok(cache.Module(value:, ..)) ->
+              loop(expression.resume(value, env, k), ctx, output)
+            Error(Nil) -> #(ctx, output, Exception(break))
+          }
       }
     }
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {
@@ -283,9 +270,10 @@ fn is_running(call: Call) {
     | BadArguments(..)
     | InvalidCode(..)
     | Successful(..)
+    | Errored(..)
     | Exception(..)
     | Aborted(..) -> False
-    Handling(..) | Pending(..) -> True
+    Handling(..) | Pulling(..) | Fetching(..) -> True
   }
 }
 
@@ -297,7 +285,10 @@ pub fn all_returns(calls) {
   do_all_returns(calls, [])
 }
 
-fn do_all_returns(calls: Calls, acc) {
+fn do_all_returns(
+  calls: Calls,
+  acc: List(chat.Message(a)),
+) -> Result(List(chat.Message(a)), Nil) {
   case calls {
     [] -> Ok(list.reverse(acc))
     [Progress(id:, output:, call:), ..calls] -> {
@@ -306,9 +297,14 @@ fn do_all_returns(calls: Calls, acc) {
         BadArguments(reasons) -> Ok(string.inspect(reasons))
         InvalidCode(reason) -> Ok(debug.describe(reason))
         Successful(value) -> Ok(simple_debug.inspect(value))
+        Errored(errors) -> {
+          list.map(errors, fn(error) { analysis_debug.reason(error.1) })
+          |> string.join("\n")
+          |> Ok()
+        }
         Exception(reason) -> Ok(simple_debug.describe(reason))
         Aborted(reason) -> Ok(reason)
-        Handling(..) | Pending(..) -> Error(Nil)
+        Handling(..) | Pulling(..) | Fetching(..) -> Error(Nil)
       }
       case message {
         Ok(text) -> {
@@ -334,15 +330,79 @@ pub fn report(output: List(String), result: String) -> String {
   }
 }
 
-pub fn restart(ctx: Context, progress: Progress) -> #(Context, Progress) {
+pub fn pulled(ctx: Context, progress: Progress) -> #(Context, Progress) {
   let Progress(id:, output:, call:) = progress
+
   case call {
-    Pending(dep:, env:, k:) -> {
-      let reason = break.UndefinedReference(dep)
-      let #(ctx, output, call) = loop(Error(#(reason, [], env, k)), ctx, output)
-      #(ctx, Progress(id:, output:, call:))
+    Pulling(source) -> {
+      // TODO move to cache.infer_sync that will gather need to pull and to fetch references
+      case check_single(source, ctx.cache) {
+        [] -> {
+          let #(ctx, output, call) =
+            source
+            |> expression.execute([])
+            // output should always be empty going into this loop.
+            // Maybe output should move into a running state of call
+            |> loop(ctx, output)
+          #(ctx, Progress(id:, output:, call:))
+        }
+        errors -> {
+          // Don't check for needs pull here as we've aready done that.
+          let references = missing_references(errors)
+          case to_fetch(references, ctx.cache, []) {
+            [] -> #(ctx, failed(id, Errored(errors)))
+            needed -> {
+              let cache = cache.fetch_all(ctx.cache, needed)
+              let ctx = Context(..ctx, cache:)
+              #(ctx, failed(id, Fetching(needed, source)))
+            }
+          }
+        }
+      }
     }
     _ -> #(ctx, progress)
+  }
+}
+
+pub fn check_fetching(
+  ctx: Context,
+  progress: Progress,
+) -> #(Context, Progress) {
+  let Progress(id:, output:, call:) = progress
+  case call {
+    Fetching(cids:, source:) -> {
+      let cids = list.filter(cids, still_fetching(_, ctx.cache))
+      case cids {
+        [] ->
+          case check_single(source, ctx.cache) {
+            [] -> {
+              let #(ctx, output, call) =
+                source
+                |> expression.execute([])
+                // output should always be empty going into this loop.
+                // Maybe output should move into a running state of call
+                |> loop(ctx, output)
+              #(ctx, Progress(id:, output:, call:))
+            }
+            errors -> #(ctx, failed(id, Errored(errors)))
+          }
+        _ -> #(ctx, failed(id, Fetching(cids, source)))
+      }
+    }
+    _ -> #(ctx, progress)
+  }
+}
+
+fn still_fetching(cid, cache) {
+  case cache.get_module(cache, cid) {
+    Ok(_) -> False
+    // Not requested is the state given by fetch and before flush.
+    // It means not requested from the network not never requested by the user.
+    Error(cache.NotRequested)
+    | Error(cache.Requested(..))
+    | Error(cache.DependsOn(..)) -> True
+
+    Error(cache.Failed(_)) | Error(cache.Invalid(_)) -> False
   }
 }
 

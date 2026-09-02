@@ -220,7 +220,7 @@ pub fn update(
             calls -> {
               current_context(state)
               |> tools.execute_all(calls)
-              |> resolve_calls(state)
+              |> run_effects_if_any_remain_to_do(state)
             }
           }
         }
@@ -245,21 +245,32 @@ pub fn update(
         Executing(calls) -> {
           current_context(state)
           |> tools.effect_handled(calls, task_id, value)
-          |> resolve_calls(state)
+          |> run_effects_if_any_remain_to_do(state)
         }
         _ -> #(state, [])
       }
     }
     CacheMessage(message) -> {
       let #(cache, _done) = cache.update(state.cache, message, fn(_) { [] })
+      let previous = state.cache.cursor_status
+      let was_pulling =
+        previous == cache.Pulling || previous == cache.ReadyToPull
+      let not_pulling =
+        cache.cursor_status != cache.Pulling
+        && cache.cursor_status != cache.ReadyToPull
+      let stopped_pulling = was_pulling && not_pulling
       let state = State(..state, cache: cache)
 
       case state.status {
         Executing(calls) -> {
           let ctx = current_context(state)
-          // multiple id's might be needed
-          list.map_fold(calls, ctx, tools.restart)
-          |> resolve_calls(state)
+
+          let #(ctx, calls) = case stopped_pulling {
+            True -> list.map_fold(calls, ctx, tools.pulled)
+            False -> #(ctx, calls)
+          }
+          list.map_fold(calls, ctx, tools.check_fetching)
+          |> run_effects_if_any_remain_to_do(state)
         }
         _ -> flush(state)
       }
@@ -283,7 +294,9 @@ fn current_context(state) {
   tools.Context(cache:, counter:, effects: [])
 }
 
-fn resolve_calls(return, state: State) {
+/// If a stream message is completed, and effect is handled or a cache message received then resolve calls sees what stage tool calls are in.
+/// 
+fn run_effects_if_any_remain_to_do(return, state: State) {
   let #(ctx, calls) = return
 
   let tools.Context(cache:, counter:, effects: inner) = ctx
@@ -300,6 +313,7 @@ fn resolve_calls(return, state: State) {
   let #(state, cache_effects) = flush(state)
   let effects = list.append(cache_effects, effects)
 
+  // I think here we do the switch on pulling. 
   let #(status, effects) = case tools.all_returns(calls) {
     Error(Nil) -> #(Executing(calls), effects)
     Ok(messages) -> #(Asking(messages), [
