@@ -9,6 +9,7 @@ import lustre/event
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/public/cache_status
 import overlay/public/input
 import overlay/public/provider_setup as provider_view
 import overlay/web/state
@@ -44,6 +45,7 @@ pub fn render(model: state.State) {
         Some(error) -> h.div([a.class("failure-message")], [h.text(error)])
         None -> element.none()
       },
+      cache_status.render(model),
       input.render(
         model.input,
         "Ask anything...",

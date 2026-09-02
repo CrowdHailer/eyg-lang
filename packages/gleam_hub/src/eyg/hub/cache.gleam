@@ -63,11 +63,15 @@ pub type Dependency {
   Pinned(ir.Release)
 }
 
-pub fn dep_to_reason(dep: Dependency) {
+pub fn dep_to_reference(dep: Dependency) -> ir.Reference {
   case dep {
-    Content(cid:) -> break.UndefinedReference(ir.Content(cid:))
-    Pinned(release) -> break.UndefinedReference(ir.Pinned(release))
+    Content(cid:) -> ir.Content(cid:)
+    Pinned(release) -> ir.Pinned(release)
   }
+}
+
+pub fn dep_to_reason(dep: Dependency) -> state.Reason(meta) {
+  break.UndefinedReference(dep_to_reference(dep))
 }
 
 /// A cache starts with status Pulled, combined with cursor 0 this is the state

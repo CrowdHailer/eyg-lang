@@ -295,6 +295,30 @@ pre {
   }
 }
 
+.hub-activity {
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px 10px;
+  color: oklch(64% 0 0);
+}
+
+.hub-waiting {
+  display: flex;
+  gap: 5px;
+  /* A reference is longer than the chat is wide, the whole line is the title */
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.hub-action {
+  flex: none;
+}
+
+.hub-reference {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .chat-input {
   /* border: 2px dashed #ccc; */
   border: var(--border) solid var(--color-base-content);
