@@ -40,10 +40,16 @@ pub fn execute(
       "unknown reference: " <> ir.reference_to_string(reference)
     })
   use bundle <- system.try(bundle)
-  use cid <- system.then(client.share_bundle(bundle, config.client))
-  use cid <- system.try(cid)
-  use Nil <- system.then(system.stdout(v1.to_string(cid)))
-  system.Done(Ok(0))
+  let #(#(root, _), _) = bundle
+  use shared <- system.then(client.share_bundle(bundle, config.client))
+  use shared <- system.try(shared)
+  case shared == root {
+    True -> {
+      use Nil <- system.then(system.stdout(v1.to_string(shared)))
+      system.Done(Ok(0))
+    }
+    False -> system.Done(Error("hub returned the wrong shared module ID"))
+  }
 }
 
 fn halt(reason) {

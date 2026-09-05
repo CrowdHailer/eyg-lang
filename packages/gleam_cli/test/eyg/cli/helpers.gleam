@@ -5,6 +5,7 @@ import eyg/cli/internal/crypto.{generate_key} as _
 import eyg/cli/internal/platform
 import eyg/cli/system
 import eyg/hub/schema
+import eyg/ir/car
 import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -121,6 +122,25 @@ pub fn vacant_cid_response() {
     schema.share_response_encode(dag_json.vacant_cid)
     |> json.to_string
     |> bit_array.from_string,
+  )
+}
+
+pub fn share_server(sandbox: Sandbox(_)) {
+  with_network(
+    sandbox,
+    fn(request, acc) {
+      let assert Ok(archive) = car.decode(request.body)
+      let assert [root] = archive.header.roots
+      let response =
+        response.new(200)
+        |> response.set_body(
+          schema.share_response_encode(root)
+          |> json.to_string
+          |> bit_array.from_string,
+        )
+      #(Ok(response), [request, ..acc])
+    },
+    [],
   )
 }
 
