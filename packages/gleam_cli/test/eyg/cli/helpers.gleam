@@ -114,6 +114,7 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       generate_key()
       |> resume
       |> run(sandbox)
+    system.ReadDirectory(..) -> panic as "unsupported"
     system.ReadFile(path, resume) -> {
       dict.get(sandbox.files, path)
       |> result.replace_error("missing file")

@@ -21,6 +21,7 @@ pub type Effect(a) {
   GenerateKey(
     fn(keypair.Keypair(eddsa.PrivateKey, eddsa.PublicKey)) -> Effect(a),
   )
+  ReadDirectory(String, fn(Result(List(String), String)) -> Effect(a))
   ReadFile(String, fn(Result(String, String)) -> Effect(a))
   SetPermissions(String, Int, fn(Result(Nil, String)) -> Effect(a))
   Stdin(fn(Result(String, String)) -> Effect(a))
@@ -41,6 +42,10 @@ pub fn fetch(
 
 pub fn create_directory(path) {
   CreateDirectory(path, Done)
+}
+
+pub fn read_directory(path) {
+  ReadDirectory(path, Done)
 }
 
 pub fn read_file(path) {
@@ -72,6 +77,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       Fetch(request, fn(response) { then(resume(response), func) })
     CreateDirectory(path, resume) ->
       CreateDirectory(path, fn(response) { then(resume(response), func) })
+    ReadDirectory(path, resume) ->
+      ReadDirectory(path, fn(response) { then(resume(response), func) })
     ReadFile(path, resume) ->
       ReadFile(path, fn(response) { then(resume(response), func) })
     WriteFile(path, contents, resume) ->
@@ -117,6 +124,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
       run(resume(response))
     }
     CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
+    ReadDirectory(path, resume) -> run(resume(do_read_directory(path)))
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
     WriteFile(path, contents, resume) ->
       run(resume(do_write_file(path, contents)))
@@ -166,6 +174,11 @@ fn format_file_error(path: String, err: simplifile.FileError) -> String {
     )
   }
   "error: " <> description <> "\nhint: " <> hint
+}
+
+pub fn do_read_directory(directory) {
+  simplifile.read_directory(directory)
+  |> result.map_error(fn(err) { format_file_error(directory, err) })
 }
 
 pub fn do_read_file(file) {
