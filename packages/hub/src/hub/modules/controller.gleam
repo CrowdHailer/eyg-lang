@@ -222,6 +222,15 @@ fn type_of(
       Error(reason) -> Error(bundle.Failed(string.inspect(reason)))
     },
   )
+  use Nil <- result.try(case cid.from_tree(source) == module {
+    True -> Ok(Nil)
+    False ->
+      Error(bundle.Failed(
+        "stored module "
+        <> v1.to_string(module)
+        <> " does not match its content ID",
+      ))
+  })
   let archive = bundle.Bundle(root: #(module, source), dependencies: [])
   case bundle.check(archive, infer.pure(), stored(context)) {
     Ok(bundle.Checked(types:, ..)) ->

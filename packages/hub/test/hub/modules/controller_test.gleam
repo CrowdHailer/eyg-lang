@@ -15,6 +15,7 @@ import hub/fixtures
 import hub/generators as g
 import hub/helpers.{dispatch}
 import hub/modules/bundle
+import hub/modules/data as modules
 import hub/packages/data as packages
 import hub/router
 import ogre/operation
@@ -206,6 +207,17 @@ pub fn reject_json_module_with_missing_dependency_test() {
   let bundle.Bundle(root: #(_, source), ..) = test_bundle()
 
   assert dispatch(client.share_module(source), context).status == 422
+}
+
+pub fn reject_corrupt_stored_dependency_test() {
+  use context <- helpers.web_context()
+  let declared = cid.from_tree(unique_value())
+  let corrupt = ir.integer(1)
+  let assert Ok(_) =
+    pog.execute(modules.insert(declared, corrupt, "127.0.0.1"), context.db)
+  let source = ir.reference(declared)
+
+  assert dispatch(client.share_module(source), context).status == 500
 }
 
 pub fn reject_bundle_with_missing_block_test() {
