@@ -80,7 +80,7 @@ pub fn check_uses_supplied_dependency_types_test() {
     ])
 
   let assert Ok(_) =
-    bundle.check(archive, infer.pure(), fn(_) { Error(bundle.NotFound) })
+    bundle.check(archive, infer.pure(), Nil, fn(_, _) { Error(bundle.NotFound) })
 }
 
 pub fn check_rejects_an_impure_dependency_test() {
@@ -94,7 +94,7 @@ pub fn check_rejects_an_impure_dependency_test() {
     ])
 
   let assert Error(bundle.Unsound(module:, ..)) =
-    bundle.check(archive, infer.pure(), fn(_) { Error(bundle.NotFound) })
+    bundle.check(archive, infer.pure(), Nil, fn(_, _) { Error(bundle.NotFound) })
   assert module == dependency_cid
 }
 

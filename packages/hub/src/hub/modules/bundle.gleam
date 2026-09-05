@@ -157,49 +157,65 @@ fn reference_cid(reference) {
 pub fn check(
   archive: Bundle(meta),
   context: infer.Context,
-  resolve: fn(ir.Reference) -> Result(binding.Poly, ResolveError(resolve_error)),
-) -> Result(Checked(meta), Rejection(meta, resolve_error)) {
+  state: state,
+  resolve: fn(ir.Reference, state) ->
+    Result(#(binding.Poly, state), ResolveError(resolve_error)),
+) -> Result(#(Checked(meta), state), Rejection(meta, resolve_error)) {
   let Bundle(root: #(root, source), dependencies:) = archive
-  use known <- result.try(check_dependencies(dependencies, dict.new(), resolve))
-  use analysis <- result.try(check_module(
+  use #(known, state) <- result.try(check_dependencies(
+    dependencies,
+    dict.new(),
+    state,
+    resolve,
+  ))
+  use #(analysis, state) <- result.try(check_module(
     infer.check(context, source),
     root,
     known,
+    state,
     resolve,
   ))
   let types = dict.insert(known, root, infer.poly_type(analysis))
-  Ok(Checked(analysis:, types:))
+  Ok(#(Checked(analysis:, types:), state))
 }
 
-fn check_dependencies(dependencies, known, resolve) {
+fn check_dependencies(dependencies, known, state, resolve) {
   case dependencies {
-    [] -> Ok(known)
+    [] -> Ok(#(known, state))
     [#(cid, source), ..rest] -> {
-      use known <- result.try(check_dependencies(rest, known, resolve))
-      use analysis <- result.try(check_module(
+      use #(known, state) <- result.try(check_dependencies(
+        rest,
+        known,
+        state,
+        resolve,
+      ))
+      use #(analysis, state) <- result.try(check_module(
         infer.check(infer.pure(), source),
         cid,
         known,
+        state,
         resolve,
       ))
-      Ok(dict.insert(known, cid, infer.poly_type(analysis)))
+      Ok(#(dict.insert(known, cid, infer.poly_type(analysis)), state))
     }
   }
 }
 
-fn check_module(step, module, known, resolve) {
+fn check_module(step, module, known, state, resolve) {
   case step {
     infer.Done(analysis) ->
       case infer.all_errors(analysis) {
-        [] -> Ok(analysis)
+        [] -> Ok(#(analysis, state))
         errors -> Error(Unsound(module, errors))
       }
     infer.Lookup(reference:, resume:) ->
       case held(known, reference) {
-        Ok(type_) -> check_module(resume(Ok(type_)), module, known, resolve)
+        Ok(type_) ->
+          check_module(resume(Ok(type_)), module, known, state, resolve)
         Error(Nil) ->
-          case resolve(reference) {
-            Ok(type_) -> check_module(resume(Ok(type_)), module, known, resolve)
+          case resolve(reference, state) {
+            Ok(#(type_, state)) ->
+              check_module(resume(Ok(type_)), module, known, state, resolve)
             Error(NotFound) -> Error(Missing(module, reference))
             Error(Failed(reason)) -> Error(ResolutionFailed(reason))
           }

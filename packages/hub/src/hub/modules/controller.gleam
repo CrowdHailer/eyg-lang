@@ -100,7 +100,8 @@ fn accept(
   context: Context,
   ip: String,
 ) -> Response(wisp.Body) {
-  case bundle.check(archive, infer.pure(), stored(context, [])) {
+  let resolution = Resolution(dict.new(), dict.new(), [])
+  case bundle.check(archive, infer.pure(), resolution, stored(context)) {
     Error(bundle.ResolutionFailed(reason)) -> {
       wisp.log_warning(reason)
       wisp.internal_server_error()
@@ -186,15 +187,23 @@ fn check_size(size: Int, max, then) {
   }
 }
 
-fn stored(context: Context, visiting) {
-  fn(reference) { resolve_stored(reference, context, visiting) }
+type Resolution {
+  Resolution(
+    types: dict.Dict(v1.Cid, binding.Poly),
+    releases: dict.Dict(#(String, Int), v1.Cid),
+    visiting: List(v1.Cid),
+  )
 }
 
-fn resolve_stored(reference, context, visiting) {
+fn stored(context: Context) {
+  fn(reference, state) { resolve_stored(reference, context, state) }
+}
+
+fn resolve_stored(reference, context, state) {
   case reference {
-    ir.Content(cid:) -> type_of(cid, context, visiting)
+    ir.Content(cid:) -> type_of(cid, context, state)
     ir.Pinned(ir.Release(package:, version:, module:)) ->
-      resolve_release(package, version, module, context, visiting)
+      resolve_release(package, version, module, context, state)
     _ -> Error(bundle.NotFound)
   }
 }
@@ -204,28 +213,53 @@ fn resolve_release(
   version: Int,
   module: v1.Cid,
   context: Context,
-  visiting: List(v1.Cid),
+  state: Resolution,
 ) {
-  case pog.execute(packages.get_release(package, version), context.db) {
-    Ok(pog.Returned(rows: [release], ..)) ->
-      case release.module == v1.to_string(module) {
-        True -> type_of(module, context, visiting)
+  let Resolution(releases:, ..) = state
+  case dict.get(releases, #(package, version)) {
+    Ok(cid) ->
+      case cid == module {
+        True -> type_of(module, context, state)
         False -> Error(bundle.NotFound)
       }
-    Ok(pog.Returned(rows: [], ..)) -> Error(bundle.NotFound)
-    Ok(_) ->
-      Error(bundle.Failed(
-        "release lookup returned an unexpected number of rows",
-      ))
-    Error(reason) -> Error(bundle.Failed(string.inspect(reason)))
+    Error(Nil) ->
+      case pog.execute(packages.get_release(package, version), context.db) {
+        Ok(pog.Returned(rows: [release], ..)) ->
+          case release.module == v1.to_string(module) {
+            True -> {
+              let state =
+                Resolution(
+                  ..state,
+                  releases: dict.insert(releases, #(package, version), module),
+                )
+              type_of(module, context, state)
+            }
+            False -> Error(bundle.NotFound)
+          }
+        Ok(pog.Returned(rows: [], ..)) -> Error(bundle.NotFound)
+        Ok(_) ->
+          Error(bundle.Failed(
+            "release lookup returned an unexpected number of rows",
+          ))
+        Error(reason) -> Error(bundle.Failed(string.inspect(reason)))
+      }
   }
 }
 
 fn type_of(
   module: v1.Cid,
   context: Context,
-  visiting: List(v1.Cid),
-) -> Result(binding.Poly, bundle.ResolveError(String)) {
+  state: Resolution,
+) -> Result(#(binding.Poly, Resolution), bundle.ResolveError(String)) {
+  let Resolution(types:, ..) = state
+  case dict.get(types, module) {
+    Ok(type_) -> Ok(#(type_, state))
+    Error(Nil) -> check_stored(module, context, state)
+  }
+}
+
+fn check_stored(module: v1.Cid, context: Context, state: Resolution) {
+  let Resolution(visiting:, ..) = state
   use Nil <- result.try(case list.contains(visiting, module) {
     True ->
       Error(bundle.Failed(
@@ -264,14 +298,25 @@ fn type_of(
       ))
   })
   let archive = bundle.Bundle(root: #(module, source), dependencies: [])
-  case
-    bundle.check(archive, infer.pure(), stored(context, [module, ..visiting]))
-  {
-    Ok(bundle.Checked(types:, ..)) ->
-      dict.get(types, module)
-      |> result.map_error(fn(_) {
-        bundle.Failed("stored module was checked without producing a type")
-      })
+  let nested = Resolution(..state, visiting: [module, ..visiting])
+  case bundle.check(archive, infer.pure(), nested, stored(context)) {
+    Ok(#(bundle.Checked(types: checked, ..), resolved)) -> {
+      use type_ <- result.try(
+        dict.get(checked, module)
+        |> result.map_error(fn(_) {
+          bundle.Failed("stored module was checked without producing a type")
+        }),
+      )
+      let Resolution(types:, ..) = resolved
+      Ok(#(
+        type_,
+        Resolution(
+          ..resolved,
+          types: dict.insert(types, module, type_),
+          visiting:,
+        ),
+      ))
+    }
     Error(bundle.ResolutionFailed(reason)) -> Error(bundle.Failed(reason))
     Error(_) ->
       Error(bundle.Failed(

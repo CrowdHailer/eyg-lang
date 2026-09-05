@@ -26,6 +26,7 @@ date: 2026-09-05
 - Fixed: Re-uploading a valid module reported success while leaving conflicting corrupt stored source unchanged.
 - Fixed: Recursive stored dependency validation had no cycle guard.
 - Fixed: Bundle uploads amplified retries into per-block audit rows and attributed every upload to a fabricated IP address.
+- Fixed: Repeated and diamond-shaped stored references caused repeated database reads and type checks without a request-local cache.
 
 ## Verification errors
 
