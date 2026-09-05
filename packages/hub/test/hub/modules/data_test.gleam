@@ -41,6 +41,31 @@ pub fn insert_module_is_idempotent_test() {
   assert 2 == count
 }
 
+pub fn insert_bundle_stores_every_module_test() {
+  use conn <- helpers.with_transaction()
+  let first = ir.integer(1)
+  let first_cid = cid.from_tree(first)
+  let second = ir.integer(2)
+  let second_cid = cid.from_tree(second)
+  let ip = "192.168.2.2"
+  let query =
+    data.insert_bundle(
+      [
+        #(first_cid, first),
+        #(second_cid, second),
+      ],
+      ip,
+    )
+  let assert Ok(pog.Returned(count: 2, rows: [])) = pog.execute(query, conn)
+
+  let assert Ok(pog.Returned(rows: [_], ..)) =
+    pog.execute(data.get(v1.to_string(first_cid)), conn)
+  let assert Ok(pog.Returned(rows: [_], ..)) =
+    pog.execute(data.get(v1.to_string(second_cid)), conn)
+  let assert Ok(pog.Returned(rows: [2], ..)) =
+    pog.execute(data.count_uploads_by_ip(ip), conn)
+}
+
 pub fn get_unknown_cid_test() {
   use conn <- helpers.with_transaction()
 
