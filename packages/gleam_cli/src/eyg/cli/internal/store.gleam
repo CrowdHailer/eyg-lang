@@ -1,5 +1,6 @@
 import eyg/cli/internal/crypto
 import eyg/cli/internal/platform
+import eyg/cli/system
 import eyg/hub/schema
 import filepath
 import gleam/dynamic/decode
@@ -22,21 +23,23 @@ pub type Signatory {
 pub fn save_signatory(
   signatory: Signatory,
   dirs: platform.PlatformDirs,
-) -> Result(Nil, simplifile.FileError) {
+) -> system.Effect(Result(Nil, String)) {
   let Signatory(alias:, principal:, keypair:) = signatory
 
   let path = signatories_dir(dirs) <> alias <> ".json"
-  use Nil <- result.try(
-    simplifile.create_directory_all(filepath.directory_name(path)),
+  use created <- system.then(
+    system.create_directory(filepath.directory_name(path)),
   )
+  use Nil <- system.try(created)
   let blob =
     signatory_encode(principal, keypair)
     |> json.to_string
 
-  use Nil <- result.try(simplifile.write(path, blob))
+  use written <- system.then(system.write_file(path, blob))
+  use Nil <- system.try(written)
 
   // The file embeds a private key — restrict it to the owner (rw-------).
-  simplifile.set_permissions_octal(path, 0o600)
+  system.set_permissions(path, 0o600)
 }
 
 pub fn all_signatories(dirs) {

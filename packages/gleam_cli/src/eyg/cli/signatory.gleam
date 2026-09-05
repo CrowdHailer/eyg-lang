@@ -1,36 +1,31 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
-import eyg/cli/internal/crypto
 import eyg/cli/internal/store
+import eyg/cli/system
 import filepath
-import gleam/io
-import gleam/javascript/promise.{type Promise}
-import gleam/javascript/promisex
 import gleam/json
 import gleam/list
-import gleam/result
 import gleam/string
 import multiformats/cid/v1
-import simplifile
 import untethered/ledger/schema
 
 pub fn initial(
   alias: String,
   config: config.Config,
-) -> Promise(Result(Int, String)) {
+) -> system.Effect(Result(Int, String)) {
   let config.Config(client:, dirs:) = config
-  let keypair = crypto.generate_key()
-  use first <- promise.try_await(client.initialise_principal(keypair, client))
-  use first <- promisex.try_sync(first)
+  use keypair <- system.then(system.generate_key())
+  use first <- system.then(client.initialise_principal(keypair, client))
+  use first <- system.try(first)
+  use first <- system.try(first)
 
   let principal = first.entity
   let s = store.Signatory(alias:, principal:, keypair:)
-  use Nil <- promisex.try_sync(
-    store.save_signatory(s, dirs)
-    |> result.map_error(simplifile.describe_error),
-  )
+  use saved <- system.then(store.save_signatory(s, dirs))
+  use Nil <- system.try(saved)
 
-  use x <- promise.try_await(client.pull_principal(client))
+  use x <- system.then(client.pull_principal(client))
+  use x <- system.try(x)
   let events =
     list.filter(x.entries, fn(entry) { entry.entity == first.entity })
 
@@ -45,14 +40,13 @@ pub fn initial(
     <> v1.to_string(first.entity)
     <> ".json"
 
-  let assert Ok(Nil) =
-    simplifile.create_directory_all(filepath.directory_name(path))
-
-  use Nil <- promisex.try_sync(
-    simplifile.write(path, cache)
-    |> result.map_error(simplifile.describe_error),
+  use created <- system.then(
+    system.create_directory(filepath.directory_name(path)),
   )
-  io.println("created signatory '" <> alias <> "'")
-  io.println("principal " <> v1.to_string(principal))
-  promise.resolve(Ok(0))
+  use Nil <- system.try(created)
+  use written <- system.then(system.write_file(path, cache))
+  use Nil <- system.try(written)
+  use Nil <- system.then(system.stdout("created signatory '" <> alias <> "'"))
+  use Nil <- system.then(system.stdout("principal " <> v1.to_string(principal)))
+  system.Done(Ok(0))
 }

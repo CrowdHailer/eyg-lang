@@ -8,7 +8,6 @@ import eyg/hub/client
 import eyg/hub/publisher
 import eyg/hub/signatory
 import eyg/ir/tree as ir
-import gleam/fetchx
 import gleam/javascript/promise.{type Promise}
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -37,25 +36,27 @@ pub fn initialise_principal(keypair, client: Client) {
   let signature = crypto.sign(payload, keypair)
   let operation = client.submit_signatory(entry, signature)
   let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
+  use result <- system.then(system.fetch(request))
   case result {
     Ok(response) ->
       client.submit_signatory_response(response)
       |> result.map_error(string.inspect)
-    Error(reason) -> Error(string.inspect(reason))
+    Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
+  |> system.Done
 }
 
 pub fn pull_principal(client: Client) {
   let operation = client.pull_signatories(schema.pull_parameters())
   let request = operation.to_request(operation, client.origin)
-  use result <- promise.map(fetchx.send_bits(request))
+  use result <- system.then(system.fetch(request))
   case result {
     Ok(response) ->
       client.pull_signatories_response(response)
       |> result.map_error(string.inspect)
-    Error(reason) -> Error(string.inspect(reason))
+    Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
+  |> system.Done
 }
 
 pub fn share_module(

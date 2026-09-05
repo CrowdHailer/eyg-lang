@@ -1,5 +1,6 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
+import eyg/cli/internal/crypto.{generate_key} as _
 import eyg/cli/internal/platform
 import eyg/cli/system
 import eyg/hub/schema
@@ -101,6 +102,7 @@ pub fn vacant_cid_response() {
 pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
   case effect {
     system.Done(value) -> #(value, sandbox)
+    system.CreateDirectory(..) -> panic as "unsupported Create Directory"
     system.Fetch(request, resume) -> {
       let #(response, state) = sandbox.network(request, sandbox.network_state)
       let sandbox = Sandbox(..sandbox, network_state: state)
@@ -108,12 +110,17 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       |> resume
       |> run(sandbox)
     }
+    system.GenerateKey(resume) ->
+      generate_key()
+      |> resume
+      |> run(sandbox)
     system.ReadFile(path, resume) -> {
       dict.get(sandbox.files, path)
       |> result.replace_error("missing file")
       |> resume()
       |> run(sandbox)
     }
+    system.SetPermissions(..) -> panic as "unsupported"
     system.Stdin(resume) -> {
       let #(response, stdin) = case sandbox.stdin {
         [] -> #(Error(""), [])
@@ -128,6 +135,11 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       run(resume(Nil), sandbox)
     }
     system.Wait(_, resume) -> run(resume(Nil), sandbox)
+    system.WriteFile(path, content, resume) -> {
+      let files = dict.insert(sandbox.files, path, content)
+      let sandbox = Sandbox(..sandbox, files:)
+      run(resume(Ok(Nil)), sandbox)
+    }
   }
 }
 

@@ -1,23 +1,36 @@
 import eyg/cli/internal/bun_platform
+import eyg/cli/internal/crypto
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/result
+import kryptos/eddsa
 import midas/effect
 import simplifile
+import untethered/keypair
 
 // This exists for testing as the runner can be defined straight away.
 pub type Effect(a) {
   Done(a)
+  CreateDirectory(String, fn(Result(Nil, String)) -> Effect(a))
   Fetch(
     Request(BitArray),
     fn(Result(Response(BitArray), effect.FetchError)) -> Effect(a),
   )
+  GenerateKey(
+    fn(keypair.Keypair(eddsa.PrivateKey, eddsa.PublicKey)) -> Effect(a),
+  )
   ReadFile(String, fn(Result(String, String)) -> Effect(a))
+  SetPermissions(String, Int, fn(Result(Nil, String)) -> Effect(a))
   Stdin(fn(Result(String, String)) -> Effect(a))
   Stdout(String, fn(Nil) -> Effect(a))
   Wait(Int, fn(Nil) -> Effect(a))
+  WriteFile(String, String, fn(Result(Nil, String)) -> Effect(a))
+}
+
+pub fn generate_key() {
+  GenerateKey(Done)
 }
 
 pub fn fetch(
@@ -26,8 +39,20 @@ pub fn fetch(
   Fetch(request, Done)
 }
 
+pub fn create_directory(path) {
+  CreateDirectory(path, Done)
+}
+
 pub fn read_file(path) {
   ReadFile(path, Done)
+}
+
+pub fn write_file(path, contents) {
+  WriteFile(path, contents, Done)
+}
+
+pub fn set_permissions(path, permissions) {
+  SetPermissions(path, permissions, Done)
 }
 
 pub fn stdin() {
@@ -41,10 +66,20 @@ pub fn stdout(text) {
 pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
   case effect {
     Done(value) -> func(value)
+    GenerateKey(resume) ->
+      GenerateKey(fn(keypair) { then(resume(keypair), func) })
     Fetch(request, resume) ->
       Fetch(request, fn(response) { then(resume(response), func) })
+    CreateDirectory(path, resume) ->
+      CreateDirectory(path, fn(response) { then(resume(response), func) })
     ReadFile(path, resume) ->
       ReadFile(path, fn(response) { then(resume(response), func) })
+    WriteFile(path, contents, resume) ->
+      WriteFile(path, contents, fn(response) { then(resume(response), func) })
+    SetPermissions(path, permissions, resume) ->
+      SetPermissions(path, permissions, fn(response) {
+        then(resume(response), func)
+      })
     Stdin(resume) -> Stdin(fn(response) { then(resume(response), func) })
     Stdout(text, resume) ->
       Stdout(text, fn(response) { then(resume(response), func) })
@@ -76,11 +111,17 @@ pub fn try(
 pub fn run(effect: Effect(a)) -> Promise(a) {
   case effect {
     Done(value) -> promise.resolve(value)
+    GenerateKey(resume) -> run(resume(crypto.generate_key()))
     Fetch(request, resume) -> {
       use response <- promise.await(bun_platform.fetch(request)(promise.resolve))
       run(resume(response))
     }
+    CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
+    WriteFile(path, contents, resume) ->
+      run(resume(do_write_file(path, contents)))
+    SetPermissions(path, permissions, resume) ->
+      run(resume(do_set_permissions(path, permissions)))
     Stdin(resume) -> run(resume(read_stdin()))
     Stdout(text, resume) -> run(resume(io.println(text)))
     Wait(duration, resume) -> {
@@ -88,6 +129,21 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
       run(resume(response))
     }
   }
+}
+
+fn do_create_directory(path) {
+  simplifile.create_directory_all(path)
+  |> result.map_error(simplifile.describe_error)
+}
+
+fn do_write_file(path, contents) {
+  simplifile.write(path, contents)
+  |> result.map_error(simplifile.describe_error)
+}
+
+fn do_set_permissions(path, permissions) {
+  simplifile.set_permissions_octal(path, permissions)
+  |> result.map_error(simplifile.describe_error)
 }
 
 fn format_file_error(path: String, err: simplifile.FileError) -> String {
