@@ -10,6 +10,7 @@ import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/cid as module_cid
 import eyg/ir/tree as ir
 import eyg/parser/location
 import filepath
@@ -23,6 +24,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
 import kryptos/eddsa
+import midas/continuation
 import multiformats/cid/v1
 import shellout
 import simplifile
@@ -277,15 +279,23 @@ fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
 
       case result {
         Ok(source) ->
-          Fetched(
-            dep,
-            Ok(
-              source
-              |> ir.map_annotation(fn(_: Nil) {
-                source.Location(source.Content(dep), source.Json)
-              }),
-            ),
-          )
+          case has_cid(source, dep) {
+            True ->
+              Fetched(
+                dep,
+                Ok(
+                  source
+                  |> ir.map_annotation(fn(_: Nil) {
+                    source.Location(source.Content(dep), source.Json)
+                  }),
+                ),
+              )
+            False ->
+              Fetched(
+                dep,
+                Error("hub returned a module with the wrong content ID"),
+              )
+          }
         Error(reason) -> Fetched(dep, Error(reason))
       }
     }
@@ -294,6 +304,12 @@ fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
       Pulled(result)
     }
   }
+}
+
+pub fn has_cid(source: ir.Node(_), expected: v1.Cid) -> Bool {
+  module_cid.from_tree(source, fn(bytes) {
+    continuation.return(crypto.hash(crypto.Sha256, bytes))
+  })(fn(actual) { actual == expected })
 }
 
 fn apply(

@@ -10,7 +10,7 @@ date: 2026-09-05
 
 - Fixed: Transitive relative-import cycles were not tracked while building a share bundle, so a graph such as `root -> A -> B -> A` recursed indefinitely.
 - Fixed: Shared relative imports were reread, reparsed, and rehashed once per path through a diamond dependency graph.
-- Pending: Modules fetched by content identifier are accepted without checking that the returned module has the requested hash.
+- Fixed: Modules fetched by content identifier were accepted without checking that the returned module had the requested hash.
 - Pending: The share client accepts a response CID that differs from its local root and reduces useful HTTP failures to `bad module lookup`.
 - Pending: Hub module lookup validates a parsed CID but queries with the original, potentially noncanonical URL text.
 - Pending: The CAR endpoint rejects valid archives whose root is not the first block or which contain unreachable blocks instead of shaking them to the graph reachable from the declared root.

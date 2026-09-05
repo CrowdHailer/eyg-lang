@@ -5,12 +5,16 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/cid
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/bit_array
+import gleam/crypto
 import gleam/dict
 import gleam/list
 import gleam/string
 import kryptos/eddsa
+import midas/continuation
 import multiformats/cid/v1
 import simplifile
 import touch_grass/cryptography/create_key
@@ -19,6 +23,19 @@ import touch_grass/file_system/append_file
 import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
+
+fn module_cid(source) {
+  cid.from_tree(source, fn(bytes) {
+    continuation.return(crypto.hash(crypto.Sha256, bytes))
+  })(fn(cid) { cid })
+}
+
+pub fn fetched_module_cid_must_match_test() {
+  let source = ir.integer(1)
+
+  assert execute.has_cid(source, module_cid(source))
+  assert !execute.has_cid(source, dag_json.vacant_cid)
+}
 
 const origin = source.Disk("./test/fixtures/entry.eyg")
 
