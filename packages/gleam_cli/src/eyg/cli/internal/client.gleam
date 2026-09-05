@@ -7,7 +7,9 @@ import eyg/hub/cache.{type Cache}
 import eyg/hub/client
 import eyg/hub/publisher
 import eyg/hub/signatory
+import eyg/ir/cid
 import eyg/ir/tree as ir
+import gleam/crypto as gleam_crypto
 import gleam/int
 import gleam/javascript/promise.{type Promise}
 import gleam/list
@@ -129,11 +131,24 @@ pub fn share_module(
   let request = operation.to_request(operation, client.origin)
   use result <- system.then(system.fetch(request))
   case result {
-    Ok(response) ->
-      client.share_response(response) |> result.map_error(string.inspect)
+    Ok(response) -> {
+      use shared <- result.try(
+        client.share_response(response) |> result.map_error(string.inspect),
+      )
+      case shared == source_cid(source) {
+        True -> Ok(shared)
+        False -> Error("hub returned the wrong shared module ID")
+      }
+    }
     Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
   |> system.Done
+}
+
+fn source_cid(source) {
+  cid.from_tree(source, fn(bytes) {
+    continuation.return(gleam_crypto.hash(gleam_crypto.Sha256, bytes))
+  })(fn(cid) { cid })
 }
 
 pub fn share_bundle(

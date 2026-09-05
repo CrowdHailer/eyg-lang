@@ -14,6 +14,7 @@ date: 2026-09-05
 - Fixed: The first reusable CID verifier depended on Node crypto and broke production browser bundles.
 - Fixed: Its handwritten browser SHA-256 replacement mishandled Gleam JavaScript bit arrays; hashing now uses the existing platform hash effect and Web Crypto.
 - Fixed: The share client accepted a response CID that differed from its locally calculated root.
+- Fixed: The publish path accepted a response CID that differed from the module it was about to sign.
 - Fixed: The share client reduced useful HTTP failures to `bad module lookup`.
 - Pending: Hub module lookup validates a parsed CID but queries with the original, potentially noncanonical URL text.
 - Pending: The CAR endpoint rejects valid archives whose root is not the first block or which contain unreachable blocks instead of shaking them to the graph reachable from the declared root.
