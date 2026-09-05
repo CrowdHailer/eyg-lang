@@ -5,6 +5,7 @@ import eyg/cli/share
 import eyg/ir/car
 import eyg/ir/dag_json
 import gleam/http/request
+import gleam/list
 import multiformats/cid/v1
 
 pub fn share_simple_expression_test() {
@@ -105,6 +106,27 @@ import \"/lib/bar.eyg\"",
   let assert [b1, b2] = archive.blocks
   assert root == b1.0
   assert dag_json.to_block(ir.string("Hi")) == b2.1
+}
+
+pub fn share_reuses_a_shared_import_test() {
+  let files = [
+    #("/main.eyg", "let left = import \"/left.eyg\"\nimport \"/right.eyg\""),
+    #("/left.eyg", "import \"/shared.eyg\""),
+    #("/right.eyg", "import \"/shared.eyg\""),
+    #("/shared.eyg", "1"),
+  ]
+  let sandbox =
+    helpers.sandbox()
+    |> helpers.with_files(files)
+    |> helpers.share_server
+  let #(output, sandbox) =
+    share.execute(source.File("/main.eyg"), helpers.config)
+    |> helpers.run(sandbox)
+
+  assert output == Ok(0)
+  let assert [request] = sandbox.network_state
+  let assert Ok(archive) = car.decode(request.body)
+  assert archive.blocks |> list.length == 3
 }
 
 pub fn share_out_of_range_import_test() {

@@ -10,6 +10,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import filepath
 import gleam/crypto
+import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -60,7 +61,10 @@ fn hash_sha256(bytes) {
 // continuation based below
 
 pub fn load(directory, path, source, cache) {
-  do_load(directory, source, cache, [path], [])(fn(out) { system.Done(Ok(out)) })
+  do_load(directory, source, cache, [path], dict.new(), [])(fn(out) {
+    let #(module, _loaded, dependencies) = out
+    system.Done(Ok(#(module, dependencies)))
+  })
 }
 
 /// Can't pass in halt as a parameter and have it's return type generic
@@ -78,55 +82,68 @@ fn do_load(
   source: ir.Node(source.Location),
   cache: cache.Cache(c),
   visited: List(String),
+  loaded: dict.Dict(String, v1.Cid),
   acc: List(#(v1.Cid, BitArray)),
 ) -> K(system.Effect(_), _) {
   use #(_replaced, source) <- then(pin_k(source, cache, halt))
-  use #(acc, source) <- then(
-    ir.rewrite_with(source, acc, fn(acc, node) {
+  use #(#(loaded, acc), source) <- then(
+    ir.rewrite_with(source, #(loaded, acc), fn(state, node) {
+      let #(loaded, acc) = state
       let #(exp, meta) = node
       case exp {
         ir.Reference(ir.Relative(location:)) -> {
           case execute.resolve_relative(directory, location) {
-            Ok(path) -> {
-              case check.cycle_check(visited, path) {
-                Ok(Nil) -> {
-                  use code <- then(read_file(path))
-                  case code {
-                    Ok(code) ->
-                      case source.parse_input(code, source.File(location)) {
-                        Ok(dependency) -> {
-                          use #(#(cid, block), acc) <- then(do_load(
-                            filepath.directory_name(path),
-                            dependency,
-                            cache,
-                            [path, ..visited],
-                            acc,
-                          ))
-
-                          let acc = case list.key_find(acc, cid) {
-                            Ok(_) -> acc
-                            Error(_) -> [#(cid, block), ..acc]
+            Ok(path) ->
+              case dict.get(loaded, path) {
+                Ok(cid) ->
+                  return(#(
+                    #(loaded, acc),
+                    #(ir.Reference(ir.Content(cid)), meta),
+                  ))
+                Error(Nil) ->
+                  case check.cycle_check(visited, path) {
+                    Ok(Nil) -> {
+                      use code <- then(read_file(path))
+                      case code {
+                        Ok(code) ->
+                          case source.parse_input(code, source.File(location)) {
+                            Ok(dependency) -> {
+                              use #(#(cid, block), loaded, acc) <- then(do_load(
+                                filepath.directory_name(path),
+                                dependency,
+                                cache,
+                                [path, ..visited],
+                                loaded,
+                                acc,
+                              ))
+                              let loaded = dict.insert(loaded, path, cid)
+                              let acc = case list.key_find(acc, cid) {
+                                Ok(_) -> acc
+                                Error(_) -> [#(cid, block), ..acc]
+                              }
+                              return(#(
+                                #(loaded, acc),
+                                #(ir.Reference(ir.Content(cid)), meta),
+                              ))
+                            }
+                            Error(_) -> halt(ir.Relative(path))
                           }
-                          return(#(acc, #(ir.Reference(ir.Content(cid)), meta)))
-                        }
                         Error(_) -> halt(ir.Relative(path))
                       }
+                    }
                     Error(_) -> halt(ir.Relative(path))
                   }
-                }
-                Error(_) -> halt(ir.Relative(path))
               }
-            }
             Error(_) -> halt(ir.Relative(location:))
           }
         }
-        _ -> return(#(acc, #(exp, meta)))
+        _ -> return(#(#(loaded, acc), #(exp, meta)))
       }
     }),
   )
   let block = dag_json.to_block(source)
   use cid <- then(cid.from_block(block, hash_sha256))
-  return(#(#(cid, block), acc))
+  return(#(#(cid, block), loaded, acc))
 }
 
 // fn pin(source, cache) -> system.Effect(Result(_, _)) {

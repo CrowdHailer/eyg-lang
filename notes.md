@@ -9,6 +9,7 @@ date: 2026-09-05
 ## Confirmed errors
 
 - Fixed: Transitive relative-import cycles were not tracked while building a share bundle, so a graph such as `root -> A -> B -> A` recursed indefinitely.
+- Fixed: Shared relative imports were reread, reparsed, and rehashed once per path through a diamond dependency graph.
 - Pending: Modules fetched by content identifier are accepted without checking that the returned module has the requested hash.
 - Pending: The share client accepts a response CID that differs from its local root and reduces useful HTTP failures to `bad module lookup`.
 - Pending: Hub module lookup validates a parsed CID but queries with the original, potentially noncanonical URL text.
