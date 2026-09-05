@@ -362,6 +362,20 @@ pub fn bundle_content_type_test() {
     == 415
 }
 
+pub fn share_records_the_proxy_client_ip_test() {
+  use context <- helpers.web_context()
+  let assert Ok(body) = encode_bundle(single_bundle(unique_value()))
+  let request =
+    simulate.request(http.Post, "/modules/share")
+    |> simulate.bit_array_body(body)
+    |> request.set_header("content-type", car.content_type)
+    |> request.set_header("x-forwarded-for", "10.0.0.1, 192.0.2.1")
+
+  assert router.route(request, context).status == 200
+  let assert Ok(pog.Returned(rows: [1], ..)) =
+    pog.execute(modules.count_uploads_by_ip("192.0.2.1"), context.db)
+}
+
 fn test_bundle() {
   let dependency = unique_value()
   let dependency_cid = cid.from_tree(dependency)

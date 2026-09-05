@@ -1,5 +1,6 @@
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/crypto
 import gleam/int
 import gleam/json
 import hub/cid
@@ -31,21 +32,21 @@ pub fn insert_module_is_idempotent_test() {
   let query = data.insert(cid, source, ip)
   let assert Ok(pog.Returned(count: 1, rows: [])) = pog.execute(query, conn)
 
-  // Test that a second insert inserts one more row
+  // A repeated upload does not create another audit row.
   let query = data.insert(cid, source, ip)
-  let assert Ok(pog.Returned(count: 1, rows: [])) = pog.execute(query, conn)
+  let assert Ok(pog.Returned(count: 0, rows: [])) = pog.execute(query, conn)
 
   let query = data.count_uploads_by_ip(ip)
   let assert Ok(pog.Returned(count: 1, rows: [count])) =
     pog.execute(query, conn)
-  assert 2 == count
+  assert 1 == count
 }
 
 pub fn insert_bundle_stores_every_module_test() {
   use conn <- helpers.with_transaction()
-  let first = ir.integer(1)
+  let first = ir.binary(crypto.strong_random_bytes(40))
   let first_cid = cid.from_tree(first)
-  let second = ir.integer(2)
+  let second = ir.binary(crypto.strong_random_bytes(40))
   let second_cid = cid.from_tree(second)
   let ip = "192.168.2.2"
   let query =

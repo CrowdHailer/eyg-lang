@@ -37,10 +37,11 @@ pub fn insert(
   ON CONFLICT (cid) DO UPDATE
   SET source = EXCLUDED.source
   WHERE modules.source <> EXCLUDED.source
+  RETURNING cid
 )
 INSERT INTO module_uploads (ip, cid)
 -- This casting is because pog doesn't expose an inet type
-VALUES (($3::text)::inet, $1);"
+SELECT (($3::text)::inet), cid FROM module_insert;"
   |> pog.query()
   |> pog.parameter(pog.text(cid))
   |> pog.parameter(pog.text(serialized))
@@ -68,9 +69,10 @@ pub fn insert_bundle(
   ON CONFLICT (cid) DO UPDATE
   SET source = EXCLUDED.source
   WHERE modules.source <> EXCLUDED.source
+  RETURNING cid
 )
 INSERT INTO module_uploads (ip, cid)
-SELECT (($3::text)::inet), cid FROM supplied;"
+SELECT (($3::text)::inet), cid FROM module_insert;"
   |> pog.query()
   |> pog.parameter(pog.array(pog.text, cids))
   |> pog.parameter(pog.array(pog.text, sources))

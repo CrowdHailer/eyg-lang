@@ -55,7 +55,11 @@ fn share_module(
   use <- check_size(string.byte_size(source_text), 50_000)
   use source <- utils.do_decode(source_text, dag_json.decoder(Nil))
   let root = cid.from_tree(source)
-  accept(bundle.Bundle(root: #(root, source), dependencies: []), context)
+  accept(
+    bundle.Bundle(root: #(root, source), dependencies: []),
+    context,
+    uploaded_by(request),
+  )
 }
 
 fn share_archive(
@@ -66,7 +70,7 @@ fn share_archive(
   use body <- wisp.require_bit_array_body(request)
   use <- check_size(bit_array.byte_size(body), 500_000)
   case bundle.shake(body) {
-    Ok(archive) -> accept(archive, context)
+    Ok(archive) -> accept(archive, context, uploaded_by(request))
     Error(reason) -> utils.api_reason(422, describe_shake_error(reason))
   }
 }
@@ -94,6 +98,7 @@ fn describe_shake_error(reason) {
 fn accept(
   archive: bundle.Bundle(Nil),
   context: Context,
+  ip: String,
 ) -> Response(wisp.Body) {
   case bundle.check(archive, infer.pure(), stored(context, [])) {
     Error(bundle.ResolutionFailed(reason)) -> {
@@ -101,12 +106,15 @@ fn accept(
       wisp.internal_server_error()
     }
     Error(rejection) -> utils.api_reason(422, describe(rejection))
-    Ok(_) -> write(archive, context)
+    Ok(_) -> write(archive, context, ip)
   }
 }
 
-fn write(archive: bundle.Bundle(Nil), context: Context) -> Response(wisp.Body) {
-  let ip = "123.1.1.1"
+fn write(
+  archive: bundle.Bundle(Nil),
+  context: Context,
+  ip: String,
+) -> Response(wisp.Body) {
   let bundle.Bundle(root: #(root, _), ..) = archive
   let written =
     pog.execute(data.insert_bundle(bundle.blocks(archive), ip), context.db)
@@ -118,6 +126,18 @@ fn write(archive: bundle.Bundle(Nil), context: Context) -> Response(wisp.Body) {
       wisp.log_warning(string.inspect(reason))
       wisp.internal_server_error()
     }
+  }
+}
+
+fn uploaded_by(request: Request(wisp.Connection)) -> String {
+  case request.get_header(request, "x-forwarded-for") {
+    Ok(value) ->
+      value
+      |> string.split(",")
+      |> list.last
+      |> result.map(string.trim)
+      |> result.unwrap("0.0.0.0")
+    Error(Nil) -> "0.0.0.0"
   }
 }
 

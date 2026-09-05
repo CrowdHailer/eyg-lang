@@ -25,6 +25,7 @@ date: 2026-09-05
 - Fixed: Stored dependency source was trusted without checking that its canonical module matched the database CID.
 - Fixed: Re-uploading a valid module reported success while leaving conflicting corrupt stored source unchanged.
 - Fixed: Recursive stored dependency validation had no cycle guard.
+- Fixed: Bundle uploads amplified retries into per-block audit rows and attributed every upload to a fabricated IP address.
 
 ## Verification errors
 
