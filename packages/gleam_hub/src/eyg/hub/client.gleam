@@ -165,7 +165,7 @@ pub fn share_bundle(
       case share_response(response) {
         Ok(cid) -> Ok(cid)
 
-        Error(_) -> Error("bad module lookup")
+        Error(reason) -> Error(string.inspect(reason))
       }
     Error(reason) -> Error(string.inspect(reason))
   }

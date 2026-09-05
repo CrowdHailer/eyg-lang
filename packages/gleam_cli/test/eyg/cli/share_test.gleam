@@ -5,6 +5,7 @@ import eyg/cli/share
 import eyg/ir/car
 import eyg/ir/dag_json
 import gleam/http/request
+import gleam/http/response
 import gleam/list
 import multiformats/cid/v1
 
@@ -32,6 +33,17 @@ pub fn share_rejects_incorrect_response_cid_test() {
     |> helpers.run(sandbox)
 
   assert output == Error("hub returned the wrong shared module ID")
+}
+
+pub fn share_reports_http_failure_test() {
+  let sandbox =
+    helpers.sandbox()
+    |> helpers.save_and_return(response.new(415) |> response.set_body(<<>>))
+  let #(output, _) =
+    share.execute(source.Code("3"), helpers.config)
+    |> helpers.run(sandbox)
+
+  assert output == Error("UnexpectedStatus(status: 415)")
 }
 
 pub fn share_unknown_package_reference_fails_test() {
