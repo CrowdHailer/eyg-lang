@@ -50,6 +50,7 @@ fn share_module(
   context: Context,
 ) -> Response(wisp.Body) {
   use <- wisp.require_content_type(request, "application/json")
+  let request = wisp.set_max_body_size(request, 50_000)
   use source_text <- wisp.require_string_body(request)
   use <- check_size(string.byte_size(source_text), 50_000)
   use source <- utils.do_decode(source_text, dag_json.decoder(Nil))
@@ -61,6 +62,7 @@ fn share_archive(
   request: Request(wisp.Connection),
   context: Context,
 ) -> Response(wisp.Body) {
+  let request = wisp.set_max_body_size(request, 500_000)
   use body <- wisp.require_bit_array_body(request)
   use <- check_size(bit_array.byte_size(body), 500_000)
   case bundle.shake(body) {

@@ -20,6 +20,7 @@ date: 2026-09-05
 - Fixed: Hub module lookup validated a parsed CID but queried with the original, potentially noncanonical URL text.
 - Fixed: The CAR endpoint rejected valid archives whose root was not the first block or which contained unreachable blocks instead of shaking them to the graph reachable from the declared root.
 - Fixed: CAR shaking decoded every supplied block before reachability and used quadratic list lookups, so an invalid unreachable block rejected the upload and wide archives consumed excessive CPU.
+- Fixed: Upload size limits were checked only after Wisp had buffered the complete request body.
 - Fixed: Pinned references were accepted by module CID without validating their package and version against the release ledger.
 - Fixed: Stored dependency source was trusted without checking that its canonical module matched the database CID.
 - Fixed: Recursive stored dependency validation had no cycle guard.
