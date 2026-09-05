@@ -7,7 +7,7 @@
 //// Each platform has it's own convention for storing app data.
 //// 
 //// - Windows → %APPDATA% for config, %LOCALAPPDATA% for cache/data
-//// - macOS → ~/Library/Application Support and ~/Library/Caches
+//// - macOS → XDG vars with ~/Library paths as fallbacks
 //// - Linux → XDG vars with ~/.config, ~/.cache, ~/.local/share as fallbacks
 
 import envoy
@@ -65,11 +65,16 @@ fn windows_dirs() -> Result(PlatformDirs, Nil) {
 
 fn mac_dirs() -> Result(PlatformDirs, Nil) {
   use home <- result.try(envoy.get("HOME"))
-  Ok(PlatformDirs(
-    config_dir: home <> "/Library/Application Support",
-    cache_dir: home <> "/Library/Caches",
-    data_dir: home <> "/Library/Application Support",
-  ))
+  let config =
+    envoy.get("XDG_CONFIG_HOME")
+    |> result.unwrap(home <> "/Library/Application Support")
+  let cache =
+    envoy.get("XDG_CACHE_HOME")
+    |> result.unwrap(home <> "/Library/Caches")
+  let data =
+    envoy.get("XDG_DATA_HOME")
+    |> result.unwrap(home <> "/Library/Application Support")
+  Ok(PlatformDirs(config_dir: config, cache_dir: cache, data_dir: data))
 }
 
 fn linux_dirs() -> Result(PlatformDirs, Nil) {
