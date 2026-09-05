@@ -105,6 +105,7 @@ fn flush(state: State) {
           effect,
           state.origin,
           system.fetch,
+          system.hash,
         ))
         continuation.return(CacheMessage(message))
       }(system.Done)

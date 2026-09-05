@@ -149,7 +149,7 @@ pub fn get_module(
   cid: v1.Cid,
   client: Client,
 ) -> system.Effect(Result(ir.Node(Nil), String)) {
-  client.fetch_module(cid, client.origin, fetch)(system.Done)
+  client.fetch_module(cid, client.origin, fetch, system.hash)(system.Done)
 }
 
 pub fn submit_release(
@@ -202,7 +202,7 @@ pub fn pull_packages(
 /// Run cache actions until the cache has no more work to do.
 /// Failed pulls are retried up to three times, five seconds apart.
 pub fn run_all(cache: Cache(Nil)) -> system.Effect(Cache(Nil)) {
-  run_all_with(cache, configured_origin(), fetch, fn(duration) {
+  run_all_with(cache, configured_origin(), fetch, system.hash, fn(duration) {
     fn(resume) { system.Wait(duration, resume) }
   })(system.Done)
 }
@@ -212,23 +212,32 @@ pub fn run_all_with(
   cache: Cache(Nil),
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
   wait: fn(Int) -> Continuation(t, Nil),
 ) -> Continuation(t, Cache(Nil)) {
-  run_with_retries(cache, origin, fetch, wait, max_pull_retries)
+  run_with_retries(cache, origin, fetch, hash, wait, max_pull_retries)
 }
 
 fn run_with_retries(
   cache: Cache(Nil),
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
   wait: fn(Int) -> Continuation(t, Nil),
   retries: Int,
 ) -> Continuation(t, Cache(Nil)) {
-  use cache <- continuation.then(run_until_idle(cache, origin, fetch))
+  use cache <- continuation.then(run_until_idle(cache, origin, fetch, hash))
   case cache.cursor_status {
     cache.PullFailed(_) if retries > 0 -> {
       use _ <- continuation.then(wait(pull_retry_delay))
-      run_with_retries(cache.pull(cache), origin, fetch, wait, retries - 1)
+      run_with_retries(
+        cache.pull(cache),
+        origin,
+        fetch,
+        hash,
+        wait,
+        retries - 1,
+      )
     }
     _ -> continuation.return(cache)
   }
@@ -238,13 +247,20 @@ fn run_until_idle(
   cache: Cache(Nil),
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
 ) -> Continuation(t, Cache(Nil)) {
   let #(cache, actions) = cache.flush(cache)
   case actions {
     [] -> continuation.return(cache)
     _ -> {
-      use cache <- continuation.then(run_actions(actions, cache, origin, fetch))
-      run_until_idle(cache, origin, fetch)
+      use cache <- continuation.then(run_actions(
+        actions,
+        cache,
+        origin,
+        fetch,
+        hash,
+      ))
+      run_until_idle(cache, origin, fetch, hash)
     }
   }
 }
@@ -260,14 +276,20 @@ fn run_actions(
   cache: Cache(Nil),
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
 ) -> Continuation(t, Cache(Nil)) {
   case actions {
     [] -> continuation.return(cache)
     [action, ..rest] -> {
-      use completed <- continuation.then(cache.compute(action, origin, fetch))
+      use completed <- continuation.then(cache.compute(
+        action,
+        origin,
+        fetch,
+        hash,
+      ))
       let #(cache, _resolved) =
         cache.update(cache, completed, fn(meta) { meta })
-      run_actions(rest, cache, origin, fetch)
+      run_actions(rest, cache, origin, fetch, hash)
     }
   }
 }

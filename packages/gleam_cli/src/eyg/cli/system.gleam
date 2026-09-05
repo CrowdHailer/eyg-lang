@@ -1,5 +1,6 @@
 import eyg/cli/internal/bun_platform
 import eyg/cli/internal/crypto
+import gleam/crypto as gleam_crypto
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
@@ -21,6 +22,7 @@ pub type Effect(a) {
   GenerateKey(
     fn(keypair.Keypair(eddsa.PrivateKey, eddsa.PublicKey)) -> Effect(a),
   )
+  Hash(effect.HashAlgorithm, BitArray, fn(BitArray) -> Effect(a))
   ReadDirectory(
     String,
     fn(Result(List(String), simplifile.FileError)) -> Effect(a),
@@ -41,6 +43,10 @@ pub fn fetch(
   request: Request(BitArray),
 ) -> Effect(Result(Response(BitArray), effect.FetchError)) {
   Fetch(request, Done)
+}
+
+pub fn hash(algorithm, bytes) {
+  fn(resume) { Hash(algorithm, bytes, resume) }
 }
 
 pub fn create_directory(path) {
@@ -78,6 +84,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       GenerateKey(fn(keypair) { then(resume(keypair), func) })
     Fetch(request, resume) ->
       Fetch(request, fn(response) { then(resume(response), func) })
+    Hash(algorithm, bytes, resume) ->
+      Hash(algorithm, bytes, fn(output) { then(resume(output), func) })
     CreateDirectory(path, resume) ->
       CreateDirectory(path, fn(response) { then(resume(response), func) })
     ReadDirectory(path, resume) ->
@@ -125,6 +133,15 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
     Fetch(request, resume) -> {
       use response <- promise.await(bun_platform.fetch(request)(promise.resolve))
       run(resume(response))
+    }
+    Hash(algorithm, bytes, resume) -> {
+      let algorithm = case algorithm {
+        effect.Sha1 -> gleam_crypto.Sha1
+        effect.Sha256 -> gleam_crypto.Sha256
+        effect.Sha384 -> gleam_crypto.Sha384
+        effect.Sha512 -> gleam_crypto.Sha512
+      }
+      run(resume(gleam_crypto.hash(algorithm, bytes)))
     }
     CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
     ReadDirectory(path, resume) -> run(resume(simplifile.read_directory(path)))

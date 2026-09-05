@@ -9,6 +9,22 @@ import gleam/option.{None}
 import midas/continuation
 import ogre/origin
 
+pub fn fetch_accepts_content_with_the_requested_cid_test() {
+  let source = ir.record([#("count", ir.integer(43))])
+  let requested = module_cid(source)
+  let response =
+    response.new(200) |> response.set_body(dag_json.to_block(source))
+  let result =
+    client.fetch_module(
+      requested,
+      origin.Origin(http.Http, "example.com", None),
+      fn(_) { continuation.return(Ok(response)) },
+      hash_sha256,
+    )(fn(value) { value })
+
+  assert result == Ok(source)
+}
+
 pub fn fetch_rejects_content_with_the_wrong_cid_test() {
   let requested = module_cid(ir.integer(1))
   let response =
@@ -19,9 +35,14 @@ pub fn fetch_rejects_content_with_the_wrong_cid_test() {
       requested,
       origin.Origin(http.Http, "example.com", None),
       fn(_) { continuation.return(Ok(response)) },
+      hash_sha256,
     )(fn(value) { value })
 
   assert result == Error("hub returned a module with the wrong content ID")
+}
+
+fn hash_sha256(_algorithm, bytes) {
+  continuation.return(crypto.hash(crypto.Sha256, bytes))
 }
 
 fn module_cid(source) {

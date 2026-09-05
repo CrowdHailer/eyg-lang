@@ -345,10 +345,16 @@ pub fn compute(
   action: Action,
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
 ) -> K(t, ActionCompleted) {
   case action {
     FetchModule(cid) -> {
-      use result <- continuation.then(client.fetch_module(cid, origin, fetch))
+      use result <- continuation.then(client.fetch_module(
+        cid,
+        origin,
+        fetch,
+        hash,
+      ))
       continuation.return(FetchModuleCompleted(cid, result))
     }
     PullPackages(offset:) -> {

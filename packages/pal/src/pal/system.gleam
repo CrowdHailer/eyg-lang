@@ -19,6 +19,7 @@ import midas/effect
 import ogre/origin
 import plinth/browser/clipboard
 import plinth/browser/crypto
+import plinth/browser/crypto/subtle
 import plinth/browser/file
 import plinth/browser/file_system
 import plinth/browser/location
@@ -51,6 +52,11 @@ pub type Effect(m) {
   FetchStreamResponse(
     request: request.Request(BitArray),
     resume: fn(Result(response.Response(Reader), fetch.FetchError)) -> Effect(m),
+  )
+  Hash(
+    algorithm: effect.HashAlgorithm,
+    bytes: BitArray,
+    resume: fn(BitArray) -> Effect(m),
   )
   GetLocalStorageItem(
     key: String,
@@ -121,6 +127,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
     Download(input, resume) -> Download(input, fn() { then(resume(), func) })
     FetchStreamResponse(request, resume) ->
       FetchStreamResponse(request, fn(response) { then(resume(response), func) })
+    Hash(algorithm, bytes, resume) ->
+      Hash(algorithm, bytes, fn(output) { then(resume(output), func) })
     GetLocalStorageItem(key, resume) ->
       GetLocalStorageItem(key, fn(value) { then(resume(value), func) })
     GetSessionStorageItem(key, resume) ->
@@ -166,6 +174,13 @@ pub fn fetch(
   fn(resume) { Fetch(request:, resume:) }
 }
 
+pub fn hash(
+  algorithm: effect.HashAlgorithm,
+  bytes: BitArray,
+) -> K(Effect(r), BitArray) {
+  fn(resume) { Hash(algorithm:, bytes:, resume:) }
+}
+
 pub type Reader =
   fn() -> Promise(Result(Option(BitArray), fetch.FetchError))
 
@@ -206,6 +221,17 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
           }
         Error(reason) -> run(resume(Error(reason)))
       }
+    }
+    Hash(algorithm:, bytes:, resume:) -> {
+      let algorithm = case algorithm {
+        effect.Sha1 -> subtle.SHA1
+        effect.Sha256 -> subtle.SHA256
+        effect.Sha384 -> subtle.SHA384
+        effect.Sha512 -> subtle.SHA512
+      }
+      use output <- promise.await(subtle.digest(algorithm, bytes))
+      let assert Ok(output) = output
+      run(resume(output))
     }
     GetLocalStorageItem(key:, resume:) ->
       run(resume(get_storage_item(web_storage.local(), key)))

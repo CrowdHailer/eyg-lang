@@ -5,7 +5,6 @@ import eyg/ir/car
 import eyg/ir/cid as module_cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/crypto
 import gleam/http/request.{type Request}
 import gleam/http/response.{Response}
 import gleam/json
@@ -99,29 +98,32 @@ pub fn fetch_module(
   cid: v1.Cid,
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
 ) -> K(t, Result(ir.Node(Nil), String)) {
   let request = fetch_module_request(cid, origin)
   use result <- continuation.then(fetch(request))
-  let result = case result {
+  case result {
     Ok(response) ->
       case fetch_module_response(response) {
-        Ok(Some(source)) ->
-          case has_cid(source, cid) {
+        Ok(Some(source)) -> {
+          use matches <- continuation.then(has_cid(source, cid, hash))
+          continuation.return(case matches {
             True -> Ok(source)
             False -> Error("hub returned a module with the wrong content ID")
-          }
-        Ok(None) -> Error("no module")
-        Error(_) -> Error("bad module lookup")
+          })
+        }
+        Ok(None) -> continuation.return(Error("no module"))
+        Error(_) -> continuation.return(Error("bad module lookup"))
       }
-    Error(reason) -> Error(string.inspect(reason))
+    Error(reason) -> continuation.return(Error(string.inspect(reason)))
   }
-  continuation.return(result)
 }
 
-fn has_cid(source, expected) {
-  module_cid.from_tree(source, fn(bytes) {
-    continuation.return(crypto.hash(crypto.Sha256, bytes))
-  })(fn(actual) { actual == expected })
+fn has_cid(source, expected, hash) {
+  use actual <- continuation.then(
+    module_cid.from_tree(source, fn(bytes) { hash(effect.Sha256, bytes) }),
+  )
+  continuation.return(actual == expected)
 }
 
 /// Create a share module operation

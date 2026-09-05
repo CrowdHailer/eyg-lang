@@ -11,9 +11,18 @@ date: 2026-09-05
 - Fixed: Transitive relative-import cycles were not tracked while building a share bundle, so a graph such as `root -> A -> B -> A` recursed indefinitely.
 - Fixed: Shared relative imports were reread, reparsed, and rehashed once per path through a diamond dependency graph.
 - Fixed: Modules fetched by content identifier were accepted by reusable clients without checking that the returned module had the requested hash.
+- Fixed: The first reusable CID verifier depended on Node crypto and broke production browser bundles.
+- Fixed: Its handwritten browser SHA-256 replacement mishandled Gleam JavaScript bit arrays; hashing now uses the existing platform hash effect and Web Crypto.
 - Fixed: The share client accepted a response CID that differed from its locally calculated root.
 - Fixed: The share client reduced useful HTTP failures to `bad module lookup`.
 - Pending: Hub module lookup validates a parsed CID but queries with the original, potentially noncanonical URL text.
 - Pending: The CAR endpoint rejects valid archives whose root is not the first block or which contain unreachable blocks instead of shaking them to the graph reachable from the declared root.
 - Pending: Pinned references are accepted by module CID without validating their package and version against the release ledger.
 - Pending: Stored dependency source is trusted under its database CID and recursive stored dependency validation has no cycle guard.
+
+## Verification errors
+
+- Resolved locally: Compose-created `dist` and `node_modules` directories were owned by root, preventing host production builds. Ownership was repaired through the running containers.
+- Corrected command: The website has no npm `build` script; its production build is `gleam dev build`.
+- Resolved locally: The website's host `node_modules` was incomplete; `npm install` restored the declared dependencies before the successful build.
+- Resolved locally: The installed `eyg` executable cannot handle the checkout's `StandardOut` effect; repository EYG tests must run through the checkout's CLI.

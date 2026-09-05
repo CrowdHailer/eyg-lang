@@ -167,6 +167,17 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       generate_key()
       |> resume
       |> run(sandbox)
+    system.Hash(algorithm, bytes, resume) -> {
+      let algorithm = case algorithm {
+        effect.Sha1 -> crypto.Sha1
+        effect.Sha256 -> crypto.Sha256
+        effect.Sha384 -> crypto.Sha384
+        effect.Sha512 -> crypto.Sha512
+      }
+      crypto.hash(algorithm, bytes)
+      |> resume
+      |> run(sandbox)
+    }
     system.ReadDirectory(path, resume) -> {
       fs.read_directory(sandbox.file_system, path)
       |> resume
