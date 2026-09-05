@@ -64,8 +64,8 @@ fn check_purity(source, then) {
 }
 
 pub fn get(cid: String, context: Context) -> Response(wisp.Body) {
-  use _cid <- decode_cid(cid)
-  case pog.execute(data.get(cid), context.db) {
+  use cid <- decode_cid(cid)
+  case pog.execute(data.get(v1.to_string(cid)), context.db) {
     Ok(pog.Returned(rows: [module], ..)) ->
       wisp.ok()
       |> wisp.json_body(module.source)
