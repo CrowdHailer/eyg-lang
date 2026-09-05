@@ -220,6 +220,20 @@ pub fn reject_corrupt_stored_dependency_test() {
   assert dispatch(client.share_module(source), context).status == 500
 }
 
+pub fn resharing_repairs_corrupt_stored_source_test() {
+  use context <- helpers.web_context()
+  let source = unique_value()
+  let declared = cid.from_tree(source)
+  let corrupt = ir.integer(1)
+  let assert Ok(_) =
+    pog.execute(modules.insert(declared, corrupt, "127.0.0.1"), context.db)
+
+  assert share_bundle(single_bundle(source), context).status == 200
+  let response = dispatch(client.fetch_module_operation(declared), context)
+  assert response.status == 200
+  assert json.parse_bits(response.body, dag_json.decoder(Nil)) == Ok(source)
+}
+
 pub fn reject_bundle_with_missing_block_test() {
   use context <- helpers.web_context()
   let bundle.Bundle(root:, ..) = test_bundle()

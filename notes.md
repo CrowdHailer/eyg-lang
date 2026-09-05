@@ -23,6 +23,7 @@ date: 2026-09-05
 - Fixed: Upload size limits were checked only after Wisp had buffered the complete request body.
 - Fixed: Pinned references were accepted by module CID without validating their package and version against the release ledger.
 - Fixed: Stored dependency source was trusted without checking that its canonical module matched the database CID.
+- Fixed: Re-uploading a valid module reported success while leaving conflicting corrupt stored source unchanged.
 - Fixed: Recursive stored dependency validation had no cycle guard.
 
 ## Verification errors

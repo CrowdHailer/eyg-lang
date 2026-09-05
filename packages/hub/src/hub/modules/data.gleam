@@ -34,7 +34,9 @@ pub fn insert(
   "WITH module_insert AS (
   INSERT INTO modules (cid, source)
   VALUES ($1, $2)
-  ON CONFLICT (cid) DO NOTHING
+  ON CONFLICT (cid) DO UPDATE
+  SET source = EXCLUDED.source
+  WHERE modules.source <> EXCLUDED.source
 )
 INSERT INTO module_uploads (ip, cid)
 -- This casting is because pog doesn't expose an inet type
@@ -63,7 +65,9 @@ pub fn insert_bundle(
 ), module_insert AS (
   INSERT INTO modules (cid, source)
   SELECT cid, source::jsonb FROM supplied
-  ON CONFLICT (cid) DO NOTHING
+  ON CONFLICT (cid) DO UPDATE
+  SET source = EXCLUDED.source
+  WHERE modules.source <> EXCLUDED.source
 )
 INSERT INTO module_uploads (ip, cid)
 SELECT (($3::text)::inet), cid FROM supplied;"
