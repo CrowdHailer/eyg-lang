@@ -1,12 +1,20 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/hub/schema
+import eyg/ir/car
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/int
 import gleam/json
+import gleam/list
+import gleam/result
 import gleam/string
 import hub/cid
+import hub/modules/bundle
 import hub/modules/data
 import hub/server/context.{type Context}
 import hub/web/utils
@@ -18,48 +26,191 @@ pub fn share(
   request: Request(wisp.Connection),
   context: Context,
 ) -> Response(wisp.Body) {
-  use <- wisp.require_content_type(request, "application/json")
-  use data <- wisp.require_string_body(request)
-  use <- check_size(data, 50_000)
-  use source <- utils.do_decode(data, dag_json.decoder(Nil))
-  use <- check_soundness(source)
-  use <- check_purity(source)
-  // echo request
-  let ip = "123.1.1.1"
-  // wisp.accepted
-
-  let cid = cid.from_tree(source)
-  case pog.execute(data.insert(cid, source, ip), context.db) {
-    Ok(_) ->
-      wisp.ok()
-      |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
-
-    Error(_reason) -> wisp.internal_server_error()
+  case is_archive(request) {
+    True -> share_archive(request, context)
+    False -> share_module(request, context)
   }
 }
 
-fn check_size(data, max, then) {
-  case string.byte_size(data) <= max {
+fn is_archive(request: Request(wisp.Connection)) -> Bool {
+  case request.get_header(request, "content-type") {
+    Ok(value) ->
+      case string.split(value, ";") {
+        [media_type, ..] ->
+          media_type |> string.trim |> string.lowercase == car.content_type
+        [] -> False
+      }
+    Error(Nil) -> False
+  }
+}
+
+fn share_module(
+  request: Request(wisp.Connection),
+  context: Context,
+) -> Response(wisp.Body) {
+  use <- wisp.require_content_type(request, "application/json")
+  use source_text <- wisp.require_string_body(request)
+  use <- check_size(string.byte_size(source_text), 50_000)
+  use source <- utils.do_decode(source_text, dag_json.decoder(Nil))
+  let root = cid.from_tree(source)
+  accept(bundle.Bundle(root: #(root, source), dependencies: []), context)
+}
+
+fn share_archive(
+  request: Request(wisp.Connection),
+  context: Context,
+) -> Response(wisp.Body) {
+  use body <- wisp.require_bit_array_body(request)
+  use <- check_size(bit_array.byte_size(body), 500_000)
+  case bundle.shake(body) {
+    Ok(archive) -> accept(archive, context)
+    Error(reason) -> utils.api_reason(422, describe_shake_error(reason))
+  }
+}
+
+fn describe_shake_error(reason) {
+  case reason {
+    bundle.InvalidCar(reason) -> reason
+    bundle.UnsupportedVersion(_) -> "unsupported CAR version"
+    bundle.InvalidRootCount(_) -> "an archive must have exactly one root"
+    bundle.IncorrectCid(declared:, actual:) ->
+      v1.to_string(declared)
+      <> " does not identify its canonical module; expected "
+      <> v1.to_string(actual)
+    bundle.DuplicateCid(cid) ->
+      "archive contains duplicate block " <> v1.to_string(cid)
+    bundle.InvalidModule(cid) -> v1.to_string(cid) <> " is not a module"
+    bundle.MissingRoot(cid) ->
+      "archive does not contain its root " <> v1.to_string(cid)
+    bundle.Circular(cycle) ->
+      "bundle contains a circular dependency: "
+      <> string.join(list.map(cycle, v1.to_string), " -> ")
+  }
+}
+
+fn accept(
+  archive: bundle.Bundle(Nil),
+  context: Context,
+) -> Response(wisp.Body) {
+  case bundle.check(archive, infer.pure(), stored(context)) {
+    Error(bundle.ResolutionFailed(reason)) -> {
+      wisp.log_warning(reason)
+      wisp.internal_server_error()
+    }
+    Error(rejection) -> utils.api_reason(422, describe(rejection))
+    Ok(_) -> write(archive, context)
+  }
+}
+
+fn write(archive: bundle.Bundle(Nil), context: Context) -> Response(wisp.Body) {
+  let ip = "123.1.1.1"
+  let bundle.Bundle(root: #(root, _), ..) = archive
+  let written =
+    pog.execute(data.insert_bundle(bundle.blocks(archive), ip), context.db)
+  case written {
+    Ok(_) ->
+      wisp.ok()
+      |> wisp.json_body(json.to_string(schema.share_response_encode(root)))
+    Error(reason) -> {
+      wisp.log_warning(string.inspect(reason))
+      wisp.internal_server_error()
+    }
+  }
+}
+
+fn describe(rejection: bundle.Rejection(Nil, String)) -> String {
+  case rejection {
+    bundle.Unsound(module:, ..) ->
+      v1.to_string(module) <> " is not a sound and pure module"
+    bundle.Missing(module:, reference:) ->
+      case reference {
+        ir.Package(..) | ir.Version(..) | ir.Relative(..) ->
+          v1.to_string(module)
+          <> " references "
+          <> render_reference(reference)
+          <> ", which does not name a shareable module"
+        _ ->
+          v1.to_string(module)
+          <> " references "
+          <> render_reference(reference)
+          <> ", which is neither in the archive nor already stored"
+      }
+    bundle.ResolutionFailed(_) -> "dependency resolution failed"
+  }
+}
+
+fn render_reference(reference: ir.Reference) -> String {
+  case reference {
+    ir.Content(cid:) -> "#" <> v1.to_string(cid)
+    ir.Package(package:) -> "@" <> package
+    ir.Version(package:, version:) ->
+      "@" <> package <> ":" <> int.to_string(version)
+    ir.Pinned(ir.Release(package:, version:, module:)) ->
+      "@"
+      <> package
+      <> ":"
+      <> int.to_string(version)
+      <> ":"
+      <> v1.to_string(module)
+    ir.Relative(location:) -> "\"" <> location <> "\""
+  }
+}
+
+fn check_size(size: Int, max, then) {
+  case size <= max {
     True -> then()
     False -> wisp.content_too_large()
   }
 }
 
-fn check_soundness(source, then) {
-  let inference =
-    infer.unpure() |> infer.check_with_references(dict.new(), source)
-  case infer.all_errors(inference) {
-    [] -> then()
-    _ -> wisp.unprocessable_content()
+fn stored(context: Context) {
+  fn(reference) { resolve_stored(reference, context) }
+}
+
+fn resolve_stored(reference, context) {
+  case reference {
+    ir.Content(cid:) | ir.Pinned(ir.Release(module: cid, ..)) ->
+      type_of(cid, context)
+    _ -> Error(bundle.NotFound)
   }
 }
 
-fn check_purity(source, then) {
-  let inference =
-    infer.pure() |> infer.check_with_references(dict.new(), source)
-  case infer.all_errors(inference) {
-    [] -> then()
-    _ -> wisp.unprocessable_content()
+fn type_of(
+  module: v1.Cid,
+  context: Context,
+) -> Result(binding.Poly, bundle.ResolveError(String)) {
+  use source <- result.try(
+    case pog.execute(data.get(v1.to_string(module)), context.db) {
+      Ok(pog.Returned(rows: [held], ..)) ->
+        json.parse(held.source, dag_json.decoder(Nil))
+        |> result.map_error(fn(reason) {
+          bundle.Failed(
+            "stored module "
+            <> v1.to_string(module)
+            <> " is invalid: "
+            <> string.inspect(reason),
+          )
+        })
+      Ok(pog.Returned(rows: [], ..)) -> Error(bundle.NotFound)
+      Ok(_) ->
+        Error(bundle.Failed(
+          "stored module lookup returned an unexpected number of rows",
+        ))
+      Error(reason) -> Error(bundle.Failed(string.inspect(reason)))
+    },
+  )
+  let archive = bundle.Bundle(root: #(module, source), dependencies: [])
+  case bundle.check(archive, infer.pure(), stored(context)) {
+    Ok(bundle.Checked(types:, ..)) ->
+      dict.get(types, module)
+      |> result.map_error(fn(_) {
+        bundle.Failed("stored module was checked without producing a type")
+      })
+    Error(bundle.ResolutionFailed(reason)) -> Error(bundle.Failed(reason))
+    Error(_) ->
+      Error(bundle.Failed(
+        "stored module " <> v1.to_string(module) <> " is not shareable",
+      ))
   }
 }
 

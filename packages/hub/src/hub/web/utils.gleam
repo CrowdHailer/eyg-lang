@@ -36,7 +36,7 @@ pub fn try_untethered(result, then) {
   }
 }
 
-fn api_reason(status, reason) {
+pub fn api_reason(status, reason) {
   wisp.json_response(
     json.to_string(json.object([#("reason", json.string(reason))])),
     status,

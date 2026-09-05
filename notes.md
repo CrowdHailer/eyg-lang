@@ -18,7 +18,7 @@ date: 2026-09-05
 - Fixed: The share client reduced useful HTTP failures to `bad module lookup`.
 - Fixed: The bundle share client discarded actionable rejection reasons returned by the Hub.
 - Fixed: Hub module lookup validated a parsed CID but queried with the original, potentially noncanonical URL text.
-- Pending: The CAR endpoint rejects valid archives whose root is not the first block or which contain unreachable blocks instead of shaking them to the graph reachable from the declared root.
+- Fixed: The CAR endpoint rejected valid archives whose root was not the first block or which contained unreachable blocks instead of shaking them to the graph reachable from the declared root.
 - Pending: Pinned references are accepted by module CID without validating their package and version against the release ledger.
 - Pending: Stored dependency source is trusted under its database CID and recursive stored dependency validation has no cycle guard.
 
