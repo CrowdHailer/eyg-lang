@@ -2,8 +2,10 @@ import eyg/hub/publisher
 import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/car
+import eyg/ir/cid as module_cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/crypto
 import gleam/http/request.{type Request}
 import gleam/http/response.{Response}
 import gleam/json
@@ -103,13 +105,23 @@ pub fn fetch_module(
   let result = case result {
     Ok(response) ->
       case fetch_module_response(response) {
-        Ok(Some(source)) -> Ok(source)
+        Ok(Some(source)) ->
+          case has_cid(source, cid) {
+            True -> Ok(source)
+            False -> Error("hub returned a module with the wrong content ID")
+          }
         Ok(None) -> Error("no module")
         Error(_) -> Error("bad module lookup")
       }
     Error(reason) -> Error(string.inspect(reason))
   }
   continuation.return(result)
+}
+
+fn has_cid(source, expected) {
+  module_cid.from_tree(source, fn(bytes) {
+    continuation.return(crypto.hash(crypto.Sha256, bytes))
+  })(fn(actual) { actual == expected })
 }
 
 /// Create a share module operation
