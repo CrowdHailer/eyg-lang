@@ -171,13 +171,18 @@ pub fn share_bundle(
   origin: origin.Origin,
   fetch: effect.Fetch(t),
 ) -> K(t, Result(v1.Cid, String)) {
+  let #(#(root, _), _) = bundle
   let request = share_bundle_request(bundle, origin)
 
   use result <- continuation.then(fetch(request))
   let result = case result {
     Ok(response) ->
       case share_response(response) {
-        Ok(cid) -> Ok(cid)
+        Ok(cid) ->
+          case cid == root {
+            True -> Ok(cid)
+            False -> Error("hub returned the wrong shared module ID")
+          }
 
         Error(reason) -> Error(string.inspect(reason))
       }

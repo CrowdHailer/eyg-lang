@@ -13,7 +13,7 @@ date: 2026-09-05
 - Fixed: Modules fetched by content identifier were accepted by reusable clients without checking that the returned module had the requested hash.
 - Fixed: The first reusable CID verifier depended on Node crypto and broke production browser bundles.
 - Fixed: Its handwritten browser SHA-256 replacement mishandled Gleam JavaScript bit arrays; hashing now uses the existing platform hash effect and Web Crypto.
-- Fixed: The share client accepted a response CID that differed from its locally calculated root.
+- Fixed: Reusable share clients accepted a response CID that differed from the locally calculated root.
 - Fixed: The publish path accepted a response CID that differed from the module it was about to sign.
 - Fixed: The share client reduced useful HTTP failures to `bad module lookup`.
 - Pending: Hub module lookup validates a parsed CID but queries with the original, potentially noncanonical URL text.
