@@ -148,7 +148,7 @@ pub fn extrinsic(
       |> promise.resolve
     computer.Hash(input) -> hash.encode(hash(input)) |> promise.resolve
     computer.MakeDirectory(input) ->
-      make_directory(input)
+      make_directory(origin, input)
       |> make_directory.encode
       |> promise.resolve
     computer.Now -> {
@@ -517,7 +517,11 @@ pub fn hash(input) {
   }
 }
 
-pub fn make_directory(path: String) -> Result(Nil, String) {
+pub fn make_directory(
+  origin: source.Origin,
+  path: String,
+) -> Result(Nil, String) {
+  use path <- try(resolve_filepath(origin, path))
   simplifile.create_directory_all(path)
   |> result.map_error(simplifile.describe_error)
 }

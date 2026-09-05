@@ -7,6 +7,7 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/result
+import gleam/string
 import kryptos/eddsa
 import multiformats/cid/v1
 import simplifile
@@ -25,6 +26,7 @@ pub fn save_signatory(
   dirs: platform.PlatformDirs,
 ) -> system.Effect(Result(Nil, String)) {
   let Signatory(alias:, principal:, keypair:) = signatory
+  use Nil <- system.try(validate_alias(alias))
 
   let path = signatories_dir(dirs) <> alias <> ".json"
   use created <- system.then(
@@ -59,6 +61,21 @@ pub fn all_signatories(dirs) {
       json.parse(encoded, signatory_decoder())
     Ok(Signatory(alias:, principal:, keypair:))
   })
+}
+
+pub fn validate_alias(alias: String) -> Result(Nil, String) {
+  case
+    alias == ""
+    || alias == "."
+    || alias == ".."
+    || string.contains(alias, "/")
+    || string.contains(alias, "\\")
+    || string.contains(alias, ":")
+    || string.contains(alias, "\u{0}")
+  {
+    True -> Error("invalid signatory alias")
+    False -> Ok(Nil)
+  }
 }
 
 fn signatory_decoder() -> decode.Decoder(_) {

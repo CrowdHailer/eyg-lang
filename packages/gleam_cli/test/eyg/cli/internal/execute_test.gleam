@@ -68,6 +68,16 @@ pub fn read_directory_test() {
     == contents
 }
 
+pub fn make_directory_resolves_relative_paths_from_source_test() {
+  assert execute.make_directory(origin, ".") == Ok(Nil)
+  assert execute.make_directory(origin, "../..") == Ok(Nil)
+
+  // These paths already exist from CWD, but only two parent traversals fit
+  // within the relative source directory. No directories need to be created.
+  assert execute.make_directory(origin, "../../..")
+    == Error("invalid relative path outside filesystem")
+}
+
 pub fn write_file_test() {
   let _ = simplifile.delete_file("./test/fixtures/write.txt")
   let input = write_file.Input(path: "write.txt", contents: <<"test content">>)
