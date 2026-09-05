@@ -93,7 +93,7 @@ fn accept(
   archive: bundle.Bundle(Nil),
   context: Context,
 ) -> Response(wisp.Body) {
-  case bundle.check(archive, infer.pure(), stored(context)) {
+  case bundle.check(archive, infer.pure(), stored(context, [])) {
     Error(bundle.ResolutionFailed(reason)) -> {
       wisp.log_warning(reason)
       wisp.internal_server_error()
@@ -164,15 +164,15 @@ fn check_size(size: Int, max, then) {
   }
 }
 
-fn stored(context: Context) {
-  fn(reference) { resolve_stored(reference, context) }
+fn stored(context: Context, visiting) {
+  fn(reference) { resolve_stored(reference, context, visiting) }
 }
 
-fn resolve_stored(reference, context) {
+fn resolve_stored(reference, context, visiting) {
   case reference {
-    ir.Content(cid:) -> type_of(cid, context)
+    ir.Content(cid:) -> type_of(cid, context, visiting)
     ir.Pinned(ir.Release(package:, version:, module:)) ->
-      resolve_release(package, version, module, context)
+      resolve_release(package, version, module, context, visiting)
     _ -> Error(bundle.NotFound)
   }
 }
@@ -182,11 +182,12 @@ fn resolve_release(
   version: Int,
   module: v1.Cid,
   context: Context,
+  visiting: List(v1.Cid),
 ) {
   case pog.execute(packages.get_release(package, version), context.db) {
     Ok(pog.Returned(rows: [release], ..)) ->
       case release.module == v1.to_string(module) {
-        True -> type_of(module, context)
+        True -> type_of(module, context, visiting)
         False -> Error(bundle.NotFound)
       }
     Ok(pog.Returned(rows: [], ..)) -> Error(bundle.NotFound)
@@ -201,7 +202,16 @@ fn resolve_release(
 fn type_of(
   module: v1.Cid,
   context: Context,
+  visiting: List(v1.Cid),
 ) -> Result(binding.Poly, bundle.ResolveError(String)) {
+  use Nil <- result.try(case list.contains(visiting, module) {
+    True ->
+      Error(bundle.Failed(
+        "stored modules contain a dependency cycle through "
+        <> v1.to_string(module),
+      ))
+    False -> Ok(Nil)
+  })
   use source <- result.try(
     case pog.execute(data.get(v1.to_string(module)), context.db) {
       Ok(pog.Returned(rows: [held], ..)) ->
@@ -232,7 +242,9 @@ fn type_of(
       ))
   })
   let archive = bundle.Bundle(root: #(module, source), dependencies: [])
-  case bundle.check(archive, infer.pure(), stored(context)) {
+  case
+    bundle.check(archive, infer.pure(), stored(context, [module, ..visiting]))
+  {
     Ok(bundle.Checked(types:, ..)) ->
       dict.get(types, module)
       |> result.map_error(fn(_) {

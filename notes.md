@@ -21,7 +21,7 @@ date: 2026-09-05
 - Fixed: The CAR endpoint rejected valid archives whose root was not the first block or which contained unreachable blocks instead of shaking them to the graph reachable from the declared root.
 - Fixed: Pinned references were accepted by module CID without validating their package and version against the release ledger.
 - Fixed: Stored dependency source was trusted without checking that its canonical module matched the database CID.
-- Pending: Recursive stored dependency validation has no cycle guard.
+- Fixed: Recursive stored dependency validation had no cycle guard.
 
 ## Verification errors
 
