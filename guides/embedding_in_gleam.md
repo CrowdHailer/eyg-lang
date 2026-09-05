@@ -244,7 +244,7 @@ pub fn check(source){
 
   let analysis = infer.check(context, source)
   case infer.all_errors(analysis) {
-    // No errors return principle type
+    // No errors return principal type
     [] -> Ok(infer.type_(analysis))
     errors -> Error(errors)
   }

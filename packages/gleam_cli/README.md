@@ -124,14 +124,15 @@ Compile source from stdin with `-` or `--stdin`.
 printf '@standard.integer.add(1, 1)' | eyg compile -
 ```
 
-### Create principle
+### Manage signatories
 
 ```sh
 eyg signatory initial <name>
 ```
 
-The name is your personal alias for a principle.
-Good names are personal, work, etc.
+The name is a local alias for the new principal. See the
+[Managing signatories](../../guides/managing_signatories.md) guide for storage,
+security, backup, publishing, and planned management commands.
 
 ### Share
 
@@ -144,5 +145,4 @@ eyg share path/to/file.eyg
 ```sh
 eyg publish package-name path/to/file.eyg
 ```
-
 

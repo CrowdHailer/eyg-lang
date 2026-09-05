@@ -73,7 +73,8 @@ Use `eyg eval` for evaluating pure values, no side effects, and printing the res
 
 ## Resources
 
-- For the full CLI reference see[`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
+- For the full CLI reference see [`packages/gleam_cli/README.md`](./packages/gleam_cli/README.md).
+- To create, protect, and use publishing identities see [`guides/managing_signatories.md`](./guides/managing_signatories.md).
 - The language syntax is described in [`guides/syntax.md`](./guides/syntax.md).
 - Every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
 - Full effect reference is in [`./guides/cli_effects_reference.md`](./guides/cli_effects_reference.md).
