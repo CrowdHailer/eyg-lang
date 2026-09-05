@@ -122,6 +122,16 @@ pub fn list_releases(entity: String) -> pog.Query(Release) {
   |> pog.returning(release_decoder())
 }
 
+pub fn get_release(package: String, version: Int) -> pog.Query(Release) {
+  "SELECT package, version_, module, recorded_at
+  FROM releases
+  WHERE package = $1 AND version_ = $2"
+  |> pog.query()
+  |> pog.parameter(pog.text(package))
+  |> pog.parameter(pog.int(version))
+  |> pog.returning(release_decoder())
+}
+
 pub fn list_events(
   parameters: schema.PullParameters,
 ) -> pog.Query(schema.ArchivedEntry) {

@@ -1,4 +1,5 @@
 import eyg/hub/client
+import eyg/hub/publisher
 import eyg/ir/car
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -10,10 +11,14 @@ import gleam/json
 import gleam/list
 import gleam/string
 import hub/cid
+import hub/fixtures
+import hub/generators as g
 import hub/helpers.{dispatch}
 import hub/modules/bundle
+import hub/packages/data as packages
 import hub/router
 import ogre/operation
+import pog
 import wisp/simulate
 
 pub fn share_valid_fragment_test() {
@@ -85,6 +90,53 @@ pub fn share_bundle_with_shared_dependency_test() {
     ])
 
   assert share_bundle(archive, context).status == 200
+}
+
+pub fn share_bundle_with_published_dependency_test() {
+  use context <- helpers.web_context()
+  let dependency = unique_value()
+  let dependency_cid = cid.from_tree(dependency)
+  assert dispatch(client.share_module(dependency), context).status == 200
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(context.db)
+  let package = g.package()
+  let release =
+    publisher.first(signatory.entity, keypair.key_id, package, dependency_cid)
+  let assert Ok(_) = pog.execute(packages.insert_release(release), context.db)
+  let source = ir.release(package, 1, dependency_cid)
+
+  assert share_bundle(single_bundle(source), context).status == 200
+}
+
+pub fn reject_bundle_with_unpublished_pinned_dependency_test() {
+  use context <- helpers.web_context()
+  let dependency = unique_value()
+  let dependency_cid = cid.from_tree(dependency)
+  assert dispatch(client.share_module(dependency), context).status == 200
+  let source = ir.release(g.package(), 1, dependency_cid)
+  let archive =
+    bundle.Bundle(root: #(cid.from_tree(source), source), dependencies: [
+      #(dependency_cid, dependency),
+    ])
+
+  assert share_bundle(archive, context).status == 422
+}
+
+pub fn reject_bundle_with_mismatched_pinned_dependency_test() {
+  use context <- helpers.web_context()
+  let published = unique_value()
+  let published_cid = cid.from_tree(published)
+  assert dispatch(client.share_module(published), context).status == 200
+  let substituted = ir.integer(0)
+  let substituted_cid = cid.from_tree(substituted)
+  assert dispatch(client.share_module(substituted), context).status == 200
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(context.db)
+  let package = g.package()
+  let release =
+    publisher.first(signatory.entity, keypair.key_id, package, published_cid)
+  let assert Ok(_) = pog.execute(packages.insert_release(release), context.db)
+  let source = ir.release(package, 1, substituted_cid)
+
+  assert share_bundle(single_bundle(source), context).status == 422
 }
 
 pub fn share_root_last_bundle_test() {

@@ -16,6 +16,7 @@ import gleam/string
 import hub/cid
 import hub/modules/bundle
 import hub/modules/data
+import hub/packages/data as packages
 import hub/server/context.{type Context}
 import hub/web/utils
 import multiformats/cid/v1
@@ -169,9 +170,31 @@ fn stored(context: Context) {
 
 fn resolve_stored(reference, context) {
   case reference {
-    ir.Content(cid:) | ir.Pinned(ir.Release(module: cid, ..)) ->
-      type_of(cid, context)
+    ir.Content(cid:) -> type_of(cid, context)
+    ir.Pinned(ir.Release(package:, version:, module:)) ->
+      resolve_release(package, version, module, context)
     _ -> Error(bundle.NotFound)
+  }
+}
+
+fn resolve_release(
+  package: String,
+  version: Int,
+  module: v1.Cid,
+  context: Context,
+) {
+  case pog.execute(packages.get_release(package, version), context.db) {
+    Ok(pog.Returned(rows: [release], ..)) ->
+      case release.module == v1.to_string(module) {
+        True -> type_of(module, context)
+        False -> Error(bundle.NotFound)
+      }
+    Ok(pog.Returned(rows: [], ..)) -> Error(bundle.NotFound)
+    Ok(_) ->
+      Error(bundle.Failed(
+        "release lookup returned an unexpected number of rows",
+      ))
+    Error(reason) -> Error(bundle.Failed(string.inspect(reason)))
   }
 }
 
