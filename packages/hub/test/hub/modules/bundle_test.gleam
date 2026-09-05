@@ -1,3 +1,4 @@
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/ir/car
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -51,6 +52,35 @@ pub fn shake_rejects_a_missing_root_test() {
   let assert Ok(upload) = car.encode(archive)
 
   assert bundle.shake(upload) == Error(bundle.MissingRoot(root))
+}
+
+pub fn check_uses_supplied_dependency_types_test() {
+  let dependency = ir.lambda("x", ir.variable("x"))
+  let dependency_cid = cid.from_tree(dependency)
+  let root_source = ir.apply(ir.reference(dependency_cid), ir.integer(1))
+  let root = cid.from_tree(root_source)
+  let archive =
+    bundle.Bundle(root: #(root, root_source), dependencies: [
+      #(dependency_cid, dependency),
+    ])
+
+  let assert Ok(_) =
+    bundle.check(archive, infer.pure(), fn(_) { Error(bundle.NotFound) })
+}
+
+pub fn check_rejects_an_impure_dependency_test() {
+  let dependency = ir.call(ir.perform("Log"), [ir.string("hello")])
+  let dependency_cid = cid.from_tree(dependency)
+  let root_source = ir.reference(dependency_cid)
+  let root = cid.from_tree(root_source)
+  let archive =
+    bundle.Bundle(root: #(root, root_source), dependencies: [
+      #(dependency_cid, dependency),
+    ])
+
+  let assert Error(bundle.Unsound(module:, ..)) =
+    bundle.check(archive, infer.pure(), fn(_) { Error(bundle.NotFound) })
+  assert module == dependency_cid
 }
 
 fn block(cid, source) {

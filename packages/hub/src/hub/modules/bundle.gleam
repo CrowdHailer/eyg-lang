@@ -1,7 +1,10 @@
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/error
 import eyg/ir/car
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
 import gleam/result
@@ -27,6 +30,21 @@ pub type ShakeError {
   InvalidModule(v1.Cid)
   MissingRoot(v1.Cid)
   Circular(List(v1.Cid))
+}
+
+pub type Checked(meta) {
+  Checked(analysis: infer.Analysis(meta), types: Dict(v1.Cid, binding.Poly))
+}
+
+pub type ResolveError(error) {
+  NotFound
+  Failed(error)
+}
+
+pub type Rejection(meta, resolve_error) {
+  Unsound(module: v1.Cid, errors: List(#(meta, error.Reason)))
+  Missing(module: v1.Cid, reference: ir.Reference)
+  ResolutionFailed(resolve_error)
 }
 
 /// Decode an uploaded CAR and retain only modules reachable from its root.
@@ -136,6 +154,68 @@ fn cycle(visiting, cid) {
 fn reference_cid(reference) {
   case reference {
     ir.Content(cid:) | ir.Pinned(ir.Release(module: cid, ..)) -> Ok(cid)
+    _ -> Error(Nil)
+  }
+}
+
+/// Check dependencies as pure modules, then check the root with `context`.
+/// The resolver supplies types for dependencies omitted by `shake`.
+pub fn check(
+  archive: Bundle(meta),
+  context: infer.Context,
+  resolve: fn(ir.Reference) -> Result(binding.Poly, ResolveError(resolve_error)),
+) -> Result(Checked(meta), Rejection(meta, resolve_error)) {
+  let Bundle(root: #(root, source), dependencies:) = archive
+  use known <- result.try(check_dependencies(dependencies, dict.new(), resolve))
+  use analysis <- result.try(check_module(
+    infer.check(context, source),
+    root,
+    known,
+    resolve,
+  ))
+  let types = dict.insert(known, root, infer.poly_type(analysis))
+  Ok(Checked(analysis:, types:))
+}
+
+fn check_dependencies(dependencies, known, resolve) {
+  case dependencies {
+    [] -> Ok(known)
+    [#(cid, source), ..rest] -> {
+      use known <- result.try(check_dependencies(rest, known, resolve))
+      use analysis <- result.try(check_module(
+        infer.check(infer.pure(), source),
+        cid,
+        known,
+        resolve,
+      ))
+      Ok(dict.insert(known, cid, infer.poly_type(analysis)))
+    }
+  }
+}
+
+fn check_module(step, module, known, resolve) {
+  case step {
+    infer.Done(analysis) ->
+      case infer.all_errors(analysis) {
+        [] -> Ok(analysis)
+        errors -> Error(Unsound(module, errors))
+      }
+    infer.Lookup(reference:, resume:) ->
+      case held(known, reference) {
+        Ok(type_) -> check_module(resume(Ok(type_)), module, known, resolve)
+        Error(Nil) ->
+          case resolve(reference) {
+            Ok(type_) -> check_module(resume(Ok(type_)), module, known, resolve)
+            Error(NotFound) -> Error(Missing(module, reference))
+            Error(Failed(reason)) -> Error(ResolutionFailed(reason))
+          }
+      }
+  }
+}
+
+fn held(known, reference) {
+  case reference {
+    ir.Content(cid:) -> dict.get(known, cid)
     _ -> Error(Nil)
   }
 }
