@@ -69,6 +69,26 @@ pub fn share_rejects_an_incorrect_response_cid_test() {
   assert result == Error("hub returned the wrong shared module ID")
 }
 
+pub fn share_reports_the_hub_rejection_reason_test() {
+  let root_source = ir.integer(1)
+  let root = module_cid(root_source)
+  let response =
+    response.new(422)
+    |> response.set_body(
+      json.object([#("reason", json.string("missing dependency"))])
+      |> json.to_string
+      |> bit_array.from_string,
+    )
+  let result =
+    client.share_bundle(
+      #(#(root, dag_json.to_block(root_source)), []),
+      origin.Origin(http.Http, "example.com", None),
+      fn(_) { continuation.return(Ok(response)) },
+    )(fn(value) { value })
+
+  assert result == Error("missing dependency")
+}
+
 fn module_cid(source) {
   cid.from_tree(source, fn(bytes) {
     continuation.return(crypto.hash(crypto.Sha256, bytes))

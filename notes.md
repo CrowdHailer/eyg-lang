@@ -16,6 +16,7 @@ date: 2026-09-05
 - Fixed: Reusable share clients accepted a response CID that differed from the locally calculated root.
 - Fixed: The publish path accepted a response CID that differed from the module it was about to sign.
 - Fixed: The share client reduced useful HTTP failures to `bad module lookup`.
+- Fixed: The bundle share client discarded actionable rejection reasons returned by the Hub.
 - Pending: Hub module lookup validates a parsed CID but queries with the original, potentially noncanonical URL text.
 - Pending: The CAR endpoint rejects valid archives whose root is not the first block or which contain unreachable blocks instead of shaking them to the graph reachable from the declared root.
 - Pending: Pinned references are accepted by module CID without validating their package and version against the release ledger.

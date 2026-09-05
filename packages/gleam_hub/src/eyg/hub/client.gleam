@@ -9,6 +9,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{Response}
 import gleam/json
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import midas/continuation.{type Continuation as K}
 import midas/effect
@@ -148,6 +149,21 @@ pub fn share_response(
   }
 }
 
+fn share_bundle_response(response) {
+  let Response(status:, body:, ..) = response
+  case status {
+    200 ->
+      json.parse_bits(body, schema.share_response_decoder())
+      |> result.map_error(string.inspect)
+    400 | 413 | 415 | 422 ->
+      case json.parse_bits(body, schema.failure_decoder()) {
+        Ok(reason) -> Error(reason)
+        Error(_) -> Error(string.inspect(client.UnexpectedStatus(status:)))
+      }
+    _ -> Error(string.inspect(client.UnexpectedStatus(status:)))
+  }
+}
+
 pub fn share_bundle_operation(bundle) -> operation.Operation(BitArray) {
   let #(#(cid, block), dependencies) = bundle
   let assert Ok(body) =
@@ -177,14 +193,14 @@ pub fn share_bundle(
   use result <- continuation.then(fetch(request))
   let result = case result {
     Ok(response) ->
-      case share_response(response) {
+      case share_bundle_response(response) {
         Ok(cid) ->
           case cid == root {
             True -> Ok(cid)
             False -> Error("hub returned the wrong shared module ID")
           }
 
-        Error(reason) -> Error(string.inspect(reason))
+        Error(reason) -> Error(reason)
       }
     Error(reason) -> Error(string.inspect(reason))
   }
