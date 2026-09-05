@@ -8,7 +8,9 @@ import eyg/hub/client
 import eyg/hub/publisher
 import eyg/hub/signatory
 import eyg/ir/tree as ir
+import gleam/int
 import gleam/javascript/promise.{type Promise}
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
@@ -57,6 +59,66 @@ pub fn pull_principal(client: Client) {
     Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
   |> system.Done
+}
+
+/// Retrieve the complete history for the requested principals from this hub.
+pub fn pull_signatories(
+  principals: List(v1.Cid),
+  client: Client,
+) -> system.Effect(Result(List(schema.ArchivedEntry), String)) {
+  pull_signatories_page(principals, client, 0, [])
+}
+
+fn pull_signatories_page(
+  principals: List(v1.Cid),
+  client: Client,
+  since: Int,
+  collected: List(schema.ArchivedEntry),
+) {
+  let parameters =
+    schema.PullParameters(
+      entities: list.map(principals, v1.to_string),
+      since:,
+      limit: 1000,
+    )
+  let request =
+    client.pull_signatories(parameters)
+    |> operation.to_request(client.origin)
+  use fetched <- system.then(system.fetch(request))
+  let response = case fetched {
+    Ok(response) ->
+      client.pull_signatories_response(response)
+      |> result.map_error(string.inspect)
+    Error(reason) ->
+      Error(effect.describe_fetch_error(reason) |> string.inspect)
+  }
+  use response <- system.try(response)
+  case response.entries {
+    [] -> system.Done(Ok(list.reverse(collected)))
+    entries -> {
+      case
+        list.any(entries, fn(entry) {
+          entry.cursor <= since || entry.cursor > 9_007_199_254_740_991
+        })
+      {
+        True -> system.Done(Error("invalid or non-advancing signatory cursor"))
+        False -> {
+          let cursor =
+            list.fold(entries, since, fn(cursor, entry) {
+              int.max(cursor, entry.cursor)
+            })
+          let collected =
+            list.fold(entries, collected, fn(acc, entry) {
+              case list.contains(principals, entry.entity) {
+                True -> [entry, ..acc]
+                False -> acc
+              }
+            })
+          pull_signatories_page(principals, client, cursor, collected)
+        }
+      }
+    }
+  }
 }
 
 pub fn share_module(

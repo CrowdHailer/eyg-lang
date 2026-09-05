@@ -1,5 +1,6 @@
 import eyg/cli/args
 import eyg/cli/internal/source
+import gleam/string
 
 pub fn run_test() {
   let file = "example.eyg.json"
@@ -71,4 +72,19 @@ pub fn script_from_cid_with_args_test() {
 
 pub fn script_from_package_test() {
   assert args.Script(source.Code("@standard"), []) == args.parse(["@standard"])
+}
+
+pub fn signatory_inspection_commands_test() {
+  assert args.parse(["signatory", "list"]) == args.SignatoryList
+  assert args.parse(["signatory", "show", "personal"])
+    == args.SignatoryShow("personal")
+  assert string.contains(args.help_text, "signatory list")
+  assert string.contains(args.help_text, "signatory show <name>")
+}
+
+pub fn malformed_signatory_commands_are_not_scripts_test() {
+  let assert args.InvalidArguments(message) = args.parse(["signatory", "show"])
+  assert string.starts_with(message, "usage: eyg signatory initial <name>")
+  assert args.parse(["script", "signatory", "list"])
+    == args.Script(source.File("signatory"), ["list"])
 }

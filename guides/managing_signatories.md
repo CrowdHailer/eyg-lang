@@ -54,43 +54,20 @@ EYG_ORIGIN=http://localhost:8001 eyg signatory initial personal
 ```
 
 `EYG_ORIGIN` applies to all hub operations, including signatory creation,
-sharing, fetching, and publishing. Use the same origin when publishing that
-you used when registering and granting permissions to the signatory.
+inspection, sharing, fetching, and publishing. Use the same origin when
+publishing that you used when registering and granting permissions to the
+signatory.
 
 ## List configured signatories
 
-The CLI does not currently have a list command. Until `eyg signatory list` is
-implemented, inspect the signatory directory without printing the private
-key.
-
-On Linux, with `jq` installed:
-
 ```sh
-config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
-for file in "$config_dir/eyg/signatories/"*.json; do
-  [ -e "$file" ] || continue
-  jq -r --arg alias "$(basename "$file" .json)" \
-    '[$alias, .principal] | @tsv' "$file"
-done
+eyg signatory list
 ```
 
-This command prints the local alias and principal CID only. Do not print or
-copy the `keypair` field while inspecting a signatory file.
-
-On macOS, run the same loop with its XDG-aware config directory:
+## Show a signatory
 
 ```sh
-config_dir="${XDG_CONFIG_HOME:-$HOME/Library/Application Support}"
-```
-
-On Windows, signatory files can be listed in PowerShell without displaying
-their keypairs:
-
-```powershell
-Get-ChildItem "$env:APPDATA\eyg\signatories\*.json" | ForEach-Object {
-  $signatory = Get-Content $_.FullName | ConvertFrom-Json
-  "{0}`t{1}" -f $_.BaseName, $signatory.principal
-}
+eyg signatory show personal
 ```
 
 ## Local storage
@@ -167,8 +144,6 @@ files directly. The complete proposed user-facing command set is:
 | Command | Purpose | Status |
 |---|---|---|
 | `eyg signatory initial <name>` | Create and register a signatory, refusing to replace an existing alias. | Available; collision check required |
-| `eyg signatory list` | List local aliases and principal CIDs without exposing keys. | Required |
-| `eyg signatory show <name>` | Show safe local metadata and the configured hub status. | Required |
 | `eyg publish --signatory <name> <package> <file>` | Explicitly choose the signer when publishing. | Required |
 | `eyg signatory rename <name> <new-name>` | Change the local alias without changing the principal. | Required |
 | `eyg signatory backup <name> <file>` | Create a protected, portable credential backup. | Required |

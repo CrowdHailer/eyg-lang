@@ -63,6 +63,21 @@ pub fn all_signatories(dirs) {
   })
 }
 
+pub fn signatory_aliases(dirs) {
+  use files <- system.then(system.read_directory(signatories_dir(dirs)))
+  case files {
+    Error(simplifile.Enoent) -> Ok([])
+    Error(reason) -> Error(simplifile.describe_error(reason))
+    Ok(files) ->
+      files
+      |> list.filter(string.ends_with(_, ".json"))
+      |> list.map(string.drop_end(_, 5))
+      |> list.sort(string.compare)
+      |> Ok
+  }
+  |> system.Done
+}
+
 pub fn validate_alias(alias: String) -> Result(Nil, String) {
   case
     alias == ""
@@ -76,6 +91,25 @@ pub fn validate_alias(alias: String) -> Result(Nil, String) {
     True -> Error("invalid signatory alias")
     False -> Ok(Nil)
   }
+}
+
+pub fn read_signatory(alias: String, dirs: platform.PlatformDirs) {
+  use Nil <- system.try(validate_alias(alias))
+  use encoded <- system.then(system.read_file(
+    signatories_dir(dirs) <> alias <> ".json",
+  ))
+  let loaded = {
+    use encoded <- result.try(result.replace_error(
+      encoded,
+      "could not read local credential",
+    ))
+    use decoded <- result.try(
+      json.parse(encoded, signatory_decoder())
+      |> result.replace_error("invalid local credential"),
+    )
+    Ok(Signatory(alias:, principal: decoded.0, keypair: decoded.1))
+  }
+  system.Done(loaded)
 }
 
 fn signatory_decoder() -> decode.Decoder(_) {
@@ -105,7 +139,7 @@ fn keypair_encode(keypair: keypair.Keypair(eddsa.PrivateKey, _)) {
   json.string(encoded)
 }
 
-fn signatories_dir(dirs: platform.PlatformDirs) -> String {
+pub fn signatories_dir(dirs: platform.PlatformDirs) -> String {
   let platform.PlatformDirs(config_dir:, ..) = dirs
   config_dir <> "/eyg/signatories/"
 }

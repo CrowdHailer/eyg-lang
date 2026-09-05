@@ -1,3 +1,4 @@
+import eyg/cli/helpers/fs
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/crypto.{generate_key} as _
@@ -7,9 +8,9 @@ import eyg/hub/schema
 import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import filepath
 import gleam/bit_array
 import gleam/crypto
-import gleam/dict
 import gleam/http
 import gleam/http/request
 import gleam/http/response
@@ -22,6 +23,7 @@ import midas/continuation
 import midas/effect
 import multiformats/cid/v1
 import ogre/origin
+import simplifile
 
 const eyg_origin: client.Client = client.Client(
   origin: origin.Origin(http.Https, "eyg.run", None),
@@ -36,7 +38,7 @@ pub type Sandbox(a) {
   Sandbox(
     stdin: List(String),
     stdout: List(String),
-    files: dict.Dict(String, String),
+    file_system: fs.Entry,
     network_state: a,
     network: fn(request.Request(BitArray), a) ->
       #(Result(response.Response(BitArray), effect.FetchError), a),
@@ -47,7 +49,7 @@ pub fn sandbox() -> Sandbox(Nil) {
   Sandbox(
     stdin: [],
     stdout: [],
-    files: dict.new(),
+    file_system: fs.directory([]),
     network_state: Nil,
     network: fn(_, _) { #(Error(effect.NetworkError("None provided")), Nil) },
   )
@@ -61,8 +63,9 @@ pub fn with_files(
   sandbox: Sandbox(a),
   files: List(#(String, String)),
 ) -> Sandbox(a) {
-  let files = dict.merge(sandbox.files, dict.from_list(files))
-  Sandbox(..sandbox, files:)
+  list.fold(files, sandbox, fn(sandbox, file) {
+    with_file(sandbox, file.0, file.1)
+  })
 }
 
 pub fn with_file(
@@ -70,7 +73,29 @@ pub fn with_file(
   path: String,
   content: String,
 ) -> Sandbox(a) {
-  with_files(sandbox, [#(path, content)])
+  let #(created, file_system) =
+    fs.create_directory(sandbox.file_system, filepath.directory_name(path))
+  let assert Ok(Nil) = created
+  let #(written, file_system) = fs.write(file_system, path, content)
+  let assert Ok(Nil) = written
+  Sandbox(..sandbox, file_system:)
+}
+
+pub fn with_directory(sandbox: Sandbox(a), path: String) -> Sandbox(a) {
+  let #(created, file_system) = fs.create_directory(sandbox.file_system, path)
+  let assert Ok(Nil) = created
+  Sandbox(..sandbox, file_system:)
+}
+
+pub fn with_permissions(
+  sandbox: Sandbox(a),
+  path: String,
+  permissions: Int,
+) -> Sandbox(a) {
+  let #(set, file_system) =
+    fs.set_permissions(sandbox.file_system, path, permissions)
+  let assert Ok(Nil) = set
+  Sandbox(..sandbox, file_system:)
 }
 
 pub fn with_network(
@@ -102,7 +127,15 @@ pub fn vacant_cid_response() {
 pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
   case effect {
     system.Done(value) -> #(value, sandbox)
-    system.CreateDirectory(..) -> panic as "unsupported Create Directory"
+    system.CreateDirectory(path, resume) -> {
+      let #(outcome, file_system) =
+        fs.create_directory(sandbox.file_system, path)
+      let sandbox = Sandbox(..sandbox, file_system:)
+      outcome
+      |> result.map_error(simplifile.describe_error)
+      |> resume
+      |> run(sandbox)
+    }
     system.Fetch(request, resume) -> {
       let #(response, state) = sandbox.network(request, sandbox.network_state)
       let sandbox = Sandbox(..sandbox, network_state: state)
@@ -114,14 +147,26 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       generate_key()
       |> resume
       |> run(sandbox)
-    system.ReadDirectory(..) -> panic as "unsupported"
+    system.ReadDirectory(path, resume) -> {
+      fs.read_directory(sandbox.file_system, path)
+      |> resume
+      |> run(sandbox)
+    }
     system.ReadFile(path, resume) -> {
-      dict.get(sandbox.files, path)
-      |> result.replace_error("missing file")
+      fs.read(sandbox.file_system, path)
+      |> result.map_error(fn(error) { system.format_file_error(path, error) })
       |> resume()
       |> run(sandbox)
     }
-    system.SetPermissions(..) -> panic as "unsupported"
+    system.SetPermissions(path, permissions, resume) -> {
+      let #(outcome, file_system) =
+        fs.set_permissions(sandbox.file_system, path, permissions)
+      let sandbox = Sandbox(..sandbox, file_system:)
+      outcome
+      |> result.map_error(simplifile.describe_error)
+      |> resume
+      |> run(sandbox)
+    }
     system.Stdin(resume) -> {
       let #(response, stdin) = case sandbox.stdin {
         [] -> #(Error(""), [])
@@ -137,9 +182,12 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
     }
     system.Wait(_, resume) -> run(resume(Nil), sandbox)
     system.WriteFile(path, content, resume) -> {
-      let files = dict.insert(sandbox.files, path, content)
-      let sandbox = Sandbox(..sandbox, files:)
-      run(resume(Ok(Nil)), sandbox)
+      let #(outcome, file_system) = fs.write(sandbox.file_system, path, content)
+      let sandbox = Sandbox(..sandbox, file_system:)
+      outcome
+      |> result.map_error(simplifile.describe_error)
+      |> resume
+      |> run(sandbox)
     }
   }
 }

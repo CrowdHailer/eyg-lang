@@ -12,7 +12,10 @@ pub type Args {
   Share(input: source.Input)
   Fetch(cid: String)
   SignatoryInitial(name: String)
+  SignatoryList
+  SignatoryShow(alias: String)
   Publish(package: String, file: String)
+  InvalidArguments(message: String)
   Help
   Version
 }
@@ -70,6 +73,12 @@ pub fn parse(args) {
     ["fetch", cid] -> Fetch(cid:)
     ["publish", package, file] -> Publish(package:, file:)
     ["signatory", "initial", name] -> SignatoryInitial(name:)
+    ["signatory", "list"] -> SignatoryList
+    ["signatory", "show", alias] -> SignatoryShow(alias:)
+    ["signatory", ..] ->
+      InvalidArguments(
+        "usage: eyg signatory initial <name> | eyg signatory list | eyg signatory show <name>",
+      )
     ["help"] | ["--help"] | ["-h"] -> Help
     ["version"] | ["--version"] | ["-V"] -> Version
     ["#" <> _ as code, ..arguments] | ["@" <> _ as code, ..arguments] ->
@@ -121,6 +130,8 @@ commands:
   fetch <cid>            fetch a module by content id
   publish <pkg> <file>   publish a module under a package name
   signatory initial <n>  create a signatory principal called <n>
+  signatory list         list local signatory metadata and current hub status
+  signatory show <name>  show signatory metadata and complete hub event history
   help, --help, -h       show this message
   version, --version, -V show the eyg version
 environment:

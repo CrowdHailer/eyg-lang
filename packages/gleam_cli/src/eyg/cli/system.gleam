@@ -21,7 +21,10 @@ pub type Effect(a) {
   GenerateKey(
     fn(keypair.Keypair(eddsa.PrivateKey, eddsa.PublicKey)) -> Effect(a),
   )
-  ReadDirectory(String, fn(Result(List(String), String)) -> Effect(a))
+  ReadDirectory(
+    String,
+    fn(Result(List(String), simplifile.FileError)) -> Effect(a),
+  )
   ReadFile(String, fn(Result(String, String)) -> Effect(a))
   SetPermissions(String, Int, fn(Result(Nil, String)) -> Effect(a))
   Stdin(fn(Result(String, String)) -> Effect(a))
@@ -124,7 +127,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
       run(resume(response))
     }
     CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
-    ReadDirectory(path, resume) -> run(resume(do_read_directory(path)))
+    ReadDirectory(path, resume) -> run(resume(simplifile.read_directory(path)))
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
     WriteFile(path, contents, resume) ->
       run(resume(do_write_file(path, contents)))
@@ -154,7 +157,7 @@ fn do_set_permissions(path, permissions) {
   |> result.map_error(simplifile.describe_error)
 }
 
-fn format_file_error(path: String, err: simplifile.FileError) -> String {
+pub fn format_file_error(path: String, err: simplifile.FileError) -> String {
   let #(description, hint) = case err {
     simplifile.Enoent -> #(
       "no such file: " <> path,

@@ -35,6 +35,7 @@ fn execute(parsed: args.Args) -> Promise(Result(Int, String)) {
   case parsed {
     args.Help -> help()
     args.Version -> version()
+    args.InvalidArguments(message) -> promise.resolve(Error(message))
 
     _ -> with_config(parsed)
   }
@@ -55,7 +56,8 @@ fn with_config(parsed) {
     config.load() |> result.replace_error("failed to load config"),
   )
   case parsed {
-    args.Help | args.Version -> panic as "handled above"
+    args.Help | args.Version | args.InvalidArguments(_) ->
+      panic as "handled above"
     args.Shell(input) -> shell.execute(input, config)
     args.Run(input:) -> run.execute(input, config)
     args.Script(input:, arguments:) -> script.execute(input, arguments, config)
@@ -67,5 +69,7 @@ fn with_config(parsed) {
     args.Fetch(cid:) -> system.run(fetch.execute(cid, config))
     args.Publish(package:, file:) -> publish.execute(package, file, config)
     args.SignatoryInitial(name:) -> system.run(signatory.initial(name, config))
+    args.SignatoryList -> system.run(signatory.list(config))
+    args.SignatoryShow(alias:) -> system.run(signatory.show(alias, config))
   }
 }

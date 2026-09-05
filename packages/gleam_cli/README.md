@@ -128,9 +128,16 @@ printf '@standard.integer.add(1, 1)' | eyg compile -
 
 ```sh
 eyg signatory initial <name>
+eyg signatory list
+eyg signatory show <name>
 ```
 
-The name is a local alias for the new principal. See the
+The name is a local alias for the principal. `list` displays safe local metadata
+and current hub status for each immediate `.json` credential. `show` displays
+the same metadata followed by the principal's complete hub event history.
+Neither inspection command prints private keys or modifies local files.
+
+See the
 [Managing signatories](../../guides/managing_signatories.md) guide for storage,
 security, backup, publishing, and planned management commands.
 
@@ -145,4 +152,3 @@ eyg share path/to/file.eyg
 ```sh
 eyg publish package-name path/to/file.eyg
 ```
-
