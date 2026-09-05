@@ -9,7 +9,6 @@ import gleam/json
 import gleam/list
 import gleam/result
 import hub/cid
-import midas/continuation
 import multiformats/cid/v1
 
 /// A root module and its reachable dependencies.
@@ -59,88 +58,83 @@ pub fn shake(upload: BitArray) -> Result(Bundle(Nil), ShakeError) {
     [root] -> Ok(root)
     roots -> Error(InvalidRootCount(list.length(roots)))
   })
-  use modules <- result.try(read_blocks(blocks, dict.new(), []))
-  use root_module <- result.try(
-    list.key_find(modules, root) |> result.replace_error(MissingRoot(root)),
+  use supplied <- result.try(index_blocks(blocks, dict.new()))
+  use Nil <- result.try(case dict.has_key(supplied, root) {
+    True -> Ok(Nil)
+    False -> Error(MissingRoot(root))
+  })
+  use #(_, modules) <- result.try(
+    read_reachable(root, supplied, dict.new(), [], []),
   )
-  let supplied = list.filter(modules, fn(module) { module.0 != root })
-  strip(#(root, root_module), supplied)(fn(value) { value })
+  let assert [root, ..dependencies] = modules
+  Ok(Bundle(root:, dependencies:))
 }
 
-fn read_blocks(blocks, seen, acc) {
+fn index_blocks(blocks, indexed) {
   case blocks {
-    [] -> Ok(list.reverse(acc))
+    [] -> Ok(indexed)
     [#(declared, bytes), ..rest] -> {
-      use Nil <- result.try(case dict.has_key(seen, declared) {
+      use Nil <- result.try(case dict.has_key(indexed, declared) {
         True -> Error(DuplicateCid(declared))
         False -> Ok(Nil)
       })
-      use Nil <- result.try(case cid.from_block(bytes) {
-        actual if actual == declared -> Ok(Nil)
-        actual -> Error(IncorrectCid(declared, actual))
-      })
-      use source <- result.try(
-        json.parse_bits(bytes, dag_json.decoder(Nil))
-        |> result.replace_error(InvalidModule(declared)),
-      )
-      use Nil <- result.try(case cid.from_tree(source) {
-        actual if actual == declared -> Ok(Nil)
-        actual -> Error(IncorrectCid(declared, actual))
-      })
-      read_blocks(rest, dict.insert(seen, declared, Nil), [
-        #(declared, source),
-        ..acc
-      ])
+      index_blocks(rest, dict.insert(indexed, declared, bytes))
     }
   }
 }
 
-fn strip(root, supplied) {
-  let #(root_cid, source) = root
-  use stripped <- continuation.then(
-    strip_source(source, supplied, [], [root_cid]),
-  )
-  continuation.return(
-    result.map(stripped, fn(dependencies) { Bundle(root:, dependencies:) }),
-  )
+fn read_reachable(cid, supplied, seen, visiting, acc) {
+  case dict.has_key(seen, cid) {
+    True -> Ok(#(seen, acc))
+    False -> {
+      use Nil <- result.try(case cycle(visiting, cid) {
+        Ok(cycle) -> Error(Circular(cycle))
+        Error(Nil) -> Ok(Nil)
+      })
+      let assert Ok(bytes) = dict.get(supplied, cid)
+      use source <- result.try(read_module(cid, bytes))
+      let references =
+        ir.list_references(source)
+        |> list.filter_map(reference_cid)
+      use #(seen, acc) <- result.try(read_references(
+        references,
+        supplied,
+        seen,
+        [cid, ..visiting],
+        acc,
+      ))
+      Ok(#(dict.insert(seen, cid, Nil), [#(cid, source), ..acc]))
+    }
+  }
 }
 
-fn strip_source(source, supplied, acc, visiting) {
-  ir.fold(source, Ok(acc), fn(stripped, node) {
-    case stripped {
-      Error(reason) -> continuation.return(Error(reason))
-      Ok(acc) -> {
-        let #(expression, _meta) = node
-        case expression {
-          ir.Reference(reference) ->
-            case reference_cid(reference) {
-              Error(Nil) -> continuation.return(Ok(acc))
-              Ok(cid) -> strip_reference(cid, supplied, acc, visiting)
-            }
-          _ -> continuation.return(Ok(acc))
-        }
-      }
+fn read_references(references, supplied, seen, visiting, acc) {
+  case references {
+    [] -> Ok(#(seen, acc))
+    [cid, ..rest] -> {
+      use #(seen, acc) <- result.try(case dict.has_key(supplied, cid) {
+        True -> read_reachable(cid, supplied, seen, visiting, acc)
+        False -> Ok(#(seen, acc))
+      })
+      read_references(rest, supplied, seen, visiting, acc)
     }
+  }
+}
+
+fn read_module(declared, bytes) {
+  use Nil <- result.try(case cid.from_block(bytes) {
+    actual if actual == declared -> Ok(Nil)
+    actual -> Error(IncorrectCid(declared, actual))
   })
-}
-
-fn strip_reference(cid, supplied, acc, visiting) {
-  case cycle(visiting, cid) {
-    Ok(cycle) -> continuation.return(Error(Circular(cycle)))
-    Error(Nil) ->
-      case list.key_find(acc, cid), list.key_find(supplied, cid) {
-        Ok(_), _ -> continuation.return(Ok(acc))
-        Error(Nil), Error(Nil) -> continuation.return(Ok(acc))
-        Error(Nil), Ok(source) -> {
-          use stripped <- continuation.then(
-            strip_source(source, supplied, acc, [cid, ..visiting]),
-          )
-          continuation.return(
-            result.map(stripped, fn(acc) { [#(cid, source), ..acc] }),
-          )
-        }
-      }
-  }
+  use source <- result.try(
+    json.parse_bits(bytes, dag_json.decoder(Nil))
+    |> result.replace_error(InvalidModule(declared)),
+  )
+  use Nil <- result.try(case cid.from_tree(source) {
+    actual if actual == declared -> Ok(Nil)
+    actual -> Error(IncorrectCid(declared, actual))
+  })
+  Ok(source)
 }
 
 fn cycle(visiting, cid) {

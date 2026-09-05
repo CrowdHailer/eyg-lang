@@ -26,6 +26,21 @@ pub fn shake_reorders_root_and_drops_unreachable_blocks_test() {
     == [root, dependency_cid]
 }
 
+pub fn shake_does_not_decode_an_unreachable_block_test() {
+  let root_source = ir.integer(1)
+  let root = cid.from_tree(root_source)
+  let invalid = <<"not a module":utf8>>
+  let archive =
+    car.Car(car.Header(1, [root]), [
+      #(cid.from_block(invalid), invalid),
+      block(root, root_source),
+    ])
+  let assert Ok(upload) = car.encode(archive)
+
+  let assert Ok(shaken) = bundle.shake(upload)
+  assert bundle.blocks(shaken) |> list.map(fn(module) { module.0 }) == [root]
+}
+
 pub fn shake_follows_transitive_references_test() {
   let leaf = ir.integer(1)
   let leaf_cid = cid.from_tree(leaf)
