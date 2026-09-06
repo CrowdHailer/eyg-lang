@@ -5,7 +5,6 @@ import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
-import gleam/string
 import hub/cid
 import hub/modules/data
 import hub/server/context.{type Context}
@@ -18,9 +17,9 @@ pub fn share(
   request: Request(wisp.Connection),
   context: Context,
 ) -> Response(wisp.Body) {
+  let request = wisp.set_max_body_size(request, 50_000)
   use <- wisp.require_content_type(request, "application/json")
   use data <- wisp.require_string_body(request)
-  use <- check_size(data, 50_000)
   use source <- utils.do_decode(data, dag_json.decoder(Nil))
   use <- check_soundness(source)
   use <- check_purity(source)
@@ -35,13 +34,6 @@ pub fn share(
       |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
 
     Error(_reason) -> wisp.internal_server_error()
-  }
-}
-
-fn check_size(data, max, then) {
-  case string.byte_size(data) <= max {
-    True -> then()
-    False -> wisp.content_too_large()
   }
 }
 
