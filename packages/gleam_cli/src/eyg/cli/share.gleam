@@ -99,7 +99,7 @@ fn do_load(
                             filepath.directory_name(path),
                             dependency,
                             cache,
-                            visited,
+                            [path, ..visited],
                             acc,
                           ))
 

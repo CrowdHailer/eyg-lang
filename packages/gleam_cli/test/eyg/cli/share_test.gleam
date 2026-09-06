@@ -133,6 +133,21 @@ pub fn share_fail_recursive_test() {
   assert "unknown reference: /main.eyg" == message
 }
 
+pub fn share_fails_transitive_import_cycle_test() {
+  let files = [
+    #("/main.eyg", "import \"/a.eyg\""),
+    #("/a.eyg", "import \"/b.eyg\""),
+    #("/b.eyg", "import \"/a.eyg\""),
+  ]
+  let sandbox = helpers.sandbox() |> helpers.with_files(files)
+  let input = source.File("/main.eyg")
+  let #(output, _sandbox) =
+    share.execute(input, helpers.config)
+    |> helpers.run(sandbox)
+  let assert Error(message) = output
+  assert "unknown reference: /a.eyg" == message
+}
+
 pub fn share_fails_bad_import_test() {
   let files = [
     #("/main.eyg", "import \"/lib/foo.eyg\""),
