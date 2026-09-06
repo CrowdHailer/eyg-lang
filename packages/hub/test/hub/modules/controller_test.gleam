@@ -7,8 +7,10 @@ import gleam/json
 import gleam/string
 import hub/cid
 import hub/helpers.{dispatch}
+import hub/modules/data as modules
 import hub/router
 import ogre/operation
+import pog
 import wisp/simulate
 
 pub fn share_valid_fragment_test() {
@@ -31,6 +33,21 @@ pub fn share_fragment_is_idempotent_test() {
   assert response.status == 200
   let response = dispatch(client.share_module(source), context)
   assert response.status == 200
+}
+
+pub fn share_records_the_proxy_client_ip_test() {
+  use context <- helpers.web_context()
+  let source = ir.let_("x", ir.integer(0), ir.variable("x"))
+  let body = dag_json.to_data_model(source) |> json.to_string
+  let request =
+    simulate.request(http.Post, "/modules/share")
+    |> simulate.string_body(body)
+    |> request.set_header("content-type", "application/json")
+    |> request.set_header("x-forwarded-for", "10.0.0.1, 192.0.2.1")
+
+  assert router.route(request, context).status == 200
+  let assert Ok(pog.Returned(rows: [1], ..)) =
+    pog.execute(modules.count_uploads_by_ip("192.0.2.1"), context.db)
 }
 
 pub fn reject_invalid_json_test() {

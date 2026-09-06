@@ -5,6 +5,9 @@ import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
+import gleam/list
+import gleam/result
+import gleam/string
 import hub/cid
 import hub/modules/data
 import hub/server/context.{type Context}
@@ -23,9 +26,7 @@ pub fn share(
   use source <- utils.do_decode(data, dag_json.decoder(Nil))
   use <- check_soundness(source)
   use <- check_purity(source)
-  // echo request
-  let ip = "123.1.1.1"
-  // wisp.accepted
+  let ip = uploaded_by(request)
 
   let cid = cid.from_tree(source)
   case pog.execute(data.insert(cid, source, ip), context.db) {
@@ -35,6 +36,15 @@ pub fn share(
 
     Error(_reason) -> wisp.internal_server_error()
   }
+}
+
+fn uploaded_by(request: Request(wisp.Connection)) -> String {
+  request.get_header(request, "x-forwarded-for")
+  |> result.unwrap("0.0.0.0")
+  |> string.split(",")
+  |> list.last
+  |> result.map(string.trim)
+  |> result.unwrap("0.0.0.0")
 }
 
 fn check_soundness(source, then) {
