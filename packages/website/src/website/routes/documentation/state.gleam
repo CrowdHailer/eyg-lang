@@ -133,7 +133,7 @@ pub fn flush_cache(cache, origin) {
   let #(cache, effects) = cache.flush(cache)
   let effects =
     list.map(effects, fn(effect) {
-      cache.compute(effect, origin, system.fetch)(fn(return) {
+      cache.compute(effect, origin, system.fetch, system.hash)(fn(return) {
         system.Done(CacheMessage(return))
       })
     })

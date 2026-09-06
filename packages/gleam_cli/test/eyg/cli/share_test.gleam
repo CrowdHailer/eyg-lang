@@ -10,19 +10,22 @@ import multiformats/cid/v1
 pub fn share_simple_expression_test() {
   let sandbox =
     helpers.sandbox()
-    |> helpers.save_and_return(helpers.vacant_cid_response())
+    |> helpers.share_server()
   let input = source.Code("3")
   let #(output, sandbox) =
     share.execute(input, helpers.config)
     |> helpers.run(sandbox)
   assert Ok(0) == output
-  assert [v1.to_string(dag_json.vacant_cid)] == sandbox.stdout
+  let assert [request] = sandbox.network_state
+  let assert Ok(archive) = car.decode(request.body)
+  let assert [root] = archive.header.roots
+  assert [v1.to_string(root)] == sandbox.stdout
 }
 
 pub fn share_unknown_package_reference_fails_test() {
   let sandbox =
     helpers.sandbox()
-    |> helpers.save_and_return(helpers.vacant_cid_response())
+    |> helpers.share_server
   let input = source.Code("@unknown")
   let #(output, _sandbox) =
     share.execute(input, helpers.config)
@@ -34,7 +37,7 @@ pub fn share_unknown_package_reference_fails_test() {
 pub fn share_unknown_version_reference_fails_test() {
   let sandbox =
     helpers.sandbox()
-    |> helpers.save_and_return(helpers.vacant_cid_response())
+    |> helpers.share_server
   let input = source.Code("@unknown:1")
   let #(output, _sandbox) =
     share.execute(input, helpers.config)
@@ -51,7 +54,7 @@ pub fn share_bundles_absolute_test() {
   let sandbox =
     helpers.sandbox()
     |> helpers.with_files(files)
-    |> helpers.save_and_return(helpers.vacant_cid_response())
+    |> helpers.share_server
   let input = source.File("/main.eyg")
   let #(output, sandbox) =
     share.execute(input, helpers.config)
@@ -92,7 +95,7 @@ import \"/lib/bar.eyg\"",
   let sandbox =
     helpers.sandbox()
     |> helpers.with_files(files)
-    |> helpers.save_and_return(helpers.vacant_cid_response())
+    |> helpers.share_server
   let input = source.File("/main.eyg")
   let #(output, sandbox) =
     share.execute(input, helpers.config)

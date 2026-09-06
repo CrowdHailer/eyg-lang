@@ -2,6 +2,7 @@ import eyg/hub/publisher
 import eyg/hub/schema
 import eyg/hub/signatory
 import eyg/ir/car
+import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http/request.{type Request}
@@ -97,19 +98,30 @@ pub fn fetch_module(
   cid: v1.Cid,
   origin: origin.Origin,
   fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
 ) -> K(t, Result(ir.Node(Nil), String)) {
   let request = fetch_module_request(cid, origin)
   use result <- continuation.then(fetch(request))
-  let result = case result {
+  case result {
     Ok(response) ->
       case fetch_module_response(response) {
-        Ok(Some(source)) -> Ok(source)
-        Ok(None) -> Error("no module")
-        Error(_) -> Error("bad module lookup")
+        Ok(Some(source)) -> {
+          use actual <- continuation.then(
+            cid.from_tree(source, hash(effect.Sha256, _)),
+          )
+          case actual == cid {
+            True -> continuation.return(Ok(source))
+            False ->
+              continuation.return(Error(
+                "hub returned module with the wrong cid.",
+              ))
+          }
+        }
+        Ok(None) -> continuation.return(Error("no module"))
+        Error(_) -> continuation.return(Error("bad module lookup"))
       }
-    Error(reason) -> Error(string.inspect(reason))
+    Error(reason) -> continuation.return(Error(string.inspect(reason)))
   }
-  continuation.return(result)
 }
 
 /// Create a share module operation
@@ -157,13 +169,18 @@ pub fn share_bundle(
   origin: origin.Origin,
   fetch: effect.Fetch(t),
 ) -> K(t, Result(v1.Cid, String)) {
+  let #(#(root, _), _) = bundle
   let request = share_bundle_request(bundle, origin)
 
   use result <- continuation.then(fetch(request))
   let result = case result {
     Ok(response) ->
       case share_response(response) {
-        Ok(cid) -> Ok(cid)
+        Ok(cid) ->
+          case cid == root {
+            True -> Ok(cid)
+            False -> Error("hub returned the wrong shared module ID")
+          }
 
         Error(_) -> Error("bad module lookup")
       }

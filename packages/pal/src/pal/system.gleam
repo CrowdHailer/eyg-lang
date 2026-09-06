@@ -19,6 +19,7 @@ import midas/effect
 import ogre/origin
 import plinth/browser/clipboard
 import plinth/browser/crypto
+import plinth/browser/crypto/subtle
 import plinth/browser/file
 import plinth/browser/file_system
 import plinth/browser/location
@@ -62,6 +63,11 @@ pub type Effect(m) {
   )
   // Follow(uri: uri.Uri, resume: fn(Result(uri.Uri, fetch.FetchError)) -> Effect(m))
   // FocusOnInput(resume:)
+  Hash(
+    algorithm: effect.HashAlgorithm,
+    bytes: BitArray,
+    resume: fn(BitArray) -> Effect(m),
+  )
   // LoadFiles(handle: file_system.DirectoryHandle)
   OpenPopup(
     location: String,
@@ -125,6 +131,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       GetLocalStorageItem(key, fn(value) { then(resume(value), func) })
     GetSessionStorageItem(key, resume) ->
       GetSessionStorageItem(key, fn(value) { then(resume(value), func) })
+    Hash(algorithm, bytes, resume) ->
+      Hash(algorithm, bytes, fn(output) { then(resume(output), func) })
     // LoadFiles(handle) -> todo
     OpenPopup(location, resume) ->
       OpenPopup(location, fn(x) { then(resume(x), func) })
@@ -164,6 +172,13 @@ pub fn fetch(
   request: request.Request(BitArray),
 ) -> K(Effect(r), Result(response.Response(BitArray), effect.FetchError)) {
   fn(resume) { Fetch(request:, resume:) }
+}
+
+pub fn hash(
+  algorithm: effect.HashAlgorithm,
+  bytes: BitArray,
+) -> K(Effect(r), BitArray) {
+  fn(resume) { Hash(algorithm:, bytes:, resume:) }
 }
 
 pub type Reader =
@@ -211,7 +226,10 @@ pub fn run(effect: Effect(m)) -> Promise(m) {
       run(resume(get_storage_item(web_storage.local(), key)))
     GetSessionStorageItem(key:, resume:) ->
       run(resume(get_storage_item(web_storage.session(), key)))
-
+    Hash(algorithm:, bytes:, resume:) -> {
+      use bytes <- promise.await(do_hash(algorithm, bytes))
+      run(resume(bytes))
+    }
     // Follow(uri:, resume:) -> todo
     // LoadFiles(handle: _) -> {
     //   panic as "this shouldn't read every file"
@@ -382,6 +400,21 @@ fn do_follow(url) {
   let frame = #(600, 700)
   let assert Ok(popup) = open(url, frame)
   receive_redirect(popup, 100)
+}
+
+fn do_hash(
+  algorithm: effect.HashAlgorithm,
+  bytes: BitArray,
+) -> Promise(BitArray) {
+  let algorithm = case algorithm {
+    effect.Sha1 -> subtle.SHA1
+    effect.Sha256 -> subtle.SHA256
+    effect.Sha384 -> subtle.SHA384
+    effect.Sha512 -> subtle.SHA512
+  }
+  use output <- promise.map(subtle.digest(algorithm, bytes))
+  let assert Ok(output) = output
+  output
 }
 
 pub fn open(url, frame_size) {

@@ -1,5 +1,6 @@
 import eyg/cli/internal/bun_platform
 import eyg/cli/internal/crypto
+import gleam/crypto as gcrypto
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
@@ -21,6 +22,7 @@ pub type Effect(a) {
   GenerateKey(
     fn(keypair.Keypair(eddsa.PrivateKey, eddsa.PublicKey)) -> Effect(a),
   )
+  Hash(effect.HashAlgorithm, BitArray, fn(BitArray) -> Effect(a))
   ReadDirectory(
     String,
     fn(Result(List(String), simplifile.FileError)) -> Effect(a),
@@ -45,6 +47,10 @@ pub fn fetch(
 
 pub fn create_directory(path) {
   CreateDirectory(path, Done)
+}
+
+pub fn hash(algorithm, bytes) {
+  Hash(algorithm, bytes, Done)
 }
 
 pub fn read_directory(path) {
@@ -80,6 +86,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       Fetch(request, fn(response) { then(resume(response), func) })
     CreateDirectory(path, resume) ->
       CreateDirectory(path, fn(response) { then(resume(response), func) })
+    Hash(algorithm, bytes, resume) ->
+      Hash(algorithm, bytes, fn(output) { then(resume(output), func) })
     ReadDirectory(path, resume) ->
       ReadDirectory(path, fn(response) { then(resume(response), func) })
     ReadFile(path, resume) ->
@@ -127,6 +135,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
       run(resume(response))
     }
     CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
+    Hash(algorithm, bytes, resume) -> run(resume(do_hash(algorithm, bytes)))
     ReadDirectory(path, resume) -> run(resume(simplifile.read_directory(path)))
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
     WriteFile(path, contents, resume) ->
@@ -145,6 +154,16 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
 fn do_create_directory(path) {
   simplifile.create_directory_all(path)
   |> result.map_error(simplifile.describe_error)
+}
+
+pub fn do_hash(algorithm, bytes) {
+  let algorithm = case algorithm {
+    effect.Sha1 -> gcrypto.Sha1
+    effect.Sha256 -> gcrypto.Sha256
+    effect.Sha384 -> gcrypto.Sha384
+    effect.Sha512 -> gcrypto.Sha512
+  }
+  gcrypto.hash(algorithm, bytes)
 }
 
 fn do_write_file(path, contents) {

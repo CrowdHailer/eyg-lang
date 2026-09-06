@@ -34,7 +34,9 @@ pub fn analyse_reference_test() {
   let assert #(_context, [_pull, effect]) =
     state.flush_cache(state.cache, origin.https("eyg.test"))
   let assert system.Fetch(_request, resume:) = effect
-  let assert system.Done(message) = resume(Ok(module_response(lib)))
+  let assert system.Hash(_algorithm, bytes, resume:) =
+    resume(Ok(module_response(lib)))
+  let assert system.Done(message) = resume(crypto.hash(crypto.Sha256, bytes))
   let #(state, _effects) = state.update(state, message)
 
   let assert [] = infer.all_errors(default(state).analysis)
@@ -55,7 +57,9 @@ pub fn insert_reference_test() {
   let assert [#([], reason)] = infer.all_errors(default(state).analysis)
   assert error.MissingReference(ir.Content(cid)) == reason
   let assert system.Fetch(_request, resume:) = effect
-  let assert system.Done(message) = resume(Ok(module_response(lib)))
+  let assert system.Hash(_algorithm, bytes, resume:) =
+    resume(Ok(module_response(lib)))
+  let assert system.Done(message) = resume(crypto.hash(crypto.Sha256, bytes))
   let assert #(state, []) = state.update(state, message)
   let assert [] = infer.all_errors(default(state).analysis)
 }
