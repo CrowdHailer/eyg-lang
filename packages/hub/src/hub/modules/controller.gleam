@@ -25,7 +25,6 @@ pub fn share(
   use data <- wisp.require_string_body(request)
   use source <- utils.do_decode(data, dag_json.decoder(Nil))
   use <- check_soundness(source)
-  use <- check_purity(source)
   let ip = uploaded_by(request)
 
   let cid = cid.from_tree(source)
@@ -48,15 +47,6 @@ fn uploaded_by(request: Request(wisp.Connection)) -> String {
 }
 
 fn check_soundness(source, then) {
-  let inference =
-    infer.unpure() |> infer.check_with_references(dict.new(), source)
-  case infer.all_errors(inference) {
-    [] -> then()
-    _ -> wisp.unprocessable_content()
-  }
-}
-
-fn check_purity(source, then) {
   let inference =
     infer.pure() |> infer.check_with_references(dict.new(), source)
   case infer.all_errors(inference) {
