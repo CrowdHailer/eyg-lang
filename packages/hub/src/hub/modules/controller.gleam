@@ -1,4 +1,5 @@
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/hub/schema
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
@@ -68,25 +69,8 @@ fn resolve_check(
   case step {
     infer.Done(analysis) -> Ok(analysis)
     infer.Lookup(ir.Content(cid), resume) -> {
-      let query = data.get(v1.to_string(cid))
-      case pog.execute(query, db) {
-        Ok(pog.Returned(rows: [module], ..)) -> {
-          // remove the assertion and test on corrupted data.
-          let assert Ok(source) =
-            json.parse(module.source, dag_json.decoder(Nil))
-          // Errors should be added to returned response
-          use analysis <- result.try(
-            infer.pure()
-            |> infer.check(source)
-            |> resolve_check(db),
-          )
-          let type_ = infer.poly_type(analysis)
-          resolve_check(resume(Ok(type_)), db)
-        }
-        Ok(pog.Returned(rows: [], ..)) -> resolve_check(resume(Error(Nil)), db)
-        Ok(pog.Returned(rows: _, ..)) -> resolve_check(resume(Error(Nil)), db)
-        Error(reason) -> Error(reason)
-      }
+      use result <- result.try(resolve_module(cid, db))
+      resolve_check(resume(result), db)
     }
     infer.Lookup(ir.Package(..), resume) ->
       resolve_check(resume(Error(Nil)), db)
@@ -98,27 +82,8 @@ fn resolve_check(
         Ok(pog.Returned(rows: [found], ..)) -> {
           case v1.to_string(expected.module) == found.module {
             True -> {
-              let query = data.get(v1.to_string(expected.module))
-              case pog.execute(query, db) {
-                Ok(pog.Returned(rows: [module], ..)) -> {
-                  // remove the assertion and test on corrupted data.
-                  let assert Ok(source) =
-                    json.parse(module.source, dag_json.decoder(Nil))
-                  // Errors should be added to returned response
-                  use analysis <- result.try(
-                    infer.pure()
-                    |> infer.check(source)
-                    |> resolve_check(db),
-                  )
-                  let type_ = infer.poly_type(analysis)
-                  resolve_check(resume(Ok(type_)), db)
-                }
-                Ok(pog.Returned(rows: [], ..)) ->
-                  resolve_check(resume(Error(Nil)), db)
-                Ok(pog.Returned(rows: _, ..)) ->
-                  resolve_check(resume(Error(Nil)), db)
-                Error(reason) -> Error(reason)
-              }
+              use result <- result.try(resolve_module(expected.module, db))
+              resolve_check(resume(result), db)
             }
             False -> resolve_check(resume(Error(Nil)), db)
           }
@@ -132,6 +97,37 @@ fn resolve_check(
     // resolve_check(resume(Error(Nil)), db)
     infer.Lookup(ir.Relative(..), resume) ->
       resolve_check(resume(Error(Nil)), db)
+  }
+}
+
+fn resolve_module(
+  cid: v1.Cid,
+  db: pog.Connection,
+) -> Result(Result(binding.Poly, Nil), pog.QueryError) {
+  let query = data.get(v1.to_string(cid))
+  case pog.execute(query, db) {
+    Ok(pog.Returned(rows: [module], ..)) -> {
+      // remove the assertion and test on corrupted data.
+      case json.parse(module.source, dag_json.decoder(Nil)) {
+        Ok(source) -> {
+          // Errors should be added to returned response
+          use analysis <- result.try(
+            infer.pure()
+            |> infer.check(source)
+            |> resolve_check(db),
+          )
+          let type_ = infer.poly_type(analysis)
+          Ok(Ok(type_))
+        }
+        Error(json.UnableToDecode(errors)) ->
+          Error(pog.UnexpectedResultType(errors))
+        // Other errors should not be possible as the value was stored in a JSON column.
+        Error(_) -> Error(pog.UnexpectedResultType([]))
+      }
+    }
+    Ok(pog.Returned(rows: [], ..)) -> Ok(Error(Nil))
+    Ok(pog.Returned(rows: _, ..)) -> Ok(Error(Nil))
+    Error(reason) -> Error(reason)
   }
 }
 
