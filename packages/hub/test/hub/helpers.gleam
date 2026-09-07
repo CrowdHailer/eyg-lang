@@ -5,6 +5,9 @@ import gleam/erlang/process.{type Name}
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
+import gleam/int
+import gleam/list
+import gleam/string
 import hub/cid
 import hub/config
 import hub/db/pool
@@ -62,4 +65,10 @@ pub fn dispatch(operation, context) {
 pub fn web_context(then) {
   use conn <- with_transaction()
   then(context.Context(secret_key_base: "123", db: conn))
+}
+
+pub fn test_ip() {
+  list.repeat(int.random(256), 4)
+  |> list.map(int.to_string)
+  |> string.join(".")
 }

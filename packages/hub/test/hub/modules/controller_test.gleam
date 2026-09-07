@@ -3,6 +3,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/json
 import gleam/string
 import hub/cid
@@ -82,6 +83,32 @@ pub fn reject_unsound_fragment_test() {
 pub fn reject_impure_fragment_test() {
   let source = ir.call(ir.perform("Log"), [ir.string("hello")])
   use context <- helpers.web_context()
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 422
+}
+
+pub fn can_reference_by_content_test() {
+  use context <- helpers.web_context()
+  let ip = helpers.test_ip()
+  let source = ir.integer(int.random(1_000_000))
+  let cid = cid.from_tree(source)
+  let query = modules.insert(cid, source, ip)
+  let assert Ok(_) = pog.execute(query, context.db)
+
+  let source = ir.add(ir.reference(cid), ir.integer(1))
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 200
+}
+
+pub fn fails_with_invalid_type_content_reference_test() {
+  use context <- helpers.web_context()
+  let ip = helpers.test_ip()
+  let source = ir.string("")
+  let cid = cid.from_tree(source)
+  let query = modules.insert(cid, source, ip)
+  let assert Ok(_) = pog.execute(query, context.db)
+
+  let source = ir.add(ir.reference(cid), ir.integer(1))
   let response = dispatch(client.share_module(source), context)
   assert response.status == 422
 }
