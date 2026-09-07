@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding
 import eyg/hub/schema
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/json
@@ -48,9 +49,9 @@ fn check_soundness(source, db, then) {
   let analysis =
     infer.pure()
     |> infer.check(source)
-    |> resolve_check(db)
+    |> resolve_check(dict.new(), db)
   case analysis {
-    Ok(analysis) ->
+    Ok(#(analysis, _cache)) ->
       case infer.all_errors(analysis) {
         [] -> then()
         _ -> wisp.unprocessable_content()
@@ -59,75 +60,87 @@ fn check_soundness(source, db, then) {
   }
 }
 
-// cache can contain errors, the returned errors can if we want extend the error messages sent to the client
-// errors should accumulate just in case. 
-// bundle checking can work on top of cache/acc in this function
+pub type Cache =
+  dict.Dict(v1.Cid, Result(binding.Poly, Nil))
+
 fn resolve_check(
   step: infer.Step(infer.Analysis(Nil)),
+  modules: Cache,
   db: pog.Connection,
-) -> Result(infer.Analysis(Nil), pog.QueryError) {
+) -> Result(#(infer.Analysis(Nil), Cache), pog.QueryError) {
   case step {
-    infer.Done(analysis) -> Ok(analysis)
+    infer.Done(analysis) -> Ok(#(analysis, modules))
     infer.Lookup(ir.Content(cid), resume) -> {
-      use result <- result.try(resolve_module(cid, db))
-      resolve_check(resume(result), db)
+      use #(result, modules) <- result.try(resolve_module(cid, modules, db))
+      resolve_check(resume(result), modules, db)
     }
     infer.Lookup(ir.Package(..), resume) ->
-      resolve_check(resume(Error(Nil)), db)
+      resolve_check(resume(Error(Nil)), modules, db)
     infer.Lookup(ir.Version(..), resume) ->
-      resolve_check(resume(Error(Nil)), db)
+      resolve_check(resume(Error(Nil)), modules, db)
     infer.Lookup(ir.Pinned(release: expected), resume) -> {
       let query = packages.get_release(expected.package, expected.version)
       case pog.execute(query, db) {
         Ok(pog.Returned(rows: [found], ..)) -> {
-          case v1.to_string(expected.module) == found.module {
+          let cid = expected.module
+          case v1.to_string(cid) == found.module {
             True -> {
-              use result <- result.try(resolve_module(expected.module, db))
-              resolve_check(resume(result), db)
+              use #(result, modules) <- result.try(resolve_module(
+                cid,
+                modules,
+                db,
+              ))
+              resolve_check(resume(result), modules, db)
             }
-            False -> resolve_check(resume(Error(Nil)), db)
+            False -> resolve_check(resume(Error(Nil)), modules, db)
           }
         }
-        Ok(pog.Returned(rows: [], ..)) -> resolve_check(resume(Error(Nil)), db)
-        Ok(pog.Returned(rows: _, ..)) -> resolve_check(resume(Error(Nil)), db)
+        Ok(pog.Returned(rows: [], ..)) ->
+          resolve_check(resume(Error(Nil)), modules, db)
+        Ok(pog.Returned(rows: _, ..)) ->
+          resolve_check(resume(Error(Nil)), modules, db)
         Error(reason) -> Error(reason)
       }
     }
-    // TODO add lookup of release
-    // resolve_check(resume(Error(Nil)), db)
     infer.Lookup(ir.Relative(..), resume) ->
-      resolve_check(resume(Error(Nil)), db)
+      resolve_check(resume(Error(Nil)), modules, db)
   }
 }
 
 fn resolve_module(
   cid: v1.Cid,
+  modules: Cache,
   db: pog.Connection,
-) -> Result(Result(binding.Poly, Nil), pog.QueryError) {
-  let query = data.get(v1.to_string(cid))
-  case pog.execute(query, db) {
-    Ok(pog.Returned(rows: [module], ..)) -> {
-      // remove the assertion and test on corrupted data.
-      case json.parse(module.source, dag_json.decoder(Nil)) {
-        Ok(source) -> {
-          // Errors should be added to returned response
-          use analysis <- result.try(
-            infer.pure()
-            |> infer.check(source)
-            |> resolve_check(db),
-          )
-          let type_ = infer.poly_type(analysis)
-          Ok(Ok(type_))
+) -> Result(#(Result(binding.Poly, Nil), Cache), pog.QueryError) {
+  case dict.get(modules, cid) {
+    Ok(result) -> Ok(#(result, modules))
+    Error(_) -> {
+      let query = data.get(v1.to_string(cid))
+      use #(found, modules) <- result.try(case pog.execute(query, db) {
+        Ok(pog.Returned(rows: [module], ..)) -> {
+          case json.parse(module.source, dag_json.decoder(Nil)) {
+            Ok(source) -> {
+              use #(analysis, modules) <- result.try(
+                infer.pure()
+                |> infer.check(source)
+                |> resolve_check(modules, db),
+              )
+              let type_ = infer.poly_type(analysis)
+              Ok(#(Ok(type_), modules))
+            }
+            Error(json.UnableToDecode(errors)) ->
+              Error(pog.UnexpectedResultType(errors))
+            // Other errors should not be possible as the value was stored in a JSON column.
+            Error(_) -> Error(pog.UnexpectedResultType([]))
+          }
         }
-        Error(json.UnableToDecode(errors)) ->
-          Error(pog.UnexpectedResultType(errors))
-        // Other errors should not be possible as the value was stored in a JSON column.
-        Error(_) -> Error(pog.UnexpectedResultType([]))
-      }
+        Ok(pog.Returned(rows: [], ..)) -> Ok(#(Error(Nil), modules))
+        Ok(pog.Returned(rows: _, ..)) -> Ok(#(Error(Nil), modules))
+        Error(reason) -> Error(reason)
+      })
+      let modules = dict.insert(modules, cid, found)
+      Ok(#(found, modules))
     }
-    Ok(pog.Returned(rows: [], ..)) -> Ok(Error(Nil))
-    Ok(pog.Returned(rows: _, ..)) -> Ok(Error(Nil))
-    Error(reason) -> Error(reason)
   }
 }
 

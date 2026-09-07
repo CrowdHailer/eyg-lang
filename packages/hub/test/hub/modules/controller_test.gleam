@@ -99,6 +99,25 @@ pub fn can_reference_by_content_test() {
   assert response.status == 200
 }
 
+pub fn can_reference_shared_transitive_module_test() {
+  use context <- helpers.web_context()
+  let assert Ok(leaf) = fixtures.insert_module(context.db, ir.integer(1))
+  let assert Ok(left) =
+    fixtures.insert_module(
+      context.db,
+      ir.add(ir.reference(leaf), ir.integer(1)),
+    )
+  let assert Ok(right) =
+    fixtures.insert_module(
+      context.db,
+      ir.add(ir.reference(leaf), ir.integer(2)),
+    )
+
+  let source = ir.add(ir.reference(left), ir.reference(right))
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 200
+}
+
 pub fn fails_with_invalid_type_content_reference_test() {
   use context <- helpers.web_context()
   let source = ir.string("")
