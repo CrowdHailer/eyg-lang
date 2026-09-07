@@ -7,6 +7,8 @@ import gleam/int
 import gleam/json
 import gleam/string
 import hub/cid
+import hub/fixtures
+import hub/generators as g
 import hub/helpers.{dispatch}
 import hub/modules/data as modules
 import hub/router
@@ -89,11 +91,8 @@ pub fn reject_impure_fragment_test() {
 
 pub fn can_reference_by_content_test() {
   use context <- helpers.web_context()
-  let ip = helpers.test_ip()
   let source = ir.integer(int.random(1_000_000))
-  let cid = cid.from_tree(source)
-  let query = modules.insert(cid, source, ip)
-  let assert Ok(_) = pog.execute(query, context.db)
+  let assert Ok(cid) = fixtures.insert_module(context.db, source)
 
   let source = ir.add(ir.reference(cid), ir.integer(1))
   let response = dispatch(client.share_module(source), context)
@@ -102,13 +101,32 @@ pub fn can_reference_by_content_test() {
 
 pub fn fails_with_invalid_type_content_reference_test() {
   use context <- helpers.web_context()
-  let ip = helpers.test_ip()
   let source = ir.string("")
-  let cid = cid.from_tree(source)
-  let query = modules.insert(cid, source, ip)
-  let assert Ok(_) = pog.execute(query, context.db)
+  let assert Ok(cid) = fixtures.insert_module(context.db, source)
 
   let source = ir.add(ir.reference(cid), ir.integer(1))
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 422
+}
+
+pub fn can_reference_by_release_test() {
+  use context <- helpers.web_context()
+  let source = ir.integer(int.random(1_000_000))
+  let package = g.package()
+  let cid = fixtures.first_package(context.db, package, source)
+
+  let source = ir.add(ir.release(package, 1, cid), ir.integer(1))
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 200
+}
+
+pub fn fails_with_invalid_type_release_reference_test() {
+  use context <- helpers.web_context()
+  let source = ir.string("")
+  let package = g.package()
+  let cid = fixtures.first_package(context.db, package, source)
+
+  let source = ir.add(ir.release(package, 1, cid), ir.integer(1))
   let response = dispatch(client.share_module(source), context)
   assert response.status == 422
 }

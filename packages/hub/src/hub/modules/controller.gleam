@@ -10,6 +10,7 @@ import gleam/result
 import gleam/string
 import hub/cid
 import hub/modules/data
+import hub/packages/data as packages
 import hub/server/context.{type Context}
 import hub/web/utils
 import multiformats/cid/v1
@@ -91,9 +92,44 @@ fn resolve_check(
       resolve_check(resume(Error(Nil)), db)
     infer.Lookup(ir.Version(..), resume) ->
       resolve_check(resume(Error(Nil)), db)
-    infer.Lookup(ir.Pinned(release: _), resume) ->
-      // TODO add lookup of release
-      resolve_check(resume(Error(Nil)), db)
+    infer.Lookup(ir.Pinned(release: expected), resume) -> {
+      let query = packages.get_release(expected.package, expected.version)
+      case pog.execute(query, db) {
+        Ok(pog.Returned(rows: [found], ..)) -> {
+          case v1.to_string(expected.module) == found.module {
+            True -> {
+              let query = data.get(v1.to_string(expected.module))
+              case pog.execute(query, db) {
+                Ok(pog.Returned(rows: [module], ..)) -> {
+                  // remove the assertion and test on corrupted data.
+                  let assert Ok(source) =
+                    json.parse(module.source, dag_json.decoder(Nil))
+                  // Errors should be added to returned response
+                  use analysis <- result.try(
+                    infer.pure()
+                    |> infer.check(source)
+                    |> resolve_check(db),
+                  )
+                  let type_ = infer.poly_type(analysis)
+                  resolve_check(resume(Ok(type_)), db)
+                }
+                Ok(pog.Returned(rows: [], ..)) ->
+                  resolve_check(resume(Error(Nil)), db)
+                Ok(pog.Returned(rows: _, ..)) ->
+                  resolve_check(resume(Error(Nil)), db)
+                Error(reason) -> Error(reason)
+              }
+            }
+            False -> resolve_check(resume(Error(Nil)), db)
+          }
+        }
+        Ok(pog.Returned(rows: [], ..)) -> resolve_check(resume(Error(Nil)), db)
+        Ok(pog.Returned(rows: _, ..)) -> resolve_check(resume(Error(Nil)), db)
+        Error(reason) -> Error(reason)
+      }
+    }
+    // TODO add lookup of release
+    // resolve_check(resume(Error(Nil)), db)
     infer.Lookup(ir.Relative(..), resume) ->
       resolve_check(resume(Error(Nil)), db)
   }
