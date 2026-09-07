@@ -150,6 +150,20 @@ pub fn fails_with_invalid_type_release_reference_test() {
   assert response.status == 422
 }
 
+pub fn rejects_conflicting_pin_for_cached_release_test() {
+  use context <- helpers.web_context()
+  let package = g.package()
+  let cid = fixtures.first_package(context.db, package, ir.integer(1))
+
+  let source =
+    ir.add(
+      ir.release(package, 1, cid),
+      ir.release(package, 1, helpers.random_cid()),
+    )
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 422
+}
+
 pub fn reject_too_large_fragment_test() {
   let source = ir.string(string.repeat("a", 50_000))
   use context <- helpers.web_context()

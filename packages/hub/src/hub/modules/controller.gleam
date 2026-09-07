@@ -49,7 +49,7 @@ fn check_soundness(source, db, then) {
   let analysis =
     infer.pure()
     |> infer.check(source)
-    |> resolve_check(dict.new(), db)
+    |> resolve_check(empty(), db)
   case analysis {
     Ok(#(analysis, _cache)) ->
       case infer.all_errors(analysis) {
@@ -60,73 +60,91 @@ fn check_soundness(source, db, then) {
   }
 }
 
-pub type Cache =
-  dict.Dict(v1.Cid, Result(binding.Poly, Nil))
+pub type Cache {
+  Cache(
+    modules: dict.Dict(v1.Cid, Result(binding.Poly, Nil)),
+    releases: dict.Dict(ir.Release, Result(binding.Poly, Nil)),
+  )
+}
+
+fn empty() {
+  Cache(dict.new(), dict.new())
+}
 
 fn resolve_check(
   step: infer.Step(infer.Analysis(Nil)),
-  modules: Cache,
+  cache: Cache,
   db: pog.Connection,
 ) -> Result(#(infer.Analysis(Nil), Cache), pog.QueryError) {
   case step {
-    infer.Done(analysis) -> Ok(#(analysis, modules))
+    infer.Done(analysis) -> Ok(#(analysis, cache))
     infer.Lookup(ir.Content(cid), resume) -> {
-      use #(result, modules) <- result.try(resolve_module(cid, modules, db))
-      resolve_check(resume(result), modules, db)
+      use #(result, cache) <- result.try(resolve_module(cid, cache, db))
+      resolve_check(resume(result), cache, db)
     }
     infer.Lookup(ir.Package(..), resume) ->
-      resolve_check(resume(Error(Nil)), modules, db)
+      resolve_check(resume(Error(Nil)), cache, db)
     infer.Lookup(ir.Version(..), resume) ->
-      resolve_check(resume(Error(Nil)), modules, db)
-    infer.Lookup(ir.Pinned(release: expected), resume) -> {
-      let query = packages.get_release(expected.package, expected.version)
-      case pog.execute(query, db) {
-        Ok(pog.Returned(rows: [found], ..)) -> {
-          let cid = expected.module
-          case v1.to_string(cid) == found.module {
-            True -> {
-              use #(result, modules) <- result.try(resolve_module(
-                cid,
-                modules,
-                db,
-              ))
-              resolve_check(resume(result), modules, db)
-            }
-            False -> resolve_check(resume(Error(Nil)), modules, db)
-          }
-        }
-        Ok(pog.Returned(rows: [], ..)) ->
-          resolve_check(resume(Error(Nil)), modules, db)
-        Ok(pog.Returned(rows: _, ..)) ->
-          resolve_check(resume(Error(Nil)), modules, db)
-        Error(reason) -> Error(reason)
-      }
+      resolve_check(resume(Error(Nil)), cache, db)
+    infer.Lookup(ir.Pinned(release:), resume) -> {
+      use #(result, cache) <- result.try(resolve_release(release, cache, db))
+      resolve_check(resume(result), cache, db)
     }
     infer.Lookup(ir.Relative(..), resume) ->
-      resolve_check(resume(Error(Nil)), modules, db)
+      resolve_check(resume(Error(Nil)), cache, db)
+  }
+}
+
+fn resolve_release(
+  release: ir.Release,
+  cache: Cache,
+  db: pog.Connection,
+) -> Result(#(Result(binding.Poly, Nil), Cache), pog.QueryError) {
+  let Cache(releases:, ..) = cache
+
+  case dict.get(releases, release) {
+    Ok(cid) -> Ok(#(cid, cache))
+    Error(_) -> {
+      let query = packages.get_release(release.package, release.version)
+      use #(found, cache) <- result.try(case pog.execute(query, db) {
+        Ok(pog.Returned(rows: [found], ..)) -> {
+          let cid = release.module
+          case v1.to_string(cid) == found.module {
+            True -> resolve_module(cid, cache, db)
+            False -> Ok(#(Error(Nil), cache))
+          }
+        }
+        Ok(pog.Returned(rows: [], ..)) -> Ok(#(Error(Nil), cache))
+        Ok(pog.Returned(rows: _, ..)) -> Ok(#(Error(Nil), cache))
+        Error(reason) -> Error(reason)
+      })
+      let releases = dict.insert(cache.releases, release, found)
+      let cache = Cache(..cache, releases:)
+      Ok(#(found, cache))
+    }
   }
 }
 
 fn resolve_module(
   cid: v1.Cid,
-  modules: Cache,
+  cache: Cache,
   db: pog.Connection,
 ) -> Result(#(Result(binding.Poly, Nil), Cache), pog.QueryError) {
-  case dict.get(modules, cid) {
-    Ok(result) -> Ok(#(result, modules))
+  case dict.get(cache.modules, cid) {
+    Ok(result) -> Ok(#(result, cache))
     Error(_) -> {
       let query = data.get(v1.to_string(cid))
-      use #(found, modules) <- result.try(case pog.execute(query, db) {
+      use #(found, cache) <- result.try(case pog.execute(query, db) {
         Ok(pog.Returned(rows: [module], ..)) -> {
           case json.parse(module.source, dag_json.decoder(Nil)) {
             Ok(source) -> {
-              use #(analysis, modules) <- result.try(
+              use #(analysis, cache) <- result.try(
                 infer.pure()
                 |> infer.check(source)
-                |> resolve_check(modules, db),
+                |> resolve_check(cache, db),
               )
               let type_ = infer.poly_type(analysis)
-              Ok(#(Ok(type_), modules))
+              Ok(#(Ok(type_), cache))
             }
             Error(json.UnableToDecode(errors)) ->
               Error(pog.UnexpectedResultType(errors))
@@ -134,12 +152,13 @@ fn resolve_module(
             Error(_) -> Error(pog.UnexpectedResultType([]))
           }
         }
-        Ok(pog.Returned(rows: [], ..)) -> Ok(#(Error(Nil), modules))
-        Ok(pog.Returned(rows: _, ..)) -> Ok(#(Error(Nil), modules))
+        Ok(pog.Returned(rows: [], ..)) -> Ok(#(Error(Nil), cache))
+        Ok(pog.Returned(rows: _, ..)) -> Ok(#(Error(Nil), cache))
         Error(reason) -> Error(reason)
       })
-      let modules = dict.insert(modules, cid, found)
-      Ok(#(found, modules))
+      let modules = dict.insert(cache.modules, cid, found)
+      let cache = Cache(..cache, modules:)
+      Ok(#(found, cache))
     }
   }
 }
