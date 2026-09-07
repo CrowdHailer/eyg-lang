@@ -28,13 +28,9 @@ pub fn share(
   let ip = uploaded_by(request)
 
   let cid = cid.from_tree(source)
-  case pog.execute(data.insert(cid, source, ip), context.db) {
-    Ok(_) ->
-      wisp.ok()
-      |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
-
-    Error(_reason) -> wisp.internal_server_error()
-  }
+  use _ <- utils.db_result(pog.execute(data.insert(cid, source, ip), context.db))
+  wisp.ok()
+  |> wisp.json_body(json.to_string(schema.share_response_encode(cid)))
 }
 
 fn uploaded_by(request: Request(wisp.Connection)) -> String {
@@ -47,22 +43,29 @@ fn uploaded_by(request: Request(wisp.Connection)) -> String {
 }
 
 fn check_soundness(source, db, then) {
-  let inference =
+  let analysis =
     infer.pure()
     |> infer.check(source)
     |> resolve_check(db)
-  case infer.all_errors(inference) {
-    [] -> then()
-    _ -> wisp.unprocessable_content()
+  case analysis {
+    Ok(analysis) ->
+      case infer.all_errors(analysis) {
+        [] -> then()
+        _ -> wisp.unprocessable_content()
+      }
+    Error(_) -> wisp.response(503)
   }
 }
 
 // cache can contain errors, the returned errors can if we want extend the error messages sent to the client
 // errors should accumulate just in case. 
 // bundle checking can work on top of cache/acc in this function
-fn resolve_check(step, db) {
+fn resolve_check(
+  step: infer.Step(infer.Analysis(Nil)),
+  db: pog.Connection,
+) -> Result(infer.Analysis(Nil), pog.QueryError) {
   case step {
-    infer.Done(analysis) -> analysis
+    infer.Done(analysis) -> Ok(analysis)
     infer.Lookup(ir.Content(cid), resume) -> {
       let query = data.get(v1.to_string(cid))
       case pog.execute(query, db) {
@@ -71,17 +74,17 @@ fn resolve_check(step, db) {
           let assert Ok(source) =
             json.parse(module.source, dag_json.decoder(Nil))
           // Errors should be added to returned response
-          let analysis =
+          use analysis <- result.try(
             infer.pure()
             |> infer.check(source)
-            |> resolve_check(db)
+            |> resolve_check(db),
+          )
           let type_ = infer.poly_type(analysis)
           resolve_check(resume(Ok(type_)), db)
         }
         Ok(pog.Returned(rows: [], ..)) -> resolve_check(resume(Error(Nil)), db)
         Ok(pog.Returned(rows: _, ..)) -> resolve_check(resume(Error(Nil)), db)
-        // This should return a 5xx error from the server.
-        Error(_) -> resolve_check(resume(Error(Nil)), db)
+        Error(reason) -> Error(reason)
       }
     }
     infer.Lookup(ir.Package(..), resume) ->
@@ -104,7 +107,7 @@ pub fn get(cid: String, context: Context) -> Response(wisp.Body) {
       |> wisp.json_body(module.source)
     Ok(pog.Returned(rows: [], ..)) -> wisp.no_content()
     Ok(_) -> wisp.internal_server_error()
-    Error(_reason) -> wisp.internal_server_error()
+    Error(_reason) -> wisp.response(503)
   }
 }
 
