@@ -90,8 +90,7 @@ fn pull_signatories_page(
     Ok(response) ->
       client.pull_signatories_response(response)
       |> result.map_error(string.inspect)
-    Error(reason) ->
-      Error(effect.describe_fetch_error(reason) |> string.inspect)
+    Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
   use response <- system.try(response)
   case response.entries {
