@@ -8,29 +8,36 @@ import multiformats/cid/v1
 
 pub fn from_car(file: car.Car) {
   let car.Car(header:, blocks:) = file
-  case header.roots {
-    [root] ->
-      case list.key_find(blocks, root) {
-        Ok(block) ->
-          case cid.from_block(block) == root {
-            True ->
+  case header.version {
+    1 ->
+      case header.roots {
+        [root] ->
+          case list.key_find(blocks, root) {
+            Ok(block) ->
               case json.parse_bits(block, dag_json.decoder(Nil)) {
                 Ok(source) -> {
-                  let children = content_references(source)
-                  case check_dependencies(children, blocks, []) {
-                    Ok(acc) -> Ok(#(#(root, source), acc))
-                    Error(reason) -> Error(reason)
+                  case cid.from_tree(source) == root {
+                    True -> {
+                      let children = content_references(source)
+                      case check_dependencies(children, blocks, []) {
+                        Ok(acc) -> Ok(#(#(root, source), acc))
+                        Error(reason) -> Error(reason)
+                      }
+                    }
+                    False ->
+                      Error(
+                        v1.to_string(root) <> " does not match block content",
+                      )
                   }
                 }
                 Error(_) ->
                   Error(v1.to_string(root) <> " is not valid EYG source")
               }
-            False ->
-              Error(v1.to_string(root) <> " does not match block content")
+            Error(Nil) -> Error("root block is missing")
           }
-        Error(Nil) -> Error("root block is missing")
+        _ -> Error("bundle must contain single root")
       }
-    _ -> Error("bundle must contain single root")
+    _ -> Error("unsupported CAR version")
   }
 }
 
@@ -44,11 +51,10 @@ fn check_dependencies(dependencies, blocks, acc) {
         Error(Nil) ->
           case list.key_find(blocks, cid) {
             Ok(block) -> {
-              // new block needs checking before pushing
-              case cid.from_block(block) == cid {
-                True ->
-                  case json.parse_bits(block, dag_json.decoder(Nil)) {
-                    Ok(source) -> {
+              case json.parse_bits(block, dag_json.decoder(Nil)) {
+                Ok(source) -> {
+                  case cid.from_tree(source) == cid {
+                    True -> {
                       let children = content_references(source)
                       case check_dependencies(children, blocks, acc) {
                         Ok(acc) -> {
@@ -58,11 +64,14 @@ fn check_dependencies(dependencies, blocks, acc) {
                         Error(reason) -> Error(reason)
                       }
                     }
-                    Error(_) ->
-                      Error(v1.to_string(cid) <> " is not valid EYG source")
+                    False ->
+                      Error(
+                        v1.to_string(cid) <> " does not match block content",
+                      )
                   }
-                False ->
-                  Error(v1.to_string(cid) <> " does not match block content")
+                }
+                Error(_) ->
+                  Error(v1.to_string(cid) <> " is not valid EYG source")
               }
             }
             // A content reference might be in the database and should be kept

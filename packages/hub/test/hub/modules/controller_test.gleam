@@ -175,6 +175,19 @@ pub fn reject_unsound_bundle_modules_test() {
     == 422
 }
 
+pub fn reject_bundle_root_with_noncanonical_json_test() {
+  use context <- helpers.web_context()
+  let source = unique_value()
+  // The raw bytes have a valid hash, but storage drops the whitespace.
+  let block = <<" ", dag_json.to_block(source):bits>>
+  let root = cid.from_block(block)
+  assert root != cid.from_tree(source)
+
+  let response =
+    dispatch(client.share_bundle_operation(#(#(root, block), [])), context)
+  assert response.status == 422
+}
+
 pub fn reject_invalid_json_test() {
   use context <- helpers.web_context()
   let block = <<"not json!">>
