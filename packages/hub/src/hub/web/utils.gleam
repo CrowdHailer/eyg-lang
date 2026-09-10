@@ -16,14 +16,16 @@ pub fn do_decode(data, decoder, then) {
 pub fn db_result(result, then) {
   case result {
     Ok(value) -> then(value)
-    Error(pog.ConstraintViolated(constraint:, ..)) -> {
-      wisp.log_warning("violated constraint " <> constraint)
-      api_reason(422, constraint)
-    }
-    Error(reason) -> {
-      wisp.log_warning(string.inspect(reason))
-      wisp.html_response(string.inspect(reason), 500)
-    }
+    Error(pog.ConstraintViolated(detail:, ..)) -> api_reason(422, detail)
+    Error(pog.PostgresqlError(message:, ..)) -> api_reason(422, message)
+    Error(pog.UnexpectedArgumentCount(..)) ->
+      api_reason(500, "db error " <> "UnexpectedArgumentCount")
+    Error(pog.UnexpectedArgumentType(..)) ->
+      api_reason(500, "db error " <> "UnexpectedArgumentType")
+    Error(pog.UnexpectedResultType(_)) ->
+      api_reason(500, "db error " <> "UnexpectedResultType")
+    Error(pog.QueryTimeout) -> api_reason(503, "QueryTimeout")
+    Error(pog.ConnectionUnavailable) -> api_reason(503, "ConnectionUnavailable")
   }
 }
 

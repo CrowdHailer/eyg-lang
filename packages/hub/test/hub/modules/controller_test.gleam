@@ -1,5 +1,6 @@
 import eyg/hub/client
 import eyg/hub/publisher
+import eyg/hub/schema
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/crypto
@@ -31,6 +32,15 @@ pub fn share_valid_fragment_test() {
   let response = dispatch(client.fetch_module_operation(cid), context)
   assert response.status == 200
   assert json.parse_bits(response.body, dag_json.decoder(Nil)) == Ok(source)
+}
+
+pub fn reject_json_string_with_nul_test() {
+  use context <- helpers.web_context()
+  let source = ir.string("before\u{0000}after")
+  let response = dispatch(client.share_module(source), context)
+  assert response.status == 422
+  assert json.parse_bits(response.body, schema.failure_decoder())
+    == Ok("unsupported Unicode escape sequence")
 }
 
 pub fn share_fragment_is_idempotent_test() {
@@ -341,6 +351,10 @@ fn unique_identity() {
 }
 
 fn share_bundle(archive, context) {
+  dispatch(bundle_operation(archive), context)
+}
+
+fn bundle_operation(archive) {
   let #(#(root, source), dependencies) = archive
   let dependencies =
     list.map(dependencies, fn(module) {
@@ -351,7 +365,6 @@ fn share_bundle(archive, context) {
     #(root, dag_json.to_block(source)),
     dependencies,
   ))
-  |> dispatch(context)
 }
 
 fn single_bundle(source) {

@@ -1,10 +1,12 @@
 import eyg/hub/client
 import eyg/hub/publisher
 import gleam/option.{None, Some}
+import gleam/string
 import hub/crypto
 import hub/fixtures
 import hub/generators as g
 import hub/helpers.{dispatch}
+import multiformats/cid/v1
 import ogre/operation
 import untethered/ledger/server
 import untethered/substrate
@@ -63,7 +65,7 @@ pub fn reject_publish_with_nonexistant_fragment_test() {
   let response = dispatch(request, context)
 
   let assert Ok(Error(reason)) = client.submit_package_response(response)
-  assert "package_entries_module_fkey" == reason
+  assert string.contains(reason, v1.to_string(module))
 }
 
 pub fn second_release_test() {
