@@ -2,6 +2,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import hub/db/utils
 import multiformats/cid/v1
 import pog
@@ -27,20 +28,36 @@ pub fn insert(
   source: #(ir.Expression(a), a),
   ip: String,
 ) -> pog.Query(Nil) {
-  let cid = v1.to_string(cid)
-  let serialized = json.to_string(dag_json.to_data_model(source))
+  insert_bundle([#(cid, source)], ip)
+}
 
-  "WITH module_insert AS (
+pub fn insert_bundle(
+  modules: List(#(v1.Cid, ir.Node(a))),
+  ip: String,
+) -> pog.Query(Nil) {
+  let #(cids, sources) =
+    modules
+    |> list.map(fn(module) {
+      #(
+        v1.to_string(module.0),
+        json.to_string(dag_json.to_data_model(module.1)),
+      )
+    })
+    |> list.unzip
+
+  "WITH supplied (cid, source) AS (
+  SELECT * FROM UNNEST($1::text[], $2::text[])
+), module_insert AS (
   INSERT INTO modules (cid, source)
-  VALUES ($1, $2)
-  ON CONFLICT (cid) DO NOTHING
+  SELECT cid, source::jsonb FROM supplied
+  ON CONFLICT (cid) DO UPDATE SET source = EXCLUDED.source
 )
 INSERT INTO module_uploads (ip, cid)
 -- This casting is because pog doesn't expose an inet type
-VALUES (($3::text)::inet, $1);"
+SELECT (($3::text)::inet), cid FROM supplied;"
   |> pog.query()
-  |> pog.parameter(pog.text(cid))
-  |> pog.parameter(pog.text(serialized))
+  |> pog.parameter(pog.array(pog.text, cids))
+  |> pog.parameter(pog.array(pog.text, sources))
   |> pog.parameter(pog.text(ip))
 }
 

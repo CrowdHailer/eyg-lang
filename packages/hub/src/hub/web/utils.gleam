@@ -1,4 +1,6 @@
+import gleam/http/request.{type Request}
 import gleam/json
+import gleam/result
 import gleam/string
 import pog
 import untethered/ledger/server
@@ -36,9 +38,17 @@ pub fn try_untethered(result, then) {
   }
 }
 
-fn api_reason(status, reason) {
+pub fn api_reason(status, reason) {
   wisp.json_response(
     json.to_string(json.object([#("reason", json.string(reason))])),
     status,
   )
+}
+
+pub fn content_type(request: Request(wisp.Connection)) -> Result(String, Nil) {
+  use value <- result.map(request.get_header(request, "content-type"))
+  case string.split(value, ";") {
+    [media_type, ..] -> media_type |> string.trim |> string.lowercase
+    [] -> value
+  }
 }
