@@ -147,8 +147,13 @@ security, backup, publishing, and planned management commands.
 eyg share path/to/file.eyg
 ```
 
+Shares the module and its local import dependencies as a bundle.
+
+All release references must be fully pinned as `@name:version:<module-cid>`.
+
 ### Publish
 
 ```sh
 eyg publish package-name path/to/file.eyg
 ```
+

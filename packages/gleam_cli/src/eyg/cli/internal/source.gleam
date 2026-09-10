@@ -49,10 +49,6 @@ pub fn read_input(input: Input) -> system.Effect(Result(String, String)) {
   }
 }
 
-/// Drop the `#!` line a script file starts with.
-///
-/// The line makes a module runnable as a command and is not part of the
-/// source, so every reader of a file drops it.
 pub fn strip_shebang(code: String) -> String {
   case string.starts_with(code, "#!") {
     True ->

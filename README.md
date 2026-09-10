@@ -42,6 +42,9 @@ An entryfile is the first module run.
 It can be a valid script file and, because records are extensible, have other fields.
 For example a module with a "shell" field is a valid shell config.
 
+Top-level modules may be executable and have a shebang (`#!/usr/bin/env eyg`).
+
+
 The example below works as a script and shell config.
 
 ```eyg

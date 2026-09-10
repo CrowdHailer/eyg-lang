@@ -93,6 +93,8 @@ EYG_ORIGIN=http://localhost:8001 gleam run -- signatory initial personal
 
 Upload a module that can be referenced by hash.
 
+Release references must use the fully pinned `@name:version:<module-cid>` form.
+
 ```sh
 # packages/gleam_cli
 EYG_ORIGIN=http://localhost:8001 gleam run -- share ../../eyg_packages/standard/index.eyg.json 

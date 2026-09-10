@@ -378,7 +378,12 @@ See [`builtins_reference.md`](./builtins_reference.md) for the full list.
 
 ## References
 
-A reference is an immutable content-addressed module identifier. It starts with `#` followed by a valid base32-encoded CID.
+Reference another module.
+
+### Content Reference
+
+A reference is an immutable content-addressed module identifier.
+It starts with `#` followed by a valid base32-encoded CID.
 
 ```eyg
 #bafyreigdmqpykrgxyahdnfmfzmc5j4bkwci6wf6fkdbapq7hfpmg2j3yqy
@@ -386,7 +391,7 @@ A reference is an immutable content-addressed module identifier. It starts with 
 
 ---
 
-## Packages
+### Package reference
 
 A package reference starts with `@`. Three forms are accepted:
 
@@ -399,18 +404,19 @@ A package reference starts with `@`. Three forms are accepted:
 The version is a positive integer. The pinned hash, when given, must be a valid base32-encoded CID.
 
 A bare `@standard` references the latest pulled release of that package.
-Pin a version (`@standard:3`) for reproducible scripts.
-Provide a hash (`@standard:3:…`) to not require trust in the package hub.
+The shorthand forms `@standard` and `@standard:3` are conveniences for testing and shell use.
+
+**Every release reference in a shared or published module must be fully pinned:**
 
 ---
 
-## Imports
+### Relative references
 
 `import` loads a module by path.
 The path must be a string literal.
 Relative paths are resolved from the directory of the source file that contains the import.
 
-An `import` expression cannot be in a shared or published module.
+`eyg share` bundles local imports and replaces their paths with content references.
 
 ```eyg
 let fs = import "../eyg_packages/fs/index.eyg"
