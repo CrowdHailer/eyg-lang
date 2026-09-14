@@ -1,0 +1,49 @@
+{
+  "name": "eyg",
+  "displayName": "EYG",
+  "description": "Syntax highlighting for Eat Your Greens",
+  "version": "0.1.0",
+  "publisher": "eyg",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crowdhailer/eyg-lang.git",
+    "directory": "packages/vscode-eyg"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "eyg",
+        "aliases": ["EYG", "eyg"],
+        "extensions": [".eyg"],
+        "firstLine": "^#!.*\\beyg\\b",
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "eyg",
+        "scopeName": "source.eyg",
+        "path": "./syntaxes/eyg.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.eyg.codeblock",
+        "path": "./syntaxes/eyg.codeblock.json",
+        "injectTo": ["text.html.markdown"],
+        "embeddedLanguages": {
+          "meta.embedded.block.eyg": "eyg"
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "package": "vsce package --baseContentUrl https://github.com/CrowdHailer/eyg-lang/blob/main/packages/vscode-eyg --baseImagesUrl https://github.com/CrowdHailer/eyg-lang/raw/main/packages/vscode-eyg"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.2"
+  }
+}

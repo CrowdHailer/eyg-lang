@@ -1,0 +1,107 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "eyg",
+  "scopeName": "source.eyg",
+  "fileTypes": ["eyg"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#references" },
+    { "include": "#builtins" },
+    { "include": "#keywords" },
+    { "include": "#numbers" },
+    { "include": "#tags" },
+    { "include": "#identifiers" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.shebang.eyg",
+          "match": "\\A#!.*$"
+        },
+        {
+          "name": "comment.line.double-slash.eyg",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.eyg",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.eyg",
+          "match": "\\\\[ntr\"\\\\]"
+        },
+        {
+          "name": "invalid.illegal.escape.eyg",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "references": {
+      "patterns": [
+        {
+          "name": "entity.name.namespace.package.eyg",
+          "match": "@[a-z_][a-z0-9_]*(?::[0-9]+(?::b[a-z2-7]+)?)?\\b"
+        },
+        {
+          "name": "constant.other.reference.eyg",
+          "match": "#b[a-z2-7]+\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "name": "support.function.builtin.eyg",
+      "match": "![a-z_][a-z0-9_]*\\b"
+    },
+    "keywords": {
+      "name": "keyword.control.eyg",
+      "match": "\\b(let|match|perform|handle|deep|import)\\b"
+    },
+    "numbers": {
+      "name": "constant.numeric.integer.eyg",
+      "match": "(?<![\\w])-?[0-9]+\\b"
+    },
+    "tags": {
+      "name": "entity.name.type.tag.eyg",
+      "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.property.eyg",
+          "match": "\\b[a-z_][a-z0-9_]*\\b(?=[ \\t]*:)"
+        },
+        {
+          "name": "entity.name.function.eyg",
+          "match": "\\b[a-z_][a-z0-9_]*\\b(?=[ \\t]*\\()"
+        },
+        {
+          "name": "variable.other.readwrite.eyg",
+          "match": "\\b[a-z_][a-z0-9_]*\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.arrow.eyg", "match": "->" },
+        { "name": "keyword.operator.spread.eyg", "match": "\\.\\." },
+        { "name": "keyword.operator.assignment.eyg", "match": "=" },
+        { "name": "keyword.operator.alternative.eyg", "match": "\\|" }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.section.braces.eyg", "match": "[{}]" },
+        { "name": "punctuation.section.brackets.eyg", "match": "[\\[\\]]" },
+        { "name": "punctuation.section.parens.eyg", "match": "[()]" },
+        { "name": "punctuation.separator.eyg", "match": "[,:.]" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run EYG Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--new-window",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/examples/highlighting.eyg"
+      ]
+    }
+  ]
+}

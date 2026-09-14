@@ -1,0 +1,21 @@
+#!/usr/bin/env eyg
+// EYG: managed effects and immutable dependencies
+let standard = @standard:3
+let double = (number) -> { !int_multiply(number, 2) }
+
+let greet = (name) -> {
+  !string_append("Hello, ", name)
+}
+
+{
+  script: (_) -> {
+    let message = greet("EYG 🌱")
+    let _ = perform StandardOut(!string_append(message, "\n"))
+    match !int_compare(double(21), 42) {
+      Eq(_) -> { 0 }
+      | (_) -> { -1 }
+    }
+  },
+  values: [1, 2, 3],
+  handler: handle StandardOut
+}
