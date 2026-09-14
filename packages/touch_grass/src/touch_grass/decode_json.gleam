@@ -23,6 +23,21 @@ pub fn lower() {
             #("False", t.unit),
             #("Null", t.unit),
             #("Integer", t.Integer),
+            #(
+              "Number",
+              t.record([
+                #(
+                  "sign",
+                  t.union([#("Positive", t.unit), #("Negative", t.unit)]),
+                ),
+                #("integer", t.Integer),
+                #(
+                  "decimal",
+                  t.record([#("numerator", t.Integer), #("size", t.Integer)]),
+                ),
+                #("exponent", t.Integer),
+              ]),
+            ),
             #("String", t.String),
             #("Array", t.unit),
             #("Object", t.unit),

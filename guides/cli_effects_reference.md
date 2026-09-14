@@ -263,7 +263,9 @@ match perform DecodeJSON(!string_to_binary("{\"x\": 1}")) {
 }
 ```
 
-Each event's `term` is one of: `True | False | Null | Integer i | String s | Number {…} | Array | Object | Field name`.
+Each event's `term` is one of: `True | False | Null | Integer i | String s | Number {sign, integer, decimal, exponent} | Array | Object | Field name`.
+
+`Number` holds any number with a fraction or exponent, `-23.05e1` is `Number({sign: Negative({}), integer: 23, decimal: {numerator: 5, size: 2}, exponent: 1})`.
 
 ### `EYGParse`
 
