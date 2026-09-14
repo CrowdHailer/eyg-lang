@@ -37,6 +37,7 @@ pub const config: config.Config = config.Config(
 
 pub type Sandbox(a) {
   Sandbox(
+    cwd: String,
     stdin: List(String),
     stdout: List(String),
     file_system: fs.Entry,
@@ -48,12 +49,17 @@ pub type Sandbox(a) {
 
 pub fn sandbox() -> Sandbox(Nil) {
   Sandbox(
+    cwd: "/",
     stdin: [],
     stdout: [],
     file_system: fs.directory([]),
     network_state: Nil,
     network: fn(_, _) { #(Error(effect.NetworkError("None provided")), Nil) },
   )
+}
+
+pub fn with_cwd(sandbox: Sandbox(a), cwd: String) -> Sandbox(a) {
+  Sandbox(..sandbox, cwd:)
 }
 
 pub fn with_stdin(sandbox: Sandbox(a), text: String) -> Sandbox(a) {
@@ -156,6 +162,7 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       |> resume
       |> run(sandbox)
     }
+    system.Cwd(resume) -> run(resume(Ok(sandbox.cwd)), sandbox)
     system.Fetch(request, resume) -> {
       let #(response, state) = sandbox.network(request, sandbox.network_state)
       let sandbox = Sandbox(..sandbox, network_state: state)

@@ -79,6 +79,38 @@ pub fn check_pulls_relative_deps_test() {
   assert Ok(0) == output
 }
 
+pub fn check_relative_input_imports_above_its_directory_test() {
+  let files = [
+    #("/project/index.eyg", "{}"),
+    #("/project/examples/entry.eyg", "import \"./uptime.eyg\""),
+    #("/project/examples/uptime.eyg", "import \"../index.eyg\""),
+  ]
+  let sandbox =
+    helpers.sandbox()
+    |> helpers.with_files(files)
+    |> helpers.with_cwd("/project/examples")
+  let input = source.File("entry.eyg")
+  let #(output, sandbox) =
+    check.execute(input, helpers.config)
+    |> helpers.run(sandbox)
+  assert ["{}"] == sandbox.stdout
+  assert Ok(0) == output
+}
+
+pub fn check_inline_code_imports_from_cwd_test() {
+  let files = [#("/project/lib.eyg", "\"Hi\"")]
+  let sandbox =
+    helpers.sandbox()
+    |> helpers.with_files(files)
+    |> helpers.with_cwd("/project/examples")
+  let input = source.Code("import \"../lib.eyg\"")
+  let #(output, sandbox) =
+    check.execute(input, helpers.config)
+    |> helpers.run(sandbox)
+  assert ["String"] == sandbox.stdout
+  assert Ok(0) == output
+}
+
 pub fn check_fails_unknown_import_test() {
   let files = [#("/main.eyg", "import \"/lib/foo.eyg\"")]
   let sandbox =

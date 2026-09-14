@@ -15,6 +15,7 @@ import untethered/keypair
 pub type Effect(a) {
   Done(a)
   CreateDirectory(String, fn(Result(Nil, String)) -> Effect(a))
+  Cwd(fn(Result(String, String)) -> Effect(a))
   Fetch(
     Request(BitArray),
     fn(Result(Response(BitArray), effect.FetchError)) -> Effect(a),
@@ -47,6 +48,10 @@ pub fn fetch(
 
 pub fn create_directory(path) {
   CreateDirectory(path, Done)
+}
+
+pub fn cwd() {
+  Cwd(Done)
 }
 
 pub fn hash(algorithm, bytes) {
@@ -86,6 +91,7 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       Fetch(request, fn(response) { then(resume(response), func) })
     CreateDirectory(path, resume) ->
       CreateDirectory(path, fn(response) { then(resume(response), func) })
+    Cwd(resume) -> Cwd(fn(response) { then(resume(response), func) })
     Hash(algorithm, bytes, resume) ->
       Hash(algorithm, bytes, fn(output) { then(resume(output), func) })
     ReadDirectory(path, resume) ->
@@ -135,6 +141,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
       run(resume(response))
     }
     CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
+    Cwd(resume) -> run(resume(do_cwd()))
     Hash(algorithm, bytes, resume) -> run(resume(do_hash(algorithm, bytes)))
     ReadDirectory(path, resume) -> run(resume(simplifile.read_directory(path)))
     ReadFile(path, resume) -> run(resume(do_read_file(path)))
@@ -153,6 +160,11 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
 
 fn do_create_directory(path) {
   simplifile.create_directory_all(path)
+  |> result.map_error(simplifile.describe_error)
+}
+
+fn do_cwd() {
+  simplifile.current_directory()
   |> result.map_error(simplifile.describe_error)
 }
 

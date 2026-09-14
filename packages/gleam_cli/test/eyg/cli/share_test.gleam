@@ -46,6 +46,27 @@ pub fn share_unknown_version_reference_fails_test() {
   assert "unknown reference: @unknown:1" == reason
 }
 
+pub fn share_relative_input_imports_above_its_directory_test() {
+  let files = [
+    #("/project/app/main.eyg", "import \"../lib/foo.eyg\""),
+    #("/project/lib/foo.eyg", "\"Hi\""),
+  ]
+  let sandbox =
+    helpers.sandbox()
+    |> helpers.with_files(files)
+    |> helpers.with_cwd("/project/app")
+    |> helpers.share_server
+  let input = source.File("main.eyg")
+  let #(output, sandbox) =
+    share.execute(input, helpers.config)
+    |> helpers.run(sandbox)
+  assert Ok(0) == output
+  let assert [request] = sandbox.network_state
+  let assert Ok(archive) = car.decode(request.body)
+  let assert [_, b2] = archive.blocks
+  assert dag_json.to_block(ir.string("Hi")) == b2.1
+}
+
 pub fn share_bundles_absolute_test() {
   let files = [
     #("/main.eyg", "import \"/lib/foo.eyg\""),

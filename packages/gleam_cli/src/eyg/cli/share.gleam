@@ -21,19 +21,21 @@ pub fn execute(
   input: source.Input,
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
+  use cwd <- system.then(system.cwd())
+  use cwd <- system.try(cwd)
+  use input <- system.try(execute.normalize_input(cwd, input))
   use code <- system.then(source.read_input(input))
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
-  let path = case source.1.origin {
-    source.Disk(path:) -> path
-    // empty path results in resolution against current working directory.
-    source.Pipe -> ""
-    source.Inline -> ""
-    source.Repl -> ""
-    source.Content(..) -> ""
-    source.Release(..) -> ""
+  let #(dir, path) = case source.1.origin {
+    source.Disk(path:) -> #(filepath.directory_name(path), path)
+    // source without a file resolves imports against the working directory.
+    source.Pipe -> #(cwd, "")
+    source.Inline -> #(cwd, "")
+    source.Repl -> #(cwd, "")
+    source.Content(..) -> #(cwd, "")
+    source.Release(..) -> #(cwd, "")
   }
-  let dir = filepath.directory_name(path)
   use bundle <- system.then(load(dir, path, source, cache.empty()))
   let bundle =
     result.map_error(bundle, fn(reference) {
