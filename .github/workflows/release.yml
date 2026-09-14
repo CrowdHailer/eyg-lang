@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  HEXPM_READ_API_KEY: ${{ secrets.HEXPM_READ_API_KEY }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -32,6 +35,9 @@ jobs:
           ./bin/compile bun-darwin-arm64 ./dist/eyg-macos-arm64
           ./bin/compile bun-windows-x64  ./dist/eyg-windows-x64.exe
           cd dist && sha256sum eyg-* > SHA256SUMS
+
+      - name: Check the binary reports the tagged version
+        run: test "$(./dist/eyg-linux-x64 --version)" = "eyg ${GITHUB_REF_NAME#gleam_cli-}"
 
       - name: Extract version
         id: version

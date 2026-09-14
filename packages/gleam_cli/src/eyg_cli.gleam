@@ -47,7 +47,7 @@ fn help() {
 }
 
 fn version() {
-  io.println("eyg " <> version.string)
+  io.println("eyg " <> version.string())
   promise.resolve(Ok(0))
 }
 

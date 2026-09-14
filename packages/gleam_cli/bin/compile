@@ -11,11 +11,16 @@ cd "$SCRIPT_DIR/.."
 target="${1:-}"
 outfile="${2:-./dist/eyg}"
 
+# A commit tagged gleam_cli-v0.1.0 builds version v0.1.0, any other commit builds dev.
+tag="$(git describe --tags --exact-match --match 'gleam_cli-*' HEAD 2>/dev/null || true)"
+version="${tag#gleam_cli-}"
+version="${version:-dev}"
 
 gleam build
 
 bun build build/dev/javascript/eyg_cli/eyg_cli.mjs \
   --compile \
   ${target:+--target="$target"} \
+  --define EYG_VERSION="\"$version\"" \
   --footer="main();" \
   --outfile "$outfile"

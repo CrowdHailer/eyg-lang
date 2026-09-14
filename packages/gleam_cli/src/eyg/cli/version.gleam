@@ -1,7 +1,7 @@
-//// The version string printed by `eyg --version`.
+//// The version printed by `eyg --version`.
 ////
-//// Bumped manually alongside hex releases of `eyg_cli`. Kept here rather
-//// than read from `gleam.toml` because `gleam.toml` isn't available at
-//// runtime once the binary is bundled with `bun build --compile`.
+//// `bin/compile` sets it from the `gleam_cli-*` tag on the commit being built.
+//// Anything else, such as `gleam run` or a build of an untagged commit, is `dev`.
 
-pub const string = "0.0.0"
+@external(javascript, "./version_ffi.mjs", "version")
+pub fn string() -> String
