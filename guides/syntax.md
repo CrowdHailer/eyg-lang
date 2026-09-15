@@ -328,9 +328,9 @@ match x {
 
 | Unsupported                         | Use instead                                                                              |
 |-------------------------------------|------------------------------------------------------------------------------------------|
-| `match n { 2 -> { ... } }`          | Dispatch on a tag via `!int_compare` returning `Lt({}) \| Eq({}) \| Gt({})`.             |
-| `match x { _ -> { ... } }`          | An else branch: `\| (_) -> { ... }`.                                                     |
-| `match xs { [] -> { 0 } }`          | `!list_pop(xs)` returns `Ok({head, tail}) \| Error({})`; match on that tag.              |
+| `match n { 2 -> { ... } }`          | Dispatch on a tag via `!int_compare` returning `Lt({}) | Eq({}) | Gt({})`.             |
+| `match x { _ -> { ... } }`          | An else branch: `| (_) -> { ... }`.                                                     |
+| `match xs { [] -> { 0 } }`          | `!list_pop(xs)` returns `Ok({head, tail}) | Error({})`; match on that tag.              |
 | `Ok(Some(v)) -> ...`                | Match outer tag, then `match` on the inner value inside the branch.                      |
 
 If a branch ignores the payload entirely, the conventional placeholder

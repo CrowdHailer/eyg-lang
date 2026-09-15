@@ -28,7 +28,7 @@ gleam add eyg_analysis eyg_interpreter eyg_parser touch_grass
 
 Let's start with a simple configuration script.
 
-```js
+```eyg
 let name = "Angelos"
 let timeout = !int_multiply(15, 60)
 {name: name, timeout: timeout}
@@ -70,7 +70,7 @@ Our pure EYG runner cannot perform any side effect.
 This is good enough for configuration but for anything more it is very limited.
 Even the hello world program below would return an error in our first runner.
 
-```js
+```eyg
 perform Log("Hello, world!")
 ```
 
@@ -253,4 +253,3 @@ pub fn check(source){
 
 This function type checks the source in an environment with only the `Log` effect.
 `infer.unpure()` will allow any effect, useful for checking libraries where you don't yet know the context they will run in.
-

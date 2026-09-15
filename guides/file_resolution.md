@@ -73,7 +73,7 @@ As the CWD is now explicit and `entry.eyg` files are not expected to be shared t
 
 It's possible that even reading the source directory will become an explicit effect. i.e.
 
-```
+```eyg
 let source = perform Source({})
 {
   script: (_args) -> {

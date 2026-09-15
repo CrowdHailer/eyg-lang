@@ -86,7 +86,7 @@ Each policy field returns one of three decision tags:
 | `Mock(value)`   | resume with `Ok(value)`                   |
 | `Deny(reason)`  | resume with `Error(reason)`               |
 
-```
+```eyg
 let only_localhost = (request) -> {
   match !equal(request.host, "localhost") {
     True -> Allow({})
@@ -188,4 +188,3 @@ let dry_run = {
   ..access.deny_all
 }
 ```
-

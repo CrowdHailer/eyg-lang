@@ -43,7 +43,7 @@ For example a file name might contain whitespace and most likely does contain `.
 
 Unpublished releases are identified by the `import` keyword.
 
-```
+```eyg
 let relative = import "./index.eyg.json"
 let absoulute = import "/lib/http.eyg.json"
 ```

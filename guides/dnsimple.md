@@ -29,19 +29,19 @@ let list_accounts = (_) -> {
 let list_domains = (_) -> {
   let operation = {
     method: GET({}),
-    path: \"TODO fix\",
+    path: "TODO fix",
     query: None({}),
     headers: [],
-    body: !string_to_binary(\"\")
+    body: !string_to_binary("")
   }
   match perform DNSimple(operation) {
     Ok({body: body}) -> {
       match !string_from_binary(body) {
         Ok(body) -> { body }
-        Error(_) -> { \"bad body\"}
+        Error(_) -> { "bad body" }
       }
     }
-    Error(_) -> { \"bad request\" }
+    Error(_) -> { "bad request" }
   }
 }
 {list_domains: list_domains, list_accounts: list_accounts}

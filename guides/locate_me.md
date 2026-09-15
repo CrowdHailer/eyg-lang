@@ -105,16 +105,19 @@ All errors return a record with an `error` field containing a descriptive messag
 ## Usage Examples
 
 **Get full location info:**
+
 ```eyg
 let location = get_location({})
 ```
 
 **Get just the city:**
+
 ```eyg
 let city = get_city({})
 ```
 
 **Use in weather queries:**
+
 ```eyg
 let city = get_city({})
 // Then use city to fetch weather data

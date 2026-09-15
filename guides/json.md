@@ -16,12 +16,13 @@ let result = parse("true", decode.boolean)
 let result = parse("3", decode.integer)
 // Will return Ok(3)
 let result = parse("\"hi\"", decode.string)
-// Will return Ok("hi)
+// Will return Ok("hi")
 ```
 
 EYG does not support parsing floats
 
 ## Parsing lists
+
 ```eyg
 let {parse: parse, decode: decode} = @json
 let decoder = decode.list(decode.integer)
@@ -30,18 +31,21 @@ let result = parse("[1, 2, 3]", decoder)
 ```
 
 ## Parsing objects
+
 ```eyg
 let {parse: parse, decode: decode} = @json
 let decoder = decode.object((decoded) -> {
   let foo = decode.field("foo", decode.integer, decoded)
   {foo: foo}
 })
-parse("{"foo": 3}", decoder),
+parse("{\"foo\": 3}", decoder)
 // will return Ok({foo: 3})
 ```
 
 ## Handling errors
+
 The json library returns string errors.
+
 ```eyg
 let {parse: parse, decode: decode} = @json
 let result = parse("[]", decode.boolean)

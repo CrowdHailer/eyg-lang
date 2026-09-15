@@ -31,10 +31,10 @@ Conventions:
 | `!int_add`       | `(Int, Int) -> Int`      |                                             |
 | `!int_subtract`  | `(Int, Int) -> Int`      |                                             |
 | `!int_multiply`  | `(Int, Int) -> Int`      |                                             |
-| `!int_divide`    | `(Int, Int) -> Ok(Int) \| Error({})`      | Integer division.                           |
+| `!int_divide`    | `(Int, Int) -> Ok(Int) | Error({})`      | Integer division.                           |
 | `!int_absolute`  | `(Int) -> Int`           |                                             |
-| `!int_compare`   | `(Int, Int) -> Lt({}) \| Eq({}) \| Gt({})`      | |
-| `!int_parse`     | `(String) -> Ok(Int) \| Error({})` | Returns `Error({})` on bad input.      |
+| `!int_compare`   | `(Int, Int) -> Lt({}) | Eq({}) | Gt({})`      | |
+| `!int_parse`     | `(String) -> Ok(Int) | Error({})` | Returns `Error({})` on bad input.      |
 | `!int_to_string` | `(Int) -> String`        |                                             |
 
 ## Strings
@@ -45,19 +45,19 @@ Conventions:
 | `!string_length`        | `(String) -> Int`                                                | Length in graphemes.                                                                   |
 | `!string_uppercase`     | `(String) -> String`                                             |                                                                                        |
 | `!string_lowercase`     | `(String) -> String`                                             |                                                                                        |
-| `!string_starts_with`   | `(String, String) -> True({}) \| False({})`                                        |                                                               |
-| `!string_ends_with`     | `(String, String) -> True({}) \| False({})`                                        |                                                               |
+| `!string_starts_with`   | `(String, String) -> True({}) | False({})`                                        |                                                               |
+| `!string_ends_with`     | `(String, String) -> True({}) | False({})`                                        |                                                               |
 | `!string_replace`       | `(String, String, String) -> String`                             | `!string_replace(input, from, to)`.                                                    |
 | `!string_split`         | `(String, String) -> {head: String, tail: List(String)}`         | Note the record shape: `head` is the first piece, `tail` is the rest as a flat list.   |
-| `!string_split_once`    | `(String, String) -> Ok({pre: String, post: String}) \| Error({})`    | Splits on first occurrence; `Error({})` if the separator is absent.                    |
+| `!string_split_once`    | `(String, String) -> Ok({pre: String, post: String}) | Error({})`    | Splits on first occurrence; `Error({})` if the separator is absent.                    |
 | `!string_to_binary`     | `(String) -> Binary`                                             | UTF-8 encode.                                                                          |
-| `!string_from_binary`   | `(Binary) -> Ok(String) \| Error({})`                                 | UTF-8 decode; `Error({})` if the binary isn't valid UTF-8.                             |
+| `!string_from_binary`   | `(Binary) -> Ok(String) | Error({})`                                 | UTF-8 decode; `Error({})` if the binary isn't valid UTF-8.                             |
 
 ## Lists
 
 | Builtin       | Signature                              | Notes                                                                                                 |
 |---------------|----------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `!list_pop`   | `(List(a)) -> Ok({head: a, tail: List(a)} \| Error({})` | `Error({})` for the empty list.                                                  |
+| `!list_pop`   | `(List(a)) -> Ok({head: a, tail: List(a)} | Error({})` | `Error({})` for the empty list.                                                  |
 | `!list_fold`  | `(List(a), b, (a, b) -> b) -> b`       | Standard left-fold. Base for all recursive primitives such as map and each                        |
 
 ## Binaries
@@ -66,7 +66,7 @@ Conventions:
 |--------------------------|------------------------------------------|----------------------------------------------------------------------|
 | `!binary_size`           | `(Binary) -> Int`                        | Size in bytes.                                                       |
 | `!binary_concat`         | `(Binary, Binary) -> Binary`             |                                                                      |
-| `!binary_compare`        | `(Binary, Binary) -> Lt({}) \| Eq({}) \| Gt({})` | Byte-wise comparison.                                      |
+| `!binary_compare`        | `(Binary, Binary) -> Lt({}) | Eq({}) | Gt({})` | Byte-wise comparison.                                      |
 | `!binary_from_integers`  | `(List(Int)) -> Binary`                  | Each int must be 0..255.                                             |
 | `!binary_fold`           | `(Binary, b, (Int, b) -> b) -> b`        | Byte-by-byte left fold.                                              |
 

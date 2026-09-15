@@ -11,7 +11,7 @@ A client should create pure functions for building requests for each server oper
 
 Example 1. fetching a page from the bbc.
 
-```
+```eyg
 let http = @standard.http
 let result = @standard.result
 
@@ -27,7 +27,7 @@ let response = result.expect(http.send(get_page("/")), "failed to fetch from BBC
 Example 2. Posting JSON to an example API.
 NOTE http.send expects the body to be a binary, as JSON is a string it needs converting.
 
-```
+```eyg
 let http = @standard.http
 let string = @standard.string
 let result = @standard.result
