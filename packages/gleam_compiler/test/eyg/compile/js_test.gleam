@@ -300,7 +300,7 @@ int_add(1)(2)",
   )
   test_eval("!int_subtract(3, 2)", dynamic.int(1))
   test_eval("!int_multiply(3, 2)", dynamic.int(6))
-  test_eval("!int_divide(7, 2)", dynamic.int(3))
+  test_eval("!int_divide(7, 2)", tagged("Ok", dynamic.int(3)))
   test_eval("!int_parse(\"0\")", tagged("Ok", dynamic.int(0)))
   test_eval("!int_to_string(100)", dynamic.string("100"))
   test_eval("!string_append(\"ab\")(\"cd\")", dynamic.string("abcd"))
@@ -324,7 +324,17 @@ int_add(1)(2)",
   )
   test_compilation(
     "!list_fold([1, 2, 3], 0, !int_add)",
-    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(acc)(item);\n  }\n  return acc\n};\nlet int_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(int_add)",
+    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(item)(acc);\n  }\n  return acc\n};\nlet int_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(int_add)",
     dynamic.int(6),
   )
+}
+
+// Regressions from the compiler investigation, before replacing the backend.
+pub fn builtin_semantics_regressions_test() {
+  test_eval("!int_compare(2, 1)", tagged("Gt", unit()))
+  test_eval("!int_compare(2, 2)", tagged("Eq", unit()))
+  test_eval("!int_divide(7, 0)", tagged("Error", unit()))
+  test_eval("!int_parse(\"12junk\")", tagged("Error", unit()))
+  test_eval("!int_parse(\" 12\")", tagged("Error", unit()))
+  test_eval("!list_fold([1, 2, 3], 0, !int_subtract)", dynamic.int(2))
 }

@@ -211,9 +211,11 @@ let do_handle = (label, handler, m) => {
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
-    "int_divide" -> "let int_divide = (x) => (y) => Math.trunc(x / y)"
+    "int_divide" ->
+      "let int_divide = (x) => (y) => y === 0 ? {$T: \"Error\", $V: {}} : {$T: \"Ok\", $V: Math.trunc(x / y)}"
     "int_parse" ->
       "let int_parse = (x) => {
+  if (!/^[-+]?(\\d+)$/.test(x)) return {$T: \"Error\", $V: {}};
   const parsed = Number.parseInt(x, 10);
   if (Number.isNaN(parsed)) {
     return {$T: \"Error\", $V: {}};
@@ -224,7 +226,7 @@ let do_handle = (label, handler, m) => {
     "int_compare" ->
       "let int_compare = (x) => (y) => {
   if (x < y) return {$T: \"Lt\", $V: {}}
-  if (y > x) return {$T: \"Gt\", $V: {}}
+  if (x > y) return {$T: \"Gt\", $V: {}}
   return {$T: \"Eq\", $V: {}}
 }"
     "string_append" -> "let string_append = (x) => (y) => x + y"
@@ -246,7 +248,7 @@ let do_handle = (label, handler, m) => {
   while (items.length != 0) {
     item = items[0];
     items = items[1];
-    acc = f(acc)(item);
+    acc = f(item)(acc);
   }
   return acc
 }"
