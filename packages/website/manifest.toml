@@ -54,7 +54,7 @@ packages = [
   { name = "non_empty_list", version = "2.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "non_empty_list", source = "hex", outer_checksum = "06F9D3AC751CF7853AD5D24B8139CEB30E42D8799DE8D49F966A6197DF0B01CC" },
   { name = "ogre", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "ogre", source = "hex", outer_checksum = "A27BAED51012CCC0E18A9E139DF8EB600CAEBA181403EC3FDC5C0EFA86A60FDC" },
   { name = "pal", version = "0.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_hub", "eyg_interpreter", "eyg_ir", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "gleam_x", "midas", "multiformats", "ogre", "plinth", "spotless", "touch_grass", "untethered"], source = "local", path = "../pal" },
-  { name = "pamphlet", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "jot", "lustre", "midas", "splitter"], source = "git", repo = "https://github.com/crowdhailer/pamphlet", commit = "5f61ab27c872a3ab11d400dd367a0308fef4fd26" },
+  { name = "pamphlet", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "jot", "lustre", "midas", "splitter"], source = "git", repo = "https://github.com/crowdhailer/pamphlet", commit = "750623b2c57532ae4e517d9db8f2f41e079d256a" },
   { name = "plinth", version = "0.11.0", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "D30FDE8FC11EB76538AB498ACFF5399D0AE27993C74D63BE05AFE8CE80C4C839" },
   { name = "shellout", version = "1.8.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "C416356D45151F298108C9DB9CD1EDE0313F620B5EDBB5766CD7237659D87841" },
   { name = "simplifile", version = "2.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "A2727627B063E87351934C7F7F008F2D1FDB16F6DE0B8C79F9E46459CFC9C164" },
@@ -93,7 +93,7 @@ multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 mysig = { version = ">= 0.5.0 and < 1.0.0" }
 ogre = { version = ">= 1.1.0 and < 2.0.0" }
 pal = { path = "../pal" }
-pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "5f61ab27c872a3ab11d400dd367a0308fef4fd26" }
+pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "750623b" }
 plinth = { version = ">= 0.10.2 and < 1.0.0" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 snag = { version = ">= 1.2.0 and < 2.0.0" }

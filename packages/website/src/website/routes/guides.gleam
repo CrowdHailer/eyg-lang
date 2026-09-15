@@ -14,6 +14,7 @@ import pamphlet/djot
 import pamphlet/lustre
 import simplifile
 import website/components
+import website/guide_highlight
 import website/routes/common
 import website/routes/home
 
@@ -84,7 +85,6 @@ fn layout(path, title, description, body) {
         html.stylesheet(html.tailwind_2_2_11),
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
-        common.prism_style(),
         html.stylesheet(asset.src(pamphlet_style)),
       ],
       common.page_meta(path, title, description),
@@ -144,7 +144,8 @@ pub fn index_page() {
 
 fn guide_body(guide) {
   let Guide(document:, ..) = guide
-  let content = lustre.to_lustre(document, lustre.default())(fn(x) { x })
+  let content =
+    lustre.to_lustre(document, guide_highlight.renderer())(fn(x) { x })
   [
     components.header(),
     h.main([a.class("mx-auto w-full max-w-4xl px-4 pt-20 pb-16")], [

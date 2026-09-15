@@ -45,7 +45,7 @@ packages = [
   { name = "overlay_llm", version = "0.2.0", build_tools = ["gleam"], requirements = ["castor", "gleam_http", "gleam_json", "gleam_stdlib", "oas_generator_utils", "ogre"], otp_app = "overlay_llm", source = "hex", outer_checksum = "E80C12F6F08BBDC40665F317896C8013031F6CE19FFC2408CB6064CE1568E372" },
   { name = "overlay_web", version = "0.0.0", build_tools = ["gleam"], requirements = ["castor", "eyg_analysis", "eyg_hub", "eyg_interpreter", "eyg_ir", "eyg_parser", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "javascript_mutable_reference", "midas", "multiformats", "oas_generator_utils", "ogre", "overlay_llm", "pal", "spotless", "touch_grass", "untethered"], source = "local", path = "../overlay_web" },
   { name = "pal", version = "0.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_hub", "eyg_interpreter", "eyg_ir", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "gleam_x", "midas", "multiformats", "ogre", "plinth", "spotless", "touch_grass", "untethered"], source = "local", path = "../pal" },
-  { name = "pamphlet", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "jot", "lustre", "midas", "splitter"], source = "git", repo = "https://github.com/crowdhailer/pamphlet", commit = "5f61ab27c872a3ab11d400dd367a0308fef4fd26" },
+  { name = "pamphlet", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "jot", "lustre", "midas", "splitter"], source = "git", repo = "https://github.com/crowdhailer/pamphlet", commit = "750623b2c57532ae4e517d9db8f2f41e079d256a" },
   { name = "plinth", version = "0.11.0", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "D30FDE8FC11EB76538AB498ACFF5399D0AE27993C74D63BE05AFE8CE80C4C839" },
   { name = "snag", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "274F41D6C3ECF99F7686FDCE54183333E41D2C1CA5A3A673F9A8B2C7A4401077" },
   { name = "splitter", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "3DFD6B6C49E61EDAF6F7B27A42054A17CFF6CA2135FF553D0CB61C234D281DD0" },
@@ -64,6 +64,6 @@ ogre = { version = ">= 1.1.0 and < 2.0.0" }
 overlay_llm = { version = ">= 0.1.0 and < 1.0.0" }
 overlay_web = { path = "../overlay_web" }
 pal = { path = "../pal" }
-pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "5f61ab27c872a3ab11d400dd367a0308fef4fd26" }
+pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "750623b" }
 plinth = { version = ">= 0.10.2 and < 1.0.0" }
 splitter = { version = ">= 1.2.0 and < 2.0.0" }
