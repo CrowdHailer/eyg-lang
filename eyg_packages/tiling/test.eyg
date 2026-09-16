@@ -1,0 +1,54 @@
+let {assert, expect} = import "../aok/index.eyg"
+let common = import "./common.eyg"
+let dwindle = import "./dwindle.eyg"
+let stack = import "./main_stack.eyg"
+let bounds = {origin: {x: 0, y: 0}, size: {x: 1000, y: 1000}}
+let tile = (item, x, y, width, height) -> { {item, origin: {x,y}, size: {x:width,y:height}} }
+[
+  {name: "dwindle empty and singleton", test: (_) -> {
+    let _ = assert.equal([], dwindle.layout([], bounds))
+    assert.equal([tile("a",0,0,1000,1000)], dwindle.layout(["a"], bounds))
+  }},
+  {name: "dwindle alternates binary splits", test: (_) -> {
+    assert.equal([tile("a",0,0,500,1000),tile("b",500,0,500,500),tile("c",500,500,250,500),tile("d",750,500,250,500)], dwindle.layout(["a","b","c","d"],bounds))
+  }},
+  {name: "dwindle exposes path-indexed binary tree", test: (_) -> {
+    assert.equal([
+      Split({path:"root",axis:Horizontal({}),origin:bounds.origin,size:bounds.size}),
+      Tile({path:"root/0",item:"a",origin:{x:0,y:0},size:{x:500,y:1000}}),
+      Tile({path:"root/1",item:"b",origin:{x:500,y:0},size:{x:500,y:1000}})
+    ], dwindle.tree(["a","b"],bounds))
+  }},
+  {name: "dwindle odd dimensions and offset", test: (_) -> {
+    assert.equal([tile("a",3,7,2,7),tile("b",5,7,3,3),tile("c",5,10,3,4)],dwindle.layout(["a","b","c"],{origin:{x:3,y:7},size:{x:5,y:7}}))
+  }},
+  {name: "main stack empty and singleton", test: (_) -> {
+    let _ = assert.equal([],stack.layout([],bounds,600))
+    assert.equal([tile("a",0,0,1000,1000)],stack.layout(["a"],bounds,600))
+  }},
+  {name: "main stack coverage and order", test: (_) -> {
+    assert.equal([tile("a",0,0,600,1000),tile("b",600,0,400,333),tile("c",600,333,400,333),tile("d",600,666,400,334)],stack.layout(["a","b","c","d"],bounds,600))
+  }},
+  {name: "main stack odd dimensions and offset", test: (_) -> {
+    assert.equal([tile("a",3,7,3,7),tile("b",6,7,2,3),tile("c",6,10,2,4)],stack.layout(["a","b","c"],{origin:{x:3,y:7},size:{x:5,y:7}},600))
+  }},
+  {name: "invalid dimensions shares and tile exhaustion abort", test: (_) -> {
+    let _ = expect.abort((_) -> { dwindle.layout([1],{origin:{x:0,y:0},size:{x:0,y:1}}) },{})
+    let _ = expect.abort((_) -> { dwindle.layout([1,2],{origin:{x:0,y:0},size:{x:1,y:1}}) },{})
+    let _ = expect.abort((_) -> { dwindle.layout([1,2,3],{origin:{x:0,y:0},size:{x:4,y:1}}) },{})
+    let _ = expect.abort((_) -> { stack.layout([1,2,3],{origin:{x:0,y:0},size:{x:4,y:1}},500) },{})
+    let _ = expect.abort((_) -> { stack.layout([1,2],{origin:{x:0,y:0},size:{x:1,y:1}},500) },{})
+    let _ = expect.abort((_) -> { stack.layout([],bounds,0) },{})
+    let _ = expect.abort((_) -> { stack.layout([],bounds,1000) },{})
+    let _ = expect.abort((_) -> { common.divide(1,0) },{})
+    {}
+  }},
+  {name: "show helper emits placements and propagates errors", test: (_) -> {
+    let placements = dwindle.layout([Artifact("a"),Artifact("b")],bounds)
+    let seen = handle Show((lift,resume) -> { [lift,..resume(Ok({}))] }, (_) -> { let _ = dwindle.show(placements) [] })
+    let _ = assert.equal(placements,seen)
+    let _ = assert.equal({},stack.show([]))
+    let _ = expect.abort((_) -> { handle Show((_,resume) -> { resume(Error("blocked")) }, (_) -> { stack.show(placements) }) },{})
+    assert.equal([1,2,3],common.append([1,2],[3]))
+  }}
+]

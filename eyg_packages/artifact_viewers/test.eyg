@@ -1,0 +1,42 @@
+let {assert} = import "../aok/index.eyg"
+let c = import "./common.eyg"
+let carousel = import "./carousel.eyg"
+let video = import "./video.eyg"
+let bluesky = import "./bluesky.eyg"
+let first = (xs) -> { match !list_pop(xs) { Ok({head}) -> {head} Error(_) -> {!never(perform Abort("empty bundle"))} } }
+let text = (file) -> { match !string_from_binary(file.content) { Ok(s) -> {s} Error(_) -> {!never(perform Abort("not UTF-8"))} } }
+let includes = (s,part) -> { assert.false(!equal(!string_replace(s,part,""),s)) }
+[
+  {name:"viewer common escaping and files",test:(_) -> {
+    let _ = assert.equal_string("&lt;&amp;&quot;&gt;",c.escape("<&\">"))
+    let _ = assert.equal_string("abc",c.concat(["a","b","c"]))
+    let _ = assert.equal({path:"a",media_type:"text/plain",content:!string_to_binary("hello")},c.file("a","text/plain","hello"))
+    includes(text(c.page("<title>","<p>body</p>")),"<h1>&lt;title&gt;</h1><p>body</p>")
+  }},
+  {name:"carousel bundles all images with escaped captions",test:(_) -> {
+    let images=[{caption:"<one>",media_type:"image/svg+xml",content:!string_to_binary("one")},{caption:"two",media_type:"image/png",content:!string_to_binary("two")}]
+    let bundle=carousel.render({title:"Photos",images})
+    let _=assert.equal(3,!list_fold(bundle,0,(_,n)->{!int_add(n,1)}))
+    let _=includes(text(first(bundle)),"&lt;one&gt;")
+    let _=includes(text(first(bundle)),"images/1")
+    assert.contains(bundle,{path:"images/0",media_type:"image/svg+xml",content:!string_to_binary("one")})
+  }},
+  {name:"carousel empty bundle has a viewer",test:(_) -> {
+    let bundle=carousel.render({title:"Empty",images:[]})
+    let _=assert.equal(1,!list_fold(bundle,0,(_,n)->{!int_add(n,1)}))
+    includes(text(first(bundle)),"No images supplied.")
+  }},
+  {name:"video retains bytes and declares speed controls",test:(_) -> {
+    let bundle=video.render({title:"<clip>",media_type:"video/webm",content:!string_to_binary("video bytes")})
+    let _=assert.contains(bundle,{path:"media/video",media_type:"video/webm",content:!string_to_binary("video bytes")})
+    let _=includes(text(first(bundle)),"&lt;clip&gt;")
+    includes(text(first(bundle)),"Playback speed")
+  }},
+  {name:"bluesky JSON cannot terminate data script",test:(_) -> {
+    let html=text(first(bluesky.render({title:"<posts>",feed:"{\"feed\":[],\"x\":\"</script><script>attack</script>\"}",retrieved_at:"<now>"})))
+    let _=includes(html,"\\u003c/script>")
+    let _=includes(html,"&lt;now&gt;")
+    let _=assert.equal_string(html,!string_replace(html,"</script><script>attack",""))
+    includes(html,"app.bsky.feed.post")
+  }}
+]

@@ -13,6 +13,8 @@ import eyg/ir/utils.{push_new} as _
 import eyg/parser
 import eyg/parser/debug
 import eyg/parser/parser.{type Reason} as _
+import gleam/bit_array
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/list
 import gleam/string
@@ -20,6 +22,7 @@ import multiformats/cid/v1
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/web/artifact
 import pal/platform/browser
 import pal/system
 import touch_grass/harness/browser as harness
@@ -31,6 +34,7 @@ pub type Context {
     counter: Int,
     effects: List(system.Effect(#(Int, state.Value(Meta)))),
     context: cache.Module(Meta),
+    artifacts: artifact.Store,
   )
 }
 
@@ -123,7 +127,10 @@ fn check_single(
   let analysis =
     infer.pure()
     |> with_scope([#("context", context.type_)])
-    |> infer.with_effects(interface.types(harness.effects()))
+    |> infer.with_effects(list.append(
+      interface.types(harness.effects()),
+      interface.types(artifact.effects()),
+    ))
     |> infer.check(source)
     |> cache.infer_sync(cache)
   infer.all_errors(analysis)
@@ -247,32 +254,60 @@ fn loop(
       }
     }
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {
-      case browser.cast(label, lift) {
-        // Printing belongs to the result the agent reads, not only the browser
-        // console. Keeping it here also preserves output across suspension.
-        Ok(harness.Print(message)) ->
-          loop(expression.resume(v.unit(), env, k), ctx, [message, ..output])
-        Ok(effect) -> {
-          case browser.extrinsic(effect) {
-            browser.Abort(reason) -> #(ctx, output, Aborted(reason))
-            browser.Work(system.Done(value)) ->
-              loop(expression.resume(value, env, k), ctx, output)
-            browser.Work(effect) -> {
-              let id = ctx.counter
-
-              let effect = system.map(effect, fn(v) { #(id, v) })
-              let effects = [effect, ..ctx.effects]
-              let ctx = Context(..ctx, counter: id + 1, effects:)
-              #(ctx, output, Handling(id, env, k))
+      case label {
+        "Artifact" | "Show" -> {
+          case interface.cast(artifact.effects(), label, lift) {
+            Error(reason) -> #(ctx, output, Exception(reason))
+            Ok(effect) -> {
+              let #(artifacts, value) = case effect {
+                artifact.Save(name, bundle) ->
+                  case artifact.save(ctx.artifacts, name, bundle) {
+                    Ok(#(store, version)) -> #(store, v.ok(v.Integer(version)))
+                    Error(reason) -> #(ctx.artifacts, v.error(v.String(reason)))
+                  }
+                artifact.Show(placement) ->
+                  case artifact.show(ctx.artifacts, placement) {
+                    Ok(store) -> #(store, v.ok(v.unit()))
+                    Error(reason) -> #(ctx.artifacts, v.error(v.String(reason)))
+                  }
+              }
+              loop(
+                expression.resume(value, env, k),
+                Context(..ctx, artifacts:),
+                output,
+              )
             }
-            browser.Spotless(..) -> #(
-              ctx,
-              output,
-              Aborted("Spotless integration not supported in harness"),
-            )
           }
         }
-        Error(reason) -> #(ctx, output, Exception(reason))
+        _ -> {
+          case browser.cast(label, lift) {
+            // Printing belongs to the result the agent reads, not only the browser
+            // console. Keeping it here also preserves output across suspension.
+            Ok(harness.Print(message)) ->
+              loop(expression.resume(v.unit(), env, k), ctx, [message, ..output])
+            Ok(effect) -> {
+              case browser.extrinsic(effect) {
+                browser.Abort(reason) -> #(ctx, output, Aborted(reason))
+                browser.Work(system.Done(value)) ->
+                  loop(expression.resume(value, env, k), ctx, output)
+                browser.Work(effect) -> {
+                  let id = ctx.counter
+
+                  let effect = system.map(effect, fn(v) { #(id, v) })
+                  let effects = [effect, ..ctx.effects]
+                  let ctx = Context(..ctx, counter: id + 1, effects:)
+                  #(ctx, output, Handling(id, env, k))
+                }
+                browser.Spotless(..) -> #(
+                  ctx,
+                  output,
+                  Aborted("Spotless integration not supported in harness"),
+                )
+              }
+            }
+            Error(reason) -> #(ctx, output, Exception(reason))
+          }
+        }
       }
     }
     Error(#(reason, _, _, _)) -> #(ctx, output, Exception(reason))
@@ -312,7 +347,7 @@ fn do_all_returns(
         UnknownTool(name:) -> Ok("unknown tool: " <> name)
         BadArguments(reasons) -> Ok(string.inspect(reasons))
         InvalidCode(reason) -> Ok(debug.describe(reason))
-        Successful(value) -> Ok(simple_debug.inspect(value))
+        Successful(value) -> Ok(inspect_result(value))
         Errored(errors) -> {
           list.map(errors, fn(error) { analysis_debug.reason(error.1) })
           |> string.join("\n")
@@ -339,10 +374,56 @@ fn do_all_returns(
 }
 
 /// Return everything printed before the final result of the tool call.
+/// Binary values are summarized separately by inspect_result.
 pub fn report(output: List(String), result: String) -> String {
   case list.reverse(output) {
     [] -> result
     printed -> "Output:\n" <> string.concat(printed) <> "\nResult:\n" <> result
+  }
+}
+
+/// Tool results are text for the model, not a binary transport. In particular,
+/// accidentally returning a video Fetch response must not base64-encode the
+/// entire clip into the next model request. The interpreter and artifact store
+/// retain the original value; only this presentation copy is summarized.
+pub fn inspect_result(value) -> String {
+  summarize_binaries(value, 0) |> simple_debug.inspect
+}
+
+fn summarize_binaries(value: v.Value(a, b), depth: Int) -> v.Value(a, b) {
+  case depth >= 8 {
+    True -> v.String("…")
+    False ->
+      case value {
+        v.Binary(bytes) ->
+          v.Tagged(
+            "BinarySummary",
+            v.Record(
+              dict.from_list([
+                #("bytes", v.Integer(bit_array.byte_size(bytes))),
+                #(
+                  "note",
+                  v.String(
+                    "Bytes omitted from tool output. Consume the original bytes in the same run: !string_from_binary for text, or Artifact for files. This summary cannot reconstruct the bytes.",
+                  ),
+                ),
+              ]),
+            ),
+          )
+        v.Record(fields) ->
+          v.Record(
+            dict.map_values(fields, fn(_, child) {
+              summarize_binaries(child, depth + 1)
+            }),
+          )
+        v.LinkedList(items) ->
+          v.LinkedList(list.map(items, summarize_binaries(_, depth + 1)))
+        v.Tagged(label, inner) ->
+          v.Tagged(label, summarize_binaries(inner, depth + 1))
+        v.Partial(func, args) ->
+          v.Partial(func, list.map(args, summarize_binaries(_, depth + 1)))
+        _ -> value
+      }
   }
 }
 

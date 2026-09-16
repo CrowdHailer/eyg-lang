@@ -4,3 +4,7 @@
 erl_crash.dump
 node_modules
 .env
+test-results/
+playwright-report/
+/dist/
+/recordings/

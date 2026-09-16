@@ -1,0 +1,23 @@
+let context=import "./context.eyg"
+let {assert,expect,all}=import "../../../eyg_packages/aok/index.eyg"
+let tests=[
+  {name:"demo network helpers return original bytes and decoded text",test:(_) -> {
+    let bytes=handle Fetch((request,resume) -> {
+      let _=assert.equal_string("example.com",request.host)
+      let _=assert.equal_string("/data",request.path)
+      let _=assert.equal(Some("q=1"),request.query)
+      resume(Ok({status:200,headers:[],body:!string_to_binary("hello")}))
+    },(_) -> {context.network.bytes("example.com","/data",Some("q=1"))})
+    let _=assert.equal(!string_to_binary("hello"),bytes)
+    let text=handle Fetch((_,resume)->{resume(Ok({status:200,headers:[],body:bytes}))},(_)->{context.network.text("example.com","/data",None({}))})
+    assert.equal_string("hello",text)
+  }},
+  {name:"demo network helper rejects HTTP and network failures",test:(_) -> {
+    let _=expect.abort((_) -> {handle Fetch((_,resume)->{resume(Ok({status:404,headers:[],body:!string_to_binary("")}))},(_)->{context.network.text("example.com","/missing",None({}))})},{})
+    let _=expect.abort((_) -> {handle Fetch((_,resume)->{resume(Error("offline"))},(_)->{context.network.bytes("example.com","/data",None({}))})},{})
+    let _=expect.abort((_) -> {handle Fetch((_,resume)->{resume(Ok({status:200,headers:[],body:!binary_from_integers([255])}))},(_)->{context.network.text("example.com","/data",None({}))})},{})
+    {}
+  }},
+  {name:"demo concatenation preserves order",test:(_) -> {assert.equal_string("abc",context.concat(["a","b","c"]))}}
+]
+{tests,script:(_)->{match !equal(all(tests).failed,0) {True(_)->{0} False(_)->{1}}}}

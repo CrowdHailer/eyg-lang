@@ -61,11 +61,26 @@ pre {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 40rem) 1fr;
+  grid-template-columns: minmax(20rem, 30rem) minmax(0, 1fr);
   min-height: 100%;
   background: var(--color-base-100);
   color: var(--color-base-content);
 }
+
+.artifact-workspace { position: sticky; top: 0; height: 100dvh; padding: 64px 12px 12px; background: #edf1f5; }
+.workspace-heading { font-size: 11px; letter-spacing: 2px; color: #536176; margin-bottom: 8px; }
+.artifact-canvas { position: relative; height: calc(100% - 25px); }
+.artifact-panel { position: absolute; display: flex; flex-direction: column; padding: 4px; min-width: 0; min-height: 0; }
+.artifact-heading { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #15243b; color: white; font-size: 12px; }
+.artifact-heading span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artifact-heading button { color: inherit; background: transparent; border: 0; cursor: pointer; font: inherit; }
+.artifact-preview { width: 100%; flex: 1; min-height: 0; border: 0; background: white; }
+.artifact-inspector { overflow: auto; flex: 1; padding: 16px; background: white; font-size: 12px; }
+.artifact-inspector pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 8px; margin-block: 8px; }
+.artifact-revision { margin-bottom: 16px; }
+.artifact-revision button { margin: 0 8px 8px 0; }
+.diff-added { background: #e5f7e9; }
+.diff-removed { background: #ffe8e8; }
 
 .hstack {
   align-items: center;
@@ -103,6 +118,8 @@ pre {
 .chat {
   display: flex;
   flex-direction: column;
+  max-height: 100dvh;
+  min-height: 0;
   /* background: rgb(245, 245, 245); */
   /* border-left: 1px solid black; */
   padding-inline: 10px;
@@ -115,6 +132,7 @@ pre {
   justify-content: center;
   min-height: 4.5rem;
   position: relative;
+  flex-shrink: 0;
   transition: all 1s;
 
   &>h1 {
@@ -295,6 +313,8 @@ pre {
   flex-grow: 1;
   display: flex;
   flex-direction: column-reverse;
+  min-height: 0;
+  overflow: auto;
   /* justify-content: center; */
 }
 
@@ -362,6 +382,7 @@ pre {
 }
 
 .chat-input {
+  flex-shrink: 0;
   /* border: 2px dashed #ccc; */
   border: var(--border) solid var(--color-base-content);
   border-radius: var(--radius-box);
@@ -424,6 +445,8 @@ pre {
   .layout {
     display: block;
   }
+
+  .artifact-workspace { position: relative; height: 80dvh; padding-top: 12px; }
 
   .hero>h1 {
     font-size: 400%;

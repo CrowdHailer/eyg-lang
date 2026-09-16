@@ -1,0 +1,28 @@
+let reverse = (items) -> { !list_fold(items, [], (item, acc) -> { [item, ..acc] }) }
+let append = (left, right) -> { !list_fold(reverse(left), right, (item, acc) -> { [item, ..acc] }) }
+let divide = (a, b) -> {
+  match !int_divide(a, b) {
+    Ok(n) -> { n }
+    Error(_) -> { !never(perform Abort("Cannot divide a tile by zero")) }
+  }
+}
+let positive = (n) -> {
+  match !int_compare(n, 0) {
+    Gt(_) -> { {} }
+    | (_) -> { !never(perform Abort("Tile dimensions must be positive")) }
+  }
+}
+let check = ({origin, size}) -> {
+  let _ = positive(size.x)
+  let _ = positive(size.y)
+  {origin, size}
+}
+let show = (placements) -> {
+  !list_fold(placements, {}, (placement, _) -> {
+    match perform Show(placement) {
+      Ok(_) -> { {} }
+      Error(reason) -> { !never(perform Abort(reason)) }
+    }
+  })
+}
+{reverse, append, divide, positive, check, show}

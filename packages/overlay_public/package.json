@@ -6,10 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "vite": "^8.1.5",
     "vite-gleam": "^1.7.1"
+  },
+  "dependencies": {
+    "css-tree": "^3.2.1"
   }
 }

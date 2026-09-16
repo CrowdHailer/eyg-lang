@@ -1,0 +1,31 @@
+let get = (host,path,query) -> {
+  match perform Fetch({method:GET({}),scheme:HTTPS({}),host,port:None({}),path,query,headers:[],body:!string_to_binary("")}) {
+    Ok(response) -> {
+      match !int_compare(response.status,200) {
+        Eq(_) -> {response.body}
+        | (_) -> {!never(perform Abort(!string_append("HTTP ",!int_to_string(response.status))))}
+      }
+    }
+    Error(reason) -> {!never(perform Abort(reason))}
+  }
+}
+let get_text = (host,path,query) -> {
+  match !string_from_binary(get(host,path,query)) {
+    Ok(text) -> {text}
+    Error(_) -> {!never(perform Abort("Response was not UTF-8"))}
+  }
+}
+let context = {
+  network: {
+    readme:"Generic HTTPS helpers for this demo context. network.bytes(host:String,path:String,query:None({})|Some(String)) performs Fetch and returns the response Binary, aborting unless status is 200. network.text(host,path,query) additionally decodes UTF-8 and returns a String. Use bytes for video/images; text for API JSON. Consume the result in the same run call. These are ordinary EYG functions wrapping the existing Fetch effect, not platform-specific data services. context.concat(List(String)) joins HTML parts. Example: let data=context.network.text(\"api.tfl.gov.uk\",\"/StopPoint/490008660N/Arrivals\",None({})) let html=context.concat([\"<script type='application/json' id='data'>\",!string_replace(data,\"<\",\"\\u003c\"),\"</script>\"]) . For a truthful retrieval timestamp, use !int_to_string(perform Now({})) (Unix milliseconds), never a guessed calendar date.",
+    bytes:get, text:get_text
+  },
+  concat:(parts) -> {!list_fold(parts,"",(part,acc) -> {!string_append(acc,part)})},
+  readme: "You are demonstrating Overlay's artifact workspace. The context contains dwindle and main_stack layout modules, and carousel, video, bluesky viewer modules; each has readme and documented functions. First inspect their readme fields. These are pure content-addressed EYG modules loaded from the local hub, not platform file handlers. Use Artifact to save bundles and Show/layout.show to place them. Use a 1000x1000 canvas. Create your own self-contained SVG map and a styled bus-arrivals HTML panel. Fetch real London arrivals from https://api.tfl.gov.uk/StopPoint/490008660N/Arrivals and stop coordinates/name from https://api.tfl.gov.uk/StopPoint/490008660N. Use the API's timestamps and show source labels. For actual active operator posts, use https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=reading-buses.co.uk&limit=3 and context.bluesky.render; clearly label these Reading Buses posts as a separate operator, not updates for the London stop. The TfL Bluesky account is empty. A short public CC0 video is https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm; fetch the binary and call context.video.render. Label it as a sample clip rather than bus footage. Carousel images can be your own generated SVG route illustrations; call context.carousel.render. Always use live Fetch responses; do not fabricate arrivals or posts. HTML previews have no network: embed JSON safely in script type=application/json (escape < as \\u003c), then JavaScript can parse and render it using textContent. Fetch calls use the existing full request record (method,scheme,host,port,path,query,headers,body). For query, use Some(\"actor=reading-buses.co.uk&limit=3\"). All bundles require index.html and binary content. The end goal is five named artifacts: map, buses, carousel, video, posts. Use both layouts to demonstrate rearrangement. EYG is curried, uses !int_add/etc rather than arithmetic operators, matches tags only, and strings can be multiline. No variables persist across separate run calls; saved artifacts do. End each tool call with a small status value, never return video bytes or huge bundles.",
+  dwindle: import "../../../eyg_packages/tiling/dwindle.eyg",
+  main_stack: import "../../../eyg_packages/tiling/main_stack.eyg",
+  carousel: import "../../../eyg_packages/artifact_viewers/carousel.eyg",
+  video: import "../../../eyg_packages/artifact_viewers/video.eyg",
+  bluesky: import "../../../eyg_packages/artifact_viewers/bluesky.eyg"
+}
+{readme:!string_append(context.network.readme,!string_append("\n\n",context.readme)),..context}

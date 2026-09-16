@@ -1,0 +1,12 @@
+let concat = (parts) -> { !list_fold(parts,"",(part,acc) -> { !string_append(acc,part) }) }
+let escape = (text) -> {
+  !string_replace(!string_replace(!string_replace(!string_replace(text,"&","&amp;"),"<","&lt;"),">","&gt;"),"\"","&quot;")
+}
+let file = (path,media_type,text) -> { {path,media_type,content:!string_to_binary(text)} }
+let page = (title,body) -> {
+  file("index.html","text/html",concat([
+    "<!doctype html><html><head><meta charset=\"utf-8\"><title>",escape(title),
+    "</title><style>*{box-sizing:border-box}body{margin:0;padding:20px;background:#f8fafc;color:#15243b;font:15px system-ui,sans-serif}h1{font-size:22px;margin:0 0 12px}button,select{font:inherit;padding:6px 12px;border:1px solid #bcccdc;border-radius:6px;background:white;color:#15243b}button{cursor:pointer}small{color:#52667a}article{background:white;border:1px solid #dce5ee;border-radius:10px;padding:14px;margin:10px 0}p{white-space:pre-wrap;overflow-wrap:anywhere}figure{margin:0}img,video{max-width:100%;border-radius:8px}nav{display:flex;align-items:center;gap:12px;margin-top:12px}</style></head><body><h1>",escape(title),"</h1>",body,"</body></html>"
+  ]))
+}
+{concat,escape,file,page}

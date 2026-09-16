@@ -9,6 +9,7 @@ import lustre/event
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/public/artifacts
 import overlay/public/cache_status
 import overlay/public/input
 import overlay/public/provider_setup as provider_view
@@ -21,50 +22,55 @@ import splitter
 pub fn render(model: state.State) {
   // let state = demo()
   let messages = view.messages(model)
-  h.div([a.class("layout")], [
-    h.div([a.class("chat")], [
-      h.header(
-        [
-          a.class("heading"),
-          a.classes([#("hero", list.is_empty(messages))]),
-        ],
-        [
-          h.h1([a.class("impact-heading")], [h.text("Overlay")]),
-          h.div([a.class("session-settings")], [
-            provider_view.render(model),
-            render_context(view.context(model)),
-          ]),
-        ],
-      ),
-      case messages {
-        [] -> element.none()
-        history ->
-          h.div(
-            [a.class("messages")],
-            list.flat_map(history, render_chat(_, model.expanded)),
-          )
-      },
-      case model.input_error {
-        Some(error) -> h.div([a.class("failure-message")], [h.text(error)])
-        None -> element.none()
-      },
-      cache_status.render(model),
-      input.render(
-        model.input,
-        "Ask anything...",
-        state.UserUpdatedInput,
-        state.UserSubmittedPrompt,
-        state.Ignore,
-      ),
-    ]),
-    // h.div([a.class("output")], [
-  //   // h.div([], [h.span([], [h.text("cell1")])]),
-  // // h.div([], [h.span([], [h.text("cell2")])]),
-  // // h.div([], [h.span([], [h.text("cell3")])]),
-  // // h.div([], [h.span([], [h.text("cell4")])]),
-  // // h.div([], [h.span([], [h.text("cell5")])]),
-  // ]),
-  ])
+  h.div(
+    [
+      a.class("layout"),
+      a.attribute("data-agent-status", case model.status {
+        state.Waiting -> "waiting"
+        state.Asking(_) -> "asking"
+        state.Streaming(..) -> "streaming"
+        state.Executing(_) -> "executing"
+      }),
+    ],
+    [
+      h.div([a.class("chat")], [
+        h.header(
+          [
+            a.class("heading"),
+            a.classes([#("hero", list.is_empty(messages))]),
+          ],
+          [
+            h.h1([a.class("impact-heading")], [h.text("Overlay")]),
+            h.div([a.class("session-settings")], [
+              provider_view.render(model),
+              render_context(view.context(model)),
+            ]),
+          ],
+        ),
+        case messages {
+          [] -> element.none()
+          history ->
+            h.div(
+              [a.class("messages")],
+              list.flat_map(history, render_chat(_, model.expanded)),
+            )
+        },
+        case model.input_error {
+          Some(error) -> h.div([a.class("failure-message")], [h.text(error)])
+          None -> element.none()
+        },
+        cache_status.render(model),
+        input.render(
+          model.input,
+          "Ask anything...",
+          state.UserUpdatedInput,
+          state.UserSubmittedPrompt,
+          state.Ignore,
+        ),
+      ]),
+      artifacts.render(model.artifacts),
+    ],
+  )
 }
 
 fn render_context(context) {

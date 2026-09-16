@@ -1,0 +1,12 @@
+let c = import "./common.eyg"
+let render = ({title,media_type,content}) -> {
+  let player = c.page(title,c.concat([
+    "<style>html,body{height:100%}body{display:flex;flex-direction:column;gap:6px;overflow:hidden;padding:12px}h1{font-size:18px;margin:0}video{flex:1;min-height:0;width:100%;object-fit:contain;background:#15243b}nav{flex:none;margin:0;font-size:12px}select{font-size:12px;padding:3px 8px}#status:empty{display:none}</style>",
+    "<video id=\"video\" controls playsinline preload=\"metadata\" src=\"media/video\"></video><nav><label for=\"speed\">Playback speed</label><select id=\"speed\"><option value=\"0.5\">0.5×</option><option value=\"1\" selected>1×</option><option value=\"1.5\">1.5×</option><option value=\"2\">2×</option></select></nav><p id=\"status\" aria-live=\"polite\"></p><script>const video=document.getElementById('video');document.getElementById('speed').onchange=e=>video.playbackRate=Number(e.target.value);video.onerror=()=>document.getElementById('status').textContent='This browser could not decode the supplied video.';</script>"
+  ]))
+  [player,{path:"media/video",media_type,content}]
+}
+{
+  readme:"Video-player bundle constructor. render({title:String,media_type:String,content:Binary}) returns an HTML artifact bundle containing a native HTML video player with play/pause/seek/volume controls and an explicit 0.5x/1x/1.5x/2x playback-speed selector. Pure; the caller fetches bytes, then uses Artifact and Show. Supply a browser-supported video media type, e.g. video/webm or video/mp4; browser codec support still applies. The current Overlay bundle limit is 2 MiB including HTML, so use a short clip. No autoplay, network access, remote player service, or platform media-type dispatch. Title is HTML-escaped. Example: viewer.render({title:\"Journey clip\",media_type:\"video/webm\",content:response.body}). Shared content ID pins this particular viewer, independently of the data.",
+  render
+}

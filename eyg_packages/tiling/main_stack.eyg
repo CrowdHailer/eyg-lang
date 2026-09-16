@@ -1,0 +1,40 @@
+let common = import "./common.eyg"
+let stack = (items, bounds) -> {
+  let count = !list_fold(items, 0, (_, n) -> { !int_add(n, 1) })
+  let state = !list_fold(items, {index: 0, tiles: []}, (item, {index, tiles}) -> {
+    let start = common.divide(!int_multiply(bounds.size.y, index), count)
+    let end = common.divide(!int_multiply(bounds.size.y, !int_add(index, 1)), count)
+    let height = !int_subtract(end, start)
+    let _ = common.positive(height)
+    {
+      index: !int_add(index, 1),
+      tiles: [{item, origin: {x: bounds.origin.x, y: !int_add(bounds.origin.y, start)}, size: {x: bounds.size.x, y: height}}, ..tiles]
+    }
+  })
+  common.reverse(state.tiles)
+}
+let layout = (items, bounds, main_size) -> {
+  let bounds = common.check(bounds)
+  let _ = common.positive(main_size)
+  let _ = common.positive(!int_subtract(1000, main_size))
+  match !list_pop(items) {
+    Error(_) -> { [] }
+    Ok({head: item, tail}) -> {
+      match !list_pop(tail) {
+        Error(_) -> { [{item, origin: bounds.origin, size: bounds.size}] }
+        Ok(_) -> {
+          let width = common.divide(!int_multiply(bounds.size.x, main_size), 1000)
+          let remaining = !int_subtract(bounds.size.x, width)
+          let _ = common.positive(width)
+          let _ = common.positive(remaining)
+          [{item, origin: bounds.origin, size: {x: width, y: bounds.size.y}},
+            ..stack(tail, {origin: {x: !int_add(bounds.origin.x, width), y: bounds.origin.y}, size: {x: remaining, y: bounds.size.y}})]
+        }
+      }
+    }
+  }
+}
+{
+  readme: "Main-and-stack tiling. layout(items, bounds, main_size) is pure and returns [{item,origin,size}] in input order. bounds={origin:{x:Int,y:Int},size:{x:Int,y:Int}}. main_size is an integer 1..999 giving the main column's share out of 1000 (e.g. 600 = 60%). The first item fills the left/main column; remaining items divide the right/stack vertically. Boundaries use cumulative integer division, so odd dimensions produce no gaps. Empty input yields []; singleton fills all bounds. Abort for invalid bounds, share, or tiles too small for positive area. show(placements) calls Show and aborts on error. Example: show(layout([Artifact(\"map\"),Artifact(\"buses\"),Artifact(\"posts\")],{origin:{x:0,y:0},size:{x:1000,y:1000}},600)).",
+  layout, show: common.show
+}

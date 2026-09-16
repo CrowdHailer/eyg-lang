@@ -17,6 +17,7 @@ import ogre/origin
 import overlay/helpers.{init, init_default, new_reader, submit_first_prompt}
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/web/artifact
 import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/state.{State}
@@ -588,6 +589,35 @@ fn run_code(id, code) {
       ]),
     ),
   )
+}
+
+pub fn artifact_state_survives_agent_turns_and_closing_panels_test() {
+  let save =
+    "perform Artifact({name:\"map\",bundle:[{path:\"index.html\",media_type:\"text/html\",content:!string_to_binary(\"map\")}]})"
+  let status = chat_completion("") |> with_code("one", save) |> streaming
+  let #(s, _) =
+    state.update(
+      State(..init_default(), status:),
+      state.LlmStreamFinished(Ok(Nil)),
+    )
+  let status = chat_completion("") |> with_code("two", save) |> streaming
+  let #(s, _) =
+    state.update(State(..s, status:), state.LlmStreamFinished(Ok(Nil)))
+  assert 2 == list.length(artifact.history(s.artifacts, "map"))
+  let status =
+    chat_completion("")
+    |> with_code(
+      "show",
+      "perform Show({item:Artifact(\"map\"),origin:{x:0,y:0},size:{x:1000,y:1000}})",
+    )
+    |> streaming
+  let #(s, _) =
+    state.update(State(..s, status:), state.LlmStreamFinished(Ok(Nil)))
+  assert 1 == list.length(s.artifacts.panels)
+  let #(s, _) =
+    state.update(s, state.UserClosedArtifact(artifact.Artifact("map")))
+  assert [] == s.artifacts.panels
+  assert 2 == list.length(artifact.history(s.artifacts, "map"))
 }
 
 pub fn printed_output_is_returned_to_the_agent_test() {

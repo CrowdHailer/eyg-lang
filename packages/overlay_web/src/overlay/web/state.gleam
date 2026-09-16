@@ -17,6 +17,7 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/web/artifact
 import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/tools
@@ -44,6 +45,7 @@ pub type State {
     cache: cache.Cache(tools.Meta),
     counter: Int,
     expanded: set.Set(Int),
+    artifacts: artifact.Store,
   )
 }
 
@@ -80,6 +82,7 @@ pub fn new(config: Config) -> State {
     cache:,
     counter: 0,
     expanded: set.new(),
+    artifacts: artifact.new(),
   )
 }
 
@@ -127,6 +130,8 @@ pub type Message {
   LlmStreamFinished(Result(Nil, String))
   UserClickedExpand(Int)
   UserClickedShrink(Int)
+  UserClosedArtifact(artifact.Item)
+  UserShowedArtifact(artifact.Placement)
   // run messages
   EffectHandled(task_id: Int, value: istate.Value(tools.Meta))
   CacheMessage(cache.ActionCompleted)
@@ -138,6 +143,16 @@ pub fn update(
   message: Message,
 ) -> #(State, List(system.Effect(Message))) {
   case message {
+    UserClosedArtifact(item) -> #(
+      State(..state, artifacts: artifact.close(state.artifacts, item)),
+      [],
+    )
+    UserShowedArtifact(placement) -> {
+      case artifact.show(state.artifacts, placement) {
+        Ok(artifacts) -> #(State(..state, artifacts:), [])
+        Error(_) -> #(state, [])
+      }
+    }
     ProviderSetupMessage(message) -> {
       let can_save = case state.status {
         Waiting -> True
@@ -315,7 +330,13 @@ pub fn can_save_provider(state: State) {
 
 fn current_context(state: State) {
   let State(cache:, counter:, context:, ..) = state
-  tools.Context(cache:, counter:, effects: [], context: context.module(context))
+  tools.Context(
+    cache:,
+    counter:,
+    effects: [],
+    context: context.module(context),
+    artifacts: state.artifacts,
+  )
 }
 
 /// If a stream message is completed, and effect is handled or a cache message received then resolve calls sees what stage tool calls are in.
@@ -323,7 +344,7 @@ fn current_context(state: State) {
 fn run_effects_if_any_remain_to_do(return, state: State) {
   let #(ctx, calls) = return
 
-  let tools.Context(cache:, counter:, effects: inner, context: _) = ctx
+  let tools.Context(cache:, counter:, effects: inner, artifacts:, ..) = ctx
   let effects =
     list.map(
       inner,
@@ -333,7 +354,7 @@ fn run_effects_if_any_remain_to_do(return, state: State) {
       }),
     )
 
-  let state = State(..state, cache:, counter:)
+  let state = State(..state, cache:, counter:, artifacts:)
   let #(state, cache_effects) = flush(state)
   let effects = list.append(cache_effects, effects)
 
@@ -456,7 +477,7 @@ They do not require an API token this will be added by the platform.
 
 # Context
 
-" <> context.readme(state.context)
+" <> context.readme(state.context) <> artifact.instructions
 }
 
 pub fn spec() {
