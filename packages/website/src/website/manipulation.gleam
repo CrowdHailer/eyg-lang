@@ -334,13 +334,27 @@ pub fn choose_module(modules) {
 }
 
 fn do_choose_module(buffer, modules: dict.Dict(_, buffer.Buffer)) {
-  use rebuild <- result.map(buffer.insert_release(buffer))
+  use insert <- result.map(buffer.insert_explicit_reference(buffer))
+  let choices =
+    modules
+    |> dict.to_list
+    |> list.map(fn(module) {
+      let #(#(name, _ext), _buffer) = module
+      #(name, ir.Relative("/" <> name <> ".eyg.json"))
+    })
+    |> dict.from_list
+  let rebuild = fn(name, context, refs) {
+    case dict.get(choices, name) {
+      Ok(reference) -> insert(reference, context, refs)
+      Error(Nil) -> buffer
+    }
+  }
   let hints =
     list.map(dict.to_list(modules), fn(module) {
       let #(#(name, _ext), buffer) = module
       #(name, poly(infer.poly_type(buffer.analysis)))
     })
-  UserInput(PickRelease(picker.new("", hints), rebuild))
+  UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
 pub fn choose_release(cache) {

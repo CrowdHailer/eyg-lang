@@ -421,6 +421,11 @@ pub fn insert_release(buffer: Buffer) {
   fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
 }
 
+pub fn insert_explicit_reference(buffer: Buffer) {
+  use #(_, rebuild) <- result.map(t.insert_explicit_reference(buffer.projection))
+  fn(new, context, refs) { update_code(buffer, rebuild(new), context, refs) }
+}
+
 pub fn delete(buffer: Buffer) {
   use new <- result.map(t.delete(buffer.projection))
   fn(context, refs) { update_code(buffer, new, context, refs) }

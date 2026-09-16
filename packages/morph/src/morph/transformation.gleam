@@ -667,3 +667,16 @@ pub fn insert_release(projection) {
     _ -> Error(Nil)
   }
 }
+
+pub fn insert_explicit_reference(projection) {
+  case projection {
+    #(p.Exp(exp), zoom) -> {
+      let current = case exp {
+        e.Reference(reference) -> Some(reference)
+        _ -> None
+      }
+      Ok(#(current, fn(new) { #(p.Exp(e.Reference(new)), zoom) }))
+    }
+    _ -> Error(Nil)
+  }
+}
