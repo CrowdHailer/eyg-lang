@@ -30,7 +30,10 @@ pub fn render(model: state.State) {
         ],
         [
           h.h1([a.class("impact-heading")], [h.text("Overlay")]),
-          provider_view.render(model),
+          h.div([a.class("session-settings")], [
+            provider_view.render(model),
+            render_context(view.context(model)),
+          ]),
         ],
       ),
       case messages {
@@ -62,6 +65,47 @@ pub fn render(model: state.State) {
   // // h.div([], [h.span([], [h.text("cell5")])]),
   // ]),
   ])
+}
+
+fn render_context(context) {
+  case context {
+    view.Default -> element.none()
+    view.Loading(name:) ->
+      h.div([a.class("context loading")], [
+        h.text("Loading context " <> name <> "..."),
+      ])
+    view.Loaded(name:, has_readme:) ->
+      h.div([a.class("context ready")], [
+        case has_readme {
+          True -> context_dot("ready", "Context loaded with a readme.")
+          False ->
+            context_dot(
+              "warning",
+              "No readme. The agent receives default instructions and the module's type.",
+            )
+        },
+        h.span([a.class("context-label"), a.title(name)], [
+          h.text("Context " <> name),
+        ]),
+      ])
+    view.Failed(name:, reason:) ->
+      h.div([a.class("context failure-message")], [
+        context_dot("failed", "Context unavailable: " <> reason),
+        h.text(name <> ": " <> reason),
+      ])
+  }
+}
+
+fn context_dot(status, description) {
+  h.span(
+    [
+      a.class("context-dot " <> status),
+      a.title(description),
+      a.attribute("role", "img"),
+      a.attribute("aria-label", description),
+    ],
+    [],
+  )
 }
 
 fn render_chat(message: #(Int, chat.Message(tool.Call)), expanded) {

@@ -123,18 +123,22 @@ pre {
   }
 }
 
-.provider-settings {
+.session-settings {
   position: fixed;
   right: 10px;
   top: 10px;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
 }
 
-.provider-trigger {
+.provider-trigger,
+.context {
   align-items: center;
   background: var(--color-base-100);
   border: 1px solid var(--color-base-content);
-  cursor: pointer;
   display: flex;
   font: inherit;
   font-size: 0.75rem;
@@ -142,6 +146,10 @@ pre {
   margin-left: auto;
   max-width: 14rem;
   padding: 0.3rem 0.5rem;
+}
+
+.provider-trigger {
+  cursor: pointer;
 }
 
 .provider-dot {
@@ -238,6 +246,40 @@ pre {
   &>h1 {
     font-size: 600%;
   }
+}
+
+.context {
+  overflow-wrap: anywhere;
+}
+
+.context-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-dot {
+  border-radius: 50%;
+  flex: 0 0 auto;
+  height: 0.5rem;
+  width: 0.5rem;
+
+  &.ready {
+    background: oklch(55% 0.16 150);
+  }
+
+  &.warning {
+    background: oklch(70% 0.18 55);
+  }
+
+  &.failed {
+    background: oklch(55% 0.22 25);
+  }
+}
+
+.context.loading {
+  opacity: 0.6;
 }
 
 .failure-message {

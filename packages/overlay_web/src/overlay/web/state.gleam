@@ -34,6 +34,7 @@ pub type State {
   State(
     llm: provider.Llm,
     provider_setup: provider_setup.State,
+    context_source: context.Source,
     context: context.Status,
     status: AgentStatus,
     history: List(chat.Message(tool.Call)),
@@ -65,11 +66,12 @@ pub fn new(config: Config) -> State {
       model: "",
     )
   let cache = cache.ready()
-  let #(context, cache) = context.load(context, cache)
+  let #(status, cache) = context.load(context, cache)
   State(
     llm:,
     provider_setup: provider_setup.new(),
-    context:,
+    context_source: context,
+    context: status,
     status: Waiting,
     history: [],
     input: "",

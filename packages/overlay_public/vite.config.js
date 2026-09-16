@@ -22,6 +22,7 @@ function watchGleamDependencies(packagePaths) {
   }
 }
 
+
 export default defineConfig({
   base: '/overlay/',
   plugins: [gleam(), watchGleamDependencies(['../overlay_web', '../pal'])],
@@ -35,6 +36,14 @@ export default defineConfig({
       },
       '/guides': {
         target: 'https://eyg.run',
+        changeOrigin: true,
+      },
+      '/modules': {
+        target: hub,
+        changeOrigin: true,
+      },
+      '/packages': {
+        target: hub,
         changeOrigin: true,
       },
     },
