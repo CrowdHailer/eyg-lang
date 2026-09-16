@@ -1,5 +1,7 @@
 import gleam/http/response.{Response}
+import gleam/int
 import gleam/json
+import gleam/string
 import ogre/operation
 import untethered/ledger/schema
 
@@ -8,6 +10,14 @@ pub type Failure {
   UnexpectedStatus(status: Int)
   UnableToDecode(reason: json.DecodeError)
   NetworkError(reason: String)
+}
+
+pub fn describe_failure(failure: Failure) {
+  case failure {
+    UnexpectedStatus(status:) -> "Unexpected status: " <> int.to_string(status)
+    UnableToDecode(reason:) -> "Decode error: " <> string.inspect(reason)
+    NetworkError(reason:) -> "Network error: " <> reason
+  }
 }
 
 pub fn submit_request(path, payload, signature) {

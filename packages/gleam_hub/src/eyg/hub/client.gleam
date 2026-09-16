@@ -182,7 +182,7 @@ pub fn share_bundle(
             False -> Error("hub returned the wrong shared module ID")
           }
 
-        Error(_) -> Error("bad module lookup")
+        Error(reason) -> Error(client.describe_failure(reason))
       }
     Error(reason) -> Error(string.inspect(reason))
   }
@@ -257,8 +257,7 @@ pub fn pull_packages(
     Ok(response) ->
       case pull_packages_response(response) {
         Ok(lschema.PullResponse(entries:)) -> Ok(entries)
-
-        Error(_) -> Error("bad module lookup")
+        Error(reason) -> Error(client.describe_failure(reason))
       }
     Error(reason) -> Error(string.inspect(reason))
   }

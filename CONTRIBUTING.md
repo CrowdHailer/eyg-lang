@@ -52,7 +52,7 @@ The password is taken from the mounted volume, and only uses the env value if th
 
 ```sh
 # packages/eyg.run
-docker compose -f compose.yaml -f compose.dev.yaml up -d
+docker compose -f compose.yaml -f compose.dev.yaml up -d --build
 ```
 Make sure to include the dev file for local development.
 
@@ -82,13 +82,6 @@ Setting the `POSTGRES_HOST` to localhost is for the migrations to be run outside
 
 ## Uploading packages
 
-### Create a new signatory
-
-```sh
-# packages/gleam_cli
-EYG_ORIGIN=http://localhost:8001 gleam run -- signatory initial personal
-```
-
 ### Share a module
 
 Upload a module that can be referenced by hash.
@@ -99,6 +92,15 @@ Release references must use the fully pinned `@name:version:<module-cid>` form.
 # packages/gleam_cli
 EYG_ORIGIN=http://localhost:8001 gleam run -- share ../../eyg_packages/standard/index.eyg.json 
 ```
+
+### Create a new signatory
+
+```sh
+# packages/gleam_cli
+EYG_ORIGIN=http://localhost:8001 gleam run -- signatory initial $EYG_ALIAS
+```
+
+I normally create an alias `local` for a signatory only registered against the local hub.
 
 ### Publish a package
 
