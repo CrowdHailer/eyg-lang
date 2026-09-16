@@ -12,7 +12,8 @@
 		reverse_proxy backend:8080
 	}
 	handle /overlay {
-		redir * /overlay/
+		rewrite * /overlay/?{query}
+		reverse_proxy overlay:5173
 	}
 	handle /overlay/* {
 		reverse_proxy overlay:5173

@@ -15,7 +15,9 @@
 		redir https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/install.sh
 	}
 	handle /overlay {
-		redir * /overlay/
+		root * /var/overlay
+		try_files /index.html
+		file_server
 	}
 	handle /api/chat {
 		reverse_proxy https://ollama.com {
