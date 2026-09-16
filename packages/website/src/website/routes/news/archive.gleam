@@ -1,11 +1,55 @@
 import website/routes/news/edition.{Edition}
 
-// I am very proud of what I built but it is a long way short of my full vision.
-// My vision includes removing the impedance missmatch between EYG and query languages such as SQL all the way up to building a new web of trust on the EYG package manager.
-
-// To clarify what EYG is about and share the principles I have.
-// The EYG project is one among many new things you could spend your attention on.
 pub const published = [
+  Edition(
+    "2026-09-16",
+    "We have a Discord and syntax highlighting.",
+    "
+This update brings a couple of items I've intended to address for a while.
+It's been really nice to see the sparks of a community in the Discord.
+  
+## Syntax highlighting
+
+In the end it wasn't that painful, EYG has syntax and now it has syntax highlighting.
+
+![EYG syntax highlighting in VS Code](https://raw.githubusercontent.com/CrowdHailer/eyg-lang/main/packages/vscode-eyg/images/eyg-vscode.png)
+
+The highlighting uses a TextMate grammar.
+It is available in [VS Code](https://marketplace.visualstudio.com/items?itemName=eyg.eyg).
+Please let me know if you use other editors and know what I need to do to support them.
+
+## Come join the Discord
+
+Talking about reaching out to me, there is now an [EYG Discord](https://discord.gg/RMYjPRgGXE).
+It's a small group of us at the moment, so come and join before it's cool.
+
+## Share programs with their dependencies
+
+Bundling and replacing relative references with content-addressed ones is now automatic in `eyg share`.
+This gives you more freedom in laying out your projects locally while keeping the ecosystem built on a foundation of immutable references.
+
+Bundled programs are shipped as a [Content Addressable aRchives (CAR)](https://ipld.io/specs/transport/car/), a standard for transporting multiple content addressed blobs.
+
+Sharing also requires any release references to be fully pinned.
+  
+## Better publishing and identity management
+
+Two new commands have been added to the CLI.
+Use `eyg signatory list` to see all your local publishing identities, and `eyg signatory show <alias>` to see the full history of an individual signatory.
+
+All published releases to the hub are signed by an author's private key.
+This allows for a web of trusted authorship to be built for your application dependencies.
+
+## A final favour
+
+We are organising [Gleam Gathering 2027](https://gleamgathering.com/) in London on the 27th February.
+Gleam is a great tool and the foundation that's got me this far with EYG.
+We'd love to see you there.
+If you know someone who might be interested please share, it all helps.
+
+
+",
+  ),
   Edition(
     "2026-08-14",
     "Strong foundations, a blog post and a conference talk.",
