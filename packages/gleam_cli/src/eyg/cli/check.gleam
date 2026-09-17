@@ -2,18 +2,32 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
 import eyg/cli/system
+import eyg/hub/cache
 import eyg/ir/tree as ir
 import eyg/parser
 import filepath
+import gleam/dict
 import gleam/list
+import gleam/option.{type Option, None, Some}
+import gleam/result
+import multiformats/cid/v1
+
+type State {
+  State(
+    client: client.Client,
+    packages: cache.Cache(Nil),
+    types: dict.Dict(String, binding.Poly),
+  )
+}
 
 pub fn execute(
   input: source.Input,
-  _config: config.Config,
+  config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
@@ -33,9 +47,15 @@ pub fn execute(
     source.Release(..) -> #(cwd, "")
   }
 
-  use #(_poly, type_, errors) <- system.then(
-    check_all(context, dir, source, [], [path]),
-  )
+  let state = State(config.client, cache.ready(), dict.new())
+  use #(_poly, type_, errors, _state) <- system.then(check_all(
+    context,
+    Some(dir),
+    source,
+    [],
+    [path],
+    state,
+  ))
 
   use Nil <- system.then(
     system.each(
@@ -69,88 +89,186 @@ pub fn execute(
 
 fn check_all(
   context: infer.Context,
-  directory: String,
+  directory: Option(String),
   source: #(ir.Expression(source.Location), source.Location),
   errors: List(#(source.Location, error.Reason)),
   visited: List(String),
+  state: State,
 ) -> system.Effect(
-  #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason))),
+  #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason)), State),
 ) {
-  check_loop(infer.check(context, source), context, directory, errors, visited)
+  check_loop(
+    infer.check(context, source),
+    context,
+    directory,
+    errors,
+    visited,
+    state,
+  )
 }
 
 fn check_loop(
   step: infer.Step(infer.Analysis(source.Location)),
   context: infer.Context,
-  directory: String,
+  directory: Option(String),
   errors: List(#(source.Location, error.Reason)),
   visited: List(String),
-) -> system.Effect(#(binding.Poly, binding.Mono, _)) {
+  state: State,
+) -> system.Effect(#(binding.Poly, binding.Mono, _, State)) {
   case step {
     infer.Done(analysis) ->
       system.Done(#(
         infer.poly_type(analysis),
         infer.type_(analysis),
         list.append(errors, infer.all_errors(analysis)),
+        state,
       ))
     infer.Lookup(reference:, resume:) -> {
-      case reference {
-        ir.Content(cid: _) ->
-          resume(Error(Nil))
-          |> check_loop(context, directory, errors, visited)
-        ir.Package(package: _) ->
-          resume(Error(Nil))
-          |> check_loop(context, directory, errors, visited)
-        ir.Version(package: _, version: _) ->
-          resume(Error(Nil))
-          |> check_loop(context, directory, errors, visited)
-        ir.Pinned(release: _) ->
-          resume(Error(Nil))
-          |> check_loop(context, directory, errors, visited)
-        ir.Relative(location:) -> {
-          case execute.resolve_relative(directory, location) {
-            Ok(path) -> {
-              case cycle_check(visited, path) {
-                Ok(Nil) -> {
-                  use code <- system.then(system.read_file(path))
-                  case code {
-                    Ok(code) ->
-                      case source.parse_input(code, source.File(location)) {
-                        Ok(dependency) -> {
-                          let check =
-                            check_all(
-                              context,
-                              filepath.directory_name(path),
-                              dependency,
-                              errors,
-                              [path, ..visited],
-                            )
-                          use #(poly, _type_, errors) <- system.then(check)
-                          resume(Ok(poly))
-                          |> check_loop(context, directory, errors, visited)
-                        }
-                        Error(_reason) ->
-                          resume(Error(Nil))
-                          |> check_loop(context, directory, errors, visited)
-                      }
-                    Error(_reason) -> {
-                      resume(Error(Nil))
-                      |> check_loop(context, directory, errors, visited)
-                    }
-                  }
-                }
-                Error(_cycle) ->
-                  resume(Error(Nil))
-                  |> check_loop(context, directory, errors, visited)
-              }
-            }
-            Error(_reason) ->
-              resume(Error(Nil))
-              |> check_loop(context, directory, errors, visited)
-          }
+      use #(answer, errors, state) <- system.then(lookup(
+        reference,
+        context,
+        directory,
+        errors,
+        visited,
+        state,
+      ))
+      check_loop(resume(answer), context, directory, errors, visited, state)
+    }
+  }
+}
+
+fn lookup(reference, context, directory, errors, visited, state) {
+  case reference {
+    ir.Relative(location:) -> {
+      let path = case directory {
+        Some(directory) -> execute.resolve_relative(directory, location)
+        // A hub module has no filesystem origin for imports.
+        None -> Error("no directory for hub module")
+      }
+      case path {
+        Error(_) -> system.Done(#(Error(Nil), errors, state))
+        Ok(path) ->
+          load_dependency(
+            path,
+            Some(filepath.directory_name(path)),
+            fn() {
+              use code <- system.then(source.read_input(source.File(path)))
+              system.Done(result.try(code, source.parse(_, source.Disk(path))))
+            },
+            context,
+            errors,
+            visited,
+            state,
+          )
+      }
+    }
+    _ -> {
+      use #(resolved, state) <- system.then(resolve(reference, state))
+      case resolved {
+        Error(_) -> system.Done(#(Error(Nil), errors, state))
+        Ok(cid) ->
+          load_dependency(
+            "#" <> v1.to_string(cid),
+            None,
+            fn() {
+              use fetched <- system.then(client.get_module(cid, state.client))
+              system.Done(
+                result.map(fetched, fn(tree) {
+                  ir.map_annotation(tree, fn(_) {
+                    source.Location(source.Content(cid), source.Json)
+                  })
+                }),
+              )
+            },
+            context,
+            errors,
+            visited,
+            state,
+          )
+      }
+    }
+  }
+}
+
+// Cache inferred types, not evaluated module values: checking must neither run
+// module initializers nor skip errors in code that evaluation would not reach.
+fn load_dependency(
+  key,
+  directory,
+  load,
+  context,
+  errors,
+  visited,
+  state: State,
+) {
+  case dict.get(state.types, key), cycle_check(visited, key) {
+    Ok(poly), _ -> system.Done(#(Ok(poly), errors, state))
+    _, Error(_) -> system.Done(#(Error(Nil), errors, state))
+    Error(_), Ok(_) -> {
+      use dependency <- system.then(load())
+      case dependency {
+        Error(_) -> system.Done(#(Error(Nil), errors, state))
+        Ok(dependency) -> {
+          use #(poly, _type_, errors, state) <- system.then(check_all(
+            context,
+            directory,
+            dependency,
+            errors,
+            [key, ..visited],
+            state,
+          ))
+          let state = State(..state, types: dict.insert(state.types, key, poly))
+          system.Done(#(Ok(poly), errors, state))
         }
       }
     }
+  }
+}
+
+fn resolve(reference, state) {
+  case reference {
+    ir.Content(cid) -> system.Done(#(Ok(cid), state))
+    _ -> {
+      use state <- system.then(pull_packages(state))
+      let resolved = case state.packages.cursor_status {
+        cache.Pulled ->
+          case reference {
+            ir.Package(package) ->
+              cache.package(state.packages, package)
+              |> result.map(fn(entry) { entry.module })
+            ir.Version(package, version) ->
+              cache.unbound_release(state.packages, package, version)
+            ir.Pinned(release) ->
+              case cache.release(state.packages, release) {
+                cache.Available(cid) -> Ok(cid)
+                _ -> Error(Nil)
+              }
+            _ -> Error(Nil)
+          }
+        _ -> Error(Nil)
+      }
+      system.Done(#(resolved, state))
+    }
+  }
+}
+
+fn pull_packages(state: State) {
+  case state.packages.cursor_status {
+    cache.ReadyToPull -> {
+      // Only release metadata goes through the evaluation cache. Sources are
+      // fetched separately and inferred by check_all, including transitive deps.
+      use packages <- system.then(
+        client.run_all_with(
+          state.packages,
+          state.client.origin,
+          fn(request) { system.Fetch(request, _) },
+          fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
+          fn(duration) { system.Wait(duration, _) },
+        )(system.Done),
+      )
+      system.Done(State(..state, packages:))
+    }
+    _ -> system.Done(state)
   }
 }
 

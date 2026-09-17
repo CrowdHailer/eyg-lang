@@ -86,6 +86,29 @@ To evaluate source from stdin, pass `-` or `--stdin`.
 printf '@standard.integer.add(1, 1)' | eyg eval -
 ```
 
+### Type-check a program
+
+```sh
+eyg check path/to/file.eyg
+eyg check -c '@standard.integer.add(1, 2)'
+eyg check @standard
+```
+
+`check` prints the inferred type and exits successfully when the program and its
+dependencies have no type errors. It reports errors and exits nonzero otherwise.
+Files, inline source and standard input are supported.
+
+Imports are checked recursively. Content references (`#cid`) and package references
+(`@name`, `@name:version`, `@name:version:cid`) are fetched from the configured hub
+(`EYG_ORIGIN`, default `https://eyg.run`). Content hashes are verified, and pins must
+match the hub's release records. Each dependency's inferred type is cached for the
+duration of the command.
+
+Checking does not evaluate the program or its dependency initializers. File and
+hub access are used only to load source and package metadata. Relative imports
+resolve from their containing file, or from the working directory for inline
+source and standard input; hub modules have no local import directory.
+
 ### Run a file
 
 **Prefer running a script, instead of running a file.**
