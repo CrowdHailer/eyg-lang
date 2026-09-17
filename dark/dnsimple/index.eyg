@@ -1,0 +1,347 @@
+let http = @http:2:baguqeeracu6coc4hrbqkbivnpdn7m4uem4t5y5rt7hx6bysq3i2ntmgyfl3a
+let json = @json:1:baguqeeraxtawxsrbnchzs5pvkq5ro33o6ze3ni7654aibhm4ygqple2lajka
+let {string, integer, binary, list, result, equal} = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja
+let spotless = import "../../eyg_packages/spotless/index.eyg"
+
+let readme = "# DNSimple API v2
+
+```eyg
+let dnsimple = import \"./dark/dnsimple/index.eyg\"
+let config = dnsimple.from_token(\"api-token\")
+// Or interactively authorize through spotless.run:
+// let config = dnsimple.connect({})
+let accounts = dnsimple.list_accounts(config)
+let domains = dnsimple.list_domains(config, 1010, [])
+```
+
+Configuration is `{origin, token}`. `from_token` and `connect` use production.
+For a sandbox token use `from_token_at(http.origin.https(\"api.sandbox.dnsimple.com\"), token)`.
+OAuth login prints the Spotless verification link and waits for approval;
+authentication failures perform Abort, as specified by spotless.connect.
+
+Operations (OpenAPI operationId converted to EYG snake_case):
+- list_accounts(config) — listAccounts
+- list_domains(config, account, query) — listDomains
+- create_domain(config, account, {name}) — createDomain
+- get_domain(config, account, domain) — getDomain
+- delete_domain(config, account, domain) — deleteDomain
+- get_domains_research_status(config, account, domain) — getDomainsResearchStatus
+- list_charges(config, account, query) — listCharges
+
+Account IDs are integers. Domain identifiers are strings (name or decimal ID).
+Query is a list of `{key, value}` strings; [] uses server defaults.
+list_domains supports name_like, registrant_id, sort, page, per_page.
+list_charges supports start_date, end_date (YYYY-MM-DD), sort, page, per_page.
+Sorting uses the documented values, e.g. name:asc or invoiced:desc.
+Each list call fetches one page; use body.pagination to request further pages.
+Domain research requires the paid Domain Research subscription and a token with
+domain_research_read scope. A 412 response is returned as Ok(Rejected(details)).
+
+All operations return:
+- Ok(Success({status, headers, body})): body is the decoded JSON envelope
+  `{data}` or `{data, pagination}`; deletion returns body {} on HTTP 204.
+- Ok(BadRequest(details)), Ok(Unauthorized(details)), Ok(PaymentRequired(details)),
+  Ok(Denied(details)), Ok(NotFound(details)), Ok(RateLimited(details)),
+  or Ok(Rejected(details)) for other 4xx responses.
+  Details contain message and the raw response (including JSON validation errors).
+- Error(Transport(reason)): Fetch failed.
+- Error(Protocol({reason, response})): unexpected status or malformed response.
+- Error(Server(response)): HTTP 5xx, including non-JSON gateway responses.
+
+Success and error responses retain headers, including rate limits and Retry-After.
+No automatic pagination or retries are performed. Nullable values decode to
+Some(value) / None({}); expires_on is also None when omitted. Money stays a string.
+Unknown JSON fields are ignored. Required fields and present optional fields
+are validated. Domain research availability and errors are returned to the caller.
+"
+
+let decode = json.decode
+let encode = json.encode
+let abort = (reason) -> { !never(perform Abort(reason)) }
+
+// @json exposes its flat decoder protocol; add null and optional-field support
+// locally until these combinators are provided by the shared package.
+let nullable = (decoder, parsed) -> {
+  match !list_pop(parsed) {
+    Ok({head, tail}) -> {
+      match head.term {
+        Null(_) -> { {value: None({}), rest: tail} }
+        | (_) -> {
+          let decoded = decoder(parsed)
+          {value: Some(decoded.value), rest: decoded.rest}
+        }
+      }
+    }
+    Error(_) -> { abort("Expected nullable value") }
+  }
+}
+let optional_field = (name, decoder, fields) -> {
+  match !list_pop(fields) {
+    Error(_) -> { None({}) }
+    Ok({head}) -> {
+      let contains = !fix((self, remaining) -> {
+        match !list_pop(remaining) {
+          Error(_) -> { False({}) }
+          Ok({head: field, tail}) -> {
+            match integer.compare(field.depth, head.depth) {
+              Lt(_) -> { False({}) }
+              Gt(_) -> { self(tail) }
+              Eq(_) -> {
+                match field.term {
+                  Field(label) -> {
+                    match equal(label, name) {
+                      True(_) -> { True({}) }
+                      False(_) -> { self(tail) }
+                    }
+                  }
+                  | (_) -> { self(tail) }
+                }
+              }
+            }
+          }
+        }
+      })
+      let present = contains(fields)
+      match present {
+        True(_) -> { decode.field(name, decoder, fields) }
+        False(_) -> { None({}) }
+      }
+    }
+  }
+}
+
+let account_decoder = decode.object((fields) -> {
+  {
+    id: decode.field("id", decode.integer, fields),
+    email: decode.field("email", decode.string, fields),
+    plan_identifier: decode.field("plan_identifier", decode.string, fields),
+    created_at: decode.field("created_at", decode.string, fields),
+    updated_at: decode.field("updated_at", decode.string, fields)
+  }
+})
+let domain_decoder = decode.object((fields) -> {
+  {
+    id: decode.field("id", decode.integer, fields),
+    account_id: decode.field("account_id", decode.integer, fields),
+    registrant_id: decode.field("registrant_id", nullable(decode.integer), fields),
+    name: decode.field("name", decode.string, fields),
+    unicode_name: decode.field("unicode_name", decode.string, fields),
+    state: decode.field("state", decode.string, fields),
+    auto_renew: decode.field("auto_renew", decode.boolean, fields),
+    private_whois: decode.field("private_whois", decode.boolean, fields),
+    trustee: decode.field("trustee", decode.boolean, fields),
+    expires_at: decode.field("expires_at", nullable(decode.string), fields),
+    expires_on: optional_field("expires_on", nullable(decode.string), fields),
+    created_at: decode.field("created_at", decode.string, fields),
+    updated_at: decode.field("updated_at", decode.string, fields)
+  }
+})
+let charge_item_decoder = decode.object((fields) -> {
+  {
+    description: decode.field("description", decode.string, fields),
+    amount: decode.field("amount", decode.string, fields),
+    product_id: decode.field("product_id", nullable(decode.integer), fields),
+    product_type: decode.field("product_type", decode.string, fields),
+    product_reference: decode.field("product_reference", nullable(decode.string), fields)
+  }
+})
+let charge_decoder = decode.object((fields) -> {
+  {
+    invoiced_at: decode.field("invoiced_at", decode.string, fields),
+    total_amount: decode.field("total_amount", decode.string, fields),
+    balance_amount: decode.field("balance_amount", decode.string, fields),
+    reference: decode.field("reference", decode.string, fields),
+    state: decode.field("state", decode.string, fields),
+    items: decode.field("items", decode.list(charge_item_decoder), fields)
+  }
+})
+let research_decoder = decode.object((fields) -> {
+  {
+    request_id: decode.field("request_id", decode.string, fields),
+    domain: decode.field("domain", decode.string, fields),
+    availability: decode.field("availability", decode.string, fields),
+    errors: decode.field("errors", decode.list(decode.string), fields)
+  }
+})
+let pagination_decoder = decode.object((fields) -> {
+  {
+    current_page: decode.field("current_page", decode.integer, fields),
+    per_page: decode.field("per_page", decode.integer, fields),
+    total_entries: decode.field("total_entries", decode.integer, fields),
+    total_pages: decode.field("total_pages", decode.integer, fields)
+  }
+})
+let envelope = (decoder, bytes) -> {
+  json.parse_bytes(bytes, decode.object((fields) -> {
+    {data: decode.field("data", decoder, fields)}
+  }))
+}
+let paginated = (decoder, bytes) -> {
+  json.parse_bytes(bytes, decode.object((fields) -> {
+    {
+      data: decode.field("data", decode.list(decoder), fields),
+      pagination: decode.field("pagination", pagination_decoder, fields)
+    }
+  }))
+}
+
+// Encode UTF-8 bytes, not code points. Encoding every byte also protects query
+// separators and path delimiters; callers always supply unescaped values.
+let hex_digit = (number) -> {
+  match integer.compare(number, 10) {
+    Lt(_) -> { integer.add(number, 48) }
+    | (_) -> { integer.add(number, 55) }
+  }
+}
+let percent_encode = (value) -> {
+  let bytes = !binary_fold(string.to_binary(value), string.to_binary(""), (byte, acc) -> {
+    let high = result.expect(integer.divide(byte, 16), "Cannot encode URL")
+    let low = integer.subtract(byte, integer.multiply(high, 16))
+    !binary_concat(acc, binary.from_integers([37, hex_digit(high), hex_digit(low)]))
+  })
+  result.expect(string.from_binary(bytes), "Cannot encode URL")
+}
+// @json:1 escapes quotes, backslashes and common whitespace, but leaves other C0
+// controls raw. Complete the escaping so even invalid domain input is valid JSON
+// and can be rejected by the API as an application error.
+let json_string = (value) -> {
+  let bytes = !binary_fold(string.to_binary(encode.string(value)), string.to_binary(""), (byte, acc) -> {
+    let encoded = match integer.compare(byte, 32) {
+      Lt(_) -> {
+        let high = result.expect(integer.divide(byte, 16), "Cannot encode JSON")
+        let low = integer.subtract(byte, integer.multiply(high, 16))
+        binary.from_integers([92, 117, 48, 48, hex_digit(high), hex_digit(low)])
+      }
+      | (_) -> { binary.from_integers([byte]) }
+    }
+    !binary_concat(acc, encoded)
+  })
+  result.expect(string.from_binary(bytes), "Cannot encode JSON")
+}
+let with_query = (operation, fields) -> {
+  match !list_pop(fields) {
+    Error(_) -> { operation }
+    Ok(_) -> {
+      let query = string.join(list.map(fields, ({key, value}) -> {
+        string.concat([percent_encode(key), "=", percent_encode(value)])
+      }), "&")
+      {query: Some(query), ..operation}
+    }
+  }
+}
+let domains_path = (account) -> {
+  string.concat(["/v2/", integer.to_string(account), "/domains"])
+}
+let domain_path = (account, domain) -> {
+  string.concat([domains_path(account), "/", percent_encode(domain)])
+}
+
+let from_token_at = (origin, token) -> { {origin, token} }
+let from_token = from_token_at(http.origin.https("api.dnsimple.com"))
+let connect = (_) -> { from_token(spotless.connect("dnsimple")) }
+
+let application_error = (response) -> {
+  match json.parse_bytes(response.body, decode.object(decode.field("message", decode.string))) {
+    Error(reason) -> { Error(Protocol({reason, response})) }
+    Ok(message) -> {
+      let details = {message, response}
+      let outcomes = [
+        {status: 400, outcome: BadRequest(details)},
+        {status: 401, outcome: Unauthorized(details)},
+        {status: 402, outcome: PaymentRequired(details)},
+        {status: 403, outcome: Denied(details)},
+        {status: 404, outcome: NotFound(details)},
+        {status: 429, outcome: RateLimited(details)}
+      ]
+      Ok(!list_fold(outcomes, Rejected(details), (entry, outcome) -> {
+        match equal(response.status, entry.status) {
+          True(_) -> { entry.outcome }
+          False(_) -> { outcome }
+        }
+      }))
+    }
+  }
+}
+let send = (config, operation, expected_status, decode_body) -> {
+  let operation = http.prepend_header(operation, {key: "accept", value: "application/json"})
+  let operation = http.prepend_header(operation, {key: "user-agent", value: "eyg-dnsimple/1.0"})
+  let operation = http.prepend_header(operation, {
+    key: "authorization", value: string.append("Bearer ", config.token)
+  })
+  match http.dispatch(operation, config.origin) {
+    Error(reason) -> { Error(Transport(reason)) }
+    Ok(response) -> {
+      match equal(response.status, expected_status) {
+        True(_) -> {
+          match decode_body(response.body) {
+            Ok(body) -> { Ok(Success({status: response.status, headers: response.headers, body})) }
+            Error(reason) -> { Error(Protocol({reason, response})) }
+          }
+        }
+        False(_) -> {
+          match integer.compare(response.status, 500) {
+            Lt(_) -> {
+              match integer.compare(response.status, 400) {
+                Lt(_) -> { Error(Protocol({reason: "Unexpected HTTP status", response})) }
+                | (_) -> { application_error(response) }
+              }
+            }
+            | (_) -> {
+              match integer.compare(response.status, 600) {
+                Lt(_) -> { Error(Server(response)) }
+                | (_) -> { Error(Protocol({reason: "Unexpected HTTP status", response})) }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+let list_accounts = (config) -> {
+  send(config, http.operation.get("/v2/accounts"), 200, envelope(decode.list(account_decoder)))
+}
+let list_domains = (config, account, query) -> {
+  send(config, with_query(http.operation.get(domains_path(account)), query), 200, paginated(domain_decoder))
+}
+let create_domain = (config, account, {name}) -> {
+  let operation = http.set_content(http.operation.post(domains_path(account)), {
+    content_type: "application/json",
+    bytes: string.to_binary(encode.object([encode.field("name", json_string(name))]))
+  })
+  send(config, operation, 201, envelope(domain_decoder))
+}
+let get_domain = (config, account, domain) -> {
+  send(config, http.operation.get(domain_path(account, domain)), 200, envelope(domain_decoder))
+}
+let delete_domain = (config, account, domain) -> {
+  send(config, http.operation.delete(domain_path(account, domain)), 204, (body) -> {
+    match equal(body, string.to_binary("")) {
+      True(_) -> { Ok({}) }
+      False(_) -> { Error("Expected empty HTTP 204 body") }
+    }
+  })
+}
+let get_domains_research_status = (config, account, domain) -> {
+  let operation = http.operation.get(string.append(domains_path(account), "/research/status"))
+  send(config, with_query(operation, [{key: "domain", value: domain}]), 200, envelope(research_decoder))
+}
+let list_charges = (config, account, query) -> {
+  let path = string.concat(["/v2/", integer.to_string(account), "/billing/charges"])
+  send(config, with_query(http.operation.get(path), query), 200, paginated(charge_decoder))
+}
+
+{
+  readme,
+  from_token,
+  from_token_at,
+  connect,
+  list_accounts,
+  list_domains,
+  create_domain,
+  get_domain,
+  delete_domain,
+  get_domains_research_status,
+  list_charges
+}
