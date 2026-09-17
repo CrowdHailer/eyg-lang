@@ -1,48 +1,62 @@
+let readme = "# HTTP
+
+Work with HTTP data types.
+
+On a client
+```eyg
+let http = @http
+let list_users = http.operation.get(\"/user\")
+let list_users = http.prepend_header(
+  list_users,
+  {key: \"authorization\", value: \"My token\"}
+)
+let origin = http.origin.https(\"api.example.com\")
+```
+
+On a server
+```
+let { response, content } = @http
+({method, path}) -> {
+  match method {
+    GET({}) -> { response.ok(content.plain(\"Hello from EYG!\")) }
+    | (_) -> { response.empty(404) }
+  }
+}
+```
+
+## Operations and Requests
+
+The module encourages working with operations and origins instead of requests.
+An API normally defines many operations for a single service.
+There may also be a staging, dev or test service requiring the origin be configured.
+
+Operation is the term used by OpenAPI Spec.
+
+## Headers and Bodies
+
+Functions to work with headers and/or the body will work on any record with `headers` and/or `body` field.
+Therefore `prepend_header`, `set_content` etc work on operations, requests and responses
+
+"
 let origin = {
   https: (host) -> { {scheme: HTTPS({}), host: host, port: None({})} },
   localhost: (port) -> { {scheme: HTTP({}), host: "localhost", port: Some(port)} }
 }
 
-let operation = {
-  get: (path) -> {
-    {
-      method: GET({}),
-      path: path,
-      query: None({}),
-      headers: [],
-      body: !string_to_binary("")
-    }
-  },
-  post: (path, {content_type, bytes}) -> {
-    {
-      method: POST({}),
-      path: path,
-      query: None({}),
-      headers: [{key: "content-type", value: content_type}],
-      body: bytes
-    }
-  }
-}
-
-let response = {
-  ok: ({content_type, bytes}) -> {
-    {
-      status: 200,
-      headers: [{key: "content-type", value: content_type}],
-      body: bytes
-    }
-  },
-  no_content: {
-    status: 204,
+let new_operation = (method, path) -> {
+  {
+    method,
+    path,
+    query: None({}),
     headers: [],
     body: !string_to_binary("")
   }
 }
 
-let dispatch = (operation, origin) -> {
+let operation_to_request = (operation, origin) -> {
   let {scheme, host, port} = origin
   let {method, path, query, headers, body} = operation
-  let request = {
+  {
     method: method,
     scheme: scheme,
     host: host,
@@ -52,12 +66,96 @@ let dispatch = (operation, origin) -> {
     headers: headers,
     body: body
   }
-  perform Fetch(request)
+}
+
+let operation = {
+  new: new_operation,
+  to_request: operation_to_request,
+  connect: new_operation(CONNECT({})),
+  delete: new_operation(DELETE({})),
+  get: new_operation(GET({})),
+  head: new_operation(HEAD({})),
+  options: new_operation(OPTIONS({})),
+  patch: new_operation(PATCH({})),
+  post: new_operation(POST({})),
+  put: new_operation(PUT({})),
+  trace: new_operation(TRACE({})),
+}
+
+let empty_response = (status) -> {
+  {
+    status,
+    headers: [],
+    body: !string_to_binary("")
+  }
+}
+
+let with_content = (status, {content_type, bytes}) -> {
+  {
+    status: status,
+    headers: [{key: "content-type", value: content_type}],
+    body: bytes
+  }
+}
+
+let set_content = (message, {content_type, bytes}) -> {
+  {
+    headers: [{key: "content-type", value: content_type}, ..message.headers],
+    body: bytes,
+    ..message
+  }
+}
+
+let prepend_header = (message, {key, value}) -> {
+  {
+    headers: [{key, value}, ..message.headers],
+    ..message
+  }
+}
+
+let response = {
+  empty: empty_response,
+  ok: with_content(200),
+  created: with_content(201),
+  accepted: with_content(202),
+  no_content: empty_response(204),
+  moved_permanently: with_content(301),
+  found: with_content(302),
+  see_other: with_content(303),
+  not_modified: empty_response(304),
+  temporary_redirect: with_content(307),
+  permanent_redirect: with_content(308),
+  bad_request: with_content(400),
+  unauthorized: with_content(401),
+  payment_required: with_content(402),
+  forbidden: with_content(403),
+  not_found: with_content(404),
+  method_not_allowed: with_content(405),
+  not_acceptable: with_content(406),
+  request_timeout: with_content(408),
+  conflict: with_content(409),
+  gone: with_content(410),
+  internal_server_error: with_content(500),
+  bad_gateway: with_content(502),
+  service_unavailable: with_content(503),
+}
+
+let content = {
+  plain: (text) -> {
+    {content_type: "text/plain", bytes: !string_to_binary(text)}
+  }
+}
+
+let dispatch = (operation, origin) -> {
+  perform Fetch(operation_to_request(operation, origin))
 }
 
 {
   origin,
   operation,
   response,
+  content,
+  prepend_header,
+  set_content,
   dispatch
 }
