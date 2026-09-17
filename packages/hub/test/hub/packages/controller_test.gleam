@@ -181,3 +181,35 @@ pub fn reject_publish_by_previous_owner_test() {
   let assert Ok(Error(reason)) = client.submit_package_response(response)
   assert server.denied_reason(server.DoesNotHavePermission) == reason
 }
+
+pub fn reject_wrong_sequence_without_crashing_test() {
+  use context <- helpers.web_context()
+  let package = g.package()
+  let assert Ok(#(signatory, keypair)) = fixtures.signatory(context.db)
+  let assert Ok(Nil) = fixtures.own_package(context.db, package, signatory.cid)
+  let assert Ok(module) = fixtures.module(context.db)
+  let first = publisher.first(signatory.cid, keypair.key_id, package, module)
+  let response =
+    dispatch(
+      client.submit_package(
+        first,
+        crypto.sign(publisher.to_bytes(first), keypair),
+      ),
+      context,
+    )
+  let assert Ok(Ok(previous)) = client.submit_package_response(response)
+  let next =
+    publisher.follow(signatory.cid, keypair.key_id, package, module, previous)
+  let next = substrate.Entry(..next, sequence: 3)
+  let response =
+    dispatch(
+      client.submit_package(
+        next,
+        crypto.sign(publisher.to_bytes(next), keypair),
+      ),
+      context,
+    )
+  assert response.status == 422
+  let assert Ok(Error(reason)) = client.submit_package_response(response)
+  assert server.denied_reason(server.WrongSequence) == reason
+}

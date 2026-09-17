@@ -20,13 +20,13 @@ pub fn submit(request, context: context.Context) {
   use signature <- utils.try_untethered(server.read_signature(request))
   use entry <- utils.try_untethered(validate_payload(payload))
 
-  let assert Ok(_history) = case entry.previous {
+  use _history <- utils.try_untethered(case entry.previous {
     Some(cid) -> {
       let query = data.list_entries_from_entry(cid)
       let assert Ok(pog.Returned(rows:, ..)) = pog.execute(query, context.db)
 
       let assert [previous, ..] = list.reverse(rows)
-      let assert Ok(Nil) = server.validate_integrity(entry, previous.sequence)
+      use Nil <- result.try(server.validate_integrity(entry, previous.sequence))
       list.map(rows, fn(row) {
         let assert Ok(entry) = json.parse(row.payload, publisher.decoder())
 
@@ -35,7 +35,7 @@ pub fn submit(request, context: context.Context) {
       |> Ok
     }
     None -> Ok([])
-  }
+  })
   use Nil <- utils.try_untethered(
     crypto.verify(payload, entry.key, signature)
     |> result.replace_error(server.IncorrectSignature),

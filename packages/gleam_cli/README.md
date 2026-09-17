@@ -157,3 +157,5 @@ All release references must be fully pinned as `@name:version:<module-cid>`.
 eyg publish package-name path/to/file.eyg
 ```
 
+The package name must first be granted to your signatory by a hub administrator.
+Use `eyg signatory list` to inspect your local identity and its status on the hub.

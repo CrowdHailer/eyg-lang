@@ -126,11 +126,6 @@ eyg publish package-name path/to/file.eyg
 
 The current CLI chooses a signatory implicitly:
 
-| Local signatories | Result |
-|---|---|
-| None | Publishing fails with `No signatories created.` |
-| One | That signatory signs the release. |
-| More than one | Publishing fails with `Multiple signatories created`. |
 
 There is currently no flag to select among multiple signatories. Do not work
 around this by repeatedly moving credential files; explicit selection is part

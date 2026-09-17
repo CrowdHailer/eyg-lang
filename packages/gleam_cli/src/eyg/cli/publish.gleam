@@ -4,9 +4,11 @@ import eyg/cli/internal/source
 import eyg/cli/internal/store
 import eyg/cli/system
 import eyg/hub/cache
+import gleam/int
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/option.{None, Some}
+import multiformats/cid/v1
 
 pub fn execute(
   package: String,
@@ -17,9 +19,17 @@ pub fn execute(
   // TODO list a readDirectory effect and list_files driver
   use signatories <- promisex.try_sync(store.all_signatories(dirs))
   use signatory <- promisex.try_sync(case signatories {
-    [] -> Error("No signatories created.")
+    [] ->
+      Error(
+        "No signatories created. Run 'eyg signatory initial <alias>', then ask a hub administrator to grant it ownership of package '"
+        <> package
+        <> "'.",
+      )
     [signatory] -> Ok(signatory)
-    _ -> Error("Multiple signatories created")
+    _ ->
+      Error(
+        "Multiple signatories created; publishing requires exactly one local signatory. Run 'eyg signatory list' to inspect them.",
+      )
   })
   {
     let input = source.File(file)
@@ -44,7 +54,15 @@ pub fn execute(
       previous,
       client,
     ))
-    use _response <- system.try(response)
+    use response <- system.try(response)
+    use Nil <- system.then(system.stdout(
+      "Published @"
+      <> package
+      <> ":"
+      <> int.to_string(response.sequence)
+      <> ":"
+      <> v1.to_string(module),
+    ))
     system.Done(Ok(0))
   }
   |> system.run

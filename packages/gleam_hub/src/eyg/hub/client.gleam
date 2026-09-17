@@ -7,6 +7,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/http/request.{type Request}
 import gleam/http/response.{Response}
+import gleam/int
 import gleam/json
 import gleam/option.{None, Some}
 import gleam/string
@@ -146,6 +147,33 @@ pub fn share_response(
   }
 }
 
+/// Describe a failed hub request without discarding its structured reason or
+/// dumping an HTML error page into the terminal.
+pub fn describe_response(response: response.Response(BitArray)) -> String {
+  let status = "HTTP " <> int.to_string(response.status)
+  case json.parse_bits(response.body, schema.failure_decoder()) {
+    Ok("wrong_sequence") ->
+      status
+      <> ": Invalid release sequence. Update the EYG CLI and retry with fresh package history."
+    Ok("does_not_have_permission") ->
+      status
+      <> ": Signatory lacks publishing permission. Run 'eyg signatory list' and ask a hub administrator to check ownership of this package on the configured hub."
+    Ok(reason) -> status <> ": " <> reason
+    Error(_) -> {
+      let explanation = case response.status {
+        403 ->
+          "Publishing permission denied. Check the signatory and package ownership on this hub."
+        422 -> "The hub rejected the submitted data."
+        500 ->
+          "The hub failed while processing the request. This is a server bug; contact the hub administrator."
+        503 -> "The hub is temporarily unavailable. Retry later."
+        _ -> "The hub returned an unexpected response."
+      }
+      status <> ": " <> explanation <> " No JSON error reason was returned."
+    }
+  }
+}
+
 pub fn share_bundle_operation(bundle) -> operation.Operation(BitArray) {
   let #(#(cid, block), dependencies) = bundle
   let assert Ok(body) =
@@ -182,7 +210,11 @@ pub fn share_bundle(
             False -> Error("hub returned the wrong shared module ID")
           }
 
-        Error(reason) -> Error(client.describe_failure(reason))
+        Error(_) ->
+          Error(
+            "Could not upload module (POST /modules/share).\n"
+            <> describe_response(response),
+          )
       }
     Error(reason) -> Error(string.inspect(reason))
   }

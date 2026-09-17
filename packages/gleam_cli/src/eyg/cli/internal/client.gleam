@@ -8,6 +8,7 @@ import eyg/hub/client
 import eyg/hub/publisher
 import eyg/hub/signatory
 import eyg/ir/tree as ir
+import gleam/http/request
 import gleam/http/response
 import gleam/int
 import gleam/javascript/promise.{type Promise}
@@ -15,6 +16,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import gleam/uri
 import midas/continuation.{type Continuation as K}
 import midas/effect
 import multiformats/cid/v1
@@ -130,7 +132,13 @@ pub fn share_module(
   use result <- system.then(system.fetch(request))
   case result {
     Ok(response) ->
-      client.share_response(response) |> result.map_error(string.inspect)
+      client.share_response(response)
+      |> result.map_error(fn(_) {
+        "Could not upload module (POST "
+        <> uri.to_string(request.to_uri(request))
+        <> ").\n"
+        <> client.describe_response(response)
+      })
     Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
   |> system.Done
@@ -164,7 +172,7 @@ pub fn submit_release(
     None -> #(1, None)
   }
   let version = sequence
-  let store.Signatory(alias: _, principal:, keypair:) = signatory
+  let store.Signatory(alias:, principal:, keypair:) = signatory
 
   let entry =
     substrate.Entry(
@@ -180,10 +188,22 @@ pub fn submit_release(
   let request = operation.to_request(operation, client.origin)
   use result <- system.then(system.fetch(request))
   case result {
-    Ok(response) ->
-      client.submit_package_response(response)
-      |> result.map_error(string.inspect)
-      |> result.flatten
+    Ok(response) -> {
+      case client.submit_package_response(response) {
+        Ok(Ok(entry)) -> Ok(entry)
+        _ ->
+          Error(
+            "Could not publish package '"
+            <> package
+            <> "' with signatory '"
+            <> alias
+            <> "'.\nPOST "
+            <> uri.to_string(request.to_uri(request))
+            <> "\n"
+            <> client.describe_response(response),
+          )
+      }
+    }
     Error(reason) -> Error(effect.describe_fetch_error(reason))
   }
   |> system.Done
