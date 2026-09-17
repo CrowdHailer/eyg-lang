@@ -13,7 +13,7 @@
 // required. Round-trips through `decode` are tested in
 // ../json/test.eyg.
 
-let string_helpers = @standard.string
+let string_helpers = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja.string
 
 // Escape characters that aren't legal between JSON double-quotes.
 // Order matters: replace backslash first so the escapes we add next
@@ -65,7 +65,7 @@ let array = (items) -> {
 let field = (key, value) -> { {key, value} }
 
 let object = (fields) -> {
-  let pairs = @standard.list.map(fields, ({key, value}) -> {
+  let pairs = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja.list.map(fields, ({key, value}) -> {
     !string_append(quote(key), !string_append(":", value))
   })
   !string_append("{", !string_append(join(pairs, ","), "}"))

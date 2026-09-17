@@ -52,11 +52,3 @@ let result = parse("[]", decode.boolean)
 // Will return Error("not a boolean")
 ```
 
-The @json package includes the `expect` function for aborting on error.
-Use this when making quick scripts
-
-```eyg
-let {parse: parse, decode: decode, expect: expect} = @json
-let result = expect(parse("true", decode.boolean), "failed to decode")
-// Will return Error("not a boolean")
-```

@@ -19,7 +19,7 @@ NEVER return dummy or example data. Tell the user you can't write the script if 
 
 ```eyg
 let {http: http, result: result, string: string} = @standard
-let {parse: parse, decode: decode, expect: expect} = @json
+let {parse: parse, decode: decode} = @json
 
 let get_location = (_) -> {
   let request = http.get("ipinfo.io")

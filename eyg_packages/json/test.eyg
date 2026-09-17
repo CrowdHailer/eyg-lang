@@ -1,5 +1,5 @@
 let {assert} = import "../aok/index.eyg"
-let json = import "./index.eyg.json"
+let json = import "./index.eyg"
 
 let person_decoder = json.decode.object((parsed) -> {
   let name = json.decode.field("name", json.decode.string)(parsed)
@@ -19,6 +19,8 @@ let nested_score_decoder = json.decode.object(
    test: (_) -> { assert.equal(json.parse("true", json.decode.boolean), Ok(True({}))) }},
   {name: "json decodes false",
    test: (_) -> { assert.equal(json.parse("false", json.decode.boolean), Ok(False({}))) }},
+  {name: "json boolean fails to decode integer",
+   test: (_) -> { assert.equal(json.parse("3", json.decode.boolean), Error("Expected boolean")) }},
 
   {name: "json decodes integer",
    test: (_) -> { assert.equal(json.parse("42", json.decode.integer), Ok(42)) }},

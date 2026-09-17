@@ -1,19 +1,51 @@
+let readme = "# json
+
+JSON parsing and encoding.
+
+## Decoding
+
+```eyg
+let {decode: d, parse} = @json
+let decoder = d.object(
+  d.field(\"name\", d.string)
+)
+match parse(\"{\\\"name\\\":\\\"Ada\\\"}\", decoder) {
+  Ok(name) -> { name }
+  Error(reason) -> { reason }
+}
+```
+
+All decoders:
+
+- decode.boolean
+- decode.integer
+- decode.string
+- decode.list(item_decoder)
+- decode.field(label, value_decoder)
+- decode.object(decoder_fn)
+
+use `parse(input, decoder)` for strings and `parse_bytes` for binary data.
+
+## Encoding
+
+```eyg
+let json = @json
+let e = json.encode
+
+let payload = e.object([
+  e.field(\"name\", e.string(\"Ada\")),
+  e.field(\"age\", e.integer(36)),
+])
+// -> \"{\\\"name\\\":\\\"Ada\\\",\\\"age\\\":36}\"
+```
+"
+
 let abort = (reason) -> {
   !never(perform Abort(reason))
 }
 
-let expect = (result, message) -> {
-  match result {
-    Ok(value) -> { value }
-    Error(_) -> { abort(message) }
-  }
-}
-
-// Two-arg shim around @standard.list.reverse: call sites pass an
-// initial accumulator (always `[]` in this package), so the explicit
-// form keeps the call sites unchanged.
-let reverse = (items, acc) -> {
-  @standard.list.append(@standard.list.reverse(items), acc)
+let move = (from, to) -> {
+  !list_fold(from, to, (item, acc) -> { [item, ..acc] }) 
 }
 
 let take = (parsed) -> {
@@ -41,13 +73,7 @@ let boolean = (parsed) -> {
   match head.term {
     True(_) -> { {value: True({}), rest: tail} }
     False(_) -> { {value: False({}), rest: tail} }
-    Null(_) -> { abort("Expected boolean") }
-    Integer(_) -> { abort("Expected boolean") }
-    String(_) -> { abort("Expected boolean") }
-    Number(_) -> { abort("Expected boolean") }
-    Array(_) -> { abort("Expected boolean") }
-    Object(_) -> { abort("Expected boolean") }
-    Field(_) -> { abort("Expected boolean") }
+    | (_) -> { abort("Expected boolean") }
   }
 }
 
@@ -55,14 +81,7 @@ let integer = (parsed) -> {
   let {head, tail} = take(parsed)
   match head.term {
     Integer(value) -> { {value, rest: tail} }
-    True(_) -> { abort("Expected integer") }
-    False(_) -> { abort("Expected integer") }
-    Null(_) -> { abort("Expected integer") }
-    String(_) -> { abort("Expected integer") }
-    Number(_) -> { abort("Expected integer") }
-    Array(_) -> { abort("Expected integer") }
-    Object(_) -> { abort("Expected integer") }
-    Field(_) -> { abort("Expected integer") }
+    | (_) -> { abort("Expected integer") }
   }
 }
 
@@ -70,14 +89,7 @@ let string = (parsed) -> {
   let {head, tail} = take(parsed)
   match head.term {
     String(value) -> { {value, rest: tail} }
-    True(_) -> { abort("Expected string") }
-    False(_) -> { abort("Expected string") }
-    Null(_) -> { abort("Expected string") }
-    Integer(_) -> { abort("Expected string") }
-    Number(_) -> { abort("Expected string") }
-    Array(_) -> { abort("Expected string") }
-    Object(_) -> { abort("Expected string") }
-    Field(_) -> { abort("Expected string") }
+    | (_) -> { abort("Expected string") }
   }
 }
 
@@ -95,23 +107,16 @@ let list = (item_decoder) -> {
                   let decoded = item_decoder(rest)
                   self(decoded.rest, [decoded.value, ..acc])
                 }
-                Eq(_) -> { {value: reverse(acc, []), rest} }
-                Lt(_) -> { {value: reverse(acc, []), rest} }
+                Eq(_) -> { {value: move(acc, []), rest} }
+                Lt(_) -> { {value: move(acc, []), rest} }
               }
             }
-            Error(_) -> { {value: reverse(acc, []), rest} }
+            Error(_) -> { {value: move(acc, []), rest} }
           }
         })
         read_items(tail, [])
       }
-      True(_) -> { abort("Expected list") }
-      False(_) -> { abort("Expected list") }
-      Null(_) -> { abort("Expected list") }
-      Integer(_) -> { abort("Expected list") }
-      String(_) -> { abort("Expected list") }
-      Number(_) -> { abort("Expected list") }
-      Object(_) -> { abort("Expected list") }
-      Field(_) -> { abort("Expected list") }
+     | (_) -> { abort("Expected list") }
     }
   }
 }
@@ -129,14 +134,7 @@ let do_field = !fix((self, parsed, at, seek) -> {
                 False(_) -> { self(tail, at, seek) }
               }
             }
-            True(_) -> { self(tail, at, seek) }
-            False(_) -> { self(tail, at, seek) }
-            Null(_) -> { self(tail, at, seek) }
-            Integer(_) -> { self(tail, at, seek) }
-            String(_) -> { self(tail, at, seek) }
-            Number(_) -> { self(tail, at, seek) }
-            Array(_) -> { self(tail, at, seek) }
-            Object(_) -> { self(tail, at, seek) }
+           | (_) -> { self(tail, at, seek) }
           }
         }
         Gt(_) -> { self(tail, at, seek) }
@@ -159,23 +157,19 @@ let field = (label, decoder) -> {
 let object = (decoder) -> {
   (parsed) -> {
     let {head, tail} = take(parsed)
-  match head.term {
-    Object(_) -> { {value: decoder(tail), rest: drop(tail, head.depth)} }
-    True(_) -> { abort("Expected object") }
-    False(_) -> { abort("Expected object") }
-    Null(_) -> { abort("Expected object") }
-    Integer(_) -> { abort("Expected object") }
-    String(_) -> { abort("Expected object") }
-    Number(_) -> { abort("Expected object") }
-    Array(_) -> { abort("Expected object") }
-    Field(_) -> { abort("Expected object") }
+    match head.term {
+      Object(_) -> { {value: decoder(tail), rest: drop(tail, head.depth)} }
+      | (_) -> { abort("Expected object") }
+    }
   }
-}
 }
 
 let parse_bytes = (json, decoder) -> {
   match perform DecodeJSON(json) {
-    Ok(flat) -> { Ok(decoder(flat).value) }
+    Ok(flat) -> { handle Abort(
+      (message,_resume) -> { Error(message) },
+      (_) -> { Ok(decoder(flat).value) }
+    ) }
     Error(reason) -> { Error(reason) }
   }
 }
@@ -196,9 +190,9 @@ let decode = {
 let encode = import "./encode.eyg"
 
 {
+  readme,
   parse,
   parse_bytes,
-  expect,
   decode,
   encode
 }
