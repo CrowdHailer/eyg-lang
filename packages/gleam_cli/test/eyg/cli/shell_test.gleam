@@ -17,6 +17,17 @@ pub fn type_test() {
   promise.resolve(Nil)
 }
 
+pub fn import_from_repl_working_directory_test() {
+  use #(output, _) <- promise.await(shell.handle(
+    "import \"./test/fixtures/source_relative/value.eyg\"",
+    [],
+    [],
+    state(),
+  ))
+  assert [Ok("5")] == output
+  promise.resolve(Nil)
+}
+
 pub fn scope_test() {
   use #(output, #(buffer, scope, defs, state)) <- promise.await(shell.handle(
     "let x = 1",

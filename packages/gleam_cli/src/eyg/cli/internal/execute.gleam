@@ -497,6 +497,10 @@ pub fn resolve_filepath(
           |> filepath.directory_name()
           |> filepath.join(path)
           |> Ok
+        source.Repl | source.Inline | source.Pipe ->
+          simplifile.current_directory()
+          |> result.map(filepath.join(_, path))
+          |> result.map_error(simplifile.describe_error)
         _ ->
           Error(
             "relative path \""
