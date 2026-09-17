@@ -114,9 +114,8 @@ is no longer needed.
 
 ## Publish with a signatory
 
-Before a signatory can publish, the hub must grant its principal CID ownership
-of the package name. Public package-name claiming is not currently available;
-hub administrators grant ownership.
+Before a signatory can publish, the hub must grant its principal CID ownership of the package name.
+Public package-name claiming is not currently available, hub administrators grant ownership.
 
 Publish a release with:
 

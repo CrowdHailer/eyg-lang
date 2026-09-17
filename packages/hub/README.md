@@ -26,17 +26,21 @@ gleam run -m cigogne new --name NAME
 
 ### Granting publish access
 
-Publishing a release is restricted to the signatory entity that owns the
-package name. There is no public way to claim a name; access is granted
-manually with a dev task:
+Publishing a release is restricted to the signatory entity that owns the package name. There is no public way to claim a name.
+
+First find the **Principle CID** for the entity that will publish.
+Use your local alias to a signatory created earlier.
 
 ```sh
-gleam run -m hub/dev/grant_owner <package> <entity_id>
+eyg signatory show <alias>
 ```
 
-`<entity_id>` is the signatory's entity CID. Re-running with a different entity
-transfers ownership (the `package_owners` table is append-only and the latest
-record wins).
+The admin graning access needs to ssh to the running server and run the `grant_owner` task.
+Run as a single command from a machine with ssh access
+
+```sh
+ssh root@eyg.run 'docker compose --project-directory /opt/eyg.run exec -T backend gleam run -m hub/dev/grant_owner -- <package_name> "<principle_cid>"'
+```
 
 ### Notes
 
