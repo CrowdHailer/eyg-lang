@@ -1,3 +1,4 @@
+let {boolean, string, integer, result, binary, list, equal, fix} = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja
 let readme = "# HTTP
 
 Work with HTTP data types.
@@ -14,7 +15,8 @@ let origin = http.origin.https(\"api.example.com\")
 ```
 
 On a server
-```
+
+```eyg
 let { response, content } = @http
 ({method, path}) -> {
   match method {
@@ -37,7 +39,102 @@ Operation is the term used by OpenAPI Spec.
 Functions to work with headers and/or the body will work on any record with `headers` and/or `body` field.
 Therefore `prepend_header`, `set_content` etc work on operations, requests and responses
 
+## Content
+
+Body content is set when creating request by passing in a record of `{content_type: String, bytes: Binary}`
+There is a `plain` and `form` helper.
+
+```eyg
+let http = @http
+http.set_content(http.operation.post(path), http.content.form(fields))
+```
 "
+
+let greater_than_or_equal = (a, b) -> {
+  match !int_compare(a, b) {
+    Lt(_) -> { False({}) }
+    | (_) -> { True({}) }
+  }
+}
+
+let less_than = (a, b) -> {
+  match !int_compare(a, b) {
+    Lt(_) -> { True({}) }
+    | (_) -> { False({}) }
+  }
+}
+
+let hex_digit = (n) -> {
+  match integer.compare(n, 10) {
+    Lt(_) -> { integer.add(n, 48) }
+    | (_) -> { integer.add(n, 55) }
+  }
+}
+
+let safe_divide = (numerator, denominator) -> {
+  match !int_divide(numerator, denominator) {
+    Ok(value) -> { value }
+    Error(_) -> { 0 }
+  }
+}
+
+let percent_safe = [42, 45, 46, 95]
+
+let is_number = (ch) -> {
+  boolean.and(greater_than_or_equal(ch, 48), less_than(ch, 58))
+}
+
+let is_upper = (ch) -> {
+  boolean.and(greater_than_or_equal(ch, 65), less_than(ch, 91))
+}
+
+let is_lower = (ch) -> {
+  boolean.and(greater_than_or_equal(ch, 97), less_than(ch, 123))
+}
+
+let percent_ok = (n) -> {
+  match is_lower(n) {
+    True(_) -> { True({}) }
+    False(_) -> { match is_upper(n) {
+      True(_) -> { True({}) }
+      False(_) -> { match is_number(n) {
+        True(_) -> { True({}) }
+        False(_) -> { match list.contains(percent_safe, n) {
+          True(_) -> { True({}) }
+          False(_) -> { False({}) }
+        } }
+      } }
+    } }
+  }
+}
+
+let form_value = (text) -> {
+  let reversed = !binary_fold(string.to_binary(text), [], (byte, acc) -> {
+    match !equal(byte, 32) {
+      True(_) -> { [43, ..acc] }
+      False(_) -> { match percent_ok(byte) {
+        True(_) -> { [byte, ..acc] }
+        False(_) ->  {
+          let high = safe_divide(byte, 16)
+          // probably a modulo should exist
+          let low = integer.subtract(byte, integer.multiply(high, 16))
+          [hex_digit(low), hex_digit(high), 37, ..acc]
+        }
+      } }
+    }
+  })
+  match string.from_binary(!binary_from_integers(list.reverse(reversed))) {
+    Ok(value) -> { value }
+    Error(_) -> { "" }
+  }
+}
+
+let form = (fields) -> {
+  string.join(list.map(fields, ({key, value}) -> {
+    string.concat([form_value(key), "=", form_value(value)])
+  }), "&")
+}
+
 let origin = {
   https: (host) -> { {scheme: HTTPS({}), host: host, port: None({})} },
   localhost: (port) -> { {scheme: HTTP({}), host: "localhost", port: Some(port)} }
@@ -143,6 +240,9 @@ let response = {
 let content = {
   plain: (text) -> {
     {content_type: "text/plain", bytes: !string_to_binary(text)}
+  },
+  form: (fields) -> {
+    {content_type: "application/x-www-form-urlencoded", bytes: !string_to_binary(form(fields))}
   }
 }
 
@@ -151,6 +251,7 @@ let dispatch = (operation, origin) -> {
 }
 
 {
+  form_value,
   readme,
   origin,
   operation,

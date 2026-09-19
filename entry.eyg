@@ -10,7 +10,8 @@ let tests = list.flatten([
   import "./eyg_packages/json/entry.eyg".tests,
   import "./eyg_packages/fs/entry.eyg".tests,
   import "./eyg_packages/edit/entry.eyg".tests,
-  import "./eyg_packages/option/entry.eyg".tests
+  import "./eyg_packages/option/entry.eyg".tests,
+  import "./eyg_packages/http/entry.eyg".tests
 ])
 let test = (_) -> {
   aok.all(tests)

@@ -1,0 +1,70 @@
+let {assert} = import "../aok/index.eyg"
+let http = import "./index.eyg"
+
+// https://url.spec.whatwg.org/#application/x-www-form-urlencoded-serializing
+[
+  {
+    name: "form encoding preserves all ASCII alphanumerics",
+    test: (_) -> {
+      let text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+      assert.equal_string(http.form_value(text), text)
+    }
+  },
+  {
+    name: "form encoding preserves the form-safe punctuation",
+    test: (_) -> {
+      assert.equal_string(http.form_value("*-._"), "*-._")
+    }
+  },
+  {
+    name: "form encoding escapes punctuation outside the form-safe set",
+    test: (_) -> {
+      assert.equal_string(http.form_value("!$'()~"), "%21%24%27%28%29%7E")
+    }
+  },
+  {
+    name: "form encoding uses plus for spaces and escapes literal plus",
+    test: (_) -> {
+      assert.equal_string(http.form_value(" a+b c "), "+a%2Bb+c+")
+    }
+  },
+  {
+    name: "form content applies form encoding to both keys and values",
+    test: (_) -> {
+      let content = http.content.form([
+        {key: "A B_", value: "!$'()~*-._ +&=é"},
+        {key: "next", value: "ok"}
+      ])
+      let _ = assert.equal_string(content.content_type, "application/x-www-form-urlencoded")
+      assert.equal_string(assert.ok(!string_from_binary(content.bytes)),
+        "A+B_=%21%24%27%28%29%7E*-._+%2B%26%3D%C3%A9&next=ok")
+    }
+  },
+  {
+    name: "form content encodes an empty field list as an empty body",
+    test: (_) -> {
+      let content = http.content.form([])
+      assert.equal_string(assert.ok(!string_from_binary(content.bytes)), "")
+    }
+  },
+  {
+    name: "form content encodes four-byte UTF-8 characters in keys and values",
+    test: (_) -> {
+      let content = http.content.form([{key: "a😀b", value: "c🚀d"}])
+      assert.equal_string(assert.ok(!string_from_binary(content.bytes)),
+        "a%F0%9F%98%80b=c%F0%9F%9A%80d")
+    }
+  },
+  {
+    name: "form content preserves field order including repeated keys",
+    test: (_) -> {
+      let content = http.content.form([
+        {key: "z", value: "first"},
+        {key: "a", value: "second"},
+        {key: "z", value: "third"}
+      ])
+      assert.equal_string(assert.ok(!string_from_binary(content.bytes)),
+        "z=first&a=second&z=third")
+    }
+  },
+]
