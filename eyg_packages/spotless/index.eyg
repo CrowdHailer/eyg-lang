@@ -1,0 +1,75 @@
+let http = @http:3:baguqeeraqt2dscwwimthggq3gu5ji3j4vxk6diirk7plmtkiaihllacfln5q
+let json = @json:1:baguqeeraxtawxsrbnchzs5pvkq5ro33o6ze3ni7654aibhm4ygqple2lajka
+let {string, integer, result, binary, list, equal, fix} = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja
+
+let readme = "# Spotless
+
+Device authentication through https://spotless.run/guides/device-login.
+
+```eyg
+let spotless = @spotless
+let access_token = spotless.connect(\"dnsimple\")
+```
+
+`connect(service)` prints the verification link and code, waits for approval,
+and returns the service access token. Polling respects `interval` and
+`slow_down`; denial, expiry and other failures perform `Abort`.
+"
+let decode = json.decode
+let abort = (reason) -> { !never(perform Abort(reason)) }
+
+
+let post = (path, fields) -> {
+  let operation = http.set_content(http.operation.post(path), http.content.form(fields))
+  result.expect(http.dispatch(operation, http.origin.https("spotless.run")), "Authorization request failed")
+}
+let field = (body, name) -> {
+  result.expect(json.parse_bytes(body, decode.object(decode.field(name, decode.string))), "Invalid authorization response")
+}
+// TODO remove request creation before fix loop
+let poll = fix((self, fields, interval) -> {
+  let _ = perform Sleep(integer.multiply(interval, 1000))
+  let response = post("/token", fields)
+  match equal(response.status, 200) {
+    True(_) -> { field(response.body, "access_token") }
+    False(_) -> {
+      let reason = field(response.body, "error")
+      match equal(reason, "authorization_pending") {
+        True(_) -> { self(fields, interval) }
+        False(_) -> {
+          match equal(reason, "slow_down") {
+            True(_) -> { self(fields, integer.add(interval, 5)) }
+            False(_) -> { abort(reason) }
+          }
+        }
+      }
+    }
+  }
+})
+let connect = (service) -> {
+  let response = post(string.concat(["/device/", service]), [
+    {key: "client_id", value: "http://localhost"}
+  ])
+  let _ = match equal(response.status, 200) {
+    True(_) -> { {} }
+    False(_) -> { abort(field(response.body, "error")) }
+  }
+  let device = result.expect(json.parse_bytes(response.body, decode.object((fields) -> {
+    let device_code = decode.field("device_code", decode.string, fields)
+    let user_code = decode.field("user_code", decode.string, fields)
+    let verification_uri = decode.field("verification_uri", decode.string, fields)
+    {device_code, user_code, verification_uri}
+  })), "Invalid device authorization response")
+  let interval = result.unwrap(5, json.parse_bytes(response.body,
+    decode.object(decode.field("interval", decode.integer))
+  ))
+  let _ = perform StandardOut(string.concat(["Open: ", device.verification_uri, "\n"]))
+  let _ = perform StandardOut(string.concat(["Code: ", device.user_code, "\n"]))
+  poll([
+    {key: "grant_type", value: "urn:ietf:params:oauth:grant-type:device_code"},
+    {key: "client_id", value: "http://localhost"},
+    {key: "device_code", value: device.device_code}
+  ], interval)
+}
+
+{readme, connect}
