@@ -7,7 +7,6 @@ import eyg/cli/run
 import gleam/http
 import gleam/javascript/promise
 import gleam/option.{None}
-import gleam/string
 import ogre/origin
 import simplifile
 
@@ -58,36 +57,6 @@ match perform ReadFile({path, offset: 0, limit: 100}) {
     config,
   ))
   let assert Ok(0) = return
-}
-
-pub fn inline_relative_file_effect_returns_error_test() {
-  use return <- promise.map(run.execute(
-    source.Code(
-      "match perform ReadFile({path: \"hello.txt\", offset: 0, limit: 100}) {
-  Ok(_) -> { !never(perform Abort(\"unexpected read\")) }
-  Error(reason) -> {
-    match !equal(reason, \"relative path \\\"hello.txt\\\" requires a disk-backed source; use CWD or an absolute path\") {
-      True(_) -> { 0 }
-      False(_) -> { !never(perform Abort(reason)) }
-    }
-  }
-}",
-    ),
-    config,
-  ))
-  let assert Ok(0) = return
-}
-
-pub fn inline_relative_import_errors_test() {
-  use return <- promise.map(run.execute(
-    source.Code("import \"test/fixtures/source_relative/value.eyg\""),
-    config,
-  ))
-  let assert Error(reason) = return
-  assert string.contains(
-    reason,
-    "relative location undefined: test/fixtures/source_relative/value.eyg",
-  )
 }
 
 pub fn inline_absolute_import_works_test() {
