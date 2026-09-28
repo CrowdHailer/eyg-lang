@@ -1,7 +1,7 @@
 import eyg/cli/compile
 import eyg/cli/helpers
-import eyg/cli/internal/source
 import loam/sandbox
+import loam/source
 
 pub fn compile_simple_expression_test() {
   let input = source.Code("3")

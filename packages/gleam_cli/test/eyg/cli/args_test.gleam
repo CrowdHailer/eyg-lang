@@ -1,6 +1,6 @@
 import eyg/cli/args
-import eyg/cli/internal/source
 import gleam/string
+import loam/source
 
 pub fn run_test() {
   let file = "example.eyg.json"

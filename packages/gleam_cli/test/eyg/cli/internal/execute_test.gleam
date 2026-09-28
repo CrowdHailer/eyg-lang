@@ -1,6 +1,5 @@
 import birdie
 import eyg/cli/internal/execute
-import eyg/cli/internal/source
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
@@ -11,6 +10,7 @@ import gleam/dict
 import gleam/list
 import gleam/string
 import kryptos/eddsa
+import loam/source
 import multiformats/cid/v1
 import simplifile
 import touch_grass/cryptography/create_key

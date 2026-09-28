@@ -1,5 +1,5 @@
-import eyg/cli/internal/source
 import gleam/option.{type Option, None, Some}
+import loam/source
 
 pub type Args {
   Shell(Option(source.Input))

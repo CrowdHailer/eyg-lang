@@ -1,6 +1,6 @@
-import eyg/cli/internal/source
 import eyg/ir/tree as ir
 import gleam/list
+import loam/source
 
 pub const meta = source.Location(source.Repl, source.Json)
 

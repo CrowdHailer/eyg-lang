@@ -1,8 +1,8 @@
 import eyg/cli/check
 import eyg/cli/helpers
-import eyg/cli/internal/source
 import gleam/string
 import loam/sandbox
+import loam/source
 import multiformats/cid/v1
 
 pub fn check_simple_expression_test() {

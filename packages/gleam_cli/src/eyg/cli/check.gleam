@@ -4,11 +4,11 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
-import eyg/cli/internal/source
 import eyg/ir/tree as ir
 import eyg/parser
 import filepath
 import gleam/list
+import loam/source
 import loam/system
 
 pub fn execute(

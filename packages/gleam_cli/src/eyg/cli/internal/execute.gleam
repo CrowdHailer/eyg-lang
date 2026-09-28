@@ -1,7 +1,5 @@
 import envoy
 import eyg/cli/internal/client
-import eyg/cli/internal/config
-import eyg/cli/internal/source
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -22,8 +20,10 @@ import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
 import kryptos/eddsa
+import loam/source
 import loam/system
 import multiformats/cid/v1
+import ogre/origin
 import shellout
 import simplifile
 import touch_grass/cryptography/create_key
@@ -70,7 +70,7 @@ pub type Debug =
   state.Debug(source.Location)
 
 pub type State {
-  State(config: config.Config, cache: Cache(source.Location))
+  State(origin: origin.Origin, cache: Cache(source.Location))
 }
 
 pub fn block(source, scope, state) {
@@ -270,7 +270,7 @@ fn update(state: State) {
 }
 
 fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
-  let client = state.config.client
+  let client = client.Client(state.origin)
   case effect {
     cache.FetchModule(dep) -> {
       use result <- promise.map(system.run(client.get_module(dep, client)))

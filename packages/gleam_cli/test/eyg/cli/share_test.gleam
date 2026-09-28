@@ -1,11 +1,11 @@
 import eyg/cli/helpers
-import eyg/cli/internal/ir
-import eyg/cli/internal/source
 import eyg/cli/share
 import eyg/ir/car
 import eyg/ir/dag_json
 import gleam/http/request
+import loam/ir
 import loam/sandbox
+import loam/source
 import multiformats/cid/v1
 
 pub fn share_simple_expression_test() {

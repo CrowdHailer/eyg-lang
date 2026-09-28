@@ -1,6 +1,5 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
-import eyg/cli/internal/source
 import eyg/hub/cache
 import eyg/interpreter/cast
 import eyg/interpreter/state
@@ -10,6 +9,7 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import loam/source
 import loam/system
 import simplifile
 
@@ -26,7 +26,7 @@ pub fn execute(
   use code <- promise.try_await(system.run(source.read_input(input)))
   use source <- promisex.try_sync(source.parse_input(code, input))
 
-  let state = execute.State(config, cache.empty())
+  let state = execute.State(config.client.origin, cache.empty())
   // The synthetic `.script(arguments)` wrapper carries the user source's
   // location so any error here is rendered against the actual source.
   let user_meta = source.1

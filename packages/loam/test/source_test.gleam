@@ -1,5 +1,5 @@
-import eyg/cli/internal/source
 import eyg/ir/tree as ir
+import loam/source
 import loam/system
 
 pub fn read_code_test() {

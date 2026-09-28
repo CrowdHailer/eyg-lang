@@ -1,8 +1,8 @@
 import eyg/cli/helpers
-import eyg/cli/internal/source
 import eyg/cli/script
 import gleam/javascript/promise
 import gleam/string
+import loam/source
 
 pub fn print_error_in_import_test() {
   use return <- promise.map(script.execute(

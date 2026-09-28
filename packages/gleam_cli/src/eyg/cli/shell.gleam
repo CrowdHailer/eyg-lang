@@ -2,9 +2,8 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug as type_debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/cli/internal/config
 import eyg/cli/internal/execute
-import eyg/cli/internal/ir
-import eyg/cli/internal/source
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/simple_debug
@@ -19,11 +18,13 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import input
+import loam/ir
+import loam/source
 import loam/system
 import simplifile
 
-pub fn execute(input, config) {
-  let state = execute.State(config, cache.empty())
+pub fn execute(input, config: config.Config) {
+  let state = execute.State(config.client.origin, cache.empty())
   use scope <- promise.try_await(case input {
     Some(input) -> {
       use cwd <- promisex.try_sync(

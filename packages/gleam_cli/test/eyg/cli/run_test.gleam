@@ -1,8 +1,8 @@
 import birdie
 import eyg/cli/helpers
-import eyg/cli/internal/source
 import eyg/cli/run
 import gleam/javascript/promise
+import loam/source
 import simplifile
 
 pub fn print_error_in_import_test() {

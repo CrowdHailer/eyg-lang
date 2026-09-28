@@ -1,11 +1,11 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
-import eyg/cli/internal/source
 import eyg/hub/cache
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/option.{None, Some}
 import gleam/result
+import loam/source
 import loam/system
 import simplifile
 
@@ -21,7 +21,7 @@ pub fn execute(
   use code <- promise.try_await(system.run(source.read_input(input)))
   use source <- promisex.try_sync(source.parse_input(code, input))
 
-  let state = execute.State(config, cache.empty())
+  let state = execute.State(config.client.origin, cache.empty())
   use result <- promise.map(execute.block(source, [], state))
   case result {
     Ok(#(Some(_value), _)) -> Ok(0)

@@ -1,7 +1,7 @@
 import eyg/cli/internal/config
-import eyg/cli/internal/source
 import eyg/compiler
 import gleam/dict
+import loam/source
 import loam/system
 
 pub fn execute(

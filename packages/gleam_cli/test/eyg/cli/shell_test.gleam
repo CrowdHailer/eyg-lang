@@ -91,5 +91,5 @@ pub fn type_of_of_a_pure_expression_has_no_effects_test() {
 }
 
 fn state() -> execute.State {
-  execute.State(config: helpers.config, cache: cache.empty())
+  execute.State(origin: helpers.config.client.origin, cache: cache.empty())
 }

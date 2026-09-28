@@ -1,8 +1,8 @@
 import eyg/cli/helpers
-import eyg/cli/internal/source
 import eyg/cli/parse
 import gleam/string
 import loam/sandbox
+import loam/source
 
 pub fn parse_simple_expression_test() {
   let input = source.Code("3")

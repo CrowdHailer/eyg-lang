@@ -1,7 +1,7 @@
 import eyg/cli/internal/config
-import eyg/cli/internal/source
 import eyg/ir/dag_json
 import gleam/json
+import loam/source
 import loam/system
 
 pub fn execute(

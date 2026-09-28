@@ -1,3 +1,5 @@
+//// EYG source inputs, origins, parsing, and effectful source loading.
+
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
