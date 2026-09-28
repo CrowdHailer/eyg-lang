@@ -468,20 +468,14 @@ pub fn pure_loop(
 pub fn normalize_input(working_directory, input: source.Input) {
   case input {
     source.File(path:) -> {
-      use path <- try(resolve_relative(working_directory, path))
+      use path <- try(
+        system.resolve_relative(working_directory, path)
+        |> result.replace_error("invalid relative path outside filesystem"),
+      )
       Ok(source.File(path))
     }
     source.Code(_) | source.Stdin -> Ok(input)
   }
-}
-
-pub fn resolve_relative(root, relative) {
-  let joined = case filepath.is_absolute(relative) {
-    True -> relative
-    False -> filepath.join(root, relative)
-  }
-  filepath.expand(joined)
-  |> result.replace_error("invalid relative path outside filesystem")
 }
 
 pub fn resolve_filepath(

@@ -38,6 +38,7 @@ pub fn sandbox() -> Sandbox(Nil) {
   )
 }
 
+/// This sets the CWD as is, it ignores the current cwd
 pub fn with_cwd(sandbox: Sandbox(a), cwd: String) -> Sandbox(a) {
   Sandbox(..sandbox, cwd:)
 }
@@ -55,6 +56,7 @@ pub fn with_files(
   })
 }
 
+/// add a file to the filesystem, needs to be absolute path
 pub fn with_file(
   sandbox: Sandbox(a),
   path: String,
@@ -68,12 +70,14 @@ pub fn with_file(
   Sandbox(..sandbox, file_system:)
 }
 
+/// Needs absolute path
 pub fn with_directory(sandbox: Sandbox(a), path: String) -> Sandbox(a) {
   let #(created, file_system) = fs.create_directory(sandbox.file_system, path)
   let assert Ok(Nil) = created
   Sandbox(..sandbox, file_system:)
 }
 
+/// needs absolute path
 pub fn with_permissions(
   sandbox: Sandbox(a),
   path: String,
@@ -102,13 +106,22 @@ pub fn save_and_return(sandbox, response) {
   )
 }
 
+fn mutate_file_system(sandbox: Sandbox(a), path, mutate) {
+  case system.resolve_relative(sandbox.cwd, path) {
+    Error(error) -> #(Error(error), sandbox)
+    Ok(path) -> {
+      let #(outcome, file_system) = mutate(sandbox.file_system, path)
+      #(outcome, Sandbox(..sandbox, file_system:))
+    }
+  }
+}
+
 pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
   case effect {
     system.Done(value) -> #(value, sandbox)
     system.CreateDirectory(path, resume) -> {
-      let #(outcome, file_system) =
-        fs.create_directory(sandbox.file_system, path)
-      let sandbox = Sandbox(..sandbox, file_system:)
+      let #(outcome, sandbox) =
+        mutate_file_system(sandbox, path, fs.create_directory)
       outcome
       |> result.map_error(simplifile.describe_error)
       |> resume
@@ -131,20 +144,23 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
       |> resume()
       |> run(sandbox)
     system.ReadDirectory(path, resume) -> {
-      fs.read_directory(sandbox.file_system, path)
+      system.resolve_relative(sandbox.cwd, path)
+      |> result.try(fs.read_directory(sandbox.file_system, _))
       |> resume
       |> run(sandbox)
     }
     system.ReadFile(path, resume) -> {
-      fs.read(sandbox.file_system, path)
+      system.resolve_relative(sandbox.cwd, path)
+      |> result.try(fs.read(sandbox.file_system, _))
       |> result.map_error(fn(error) { system.format_file_error(path, error) })
       |> resume()
       |> run(sandbox)
     }
     system.SetPermissions(path, permissions, resume) -> {
-      let #(outcome, file_system) =
-        fs.set_permissions(sandbox.file_system, path, permissions)
-      let sandbox = Sandbox(..sandbox, file_system:)
+      let #(outcome, sandbox) =
+        mutate_file_system(sandbox, path, fn(file_system, path) {
+          fs.set_permissions(file_system, path, permissions)
+        })
       outcome
       |> result.map_error(simplifile.describe_error)
       |> resume
@@ -165,8 +181,10 @@ pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
     }
     system.Wait(_, resume) -> run(resume(Nil), sandbox)
     system.WriteFile(path, content, resume) -> {
-      let #(outcome, file_system) = fs.write(sandbox.file_system, path, content)
-      let sandbox = Sandbox(..sandbox, file_system:)
+      let #(outcome, sandbox) =
+        mutate_file_system(sandbox, path, fn(file_system, path) {
+          fs.write(file_system, path, content)
+        })
       outcome
       |> result.map_error(simplifile.describe_error)
       |> resume

@@ -108,7 +108,7 @@ fn check_loop(
           resume(Error(Nil))
           |> check_loop(context, directory, errors, visited)
         ir.Relative(location:) -> {
-          case execute.resolve_relative(directory, location) {
+          case system.resolve_relative(directory, location) {
             Ok(path) -> {
               case cycle_check(visited, path) {
                 Ok(Nil) -> {

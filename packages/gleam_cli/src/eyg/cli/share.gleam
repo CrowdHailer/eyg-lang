@@ -94,7 +94,7 @@ fn do_load(
       let #(exp, meta) = node
       case exp {
         ir.Reference(ir.Relative(location:)) -> {
-          case execute.resolve_relative(directory, location) {
+          case system.resolve_relative(directory, location) {
             Ok(path) ->
               case dict.get(loaded, path) {
                 Ok(cid) ->
