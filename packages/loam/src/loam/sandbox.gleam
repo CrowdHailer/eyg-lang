@@ -1,4 +1,8 @@
-//// Sandbox examples running system.Effects over an in memory replica of a computer system and it's available effects.
+//// Runs `system.Effect` values against an in-memory model of a computer system.
+////
+//// - File permissions are stored as metadata but do not restrict reads or writes.
+//// - Captured stdout is stored newest-first; reverse the list for emission order.
+//// - Key generation uses real randomness, so generated keys vary between runs.
 
 import filepath
 import gleam/http/request

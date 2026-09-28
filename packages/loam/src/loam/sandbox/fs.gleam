@@ -40,15 +40,18 @@ pub fn file(contents: String) -> Entry {
   File(contents: <<contents:utf8>>, permissions: permissions_file())
 }
 
-fn path_parts(path) {
+fn path_parts(path: String) -> Result(List(String), FileError) {
   case string.contains(path, "\u{0}") {
     True -> Error(simplifile.Unknown("ERR_INVALID_ARG_VALUE"))
     False ->
       // filepath.expand doesn't leave paths beginning double slash as implementation specific.
       case filepath.expand(path) {
+        Ok("/") -> Ok([])
         Ok("/" <> rest) -> Ok(string.split(rest, "/"))
-        Ok(_relative) -> panic as "unsupported"
-        Error(Nil) -> panic as "unsupported"
+        // relative paths should be handled before passing into the filesystem.
+        // it is a sandbox responsibility
+        Ok(_relative) -> Error(simplifile.Einval)
+        Error(Nil) -> Error(simplifile.Einval)
       }
   }
 }

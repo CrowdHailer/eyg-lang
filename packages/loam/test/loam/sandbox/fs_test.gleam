@@ -19,6 +19,11 @@ pub fn resolve_test() {
   assert Ok("Top level") == fs.read(fs, "//other/.././/top")
 }
 
+pub fn root_paths_refer_to_the_root_entry_test() {
+  let file_system = fs.directory([#("file", fs.file("contents"))])
+  assert Ok(file_system) == fs.inspect(file_system, "/")
+}
+
 pub fn read_errors_test() {
   let assert fs.File(permissions:, ..) = fs.file("")
   let fs =
