@@ -120,6 +120,7 @@ jobs:
           "gleam_parser",
           "gleam_x",
           "intelligence",
+          "loam",
           "morph",
           "overlay_llm",
           "overlay_public",

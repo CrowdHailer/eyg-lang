@@ -1,28 +1,28 @@
-import eyg/cli/helpers
-import eyg/cli/helpers/fs
+import loam/sandbox
+import loam/sandbox/fs
 import loam/system
 import simplifile
 
-pub fn sandbox_file_system_effects_test() {
-  let sandbox = helpers.sandbox()
+pub fn file_system_effects_test() {
+  let sandbox = sandbox.sandbox()
   let #(created, sandbox) =
-    system.create_directory("/data/nested") |> helpers.run(sandbox)
+    system.create_directory("/data/nested") |> sandbox.run(sandbox)
   assert created == Ok(Nil)
 
   let #(written, sandbox) =
-    system.write_file("/data/nested/file", "contents") |> helpers.run(sandbox)
+    system.write_file("/data/nested/file", "contents") |> sandbox.run(sandbox)
   assert written == Ok(Nil)
 
   let #(permissions, sandbox) =
     system.set_permissions("/data/nested/file", 0o000)
-    |> helpers.run(sandbox)
+    |> sandbox.run(sandbox)
   assert permissions == Ok(Nil)
 
   let #(contents, sandbox) =
-    system.read_file("/data/nested/file") |> helpers.run(sandbox)
+    system.read_file("/data/nested/file") |> sandbox.run(sandbox)
   assert contents == Ok("contents")
   let #(entries, sandbox) =
-    system.read_directory("/data/nested") |> helpers.run(sandbox)
+    system.read_directory("/data/nested") |> sandbox.run(sandbox)
   assert entries == Ok(["file"])
 
   let assert Ok(fs.File(permissions:, ..)) =

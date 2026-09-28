@@ -1,0 +1,172 @@
+//// Sandbox examples running system.Effects over an in memory replica of a computer system and it's available effects.
+
+import filepath
+import gleam/http/request
+import gleam/http/response
+import gleam/list
+import gleam/result
+import loam/internal/crypto.{generate_key} as _
+import loam/sandbox/fs
+import loam/system
+import midas/effect
+import simplifile
+
+pub type Sandbox(a) {
+  Sandbox(
+    cwd: String,
+    stdin: List(String),
+    stdout: List(String),
+    file_system: fs.Entry,
+    network_state: a,
+    network: fn(request.Request(BitArray), a) ->
+      #(Result(response.Response(BitArray), effect.FetchError), a),
+  )
+}
+
+pub fn sandbox() -> Sandbox(Nil) {
+  Sandbox(
+    cwd: "/",
+    stdin: [],
+    stdout: [],
+    file_system: fs.directory([]),
+    network_state: Nil,
+    network: fn(_, _) { #(Error(effect.NetworkError("None provided")), Nil) },
+  )
+}
+
+pub fn with_cwd(sandbox: Sandbox(a), cwd: String) -> Sandbox(a) {
+  Sandbox(..sandbox, cwd:)
+}
+
+pub fn with_stdin(sandbox: Sandbox(a), text: String) -> Sandbox(a) {
+  Sandbox(..sandbox, stdin: list.append(sandbox.stdin, [text]))
+}
+
+pub fn with_files(
+  sandbox: Sandbox(a),
+  files: List(#(String, String)),
+) -> Sandbox(a) {
+  list.fold(files, sandbox, fn(sandbox, file) {
+    with_file(sandbox, file.0, file.1)
+  })
+}
+
+pub fn with_file(
+  sandbox: Sandbox(a),
+  path: String,
+  content: String,
+) -> Sandbox(a) {
+  let #(created, file_system) =
+    fs.create_directory(sandbox.file_system, filepath.directory_name(path))
+  let assert Ok(Nil) = created
+  let #(written, file_system) = fs.write(file_system, path, content)
+  let assert Ok(Nil) = written
+  Sandbox(..sandbox, file_system:)
+}
+
+pub fn with_directory(sandbox: Sandbox(a), path: String) -> Sandbox(a) {
+  let #(created, file_system) = fs.create_directory(sandbox.file_system, path)
+  let assert Ok(Nil) = created
+  Sandbox(..sandbox, file_system:)
+}
+
+pub fn with_permissions(
+  sandbox: Sandbox(a),
+  path: String,
+  permissions: Int,
+) -> Sandbox(a) {
+  let #(set, file_system) =
+    fs.set_permissions(sandbox.file_system, path, permissions)
+  let assert Ok(Nil) = set
+  Sandbox(..sandbox, file_system:)
+}
+
+pub fn with_network(
+  sandbox: Sandbox(_),
+  network: fn(request.Request(BitArray), a) ->
+    #(Result(response.Response(BitArray), effect.FetchError), a),
+  network_state: a,
+) -> Sandbox(a) {
+  Sandbox(..sandbox, network:, network_state:)
+}
+
+pub fn save_and_return(sandbox, response) {
+  with_network(
+    sandbox,
+    fn(request, acc) { #(Ok(response), [request, ..acc]) },
+    [],
+  )
+}
+
+pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
+  case effect {
+    system.Done(value) -> #(value, sandbox)
+    system.CreateDirectory(path, resume) -> {
+      let #(outcome, file_system) =
+        fs.create_directory(sandbox.file_system, path)
+      let sandbox = Sandbox(..sandbox, file_system:)
+      outcome
+      |> result.map_error(simplifile.describe_error)
+      |> resume
+      |> run(sandbox)
+    }
+    system.Cwd(resume) -> run(resume(Ok(sandbox.cwd)), sandbox)
+    system.Fetch(request, resume) -> {
+      let #(response, state) = sandbox.network(request, sandbox.network_state)
+      let sandbox = Sandbox(..sandbox, network_state: state)
+      response
+      |> resume
+      |> run(sandbox)
+    }
+    system.GenerateKey(resume) ->
+      generate_key()
+      |> resume
+      |> run(sandbox)
+    system.Hash(algorithm, bytes, resume) ->
+      system.do_hash(algorithm, bytes)
+      |> resume()
+      |> run(sandbox)
+    system.ReadDirectory(path, resume) -> {
+      fs.read_directory(sandbox.file_system, path)
+      |> resume
+      |> run(sandbox)
+    }
+    system.ReadFile(path, resume) -> {
+      fs.read(sandbox.file_system, path)
+      |> result.map_error(fn(error) { system.format_file_error(path, error) })
+      |> resume()
+      |> run(sandbox)
+    }
+    system.SetPermissions(path, permissions, resume) -> {
+      let #(outcome, file_system) =
+        fs.set_permissions(sandbox.file_system, path, permissions)
+      let sandbox = Sandbox(..sandbox, file_system:)
+      outcome
+      |> result.map_error(simplifile.describe_error)
+      |> resume
+      |> run(sandbox)
+    }
+    system.Stdin(resume) -> {
+      let #(response, stdin) = case sandbox.stdin {
+        [] -> #(Error(""), [])
+        [value, ..rest] -> #(Ok(value), rest)
+      }
+      let sandbox = Sandbox(..sandbox, stdin:)
+      run(resume(response), sandbox)
+    }
+    system.Stdout(text, resume) -> {
+      let stdout = [text, ..sandbox.stdout]
+      let sandbox = Sandbox(..sandbox, stdout:)
+      run(resume(Nil), sandbox)
+    }
+    system.Wait(_, resume) -> run(resume(Nil), sandbox)
+    system.WriteFile(path, content, resume) -> {
+      let #(outcome, file_system) = fs.write(sandbox.file_system, path, content)
+      let sandbox = Sandbox(..sandbox, file_system:)
+      outcome
+      |> result.map_error(simplifile.describe_error)
+      |> resume
+      |> run(sandbox)
+    }
+  }
+}

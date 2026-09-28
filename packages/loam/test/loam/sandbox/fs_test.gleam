@@ -1,4 +1,4 @@
-import eyg/cli/helpers/fs
+import loam/sandbox/fs
 import simplifile
 
 pub fn default_permissions_test() {
