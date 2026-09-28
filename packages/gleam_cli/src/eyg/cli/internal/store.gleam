@@ -7,7 +7,7 @@ import gleam/result
 import gleam/string
 import kryptos/eddsa
 import loam/internal/crypto
-import loam/internal/platform
+import loam/os
 import loam/system
 import multiformats/cid/v1
 import simplifile
@@ -23,7 +23,7 @@ pub type Signatory {
 
 pub fn save_signatory(
   signatory: Signatory,
-  dirs: platform.PlatformDirs,
+  dirs: os.Directories,
 ) -> system.Effect(Result(Nil, String)) {
   let Signatory(alias:, principal:, keypair:) = signatory
   use Nil <- system.try(validate_alias(alias))
@@ -93,7 +93,7 @@ pub fn validate_alias(alias: String) -> Result(Nil, String) {
   }
 }
 
-pub fn read_signatory(alias: String, dirs: platform.PlatformDirs) {
+pub fn read_signatory(alias: String, dirs: os.Directories) {
   use Nil <- system.try(validate_alias(alias))
   use encoded <- system.then(system.read_file(
     signatories_dir(dirs) <> alias <> ".json",
@@ -139,7 +139,7 @@ fn keypair_encode(keypair: keypair.Keypair(eddsa.PrivateKey, _)) {
   json.string(encoded)
 }
 
-pub fn signatories_dir(dirs: platform.PlatformDirs) -> String {
-  let platform.PlatformDirs(config_dir:, ..) = dirs
+pub fn signatories_dir(dirs: os.Directories) -> String {
+  let os.Directories(config_dir:, ..) = dirs
   config_dir <> "/eyg/signatories/"
 }

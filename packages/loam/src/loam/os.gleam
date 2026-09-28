@@ -1,10 +1,12 @@
+//// This module provides operating-system identification and directory conventions, including those from the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/).
+////
 //// Notes on OS detection:
 //// 
 //// - Windows is detected via the OS env var, which Windows sets to Windows_NT by default.
 //// - macOS is detected via APPLE_PUBSUB_SOCKET_RENDER, which macOS sets in every login session — it's one of the most reliable macOS-only env vars that doesn't require shell expansion.
 //// - Linux is the fallback, since HOME being present and neither of the above matching is a safe heuristic.
 //// 
-//// Each platform has it's own convention for storing app data.
+//// Each operating system has its own conventions for storing app data.
 //// 
 //// - Windows → %APPDATA% for config, %LOCALAPPDATA% for cache/data
 //// - macOS → XDG vars with ~/Library paths as fallbacks
@@ -14,17 +16,17 @@ import envoy
 import gleam/result
 import gleam/string
 
-pub type PlatformDirs {
-  PlatformDirs(config_dir: String, cache_dir: String, data_dir: String)
+pub type Directories {
+  Directories(config_dir: String, cache_dir: String, data_dir: String)
 }
 
-pub type OsFamily {
+pub type Family {
   Windows
   Mac
   Linux
 }
 
-pub fn detect_os() -> OsFamily {
+pub fn detect() -> Family {
   case envoy.get("OS") {
     Ok("Windows" <> _) -> Windows
     _ ->
@@ -51,19 +53,19 @@ pub fn detect_os() -> OsFamily {
   }
 }
 
-fn windows_dirs() -> Result(PlatformDirs, Nil) {
+fn windows_directories() -> Result(Directories, Nil) {
   use appdata <- result.try(envoy.get("APPDATA"))
   use local_appdata <- result.try(
     envoy.get("LOCALAPPDATA") |> result.or(Ok(appdata)),
   )
-  Ok(PlatformDirs(
+  Ok(Directories(
     config_dir: appdata,
     cache_dir: local_appdata <> "\\cache",
     data_dir: local_appdata,
   ))
 }
 
-fn mac_dirs() -> Result(PlatformDirs, Nil) {
+fn mac_directories() -> Result(Directories, Nil) {
   use home <- result.try(envoy.get("HOME"))
   let config =
     envoy.get("XDG_CONFIG_HOME")
@@ -74,10 +76,10 @@ fn mac_dirs() -> Result(PlatformDirs, Nil) {
   let data =
     envoy.get("XDG_DATA_HOME")
     |> result.unwrap(home <> "/Library/Application Support")
-  Ok(PlatformDirs(config_dir: config, cache_dir: cache, data_dir: data))
+  Ok(Directories(config_dir: config, cache_dir: cache, data_dir: data))
 }
 
-fn linux_dirs() -> Result(PlatformDirs, Nil) {
+fn linux_directories() -> Result(Directories, Nil) {
   use home <- result.try(envoy.get("HOME"))
   let config =
     envoy.get("XDG_CONFIG_HOME")
@@ -88,13 +90,13 @@ fn linux_dirs() -> Result(PlatformDirs, Nil) {
   let data =
     envoy.get("XDG_DATA_HOME")
     |> result.unwrap(home <> "/.local/share")
-  Ok(PlatformDirs(config_dir: config, cache_dir: cache, data_dir: data))
+  Ok(Directories(config_dir: config, cache_dir: cache, data_dir: data))
 }
 
-pub fn platform_dirs() -> Result(PlatformDirs, Nil) {
-  case detect_os() {
-    Windows -> windows_dirs()
-    Mac -> mac_dirs()
-    Linux -> linux_dirs()
+pub fn directories() -> Result(Directories, Nil) {
+  case detect() {
+    Windows -> windows_directories()
+    Mac -> mac_directories()
+    Linux -> linux_directories()
   }
 }

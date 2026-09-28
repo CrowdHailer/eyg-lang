@@ -5,7 +5,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/javascript/promise.{type Promise}
 import gleam/uri.{type Uri}
-import loam/internal/platform
+import loam/os
 import midas/continuation
 import midas/effect as e
 import shellout
@@ -63,10 +63,10 @@ fn do_follow(uri: Uri) -> Promise(Result(String, String)) {
   // `cmd /c start`. Previously this was hard-coded to `open`, which
   // crashed the OAuth flow on every non-mac platform with a `let_assert`
   // panic on the missing command.
-  let #(cmd, args) = case platform.detect_os() {
-    platform.Mac -> #("open", [url])
-    platform.Linux -> #("xdg-open", [url])
-    platform.Windows -> #("cmd", ["/c", "start", "", url])
+  let #(cmd, args) = case os.detect() {
+    os.Mac -> #("open", [url])
+    os.Linux -> #("xdg-open", [url])
+    os.Windows -> #("cmd", ["/c", "start", "", url])
   }
   let result = shellout.command(run: cmd, with: args, in: ".", opt: [])
 

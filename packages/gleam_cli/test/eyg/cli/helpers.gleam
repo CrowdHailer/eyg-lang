@@ -18,7 +18,7 @@ import gleam/list
 import gleam/option.{None}
 import gleam/result
 import loam/internal/crypto.{generate_key} as _
-import loam/internal/platform
+import loam/os
 import loam/system
 import midas/continuation
 import midas/effect
@@ -32,7 +32,7 @@ const eyg_origin: client.Client = client.Client(
 
 pub const config: config.Config = config.Config(
   client: eyg_origin,
-  dirs: platform.PlatformDirs(config_dir: "", cache_dir: "", data_dir: ""),
+  dirs: os.Directories(config_dir: "", cache_dir: "", data_dir: ""),
 )
 
 pub type Sandbox(a) {
