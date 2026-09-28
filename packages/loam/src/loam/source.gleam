@@ -43,8 +43,8 @@ pub type Source {
 pub fn read_input(input: Input) -> system.Effect(Result(String, String)) {
   case input {
     File(path:) -> {
-      use code <- system.then(system.read_file(path))
-      system.Done(result.map(code, strip_shebang))
+      use code <- system.map(system.read_file(path))
+      result.map(code, strip_shebang)
     }
     Code(code:) -> system.Done(Ok(code))
     Stdin -> system.stdin()

@@ -70,7 +70,7 @@ pub fn list(config: config.Config) -> system.Effect(Result(Int, String)) {
       system.Done(Ok(0))
     }
     _ -> {
-      use loaded <- system.then(load_aliases(aliases, config, []))
+      use loaded <- system.then(load_aliases(aliases, config))
       let principals =
         loaded
         |> list.filter_map(fn(item) {
@@ -146,14 +146,10 @@ pub fn show(
   system.Done(Ok(0))
 }
 
-fn load_aliases(aliases, config: config.Config, loaded) {
-  case aliases {
-    [] -> system.Done(list.reverse(loaded))
-    [alias, ..rest] -> {
-      use signatory <- system.then(store.read_signatory(alias, config.dirs))
-      load_aliases(rest, config, [#(alias, signatory), ..loaded])
-    }
-  }
+fn load_aliases(aliases, config: config.Config) {
+  use alias <- system.traverse(aliases)
+  use signatory <- system.map(store.read_signatory(alias, config.dirs))
+  #(alias, signatory)
 }
 
 fn history(pulled: Result(List(schema.ArchivedEntry), String), cid: v1.Cid) {

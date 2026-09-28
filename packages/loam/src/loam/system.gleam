@@ -122,6 +122,21 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
   }
 }
 
+pub fn map(effect: Effect(a), func: fn(a) -> b) -> Effect(b) {
+  then(effect, fn(value) { Done(func(value)) })
+}
+
+pub fn traverse(items: List(a), func: fn(a) -> Effect(b)) -> Effect(List(b)) {
+  case items {
+    [] -> Done([])
+    [item, ..rest] -> {
+      use value <- then(func(item))
+      use values <- map(traverse(rest, func))
+      [value, ..values]
+    }
+  }
+}
+
 pub fn each(effects: List(Effect(Nil))) -> Effect(Nil) {
   case effects {
     [] -> Done(Nil)
