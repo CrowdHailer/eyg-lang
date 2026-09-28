@@ -33,6 +33,7 @@ jobs:
           "intelligence",
           # "gleam_x",
           # "morph",
+          overlay_llm,
           "topological",
           "touch_grass",
           "untethered"
@@ -120,6 +121,7 @@ jobs:
           "gleam_x",
           "intelligence",
           "morph",
+          "overlay_llm",
           "overlay_public",
           "overlay_web",
           "pal",

@@ -5,13 +5,13 @@
 To test all the packages on the BEAM environment.
 ```sh
 # Erlang-target Gleam packages
-for pkg in packages/{gleam_analysis,gleam_hub,gleam_ir,gleam_parser,intelligence,topological,touch_grass,untethered}; do
+for pkg in packages/{gleam_analysis,gleam_hub,gleam_ir,gleam_parser,intelligence,overlay_llm,topological,touch_grass,untethered}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --warnings-as-errors && gleam test )
 done
 ```
 To test all the packages on the JavaScript environment.
 ```sh
-for pkg in packages/{gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,morph,topological,touch_grass,untethered,website}; do
+for pkg in packages/{gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,morph,overlay_llm,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
 done
 ```
