@@ -4,6 +4,7 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
 import eyg/parser/location
+import filepath
 import gleam/json
 import gleam/list
 import gleam/option
@@ -95,6 +96,35 @@ pub fn input_origin(input) {
     Code(code: _) -> Inline
     Stdin -> Pipe
   }
+}
+
+/// Resolve a source-relative path, requesting CWD only for interactive origins.
+pub fn resolve_filepath(
+  from: Origin,
+  path: String,
+) -> system.Effect(Result(String, String)) {
+  case filepath.is_absolute(path), from {
+    True, _ -> resolved_path("", path)
+    False, Disk(source_path) ->
+      resolved_path(filepath.directory_name(source_path), path)
+    False, Inline | False, Pipe | False, Repl -> {
+      use cwd <- system.then(system.cwd())
+      use cwd <- system.try(cwd)
+      resolved_path(cwd, path)
+    }
+    False, _ ->
+      system.Done(Error(
+        "relative path \""
+        <> path
+        <> "\" requires a disk-backed source; use CWD or an absolute path",
+      ))
+  }
+}
+
+fn resolved_path(root, path) {
+  system.resolve_relative(root, path)
+  |> result.replace_error("invalid relative path outside filesystem")
+  |> system.Done
 }
 
 pub fn block_expression(code) {

@@ -6,7 +6,7 @@ import loam/source
 
 pub fn parse_simple_expression_test() {
   let input = source.Code("3")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     parse.execute(input, helpers.config)
     |> sandbox.run(sandbox.sandbox())
   assert Ok(0) == output
@@ -15,7 +15,7 @@ pub fn parse_simple_expression_test() {
 
 pub fn parse_fails_test() {
   let input = source.Code(":")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     parse.execute(input, helpers.config)
     |> sandbox.run(sandbox.sandbox())
   let assert Error(message) = output

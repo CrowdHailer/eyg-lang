@@ -7,7 +7,7 @@ import multiformats/cid/v1
 
 pub fn check_simple_expression_test() {
   let input = source.Code("3")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox.sandbox())
   assert Ok(0) == output
@@ -16,7 +16,7 @@ pub fn check_simple_expression_test() {
 
 pub fn check_fails_test() {
   let input = source.Code("x")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox.sandbox())
   let assert Error("") = output
@@ -33,7 +33,7 @@ pub fn check_pulls_absolute_deps_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Ok(0) == output
@@ -54,7 +54,7 @@ y",
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Error("") == output
@@ -73,7 +73,7 @@ pub fn check_pulls_relative_deps_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert ["{}"] == sandbox.stdout
@@ -91,7 +91,7 @@ pub fn check_relative_input_imports_above_its_directory_test() {
     |> sandbox.with_files(files)
     |> sandbox.with_cwd("/project/examples")
   let input = source.File("entry.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert ["{}"] == sandbox.stdout
@@ -105,7 +105,7 @@ pub fn check_inline_code_imports_from_cwd_test() {
     |> sandbox.with_files(files)
     |> sandbox.with_cwd("/project/examples")
   let input = source.Code("import \"../lib.eyg\"")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert ["String"] == sandbox.stdout
@@ -118,7 +118,7 @@ pub fn check_fails_unknown_import_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Error("") == output
@@ -132,7 +132,7 @@ pub fn check_out_of_range_import_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Error("") == output
@@ -146,7 +146,7 @@ pub fn check_fail_recursive_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Error("") == output
@@ -163,7 +163,7 @@ pub fn check_fails_bad_import_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Error("") == output
@@ -175,7 +175,7 @@ pub fn check_fails_unknown_ref_test() {
   let #(cid, _src) = helpers.random_code()
   let sandbox = sandbox.sandbox()
   let input = source.Code("#" <> v1.to_string(cid))
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     check.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error("") = output

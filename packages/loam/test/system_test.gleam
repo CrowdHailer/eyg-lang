@@ -29,7 +29,8 @@ pub fn traverse_preserves_effect_and_result_order_test() {
     use Nil <- system.map(system.stdout(int.to_string(value)))
     value * 2
   }
-  let #(values, sandbox) = sandbox.run(workflow, sandbox.sandbox())
+  let assert #(sandbox.Returned(values), sandbox) =
+    sandbox.run(workflow, sandbox.sandbox())
   assert values == [2, 4, 6]
   assert sandbox.stdout == ["3", "2", "1"]
 }

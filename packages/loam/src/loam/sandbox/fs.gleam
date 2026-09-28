@@ -6,6 +6,7 @@ import gleam/list
 import gleam/result
 import gleam/set
 import gleam/string
+import loam/system
 import simplifile.{type FileError, type FilePermissions}
 
 pub fn rw() {
@@ -79,11 +80,43 @@ fn do_follow(fs: Entry, segments: List(String)) -> Result(Entry, FileError) {
 }
 
 pub fn read(file_system: Entry, path: String) -> Result(String, FileError) {
+  use contents <- result.try(read_bits(file_system, path))
+  bit_array.to_string(contents) |> result.replace_error(simplifile.NotUtf8)
+}
+
+pub fn read_bits(
+  file_system: Entry,
+  path: String,
+) -> Result(BitArray, FileError) {
   use entry <- result.try(inspect(file_system, path))
   case entry {
-    File(contents:, ..) ->
-      bit_array.to_string(contents) |> result.replace_error(simplifile.NotUtf8)
+    File(contents:, ..) -> Ok(contents)
     Directory(..) -> Error(simplifile.Eisdir)
+  }
+}
+
+pub fn read_range(file_system, path, offset, limit) {
+  case offset < 0 || limit < 0 {
+    True -> Error(simplifile.Einval)
+    False -> {
+      use bytes <- result.try(read_bits(file_system, path))
+      let size = bit_array.byte_size(bytes)
+      case offset >= size {
+        True -> Ok(<<>>)
+        False ->
+          bit_array.slice(bytes, offset, int.min(limit, size - offset))
+          |> result.replace_error(simplifile.Einval)
+      }
+    }
+  }
+}
+
+pub fn file_info(file_system, path) {
+  use entry <- result.map(inspect(file_system, path))
+  case entry {
+    File(contents:, ..) ->
+      system.Metadata(simplifile.File, bit_array.byte_size(contents))
+    Directory(..) -> system.Metadata(simplifile.Directory, 0)
   }
 }
 
@@ -129,16 +162,60 @@ pub fn write(
   path: String,
   contents: String,
 ) -> #(Result(Nil, FileError), Entry) {
+  write_bits(file_system, path, <<contents:utf8>>)
+}
+
+pub fn write_bits(file_system: Entry, path: String, contents: BitArray) {
   let directory = string.ends_with(path, "/")
   transform(file_system, path, fn(entry) {
     case entry {
       Ok(File(..)) if directory -> Error(simplifile.Eisdir)
-      Ok(File(permissions:, ..)) -> Ok(File(<<contents:utf8>>, permissions))
+      Ok(File(permissions:, ..)) -> Ok(File(contents, permissions))
       Ok(Directory(..)) -> Error(simplifile.Eisdir)
-      Error(Nil) -> Ok(File(<<contents:utf8>>, permissions_file()))
+      Error(Nil) -> Ok(File(contents, permissions_file()))
     }
   })
   |> update_result(file_system)
+}
+
+pub fn append_bits(file_system, path, contents) {
+  let appended = {
+    use previous <- result.try(case read_bits(file_system, path) {
+      Error(simplifile.Enoent) -> Ok(<<>>)
+      other -> other
+    })
+    Ok(bit_array.append(previous, contents))
+  }
+  case appended {
+    Error(error) -> #(Error(error), file_system)
+    Ok(contents) -> write_bits(file_system, path, contents)
+  }
+}
+
+/// Match the host's recursive delete for files and directories.
+pub fn delete(file_system, path) {
+  let deleted = {
+    use _ <- result.try(inspect(file_system, path))
+    use parts <- result.try(path_parts(path))
+    delete_entry(file_system, parts)
+  }
+  update_result(deleted, file_system)
+}
+
+fn delete_entry(entry, parts) {
+  case entry, parts {
+    _, [] -> Error(simplifile.Ebusy)
+    Directory(children:, permissions:), [name] ->
+      Ok(Directory(dict.delete(children, name), permissions))
+    Directory(children:, permissions:), [name, ..rest] -> {
+      use child <- result.try(
+        dict.get(children, name) |> result.replace_error(simplifile.Enoent),
+      )
+      use child <- result.map(delete_entry(child, rest))
+      Directory(dict.insert(children, name, child), permissions)
+    }
+    _, _ -> Error(simplifile.Enotdir)
+  }
 }
 
 pub fn create_directory(

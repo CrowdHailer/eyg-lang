@@ -11,7 +11,7 @@ When writing eyg code read the [syntax guide](./guides/syntax.md).
 To start exploring the codebase read the [explore the filesystem guide](./guides/explore_the_file_system.md).
 
 EYG programs can only interact with the outside world through effects and each runtime has different effects.
-The effects available to the CLI are implemented [here](./packages/gleam_cli/src/eyg/cli/internal/execute.gleam).
+The effects available to the CLI are implemented [here](./packages/loam/src/loam/platform/computer.gleam).
 When asked to implement features avoid adding new effect.
 If a feature cannot be implemented without new effects then a new effect can be created.
 Ensure that the rational for new effects is explained and that the new effect is general and useful in other situations.

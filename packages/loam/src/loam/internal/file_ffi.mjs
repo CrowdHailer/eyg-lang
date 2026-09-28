@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import { Result$Ok, Result$Error, BitArray$BitArray } from "../../../gleam.mjs";
-import * as $simplifile from "../../../../simplifile/simplifile.mjs";
+import { Result$Ok, Result$Error, BitArray$BitArray } from "../../gleam.mjs";
+import * as $simplifile from "../../../simplifile/simplifile.mjs";
 
 export function readAtOffset(path, offset, limit) {
   try {

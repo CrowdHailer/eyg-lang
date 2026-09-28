@@ -13,7 +13,7 @@ pub fn share_simple_expression_test() {
     sandbox.sandbox()
     |> helpers.share_server()
   let input = source.Code("3")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Ok(0) == output
@@ -28,7 +28,7 @@ pub fn share_unknown_package_reference_fails_test() {
     sandbox.sandbox()
     |> helpers.share_server
   let input = source.Code("@unknown")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(reason) = output
@@ -40,7 +40,7 @@ pub fn share_unknown_version_reference_fails_test() {
     sandbox.sandbox()
     |> helpers.share_server
   let input = source.Code("@unknown:1")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(reason) = output
@@ -58,7 +58,7 @@ pub fn share_relative_input_imports_above_its_directory_test() {
     |> sandbox.with_cwd("/project/app")
     |> helpers.share_server
   let input = source.File("main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Ok(0) == output
@@ -78,7 +78,7 @@ pub fn share_bundles_absolute_test() {
     |> sandbox.with_files(files)
     |> helpers.share_server
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Ok(0) == output
@@ -97,7 +97,7 @@ pub fn share_fails_unknown_import_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(reason) = output
@@ -119,7 +119,7 @@ import \"/lib/bar.eyg\"",
     |> sandbox.with_files(files)
     |> helpers.share_server
   let input = source.File("/main.eyg")
-  let #(output, sandbox) =
+  let assert #(sandbox.Returned(output), sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   assert Ok(0) == output
@@ -138,7 +138,7 @@ pub fn share_out_of_range_import_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(message) = output
@@ -151,7 +151,7 @@ pub fn share_fail_recursive_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(message) = output
@@ -166,7 +166,7 @@ pub fn share_fails_transitive_import_cycle_test() {
   ]
   let sandbox = sandbox.sandbox() |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(message) = output
@@ -182,7 +182,7 @@ pub fn share_fails_bad_import_test() {
     sandbox.sandbox()
     |> sandbox.with_files(files)
   let input = source.File("/main.eyg")
-  let #(output, _sandbox) =
+  let assert #(sandbox.Returned(output), _sandbox) =
     share.execute(input, helpers.config)
     |> sandbox.run(sandbox)
   let assert Error(message) = output

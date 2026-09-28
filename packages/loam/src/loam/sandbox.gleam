@@ -2,12 +2,16 @@
 ////
 //// - File permissions are stored as metadata but do not restrict reads or writes.
 //// - Captured stdout is stored newest-first; reverse the list for emission order.
+////   `stdout_text` and `stderr_text` preserve exact stream text and newlines.
 //// - Key generation uses real randomness, so generated keys vary between runs.
+//// - The clock defaults to Unix time zero; random results require explicit fixtures.
 
 import filepath
+import gleam/dict.{type Dict}
 import gleam/http/request
 import gleam/http/response
 import gleam/list
+import gleam/option
 import gleam/result
 import loam/internal/crypto.{generate_key} as _
 import loam/sandbox/fs
@@ -20,6 +24,10 @@ pub type Sandbox(a) {
     cwd: String,
     stdin: List(String),
     stdout: List(String),
+    stderr: List(String),
+    environment: Dict(String, String),
+    now: Int,
+    random_values: List(Int),
     file_system: fs.Entry,
     network_state: a,
     network: fn(request.Request(BitArray), a) ->
@@ -32,10 +40,40 @@ pub fn sandbox() -> Sandbox(Nil) {
     cwd: "/",
     stdin: [],
     stdout: [],
+    stderr: [],
+    environment: dict.new(),
+    now: 0,
+    random_values: [],
     file_system: fs.directory([]),
     network_state: Nil,
     network: fn(_, _) { #(Error(effect.NetworkError("None provided")), Nil) },
   )
+}
+
+pub type Outcome(a) {
+  Returned(a)
+  Exited(Int)
+}
+
+pub fn with_env(
+  sandbox: Sandbox(a),
+  name: String,
+  value: String,
+) -> Sandbox(a) {
+  Sandbox(..sandbox, environment: dict.insert(sandbox.environment, name, value))
+}
+
+/// Configure the wall clock in Unix milliseconds.
+pub fn with_now(sandbox: Sandbox(a), milliseconds: Int) -> Sandbox(a) {
+  Sandbox(..sandbox, now: milliseconds)
+}
+
+/// Supply random results in consumption order; missing or out-of-range fixtures fail the test.
+pub fn with_random_values(
+  sandbox: Sandbox(a),
+  values: List(Int),
+) -> Sandbox(a) {
+  Sandbox(..sandbox, random_values: values)
 }
 
 /// This sets the CWD as is, it ignores the current cwd
@@ -62,10 +100,19 @@ pub fn with_file(
   path: String,
   content: String,
 ) -> Sandbox(a) {
+  with_file_bits(sandbox, path, <<content:utf8>>)
+}
+
+/// Add binary contents at an absolute fixture path.
+pub fn with_file_bits(
+  sandbox: Sandbox(a),
+  path: String,
+  content: BitArray,
+) -> Sandbox(a) {
   let #(created, file_system) =
     fs.create_directory(sandbox.file_system, filepath.directory_name(path))
   let assert Ok(Nil) = created
-  let #(written, file_system) = fs.write(file_system, path, content)
+  let #(written, file_system) = fs.write_bits(file_system, path, content)
   let assert Ok(Nil) = written
   Sandbox(..sandbox, file_system:)
 }
@@ -116,9 +163,68 @@ fn mutate_file_system(sandbox: Sandbox(a), path, mutate) {
   }
 }
 
-pub fn run(effect: system.Effect(a), sandbox: Sandbox(b)) -> #(a, Sandbox(b)) {
+/// Run a workflow expected to complete normally. Use `run_until_exit` to test process exit.
+pub fn run(
+  effect: system.Effect(a),
+  sandbox: Sandbox(b),
+) -> #(Outcome(a), Sandbox(b)) {
   case effect {
-    system.Done(value) -> #(value, sandbox)
+    system.Done(value) -> #(Returned(value), sandbox)
+    system.Exit(status) -> #(Exited(status), sandbox)
+    system.Env(name, resume) ->
+      run(
+        resume(dict.get(sandbox.environment, name) |> option.from_result),
+        sandbox,
+      )
+    system.Now(resume) -> run(resume(sandbox.now), sandbox)
+    system.Random(max, resume) -> {
+      let assert [value, ..rest] = sandbox.random_values
+      let assert True = case max {
+        0 -> value == 0
+        max if max > 0 -> value >= 0 && value < max
+        _ -> value >= max && value < 0
+      }
+      run(resume(value), Sandbox(..sandbox, random_values: rest))
+    }
+    system.FileInfo(path, resume) -> {
+      let info =
+        system.resolve_relative(sandbox.cwd, path)
+        |> result.try(fs.file_info(sandbox.file_system, _))
+      run(resume(info), sandbox)
+    }
+    system.ReadFileRange(path, offset, limit, resume) -> {
+      let contents =
+        system.resolve_relative(sandbox.cwd, path)
+        |> result.try(fn(path) {
+          fs.read_range(sandbox.file_system, path, offset, limit)
+        })
+      run(resume(contents), sandbox)
+    }
+    system.WriteFileBits(path, bytes, resume) -> {
+      let #(outcome, sandbox) =
+        mutate_file_system(sandbox, path, fn(fs, path) {
+          fs.write_bits(fs, path, bytes)
+        })
+      run(resume(outcome), sandbox)
+    }
+    system.AppendFileBits(path, bytes, resume) -> {
+      let #(outcome, sandbox) =
+        mutate_file_system(sandbox, path, fn(fs, path) {
+          fs.append_bits(fs, path, bytes)
+        })
+      run(resume(outcome), sandbox)
+    }
+    system.DeleteFile(path, resume) -> {
+      let #(outcome, sandbox) = mutate_file_system(sandbox, path, fs.delete)
+      run(resume(outcome), sandbox)
+    }
+    system.WriteStdout(text, resume) -> {
+      let sandbox = Sandbox(..sandbox, stdout: [text, ..sandbox.stdout])
+      run(resume(Nil), sandbox)
+    }
+    system.WriteStderr(text, resume) -> {
+      run(resume(Nil), Sandbox(..sandbox, stderr: [text, ..sandbox.stderr]))
+    }
     system.CreateDirectory(path, resume) -> {
       let #(outcome, sandbox) =
         mutate_file_system(sandbox, path, fs.create_directory)

@@ -1,4 +1,3 @@
-import envoy
 import eyg/cli/internal/client
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
@@ -9,46 +8,17 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser/location
-import filepath
-import gleam/bit_array
-import gleam/crypto
-import gleam/fetchx
 import gleam/int
 import gleam/javascript/promise.{type Promise}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
-import kryptos/eddsa
+import loam/platform/computer
 import loam/source
 import loam/system
 import multiformats/cid/v1
 import ogre/origin
-import shellout
-import simplifile
-import touch_grass/cryptography/create_key
-import touch_grass/cryptography/hash
-import touch_grass/cryptography/sign
-import touch_grass/decode_json
-import touch_grass/env as env_effect
-import touch_grass/eyg_parse
-import touch_grass/fetch
-import touch_grass/file_system/append_file
-import touch_grass/file_system/cwd
-import touch_grass/file_system/delete_file
-import touch_grass/file_system/make_directory
-import touch_grass/file_system/read_directory
-import touch_grass/file_system/read_file
-import touch_grass/file_system/write_file
-import touch_grass/flip
-import touch_grass/harness/computer
-import touch_grass/interface
-import touch_grass/now
-import touch_grass/random
-import touch_grass/sleep
-import touch_grass/standard_error
-import touch_grass/standard_in
-import touch_grass/standard_out
 import untethered/ledger/schema
 
 pub type Value =
@@ -96,112 +66,6 @@ fn try_await(
   }
 }
 
-/// The implementation of the harness/computer effects.
-/// Implemented as promises, not based on system.Effect.
-pub fn extrinsic(
-  effect: computer.Effect,
-  origin: source.Origin,
-) -> Promise(v.Value(a, b)) {
-  case effect {
-    computer.AppendFile(input) -> {
-      let output = append_file(origin, input)
-      append_file.encode(output)
-      |> promise.resolve
-    }
-    computer.CreateKey(request) -> {
-      let output = create_key(request)
-      create_key.encode(output)
-      |> promise.resolve
-    }
-    computer.Cwd -> {
-      let output = cwd()
-      cwd.encode(output)
-      |> promise.resolve
-    }
-    computer.DecodeJson(encoded) -> decode_json.sync(encoded) |> promise.resolve
-    computer.DeleteFile(path:) -> {
-      let output = delete_file(origin, path)
-      delete_file.encode(output)
-      |> promise.resolve
-    }
-    computer.Env(name:) -> {
-      let result = envoy.get(name) |> option.from_result
-      env_effect.encode(result)
-      |> promise.resolve
-    }
-    computer.Exit(status:) -> {
-      exit(status)
-    }
-    computer.EygParse(source:) -> {
-      let result = source.parse(source, origin)
-      eyg_parse.encode(result)
-      |> promise.resolve
-    }
-    computer.Fetch(request) -> {
-      use result <- promise.map(fetchx.send_bits(request))
-      let result = result.map_error(result, string.inspect)
-      fetch.encode(result)
-    }
-    computer.Flip ->
-      flip.sync()
-      |> flip.encode
-      |> promise.resolve
-    computer.Hash(input) -> hash.encode(hash(input)) |> promise.resolve
-    computer.MakeDirectory(input) ->
-      make_directory(origin, input)
-      |> make_directory.encode
-      |> promise.resolve
-    computer.Now -> {
-      let millis = now.sync()
-      now.encode(millis)
-      |> promise.resolve
-    }
-    computer.Random(max) -> {
-      let n = random.sync(max)
-      random.encode(n) |> promise.resolve
-    }
-    computer.ReadDirectory(path:) -> {
-      let output = read_directory(origin, path)
-      read_directory.encode(output)
-      |> promise.resolve
-    }
-    computer.ReadFile(input) -> {
-      let output = read_file(origin, input)
-      read_file.encode(output) |> promise.resolve
-    }
-    computer.Sign(request) -> {
-      let output = sign(request)
-      sign.encode(output)
-      |> promise.resolve
-    }
-    computer.Sleep(ms) -> {
-      use Nil <- promise.map(promise.wait(ms))
-      sleep.encode(Nil)
-    }
-    computer.StandardError(text) -> {
-      standard_error.sync(text)
-      |> standard_error.encode
-      |> promise.resolve
-    }
-    computer.StandardIn -> {
-      system.read_stdin()
-      |> result.map(bit_array.from_string)
-      |> standard_in.encode()
-      |> promise.resolve
-    }
-    computer.StanardOut(text) -> {
-      standard_out.sync(text)
-      |> standard_out.encode
-      |> promise.resolve
-    }
-    computer.WriteFile(input) -> {
-      let output = write_file(origin, input)
-      write_file.encode(output)
-      |> promise.resolve
-    }
-  }
-}
-
 pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
@@ -211,9 +75,11 @@ pub fn loop(
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect(label, lift) ->
-          case interface.cast(computer.effects(), label, lift) {
+          case computer.cast(label, lift) {
             Ok(effect) -> {
-              use value <- promise.await(extrinsic(effect, meta.origin))
+              use value <- promise.await(
+                system.run(computer.extrinsic(effect, meta.origin)),
+              )
               loop(block.resume(value, env, k), state)
             }
 
@@ -391,7 +257,10 @@ fn lookup_relative(
   origin: source.Origin,
   state: State,
 ) -> Promise(Result(Value, Reason)) {
-  case resolve_filepath(origin, location) {
+  use resolved <- promise.await(
+    system.run(source.resolve_filepath(origin, location)),
+  )
+  case resolved {
     Ok(path) -> {
       case system.do_read_file(path) {
         Ok(code) ->
@@ -476,149 +345,6 @@ pub fn normalize_input(working_directory, input: source.Input) {
     }
     source.Code(_) | source.Stdin -> Ok(input)
   }
-}
-
-pub fn resolve_filepath(
-  from: source.Origin,
-  path: String,
-) -> Result(String, String) {
-  use joined <- try(case filepath.is_absolute(path) {
-    True -> Ok(path)
-    False ->
-      case from {
-        source.Disk(path: source_path) ->
-          source_path
-          |> filepath.directory_name()
-          |> filepath.join(path)
-          |> Ok
-        source.Repl | source.Inline | source.Pipe ->
-          simplifile.current_directory()
-          |> result.map(filepath.join(_, path))
-          |> result.map_error(simplifile.describe_error)
-        _ ->
-          Error(
-            "relative path \""
-            <> path
-            <> "\" requires a disk-backed source; use CWD or an absolute path",
-          )
-      }
-  })
-
-  filepath.expand(joined)
-  |> result.replace_error("invalid relative path outside filesystem")
-}
-
-pub fn hash(input) {
-  let hash.Input(algorithm:, bytes:) = input
-  case algorithm {
-    hash.Sha256 -> crypto.hash(crypto.Sha256, bytes)
-  }
-}
-
-pub fn make_directory(
-  origin: source.Origin,
-  path: String,
-) -> Result(Nil, String) {
-  use path <- try(resolve_filepath(origin, path))
-  simplifile.create_directory_all(path)
-  |> result.map_error(simplifile.describe_error)
-}
-
-pub fn create_key(request) {
-  case request {
-    create_key.Eddsa -> {
-      let #(private_key, public_key) = eddsa.generate_key_pair(eddsa.Ed25519)
-      Ok(create_key.EddsaKey(
-        public_key: eddsa.public_key_to_bytes(public_key),
-        private_key: eddsa.to_bytes(private_key),
-      ))
-    }
-  }
-}
-
-pub fn sign(request) {
-  case request {
-    sign.EddsaSign(private_key:, data:) ->
-      case eddsa.from_bytes(eddsa.Ed25519, private_key) {
-        Ok(#(key, _public)) -> Ok(eddsa.sign(key, data))
-        Error(Nil) -> Error("invalid Ed25519 private key")
-      }
-  }
-}
-
-pub fn append_file(
-  origin: source.Origin,
-  input: append_file.Input,
-) -> Result(Nil, String) {
-  let append_file.Input(path:, contents:) = input
-  use path <- try(resolve_filepath(origin, path))
-
-  simplifile.append_bits(path, contents)
-  |> result.map_error(simplifile.describe_error)
-}
-
-pub fn cwd() {
-  simplifile.current_directory()
-  |> result.map_error(simplifile.describe_error)
-}
-
-pub fn read_directory(
-  origin: source.Origin,
-  path path: String,
-) -> read_directory.Output {
-  use path <- try(resolve_filepath(origin, path))
-  use children <- try(
-    simplifile.read_directory(path)
-    |> result.map_error(simplifile.describe_error),
-  )
-  let children =
-    list.filter_map(children, fn(child) {
-      let path = path <> "/" <> child
-
-      use info <- try(simplifile.file_info(path))
-      case simplifile.file_info_type(info) {
-        simplifile.File -> Ok(#(child, read_directory.File(size: info.size)))
-        simplifile.Directory -> Ok(#(child, read_directory.Directory))
-        simplifile.Symlink -> Error(simplifile.Unknown(""))
-        simplifile.Other -> Error(simplifile.Unknown(""))
-      }
-    })
-    |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
-  Ok(children)
-}
-
-@external(javascript, "./execute_ffi.mjs", "readAtOffset")
-fn read_at_offset(
-  path path: String,
-  offset offset: Int,
-  limit limit: Int,
-) -> Result(BitArray, simplifile.FileError)
-
-pub fn read_file(origin: source.Origin, input: read_file.Input) {
-  let read_file.Input(path:, limit:, offset:) = input
-  use path <- try(resolve_filepath(origin, path))
-  read_at_offset(path:, limit:, offset:)
-  |> result.map_error(simplifile.describe_error)
-}
-
-pub fn write_file(origin: source.Origin, input: write_file.Input) {
-  let write_file.Input(path:, contents:) = input
-  use path <- try(resolve_filepath(origin, path))
-  simplifile.write_bits(path, contents)
-  |> result.map_error(simplifile.describe_error)
-}
-
-pub fn delete_file(origin: source.Origin, path) {
-  use path <- try(resolve_filepath(origin, path))
-  simplifile.delete(path)
-  |> result.map_error(simplifile.describe_error)
-}
-
-/// Stop the process. Nothing follows, which is why the harness lowers `Exit`
-/// to `Never`.
-fn exit(status: Int) -> a {
-  shellout.exit(status)
-  panic as "the process did not stop"
 }
 
 // fn spotless_context() -> context.Context(Promise(t), Nil) {
