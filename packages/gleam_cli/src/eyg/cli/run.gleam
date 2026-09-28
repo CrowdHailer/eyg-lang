@@ -1,12 +1,12 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/hub/cache
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/option.{None, Some}
 import gleam/result
+import loam/system
 import simplifile
 
 pub fn execute(

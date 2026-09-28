@@ -1,8 +1,8 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/ir/dag_json
 import gleam/json
+import loam/system
 
 pub fn execute(
   input: source.Input,

@@ -1,5 +1,3 @@
-import eyg/cli/internal/bun_platform
-import eyg/cli/internal/crypto
 import gleam/crypto as gcrypto
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
@@ -7,6 +5,8 @@ import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/result
 import kryptos/eddsa
+import loam/internal/bun_platform
+import loam/internal/crypto
 import midas/effect
 import simplifile
 import untethered/keypair

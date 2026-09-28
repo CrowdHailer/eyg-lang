@@ -1,6 +1,3 @@
-import eyg/cli/internal/crypto
-import eyg/cli/internal/platform
-import eyg/cli/system
 import eyg/hub/schema
 import filepath
 import gleam/dynamic/decode
@@ -9,6 +6,9 @@ import gleam/list
 import gleam/result
 import gleam/string
 import kryptos/eddsa
+import loam/internal/crypto
+import loam/internal/platform
+import loam/system
 import multiformats/cid/v1
 import simplifile
 import untethered/keypair

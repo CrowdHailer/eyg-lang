@@ -1,6 +1,6 @@
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/ir/tree as ir
+import loam/system
 
 pub fn read_code_test() {
   let assert system.Done(Ok(code)) =

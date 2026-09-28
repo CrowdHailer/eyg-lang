@@ -1,7 +1,6 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/store
-import eyg/cli/system
 import eyg/hub/signatory as principal
 import filepath
 import gleam/bit_array
@@ -14,6 +13,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import kryptos/eddsa
+import loam/system
 import multiformats/cid/v1
 import ogre/origin
 import untethered/ledger/schema

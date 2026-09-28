@@ -12,12 +12,12 @@ import eyg/cli/script
 import eyg/cli/share
 import eyg/cli/shell
 import eyg/cli/signatory
-import eyg/cli/system
 import eyg/cli/version
 import gleam/io
 import gleam/javascript/promise.{type Promise}
 import gleam/javascript/promisex
 import gleam/result
+import loam/system
 import shellout
 
 pub fn main() {

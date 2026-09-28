@@ -1,7 +1,6 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/hub/cache
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
@@ -9,6 +8,7 @@ import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/result
+import loam/system
 import simplifile
 
 pub fn execute(

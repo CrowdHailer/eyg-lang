@@ -1,7 +1,7 @@
 import envoy
 import eyg/cli/internal/client
-import eyg/cli/internal/platform
 import gleam/result.{try}
+import loam/internal/platform
 import ogre/origin
 
 pub type Config {

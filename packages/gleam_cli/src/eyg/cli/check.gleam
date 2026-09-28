@@ -5,11 +5,11 @@ import eyg/analysis/type_/binding/error
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/ir/tree as ir
 import eyg/parser
 import filepath
 import gleam/list
+import loam/system
 
 pub fn execute(
   input: source.Input,

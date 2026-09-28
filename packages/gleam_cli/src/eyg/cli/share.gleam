@@ -3,7 +3,6 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/execute
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/hub/cache
 import eyg/ir/cid
 import eyg/ir/dag_json
@@ -14,6 +13,7 @@ import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import loam/system
 import midas/continuation.{type Continuation as K, return, then}
 import multiformats/cid/v1
 

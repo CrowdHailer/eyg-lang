@@ -2,12 +2,12 @@ import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
 import eyg/cli/internal/store
-import eyg/cli/system
 import eyg/hub/cache
 import gleam/int
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/option.{None, Some}
+import loam/system
 import multiformats/cid/v1
 
 pub fn execute(

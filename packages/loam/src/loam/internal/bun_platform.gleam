@@ -1,4 +1,3 @@
-import eyg/cli/internal/platform
 import gleam/crypto
 import gleam/fetch
 import gleam/fetchx
@@ -6,6 +5,7 @@ import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/javascript/promise.{type Promise}
 import gleam/uri.{type Uri}
+import loam/internal/platform
 import midas/continuation
 import midas/effect as e
 import shellout

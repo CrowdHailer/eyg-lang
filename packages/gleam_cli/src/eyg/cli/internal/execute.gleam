@@ -2,7 +2,6 @@ import envoy
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -23,6 +22,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
 import kryptos/eddsa
+import loam/system
 import multiformats/cid/v1
 import shellout
 import simplifile

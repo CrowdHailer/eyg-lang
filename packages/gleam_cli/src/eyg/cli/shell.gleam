@@ -5,7 +5,6 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/cli/internal/execute
 import eyg/cli/internal/ir
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/simple_debug
@@ -20,6 +19,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import input
+import loam/system
 import simplifile
 
 pub fn execute(input, config) {

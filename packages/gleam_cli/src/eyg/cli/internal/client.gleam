@@ -1,8 +1,5 @@
 import envoy
-import eyg/cli/internal/bun_platform
-import eyg/cli/internal/crypto
 import eyg/cli/internal/store
-import eyg/cli/system
 import eyg/hub/cache.{type Cache}
 import eyg/hub/client
 import eyg/hub/publisher
@@ -17,6 +14,9 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri
+import loam/internal/bun_platform
+import loam/internal/crypto
+import loam/system
 import midas/continuation.{type Continuation as K}
 import midas/effect
 import multiformats/cid/v1

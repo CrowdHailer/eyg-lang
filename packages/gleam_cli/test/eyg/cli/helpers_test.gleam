@@ -1,6 +1,6 @@
 import eyg/cli/helpers
 import eyg/cli/helpers/fs
-import eyg/cli/system
+import loam/system
 import simplifile
 
 pub fn sandbox_file_system_effects_test() {

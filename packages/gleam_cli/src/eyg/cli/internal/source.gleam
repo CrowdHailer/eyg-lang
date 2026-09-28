@@ -1,4 +1,3 @@
-import eyg/cli/system
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
@@ -8,6 +7,7 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
+import loam/system
 import multiformats/cid/v1
 
 pub type Input {

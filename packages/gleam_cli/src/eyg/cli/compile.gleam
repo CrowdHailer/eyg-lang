@@ -1,8 +1,8 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/source
-import eyg/cli/system
 import eyg/compiler
 import gleam/dict
+import loam/system
 
 pub fn execute(
   input: source.Input,

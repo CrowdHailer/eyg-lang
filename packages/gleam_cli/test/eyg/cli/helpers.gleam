@@ -1,9 +1,6 @@
 import eyg/cli/helpers/fs
 import eyg/cli/internal/client
 import eyg/cli/internal/config
-import eyg/cli/internal/crypto.{generate_key} as _
-import eyg/cli/internal/platform
-import eyg/cli/system
 import eyg/hub/schema
 import eyg/ir/car
 import eyg/ir/cid
@@ -20,6 +17,9 @@ import gleam/json
 import gleam/list
 import gleam/option.{None}
 import gleam/result
+import loam/internal/crypto.{generate_key} as _
+import loam/internal/platform
+import loam/system
 import midas/continuation
 import midas/effect
 import multiformats/cid/v1
