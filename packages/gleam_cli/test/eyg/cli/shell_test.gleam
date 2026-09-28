@@ -1,7 +1,5 @@
-import eyg/cli/internal/client
-import eyg/cli/internal/config
+import eyg/cli/helpers
 import eyg/cli/internal/execute
-import eyg/cli/internal/platform
 import eyg/cli/shell
 import eyg/hub/cache
 import eyg/interpreter/value as v
@@ -9,7 +7,6 @@ import eyg/parser
 import gleam/dict
 import gleam/javascript/promise
 import gleam/string
-import ogre/origin
 
 pub fn type_test() {
   use #(output, _) <- promise.await(shell.handle("/type 5", [], [], state()))
@@ -94,11 +91,5 @@ pub fn type_of_of_a_pure_expression_has_no_effects_test() {
 }
 
 fn state() -> execute.State {
-  execute.State(
-    config: config.Config(
-      client: client.Client(origin: origin.https("eyg.test")),
-      dirs: platform.PlatformDirs(config_dir: "", cache_dir: "", data_dir: ""),
-    ),
-    cache: cache.empty(),
-  )
+  execute.State(config: helpers.config, cache: cache.empty())
 }

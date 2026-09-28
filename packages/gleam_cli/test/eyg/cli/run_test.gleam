@@ -1,19 +1,14 @@
 import birdie
-import eyg/cli/internal/client
-import eyg/cli/internal/config
-import eyg/cli/internal/platform
+import eyg/cli/helpers
 import eyg/cli/internal/source
 import eyg/cli/run
-import gleam/http
 import gleam/javascript/promise
-import gleam/option.{None}
-import ogre/origin
 import simplifile
 
 pub fn print_error_in_import_test() {
   use return <- promise.map(run.execute(
     source.File("././././test/fixtures/../fixtures/bad_function_in_import.eyg"),
-    config,
+    helpers.config,
   ))
   let assert Error(reason) = return
   birdie.snap(reason, title: "error in imported function")
@@ -22,7 +17,7 @@ pub fn print_error_in_import_test() {
 pub fn abort_in_nested_helper_test() {
   use return <- promise.map(run.execute(
     source.File("./test/fixtures/abort_main.eyg"),
-    config,
+    helpers.config,
   ))
   let assert Error(reason) = return
   birdie.snap(reason, title: "abort in nested helper")
@@ -31,7 +26,7 @@ pub fn abort_in_nested_helper_test() {
 pub fn file_effects_are_source_relative_test() {
   use return <- promise.map(run.execute(
     source.File("./test/fixtures/source_relative/main.eyg"),
-    config,
+    helpers.config,
   ))
   let assert Ok(0) = return
 }
@@ -54,7 +49,7 @@ match perform ReadFile({path, offset: 0, limit: 100}) {
   Error(reason) -> { !never(perform Abort(reason)) }
 }",
     ),
-    config,
+    helpers.config,
   ))
   let assert Ok(0) = return
 }
@@ -67,15 +62,6 @@ match !equal(value, 5) {
   True(_) -> { 0 }
   False(_) -> { !never(perform Abort(\"wrong value\")) }
 }"
-  use return <- promise.map(run.execute(source.Code(code), config))
+  use return <- promise.map(run.execute(source.Code(code), helpers.config))
   let assert Ok(0) = return
 }
-
-const eyg_origin = client.Client(
-  origin: origin.Origin(http.Https, "eyg.run", None),
-)
-
-const config = config.Config(
-  client: eyg_origin,
-  dirs: platform.PlatformDirs(config_dir: "", cache_dir: "", data_dir: ""),
-)
