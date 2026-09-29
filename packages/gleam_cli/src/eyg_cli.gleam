@@ -13,41 +13,44 @@ import eyg/cli/share
 import eyg/cli/shell
 import eyg/cli/signatory
 import eyg/cli/version
-import gleam/io
-import gleam/javascript/promise.{type Promise}
 import gleam/result
 import loam/system
-import shellout
 
 pub fn main() {
-  use result <- promise.map(execute(args.parse(argv.load().arguments)))
+  start(argv.load().arguments)
+  |> system.run
+}
+
+/// Run CLI arguments, including output and process exit, through system effects.
+pub fn start(arguments: List(String)) -> system.Effect(Nil) {
+  use result <- system.then(execute(args.parse(arguments)))
   case result {
-    Ok(n) -> shellout.exit(n)
+    Ok(n) -> system.exit(n)
     Error(reason) -> {
-      io.println_error(reason)
-      shellout.exit(1)
+      use Nil <- system.then(system.write_stderr(reason <> "\n"))
+      system.exit(1)
     }
   }
 }
 
-fn execute(parsed: args.Args) -> Promise(Result(Int, String)) {
+fn execute(parsed: args.Args) -> system.Effect(Result(Int, String)) {
   case parsed {
     args.Help -> help()
     args.Version -> version()
-    args.InvalidArguments(message) -> promise.resolve(Error(message))
+    args.InvalidArguments(message) -> system.Done(Error(message))
 
-    _ -> system.run(with_config(parsed))
+    _ -> with_config(parsed)
   }
 }
 
 fn help() {
-  io.println(args.help_text)
-  promise.resolve(Ok(0))
+  use Nil <- system.map(system.stdout(args.help_text))
+  Ok(0)
 }
 
 fn version() {
-  io.println("eyg " <> version.string())
-  promise.resolve(Ok(0))
+  use Nil <- system.map(system.stdout("eyg " <> version.string()))
+  Ok(0)
 }
 
 fn with_config(parsed) {

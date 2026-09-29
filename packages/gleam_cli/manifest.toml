@@ -82,6 +82,5 @@ loam = { path = "../loam" }
 midas = { version = ">= 3.0.0 and < 4.0.0" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 ogre = { version = ">= 1.1.0 and < 2.0.0" }
-shellout = { version = ">= 1.8.0 and < 2.0.0" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 untethered = { path = "../untethered" }
