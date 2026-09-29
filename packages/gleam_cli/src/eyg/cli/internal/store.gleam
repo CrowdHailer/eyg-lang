@@ -44,7 +44,9 @@ pub fn save_signatory(
   system.set_permissions(path, 0o600)
 }
 
-pub fn all_signatories(dirs) {
+pub fn all_signatories(
+  dirs: os.Directories,
+) -> Result(List(Signatory), String) {
   use paths <- result.try(
     simplifile.get_files(signatories_dir(dirs))
     |> result.map_error(simplifile.describe_error),
@@ -63,7 +65,9 @@ pub fn all_signatories(dirs) {
   })
 }
 
-pub fn signatory_aliases(dirs) {
+pub fn signatory_aliases(
+  dirs: os.Directories,
+) -> system.Effect(Result(List(String), String)) {
   use files <- system.then(system.read_directory(signatories_dir(dirs)))
   case files {
     Error(simplifile.Enoent) -> Ok([])
@@ -93,7 +97,10 @@ pub fn validate_alias(alias: String) -> Result(Nil, String) {
   }
 }
 
-pub fn read_signatory(alias: String, dirs: os.Directories) {
+pub fn read_signatory(
+  alias: String,
+  dirs: os.Directories,
+) -> system.Effect(Result(Signatory, String)) {
   use Nil <- system.try(validate_alias(alias))
   use encoded <- system.then(system.read_file(
     signatories_dir(dirs) <> alias <> ".json",

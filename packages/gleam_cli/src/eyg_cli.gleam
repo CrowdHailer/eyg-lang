@@ -58,19 +58,19 @@ fn with_config(parsed) {
   case parsed {
     args.Help | args.Version | args.InvalidArguments(_) ->
       panic as "handled above"
-    args.Shell(input) -> system.run(shell.execute(input, config))
-    args.Run(input:) -> system.run(run.execute(input, config))
-    args.Script(input:, arguments:) ->
-      system.run(script.execute(input, arguments, config))
-    args.Eval(input:) -> system.run(eval.execute(input, config))
-    args.Check(input:) -> system.run(check.execute(input, config))
-    args.Compile(input:) -> system.run(compile.execute(input, config))
-    args.Parse(input:) -> system.run(parse.execute(input, config))
-    args.Share(input:) -> system.run(share.execute(input, config))
-    args.Fetch(cid:) -> system.run(fetch.execute(cid, config))
+    args.Shell(input) -> shell.execute(input, config)
+    args.Run(input:) -> run.execute(input, config)
+    args.Script(input:, arguments:) -> script.execute(input, arguments, config)
+    args.Eval(input:) -> eval.execute(input, config)
+    args.Check(input:) -> check.execute(input, config)
+    args.Compile(input:) -> compile.execute(input, config)
+    args.Parse(input:) -> parse.execute(input, config)
+    args.Share(input:) -> share.execute(input, config)
+    args.Fetch(cid:) -> fetch.execute(cid, config)
     args.Publish(package:, file:) -> publish.execute(package, file, config)
-    args.SignatoryInitial(name:) -> system.run(signatory.initial(name, config))
-    args.SignatoryList -> system.run(signatory.list(config))
-    args.SignatoryShow(alias:) -> system.run(signatory.show(alias, config))
+    args.SignatoryInitial(name:) -> signatory.initial(name, config)
+    args.SignatoryList -> signatory.list(config)
+    args.SignatoryShow(alias:) -> signatory.show(alias, config)
   }
+  |> system.run
 }
