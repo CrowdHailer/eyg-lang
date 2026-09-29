@@ -1,7 +1,6 @@
 import eyg/cli/check
 import eyg/cli/internal/client
 import eyg/cli/internal/config
-import eyg/cli/internal/execute
 import eyg/hub/cache
 import eyg/ir/cid
 import eyg/ir/dag_json
@@ -23,7 +22,7 @@ pub fn execute(
 ) -> system.Effect(Result(Int, String)) {
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
-  use input <- system.try(execute.normalize_input(cwd, input))
+  use input <- system.try(source.normalize_input(cwd, input))
   use code <- system.then(source.read_input(input))
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))

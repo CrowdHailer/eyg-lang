@@ -98,6 +98,20 @@ pub fn input_origin(input) {
   }
 }
 
+/// Normalize a file input against an explicit working directory.
+pub fn normalize_input(working_directory: String, input: Input) {
+  case input {
+    File(path:) -> {
+      use path <- result.map(
+        system.resolve_relative(working_directory, path)
+        |> result.replace_error("invalid relative path outside filesystem"),
+      )
+      File(path)
+    }
+    Code(_) | Stdin -> Ok(input)
+  }
+}
+
 /// Resolve a source-relative path, requesting CWD only for interactive origins.
 pub fn resolve_filepath(
   from: Origin,

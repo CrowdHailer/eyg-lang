@@ -1,3 +1,5 @@
+//// Evaluate EYG with the computer harness and resolve imports through Loam effects.
+
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -10,7 +12,6 @@ import eyg/parser/location
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result.{try}
 import gleam/string
 import loam/platform/computer
 import loam/source
@@ -293,66 +294,6 @@ pub fn pure_loop(
       }
   }
 }
-
-pub fn normalize_input(working_directory, input: source.Input) {
-  case input {
-    source.File(path:) -> {
-      use path <- try(
-        system.resolve_relative(working_directory, path)
-        |> result.replace_error("invalid relative path outside filesystem"),
-      )
-      Ok(source.File(path))
-    }
-    source.Code(_) | source.Stdin -> Ok(input)
-  }
-}
-
-// fn spotless_context() -> context.Context(Promise(t), Nil) {
-//   context.Context(
-//     export_jwk: fn(_key) { panic as "export_jwk not implemented" },
-//     follow: bun_platform.follow,
-//     fetch: bun_platform.fetch,
-//     hash: bun_platform.hash,
-//     sign: fn(_, _, _) { panic as "sign not implemented" },
-//     strong_random: bun_platform.strong_random,
-//     unix_now: fn() { panic as "unix_now not implemented" },
-//   )
-// }
-
-// fn service_fetch(service, operation) {
-//   let port = 8080
-//   use result <- promise.await(spotless.authenticate(
-//     service,
-//     [],
-//     "",
-//     port,
-//     pkce.S256,
-//     spotless_context(),
-//   )(promise.resolve))
-//   use result <- promise.await(case result {
-//     Ok(token.Response(access_token:, ..)) -> {
-//       let request = service_request(service, operation, access_token)
-//       use result <- promise.map(fetchx.send_bits(request))
-//       result.map_error(result, string.inspect)
-//     }
-//     Error(reason) -> promise.resolve(Error(reason))
-//   })
-//   promise.resolve(Ok(result))
-// }
-
-// fn service_request(service, operation, token) {
-//   let origin = case service {
-//     "dnsimple" -> origin.https("api.dnsimple.com")
-//     "github" -> origin.https("api.github.com")
-//     "netlify" -> origin.https("api.netlify.com")
-//     "tavily" -> origin.https("api.tavily.com")
-//     "vimeo" -> origin.https("api.vimeo.com")
-//     // TODO this could be fixed by passing an enum of services through.
-//     _ -> panic as "unknown service"
-//   }
-//   operation.to_request(operation, origin)
-//   |> request.set_header("authorization", "Bearer " <> token)
-// }
 
 /// One frame of the runtime stack trace - the failing expression's
 /// meta (with `arg: None`) plus every closure call recorded by a

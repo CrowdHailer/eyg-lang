@@ -1,10 +1,10 @@
 import eyg/cli/internal/config
-import eyg/cli/internal/execute
 import eyg/hub/cache
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/option.{None, Some}
 import gleam/result
+import loam/execute
 import loam/source
 import loam/system
 import simplifile
@@ -17,7 +17,7 @@ pub fn execute(
     simplifile.current_directory()
     |> result.map_error(simplifile.describe_error),
   )
-  use input <- promisex.try_sync(execute.normalize_input(cwd, input))
+  use input <- promisex.try_sync(source.normalize_input(cwd, input))
   use code <- promise.try_await(system.run(source.read_input(input)))
   use source <- promisex.try_sync(source.parse_input(code, input))
 

@@ -1,5 +1,4 @@
 import birdie
-import eyg/cli/internal/execute
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
@@ -7,6 +6,7 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import gleam/dict
 import gleam/list
+import loam/execute
 import loam/source
 import multiformats/cid/v1
 

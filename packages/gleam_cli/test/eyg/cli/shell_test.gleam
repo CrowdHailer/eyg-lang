@@ -1,5 +1,4 @@
 import eyg/cli/helpers
-import eyg/cli/internal/execute
 import eyg/cli/shell
 import eyg/hub/cache
 import eyg/interpreter/value as v
@@ -7,6 +6,7 @@ import eyg/parser
 import gleam/dict
 import gleam/javascript/promise
 import gleam/string
+import loam/execute
 
 pub fn type_test() {
   use #(output, _) <- promise.await(shell.handle("/type 5", [], [], state()))

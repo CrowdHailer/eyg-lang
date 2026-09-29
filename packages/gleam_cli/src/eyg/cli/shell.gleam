@@ -3,7 +3,6 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug as type_debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/cli/internal/config
-import eyg/cli/internal/execute
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/simple_debug
@@ -18,6 +17,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import input
+import loam/execute
 import loam/ir
 import loam/source
 import loam/system
@@ -31,7 +31,7 @@ pub fn execute(input, config: config.Config) {
         simplifile.current_directory()
         |> result.map_error(simplifile.describe_error),
       )
-      use input <- promisex.try_sync(execute.normalize_input(cwd, input))
+      use input <- promisex.try_sync(source.normalize_input(cwd, input))
       use code <- promise.try_await(system.run(source.read_input(input)))
       use source <- promisex.try_sync(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
