@@ -36,7 +36,7 @@ pub fn execute(
     user_meta,
   )
 
-  use result <- system.map(execute.block(source, [], state))
+  use #(result, _) <- system.map(execute.block(source, [], state))
   case result {
     Ok(#(Some(exit_code), _)) ->
       case cast.as_integer(exit_code) {

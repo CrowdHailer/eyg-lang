@@ -16,7 +16,7 @@ pub fn execute(
   use source <- system.try(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
-  use result <- system.map(execute.block(source, [], state))
+  use #(result, _) <- system.map(execute.block(source, [], state))
   case result {
     Ok(_) -> Ok(0)
     Error(#(reason, location, _, k)) -> {

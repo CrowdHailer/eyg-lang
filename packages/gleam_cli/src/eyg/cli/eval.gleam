@@ -18,7 +18,7 @@ pub fn execute(
   use source <- system.try(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
-  use result <- system.then(execute.pure_loop(
+  use #(result, _) <- system.then(execute.pure_loop(
     expression.execute(source, []),
     state,
   ))

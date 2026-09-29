@@ -46,25 +46,25 @@ pub fn block(source, scope, state) {
 }
 
 fn try_await(
-  result: system.Effect(Result(t, Reason)),
+  result: system.Effect(#(Result(t, Reason), State)),
   meta: source.Location,
   env: Env,
   k: Stack,
-  then: fn(t) -> system.Effect(Result(r, Debug)),
-) -> system.Effect(Result(r, Debug)) {
-  use result <- system.then(result)
+  then: fn(t, State) -> system.Effect(#(Result(r, Debug), State)),
+) -> system.Effect(#(Result(r, Debug), State)) {
+  use #(result, state) <- system.then(result)
   case result {
-    Ok(value) -> then(value)
-    Error(reason) -> system.Done(Error(#(reason, meta, env, k)))
+    Ok(value) -> then(value, state)
+    Error(reason) -> system.Done(#(Error(#(reason, meta, env, k)), state))
   }
 }
 
 pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
-) -> system.Effect(Result(#(Option(Value), Scope), Debug)) {
+) -> system.Effect(#(Result(#(Option(Value), Scope), Debug), State)) {
   case return {
-    Ok(return) -> system.Done(Ok(return))
+    Ok(return) -> system.Done(#(Ok(return), state))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect(label, lift) ->
@@ -74,10 +74,11 @@ pub fn loop(
               loop(block.resume(value, env, k), state)
             }
 
-            Error(reason) -> system.Done(Error(#(reason, meta, env, k)))
+            Error(reason) ->
+              system.Done(#(Error(#(reason, meta, env, k)), state))
           }
         break.UndefinedReference(reference) -> {
-          use value <- try_await(
+          use value, state <- try_await(
             lookup(reference, meta.origin, state),
             meta,
             env,
@@ -86,7 +87,7 @@ pub fn loop(
           loop(block.resume(value, env, k), state)
         }
 
-        _ -> system.Done(Error(#(reason, meta, env, k)))
+        _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
       }
   }
 }
@@ -136,11 +137,15 @@ fn apply(
   }
 }
 
+/// lookup a reference from the hub. 
+/// 
+/// This function returns an effect that is complete when all lookups are done.
+/// A new state is returned as references can have further dependencies
 fn lookup(
   reference: ir.Reference,
-  origin,
+  origin: source.Origin,
   state: State,
-) -> system.Effect(Result(Value, Reason)) {
+) -> system.Effect(#(Result(Value, Reason), State)) {
   case reference {
     ir.Content(cid) -> lookup_reference(cid, state)
     ir.Package(package) -> lookup_package(package, state)
@@ -153,11 +158,11 @@ fn lookup(
 fn lookup_reference(
   cid: v1.Cid,
   state: State,
-) -> system.Effect(Result(Value, Reason)) {
+) -> system.Effect(#(Result(Value, Reason), State)) {
   // A pulled release does not fetch its module, so ask for the one being read.
   let cache = cache.fetch(state.cache, cid)
   use state <- system.map(update(State(..state, cache:)))
-  case cache.module(state.cache, cid) {
+  let result = case cache.module(state.cache, cid) {
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
     cache.Unavailable(reason) -> Error(reason)
     cache.Unknown -> {
@@ -174,21 +179,19 @@ fn lookup_reference(
       |> Error()
     }
   }
+  #(result, state)
 }
 
 fn lookup_package(
   package: String,
   state: State,
-) -> system.Effect(Result(Value, Reason)) {
+) -> system.Effect(#(Result(Value, Reason), State)) {
   let cache = cache.pull(state.cache)
   use state <- system.then(update(State(..state, cache:)))
   case cache.package(state.cache, package) {
     Ok(cache.Entry(module:, ..)) -> lookup_reference(module, state)
-    Error(Nil) -> {
-      abort("package not found: @" <> package)
-      |> Error
-      |> system.Done
-    }
+    Error(Nil) ->
+      system.Done(#(Error(abort("package not found: @" <> package)), state))
   }
 }
 
@@ -196,36 +199,37 @@ fn lookup_version(
   package: String,
   version: Int,
   state: State,
-) -> system.Effect(Result(Value, Reason)) {
+) -> system.Effect(#(Result(Value, Reason), State)) {
   let cache = cache.pull(state.cache)
   use state <- system.then(update(State(..state, cache:)))
   case cache.unbound_release(state.cache, package, version) {
     Ok(module) -> lookup_reference(module, state)
     Error(Nil) ->
-      abort("package not found: @" <> package <> ":" <> int.to_string(version))
-      |> Error
-      |> system.Done
+      system.Done(#(
+        Error(abort(
+          "package not found: @" <> package <> ":" <> int.to_string(version),
+        )),
+        state,
+      ))
   }
 }
 
 fn lookup_pinned(
   release: ir.Release,
   state: State,
-) -> system.Effect(Result(Value, Reason)) {
+) -> system.Effect(#(Result(Value, Reason), State)) {
   let cache = cache.pull(state.cache)
   use state <- system.then(update(State(..state, cache:)))
 
   case cache.release(state.cache, release) {
     cache.Available(resolved) -> lookup_reference(resolved, state)
-    cache.Unknown -> {
-      abort("module not found for package: @" <> release.package)
-      |> Error
-      |> system.Done
-    }
+    cache.Unknown ->
+      system.Done(#(
+        Error(abort("module not found for package: @" <> release.package)),
+        state,
+      ))
     cache.Unavailable(Nil) ->
-      break.UndefinedReference(ir.Pinned(release:))
-      |> Error
-      |> system.Done
+      system.Done(#(Error(break.UndefinedReference(ir.Pinned(release:))), state))
   }
 }
 
@@ -238,7 +242,7 @@ fn lookup_relative(
   location: String,
   origin: source.Origin,
   state: State,
-) -> system.Effect(Result(Value, Reason)) {
+) -> system.Effect(#(Result(Value, Reason), State)) {
   use resolved <- system.then(source.resolve_filepath(origin, location))
 
   case resolved {
@@ -248,41 +252,49 @@ fn lookup_relative(
         Ok(code) ->
           case source.parse(code, source.Disk(path:)) {
             Ok(source) -> {
-              use result <- system.then(pure_loop(
+              use #(result, state) <- system.then(pure_loop(
                 expression.execute(source, []),
                 state,
               ))
               case result {
-                Ok(value) -> system.Done(Ok(value))
-                Error(#(reason, _, _, _)) -> system.Done(Error(reason))
+                Ok(value) -> system.Done(#(Ok(value), state))
+                Error(#(reason, _, _, _)) ->
+                  system.Done(#(Error(reason), state))
               }
             }
             Error(_) ->
-              abort("failed to read parse source from location: " <> location)
-              |> Error
-              |> system.Done
+              system.Done(#(
+                Error(abort(
+                  "failed to read parse source from location: " <> location,
+                )),
+                state,
+              ))
           }
         Error(_reason) ->
-          abort("failed to read module from location: " <> location)
-          |> Error
-          |> system.Done
+          system.Done(#(
+            Error(abort("failed to read module from location: " <> location)),
+            state,
+          ))
       }
     }
     Error(_) ->
-      system.Done(Error(break.UndefinedReference(ir.Relative(location:))))
+      system.Done(#(
+        Error(break.UndefinedReference(ir.Relative(location:))),
+        state,
+      ))
   }
 }
 
 pub fn pure_loop(
   return: Result(Value, Debug),
   state: State,
-) -> system.Effect(Result(Value, Debug)) {
+) -> system.Effect(#(Result(Value, Debug), State)) {
   case return {
-    Ok(return) -> system.Done(Ok(return))
+    Ok(return) -> system.Done(#(Ok(return), state))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UndefinedReference(reference) -> {
-          use value <- try_await(
+          use value, state <- try_await(
             lookup(reference, meta.origin, state),
             meta,
             env,
@@ -290,7 +302,7 @@ pub fn pure_loop(
           )
           pure_loop(expression.resume(value, env, k), state)
         }
-        _ -> system.Done(Error(#(reason, meta, env, k)))
+        _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
       }
   }
 }

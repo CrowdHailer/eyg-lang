@@ -31,7 +31,7 @@ pub fn execute(input, config: config.Config) {
       use code <- system.try(code)
       use source <- system.try(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
-      use result <- system.map(execute.block(source, [], state))
+      use #(result, _) <- system.map(execute.block(source, [], state))
       case result {
         Ok(#(_, scope)) -> Ok(scope)
         Error(#(break.UnhandledEffect("Break", _), _, env, _)) -> Ok(env.scope)
@@ -92,7 +92,7 @@ pub fn handle(code, scope, defs, state) {
             })
           use cwd <- system.then(system.cwd())
           let cwd = result.unwrap(cwd, "")
-          use result <- system.map(execute.block(located, scope, state))
+          use #(result, _) <- system.map(execute.block(located, scope, state))
           case result {
             Ok(#(Some(value), scope)) -> #(
               [Ok(simple_debug.inspect(value))],
