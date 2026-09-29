@@ -75,37 +75,16 @@ pub fn loop(
 
             Error(reason) -> system.Done(Error(#(reason, meta, env, k)))
           }
+        break.UndefinedReference(reference) -> {
+          use value <- try_await(
+            lookup(reference, meta.origin, state),
+            meta,
+            env,
+            k,
+          )
+          loop(block.resume(value, env, k), state)
+        }
 
-        break.UndefinedReference(ir.Content(cid)) -> {
-          use value <- try_await(lookup_reference(cid, state), meta, env, k)
-          loop(block.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Package(package)) -> {
-          use value <- try_await(lookup_package(package, state), meta, env, k)
-          loop(block.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Version(package, version)) -> {
-          use value <- try_await(
-            lookup_version(package, version, state),
-            meta,
-            env,
-            k,
-          )
-          loop(block.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Pinned(release)) -> {
-          use value <- try_await(lookup_pinned(release, state), meta, env, k)
-          loop(block.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Relative(location:)) -> {
-          use value <- try_await(
-            lookup_relative(location, meta.origin, state),
-            meta,
-            env,
-            k,
-          )
-          loop(block.resume(value, env, k), state)
-        }
         _ -> system.Done(Error(#(reason, meta, env, k)))
       }
   }
@@ -153,6 +132,20 @@ fn apply(
       let #(cache, _done) = cache.pull_packages_completed(cache, result)
       cache
     }
+  }
+}
+
+fn lookup(
+  reference: ir.Reference,
+  origin,
+  state: State,
+) -> system.Effect(Result(Value, Reason)) {
+  case reference {
+    ir.Content(cid) -> lookup_reference(cid, state)
+    ir.Package(package) -> lookup_package(package, state)
+    ir.Version(package, version) -> lookup_version(package, version, state)
+    ir.Pinned(release) -> lookup_pinned(release, state)
+    ir.Relative(location:) -> lookup_relative(location, origin, state)
   }
 }
 
@@ -287,30 +280,9 @@ pub fn pure_loop(
     Ok(return) -> system.Done(Ok(return))
     Error(#(reason, meta, env, k)) ->
       case reason {
-        break.UndefinedReference(ir.Content(cid)) -> {
-          use value <- try_await(lookup_reference(cid, state), meta, env, k)
-          pure_loop(expression.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Package(package)) -> {
-          use value <- try_await(lookup_package(package, state), meta, env, k)
-          pure_loop(expression.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Version(package, version)) -> {
+        break.UndefinedReference(reference) -> {
           use value <- try_await(
-            lookup_version(package, version, state),
-            meta,
-            env,
-            k,
-          )
-          pure_loop(expression.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Pinned(release)) -> {
-          use value <- try_await(lookup_pinned(release, state), meta, env, k)
-          pure_loop(expression.resume(value, env, k), state)
-        }
-        break.UndefinedReference(ir.Relative(location:)) -> {
-          use value <- try_await(
-            lookup_relative(location, meta.origin, state),
+            lookup(reference, meta.origin, state),
             meta,
             env,
             k,
