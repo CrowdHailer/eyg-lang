@@ -46,23 +46,23 @@ pub fn save_signatory(
 
 pub fn all_signatories(
   dirs: os.Directories,
-) -> Result(List(Signatory), String) {
-  use paths <- result.try(
-    simplifile.get_files(signatories_dir(dirs))
-    |> result.map_error(simplifile.describe_error),
-  )
+) -> system.Effect(Result(List(Signatory), String)) {
+  use aliases <- system.then(signatory_aliases(dirs))
+  use aliases <- system.try(aliases)
+  read_signatories(aliases, dirs)
+}
 
-  list.try_map(paths, fn(path) {
-    use encoded <- result.try(
-      simplifile.read(path) |> result.map_error(simplifile.describe_error),
-    )
-    let alias =
-      filepath.base_name(path)
-      |> filepath.strip_extension
-    let assert Ok(#(principal, keypair)) =
-      json.parse(encoded, signatory_decoder())
-    Ok(Signatory(alias:, principal:, keypair:))
-  })
+fn read_signatories(aliases: List(String), dirs: os.Directories) {
+  case aliases {
+    [] -> system.Done(Ok([]))
+    [alias, ..rest] -> {
+      use signatory <- system.then(read_signatory(alias, dirs))
+      use signatory <- system.try(signatory)
+      use signatories <- system.then(read_signatories(rest, dirs))
+      use signatories <- system.try(signatories)
+      system.Done(Ok([signatory, ..signatories]))
+    }
+  }
 }
 
 pub fn signatory_aliases(

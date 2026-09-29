@@ -14,8 +14,8 @@ pub fn execute(
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
   let config.Config(client:, dirs:) = config
-  // TODO list a readDirectory effect and list_files driver
-  use signatories <- system.try(store.all_signatories(dirs))
+  use signatories <- system.then(store.all_signatories(dirs))
+  use signatories <- system.try(signatories)
   use signatory <- system.try(case signatories {
     [] ->
       Error(
