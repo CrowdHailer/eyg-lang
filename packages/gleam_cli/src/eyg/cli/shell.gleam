@@ -35,7 +35,7 @@ pub fn execute(input, config: config.Config) {
       use code <- promise.try_await(system.run(source.read_input(input)))
       use source <- promisex.try_sync(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
-      use result <- promise.await(execute.block(source, [], state))
+      use result <- promise.await(system.run(execute.block(source, [], state)))
       case result {
         Ok(#(_, scope)) -> promise.resolve(Ok(scope))
         Error(#(break.UnhandledEffect("Break", _), _, env, _)) ->
@@ -94,7 +94,9 @@ pub fn handle(code, scope, defs, state) {
             tree.map_annotation(source, fn(span) {
               source.Location(source.Repl, source.Text(code, span))
             })
-          use result <- promise.map(execute.block(located, scope, state))
+          use result <- promise.map(
+            system.run(execute.block(located, scope, state)),
+          )
           case result {
             Ok(#(Some(value), scope)) -> #(
               [Ok(simple_debug.inspect(value))],

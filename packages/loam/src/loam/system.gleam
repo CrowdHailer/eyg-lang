@@ -374,7 +374,7 @@ pub fn format_file_error(path: String, err: simplifile.FileError) -> String {
   "error: " <> description <> "\nhint: " <> hint
 }
 
-pub fn do_read_file(file) {
+fn do_read_file(file) {
   simplifile.read(file)
   |> result.map_error(fn(err) { format_file_error(file, err) })
 }

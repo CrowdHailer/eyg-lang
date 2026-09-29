@@ -41,7 +41,7 @@ pub fn execute(
     user_meta,
   )
 
-  use result <- promise.map(execute.block(source, [], state))
+  use result <- promise.map(system.run(execute.block(source, [], state)))
   case result {
     Ok(#(Some(exit_code), _)) ->
       case cast.as_integer(exit_code) {

@@ -22,7 +22,7 @@ pub fn execute(
   use source <- promisex.try_sync(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
-  use result <- promise.map(execute.block(source, [], state))
+  use result <- promise.map(system.run(execute.block(source, [], state)))
   case result {
     Ok(#(Some(_value), _)) -> Ok(0)
     Ok(#(None, _)) -> Ok(0)

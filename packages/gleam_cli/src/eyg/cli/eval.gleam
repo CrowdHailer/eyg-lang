@@ -24,10 +24,9 @@ pub fn execute(
   use source <- promisex.try_sync(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
-  use result <- promise.map(execute.pure_loop(
-    expression.execute(source, []),
-    state,
-  ))
+  use result <- promise.map(
+    system.run(execute.pure_loop(expression.execute(source, []), state)),
+  )
   case result {
     Ok(value) -> {
       io.println(simple_debug.inspect(value))

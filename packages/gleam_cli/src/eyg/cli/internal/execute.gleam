@@ -8,7 +8,6 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser/location
 import gleam/int
-import gleam/javascript/promise.{type Promise}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
@@ -46,37 +45,35 @@ pub fn block(source, scope, state) {
 }
 
 fn try_await(
-  result: Promise(Result(t, Reason)),
+  result: system.Effect(Result(t, Reason)),
   meta: source.Location,
   env: Env,
   k: Stack,
-  then: fn(t) -> Promise(Result(r, Debug)),
-) -> Promise(Result(r, Debug)) {
-  use result <- promise.await(result)
+  then: fn(t) -> system.Effect(Result(r, Debug)),
+) -> system.Effect(Result(r, Debug)) {
+  use result <- system.then(result)
   case result {
     Ok(value) -> then(value)
-    Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
+    Error(reason) -> system.Done(Error(#(reason, meta, env, k)))
   }
 }
 
 pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
-) -> Promise(Result(#(Option(Value), Scope), Debug)) {
+) -> system.Effect(Result(#(Option(Value), Scope), Debug)) {
   case return {
-    Ok(return) -> promise.resolve(Ok(return))
+    Ok(return) -> system.Done(Ok(return))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect(label, lift) ->
           case computer.cast(label, lift) {
             Ok(effect) -> {
-              use value <- promise.await(
-                system.run(computer.extrinsic(effect, meta.origin)),
-              )
+              use value <- system.then(computer.extrinsic(effect, meta.origin))
               loop(block.resume(value, env, k), state)
             }
 
-            Error(reason) -> promise.resolve(Error(#(reason, meta, env, k)))
+            Error(reason) -> system.Done(Error(#(reason, meta, env, k)))
           }
 
         break.UndefinedReference(ir.Content(cid)) -> {
@@ -109,18 +106,18 @@ pub fn loop(
           )
           loop(block.resume(value, env, k), state)
         }
-        _ -> promise.resolve(Error(#(reason, meta, env, k)))
+        _ -> system.Done(Error(#(reason, meta, env, k)))
       }
   }
 }
 
-fn update(state: State) {
+fn update(state: State) -> system.Effect(State) {
   let #(cache, effects) = cache.flush(state.cache)
   case effects {
-    [] -> promise.resolve(State(..state, cache:))
+    [] -> system.Done(State(..state, cache:))
     _ -> {
-      use applicable <- promise.await(
-        promise.await_list(list.map(effects, do_effect(_, state))),
+      use applicable <- system.then(
+        system.traverse(effects, do_effect(_, state)),
       )
       let cache = list.fold(applicable, cache, apply)
       update(State(..state, cache:))
@@ -131,14 +128,13 @@ fn update(state: State) {
 fn do_effect(
   action: cache.Action,
   state: State,
-) -> Promise(cache.ActionCompleted) {
+) -> system.Effect(cache.ActionCompleted) {
   cache.compute(
     action,
     state.origin,
     fn(request) { system.Fetch(request, _) },
     fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
   )(system.Done)
-  |> system.run
 }
 
 fn apply(
@@ -163,10 +159,10 @@ fn apply(
 fn lookup_reference(
   cid: v1.Cid,
   state: State,
-) -> Promise(Result(Value, Reason)) {
+) -> system.Effect(Result(Value, Reason)) {
   // A pulled release does not fetch its module, so ask for the one being read.
   let cache = cache.fetch(state.cache, cid)
-  use state <- promise.map(update(State(..state, cache:)))
+  use state <- system.map(update(State(..state, cache:)))
   case cache.module(state.cache, cid) {
     cache.Available(cache.Module(value:, ..)) -> Ok(value)
     cache.Unavailable(reason) -> Error(reason)
@@ -186,46 +182,56 @@ fn lookup_reference(
   }
 }
 
-fn lookup_package(package, state: State) {
+fn lookup_package(
+  package: String,
+  state: State,
+) -> system.Effect(Result(Value, Reason)) {
   let cache = cache.pull(state.cache)
-  use state <- promise.await(update(State(..state, cache:)))
+  use state <- system.then(update(State(..state, cache:)))
   case cache.package(state.cache, package) {
     Ok(cache.Entry(module:, ..)) -> lookup_reference(module, state)
     Error(Nil) -> {
       abort("package not found: @" <> package)
       |> Error
-      |> promise.resolve
+      |> system.Done
     }
   }
 }
 
-fn lookup_version(package, version, state: State) {
+fn lookup_version(
+  package: String,
+  version: Int,
+  state: State,
+) -> system.Effect(Result(Value, Reason)) {
   let cache = cache.pull(state.cache)
-  use state <- promise.await(update(State(..state, cache:)))
+  use state <- system.then(update(State(..state, cache:)))
   case cache.unbound_release(state.cache, package, version) {
     Ok(module) -> lookup_reference(module, state)
     Error(Nil) ->
       abort("package not found: @" <> package <> ":" <> int.to_string(version))
       |> Error
-      |> promise.resolve
+      |> system.Done
   }
 }
 
-fn lookup_pinned(release: ir.Release, state: State) {
+fn lookup_pinned(
+  release: ir.Release,
+  state: State,
+) -> system.Effect(Result(Value, Reason)) {
   let cache = cache.pull(state.cache)
-  use state <- promise.await(update(State(..state, cache:)))
+  use state <- system.then(update(State(..state, cache:)))
 
   case cache.release(state.cache, release) {
     cache.Available(resolved) -> lookup_reference(resolved, state)
     cache.Unknown -> {
       abort("module not found for package: @" <> release.package)
       |> Error
-      |> promise.resolve
+      |> system.Done
     }
     cache.Unavailable(Nil) ->
       break.UndefinedReference(ir.Pinned(release:))
       |> Error
-      |> promise.resolve
+      |> system.Done
   }
 }
 
@@ -238,47 +244,47 @@ fn lookup_relative(
   location: String,
   origin: source.Origin,
   state: State,
-) -> Promise(Result(Value, Reason)) {
-  use resolved <- promise.await(
-    system.run(source.resolve_filepath(origin, location)),
-  )
+) -> system.Effect(Result(Value, Reason)) {
+  use resolved <- system.then(source.resolve_filepath(origin, location))
+
   case resolved {
     Ok(path) -> {
-      case system.do_read_file(path) {
+      use code <- system.then(system.read_file(path))
+      case code {
         Ok(code) ->
           case source.parse(code, source.Disk(path:)) {
             Ok(source) -> {
-              use result <- promise.await(pure_loop(
+              use result <- system.then(pure_loop(
                 expression.execute(source, []),
                 state,
               ))
               case result {
-                Ok(value) -> promise.resolve(Ok(value))
-                Error(#(reason, _, _, _)) -> promise.resolve(Error(reason))
+                Ok(value) -> system.Done(Ok(value))
+                Error(#(reason, _, _, _)) -> system.Done(Error(reason))
               }
             }
             Error(_) ->
               abort("failed to read parse source from location: " <> location)
               |> Error
-              |> promise.resolve
+              |> system.Done
           }
         Error(_reason) ->
           abort("failed to read module from location: " <> location)
           |> Error
-          |> promise.resolve
+          |> system.Done
       }
     }
     Error(_) ->
-      promise.resolve(Error(break.UndefinedReference(ir.Relative(location:))))
+      system.Done(Error(break.UndefinedReference(ir.Relative(location:))))
   }
 }
 
 pub fn pure_loop(
   return: Result(Value, Debug),
   state: State,
-) -> Promise(Result(Value, Debug)) {
+) -> system.Effect(Result(Value, Debug)) {
   case return {
-    Ok(return) -> promise.resolve(Ok(return))
+    Ok(return) -> system.Done(Ok(return))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UndefinedReference(ir.Content(cid)) -> {
@@ -311,7 +317,7 @@ pub fn pure_loop(
           )
           pure_loop(expression.resume(value, env, k), state)
         }
-        _ -> promise.resolve(Error(#(reason, meta, env, k)))
+        _ -> system.Done(Error(#(reason, meta, env, k)))
       }
   }
 }
