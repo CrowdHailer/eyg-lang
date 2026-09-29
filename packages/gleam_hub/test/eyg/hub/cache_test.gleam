@@ -141,6 +141,22 @@ pub fn fetch_failure_will_retry_test() {
   assert cache.Unknown == cache.module(cache, cid)
 }
 
+pub fn retry_parent_retries_failed_dependency_test() {
+  let #(child_cid, _) = code(1)
+  let parent = ir.reference(child_cid)
+  let parent_cid = cid_from_tree(parent)
+
+  let #(cache, _) =
+    cache.fetch_module_completed(cache.empty(), parent_cid, Ok(parent))
+  let assert #(cache, [cache.FetchModule(child_cid)]) = cache.flush(cache)
+
+  let #(cache, _) =
+    cache.fetch_module_completed(cache, child_cid, Error("temporary failure"))
+
+  let #(_, actions) = cache.fetch(cache, parent_cid) |> cache.flush
+  assert actions == [cache.FetchModule(child_cid)]
+}
+
 pub fn invalid_reference_wont_be_refetched_test() {
   let source =
     ir.vacant()

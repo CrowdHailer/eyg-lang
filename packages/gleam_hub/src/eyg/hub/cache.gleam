@@ -291,10 +291,8 @@ pub fn fetch(cache: Cache(meta), cid: v1.Cid) -> Cache(meta) {
     Error(Nil), Error(Nil) -> set_status(cache, cid, NotRequested)
     _, Ok(NotRequested) -> cache
     _, Ok(Requested) -> cache
-    _, Ok(DependsOn(..)) -> {
-      // Maybe needs to loop call to refetch failed dependency
-      cache
-    }
+    _, Ok(DependsOn(Content(dep), ..)) -> fetch(cache, dep)
+    _, Ok(DependsOn(Pinned(_), ..)) -> cache
     _, Ok(Failed(_)) -> set_status(cache, cid, NotRequested)
     _, Ok(Invalid(_)) -> cache
   }
