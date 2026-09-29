@@ -2,11 +2,118 @@ import eyg/cli/helpers
 import eyg/cli/shell
 import eyg/hub/cache
 import eyg/interpreter/value as v
+import eyg/ir/dag_json
 import eyg/parser
 import gleam/dict
+import gleam/http/response
+import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import loam/execute
+import loam/ir
 import loam/sandbox
+import loam/source
+import multiformats/cid/v1
+
+pub fn interactive_session_retains_modules_and_types_test() {
+  let #(reference, sandbox) = module_server()
+  let sandbox =
+    with_lines(sandbox, ["let x = " <> reference, reference, "/type x", ""])
+  let assert #(sandbox.Returned(Ok(0)), sandbox) =
+    sandbox.run(shell.execute(None, helpers.config), sandbox)
+  assert sandbox.network_state == 1
+  assert list.contains(sandbox.stdout, "5")
+  assert list.contains(sandbox.stdout, "Integer")
+  assert sandbox.stderr == []
+}
+
+pub fn interactive_session_retains_modules_after_errors_test() {
+  let #(reference, sandbox) = module_server()
+  let sandbox =
+    with_lines(sandbox, [
+      "let x = " <> reference <> " missing_variable",
+      reference,
+      "/type " <> reference,
+      "",
+    ])
+  let assert #(sandbox.Returned(Ok(0)), sandbox) =
+    sandbox.run(shell.execute(None, helpers.config), sandbox)
+  assert sandbox.network_state == 1
+  assert list.contains(sandbox.stdout, "5")
+  assert list.contains(sandbox.stdout, "Integer")
+  let assert [error] = sandbox.stderr
+  assert string.contains(error, "missing_variable")
+}
+
+pub fn interactive_session_retains_initialization_state_test() {
+  list.each(["x", "perform Break({})"], fn(tail) {
+    let #(reference, sandbox) = module_server()
+    let input =
+      source.Code(
+        "{shell: (_) -> { let x = " <> reference <> " " <> tail <> " }}",
+      )
+    let sandbox = with_lines(sandbox, [reference, "/type " <> reference, ""])
+    let assert #(sandbox.Returned(Ok(0)), sandbox) =
+      sandbox.run(shell.execute(Some(input), helpers.config), sandbox)
+    assert sandbox.network_state == 1
+    assert list.contains(sandbox.stdout, "5")
+    assert list.contains(sandbox.stdout, "Integer")
+    assert sandbox.stderr == []
+  })
+}
+
+fn module_server() {
+  let module = ir.integer(5)
+  let cid = helpers.cid_from_tree(module) |> v1.to_string
+  let reply = response.new(200) |> response.set_body(dag_json.to_block(module))
+  let sandbox =
+    sandbox.with_network(
+      sandbox.sandbox(),
+      fn(request, count) {
+        assert request.path == "/modules/" <> cid
+        #(Ok(reply), count + 1)
+      },
+      0,
+    )
+  #("#" <> cid, sandbox)
+}
+
+fn with_lines(sandbox, lines) {
+  list.fold(lines, sandbox, fn(sandbox, line) {
+    sandbox.with_prompt_response(sandbox, Ok(line))
+  })
+}
+
+pub fn multiline_input_preserves_token_boundaries_test() {
+  let sandbox =
+    with_lines(sandbox.sandbox(), [
+      "let identity = (n) -> { let value = n",
+      "value }",
+      "identity(7)",
+      "9",
+      "",
+    ])
+  let assert #(sandbox.Returned(Ok(0)), sandbox) =
+    sandbox.run(shell.execute(None, helpers.config), sandbox)
+  assert sandbox.stderr == []
+  assert list.reverse(sandbox.stdout)
+    == ["type /help for shell commands", "> ", "> ", "> ", "7", "> ", "9", "> "]
+}
+
+pub fn multiline_comments_end_at_the_submitted_line_test() {
+  let sandbox =
+    with_lines(sandbox.sandbox(), [
+      "let identity = (n) -> { // return n on the next line",
+      "n }",
+      "identity(3)",
+      "",
+    ])
+  let assert #(sandbox.Returned(Ok(0)), sandbox) =
+    sandbox.run(shell.execute(None, helpers.config), sandbox)
+  assert sandbox.stderr == []
+  assert list.reverse(sandbox.stdout)
+    == ["type /help for shell commands", "> ", "> ", "> ", "3", "> "]
+}
 
 pub fn type_test() {
   let assert #(sandbox.Returned(#(output, _)), _) =

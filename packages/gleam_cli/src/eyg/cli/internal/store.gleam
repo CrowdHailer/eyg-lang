@@ -114,14 +114,22 @@ pub fn read_signatory(
       json.parse(encoded, signatory_decoder())
       |> result.replace_error("invalid local credential"),
     )
-    Ok(Signatory(alias:, principal: decoded.0, keypair: decoded.1))
+    use #(private_key, public_key) <- result.try(
+      eddsa.from_pem(decoded.1)
+      |> result.replace_error("invalid local credential"),
+    )
+    Ok(Signatory(
+      alias:,
+      principal: decoded.0,
+      keypair: crypto.to_keypair(private_key, public_key),
+    ))
   }
   system.Done(loaded)
 }
 
 fn signatory_decoder() -> decode.Decoder(_) {
   use principal <- decode.field("principal", schema.cid_decoder())
-  use keypair <- decode.field("keypair", keypair_decoder())
+  use keypair <- decode.field("keypair", decode.string)
   decode.success(#(principal, keypair))
 }
 
@@ -130,15 +138,6 @@ fn signatory_encode(principal, keypair) {
     #("principal", json.string(v1.to_string(principal))),
     #("keypair", keypair_encode(keypair)),
   ])
-}
-
-fn keypair_decoder() {
-  use encoded <- decode.then(decode.string)
-  case eddsa.from_pem(encoded) {
-    Ok(#(private_key, public_key)) ->
-      decode.success(crypto.to_keypair(private_key, public_key))
-    Error(Nil) -> decode.failure(crypto.generate_key(), "keypair")
-  }
 }
 
 fn keypair_encode(keypair: keypair.Keypair(eddsa.PrivateKey, _)) {

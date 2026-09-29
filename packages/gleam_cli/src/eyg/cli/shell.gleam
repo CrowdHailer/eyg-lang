@@ -20,7 +20,7 @@ import loam/system
 
 pub fn execute(input, config: config.Config) {
   let state = execute.State(config.client.origin, cache.empty())
-  use scope <- system.then(case input {
+  use initial <- system.then(case input {
     Some(input) -> {
       use cwd <- system.then(system.cwd())
       use cwd <- system.try(cwd)
@@ -29,18 +29,19 @@ pub fn execute(input, config: config.Config) {
       use code <- system.try(code)
       use source <- system.try(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
-      use #(result, _) <- system.map(execute.block(source, [], state))
+      use #(result, state) <- system.map(execute.block(source, [], state))
       case result {
-        Ok(#(_, scope)) -> Ok(scope)
-        Error(#(break.UnhandledEffect("Break", _), _, env, _)) -> Ok(env.scope)
+        Ok(#(_, scope)) -> Ok(#(scope, state))
+        Error(#(break.UnhandledEffect("Break", _), _, env, _)) ->
+          Ok(#(env.scope, state))
         Error(#(reason, location, _, k)) -> {
           Error(execute.render_error(reason, location, k, cwd))
         }
       }
     }
-    None -> system.Done(Ok([]))
+    None -> system.Done(Ok(#([], state)))
   })
-  use scope <- system.try(scope)
+  use #(scope, state) <- system.try(initial)
   use Nil <- system.then(system.stdout("type /help for shell commands"))
   loop("", scope, [], state)
 }
@@ -54,8 +55,12 @@ fn loop(buffer, scope, defs, state: execute.State) -> system.Effect(_) {
   case input {
     Ok("") -> system.Done(Ok(0))
     Ok(code) -> {
+      let code = case buffer {
+        "" -> code
+        _ -> buffer <> "\n" <> code
+      }
       use #(output, #(buffer, scope, defs, state)) <- system.then(handle(
-        buffer <> code,
+        code,
         scope,
         defs,
         state,
@@ -93,7 +98,11 @@ pub fn handle(code, scope, defs, state) {
             })
           use cwd <- system.then(system.cwd())
           let cwd = result.unwrap(cwd, "")
-          use #(result, _) <- system.map(execute.block(located, scope, state))
+          use #(result, state) <- system.map(execute.block(
+            located,
+            scope,
+            state,
+          ))
           case result {
             Ok(#(Some(value), scope)) -> #(
               [Ok(simple_debug.inspect(value))],
