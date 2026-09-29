@@ -9,12 +9,10 @@ import eyg/interpreter/simple_debug
 import eyg/ir/tree
 import eyg/parser
 import eyg/parser/parser.{UnexpectEnd} as _
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
-import input
 import loam/execute
 import loam/ir
 import loam/source
@@ -43,7 +41,7 @@ pub fn execute(input, config: config.Config) {
     None -> system.Done(Ok([]))
   })
   use scope <- system.try(scope)
-  io.println("type /help for shell commands")
+  use Nil <- system.then(system.stdout("type /help for shell commands"))
   loop("", scope, [], state)
 }
 
@@ -52,7 +50,8 @@ pub fn execute(input, config: config.Config) {
 // `scope` holds values, not types, so type checking re-runs inference
 // over the accumulated definitions.
 fn loop(buffer, scope, defs, state: execute.State) -> system.Effect(_) {
-  case input.input("> ") {
+  use input <- system.then(system.prompt("> "))
+  case input {
     Ok("") -> system.Done(Ok(0))
     Ok(code) -> {
       use #(output, #(buffer, scope, defs, state)) <- system.then(handle(
@@ -62,12 +61,14 @@ fn loop(buffer, scope, defs, state: execute.State) -> system.Effect(_) {
         state,
       ))
 
-      list.each(output, fn(line) {
-        case line {
-          Ok(line) -> io.println(line)
-          Error(line) -> io.println_error(line)
-        }
-      })
+      use _ <- system.then(
+        system.traverse(output, fn(line) {
+          case line {
+            Ok(line) -> system.stdout(line)
+            Error(line) -> system.write_stderr(line <> "\n")
+          }
+        }),
+      )
       loop(buffer, scope, defs, state)
     }
     Error(Nil) -> system.Done(Error("failed input."))

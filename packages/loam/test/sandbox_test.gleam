@@ -3,6 +3,30 @@ import loam/sandbox/fs
 import loam/system
 import simplifile
 
+pub fn prompt_responses_are_sequential_and_independent_of_stdin_test() {
+  let sandbox =
+    sandbox.sandbox()
+    |> sandbox.with_stdin("whole\nstream")
+    |> sandbox.with_prompt_response(Ok("Ada"))
+    |> sandbox.with_prompt_response(Ok(""))
+    |> sandbox.with_prompt_response(Error(Nil))
+  let workflow = {
+    use first <- system.then(system.prompt("Name: "))
+    use second <- system.then(system.prompt("Again: "))
+    use failure <- system.then(system.prompt("Failure: "))
+    use eof <- system.then(system.prompt("EOF: "))
+    use stdin <- system.map(system.stdin())
+    #(first, second, failure, eof, stdin)
+  }
+  let assert #(sandbox.Returned(responses), sandbox) =
+    sandbox.run(workflow, sandbox)
+  assert responses
+    == #(Ok("Ada"), Ok(""), Error(Nil), Ok(""), Ok("whole\nstream"))
+  assert sandbox.stdout == ["EOF: ", "Failure: ", "Again: ", "Name: "]
+  assert sandbox.prompt_responses == []
+  assert sandbox.stdin == []
+}
+
 pub fn file_system_effects_test() {
   let sandbox = sandbox.sandbox()
   let assert #(sandbox.Returned(created), sandbox) =

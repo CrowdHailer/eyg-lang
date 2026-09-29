@@ -11,6 +11,7 @@ import gleam/javascript/promise.{type Promise}
 import gleam/option.{type Option}
 import gleam/result
 import gleam/time/timestamp
+import input
 import kryptos/eddsa
 import loam/internal/crypto
 import midas/effect
@@ -45,6 +46,7 @@ pub type Effect(a) {
   )
   Hash(effect.HashAlgorithm, BitArray, fn(BitArray) -> Effect(a))
   Now(fn(Int) -> Effect(a))
+  Prompt(String, fn(Result(String, Nil)) -> Effect(a))
   Random(Int, fn(Int) -> Effect(a))
   ReadDirectory(
     String,
@@ -174,6 +176,13 @@ pub fn stdin() {
   Stdin(Done)
 }
 
+/// Display a prompt without a newline and read interactive terminal input.
+/// Unlike `stdin`, this does not wait for the entire input stream to end.
+/// The driver strips trailing newlines; EOF returns `Ok("")`.
+pub fn prompt(text: String) -> Effect(Result(String, Nil)) {
+  Prompt(text, Done)
+}
+
 /// Print a line, including a trailing newline.
 pub fn stdout(text) {
   Stdout(text, Done)
@@ -191,6 +200,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
     FileInfo(path, resume) ->
       FileInfo(path, fn(result) { then(resume(result), func) })
     Now(resume) -> Now(fn(value) { then(resume(value), func) })
+    Prompt(text, resume) ->
+      Prompt(text, fn(value) { then(resume(value), func) })
     Random(max, resume) -> Random(max, fn(value) { then(resume(value), func) })
     ReadFileRange(path, offset, limit, resume) ->
       ReadFileRange(path, offset, limit, fn(result) {
@@ -315,6 +326,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
     SetPermissions(path, permissions, resume) ->
       run(resume(do_set_permissions(path, permissions)))
     Stdin(resume) -> run(resume(read_stdin()))
+    Prompt(text, resume) -> run(resume(input.input(text)))
     Stdout(text, resume) -> run(resume(io.println(text)))
     Wait(duration, resume) -> {
       use response <- promise.await(promise.wait(duration))

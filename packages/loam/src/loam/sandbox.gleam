@@ -23,6 +23,7 @@ pub type Sandbox(a) {
   Sandbox(
     cwd: String,
     stdin: List(String),
+    prompt_responses: List(Result(String, Nil)),
     stdout: List(String),
     stderr: List(String),
     environment: Dict(String, String),
@@ -39,6 +40,8 @@ pub fn sandbox() -> Sandbox(Nil) {
   Sandbox(
     cwd: "/",
     stdin: [],
+    // This being separate to stdin is not great but it's not part of an EYG API that I want to keep stable.
+    prompt_responses: [],
     stdout: [],
     stderr: [],
     environment: dict.new(),
@@ -83,6 +86,18 @@ pub fn with_cwd(sandbox: Sandbox(a), cwd: String) -> Sandbox(a) {
 
 pub fn with_stdin(sandbox: Sandbox(a), text: String) -> Sandbox(a) {
   Sandbox(..sandbox, stdin: list.append(sandbox.stdin, [text]))
+}
+
+/// Queue a response for `system.prompt`, independently of whole-stream stdin.
+/// An empty queue represents EOF (`Ok("")`); `Error(Nil)` simulates a read failure.
+pub fn with_prompt_response(
+  sandbox: Sandbox(a),
+  response: Result(String, Nil),
+) -> Sandbox(a) {
+  Sandbox(
+    ..sandbox,
+    prompt_responses: list.append(sandbox.prompt_responses, [response]),
+  )
 }
 
 pub fn with_files(
@@ -278,6 +293,18 @@ pub fn run(
         [value, ..rest] -> #(Ok(value), rest)
       }
       let sandbox = Sandbox(..sandbox, stdin:)
+      run(resume(response), sandbox)
+    }
+    system.Prompt(text, resume) -> {
+      let #(response, remaining) = case sandbox.prompt_responses {
+        [] -> #(Ok(""), [])
+        [response, ..rest] -> #(response, rest)
+      }
+      let sandbox =
+        Sandbox(..sandbox, prompt_responses: remaining, stdout: [
+          text,
+          ..sandbox.stdout
+        ])
       run(resume(response), sandbox)
     }
     system.Stdout(text, resume) -> {
