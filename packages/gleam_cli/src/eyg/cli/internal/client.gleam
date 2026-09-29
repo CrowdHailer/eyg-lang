@@ -1,4 +1,3 @@
-import envoy
 import eyg/cli/internal/store
 import eyg/hub/cache.{type Cache}
 import eyg/hub/client
@@ -217,8 +216,8 @@ pub fn pull_packages(
 
 /// Run cache actions until the cache has no more work to do.
 /// Failed pulls are retried up to three times, five seconds apart.
-pub fn run_all(cache: Cache(Nil)) -> system.Effect(Cache(Nil)) {
-  run_all_with(cache, configured_origin(), fetch, hash, fn(duration) {
+pub fn run_all(cache: Cache(Nil), client: Client) -> system.Effect(Cache(Nil)) {
+  run_all_with(cache, client.origin, fetch, hash, fn(duration) {
     fn(resume) { system.Wait(duration, resume) }
   })(system.Done)
 }
@@ -279,12 +278,6 @@ fn run_until_idle(
       run_until_idle(cache, origin, fetch, hash)
     }
   }
-}
-
-fn configured_origin() {
-  envoy.get("EYG_ORIGIN")
-  |> result.try(origin.from_string)
-  |> result.unwrap(origin.https("eyg.run"))
 }
 
 fn run_actions(

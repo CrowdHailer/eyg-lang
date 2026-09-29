@@ -12,9 +12,9 @@
 //// - macOS → XDG vars with ~/Library paths as fallbacks
 //// - Linux → XDG vars with ~/.config, ~/.cache, ~/.local/share as fallbacks
 
-import envoy
-import gleam/result
+import gleam/option.{None, Some}
 import gleam/string
+import loam/system
 
 pub type Directories {
   Directories(config_dir: String, cache_dir: String, data_dir: String)
@@ -26,15 +26,18 @@ pub type Family {
   Linux
 }
 
-pub fn detect() -> Family {
-  case envoy.get("OS") {
-    Ok("Windows" <> _) -> Windows
-    _ ->
-      case envoy.get("HOME") {
-        Ok(_) ->
-          case envoy.get("TMPDIR") {
-            Ok(val) ->
-              case
+pub fn detect() -> system.Effect(Family) {
+  use os <- system.then(system.env("OS"))
+  case os {
+    Some("Windows" <> _) -> system.Done(Windows)
+    _ -> {
+      use home <- system.then(system.env("HOME"))
+      case home {
+        Some(_) -> {
+          use tmpdir <- system.then(system.env("TMPDIR"))
+          case tmpdir {
+            Some(val) -> {
+              let family = case
                 string.contains(val, "var/folders"),
                 string.contains(val, "AppData")
               {
@@ -42,22 +45,28 @@ pub fn detect() -> Family {
                 _, True -> Windows
                 False, False -> Linux
               }
-            _ ->
-              case envoy.get("APPLE_PUBSUB_SOCKET_RENDER") {
-                Ok(_) -> Mac
-                _ -> Linux
+              system.Done(family)
+            }
+            None -> {
+              use socket <- system.map(system.env("APPLE_PUBSUB_SOCKET_RENDER"))
+              case socket {
+                Some(_) -> Mac
+                None -> Linux
               }
+            }
           }
-        _ -> Linux
+        }
+        None -> system.Done(Linux)
       }
+    }
   }
 }
 
-fn windows_directories() -> Result(Directories, Nil) {
-  use appdata <- result.try(envoy.get("APPDATA"))
-  use local_appdata <- result.try(
-    envoy.get("LOCALAPPDATA") |> result.or(Ok(appdata)),
-  )
+fn windows_directories() -> system.Effect(Result(Directories, Nil)) {
+  use appdata <- system.then(system.env("APPDATA"))
+  use appdata <- system.try(option.to_result(appdata, Nil))
+  use local_appdata <- system.map(system.env("LOCALAPPDATA"))
+  let local_appdata = option.unwrap(local_appdata, appdata)
   Ok(Directories(
     config_dir: appdata,
     cache_dir: local_appdata <> "\\cache",
@@ -65,36 +74,33 @@ fn windows_directories() -> Result(Directories, Nil) {
   ))
 }
 
-fn mac_directories() -> Result(Directories, Nil) {
-  use home <- result.try(envoy.get("HOME"))
-  let config =
-    envoy.get("XDG_CONFIG_HOME")
-    |> result.unwrap(home <> "/Library/Application Support")
-  let cache =
-    envoy.get("XDG_CACHE_HOME")
-    |> result.unwrap(home <> "/Library/Caches")
-  let data =
-    envoy.get("XDG_DATA_HOME")
-    |> result.unwrap(home <> "/Library/Application Support")
+fn mac_directories() -> system.Effect(Result(Directories, Nil)) {
+  use home <- system.then(system.env("HOME"))
+  use home <- system.try(option.to_result(home, Nil))
+  use config <- system.then(system.env("XDG_CONFIG_HOME"))
+  let config = option.unwrap(config, home <> "/Library/Application Support")
+  use cache <- system.then(system.env("XDG_CACHE_HOME"))
+  let cache = option.unwrap(cache, home <> "/Library/Caches")
+  use data <- system.map(system.env("XDG_DATA_HOME"))
+  let data = option.unwrap(data, home <> "/Library/Application Support")
   Ok(Directories(config_dir: config, cache_dir: cache, data_dir: data))
 }
 
-fn linux_directories() -> Result(Directories, Nil) {
-  use home <- result.try(envoy.get("HOME"))
-  let config =
-    envoy.get("XDG_CONFIG_HOME")
-    |> result.unwrap(home <> "/.config")
-  let cache =
-    envoy.get("XDG_CACHE_HOME")
-    |> result.unwrap(home <> "/.cache")
-  let data =
-    envoy.get("XDG_DATA_HOME")
-    |> result.unwrap(home <> "/.local/share")
+fn linux_directories() -> system.Effect(Result(Directories, Nil)) {
+  use home <- system.then(system.env("HOME"))
+  use home <- system.try(option.to_result(home, Nil))
+  use config <- system.then(system.env("XDG_CONFIG_HOME"))
+  let config = option.unwrap(config, home <> "/.config")
+  use cache <- system.then(system.env("XDG_CACHE_HOME"))
+  let cache = option.unwrap(cache, home <> "/.cache")
+  use data <- system.map(system.env("XDG_DATA_HOME"))
+  let data = option.unwrap(data, home <> "/.local/share")
   Ok(Directories(config_dir: config, cache_dir: cache, data_dir: data))
 }
 
-pub fn directories() -> Result(Directories, Nil) {
-  case detect() {
+pub fn directories() -> system.Effect(Result(Directories, Nil)) {
+  use family <- system.then(detect())
+  case family {
     Windows -> windows_directories()
     Mac -> mac_directories()
     Linux -> linux_directories()

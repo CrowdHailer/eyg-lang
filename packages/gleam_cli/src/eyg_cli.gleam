@@ -15,7 +15,6 @@ import eyg/cli/signatory
 import eyg/cli/version
 import gleam/io
 import gleam/javascript/promise.{type Promise}
-import gleam/javascript/promisex
 import gleam/result
 import loam/system
 import shellout
@@ -37,7 +36,7 @@ fn execute(parsed: args.Args) -> Promise(Result(Int, String)) {
     args.Version -> version()
     args.InvalidArguments(message) -> promise.resolve(Error(message))
 
-    _ -> with_config(parsed)
+    _ -> system.run(with_config(parsed))
   }
 }
 
@@ -52,8 +51,9 @@ fn version() {
 }
 
 fn with_config(parsed) {
-  use config <- promisex.try_sync(
-    config.load() |> result.replace_error("failed to load config"),
+  use config <- system.then(config.load())
+  use config <- system.try(
+    config |> result.replace_error("failed to load config"),
   )
   case parsed {
     args.Help | args.Version | args.InvalidArguments(_) ->
@@ -72,5 +72,4 @@ fn with_config(parsed) {
     args.SignatoryList -> signatory.list(config)
     args.SignatoryShow(alias:) -> signatory.show(alias, config)
   }
-  |> system.run
 }

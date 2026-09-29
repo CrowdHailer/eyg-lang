@@ -35,7 +35,7 @@ pub fn execute(
   use source <- system.try(source.parse_input(code, source.File(file)))
   use module <- system.then(client.share_module(source, config.client))
   use module <- system.try(module)
-  use index <- system.then(client.run_all(cache.pull(cache.empty())))
+  use index <- system.then(client.run_all(cache.pull(cache.empty()), client))
   use index <- system.try(case index.cursor_status {
     cache.PullFailed(reason) -> Error(reason)
     _ -> Ok(index)

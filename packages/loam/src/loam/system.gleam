@@ -1,6 +1,8 @@
 import envoy
 import filepath
 import gleam/crypto as gcrypto
+import gleam/fetch
+import gleam/fetchx
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/int
@@ -10,7 +12,6 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/time/timestamp
 import kryptos/eddsa
-import loam/internal/bun_platform
 import loam/internal/crypto
 import midas/effect
 import shellout
@@ -301,7 +302,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
     WriteStderr(text, resume) -> run(resume(io.print_error(text)))
     GenerateKey(resume) -> run(resume(crypto.generate_key()))
     Fetch(request, resume) -> {
-      use response <- promise.await(bun_platform.fetch(request)(promise.resolve))
+      use response <- promise.await(do_fetch(request))
       run(resume(response))
     }
     CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
@@ -316,7 +317,7 @@ pub fn run(effect: Effect(a)) -> Promise(a) {
     Stdin(resume) -> run(resume(read_stdin()))
     Stdout(text, resume) -> run(resume(io.println(text)))
     Wait(duration, resume) -> {
-      use response <- promise.await(bun_platform.wait(duration)(promise.resolve))
+      use response <- promise.await(promise.wait(duration))
       run(resume(response))
     }
   }
@@ -340,6 +341,16 @@ pub fn do_hash(algorithm, bytes) {
     effect.Sha512 -> gcrypto.Sha512
   }
   gcrypto.hash(algorithm, bytes)
+}
+
+fn do_fetch(request) {
+  use response <- promise.map(fetchx.send_bits(request))
+  result.map_error(response, fn(reason) {
+    case reason {
+      fetch.NetworkError(reason) -> effect.NetworkError(reason)
+      fetch.UnableToReadBody | fetch.InvalidJsonBody -> effect.UnableToReadBody
+    }
+  })
 }
 
 fn do_write_file(path, contents) {

@@ -1,44 +1,14 @@
 import gleam/crypto
-import gleam/fetch
-import gleam/fetchx
-import gleam/http/request.{type Request}
-import gleam/http/response.{type Response}
 import gleam/javascript/promise.{type Promise}
 import gleam/uri.{type Uri}
 import loam/os
+import loam/system
 import midas/continuation
 import midas/effect as e
 import shellout
 
 pub type Async(t, a) =
   continuation.Continuation(Promise(t), a)
-
-pub fn fetch(
-  request: Request(BitArray),
-) -> Async(t, Result(Response(BitArray), e.FetchError)) {
-  fn(resume) {
-    use result <- promise.await(fetchx.send_bits(request))
-    let reply = case result {
-      Ok(response) -> Ok(response)
-      Error(reason) -> {
-        let reason = case reason {
-          fetch.NetworkError(reason) -> e.NetworkError(reason)
-          fetch.UnableToReadBody -> e.UnableToReadBody
-          fetch.InvalidJsonBody -> e.UnableToReadBody
-        }
-        Error(reason)
-      }
-    }
-    resume(reply)
-  }
-}
-
-pub fn wait(milliseconds: Int) -> Async(t, Nil) {
-  fn(resume) {
-    use _ <- promise.await(promise.wait(milliseconds))
-    resume(Nil)
-  }
-}
 
 pub fn follow(uri: Uri) -> Async(t, Result(Uri, String)) {
   fn(resume) {
@@ -63,7 +33,8 @@ fn do_follow(uri: Uri) -> Promise(Result(String, String)) {
   // `cmd /c start`. Previously this was hard-coded to `open`, which
   // crashed the OAuth flow on every non-mac platform with a `let_assert`
   // panic on the missing command.
-  let #(cmd, args) = case os.detect() {
+  use family <- promise.await(system.run(os.detect()))
+  let #(cmd, args) = case family {
     os.Mac -> #("open", [url])
     os.Linux -> #("xdg-open", [url])
     os.Windows -> #("cmd", ["/c", "start", "", url])
