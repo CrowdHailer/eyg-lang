@@ -58,10 +58,11 @@ fn with_config(parsed) {
   case parsed {
     args.Help | args.Version | args.InvalidArguments(_) ->
       panic as "handled above"
-    args.Shell(input) -> shell.execute(input, config)
-    args.Run(input:) -> run.execute(input, config)
-    args.Script(input:, arguments:) -> script.execute(input, arguments, config)
-    args.Eval(input:) -> eval.execute(input, config)
+    args.Shell(input) -> system.run(shell.execute(input, config))
+    args.Run(input:) -> system.run(run.execute(input, config))
+    args.Script(input:, arguments:) ->
+      system.run(script.execute(input, arguments, config))
+    args.Eval(input:) -> system.run(eval.execute(input, config))
     args.Check(input:) -> system.run(check.execute(input, config))
     args.Compile(input:) -> system.run(compile.execute(input, config))
     args.Parse(input:) -> system.run(parse.execute(input, config))

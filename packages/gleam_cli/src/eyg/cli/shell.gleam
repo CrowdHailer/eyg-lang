@@ -10,8 +10,6 @@ import eyg/ir/tree
 import eyg/parser
 import eyg/parser/parser.{UnexpectEnd} as _
 import gleam/io
-import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -21,32 +19,30 @@ import loam/execute
 import loam/ir
 import loam/source
 import loam/system
-import simplifile
 
 pub fn execute(input, config: config.Config) {
   let state = execute.State(config.client.origin, cache.empty())
-  use scope <- promise.try_await(case input {
+  use scope <- system.then(case input {
     Some(input) -> {
-      use cwd <- promisex.try_sync(
-        simplifile.current_directory()
-        |> result.map_error(simplifile.describe_error),
-      )
-      use input <- promisex.try_sync(source.normalize_input(cwd, input))
-      use code <- promise.try_await(system.run(source.read_input(input)))
-      use source <- promisex.try_sync(source.parse_input(code, input))
+      use cwd <- system.then(system.cwd())
+      use cwd <- system.try(cwd)
+      use input <- system.try(source.normalize_input(cwd, input))
+      use code <- system.then(source.read_input(input))
+      use code <- system.try(code)
+      use source <- system.try(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
-      use result <- promise.await(system.run(execute.block(source, [], state)))
+      use result <- system.map(execute.block(source, [], state))
       case result {
-        Ok(#(_, scope)) -> promise.resolve(Ok(scope))
-        Error(#(break.UnhandledEffect("Break", _), _, env, _)) ->
-          promise.resolve(Ok(env.scope))
+        Ok(#(_, scope)) -> Ok(scope)
+        Error(#(break.UnhandledEffect("Break", _), _, env, _)) -> Ok(env.scope)
         Error(#(reason, location, _, k)) -> {
-          promise.resolve(Error(execute.render_error(reason, location, k, cwd)))
+          Error(execute.render_error(reason, location, k, cwd))
         }
       }
     }
-    None -> promise.resolve(Ok([]))
+    None -> system.Done(Ok([]))
   })
+  use scope <- system.try(scope)
   io.println("type /help for shell commands")
   loop("", scope, [], state)
 }
@@ -55,11 +51,11 @@ pub fn execute(input, config: config.Config) {
 // check an expression against the variables in scope. The runtime
 // `scope` holds values, not types, so type checking re-runs inference
 // over the accumulated definitions.
-fn loop(buffer, scope, defs, state: execute.State) {
+fn loop(buffer, scope, defs, state: execute.State) -> system.Effect(_) {
   case input.input("> ") {
-    Ok("") -> promise.resolve(Ok(0))
+    Ok("") -> system.Done(Ok(0))
     Ok(code) -> {
-      use #(output, #(buffer, scope, defs, state)) <- promise.await(handle(
+      use #(output, #(buffer, scope, defs, state)) <- system.then(handle(
         buffer <> code,
         scope,
         defs,
@@ -74,7 +70,7 @@ fn loop(buffer, scope, defs, state: execute.State) {
       })
       loop(buffer, scope, defs, state)
     }
-    Error(Nil) -> promise.resolve(Error("failed input."))
+    Error(Nil) -> system.Done(Error("failed input."))
   }
 }
 
@@ -94,9 +90,9 @@ pub fn handle(code, scope, defs, state) {
             tree.map_annotation(source, fn(span) {
               source.Location(source.Repl, source.Text(code, span))
             })
-          use result <- promise.map(
-            system.run(execute.block(located, scope, state)),
-          )
+          use cwd <- system.then(system.cwd())
+          let cwd = result.unwrap(cwd, "")
+          use result <- system.map(execute.block(located, scope, state))
           case result {
             Ok(#(Some(value), scope)) -> #(
               [Ok(simple_debug.inspect(value))],
@@ -108,16 +104,15 @@ pub fn handle(code, scope, defs, state) {
             )
             Error(#(reason, location, _env, k)) -> #(
               [
-                Error(execute.render_error(reason, location, k, "/todo")),
+                Error(execute.render_error(reason, location, k, cwd)),
               ],
               #("", scope, defs, state),
             )
           }
         }
-        Error(UnexpectEnd) ->
-          promise.resolve(#([], #(code, scope, defs, state)))
+        Error(UnexpectEnd) -> system.Done(#([], #(code, scope, defs, state)))
         Error(reason) ->
-          promise.resolve(#(
+          system.Done(#(
             [Error(parser.format_error(reason, code))],
             #("", scope, defs, state),
           ))
@@ -138,7 +133,7 @@ fn handle_meta(command, scope, defs, state: execute.State) {
     "" -> "missing command, try :help"
     _ -> "unknown command :" <> name <> ", try :help"
   }
-  promise.resolve(#([Ok(message)], #("", scope, defs, state)))
+  system.Done(#([Ok(message)], #("", scope, defs, state)))
 }
 
 pub const help_text = "shell commands:

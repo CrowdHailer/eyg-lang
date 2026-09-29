@@ -3,28 +3,23 @@ import eyg/hub/cache
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/ir/tree as ir
-import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/result
 import loam/execute
 import loam/source
 import loam/system
-import simplifile
 
 pub fn execute(
   input: source.Input,
   arguments: List(String),
   config: config.Config,
-) -> promise.Promise(Result(Int, String)) {
-  use cwd <- promisex.try_sync(
-    simplifile.current_directory()
-    |> result.map_error(simplifile.describe_error),
-  )
-  use input <- promisex.try_sync(source.normalize_input(cwd, input))
-  use code <- promise.try_await(system.run(source.read_input(input)))
-  use source <- promisex.try_sync(source.parse_input(code, input))
+) -> system.Effect(Result(Int, String)) {
+  use cwd <- system.then(system.cwd())
+  use cwd <- system.try(cwd)
+  use input <- system.try(source.normalize_input(cwd, input))
+  use code <- system.then(source.read_input(input))
+  use code <- system.try(code)
+  use source <- system.try(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
   // The synthetic `.script(arguments)` wrapper carries the user source's
@@ -41,7 +36,7 @@ pub fn execute(
     user_meta,
   )
 
-  use result <- promise.map(system.run(execute.block(source, [], state)))
+  use result <- system.map(execute.block(source, [], state))
   case result {
     Ok(#(Some(exit_code), _)) ->
       case cast.as_integer(exit_code) {

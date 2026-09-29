@@ -3,38 +3,48 @@ import eyg/cli/helpers
 import eyg/cli/run
 import gleam/javascript/promise
 import loam/source
+import loam/system
 import simplifile
 
 pub fn print_error_in_import_test() {
-  use return <- promise.map(run.execute(
-    source.File("././././test/fixtures/../fixtures/bad_function_in_import.eyg"),
-    helpers.config,
-  ))
+  use return <- promise.map(
+    system.run(run.execute(
+      source.File(
+        "././././test/fixtures/../fixtures/bad_function_in_import.eyg",
+      ),
+      helpers.config,
+    )),
+  )
   let assert Error(reason) = return
   birdie.snap(reason, title: "error in imported function")
 }
 
 pub fn abort_in_nested_helper_test() {
-  use return <- promise.map(run.execute(
-    source.File("./test/fixtures/abort_main.eyg"),
-    helpers.config,
-  ))
+  use return <- promise.map(
+    system.run(run.execute(
+      source.File("./test/fixtures/abort_main.eyg"),
+      helpers.config,
+    )),
+  )
   let assert Error(reason) = return
   birdie.snap(reason, title: "abort in nested helper")
 }
 
 pub fn file_effects_are_source_relative_test() {
-  use return <- promise.map(run.execute(
-    source.File("./test/fixtures/source_relative/main.eyg"),
-    helpers.config,
-  ))
+  use return <- promise.map(
+    system.run(run.execute(
+      source.File("./test/fixtures/source_relative/main.eyg"),
+      helpers.config,
+    )),
+  )
   let assert Ok(0) = return
 }
 
 pub fn cwd_effect_allows_inline_code_to_read_invocation_files_test() {
-  use return <- promise.map(run.execute(
-    source.Code(
-      "let cwd = match perform CWD({}) {
+  use return <- promise.map(
+    system.run(run.execute(
+      source.Code(
+        "let cwd = match perform CWD({}) {
   Ok(cwd) -> { cwd }
   Error(_) -> { !never(perform Abort(\"unspecified cwd\")) }
 }
@@ -48,9 +58,10 @@ match perform ReadFile({path, offset: 0, limit: 100}) {
   }
   Error(reason) -> { !never(perform Abort(reason)) }
 }",
-    ),
-    helpers.config,
-  ))
+      ),
+      helpers.config,
+    )),
+  )
   let assert Ok(0) = return
 }
 
@@ -62,6 +73,8 @@ match !equal(value, 5) {
   True(_) -> { 0 }
   False(_) -> { !never(perform Abort(\"wrong value\")) }
 }"
-  use return <- promise.map(run.execute(source.Code(code), helpers.config))
+  use return <- promise.map(
+    system.run(run.execute(source.Code(code), helpers.config)),
+  )
   let assert Ok(0) = return
 }

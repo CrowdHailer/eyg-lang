@@ -4,39 +4,47 @@ import eyg/hub/cache
 import eyg/interpreter/value as v
 import eyg/parser
 import gleam/dict
-import gleam/javascript/promise
 import gleam/string
 import loam/execute
+import loam/sandbox
 
 pub fn type_test() {
-  use #(output, _) <- promise.await(shell.handle("/type 5", [], [], state()))
+  let assert #(sandbox.Returned(#(output, _)), _) =
+    shell.handle("/type 5", [], [], state()) |> sandbox.run(sandbox.sandbox())
   assert [Ok("Integer")] == output
-  promise.resolve(Nil)
 }
 
 pub fn import_from_repl_working_directory_test() {
-  use #(output, _) <- promise.await(shell.handle(
-    "import \"./test/fixtures/source_relative/value.eyg\"",
-    [],
-    [],
-    state(),
-  ))
+  let sandbox =
+    sandbox.sandbox()
+    |> sandbox.with_cwd("/project")
+    |> sandbox.with_file(
+      "/project/test/fixtures/source_relative/value.eyg",
+      "5",
+    )
+  let assert #(sandbox.Returned(#(output, _)), _) =
+    shell.handle(
+      "import \"./test/fixtures/source_relative/value.eyg\"",
+      [],
+      [],
+      state(),
+    )
+    |> sandbox.run(sandbox)
   assert [Ok("5")] == output
-  promise.resolve(Nil)
 }
 
 pub fn scope_test() {
-  use #(output, #(buffer, scope, defs, state)) <- promise.await(shell.handle(
-    "let x = 1",
-    [],
-    [],
-    state(),
-  ))
+  let assert #(
+    sandbox.Returned(#(output, #(buffer, scope, defs, state))),
+    sandbox,
+  ) =
+    shell.handle("let x = 1", [], [], state())
+    |> sandbox.run(sandbox.sandbox())
   assert [] == output
   assert "" == buffer
-  use #(output, _) <- promise.await(shell.handle("x", scope, defs, state))
+  let assert #(sandbox.Returned(#(output, _)), _) =
+    shell.handle("x", scope, defs, state) |> sandbox.run(sandbox)
   assert [Ok("1")] == output
-  promise.resolve(Nil)
 }
 
 pub fn scope_empty_test() {
