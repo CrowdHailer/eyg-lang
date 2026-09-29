@@ -1,4 +1,3 @@
-import eyg/cli/internal/client
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -19,7 +18,6 @@ import loam/source
 import loam/system
 import multiformats/cid/v1
 import ogre/origin
-import untethered/ledger/schema
 
 pub type Value =
   state.Value(source.Location)
@@ -45,11 +43,6 @@ pub type State {
 
 pub fn block(source, scope, state) {
   loop(block.execute(source, scope), state)
-}
-
-pub type CacheUpdate {
-  Fetched(cid: v1.Cid, result: Result(ir.Node(source.Location), String))
-  Pulled(result: Result(List(schema.ArchivedEntry), String))
 }
 
 fn try_await(
@@ -135,43 +128,32 @@ fn update(state: State) {
   }
 }
 
-fn do_effect(effect: cache.Action, state: State) -> Promise(CacheUpdate) {
-  let client = client.Client(state.origin)
-  case effect {
-    cache.FetchModule(dep) -> {
-      use result <- promise.map(system.run(client.get_module(dep, client)))
-
-      case result {
-        Ok(source) ->
-          Fetched(
-            dep,
-            Ok(
-              source
-              |> ir.map_annotation(fn(_: Nil) {
-                source.Location(source.Content(dep), source.Json)
-              }),
-            ),
-          )
-        Error(reason) -> Fetched(dep, Error(reason))
-      }
-    }
-    cache.PullPackages(offset:) -> {
-      use result <- promise.map(client.pull_packages(offset, client))
-      Pulled(result)
-    }
-  }
+fn do_effect(
+  action: cache.Action,
+  state: State,
+) -> Promise(cache.ActionCompleted) {
+  cache.compute(
+    action,
+    state.origin,
+    fn(request) { system.Fetch(request, _) },
+    fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
+  )(system.Done)
+  |> system.run
 }
 
 fn apply(
   cache: Cache(source.Location),
-  update: CacheUpdate,
+  update: cache.ActionCompleted,
 ) -> Cache(source.Location) {
   case update {
-    Fetched(cid:, result:) -> {
-      let #(cache, _done) = cache.fetch_module_completed(cache, cid, result)
+    cache.FetchModuleCompleted(cid, _) -> {
+      let #(cache, _done) =
+        cache.update(cache, update, fn(_) {
+          source.Location(source.Content(cid), source.Json)
+        })
       cache
     }
-    Pulled(result:) -> {
+    cache.PullPackagesCompleted(result) -> {
       let #(cache, _done) = cache.pull_packages_completed(cache, result)
       cache
     }

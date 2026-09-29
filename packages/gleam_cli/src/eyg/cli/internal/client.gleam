@@ -8,13 +8,11 @@ import eyg/ir/tree as ir
 import gleam/http/request
 import gleam/http/response
 import gleam/int
-import gleam/javascript/promise.{type Promise}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri
-import loam/internal/bun_platform
 import loam/internal/crypto
 import loam/system
 import midas/continuation.{type Continuation as K}
@@ -212,11 +210,9 @@ pub fn submit_release(
 pub fn pull_packages(
   since: Int,
   client: Client,
-) -> Promise(Result(List(schema.ArchivedEntry), String)) {
+) -> system.Effect(Result(List(schema.ArchivedEntry), String)) {
   let parameters = schema.PullParameters(since:, limit: 1000, entities: [])
-  client.pull_packages(parameters, client.origin, bun_platform.fetch)(
-    promise.resolve,
-  )
+  client.pull_packages(parameters, client.origin, fetch)(system.Done)
 }
 
 /// Run cache actions until the cache has no more work to do.
