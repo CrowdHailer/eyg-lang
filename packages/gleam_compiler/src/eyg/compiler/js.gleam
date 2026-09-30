@@ -148,9 +148,10 @@ fn escape_js(content) {
   content
   |> string.replace("\\", "\\\\")
   |> string.replace("\"", "\\\"")
-  |> string.replace("&", "&amp;")
-  |> string.replace("<", "&lt;")
-  |> string.replace(">", "&gt;")
+  |> string.replace("\n", "\\n")
+  |> string.replace("\r", "\\r")
+  |> string.replace("\u{2028}", "\\u2028")
+  |> string.replace("\u{2029}", "\\u2029")
 }
 
 fn render_body(source) {

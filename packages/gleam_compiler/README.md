@@ -10,13 +10,14 @@ gleam add eyg_compiler
 ```
 ```gleam
 import eyg/compiler
+import eyg/compiler/js
 import eyg/ir/tree as ir
 import gleam/dict
 
 pub fn main() {
   let source = ir.let_("x", ir.integer(5), ir.variable("x"))
   let refs = dict.new()
-  compiler.to_js(source, refs)
+  compiler.to_js(source, refs, js.basic)
   // let x$0 = 5;
   // x$0
 }
@@ -28,8 +29,33 @@ Further documentation can be found at <https://hexdocs.pm/eyg_compile>.
 
 ```sh
 gleam run
-gleam test
+gleam format --check src test
+gleam build --target javascript --warnings-as-errors
+gleam test --target javascript --runtime bun
 ```
+
+### Shared specification tests
+
+`test/eyg/compile/spec_test.gleam` discovers every `*_suite.json` under
+`../../spec`. Evaluation fixtures go through the compiler and
+`plinth/browser/window.eval`, checking values, language breaks, and ordered
+effects. The IR suite checks encoding roundtrips and content identifiers.
+Expected values are decoded independently; failures identify the suite and
+fixture.
+
+The shared suites cover binary operations, structural equality, recursion,
+integer and string builtins, resumable folds, effect sequencing, and structured
+language breaks. The core suite also checks that compiled strings preserve HTML
+characters and line terminators: JavaScript string literals need JavaScript
+escaping rather than HTML entities.
+
+### Host effects
+
+`compiler.to_js(program, refs, handler)` accepts a JavaScript expression for a
+synchronous `(label, value) => reply` callback. Use `js.basic` for the basic
+`Alert`, `Ask`, and `Log` handlers. The spec tests provide a callback that supplies
+replies and records effects. Language breaks are thrown as objects with an
+`eygBreak` field, for example `{eygBreak: {UndefinedVariable: "x"}}`.
 
 ## Notes
 
