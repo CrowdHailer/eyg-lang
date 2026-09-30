@@ -307,11 +307,8 @@ int_add(1)(2)",
   test_eval("!string_append(\"ab\")(\"cd\")", dynamic.string("abcd"))
   test_eval("!string_uppercase(\"aBc\")", dynamic.string("ABC"))
   test_eval("!string_lowercase(\"XyZ\")", dynamic.string("xyz"))
-  test_eval(
-    "!string_starts_with(\"Hello\")(\"H\")",
-    tagged("Ok", dynamic.string("ello")),
-  )
-  test_eval("!string_ends_with(\"Hello\")(\"H\")", tagged("Error", unit()))
+  test_eval("!string_starts_with(\"Hello\")(\"H\")", tagged("True", unit()))
+  test_eval("!string_ends_with(\"Hello\")(\"H\")", tagged("False", unit()))
   test_eval("!string_length(\"Yo\")", dynamic.int(2))
   test_eval(
     "!list_pop([1, 2, 3])",
