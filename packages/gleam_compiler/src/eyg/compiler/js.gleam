@@ -252,6 +252,7 @@ let do_handle = (label, handler, m) => {
       "let equal = (x) => (y) => {
   const same = (a, b) => {
     if (a === b) return true;
+    // EYG values do not use null, but host callbacks can return it. Since typeof null is 'object', guard it before Object.keys.
     if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
     if (Array.isArray(a) !== Array.isArray(b) || ArrayBuffer.isView(a) !== ArrayBuffer.isView(b)) return false;
     const keys = Object.keys(a);
