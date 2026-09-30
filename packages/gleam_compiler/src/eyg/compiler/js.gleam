@@ -14,18 +14,35 @@ fn assign_to(source: ir.Node(Nil), label) {
   }
 }
 
-pub fn render(exp: ir.Node(Nil)) -> String {
-  let used = ir.list_builtins(exp)
+pub const basic = "(label, value) => ({Alert: (x) => window.alert(x), Ask: (_) => 10, Log: (x) => console.log(x)})[label](value)"
 
-  let program = case list.contains(used, "bind") {
-    False -> do_render(exp)
-    // brackets to handle let statements, render with one extra indent
-    True -> do_render(assign_to(exp, "program"))
+pub fn render(exp: ir.Node(Nil), handler: String) -> String {
+  let used = ir.list_builtins(exp)
+  let #(definitions, program) = case needs_effect_runtime(exp) {
+    False -> #(list.map(used, render_builtin), do_render(exp))
+    True -> {
+      let used = [
+        "bind",
+        "handle",
+        ..list.filter(used, fn(x) { x != "bind" && x != "handle" })
+      ]
+      #(
+        ["let extrinsic = " <> handler, ..list.map(used, render_builtin)],
+        do_render(assign_to(exp, "program")),
+      )
+    }
   }
-  [program, ..list.map(list.reverse(used), render_builtin)]
-  |> list.reverse
+  list.append(definitions, [program])
+  |> list.filter(fn(x) { x != "" })
   |> list.intersperse(";\n")
   |> string.concat
+}
+
+fn needs_effect_runtime(node: ir.Node(Nil)) {
+  case node.0 {
+    ir.Perform(_) | ir.Handle(_) | ir.Builtin("bind") -> True
+    _ -> list.any(ir.children(node), needs_effect_runtime)
+  }
 }
 
 fn do_render(source) {
@@ -192,15 +209,10 @@ let bind = (m, then) => {
 
 let perform = (label) => (value) => new Eff(label, value, (x) => x);
 
-let extrinsic = {
-  Alert: (message) => window.alert(message), 
-  Ask: (x) => 10, 
-  Log: (x) => console.log(x) 
-};
 let run = (exec) => {
   let m = exec
   while (m instanceof Eff) {
-    m = m.k(extrinsic[m.label](m.value));
+    m = m.k(extrinsic(m.label, m.value));
   }
   return m;
 }"

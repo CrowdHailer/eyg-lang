@@ -1,4 +1,5 @@
 import eyg/compiler
+import eyg/compiler/js
 import eyg/parser
 import gleam/dict
 import gleam/dynamic.{type Dynamic}
@@ -43,7 +44,7 @@ fn test_compilation(source, js, evaled) {
     |> parser.from_string()
     |> should.be_ok()
     |> pair.first()
-    |> compiler.to_js(dict.new())
+    |> compiler.to_js(dict.new(), js.basic)
   generated
   |> should.equal(js)
   generated
@@ -58,7 +59,7 @@ fn test_eval(source, evaled) {
     |> parser.from_string()
     |> should.be_ok()
     |> pair.first()
-    |> compiler.to_js(dict.new())
+    |> compiler.to_js(dict.new(), js.basic)
   generated
   |> eval()
   |> should.be_ok()

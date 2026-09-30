@@ -4,8 +4,14 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/compiler/ir
 import eyg/compiler/js
 import eyg/ir/tree
+import gleam/dict
+import multiformats/cid/v1
 
-pub fn to_js(program, refs) {
+pub fn to_js(
+  program: tree.Node(a),
+  refs: dict.Dict(v1.Cid, binding.Poly),
+  handler: String,
+) -> String {
   program
   |> infer_effects(refs)
   |> ir.alpha
@@ -13,7 +19,7 @@ pub fn to_js(program, refs) {
   |> ir.unnest
   |> monadic()
   |> tree.clear_annotation()
-  |> js.render()
+  |> js.render(handler)
 }
 
 fn infer_effects(program, refs) {

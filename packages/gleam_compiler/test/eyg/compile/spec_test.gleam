@@ -149,7 +149,7 @@ fn as_dynamic(value) {
 
 fn check_fixture(fixture) -> Result(Nil, String) {
   let Fixture(_, source, effects, expected) = fixture
-  let compiled = compiler.to_js(source, dict.new())
+  let compiled = compiler.to_js(source, dict.new(), "$effect")
   let replies =
     json.array(effects, fn(e) { value_json(e.reply) }) |> json.to_string
   // Keep the host boundary small: record every effect, supply fixture replies,
