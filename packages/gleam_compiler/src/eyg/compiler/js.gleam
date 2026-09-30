@@ -247,6 +247,17 @@ let do_handle = (label, handler, m) => {
 }"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
+    "equal" ->
+      "let equal = (x) => (y) => {
+  const same = (a, b) => {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b) || ArrayBuffer.isView(a) !== ArrayBuffer.isView(b)) return false;
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every(k => Object.hasOwn(b, k) && same(a[k], b[k]));
+  };
+  return {$T: same(x, y) ? 'True' : 'False', $V: {}};
+}"
     "$undefined_variable" ->
       "let $undefined_variable = (name) => { throw {eygBreak: {UndefinedVariable: name}}; }"
     "fix" ->
