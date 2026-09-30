@@ -13,7 +13,7 @@ pub fn to_js(
   handler: String,
 ) -> String {
   program
-  |> infer_effects(refs)
+  |> infer_purity(refs)
   |> ir.alpha
   |> ir.k()
   |> ir.unnest
@@ -22,37 +22,36 @@ pub fn to_js(
   |> js.render(handler)
 }
 
-fn infer_effects(program, refs) {
+fn infer_purity(program, refs) {
   let j.Analysis(bindings:, tree: exp, ..) =
-    j.check_with_references(j.pure(), refs, program)
+    j.check_with_references(j.unpure(), refs, program)
 
   tree.map_annotation(exp, fn(types) {
-    let #(_, _, effect, _) = types
-    binding.resolve(effect, bindings)
+    let #(checked, _, effect, _) = types
+    // Failed inference is not evidence of purity. Preserve sequencing so
+    // evaluation still works for programs with type errors.
+    checked == Ok(Nil) && binding.resolve(effect, bindings) == t.Empty
   })
 }
 
-fn monadic(node: tree.Node(t.Type(Int))) -> tree.Node(t.Type(Int)) {
+fn monadic(node: tree.Node(Bool)) -> tree.Node(Bool) {
   let #(exp, meta) = node
   case exp {
-    tree.Let(x, #(value, eff), then) ->
-      case eff {
-        t.Empty -> #(
-          tree.Let(x, monadic(#(value, t.Empty)), monadic(then)),
-          meta,
-        )
-        _ -> #(
+    tree.Let(x, #(value, pure), then) ->
+      case pure {
+        True -> #(tree.Let(x, monadic(#(value, True)), monadic(then)), meta)
+        False -> #(
           tree.Apply(
             #(
               tree.Apply(
-                #(tree.Builtin("bind"), t.Empty),
-                monadic(#(value, eff)),
+                #(tree.Builtin("bind"), True),
+                monadic(#(value, False)),
               ),
-              t.Empty,
+              True,
             ),
-            #(tree.Lambda(x, monadic(then)), t.Empty),
+            #(tree.Lambda(x, monadic(then)), True),
           ),
-          t.Empty,
+          True,
         )
       }
     tree.Apply(func, arg) -> #(tree.Apply(monadic(func), monadic(arg)), meta)

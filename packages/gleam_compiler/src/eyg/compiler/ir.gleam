@@ -1,4 +1,3 @@
-import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
@@ -69,7 +68,8 @@ fn do_alpha(node, env, i) {
 
 // perform Foo([1,2]) Yes
 // [perform Foo(1)] No
-pub fn k(node) {
+// A True annotation means inference proved the expression pure.
+pub fn k(node: ir.Node(Bool)) {
   do_k(node, True, 0).0
 }
 
@@ -84,16 +84,15 @@ fn do_k(node, safe, i) {
       let #(b, i) = do_k(b, True, i)
       #(#(ir.Lambda(x, b), m), i)
     }
-    #(ir.Apply(f, a), m) -> {
+    #(ir.Apply(f, a), pure) -> {
       let #(f, i) = do_k(f, False, i)
       let #(a, i) = do_k(a, False, i)
-      let call = #(ir.Apply(f, a), m)
-      case m {
-        _ if safe == True -> #(call, i)
-        t.Empty -> #(call, i)
-        _ -> {
+      let call = #(ir.Apply(f, a), pure)
+      case safe || pure {
+        True -> #(call, i)
+        False -> {
           let var = string.append("$k", int.to_string(i))
-          #(#(ir.Let(var, call, #(ir.Variable(var), t.Empty)), t.Empty), i + 1)
+          #(#(ir.Let(var, call, #(ir.Variable(var), True)), True), i + 1)
         }
       }
     }
