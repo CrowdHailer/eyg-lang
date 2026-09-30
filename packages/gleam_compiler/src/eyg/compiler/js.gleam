@@ -209,6 +209,7 @@ let do_handle = (label, handler, m) => {
   return new Eff(m.label, m.value, k);
 }"
     "int_add" -> "let int_add = (x) => (y) => x + y"
+    "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
     "int_divide" ->
@@ -230,13 +231,26 @@ let do_handle = (label, handler, m) => {
   return {$T: \"Eq\", $V: {}}
 }"
     "string_append" -> "let string_append = (x) => (y) => x + y"
+    "string_split" ->
+      "let string_split = (x) => (separator) => {
+  const parts = separator === '' ? Array.from(new Intl.Segmenter().segment(x), s => s.segment) : x.split(separator);
+  return {head: parts[0] ?? '', tail: parts.slice(1).reduceRight((tail, head) => [head, tail], [])};
+}"
     "string_uppercase" -> "let string_uppercase = (x) => x.toUpperCase()"
+    "string_split_once" ->
+      "let string_split_once = (x) => (separator) => {
+  const i = x.indexOf(separator);
+  return i < 0 ? {$T: 'Error', $V: {}} : {$T: 'Ok', $V: {pre: x.slice(0, i), post: x.slice(i + separator.length)}};
+}"
     "string_lowercase" -> "let string_lowercase = (x) => x.toLowerCase()"
+    "string_replace" ->
+      "let string_replace = (x) => (pattern) => (replacement) => x.replaceAll(pattern, () => replacement)"
     "string_starts_with" ->
-      "let string_starts_with = (x) => (y) => x.startsWith(y) ? {$T: \"Ok\", $V: x.slice(y.length)} : {$T: \"Error\", $V: {}}"
+      "let string_starts_with = (x) => (y) => ({$T: x.startsWith(y) ? \"True\" : \"False\", $V: {}})"
     "string_ends_with" ->
-      "let string_ends_with = (x) => (y) => x.endsWith(y) ? {$T: \"Ok\", $V: x.slice(0, -y.length)} : {$T: \"Error\", $V: {}}"
-    "string_length" -> "let string_length = (x) => x.length"
+      "let string_ends_with = (x) => (y) => ({$T: x.endsWith(y) ? \"True\" : \"False\", $V: {}})"
+    "string_length" ->
+      "let string_length = (x) => Array.from(new Intl.Segmenter().segment(x)).length"
     "list_pop" ->
       "let list_pop = (items) =>
   items.length == 0
