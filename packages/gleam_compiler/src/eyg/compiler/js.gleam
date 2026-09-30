@@ -90,7 +90,7 @@ fn do_render(source) {
       string.concat(["let ", x, " = ", do_render(value), ";\n", do_render(then)])
     }
     ir.Integer(value) -> int.to_string(value)
-    ir.Binary(_) -> "binary_not_supported"
+    ir.Binary(bytes) -> "new Uint8Array([" <> render_bytes(bytes) <> "])"
     ir.String(content) -> string.concat(["\"", escape_html(content), "\""])
     ir.Perform(label) -> string.concat(["perform (\"", label, "\")"])
     ir.Handle(label) -> string.concat(["handle (\"", label, "\")"])
@@ -99,6 +99,13 @@ fn do_render(source) {
     _ -> {
       panic as "unsupported compilation expression"
     }
+  }
+}
+
+fn render_bytes(bytes) {
+  case bytes {
+    <<byte:8, rest:bits>> -> int.to_string(byte) <> "," <> render_bytes(rest)
+    _ -> ""
   }
 }
 
@@ -256,6 +263,34 @@ let do_handle = (label, handler, m) => {
   items.length == 0
   ? {$T: \"Error\", $V: {}}
   : {$T: \"Ok\", $V: {head: items[0], tail: items[1]}}"
+    "string_to_binary" ->
+      "let string_to_binary = (x) => new TextEncoder().encode(x)"
+    "string_from_binary" ->
+      "let string_from_binary = (x) => {
+  try { return {$T: 'Ok', $V: new TextDecoder('utf-8', {fatal: true, ignoreBOM: true}).decode(x)}; }
+  catch (_) { return {$T: 'Error', $V: {}}; }
+}"
+    "binary_from_integers" ->
+      "let binary_from_integers = (items) => {
+  const bytes = [];
+  while (items.length) { bytes.push(items[0]); items = items[1]; }
+  return new Uint8Array(bytes);
+}"
+    "binary_size" -> "let binary_size = (x) => x.length"
+    "binary_concat" ->
+      "let binary_concat = (x) => (y) => {
+  const result = new Uint8Array(x.length + y.length);
+  result.set(x); result.set(y, x.length);
+  return result;
+}"
+    "binary_compare" ->
+      "let binary_compare = (x) => (y) => {
+  let order = x.length - y.length;
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    if (x[i] !== y[i]) { order = x[i] - y[i]; break; }
+  }
+  return {$T: order < 0 ? 'Lt' : order > 0 ? 'Gt' : 'Eq', $V: {}};
+}"
     "list_fold" ->
       "let list_fold = (items) => (acc) => (f) => {
   let item;
