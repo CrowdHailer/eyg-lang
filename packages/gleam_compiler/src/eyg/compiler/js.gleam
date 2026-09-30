@@ -10,7 +10,8 @@ fn assign_to(source: ir.Node(Nil), label) {
   let #(exp, _meta) = source
   case exp {
     ir.Let(x, v, t) -> ir.let_(x, v, assign_to(t, label))
-    _ -> ir.let_(label, source, ir.apply(ir.builtin("run"), ir.variable(label)))
+    _ ->
+      ir.let_(label, source, ir.apply(ir.variable("run"), ir.variable(label)))
   }
 }
 
@@ -113,15 +114,27 @@ fn do_render(source) {
     }
     ir.Integer(value) -> int.to_string(value)
     ir.Binary(bytes) -> "new Uint8Array([" <> render_bytes(bytes) <> "])"
-    ir.String(content) -> string.concat(["\"", escape_html(content), "\""])
+    ir.String(content) -> string.concat(["\"", escape_js(content), "\""])
     ir.Perform(label) -> string.concat(["perform (\"", label, "\")"])
     ir.Handle(label) -> string.concat(["handle (\"", label, "\")"])
-    ir.Builtin(identifier) -> identifier
-    ir.Vacant -> "throw TODO"
+    ir.Builtin(identifier) ->
+      case render_builtin(identifier) {
+        "" -> render_break("UndefinedBuiltin", identifier)
+        _ -> identifier
+      }
+    ir.Vacant -> render_break("NotImplemented", "")
     _ -> {
       panic as "unsupported compilation expression"
     }
   }
+}
+
+fn render_break(kind, label) {
+  "(() => { throw {eygBreak: {"
+  <> kind
+  <> ": \""
+  <> escape_js(label)
+  <> "\"}}; })()"
 }
 
 fn render_bytes(bytes) {
@@ -131,7 +144,7 @@ fn render_bytes(bytes) {
   }
 }
 
-fn escape_html(content) {
+fn escape_js(content) {
   content
   |> string.replace("\\", "\\\\")
   |> string.replace("\"", "\\\"")
@@ -234,6 +247,8 @@ let do_handle = (label, handler, m) => {
 }"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
+    "$undefined_variable" ->
+      "let $undefined_variable = (name) => { throw {eygBreak: {UndefinedVariable: name}}; }"
     "fix" ->
       "let fix = (f) => {
   const self = (x) => bind(f(self), (g) => g(x));
@@ -339,13 +354,6 @@ let do_handle = (label, handler, m) => {
   }
   return acc
 }"
-    _ ->
-      string.concat([
-        "let ",
-        identifier,
-        " = (_) => { throw \"",
-        identifier,
-        "\" }",
-      ])
+    _ -> ""
   }
 }

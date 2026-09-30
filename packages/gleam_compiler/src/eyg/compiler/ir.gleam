@@ -57,7 +57,10 @@ fn do_alpha(node, env, i) {
       #(
         case list.key_find(env, x) {
           Ok(new) -> #(ir.Variable(new), m)
-          Error(Nil) -> node
+          Error(Nil) -> #(
+            ir.Apply(#(ir.Builtin("$undefined_variable"), m), #(ir.String(x), m)),
+            m,
+          )
         },
         i,
       )
