@@ -44,6 +44,7 @@ fn needs_effect_runtime(node: ir.Node(Nil)) {
     | ir.Handle(_)
     | ir.Builtin("bind")
     | ir.Builtin("fix")
+    | ir.Builtin("list_fold")
     | ir.Builtin("binary_fold") -> True
     _ -> list.any(ir.children(node), needs_effect_runtime)
   }
@@ -326,11 +327,15 @@ let do_handle = (label, handler, m) => {
 }"
     "list_fold" ->
       "let list_fold = (items) => (acc) => (f) => {
-  let item;
   while (items.length != 0) {
-    item = items[0];
+    const item = items[0];
     items = items[1];
-    acc = f(item)(acc);
+    const previous = acc;
+    acc = bind(f(item), (g) => g(previous));
+    if (acc instanceof Eff) {
+      const rest = items;
+      return bind(acc, (value) => list_fold(rest)(value)(f));
+    }
   }
   return acc
 }"
