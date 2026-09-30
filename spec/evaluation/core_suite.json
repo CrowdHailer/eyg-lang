@@ -1,5 +1,25 @@
 [
   {
+    "name": "string preserves HTML characters",
+    "source": {
+      "0": "s",
+      "v": "a <b> & \"c\"\\"
+    },
+    "value": {
+      "string": "a <b> & \"c\"\\"
+    }
+  },
+  {
+    "name": "string preserves line terminators",
+    "source": {
+      "0": "s",
+      "v": "first\nsecond\rthird\u2028fourth\u2029"
+    },
+    "value": {
+      "string": "first\nsecond\rthird\u2028fourth\u2029"
+    }
+  },
+  {
     "name": "missing variable",
     "source": {
       "0": "v",

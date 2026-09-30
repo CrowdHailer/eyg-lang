@@ -1,4 +1,5 @@
 import eyg/compiler
+import eyg/compiler/js
 import eyg/parser
 import gleam/dict
 import gleam/dynamic.{type Dynamic}
@@ -6,13 +7,12 @@ import gleam/javascript/array.{type Array}
 import gleam/list
 import gleam/pair
 import gleeunit/should
-
-@external(javascript, "./js_ffi.mjs", "eval_")
-pub fn eval(source: String) -> Result(Dynamic, String)
+import plinth/browser/window.{eval}
 
 @external(javascript, "./js_ffi.mjs", "list")
 fn do_list(items: Array(Dynamic)) -> Dynamic
 
+/// This is needed because dynamic.list creates nested head/tail tuples
 fn list(items, encode) {
   items
   |> list.map(encode)
@@ -23,10 +23,19 @@ fn list(items, encode) {
 @external(javascript, "./js_ffi.mjs", "object")
 fn do_object(items: Array(#(String, Dynamic))) -> Dynamic
 
+/// This is needed because dynamic.properties creates a dictionary
 fn object(items) {
   items
   |> array.from_list
   |> do_object
+}
+
+fn tagged(label, value) -> Dynamic {
+  object([#("$T", dynamic.string(label)), #("$V", value)])
+}
+
+fn unit() -> Dynamic {
+  object([])
 }
 
 fn test_compilation(source, js, evaled) {
@@ -35,7 +44,7 @@ fn test_compilation(source, js, evaled) {
     |> parser.from_string()
     |> should.be_ok()
     |> pair.first()
-    |> compiler.to_js(dict.new())
+    |> compiler.to_js(dict.new(), js.basic)
   generated
   |> should.equal(js)
   generated
@@ -50,7 +59,7 @@ fn test_eval(source, evaled) {
     |> parser.from_string()
     |> should.be_ok()
     |> pair.first()
-    |> compiler.to_js(dict.new())
+    |> compiler.to_js(dict.new(), js.basic)
   generated
   |> eval()
   |> should.be_ok()
@@ -282,14 +291,6 @@ pub fn effect_test() {
   )
 }
 
-fn tagged(label, value) {
-  object([#("$T", dynamic.string(label)), #("$V", value)])
-}
-
-fn unit() {
-  object([])
-}
-
 pub fn compile_builtin_test() {
   test_eval("!int_compare(1, 2)", tagged("Lt", unit()))
   test_compilation(
@@ -306,11 +307,8 @@ int_add(1)(2)",
   test_eval("!string_append(\"ab\")(\"cd\")", dynamic.string("abcd"))
   test_eval("!string_uppercase(\"aBc\")", dynamic.string("ABC"))
   test_eval("!string_lowercase(\"XyZ\")", dynamic.string("xyz"))
-  test_eval(
-    "!string_starts_with(\"Hello\")(\"H\")",
-    tagged("Ok", dynamic.string("ello")),
-  )
-  test_eval("!string_ends_with(\"Hello\")(\"H\")", tagged("Error", unit()))
+  test_eval("!string_starts_with(\"Hello\")(\"H\")", tagged("True", unit()))
+  test_eval("!string_ends_with(\"Hello\")(\"H\")", tagged("False", unit()))
   test_eval("!string_length(\"Yo\")", dynamic.int(2))
   test_eval(
     "!list_pop([1, 2, 3])",
@@ -322,11 +320,7 @@ int_add(1)(2)",
       ]),
     ),
   )
-  test_compilation(
-    "!list_fold([1, 2, 3], 0, !int_add)",
-    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(item)(acc);\n  }\n  return acc\n};\nlet int_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(int_add)",
-    dynamic.int(6),
-  )
+  test_eval("!list_fold([1, 2, 3], 0, !int_add)", dynamic.int(6))
 }
 
 // Regressions from the compiler investigation, before replacing the backend.
