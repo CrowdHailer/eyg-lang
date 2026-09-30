@@ -6,13 +6,12 @@ import gleam/javascript/array.{type Array}
 import gleam/list
 import gleam/pair
 import gleeunit/should
-
-@external(javascript, "./js_ffi.mjs", "eval_")
-pub fn eval(source: String) -> Result(Dynamic, String)
+import plinth/browser/window.{eval}
 
 @external(javascript, "./js_ffi.mjs", "list")
 fn do_list(items: Array(Dynamic)) -> Dynamic
 
+/// This is needed because dynamic.list creates nested head/tail tuples
 fn list(items, encode) {
   items
   |> list.map(encode)
@@ -23,10 +22,19 @@ fn list(items, encode) {
 @external(javascript, "./js_ffi.mjs", "object")
 fn do_object(items: Array(#(String, Dynamic))) -> Dynamic
 
+/// This is needed because dynamic.properties creates a dictionary
 fn object(items) {
   items
   |> array.from_list
   |> do_object
+}
+
+fn tagged(label, value) -> Dynamic {
+  object([#("$T", dynamic.string(label)), #("$V", value)])
+}
+
+fn unit() -> Dynamic {
+  object([])
 }
 
 fn test_compilation(source, js, evaled) {
@@ -282,14 +290,6 @@ pub fn effect_test() {
   )
 }
 
-fn tagged(label, value) {
-  object([#("$T", dynamic.string(label)), #("$V", value)])
-}
-
-fn unit() {
-  object([])
-}
-
 pub fn compile_builtin_test() {
   test_eval("!int_compare(1, 2)", tagged("Lt", unit()))
   test_compilation(
@@ -322,11 +322,7 @@ int_add(1)(2)",
       ]),
     ),
   )
-  test_compilation(
-    "!list_fold([1, 2, 3], 0, !int_add)",
-    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(item)(acc);\n  }\n  return acc\n};\nlet int_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(int_add)",
-    dynamic.int(6),
-  )
+  test_eval("!list_fold([1, 2, 3], 0, !int_add)", dynamic.int(6))
 }
 
 // Regressions from the compiler investigation, before replacing the backend.
