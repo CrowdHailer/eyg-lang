@@ -40,8 +40,11 @@ pub fn render(exp: ir.Node(Nil), handler: String) -> String {
 
 fn needs_effect_runtime(node: ir.Node(Nil)) {
   case node.0 {
-    ir.Perform(_) | ir.Handle(_) | ir.Builtin("bind") | ir.Builtin("fix") ->
-      True
+    ir.Perform(_)
+    | ir.Handle(_)
+    | ir.Builtin("bind")
+    | ir.Builtin("fix")
+    | ir.Builtin("binary_fold") -> True
     _ -> list.any(ir.children(node), needs_effect_runtime)
   }
 }
@@ -295,6 +298,18 @@ let do_handle = (label, handler, m) => {
   return new Uint8Array(bytes);
 }"
     "binary_size" -> "let binary_size = (x) => x.length"
+    "binary_fold" ->
+      "let binary_fold = (bytes) => (acc) => (f) => {
+  const loop = (start, acc) => {
+    for (let i = start; i < bytes.length; i++) {
+      const previous = acc;
+      acc = bind(f(bytes[i]), (g) => g(previous));
+      if (acc instanceof Eff) return bind(acc, (value) => loop(i + 1, value));
+    }
+    return acc;
+  };
+  return loop(0, acc);
+}"
     "binary_concat" ->
       "let binary_concat = (x) => (y) => {
   const result = new Uint8Array(x.length + y.length);
