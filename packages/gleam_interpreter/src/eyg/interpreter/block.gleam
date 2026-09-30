@@ -4,53 +4,27 @@ import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{type Option, None, Some}
 
-const special = "!!special!!"
-
-// env is top env only updated by assigns
-fn loop(next, env) {
-  case next {
-    state.Loop(c, e, k) -> {
-      // update top env
-      case c, k {
-        state.V(_v), state.Stack(state.Assign(l, _then, env), _, state.Empty)
-          if l == special
-        -> {
-          loop(state.step(c, e, k), env.scope)
-        }
-        state.E(#(ir.Vacant, _)), state.Empty -> Ok(#(None, env))
-        _, _ -> loop(state.step(c, e, k), env)
+fn loop(c, env: state.Env(t), k) {
+  case c, k {
+    state.E(#(ir.Vacant, _)), state.Empty -> Ok(#(None, env.scope))
+    _, _ ->
+      case state.step(c, env, k) {
+        state.Loop(c, env, k) -> loop(c, env, k)
+        state.Break(Ok(value)) -> Ok(#(Some(value), env.scope))
+        state.Break(Error(reason)) -> Error(reason)
       }
-    }
-    state.Break(Ok(result)) -> Ok(#(Some(result), env))
-    state.Break(Error(reason)) -> Error(reason)
   }
 }
 
-fn inject(exp: ir.Node(t), acc: List(#(String, t, ir.Node(t)))) -> ir.Node(t) {
-  case exp {
-    #(ir.Let(l, v, t), m) -> inject(t, [#(l, m, v), ..acc])
-    #(_, m) -> {
-      let acc = [#(special, m, #(ir.Empty, m)), ..acc]
-      list.fold(acc, exp, fn(exp, assign) {
-        let #(l, m, v) = assign
-        #(ir.Let(l, v, exp), m)
-      })
-    }
-  }
-}
-
-/// Exectute a block of code.
+/// Execute a block of code.
 /// If there is no final expression no value is returned.
 /// 
-/// In all cases a scope is returned this can be used for builting REPL's
+/// On success the block's scope is returned for use in REPLs.
 pub fn execute(
   exp: ir.Node(t),
   scope: state.Scope(t),
 ) -> Result(#(Option(state.Value(t)), state.Scope(t)), state.Debug(t)) {
-  let exp = inject(exp, [])
-  let env = builtin.default(scope)
-
-  loop(state.step(state.E(exp), env, state.Empty), env.scope)
+  loop(state.E(exp), builtin.default(scope), state.Empty)
 }
 
 /// Call an evaluated function with arguments 
@@ -60,7 +34,7 @@ pub fn call(f, args, env) {
       let #(value, meta) = arg
       state.Stack(state.CallWith(value, env), meta, k)
     })
-  loop(state.step(state.V(f), env, k), env.scope)
+  loop(state.V(f), env, k)
 }
 
 /// Resume the interpretation loop with a value from a previous break position.
@@ -71,5 +45,5 @@ pub fn resume(
   env: state.Env(t),
   k: state.Stack(t),
 ) -> Result(#(Option(state.Value(t)), state.Scope(t)), state.Debug(t)) {
-  loop(state.step(state.V(value), env, k), env.scope)
+  loop(state.V(value), env, k)
 }

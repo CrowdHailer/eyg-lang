@@ -66,11 +66,9 @@ pub type Kontinue(m) {
   Assign(String, ir.Node(m), Env(m))
   CallWith(Value(m), Env(m))
   Delimit(String, Value(m), Env(m), Bool)
-  /// Pass-through marker pushed on every closure call.
-  /// Only required for debug purposes.
-  /// Holds the arg value. NOTE this is not necessarity the problem arg value and is in fact only last arg value
-  /// Holding full environment, and maybe body, would allow rendering full args for debugging
-  Trace(Value(m))
+  /// Restore the caller's environment when a closure or continuation returns,
+  /// including after an effect resumes. The argument is used in stack traces.
+  Trace(Value(m), Env(m))
 }
 
 pub fn step(c, env, k) {
@@ -140,8 +138,8 @@ pub fn apply(value, env, k, meta, rest) {
     Arg(arg, env) -> Ok(#(E(arg), env, Stack(Apply(value, env), meta, rest)))
     Apply(f, env) -> call(f, value, meta, env, rest)
     CallWith(arg, env) -> call(value, arg, meta, env, rest)
-    Delimit(_, _, _, _) -> Ok(#(V(value), env, rest))
-    Trace(_) -> Ok(#(V(value), env, rest))
+    Delimit(_, _, env, _) -> Ok(#(V(value), env, rest))
+    Trace(_, env) -> Ok(#(V(value), env, rest))
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, rest) })
 }
@@ -149,8 +147,9 @@ pub fn apply(value, env, k, meta, rest) {
 pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
   case f {
     v.Closure(param, body, captured) -> {
+      let k = Stack(Trace(arg, env), meta, k)
       let env = Env(..env, scope: [#(param, arg), ..captured])
-      Ok(#(E(body), env, Stack(Trace(arg), meta, k)))
+      Ok(#(E(body), env, k))
     }
     // builtin needs to return result for the case statement
     // Resume/Deep need access to k nothing needs access to env but extension might change that
@@ -193,7 +192,10 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         v.NoCases, [] -> Error(break.NoMatch(arg))
         v.Perform(label), [] -> perform(label, arg, env, k)
         v.Handle(label), [handler] -> deep(label, handler, arg, meta, env, k)
-        v.Resume(#(popped, env)), [] -> Ok(#(V(arg), env, move(popped, k)))
+        v.Resume(#(popped, captured)), [] -> {
+          let k = Stack(Trace(arg, env), meta, k)
+          Ok(#(V(arg), captured, move(popped, k)))
+        }
         v.Builtin(key), applied ->
           call_builtin(key, list.append(applied, [arg]), meta, env, k)
 

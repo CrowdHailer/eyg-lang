@@ -64,7 +64,7 @@ pub fn multi_line_span_test() {
 /// location, arg is the value passed in to that call.
 fn stack_of(frames: List(#(source.Location, execute.Value))) -> execute.Stack {
   use acc, #(meta, value) <- list.fold(frames, state.Empty)
-  state.Stack(state.Trace(value), meta, acc)
+  state.Stack(state.Trace(value, state.Env([], dict.new())), meta, acc)
 }
 
 /// A user-code Disk origin stamped on a span of `code`.

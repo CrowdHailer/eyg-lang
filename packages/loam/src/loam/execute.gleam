@@ -308,7 +308,7 @@ pub fn pure_loop(
 }
 
 /// One frame of the runtime stack trace - the failing expression's
-/// meta (with `arg: None`) plus every closure call recorded by a
+/// meta (with `arg: None`) plus every closure or continuation call recorded by a
 /// Trace frame on the continuation stack (with `arg: Some(value)`).
 pub type Frame {
   Frame(location: source.Location, arg: Option(Value))
@@ -347,7 +347,7 @@ pub fn render_error(
 fn collect_traces(stack: Stack, acc: List(Frame)) -> List(Frame) {
   case stack {
     state.Empty -> list.reverse(acc)
-    state.Stack(state.Trace(arg), meta, rest) ->
+    state.Stack(state.Trace(arg, _), meta, rest) ->
       collect_traces(rest, [Frame(meta, Some(arg)), ..acc])
     state.Stack(_, _, rest) -> collect_traces(rest, acc)
   }
