@@ -40,7 +40,8 @@ pub fn render(exp: ir.Node(Nil), handler: String) -> String {
 
 fn needs_effect_runtime(node: ir.Node(Nil)) {
   case node.0 {
-    ir.Perform(_) | ir.Handle(_) | ir.Builtin("bind") -> True
+    ir.Perform(_) | ir.Handle(_) | ir.Builtin("bind") | ir.Builtin("fix") ->
+      True
     _ -> list.any(ir.children(node), needs_effect_runtime)
   }
 }
@@ -229,6 +230,11 @@ let do_handle = (label, handler, m) => {
 }"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
+    "fix" ->
+      "let fix = (f) => {
+  const self = (x) => bind(f(self), (g) => g(x));
+  return f(self);
+}"
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
     "int_divide" ->
