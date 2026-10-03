@@ -17,9 +17,9 @@ import gleam/dynamic/decode
 import gleam/list
 import gleam/string
 import multiformats/cid/v1
-import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/tools/run
 import pal/platform/browser
 import pal/system
 import touch_grass/harness/browser as harness
@@ -72,7 +72,7 @@ fn execute_single(ctx: Context, call: tool.Call) -> #(Context, Progress) {
   let tool.FunctionCall(name:, arguments:) = function
   case name {
     "run" ->
-      case cast_run(arguments) {
+      case run.cast(arguments) {
         Ok(code) ->
           case parser.all_from_string(code) {
             Ok(source) -> {
@@ -209,12 +209,6 @@ pub fn to_fetch(
 
 fn failed(id, call) {
   Progress(id:, output: [], call:)
-}
-
-fn cast_run(arguments) {
-  let arguments = utils.fields_to_dynamic(arguments)
-  let decoder = decode.field("code", decode.string, decode.success)
-  decode.run(arguments, decoder)
 }
 
 // context can include tasks

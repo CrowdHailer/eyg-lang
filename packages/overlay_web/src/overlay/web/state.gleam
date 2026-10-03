@@ -1,4 +1,3 @@
-import castor
 import eyg/analysis/type_/binding/debug as t_debug
 import eyg/hub/cache
 import eyg/interpreter/simple_debug
@@ -17,6 +16,7 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/tools/run
 import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/tools
@@ -380,7 +380,7 @@ fn stream_next_chunk(provider, reader, remaining) {
 }
 
 fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
-  let tools = [spec()]
+  let tools = [run.spec()]
   let context = provider.Context(system_prompt: system_prompt(state), tools:)
   let history = list.append(messages, state.history) |> list.reverse
   provider.stream_completion_request(state.llm, context, history)
@@ -457,13 +457,4 @@ They do not require an API token this will be added by the platform.
 # Context
 
 " <> context.readme(state.context)
-}
-
-pub fn spec() {
-  let name = "run"
-
-  let description =
-    "Run an EYG program, the program may have effects at a top level."
-  let parameters = [castor.field("code", castor.string())]
-  tool.Tool(name, description, parameters)
 }
