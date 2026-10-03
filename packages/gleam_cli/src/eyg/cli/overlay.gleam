@@ -311,7 +311,7 @@ pub fn execute_call(
       io.println(ansi.bg_bright_green(log_line(call)))
       case call {
         agent.Run(code) -> {
-          use #(result, eyg_state) <- system.then(run_do(
+          use #(result, eyg_state, output) <- system.then(run_do(
             code,
             cwd,
             eyg_state,
@@ -321,11 +321,11 @@ pub fn execute_call(
           let result = case result {
             // current state is not used by the CLI implementation, this will need to change.
             Ok(#(Some(value), _)) -> {
-              Ok(tool.Return(simple_debug.inspect(value), []))
+              Ok(tool.Return(report(output, simple_debug.inspect(value)), []))
             }
-            Ok(#(None, _)) -> Ok(tool.Return("", []))
+            Ok(#(None, _)) -> Ok(tool.Return(report(output, ""), []))
             Error(reason) -> {
-              Error(reason)
+              Error(report(output, reason))
             }
           }
           system.Done(#(result, eyg_state))
@@ -346,6 +346,14 @@ pub fn log_line(call) {
   }
 }
 
+/// Output is collected newest-first, scoped to a single tool call.
+fn report(output: List(String), result: String) -> String {
+  case list.reverse(output) {
+    [] -> result
+    printed -> "Output:\n" <> string.concat(printed) <> "\nResult:\n" <> result
+  }
+}
+
 // There's a problem that the final execute is tied to runtime
 // ---------------------- run
 
@@ -355,26 +363,24 @@ pub fn run_do(
   eyg_state,
   policy: execute.Value,
   context: execute.Value,
-) -> system.Effect(#(Result(_, String), execute.State)) {
+) -> system.Effect(#(Result(_, String), execute.State, List(String))) {
   let input = source.Stdin
 
   case source.parse_input(code, input) {
     Ok(source) -> {
       let scope = [#("context", context)]
       let assert Ok(policy) = cast_policy(policy)
-      use #(result, state) <- system.map(loop(
-        block.execute(source, scope),
-        eyg_state,
-        policy,
-      ))
+      use #(result, state, output) <- system.map(
+        loop(block.execute(source, scope), eyg_state, policy, []),
+      )
       let result = case result {
         Ok(value) -> Ok(value)
         Error(#(reason, location, _env, k)) ->
           Error(execute.render_error(reason, location, k, cwd))
       }
-      #(result, state)
+      #(result, state, output)
     }
-    Error(reason) -> system.Done(#(Error(reason), eyg_state))
+    Error(reason) -> system.Done(#(Error(reason), eyg_state, []))
   }
 }
 
@@ -432,7 +438,7 @@ fn cast_policy(value) {
   |> Ok
 }
 
-fn apply_policy(label, value, meta, env, policy, state) {
+fn apply_policy(label, value, meta, policy, state) {
   case list.key_find(policy, label) {
     Ok(run) -> execute.pure_loop(expression.call(run, [#(value, meta)]), state)
     Error(Nil) -> system.Done(#(Ok(value.Tagged("Pass", value)), state))
@@ -444,9 +450,10 @@ pub fn loop(
   return: Result(_, execute.Debug),
   state: execute.State,
   policy: List(#(String, execute.Value)),
-) -> system.Effect(#(Result(_, execute.Debug), execute.State)) {
+  output: List(String),
+) -> system.Effect(#(Result(_, execute.Debug), execute.State, List(String))) {
   case return {
-    Ok(return) -> system.Done(#(Ok(return), state))
+    Ok(return) -> system.Done(#(Ok(return), state, output))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect(label, lift) -> {
@@ -455,7 +462,6 @@ pub fn loop(
             label,
             lift,
             meta,
-            env,
             policy,
             state,
           ))
@@ -468,32 +474,41 @@ pub fn loop(
                   //   block.call(check, [#(lift, meta)], state.Env(..env, scope: []))
                   // echo yep
 
-                  use value <- system.then(computer.extrinsic(
-                    effect,
-                    meta.origin,
-                  ))
-                  loop(block.resume(value, env, k), state, policy)
+                  let effect = computer.extrinsic(effect, meta.origin)
+                  // Capture the actual write after policy transformation while
+                  // still forwarding it to the terminal.
+                  let output = case effect {
+                    system.WriteStdout(text, _) -> [text, ..output]
+                    system.WriteStderr(text, _) -> [text, ..output]
+                    _ -> output
+                  }
+                  use value <- system.then(effect)
+                  loop(block.resume(value, env, k), state, policy, output)
                 }
 
                 Error(reason) ->
-                  system.Done(#(Error(#(reason, meta, env, k)), state))
+                  system.Done(#(Error(#(reason, meta, env, k)), state, output))
               }
             Ok(value.Tagged(label: "Mock", value: returned)) ->
-              loop(block.resume(returned, env, k), state, policy)
-            _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
+              loop(block.resume(returned, env, k), state, policy, output)
+            _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
           }
         }
         break.UndefinedReference(reference) -> {
-          use value, state <- execute.try_await(
-            execute.lookup(reference, meta.origin, state),
-            meta,
-            env,
-            k,
-          )
-          loop(block.resume(value, env, k), state, policy)
+          use #(result, state) <- system.then(execute.lookup(
+            reference,
+            meta.origin,
+            state,
+          ))
+          case result {
+            Ok(value) ->
+              loop(block.resume(value, env, k), state, policy, output)
+            Error(reason) ->
+              system.Done(#(Error(#(reason, meta, env, k)), state, output))
+          }
         }
 
-        _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
+        _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
       }
   }
 }
