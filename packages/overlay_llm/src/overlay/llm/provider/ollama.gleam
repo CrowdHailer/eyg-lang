@@ -3,9 +3,12 @@ import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
+import gleam/http/response.{type Response, Response}
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import oas/generator/utils
 import ogre/origin
 import overlay/llm/chat
@@ -112,7 +115,7 @@ pub fn completion_chunk_parse(remaining: BitArray, chunk: BitArray) {
   let #(lines, remaining) = stringx.chunk_lines(buffer)
   let assert Ok(completion) =
     list.try_map(lines, fn(line) {
-      case json.parse(line, chat_stream_event_decoder()) {
+      case json.parse(line, event_decoder()) {
         Ok(event) -> Ok(event)
         Error(_reason) -> Error(Nil)
       }
@@ -120,7 +123,22 @@ pub fn completion_chunk_parse(remaining: BitArray, chunk: BitArray) {
   #(completion, <<remaining:utf8>>)
 }
 
-pub fn chat_stream_event_decoder() {
+pub fn completion_response(
+  response: Response(BitArray),
+) -> Result(chat.Completion(tool.Call), String) {
+  case response {
+    Response(status: 200, body:, ..) ->
+      case json.parse_bits(body, event_decoder()) {
+        Ok(completion) -> Ok(completion)
+        Error(reason) -> Error(string.inspect(reason))
+      }
+    Response(status:, ..) ->
+      Error("unexpected status: " <> int.to_string(status))
+  }
+}
+
+/// This is used for th
+pub fn event_decoder() {
   use message <- decode.field("message", message_decoder())
 
   decode.success(message)

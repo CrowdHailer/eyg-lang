@@ -1,4 +1,7 @@
 import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
+import midas/continuation.{type Continuation as K}
+import midas/effect
 import overlay/llm/chat
 import overlay/llm/provider/mistral
 import overlay/llm/provider/ollama
@@ -23,17 +26,42 @@ pub type Context {
   Context(system_prompt: String, tools: List(tool.Tool))
 }
 
+pub fn completion(
+  llm: Llm,
+  context: Context,
+  history: chat.History,
+  fetch: effect.Fetch(t),
+) -> K(t, Result(chat.Completion(tool.Call), String)) {
+  let request = completion_request(llm, context, history)
+  use response <- continuation.map(fetch(request))
+  case response {
+    Ok(response) -> completion_response(llm, response)
+    Error(reason) -> Error(effect.describe_fetch_error(reason))
+  }
+}
+
 pub fn completion_request(
-  provider,
-  model,
-  system_prompt,
-  history,
-  tools,
+  llm: Llm,
+  context: Context,
+  history: chat.History,
 ) -> Request(BitArray) {
+  let Llm(provider:, model:) = llm
+  let Context(system_prompt:, tools:) = context
   case provider {
     Ollama(config) ->
       ollama.completion_request(config, model, system_prompt, history, tools)
     Mistral(_config) -> panic as "unsupported"
+  }
+}
+
+pub fn completion_response(
+  llm: Llm,
+  response: Response(BitArray),
+) -> Result(chat.Completion(tool.Call), String) {
+  let Llm(provider:, model: _) = llm
+  case provider {
+    Ollama(_) -> ollama.completion_response(response)
+    Mistral(_) -> Error("Not implemented for mistral")
   }
 }
 
