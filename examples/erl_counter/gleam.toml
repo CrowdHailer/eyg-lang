@@ -1,0 +1,23 @@
+name = "erl_counter"
+version = "0.1.0"
+target = "erlang"
+
+[dependencies]
+eyg_analysis = { path = "../../packages/gleam_analysis" }
+eyg_hub = { path = "../../packages/gleam_hub" }
+eyg_interpreter = { path = "../../packages/gleam_interpreter" }
+eyg_ir = { path = "../../packages/gleam_ir" }
+eyg_parser = { path = "../../packages/gleam_parser" }
+gleam_crypto = ">= 1.6.0 and < 2.0.0"
+gleam_httpc = ">= 5.0.0 and < 6.0.0"
+ogre = ">= 1.1.0 and < 2.0.0"
+
+[dev-dependencies]
+gleam_http = ">= 4.3.0 and < 5.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+untethered = { path = "../../packages/untethered" }
+
+[erlang]
+application_start_module = "counters_app"

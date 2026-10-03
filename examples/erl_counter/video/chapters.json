@@ -1,0 +1,35 @@
+{
+  "duration": 69.34430278400032,
+  "chapters": [
+    {
+      "time": 0.0079,
+      "title": "01 / Start the application",
+      "caption": "Build the Erlang application and start a named OTP node."
+    },
+    {
+      "time": 8.8672,
+      "title": "02 / Shell into the cluster",
+      "caption": "A second Erlang node connects to the running application's shell."
+    },
+    {
+      "time": 16.7137,
+      "title": "03 / Write an EYG script",
+      "caption": "Use @standard directly. There is no package-install or preload command."
+    },
+    {
+      "time": 31.3824,
+      "title": "04 / Check: load the dependency silently",
+      "caption": "check fetches @standard from eyg.run. The session retains the returned cache."
+    },
+    {
+      "time": 50.0038,
+      "title": "05 / Run: reuse the returned cache",
+      "caption": "The checked script now executes its effects and starts three counters."
+    },
+    {
+      "time": 63.3378,
+      "title": "Check loads dependencies. Run executes effects.",
+      "caption": "Explicit cache in, updated cache out. All application code is Erlang."
+    }
+  ]
+}

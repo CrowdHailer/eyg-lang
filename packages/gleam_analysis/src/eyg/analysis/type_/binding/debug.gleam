@@ -87,7 +87,7 @@ pub fn render_reason(reason) {
     error.MissingReference(reference) ->
       "missing reference " <> render_reference(reference)
     error.MissingRow(label) -> "missing row '" <> label <> "'"
-    error.TypeMismatch(expected, given) ->
+    error.TypeMismatch(given, expected) ->
       "type mismatch given: "
       <> render_type(given)
       <> " expected: "
@@ -130,7 +130,7 @@ pub fn hint(reason) {
     error.MissingReference(_) -> "the referenced module is not available"
     error.MissingRow(label) ->
       "the record or union is missing '" <> label <> "'"
-    error.TypeMismatch(_expected, _given) ->
+    error.TypeMismatch(_given, _expected) ->
       "check the expression matches the expected type"
     error.Recursive ->
       "this expression has a recursive type which is not supported"

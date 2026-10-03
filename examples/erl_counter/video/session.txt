@@ -1,0 +1,66 @@
+[?2004h$ gleam build
+[?2004l[0m[38;5;13m   Compiled[0m in 0.69s
+[?2004h$ erl -detached -sname eyg_counters_video -pa build/dev/erlang/*/ebin \
+[?2004l[?2004h>   -eval '{ok, _} = application:ensure_all_started(erl_counter).'
+[?2004l[?2004h$ erl -sname eyg_shell_video -remsh eyg_counters_video@$(hostname -s)
+[?2004lErlang/OTP 28 [erts-16.1] [source] [64-bit] [smp:12:12] [ds:12:12:10] [async-threads:1] [jit:ns]
+
+Eshell V16.1 (press Ctrl+G to abort, type help(). for help)
+(eyg_counters_video@LLaptopy)1> node()[C[C.
+[A[J(eyg_counters_video@LLaptopy)1> node().
+eyg_counters_video@LLaptopy
+(eyg_counters_video@LLaptopy)2> nodes()[C[C.
+[A[J(eyg_counters_video@LLaptopy)2> nodes().
+[eyg_shell_video@LLaptopy]
+(eyg_counters_video@LLaptopy)3> Script = "
+                             .. @standard.list.map([\"apples\", \"pears\", \"plums\"][C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C, (name)[C[C[C[C[C[C -> {
+                             ..   let _ = perform StartCounter(name)[C[C[C[C[C[C
+                             ..   perform SetTickRate({name: name, seconds: 1}[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C
+                             .. }[A[A[A[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C
+
+
+[C)[A[A[A[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C
+
+
+[C[C
+                             .. ", ok.
+[A[A[A[A[A[A[J(eyg_counters_video@LLaptopy)3> Script = "
+                                @standard.list.map([\"apples\", \"pears\", \"plums\"], (name) -> {
+                                  let _ = perform StartCounter(name)
+                                  perform SetTickRate({name: name, seconds: 1})
+                                })
+                                ", ok.
+ok
+(eyg_counters_video@LLaptopy)4> {ok, Session}[C[C[C[C[C[C[C[C[C[C[C[C[C = counters_session:start_link()[C[C.
+[A[J(eyg_counters_video@LLaptopy)4> {ok, Session} = counters_session:start_link().
+{ok,<0.137.0>}
+(eyg_counters_video@LLaptopy)5> counters_session:cached(Session, {package, <<"standard">>}[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[J(eyg_counters_video@LLaptopy)5> counters_session:cached(Session, {package, <<"standard">>}).
+false
+(eyg_counters_video@LLaptopy)6> {ok, Type}[C[C[C[C[C[C[C[C[C[C = counters_session:check(Session, Script)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C,
+                             .. io:format("~ts~n", [Type][C[C[C[C[C[C)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[A[J(eyg_counters_video@LLaptopy)6> {ok, Type} = counters_session:check(Session, Script),
+                                io:format("~ts~n", [Type]).
+List([Ok: {} | Error: String])
+ok
+(eyg_counters_video@LLaptopy)7> supervisor:which_children(counters_sup)[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[J(eyg_counters_video@LLaptopy)7> supervisor:which_children(counters_sup).
+[]
+(eyg_counters_video@LLaptopy)8> counters_session:cached(Session, {package, <<"standard">>}[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[J(eyg_counters_video@LLaptopy)8> counters_session:cached(Session, {package, <<"standard">>}).
+true
+(eyg_counters_video@LLaptopy)9> {ok, Value}[C[C[C[C[C[C[C[C[C[C[C = counters_session:run(Session, Script)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C,
+                             .. io:format("~ts~n", [eyg@interpreter@simple_debug:inspect(Value)[C[C[C[C[C[C[C][C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C)[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[A[J(eyg_counters_video@LLaptopy)9> {ok, Value} = counters_session:run(Session, Script),
+                                io:format("~ts~n", [eyg@interpreter@simple_debug:inspect(Value)]).
+[Ok({}), Ok({}), Ok({})]
+ok
+(eyg_counters_video@LLaptopy)10> supervisor:which_children(counters_sup)[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[J(eyg_counters_video@LLaptopy)10> supervisor:which_children(counters_sup).
+[{<<"plums">>,<0.162.0>,worker,[counter]},
+ {<<"pears">>,<0.161.0>,worker,[counter]},
+ {<<"apples">>,<0.160.0>,worker,[counter]}]
+(eyg_counters_video@LLaptopy)11> counters_api:get_value(<<"apples">>)[C[C[C[C[C[C[C[C[C[C[C[C[C[C.
+[A[J(eyg_counters_video@LLaptopy)11> counters_api:get_value(<<"apples">>).
+{ok,7}
+(eyg_counters_video@LLaptopy)12> 

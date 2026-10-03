@@ -1,0 +1,4 @@
+imageio-ffmpeg==0.6.0
+pexpect==4.9.0
+Pillow==11.3.0
+pyte==0.8.2

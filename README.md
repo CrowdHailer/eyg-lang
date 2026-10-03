@@ -83,6 +83,7 @@ Use `eyg eval` for evaluating pure values, no side effects, and printing the res
 - Full effect reference is in [`./guides/cli_effects_reference.md`](./guides/cli_effects_reference.md).
 - File and import path resolution is explained in [`guides/file_resolution.md`](./guides/file_resolution.md).
 - To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md).
+- To embed EYG in Erlang and fetch packages from an Erlang host, see the [counter application](./examples/erl_counter/).
 
 ## Packages
 
