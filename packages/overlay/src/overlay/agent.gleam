@@ -5,9 +5,14 @@
 import eyg/analysis/type_/binding/debug
 import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
+import gleam/dict.{type Dict}
+import gleam/dynamic/decode
+import gleam/json
 import gleam/list
 import gleam/string
+import oas/generator/utils
 import ogre/origin.{type Origin}
+import overlay/tools/run
 import touch_grass/http
 import touch_grass/interface
 
@@ -86,4 +91,49 @@ They do not require an API token this will be added by the platform.
 # Context
 
 " <> readme
+}
+
+pub type ToolCall {
+  Run(String)
+}
+
+pub type CastFailure {
+  DecodeError(errors: List(decode.DecodeError))
+  UnknownTool
+}
+
+pub fn describe_failure(
+  failure: CastFailure,
+  name: String,
+  arguments: Dict(String, utils.Any),
+) -> String {
+  case failure {
+    DecodeError(errors: _) -> {
+      "Bad arguments for tool "
+      <> name
+      <> " arguments: "
+      <> json.to_string(utils.any_to_json(utils.Object(arguments)))
+    }
+    UnknownTool -> {
+      let message = "Failed to call tool `" <> name <> "` it is not setup."
+      message
+    }
+  }
+}
+
+pub fn cast_tool_call(
+  name: String,
+  arguments: Dict(String, utils.Any),
+) -> Result(ToolCall, CastFailure) {
+  case name {
+    "run" -> run.cast(arguments) |> to(Run)
+    _ -> Error(UnknownTool)
+  }
+}
+
+fn to(result, call) {
+  case result {
+    Ok(arguments) -> Ok(call(arguments))
+    Error(reason) -> Error(DecodeError(reason))
+  }
 }
