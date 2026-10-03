@@ -1,8 +1,5 @@
-import eyg/analysis/type_/binding/debug as t_debug
 import eyg/hub/cache
-import eyg/interpreter/simple_debug
 import eyg/interpreter/state as istate
-import eyg/interpreter/value as v
 import eyg/parser/parser as _
 import gleam/http/response.{Response}
 import gleam/int
@@ -12,6 +9,7 @@ import gleam/set
 import gleam/string
 import midas/continuation
 import ogre/origin
+import overlay/agent
 import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
@@ -22,8 +20,6 @@ import overlay/web/provider_setup
 import overlay/web/tools
 import pal/system
 import touch_grass/harness/browser as harness
-import touch_grass/http
-import touch_grass/interface
 
 pub type Config {
   Config(origin: origin.Origin, context: context.Source)
@@ -381,80 +377,15 @@ fn stream_next_chunk(provider, reader, remaining) {
 
 fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
   let tools = [run.spec()]
-  let context = provider.Context(system_prompt: system_prompt(state), tools:)
+  let context =
+    provider.Context(
+      system_prompt: agent.system_prompt(
+        state.origin,
+        harness.effects(),
+        context.readme(state.context),
+      ),
+      tools:,
+    )
   let history = list.append(messages, state.history) |> list.reverse
   provider.stream_completion_request(state.llm, context, history)
-}
-
-fn system_prompt(state: State) -> String {
-  let origin = state.origin
-  let scheme = http.scheme_to_eyg(origin.scheme)
-  let host = v.String(origin.host)
-  let port = v.option(origin.port, v.Integer)
-
-  "You are an expery automation assistant.
-You help users by executing EYG scripts to interact with the users system.
-DO NOT guess any function of effects. Only use what you have seen explained and use guide to learn more about writing EYG code.
-
-ALWAYS use djot syntax for your responses.
-DO NOT write code blocks in your responses unless explicitly asked.
-All code execution uses the 'run' tool.
-Every program has the variable context in scope, it is the module described in the Context section at the end of this prompt.
-
-To fetch a guide run the following script.
-ALWAYS fetch the EYG syntax guide before writing scripts
-
-```eyg
-let request = {
-  method: GET({}),
-  scheme: " <> simple_debug.inspect(scheme) <> ",
-  host: " <> simple_debug.inspect(host) <> ",
-  port: " <> simple_debug.inspect(port) <> ",
-  path: \"/guides/eyg-syntax-guide.md\",
-  query: None({}),
-  headers: [],
-  body: !string_to_binary(\"\")
-}
-match perform Fetch(request) {
-  Ok({body}) -> {
-    match !string_from_binary(body) {
-      Ok(text) -> { text }
-      Error(_) -> { \"Not a utf-8 response.\" }
-    }
-  }
-  Error(reason) -> { !string_append(\"fetch guide \", reason) }
-}
-```
-
-Other guides are
-- /guides/builtins-reference.md
-- /guides/http-fetch.md
-
-This environment has the following effects
-
-"
-  |> string.append(
-    harness.effects()
-    |> list.map(fn(effect) {
-      let interface.Interface(name:, lift_type:, lower_type:, decode: _) =
-        effect
-
-      "-"
-      <> name
-      <> "("
-      <> t_debug.mono(lift_type)
-      <> "_ -> "
-      <> t_debug.mono(lower_type)
-    })
-    |> string.join("\n"),
-  ) <> "
-
-Remember to always use perform to call an effect.
-
-Use the service effects, such as DNSimple, to call service API's these do not require the scheme, host or port to be set.
-They do not require an API token this will be added by the platform.
-
-# Context
-
-" <> context.readme(state.context)
 }
