@@ -255,6 +255,17 @@ pub fn traverse(items: List(a), func: fn(a) -> Effect(b)) -> Effect(List(b)) {
   }
 }
 
+/// Reduce a list of items into a single value by applying an accumulator and each item an effectful function.
+pub fn fold(items: List(a), acc: b, func: fn(b, a) -> Effect(b)) -> Effect(b) {
+  case items {
+    [] -> Done(acc)
+    [item, ..rest] -> {
+      use acc <- then(func(acc, item))
+      fold(rest, acc, func)
+    }
+  }
+}
+
 pub fn each(effects: List(Effect(Nil))) -> Effect(Nil) {
   case effects {
     [] -> Done(Nil)

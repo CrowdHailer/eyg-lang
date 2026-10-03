@@ -45,7 +45,8 @@ pub fn block(source, scope, state) {
   loop(block.execute(source, scope), state)
 }
 
-fn try_await(
+/// Rebuild a failed reason back into full debug information
+pub fn try_await(
   result: system.Effect(#(Result(t, Reason), State)),
   meta: source.Location,
   env: Env,
@@ -141,7 +142,7 @@ fn apply(
 /// 
 /// This function returns an effect that is complete when all lookups are done.
 /// A new state is returned as references can have further dependencies
-fn lookup(
+pub fn lookup(
   reference: ir.Reference,
   origin: source.Origin,
   state: State,
