@@ -44,6 +44,10 @@ pub fn cast(
   interface.cast(computer.effects(), label, lift)
 }
 
+pub fn effects() {
+  computer.effects()
+}
+
 pub fn extrinsic(
   effect: computer.Effect,
   origin: source.Origin,

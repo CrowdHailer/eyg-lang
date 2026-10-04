@@ -15,6 +15,7 @@ pub type Args {
   SignatoryList
   SignatoryShow(alias: String)
   Publish(package: String, file: String)
+  Overlay(input: source.Input)
   InvalidArguments(message: String)
   Help
   Version
@@ -79,6 +80,11 @@ pub fn parse(args) {
       InvalidArguments(
         "usage: eyg signatory initial <name> | eyg signatory list | eyg signatory show <name>",
       )
+    ["overlay", "-c", code] | ["overlay", "--code", code] ->
+      Overlay(source.Code(code))
+    ["overlay", "-"] | ["overlay", "--stdin"] -> Overlay(source.Stdin)
+    ["overlay", file] -> Overlay(source.File(file))
+    // overlay doesn't support using a release or content reference as auth should not be included
     ["help"] | ["--help"] | ["-h"] -> Help
     ["version"] | ["--version"] | ["-V"] -> Version
     ["#" <> _ as code, ..arguments] | ["@" <> _ as code, ..arguments] ->
@@ -132,6 +138,10 @@ commands:
   signatory initial <n>  create a signatory principal called <n>
   signatory list         list local signatory metadata and current hub status
   signatory show <name>  show signatory metadata and complete hub event history
+  overlay <file>         start an overlay session with config file
+  overlay -, --stdin     start an overlay session with config from stdin
+  overlay -c, --code <code>
+                         start an overlay session with inline config
   help, --help, -h       show this message
   version, --version, -V show the eyg version
 environment:

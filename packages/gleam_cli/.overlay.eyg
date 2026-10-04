@@ -1,0 +1,38 @@
+let allow_all = {
+    
+    append_file: (value) -> { Pass(value) },
+    create_key: (value) -> { Pass(value) },
+    cwd: (value) -> { Pass(value) },
+    // decode_json: (value) -> { Pass(value) },
+    delete_file: (value) -> { Pass(value) },
+    env: (value) -> { Pass(value) },
+    // exit: (value) -> { Pass(value) },
+    // eyg_parse: (value) -> { Pass(value) },
+    fetch: (value) -> { Pass(value) },
+    // flip: (value) -> { Pass(value) },
+    // hash: (value) -> { Pass(value) },
+    make_directory: (value) -> { Pass(value) },
+    now: (value) -> { Pass(value) },
+    random: (value) -> { Pass(value) },
+    read_directory: (value) -> { Pass(value) },
+    read_file: (value) -> { Pass(value) },
+    sign: (value) -> { Pass(value) },
+    sleep: (value) -> { Pass(value) },
+    standard_error: (value) -> { Pass(value) },
+    standard_in: (value) -> { Pass(value) },
+    standard_out: (value) -> { Pass(value) },
+    write_file: (value) -> { Pass(value) }
+}
+let {api_key} = import ".env.eyg"
+
+let policy = {
+  standard_out: (log) -> { Pass(!string_uppercase(log)) },
+  write_file: (_) -> { Mock(Error("Read only access to file system")) },
+  ..allow_all
+}
+
+{
+  llm: Ollama({origin: "https://ollama.com", api_key: Some(api_key)}),
+  policy: policy,
+  context: {readme: "Hello, call me sparticus!"}
+}

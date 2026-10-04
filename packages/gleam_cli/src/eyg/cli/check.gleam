@@ -22,19 +22,8 @@ pub fn execute(
   use source <- system.try(source.parse_input(code, input))
 
   let context = infer.unpure()
-  let #(dir, path) = case source.1.origin {
-    source.Disk(path:) -> #(filepath.directory_name(path), path)
-    // source without a file resolves imports against the working directory.
-    source.Pipe -> #(cwd, "")
-    source.Inline -> #(cwd, "")
-    source.Repl -> #(cwd, "")
-    source.Content(..) -> #(cwd, "")
-    source.Release(..) -> #(cwd, "")
-  }
 
-  use #(_poly, type_, errors) <- system.then(
-    check_all(context, dir, source, [], [path]),
-  )
+  use #(_poly, type_, errors) <- system.then(check_from(source, cwd, context))
 
   use Nil <- system.then(
     system.each(
@@ -66,7 +55,27 @@ pub fn execute(
   }
 }
 
-fn check_all(
+pub fn check_from(
+  source: ir.Node(source.Location),
+  cwd: String,
+  context: infer.Context,
+) -> system.Effect(
+  #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason))),
+) {
+  let #(dir, path) = case source.1.origin {
+    source.Disk(path:) -> #(filepath.directory_name(path), path)
+    // source without a file resolves imports against the working directory.
+    source.Pipe -> #(cwd, "")
+    source.Inline -> #(cwd, "")
+    source.Repl -> #(cwd, "")
+    source.Content(..) -> #(cwd, "")
+    source.Release(..) -> #(cwd, "")
+  }
+
+  do_check_all(context, dir, source, [], [path])
+}
+
+fn do_check_all(
   context: infer.Context,
   directory: String,
   source: #(ir.Expression(source.Location), source.Location),
@@ -117,7 +126,7 @@ fn check_loop(
                       case source.parse_input(code, source.File(location)) {
                         Ok(dependency) -> {
                           let check =
-                            check_all(
+                            do_check_all(
                               context,
                               filepath.directory_name(path),
                               dependency,
