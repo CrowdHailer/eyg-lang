@@ -17,6 +17,8 @@ import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
+import eyg/interpreter/value
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/http/response
 import gleam/list
@@ -415,10 +417,11 @@ pub fn loop(
           }
         }
         break.UndefinedReference(reference) -> {
-          use #(result, state) <- system.then(execute.lookup(
+          use #(result, state) <- system.then(lookup_reference(
             reference,
-            meta.origin,
+            meta,
             state,
+            policy,
           ))
           case result {
             Ok(value) ->
@@ -430,6 +433,68 @@ pub fn loop(
 
         _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
       }
+  }
+}
+
+// Relative imports read files, so ask the ReadFile gate before resolving them.
+fn lookup_reference(reference, meta, state, policy) {
+  case reference {
+    ir.Relative(path) -> {
+      let request =
+        value.Record(
+          dict.from_list([
+            #("path", value.String(path)),
+            #("offset", value.Integer(0)),
+            #("limit", value.Integer(100_000_000)),
+          ]),
+        )
+      case dict.get(policy, "ReadFile") {
+        Ok(policy.Interface(_, policy.Gated(gate))) -> {
+          use #(result, state) <- system.then(execute.pure_loop(
+            expression.call(gate, [#(request, meta)]),
+            state,
+          ))
+          case result {
+            Ok(value.Tagged("Pass", modified)) ->
+              case cast.field("path", cast.as_string, modified) {
+                Ok(path) ->
+                  execute.lookup(ir.Relative(path), meta.origin, state)
+                Error(reason) -> system.Done(#(Error(reason), state))
+              }
+            Ok(value.Tagged("Mock", value.Tagged("Error", reason))) ->
+              system.Done(#(
+                Error(break.UnhandledEffect(
+                  "Abort",
+                  value.String(
+                    "import of "
+                    <> path
+                    <> " denied by policy: "
+                    <> simple_debug.inspect(reason),
+                  ),
+                )),
+                state,
+              ))
+            Ok(returned) ->
+              system.Done(#(
+                Error(break.IncorrectTerm(
+                  "Pass(request) or Mock(Error(reason)) for an import",
+                  returned,
+                )),
+                state,
+              ))
+            Error(#(reason, _, _, _)) -> system.Done(#(Error(reason), state))
+          }
+        }
+        Ok(policy.Interface(_, policy.Unrestricted)) ->
+          execute.lookup(reference, meta.origin, state)
+        Error(Nil) ->
+          system.Done(#(
+            Error(break.UnhandledEffect("ReadFile", request)),
+            state,
+          ))
+      }
+    }
+    _ -> execute.lookup(reference, meta.origin, state)
   }
 }
 
