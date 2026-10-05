@@ -24,8 +24,7 @@ pub fn cast(value) {
     cast.field("policy", Ok, value),
     cast.field("context", Ok, value)
   {
-    Ok(provider), Ok(policy), Ok(context) -> {
-      let llm = provider.Llm(provider:, model: "glm-5.3:cloud")
+    Ok(llm), Ok(policy), Ok(context) -> {
       Ok(Config(llm:, policy:, context:))
     }
     Error(reason), _, _ -> Error(reason)
@@ -36,6 +35,12 @@ pub fn cast(value) {
 
 // cast is the wrong term, we need a decode API
 fn cast_llm(value) {
+  use provider <- result.try(cast.field("provider", cast_provider, value))
+  use model <- result.try(cast.field("model", cast.as_string, value))
+  Ok(provider.Llm(provider:, model:))
+}
+
+fn cast_provider(value) {
   use tagged <- result.try(cast.as_tagged(value))
   case tagged {
     #("Ollama", inner) -> result.map(cast_ollama(inner), provider.Ollama)

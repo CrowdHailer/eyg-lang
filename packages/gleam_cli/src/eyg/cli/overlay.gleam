@@ -80,25 +80,6 @@ pub fn execute(input, config: config.Config) {
   }
 }
 
-// fn cast_policy(value) {
-//   use read_file <- result.try(cast.field(
-//     "read_file",
-//     fn(raw) {
-//       // if we've type checked we can assume the value is good
-//       // let assert value.Closure(param:, body:, env:) = raw
-//       // use #(_poly, type_, errors) <- system.then(check_from(
-//       //   source,
-//       //   cwd,
-//       //   context,
-//       // ))
-//       Ok(raw)
-//     },
-//     value,
-//   ))
-//   echo read_file
-//   Ok(Nil)
-// }
-// I call this chat because we're in a chat agent
 import overlay/llm/chat
 
 fn outer_loop(

@@ -23,7 +23,7 @@ eyg overlay path/to/.overlay.eyg
 
 The `.policy.eyg` file returns a record with the following fields:
 
-- `llm` that describes the configuration of the LLM to use, this matches the `Llm` type in gleam module `overlay/llm/provider`.
+- `llm` a record `{provider, model}` matching the `Llm` type in gleam module `overlay/llm/provider`.
 - `policy` A record with `Pass`/`Mock` rules for each external effect on the platform.
 - `context` A record with at least the field `readme`. The readme content is added as context to the agent. The agent is able to access the context by the `context` variable in any programs it runs.
 
@@ -47,7 +47,10 @@ let readme = perform ReadFile("./README.md")
 let readme = string.append(readme, @overlay.print_skills(skills))
 
 {
-  llm: Ollama({origin: "https://ollama.com", api_key: Some(api_key)}),
+  llm: {
+    provider: Ollama({origin: "https://ollama.com", api_key: Some(api_key)}),
+    model: "glm-5.3:cloud"
+  },
   policy: policy,
   context: {readme}
 }

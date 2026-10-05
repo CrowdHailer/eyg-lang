@@ -32,7 +32,10 @@ let policy = {
 }
 
 {
-  llm: Ollama({origin: "https://ollama.com", api_key: Some(api_key)}),
+  llm: {
+    provider: Ollama({origin: "https://ollama.com", api_key: Some(api_key)}),
+    model: "glm-5.3:cloud"
+  },
   policy: policy,
   context: {readme: "Hello, call me sparticus!"}
 }
