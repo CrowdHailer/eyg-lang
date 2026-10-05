@@ -21,9 +21,12 @@ import eyg/interpreter/value
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/http/response
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import gleam/string
+import gleam_community/ansi
 import loam/execute
 import loam/platform/computer
 import loam/source
@@ -32,9 +35,12 @@ import midas/continuation.{type Continuation as K}
 import ogre/origin
 import overlay/agent
 import overlay/config as overlay_config
+import overlay/llm/chat
 import overlay/llm/provider
+import overlay/llm/tool
 import overlay/policy
 import overlay/tools/run
+import touch_grass/harness/computer.{type Effect} as _
 
 // I don't need to implement streaming but if so that goes at the loam level
 // the tools module in overlay web should be reusable
@@ -50,7 +56,7 @@ pub fn execute(input, config: config.Config) {
   use source <- system.try(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
-  use #(result, _state) <- system.then(execute.block(source, [], state))
+  use #(result, state) <- system.then(execute.block(source, [], state))
   case result {
     Ok(#(Some(user_config), _)) ->
       case overlay_config.cast(user_config, policy_rules()) {
@@ -84,22 +90,20 @@ pub fn execute(input, config: config.Config) {
   }
 }
 
-import overlay/llm/chat
-
 fn outer_loop(
-  llm,
-  provider_context,
-  cwd,
-  eyg_state,
-  policy: dict.Dict(_, _),
-  user_context,
-  history,
-) {
+  llm: provider.Llm,
+  provider_context: provider.Context,
+  cwd: String,
+  eyg_state: execute.State,
+  policy: policy.Policy(Effect, source.Location),
+  user_context: execute.Value,
+  history: List(chat.Message(tool.Call)),
+) -> system.Effect(Nil) {
   use read <- system.then(input(">>>", "send a message"))
   case read {
     Ok("") -> system.Done(Nil)
     Ok(text) -> {
-      use result <- system.then(
+      use #(result, eyg_state) <- system.then(
         inner_loop(llm, provider_context, cwd, eyg_state, policy, user_context, [
           chat.UserMessage(text, []),
           ..history
@@ -129,10 +133,6 @@ fn outer_loop(
   }
 }
 
-import gleam/io
-import gleam/string
-import gleam_community/ansi
-
 pub fn input(
   prompt: String,
   placeholder: String,
@@ -161,13 +161,15 @@ fn provider_context(origin: origin.Origin, readme: String) -> provider.Context {
 }
 
 pub fn inner_loop(
-  llm,
-  provider_context,
-  cwd,
-  eyg_state,
-  policy: policy.Policy(_, _),
-  context,
-  history,
+  llm: provider.Llm,
+  provider_context: provider.Context,
+  cwd: String,
+  eyg_state: execute.State,
+  policy: policy.Policy(Effect, source.Location),
+  user_context: execute.Value,
+  history: List(chat.Message(tool.Call)),
+) -> system.Effect(
+  #(Result(List(chat.Message(tool.Call)), String), execute.State),
 ) {
   use completion <- system.then(provider.completion(
     llm,
@@ -180,18 +182,18 @@ pub fn inner_loop(
       io.println(completion.content)
       let history = [chat.from_completion(completion), ..history]
       case completion.tool_calls {
-        [] -> system.Done(Ok(history))
+        [] -> system.Done(#(Ok(history), eyg_state))
         calls -> {
           use #(history, eyg_state) <- system.then(
             system.fold(calls, #(history, eyg_state), fn(acc, call) {
               let #(history, eyg_state) = acc
               let tool.Call(id:, function:) = call
-              use #(result, _) <- system.then(execute_call(
+              use #(result, eyg_state) <- system.then(execute_call(
                 function,
                 cwd,
                 eyg_state,
                 policy,
-                context,
+                user_context,
               ))
               // let result = result.map(result, pair.first)
               let result = result_to_message(id, result)
@@ -205,13 +207,13 @@ pub fn inner_loop(
             cwd,
             eyg_state,
             policy,
-            context,
+            user_context,
             history,
           )
         }
       }
     }
-    Error(reason) -> system.Done(Error(reason))
+    Error(reason) -> system.Done(#(Error(reason), eyg_state))
   }
 }
 
@@ -235,8 +237,6 @@ fn fetch(
 }
 
 // ---------------------------- toools
-
-import overlay/llm/tool
 
 pub fn execute_call(
   call: tool.FunctionCall,
