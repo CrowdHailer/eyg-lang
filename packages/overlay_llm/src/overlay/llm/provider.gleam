@@ -1,5 +1,6 @@
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
+import gleam/uri
 import midas/continuation.{type Continuation as K}
 import midas/effect
 import overlay/llm/chat
@@ -36,7 +37,13 @@ pub fn completion(
   use response <- continuation.map(fetch(request))
   case response {
     Ok(response) -> completion_response(llm, response)
-    Error(reason) -> Error(effect.describe_fetch_error(reason))
+    Error(reason) ->
+      Error(
+        "request to "
+        <> uri.to_string(request.to_uri(request))
+        <> " failed: "
+        <> effect.describe_fetch_error(reason),
+      )
   }
 }
 

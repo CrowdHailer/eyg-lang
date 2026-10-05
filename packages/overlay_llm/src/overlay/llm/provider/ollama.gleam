@@ -132,8 +132,15 @@ pub fn completion_response(
         Ok(completion) -> Ok(completion)
         Error(reason) -> Error(string.inspect(reason))
       }
-    Response(status:, ..) ->
-      Error("unexpected status: " <> int.to_string(status))
+    Response(status:, body:, ..) ->
+      Error(
+        "unexpected status: "
+        <> int.to_string(status)
+        <> case bit_array.to_string(body) {
+          Ok("") | Error(Nil) -> ""
+          Ok(body) -> " " <> body
+        },
+      )
   }
 }
 
