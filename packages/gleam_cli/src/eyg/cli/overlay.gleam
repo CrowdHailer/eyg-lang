@@ -12,11 +12,11 @@ import eyg/cli/internal/config
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/builtin
 import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
-import eyg/interpreter/value
 import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
@@ -30,6 +30,7 @@ import ogre/origin
 import overlay/agent
 import overlay/config as overlay_config
 import overlay/llm/provider
+import overlay/policy
 import overlay/tools/run
 
 // I don't need to implement streaming but if so that goes at the loam level
@@ -376,8 +377,26 @@ fn cast_policy(value) {
 
 fn apply_policy(label, value, meta, policy, state) {
   case list.key_find(policy, label) {
-    Ok(run) -> execute.pure_loop(expression.call(run, [#(value, meta)]), state)
-    Error(Nil) -> system.Done(#(Ok(value.Tagged("Pass", value)), state))
+    Ok(run) -> {
+      let return = expression.call(run, [#(value, meta)])
+      use #(result, state) <- system.map(execute.pure_loop(return, state))
+      let result = case result {
+        Ok(value) ->
+          case policy.decision_from_value(value) {
+            Ok(decision) -> Ok(decision)
+            Error(Nil) ->
+              Error(#(
+                break.IncorrectTerm(expected: "Pass/Mock", got: value),
+                meta,
+                builtin.default([]),
+                state.Empty,
+              ))
+          }
+        Error(debug) -> Error(debug)
+      }
+      #(result, state)
+    }
+    Error(Nil) -> system.Done(#(Ok(policy.Pass(value)), state))
   }
 }
 
@@ -402,7 +421,7 @@ pub fn loop(
             state,
           ))
           case result {
-            Ok(value.Tagged(label: "Pass", value: modified)) ->
+            Ok(policy.Pass(modified)) ->
               case computer.cast(label, modified) {
                 Ok(effect) -> {
                   let effect = computer.extrinsic(effect, meta.origin)
@@ -420,7 +439,7 @@ pub fn loop(
                 Error(reason) ->
                   system.Done(#(Error(#(reason, meta, env, k)), state, output))
               }
-            Ok(value.Tagged(label: "Mock", value: returned)) ->
+            Ok(policy.Mock(returned)) ->
               loop(block.resume(returned, env, k), state, policy, output)
             _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
           }
