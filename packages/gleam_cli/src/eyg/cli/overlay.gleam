@@ -28,8 +28,8 @@ import loam/system
 import midas/continuation.{type Continuation as K}
 import ogre/origin
 import overlay/agent
+import overlay/config as overlay_config
 import overlay/llm/provider
-import overlay/llm/provider/ollama
 import overlay/tools/run
 
 // I don't need to implement streaming but if so that goes at the loam level
@@ -49,7 +49,7 @@ pub fn execute(input, config: config.Config) {
   use #(result, _state) <- system.then(execute.block(source, [], state))
   case result {
     Ok(#(Some(user_config), _)) ->
-      case cast(user_config) {
+      case overlay_config.cast(user_config) {
         Ok(user_config) -> {
           // A context without a string readme is still usable by the agent.
           let readme =
@@ -78,51 +78,6 @@ pub fn execute(input, config: config.Config) {
     Error(#(reason, location, _, k)) ->
       Error(execute.render_error(reason, location, k, cwd)) |> system.Done
   }
-}
-
-pub type Config {
-  Config(llm: provider.Llm, policy: execute.Value, context: execute.Value)
-}
-
-/// we can assume cast returns good values for policy and context because we should type check before hande
-/// We need to extract the context type so it can be used as a module when evaluating
-fn cast(value) {
-  case
-    cast.field("llm", cast_llm, value),
-    cast.field("policy", Ok, value),
-    cast.field("context", Ok, value)
-  {
-    Ok(provider), Ok(policy), Ok(context) -> {
-      let llm = provider.Llm(provider:, model: "glm-5.3:cloud")
-      Ok(Config(llm:, policy:, context:))
-    }
-    Error(reason), _, _ -> Error(reason)
-    Ok(_), Error(reason), _ -> Error(reason)
-    Ok(_), Ok(_), Error(reason) -> Error(reason)
-  }
-}
-
-// cast is the wrong term, we need a decode API
-fn cast_llm(value) {
-  use tagged <- result.try(cast.as_tagged(value))
-  case tagged {
-    #("Ollama", inner) -> result.map(cast_ollama(inner), provider.Ollama)
-    #(_, _) -> Error(break.NoMatch(value))
-  }
-}
-
-fn cast_ollama(value) {
-  use origin <- result.try(cast.field("origin", cast.as_string, value))
-  use origin <- result.try(
-    origin.from_string(origin)
-    |> result.replace_error(break.IncorrectTerm("origin", value.String(origin))),
-  )
-  use api_key <- result.try(cast.field(
-    "api_key",
-    cast.as_option(_, cast.as_string),
-    value,
-  ))
-  Ok(ollama.Config(origin:, api_key:))
 }
 
 // fn cast_policy(value) {
