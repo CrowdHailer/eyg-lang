@@ -53,7 +53,7 @@ pub fn execute(input, config: config.Config) {
         Ok(user_config) -> {
           let assert Ok(readme) =
             cast.field("readme", cast.as_string, user_config.context)
-          use x <- system.then(
+          use Nil <- system.then(
             outer_loop(
               user_config.llm,
               provider_context(config.client.origin, readme),
@@ -64,7 +64,6 @@ pub fn execute(input, config: config.Config) {
               [],
             ),
           )
-          echo x
           Ok(0) |> system.Done
         }
         Error(reason) ->

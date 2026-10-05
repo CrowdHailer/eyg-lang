@@ -26,7 +26,7 @@ pub fn system_prompt(
   let host = v.String(origin.host)
   let port = v.option(origin.port, v.Integer)
 
-  "You are an expery automation assistant.
+  "You are an expert automation assistant.
 You help users by executing EYG scripts to interact with the users system.
 DO NOT guess any function of effects. Only use what you have seen explained and use guide to learn more about writing EYG code.
 
@@ -69,17 +69,7 @@ This environment has the following effects
 "
   |> string.append(
     effects
-    |> list.map(fn(effect) {
-      let interface.Interface(name:, lift_type:, lower_type:, decode: _) =
-        effect
-
-      "-"
-      <> name
-      <> "("
-      <> debug.mono(lift_type)
-      <> "_ -> "
-      <> debug.mono(lower_type)
-    })
+    |> list.map(describe_effect)
     |> string.join("\n"),
   ) <> "
 
@@ -91,6 +81,11 @@ They do not require an API token this will be added by the platform.
 # Context
 
 " <> readme
+}
+
+pub fn describe_effect(effect: interface.Interface(a, b)) -> String {
+  let interface.Interface(name:, lift_type:, lower_type:, decode: _) = effect
+  debug.render_effect(name, lift_type, lower_type)
 }
 
 pub type ToolCall {

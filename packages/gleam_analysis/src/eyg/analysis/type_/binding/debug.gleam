@@ -1,3 +1,4 @@
+import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
@@ -172,7 +173,16 @@ fn effects_doc(effects) -> Document {
   }
 }
 
-fn effect_doc(label, lift, resume) -> Document {
+pub fn render_effect(label: String, lift: binding.Mono, resume: binding.Mono) {
+  effect_doc(label, lift, resume)
+  |> doc.to_string(default_width)
+}
+
+fn effect_doc(
+  label: String,
+  lift: binding.Mono,
+  resume: binding.Mono,
+) -> Document {
   doc.concat([
     doc.from_string(label <> "(↑"),
     to_doc(lift),

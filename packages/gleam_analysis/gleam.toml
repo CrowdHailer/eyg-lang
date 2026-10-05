@@ -1,6 +1,5 @@
 name = "eyg_analysis"
-version = "2.0.1"
-target = "javascript"
+version = "2.1.0"
 
 description = "Infers types for expressions, effects and scope variables of EYG programs."
 licences = ["Apache-2.0"]
