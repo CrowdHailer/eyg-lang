@@ -192,7 +192,7 @@ fn lookup_package(
   case cache.package(state.cache, package) {
     Ok(cache.Entry(module:, ..)) -> lookup_reference(module, state)
     Error(Nil) ->
-      system.Done(#(Error(abort("package not found: @" <> package)), state))
+      system.Done(#(Error(break.UndefinedReference(ir.Package(package))), state))
   }
 }
 
@@ -207,9 +207,7 @@ fn lookup_version(
     Ok(module) -> lookup_reference(module, state)
     Error(Nil) ->
       system.Done(#(
-        Error(abort(
-          "package not found: @" <> package <> ":" <> int.to_string(version),
-        )),
+        Error(break.UndefinedReference(ir.Version(package, version))),
         state,
       ))
   }
@@ -263,10 +261,13 @@ fn lookup_relative(
                   system.Done(#(Error(reason), state))
               }
             }
-            Error(_) ->
+            Error(reason) ->
               system.Done(#(
                 Error(abort(
-                  "failed to read parse source from location: " <> location,
+                  "failed to parse source from location: "
+                  <> location
+                  <> " "
+                  <> string.replace(reason, "\n", " "),
                 )),
                 state,
               ))
