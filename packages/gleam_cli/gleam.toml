@@ -28,6 +28,7 @@ ogre = ">= 1.1.0 and < 2.0.0"
 overlay = { path = "../overlay" }
 overlay_llm = { path = "../overlay_llm" }
 simplifile = ">= 2.4.0 and < 3.0.0"
+touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }
 gleam_community_ansi = ">= 1.5.0 and < 2.0.0"
 

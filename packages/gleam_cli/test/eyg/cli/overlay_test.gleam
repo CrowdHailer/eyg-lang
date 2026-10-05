@@ -12,6 +12,7 @@ import loam/sandbox
 import loam/source
 import overlay/llm/chat
 import overlay/llm/provider/ollama
+import overlay/policy
 
 pub fn stdout_is_returned_and_still_written_to_the_terminal_test() {
   let #(result, sandbox) =
@@ -26,14 +27,12 @@ pub fn stdout_is_returned_and_still_written_to_the_terminal_test() {
 }
 
 fn run(code, stdout_policy) {
+  run_with(code, policy(stdout_policy))
+}
+
+fn run_with(code, policy) {
   let assert #(sandbox.Returned(#(result, _)), sandbox) =
-    overlay.execute_call(
-      call(code),
-      "/",
-      state(),
-      policy(stdout_policy),
-      value.unit(),
-    )
+    overlay.execute_call(call(code), "/", state(), policy, value.unit())
     |> sandbox.run(sandbox.sandbox())
   #(result, sandbox)
 }
@@ -64,14 +63,17 @@ fn policy(stdout_policy) {
     list.map(
       [
         "append_file", "create_key", "cwd", "delete_file", "env", "fetch",
-        "make_directory", "now", "random", "read_directory", "read_file", "sign",
-        "sleep", "standard_error", "standard_in", "write_file",
+        "make_directory", "now", "read_directory", "read_file", "sign", "sleep",
+        "standard_error", "standard_in", "write_file",
       ],
       fn(name) { #(name, pass) },
     )
-  value.Record(
-    dict.from_list([#("standard_out", evaluate(stdout_policy)), ..fields]),
-  )
+  let raw =
+    value.Record(
+      dict.from_list([#("standard_out", evaluate(stdout_policy)), ..fields]),
+    )
+  let assert Ok(decoded) = policy.decode_policy(overlay.policy_rules(), raw)
+  decoded
 }
 
 fn evaluate(code) {

@@ -21,14 +21,14 @@ For example starting the overlay agent in the CLI works as follows
 eyg overlay path/to/.overlay.eyg
 ```
 
-The `.policy.eyg` file returns a record with the following fields:
+The `.overlay.eyg` file returns a record with the following fields:
 
 - `llm` a record `{provider, model}` matching the `Llm` type in gleam module `overlay/llm/provider`.
-- `policy` A record with `Pass`/`Mock` rules for each external effect on the platform.
+- `policy` A record of gate functions for the fields required by the host's effect rules.
 - `context` A record with at least the field `readme`. The readme content is added as context to the agent. The agent is able to access the context by the `context` variable in any programs it runs.
 
-Starting the agent type checks the configuration.
-The type of the policy field is dependent on the platform the agent is running on.
+Starting the CLI agent checks the configuration and policy once.
+The required policy fields depend on the host's selected effect rules.
 
 An example configuration
 
@@ -36,10 +36,24 @@ An example configuration
 let {string} = @standard
 let {api_key} = import ".env.eyg"
 
+
 let policy = {
+  append_file: Pass,
+  create_key: Pass,
+  cwd: Pass,
+  delete_file: Pass,
+  env: Pass,
+  fetch: Pass,
+  make_directory: Pass,
+  now: Pass,
+  read_directory: Pass,
+  read_file: Pass,
+  sign: Pass,
+  sleep: Pass,
+  standard_error: Pass,
+  standard_in: Pass,
   standard_out: (log) -> { Pass(!string_uppercase(log)) },
-  write_file: (_) -> { Mock(Error("Read only access to file system")) },
-  ..@overlay.computer.allow_all
+  write_file: (_) -> { Mock(Error("Writing files is disabled")) }
 }
 
 let skills = @overlay.read_skills(perform CWD({}))
@@ -59,10 +73,37 @@ let readme = string.append(readme, @overlay.print_skills(skills))
 The overlay harness has no concept of skills or AGENT.md.
 Instead because the configuration is fully scriptable it is expected to be implemented as EYG libraries.
 
-NOTE: Loading relative references goes through the same permission check as `ReadFile`
-
 NOTE: in `overlay_web` The llm configuration is provided through the UI.
 The policy is provided through the UI but is still an textarea input that accepts a program
+
+### Effect rules and policy gates
+
+The host supplies an explicit mapping from effect labels to rules and matches it
+against its available effect interfaces:
+
+- `PolicyField("read_file")` requires a function in the user policy's `read_file`
+  field and binds it to the selected interface as `Gated(function)`.
+- `Unchecked` includes the interface as `Unrestricted`, without a user gate.
+- An effect with no host rule is unavailable. It is excluded from the agent's
+  effect descriptions and the harness supplied to type checking, and rejected at runtime.
+
+The CLI's fixed mapping is in
+[`policy_rules`](../gleam_cli/src/eyg/cli/overlay.gleam). `Random`, `Flip`,
+`DecodeJSON`, `EYGParse`, `Hash`, and `Exit` are explicitly unchecked.
+All other selected effects require their configured policy fields; missing a
+required field is a configuration error, not permission to run the effect.
+
+Gate functions receive the effect's input and must return:
+
+- `Pass(value)` to decode the input using the selected interface and perform the effect.
+- `Mock(value)` to resume the program with a result without performing the effect.
+
+Gates are evaluated by the runtime's pure evaluator, which can resolve imports
+but cannot perform effects. Gate failures and invalid decisions are returned to
+the agent with their debug information.
+
+`policy.harness` returns only the decoded policy's selected interfaces. The CLI
+checker accepts this harness and builds a closed effect row from it.
 
 ### Conventions
 

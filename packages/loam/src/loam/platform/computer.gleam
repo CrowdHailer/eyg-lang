@@ -44,7 +44,7 @@ pub fn cast(
   interface.cast(computer.effects(), label, lift)
 }
 
-pub fn effects() {
+pub fn effects() -> interface.Harness(computer.Effect, meta) {
   computer.effects()
 }
 

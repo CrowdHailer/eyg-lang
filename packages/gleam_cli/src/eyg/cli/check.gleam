@@ -7,8 +7,10 @@ import eyg/ir/tree as ir
 import eyg/parser
 import filepath
 import gleam/list
+import loam/platform/computer
 import loam/source
 import loam/system
+import touch_grass/interface
 
 pub fn execute(
   input: source.Input,
@@ -21,8 +23,8 @@ pub fn execute(
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
 
-  let context = infer.unpure()
-
+  let context =
+    infer.pure() |> infer.with_effects(interface.types(computer.effects()))
   use #(_poly, type_, errors) <- system.then(check_from(source, cwd, context))
 
   use Nil <- system.then(

@@ -6,22 +6,23 @@ import gleam/result
 import ogre/origin
 import overlay/llm/provider
 import overlay/llm/provider/ollama
+import overlay/policy
 
 /// Configuration that is common to any overlay agent, chat or otherwise
-pub type Config(meta) {
+pub type Config(effect, meta) {
   Config(
     llm: provider.Llm,
-    policy: state.Value(meta),
+    policy: policy.Policy(effect, meta),
     context: state.Value(meta),
   )
 }
 
-/// we can assume cast returns good values for policy and context because we should type check before hande
-/// We need to extract the context type so it can be used as a module when evaluating
-pub fn cast(value) {
+/// Decode configuration using the host's selected effect interfaces and rules.
+/// Context remains an EYG value for use by agent programs.
+pub fn cast(value, rules) {
   case
     cast.field("llm", cast_llm, value),
-    cast.field("policy", Ok, value),
+    cast.field("policy", policy.decode_policy(rules, _), value),
     cast.field("context", Ok, value)
   {
     Ok(llm), Ok(policy), Ok(context) -> {

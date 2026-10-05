@@ -14,6 +14,14 @@ pub fn check_simple_expression_test() {
   assert ["Integer"] == sandbox.stdout
 }
 
+pub fn check_accepts_a_computer_effect_test() {
+  let assert #(sandbox.Returned(result), sandbox) =
+    check.execute(source.Code("perform Random(10)"), helpers.config)
+    |> sandbox.run(sandbox.sandbox())
+  assert result == Ok(0)
+  assert sandbox.stdout == ["Integer"]
+}
+
 pub fn check_fails_test() {
   let input = source.Code("x")
   let assert #(sandbox.Returned(output), sandbox) =

@@ -17,6 +17,7 @@ import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
+import gleam/dict
 import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
@@ -50,7 +51,7 @@ pub fn execute(input, config: config.Config) {
   use #(result, _state) <- system.then(execute.block(source, [], state))
   case result {
     Ok(#(Some(user_config), _)) ->
-      case overlay_config.cast(user_config) {
+      case overlay_config.cast(user_config, policy_rules()) {
         Ok(user_config) -> {
           // A context without a string readme is still usable by the agent.
           let readme =
@@ -88,7 +89,7 @@ fn outer_loop(
   provider_context,
   cwd,
   eyg_state,
-  policy,
+  policy: dict.Dict(_, _),
   user_context,
   history,
 ) {
@@ -162,7 +163,7 @@ pub fn inner_loop(
   provider_context,
   cwd,
   eyg_state,
-  policy,
+  policy: policy.Policy(_, _),
   context,
   history,
 ) {
@@ -239,7 +240,7 @@ pub fn execute_call(
   call: tool.FunctionCall,
   cwd: String,
   eyg_state: execute.State,
-  policy: execute.Value,
+  policy: policy.Policy(_, _),
   context: execute.Value,
 ) -> system.Effect(#(Result(tool.Return, String), execute.State)) {
   let tool.FunctionCall(name, arguments) = call
@@ -298,7 +299,7 @@ pub fn run_do(
   code,
   cwd,
   eyg_state,
-  policy: execute.Value,
+  policy: policy.Policy(_, _),
   context: execute.Value,
 ) -> system.Effect(#(Result(_, String), execute.State, List(String))) {
   let input = source.Stdin
@@ -306,7 +307,7 @@ pub fn run_do(
   case source.parse_input(code, input) {
     Ok(source) -> {
       let scope = [#("context", context)]
-      let assert Ok(policy) = cast_policy(policy)
+
       use #(result, state, output) <- system.map(
         loop(block.execute(source, scope), eyg_state, policy, []),
       )
@@ -321,90 +322,11 @@ pub fn run_do(
   }
 }
 
-// allow/mock
-// forward/mock
-// allow/deny
-// Pass/mock
-fn cast_policy(value) {
-  use append_file <- result.try(cast.field("append_file", Ok, value))
-  use create_key <- result.try(cast.field("create_key", Ok, value))
-  use cwd <- result.try(cast.field("cwd", Ok, value))
-  // use decode_json <- result.try(cast.field("decode_json", Ok, value))
-  use delete_file <- result.try(cast.field("delete_file", Ok, value))
-  use env <- result.try(cast.field("env", Ok, value))
-  // use exit <- result.try(cast.field("exit", Ok, value))
-  // use eyg_parse <- result.try(cast.field("eyg_parse", Ok, value))
-  use fetch <- result.try(cast.field("fetch", Ok, value))
-  // use flip <- result.try(cast.field("flip", Ok, value))
-  // use hash <- result.try(cast.field("hash", Ok, value))
-  use make_directory <- result.try(cast.field("make_directory", Ok, value))
-  use now <- result.try(cast.field("now", Ok, value))
-  use random <- result.try(cast.field("random", Ok, value))
-  use read_directory <- result.try(cast.field("read_directory", Ok, value))
-  use read_file <- result.try(cast.field("read_file", Ok, value))
-  use sign <- result.try(cast.field("sign", Ok, value))
-  use sleep <- result.try(cast.field("sleep", Ok, value))
-  use standard_error <- result.try(cast.field("standard_error", Ok, value))
-  use standard_in <- result.try(cast.field("standard_in", Ok, value))
-  use standard_out <- result.try(cast.field("standard_out", Ok, value))
-  use write_file <- result.try(cast.field("write_file", Ok, value))
-  [
-    #("AppendFile", append_file),
-    #("CreateKey", create_key),
-    #("CWD", cwd),
-    // #("Decode_json", decode_json),
-    #("DeleteFile", delete_file),
-    #("Env", env),
-    // #("Exit", exit),
-    // #("Eyg_parse", eyg_parse),
-    #("Fetch", fetch),
-    // #("Flip", flip),
-    // #("Hash", hash),
-    #("MakeDirectory", make_directory),
-    #("Now", now),
-    #("Random", random),
-    #("ReadDirectory", read_directory),
-    #("ReadFile", read_file),
-    #("Sign", sign),
-    #("Sleep", sleep),
-    #("StandardError", standard_error),
-    #("StandardIn", standard_in),
-    #("StandardOut", standard_out),
-    #("WriteFile", write_file),
-  ]
-  |> Ok
-}
-
-fn apply_policy(label, value, meta, policy, state) {
-  case list.key_find(policy, label) {
-    Ok(run) -> {
-      let return = expression.call(run, [#(value, meta)])
-      use #(result, state) <- system.map(execute.pure_loop(return, state))
-      let result = case result {
-        Ok(value) ->
-          case policy.decision_from_value(value) {
-            Ok(decision) -> Ok(decision)
-            Error(Nil) ->
-              Error(#(
-                break.IncorrectTerm(expected: "Pass/Mock", got: value),
-                meta,
-                builtin.default([]),
-                state.Empty,
-              ))
-          }
-        Error(debug) -> Error(debug)
-      }
-      #(result, state)
-    }
-    Error(Nil) -> system.Done(#(Ok(policy.Pass(value)), state))
-  }
-}
-
 // This is a replacement for execute.loop because of the police
 pub fn loop(
   return: Result(_, execute.Debug),
   state: execute.State,
-  policy: List(#(String, execute.Value)),
+  policy: policy.Policy(_, _),
   output: List(String),
 ) -> system.Effect(#(Result(_, execute.Debug), execute.State, List(String))) {
   case return {
@@ -412,17 +334,65 @@ pub fn loop(
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect(label, lift) -> {
-          // let assert Ok(policy) = cast_policy(policy)
-          use #(result, state) <- system.then(apply_policy(
-            label,
-            lift,
-            meta,
-            policy,
-            state,
-          ))
-          case result {
-            Ok(policy.Pass(modified)) ->
-              case computer.cast(label, modified) {
+          case dict.get(policy, label) {
+            Ok(policy.Interface(interface, policy.Gated(gate))) -> {
+              let return = expression.call(gate, [#(lift, meta)])
+              use #(result, state) <- system.then(execute.pure_loop(
+                return,
+                state,
+              ))
+              case result {
+                Ok(value) ->
+                  case policy.decision_from_value(value) {
+                    Ok(policy.Pass(modified)) -> {
+                      case interface.decode(modified) {
+                        Ok(effect) -> {
+                          let effect = computer.extrinsic(effect, meta.origin)
+                          // Capture the actual write after policy transformation while
+                          // still forwarding it to the terminal.
+                          let output = case effect {
+                            system.WriteStdout(text, _) -> [text, ..output]
+                            system.WriteStderr(text, _) -> [text, ..output]
+                            _ -> output
+                          }
+                          use value <- system.then(effect)
+                          loop(
+                            block.resume(value, env, k),
+                            state,
+                            policy,
+                            output,
+                          )
+                        }
+                        Error(reason) ->
+                          system.Done(#(
+                            Error(#(reason, meta, env, k)),
+                            state,
+                            output,
+                          ))
+                      }
+                    }
+                    Ok(policy.Mock(returned)) ->
+                      loop(
+                        block.resume(returned, env, k),
+                        state,
+                        policy,
+                        output,
+                      )
+                    Error(Nil) -> {
+                      let debug = #(
+                        break.IncorrectTerm(expected: "Pass/Mock", got: value),
+                        meta,
+                        builtin.default([]),
+                        state.Empty,
+                      )
+                      system.Done(#(Error(debug), state, output))
+                    }
+                  }
+                Error(debug) -> system.Done(#(Error(debug), state, output))
+              }
+            }
+            Ok(policy.Interface(interface, policy.Unrestricted)) -> {
+              case interface.decode(lift) {
                 Ok(effect) -> {
                   let effect = computer.extrinsic(effect, meta.origin)
                   // Capture the actual write after policy transformation while
@@ -435,13 +405,13 @@ pub fn loop(
                   use value <- system.then(effect)
                   loop(block.resume(value, env, k), state, policy, output)
                 }
-
                 Error(reason) ->
                   system.Done(#(Error(#(reason, meta, env, k)), state, output))
               }
-            Ok(policy.Mock(returned)) ->
-              loop(block.resume(returned, env, k), state, policy, output)
-            _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
+            }
+            Error(Nil) -> {
+              system.Done(#(Error(#(reason, meta, env, k)), state, output))
+            }
           }
         }
         break.UndefinedReference(reference) -> {
@@ -461,4 +431,31 @@ pub fn loop(
         _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
       }
   }
+}
+
+pub fn policy_rules() {
+  policy.match_rules(computer.effects(), [
+    #("AppendFile", policy.PolicyField("append_file")),
+    #("CreateKey", policy.PolicyField("create_key")),
+    #("CWD", policy.PolicyField("cwd")),
+    #("DecodeJSON", policy.Unchecked),
+    #("DeleteFile", policy.PolicyField("delete_file")),
+    #("Env", policy.PolicyField("env")),
+    #("Exit", policy.Unchecked),
+    #("EYGParse", policy.Unchecked),
+    #("Fetch", policy.PolicyField("fetch")),
+    #("Flip", policy.Unchecked),
+    #("Hash", policy.Unchecked),
+    #("MakeDirectory", policy.PolicyField("make_directory")),
+    #("Now", policy.PolicyField("now")),
+    #("Random", policy.Unchecked),
+    #("ReadDirectory", policy.PolicyField("read_directory")),
+    #("ReadFile", policy.PolicyField("read_file")),
+    #("Sign", policy.PolicyField("sign")),
+    #("Sleep", policy.PolicyField("sleep")),
+    #("StandardError", policy.PolicyField("standard_error")),
+    #("StandardIn", policy.PolicyField("standard_in")),
+    #("StandardOut", policy.PolicyField("standard_out")),
+    #("WriteFile", policy.PolicyField("write_file")),
+  ])
 }
