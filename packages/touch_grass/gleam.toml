@@ -1,5 +1,5 @@
 name = "touch_grass"
-version = "0.4.2"
+version = "0.4.3"
 
 description = "Common effect types, decoders and encoders for your Eat Your Greens (EYG) runtime."
 licences = ["Apache-2.0"]
@@ -8,7 +8,7 @@ links = [{ title = "Website", href = "https://eyg.run" }]
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-eyg_analysis = ">= 2.0.0 and < 3.0.0"
+eyg_analysis = ">= 2.0.0 and < 4.0.0"
 eyg_interpreter = ">= 7.0.0 and < 9.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"

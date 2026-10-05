@@ -146,7 +146,8 @@ fn handle_meta(command, scope, defs, state: execute.State) {
   system.Done(#([Ok(message)], #("", scope, defs, state)))
 }
 
-pub const help_text = "shell commands:
+pub const help_text =
+  "shell commands:
   /help            show this message
   /scope           list the variables in scope
   /trace           show the stack trace of the most recent error

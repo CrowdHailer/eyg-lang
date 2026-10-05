@@ -79,7 +79,7 @@ pub fn with_index(context, index) {
 pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
-      let icontext = infer.Context([], t.Empty, 0, bindings)
+      let icontext = infer.Context(..infer.pure(), level: 0, bindings:)
       // let #(#(_, #(_, type_, _, _)), bindings) 
       let infer.Analysis(bindings:, tree:, original: _) =
         capture.capture(value, meta)
@@ -184,7 +184,8 @@ pub fn do_analyse(editable, context) -> Analysis {
     })
 
   let source = e.to_annotated(editable, [])
-  let icontext = infer.Context(scope, eff, 0, bindings)
+  let icontext = infer.Context(..infer.pure(), level: 0, bindings:)
+  let icontext = infer.Context(..icontext, env: scope, eff:)
   let infer.Analysis(bindings:, tree:, original: _) =
     infer.check_with_references(icontext, context.references, source)
   let types = ir.get_annotation(tree)

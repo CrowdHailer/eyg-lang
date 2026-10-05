@@ -22,9 +22,8 @@ pub type Type(var) {
 
 pub const unit = Record(Empty)
 
-pub const boolean = Union(
-  RowExtend("True", unit, RowExtend("False", unit, Empty)),
-)
+pub const boolean =
+  Union(RowExtend("True", unit, RowExtend("False", unit, Empty)))
 
 pub fn rows(rows) {
   do_rows(rows, Empty)
@@ -57,9 +56,8 @@ pub fn key_value_list(inner) {
   List(record([#("key", String), #("value", inner)]))
 }
 
-pub const file = Record(
-  RowExtend("name", String, RowExtend("content", Binary, Empty)),
-)
+pub const file =
+  Record(RowExtend("name", String, RowExtend("content", Binary, Empty)))
 
 pub fn ast() {
   List(

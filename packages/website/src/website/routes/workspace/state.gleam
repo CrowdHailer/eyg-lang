@@ -1,6 +1,5 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
-import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -116,7 +115,7 @@ pub fn repl_context(
   scope: List(#(String, istate.Value(Meta))),
 ) -> infer.Context {
   let #(bindings, env) = analysis.env_to_tenv(scope, [])
-  infer.Context(env:, eff: t.Empty, level: 0, bindings:)
+  infer.Context(..infer.pure(), env:, level: 0, bindings:)
   |> infer.with_effects(interface.types(harness.effects()))
 }
 

@@ -5,16 +5,17 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/set
 
-// None of context is tested
 pub type Context {
   Context(
     env: List(#(String, binding.Poly)),
     eff: binding.Mono,
     level: Int,
     bindings: Dict(Int, binding.Binding),
+    expected_type: Option(binding.Mono),
   )
 }
 
@@ -22,14 +23,14 @@ pub type Context {
 /// Any effect from the expression will be a type error
 pub fn pure() {
   let bindings = dict.new()
-  Context([], t.Empty, 1, bindings)
+  Context([], t.Empty, 1, bindings, None)
 }
 
 /// unpure creates a new inference context which accepts any effect.
 pub fn unpure() {
   let bindings = dict.new()
   let #(t, bindings) = binding.mono(1, bindings)
-  Context([], t, 1, bindings)
+  Context([], t, 1, bindings, None)
 }
 
 pub fn with_effect(context, label, lift, lower) {
@@ -43,6 +44,13 @@ pub fn with_effects(context: Context, effects) {
     let #(label, #(lift, lower)) = effect
     with_effect(context, label, lift, lower)
   })
+}
+
+/// Require the expression's result to match this monotype. The caller must
+/// register its variables in the context's bindings, as with scope and effect
+/// types. Calling this again replaces the previous expectation.
+pub fn with_expected_type(context: Context, expected: binding.Mono) -> Context {
+  Context(..context, expected_type: Some(expected))
 }
 
 pub type Analysis(meta) {
@@ -61,7 +69,7 @@ pub type Analysis(meta) {
 }
 
 pub fn check(context: Context, source: ir.Node(a)) -> Step(Analysis(_)) {
-  let Context(env:, eff:, level:, bindings:) = context
+  let Context(env:, eff:, level:, bindings:, expected_type:) = context
   use #(bindings, _type, _eff, tree) <- bind(do_infer(
     source,
     env,
@@ -70,22 +78,36 @@ pub fn check(context: Context, source: ir.Node(a)) -> Step(Analysis(_)) {
     bindings,
   ))
   // TODO make opaque analysis
-  Done(Analysis(bindings:, tree:, original: source))
+  let analysis = Analysis(bindings:, tree:, original: source)
+  Done(case expected_type {
+    None -> analysis
+    Some(expected) -> check_expected_type(analysis, expected, level)
+  })
+}
+
+fn check_expected_type(analysis, expected, level) {
+  let Analysis(bindings:, tree:, ..) = analysis
+  let #(expression, #(result, type_, eff, env)) = tree
+  case unify.unify(type_, expected, level, bindings) {
+    Ok(bindings) -> Analysis(..analysis, bindings:)
+    Error(reason) -> {
+      let result = case result {
+        Ok(Nil) -> Error(reason)
+        Error(_) -> result
+      }
+      let tree = #(expression, #(result, type_, eff, env))
+      Analysis(..analysis, tree:)
+    }
+  }
 }
 
 pub fn check_with_references(context: Context, refs, source: ir.Node(_)) {
-  let Context(env:, eff:, level:, bindings:) = context
-  loop_with_references(
-    do_infer(source, env, eff, level, bindings),
-    source,
-    refs,
-  )
+  loop_with_references(check(context, source), refs)
 }
 
-fn loop_with_references(step, original, refs) {
+fn loop_with_references(step, refs) {
   case step {
-    Done(#(bindings, _type, _eff, tree)) ->
-      Analysis(bindings:, tree:, original: original)
+    Done(analysis) -> analysis
     Lookup(reference:, resume:) -> {
       let result = case reference {
         ir.Content(cid) | ir.Pinned(ir.Release(module: cid, ..)) ->
@@ -93,7 +115,7 @@ fn loop_with_references(step, original, refs) {
 
         _ -> Error(Nil)
       }
-      loop_with_references(resume(result), original, refs)
+      loop_with_references(resume(result), refs)
     }
   }
 }

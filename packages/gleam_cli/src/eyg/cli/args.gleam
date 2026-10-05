@@ -97,7 +97,8 @@ pub fn parse(args) {
   }
 }
 
-pub const help_text = "eyg — run EYG programs and interact with the EYG hub
+pub const help_text =
+  "eyg — run EYG programs and interact with the EYG hub
 usage: eyg [<command> [<args>]]
 commands:
   (no args)              start the shell

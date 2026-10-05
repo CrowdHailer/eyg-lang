@@ -88,6 +88,15 @@ pub fn literal_test() {
   // binary needs parsing to test
 }
 
+pub fn expectation_constrains_the_result_test() {
+  let context = j.pure() |> j.with_expected_type(t.String)
+  let assert j.Done(analysis) = j.check(context, parse("5"))
+  assert j.all_errors(analysis)
+    == [
+      #(analysis.original.1, error.TypeMismatch(t.Integer, t.String)),
+    ]
+}
+
 pub fn simple_function_test() {
   "(_) -> { 5 }"
   |> calc(t.Empty)

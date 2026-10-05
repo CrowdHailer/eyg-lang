@@ -5,7 +5,7 @@ target = "javascript"
 [dependencies]
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 castor = ">= 2.1.0 and < 3.0.0"
-eyg_analysis = ">= 2.0.0 and < 3.0.0"
+eyg_analysis = ">= 2.0.0 and < 4.0.0"
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = ">= 6.0.0 and < 9.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"

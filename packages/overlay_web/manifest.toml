@@ -10,7 +10,7 @@ packages = [
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
   { name = "castor", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "non_empty_list", "oas_generator_utils"], otp_app = "castor", source = "hex", outer_checksum = "D3659680ABFE81634E27479479431ED66FC43F2547FDB41F0E9ACDE798CD4B13" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
-  { name = "eyg_analysis", version = "2.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "A7870ADBC5E7F3E2FB1C0E68AF82AFE7A4C72263E9347993909B7EC92E064E04" },
+  { name = "eyg_analysis", version = "3.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "8A4C77D1C161084C541169E3369F38E2192082AAEECE56BC6AEE4DB1FE65BA56" },
   { name = "eyg_hub", version = "0.1.0", build_tools = ["gleam"], requirements = ["dag_json", "eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "multiformats", "ogre", "untethered"], source = "local", path = "../gleam_hub" },
   { name = "eyg_interpreter", version = "8.0.0", build_tools = ["gleam"], requirements = ["eyg_ir", "glam", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_interpreter", source = "hex", outer_checksum = "1799F77C874E8C59EBFCC26E5BA407C831C3B0D12B37C1809B36F9D47A94F15E" },
   { name = "eyg_ir", version = "3.2.0", build_tools = ["gleam"], requirements = ["dag_json", "filepath", "gbor", "gleam_json", "gleam_stdlib", "gleb128", "midas", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "BAD26EC286D1EE6F24EB86EDB02927A5CEAF7A182FE2CD55E05772CC44E35537" },
@@ -43,13 +43,13 @@ packages = [
   { name = "plinth", version = "0.11.0", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "D30FDE8FC11EB76538AB498ACFF5399D0AE27993C74D63BE05AFE8CE80C4C839" },
   { name = "snag", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "274F41D6C3ECF99F7686FDCE54183333E41D2C1CA5A3A673F9A8B2C7A4401077" },
   { name = "spotless", version = "7.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "non_empty_list", "ogre", "snag"], otp_app = "spotless", source = "hex", outer_checksum = "8AB2D5A26D6393F76343743019AEE0DDC2D3210F5650150E8BBA899C71FA09F8" },
-  { name = "touch_grass", version = "0.4.2", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "multiformats", "ogre"], source = "local", path = "../touch_grass" },
+  { name = "touch_grass", version = "0.4.3", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "multiformats", "ogre"], source = "local", path = "../touch_grass" },
   { name = "untethered", version = "0.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "ogre"], source = "local", path = "../untethered" },
 ]
 
 [requirements]
 castor = { version = ">= 2.1.0 and < 3.0.0" }
-eyg_analysis = { version = ">= 2.0.0 and < 3.0.0" }
+eyg_analysis = { version = ">= 2.0.0 and < 4.0.0" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 6.0.0 and < 9.0.0" }
 eyg_ir = { version = ">= 3.0.0 and < 4.0.0" }

@@ -82,7 +82,8 @@ fn at_release(package: String, version: Int, cid: v1.Cid) -> source.Location {
   source.Location(source.Release(package, version, cid), source.Json)
 }
 
-const main_eyg = "let lib = import \"./lib.eyg\"
+const main_eyg =
+  "let lib = import \"./lib.eyg\"
 lib(42)
 "
 
@@ -143,7 +144,8 @@ pub fn library_focus_skips_multiple_hub_frames_test() {
   |> birdie.snap(title: "runtime: focus skips multiple hub frames")
 }
 
-const args_eyg = "let lib = import \"./lib.eyg\"
+const args_eyg =
+  "let lib = import \"./lib.eyg\"
 lib({name: \"alice\", age: 30})
 "
 

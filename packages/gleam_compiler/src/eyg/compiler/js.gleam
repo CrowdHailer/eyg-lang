@@ -15,7 +15,8 @@ fn assign_to(source: ir.Node(Nil), label) {
   }
 }
 
-pub const basic = "(label, value) => ({Alert: (x) => window.alert(x), Ask: (_) => 10, Log: (x) => console.log(x)})[label](value)"
+pub const basic =
+  "(label, value) => ({Alert: (x) => window.alert(x), Ask: (_) => 10, Log: (x) => console.log(x)})[label](value)"
 
 pub fn render(exp: ir.Node(Nil), handler: String) -> String {
   let used = ir.list_builtins(exp)

@@ -18,14 +18,14 @@ import midas/continuation
 import multiformats/cid/v1
 import ogre/origin
 
-const eyg_origin: client.Client = client.Client(
-  origin: origin.Origin(http.Https, "eyg.run", None),
-)
+const eyg_origin: client.Client =
+  client.Client(origin: origin.Origin(http.Https, "eyg.run", None))
 
-pub const config: config.Config = config.Config(
-  client: eyg_origin,
-  dirs: os.Directories(config_dir: "", cache_dir: "", data_dir: ""),
-)
+pub const config: config.Config =
+  config.Config(
+    client: eyg_origin,
+    dirs: os.Directories(config_dir: "", cache_dir: "", data_dir: ""),
+  )
 
 pub fn vacant_cid_response() {
   response.new(200)

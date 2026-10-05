@@ -1,4 +1,4 @@
-FROM ghcr.io/gleam-lang/gleam:v1.18.1-node-alpine AS development
+FROM ghcr.io/gleam-lang/gleam:v1.19.0-node-alpine AS development
 RUN apk update \
 # git for git dependencies of the project
 # inotify-tools for code reloading in dev

@@ -45,7 +45,7 @@ pub fn type_check(
 fn do_check_against_state(b, refs, source, old) {
   let level = 1
   let context = analysis.Context(b, [], [], refs, [])
-  let icontext = infer.Context([], t.Empty, level, b)
+  let icontext = infer.Context(..infer.pure(), level:, bindings: b)
   let infer.Analysis(bindings: b, tree:, original: _) =
     infer.check_with_references(icontext, refs, source)
 

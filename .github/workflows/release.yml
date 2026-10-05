@@ -25,7 +25,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "28.4"
-          gleam-version: "1.18.1"
+          gleam-version: "1.19.0"
 
       - name: Build binaries and checksums
         run: |

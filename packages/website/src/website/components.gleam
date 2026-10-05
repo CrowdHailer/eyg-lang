@@ -2,7 +2,8 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 
-const secondary_button_classes = "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
+const secondary_button_classes =
+  "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 
 fn header_link(target, text) {
   h.a([a.class(secondary_button_classes), a.href(target)], [element.text(text)])

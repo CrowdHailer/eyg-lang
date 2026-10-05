@@ -9,7 +9,8 @@ import overlay/llm/tool
 
 pub const name: String = "run"
 
-pub const description: String = "Run an EYG program, the program may have effects at a top level."
+pub const description: String =
+  "Run an EYG program, the program may have effects at a top level."
 
 pub fn parameters() -> List(#(String, castor.Ref(castor.Schema), Bool)) {
   [castor.field("code", castor.string())]
