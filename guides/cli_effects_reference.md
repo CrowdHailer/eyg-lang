@@ -15,7 +15,8 @@ result-returning file-system effects, see
 ## File system
 
 Relative filesystem paths are resolved from directory of the source expression that performs the effect.
-Inline code, shared and published modules have no source directory using a relative path will always fail.
+Inline code, code from stdin and the REPL resolve relative paths from the current working directory.
+Shared and published modules have no source directory, a relative path from them will always fail.
 Use `perform CWD({})` to build an absolute path for reading relative to a scripts running location.
 
 ### `ReadFile`

@@ -227,6 +227,9 @@ person.name
 {age: 31, ..person}
 ```
 
+Only fields already in the record can be overwritten, `{new_field: 1, ..person}` fails with a missing field.
+To add fields build a new record listing every field.
+
 ### Record Shorthand
 
 When the field name and variable have the same name, you can omit the `: value`:
@@ -332,6 +335,7 @@ match x {
 | `match x { _ -> { ... } }`          | An else branch: `| (_) -> { ... }`.                                                     |
 | `match xs { [] -> { 0 } }`          | `!list_pop(xs)` returns `Ok({head, tail}) | Error({})`; match on that tag.              |
 | `Ok(Some(v)) -> ...`                | Match outer tag, then `match` on the inner value inside the branch.                      |
+| `Ok({pre: "", post}) -> ...`       | Patterns only bind variables, compare a field value with `!equal` inside the branch.     |
 
 If a branch ignores the payload entirely, the conventional placeholder
 is `_`:

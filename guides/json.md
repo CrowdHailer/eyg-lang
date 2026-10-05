@@ -1,11 +1,13 @@
 ---
 name: json
-description: Decode and parse JSON strings with EYG.
+description: Encode, decode and parse JSON strings with EYG.
 ---
 
 EYG is a strongly typed language.
 When decoding JSON it MUST also be passed into a useful datastructure.
-The `@json` package is for decoding JSON.
+The `@json` package is for decoding and encoding JSON.
+
+`parse` performs the `DecodeJSON` effect.
 
 ## Parsing simple values
 
@@ -52,3 +54,20 @@ let result = parse("[]", decode.boolean)
 // Will return Error("not a boolean")
 ```
 
+
+## Encoding
+
+`encode` builds a JSON string from EYG values.
+Each encoder returns a `String`, compose them for nested documents.
+
+```eyg
+let {encode} = @json
+encode.object([
+  encode.field("name", encode.string("Ada")),
+  encode.field("tags", encode.array([encode.string("admin")])),
+  encode.field("age", encode.integer(36)),
+  encode.field("active", encode.boolean(True({}))),
+  encode.field("manager", encode.null({}))
+])
+// will return "{\"name\":\"Ada\",\"tags\":[\"admin\"],\"age\":36,\"active\":true,\"manager\":null}"
+```
