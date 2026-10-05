@@ -88,3 +88,10 @@ pub fn malformed_signatory_commands_are_not_scripts_test() {
   assert args.parse(["script", "signatory", "list"])
     == args.Script(source.File("signatory"), ["list"])
 }
+
+pub fn overlay_without_file_shows_usage_test() {
+  let assert args.InvalidArguments(message) = args.parse(["overlay"])
+  assert message
+    == "usage: eyg overlay <file> | eyg overlay -c <code> | eyg overlay -"
+  let assert args.InvalidArguments(_) = args.parse(["overlay", "--help"])
+}

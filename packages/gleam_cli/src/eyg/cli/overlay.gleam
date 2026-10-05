@@ -51,8 +51,10 @@ pub fn execute(input, config: config.Config) {
     Ok(#(Some(user_config), _)) ->
       case cast(user_config) {
         Ok(user_config) -> {
-          let assert Ok(readme) =
+          // A context without a string readme is still usable by the agent.
+          let readme =
             cast.field("readme", cast.as_string, user_config.context)
+            |> result.unwrap("The context has no readme.")
           use Nil <- system.then(
             outer_loop(
               user_config.llm,
@@ -157,8 +159,23 @@ fn outer_loop(
   case read {
     Ok("") -> system.Done(Nil)
     Ok(text) -> {
-      let history = [chat.UserMessage(text, []), ..history]
-      use result <- system.then(inner_loop(
+      use result <- system.then(
+        inner_loop(llm, provider_context, cwd, eyg_state, policy, user_context, [
+          chat.UserMessage(text, []),
+          ..history
+        ]),
+      )
+      // A failed completion is reported and the session continues from the
+      // history before the failed message, so the user can try again.
+      use history <- system.then(case result {
+        Ok(history) -> system.Done(history)
+        Error(reason) -> {
+          // This output should be error and potentially show to the agent.
+          use Nil <- system.then(system.stdout(ansi.red(reason) <> "\n"))
+          system.Done(history)
+        }
+      })
+      outer_loop(
         llm,
         provider_context,
         cwd,
@@ -166,23 +183,7 @@ fn outer_loop(
         policy,
         user_context,
         history,
-      ))
-      case result {
-        Ok(history) ->
-          outer_loop(
-            llm,
-            provider_context,
-            cwd,
-            eyg_state,
-            policy,
-            user_context,
-            history,
-          )
-        Error(reason) -> {
-          use Nil <- system.then(system.stdout(ansi.red(reason)))
-          system.Done(Nil)
-        }
-      }
+      )
     }
     Error(Nil) -> system.Done(Nil)
   }

@@ -80,6 +80,10 @@ pub fn parse(args) {
       InvalidArguments(
         "usage: eyg signatory initial <name> | eyg signatory list | eyg signatory show <name>",
       )
+    ["overlay"] | ["overlay", "--help"] | ["overlay", "-h"] ->
+      InvalidArguments(
+        "usage: eyg overlay <file> | eyg overlay -c <code> | eyg overlay -",
+      )
     ["overlay", "-c", code] | ["overlay", "--code", code] ->
       Overlay(source.Code(code))
     ["overlay", "-"] | ["overlay", "--stdin"] -> Overlay(source.Stdin)
