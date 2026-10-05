@@ -8,6 +8,7 @@ import eyg/ir/tree as ir
 import eyg/parser
 import filepath
 import gleam/list
+import gleam/option.{None}
 import loam/execute
 import loam/platform/computer
 import loam/source
@@ -37,18 +38,7 @@ pub fn execute(
 
   use Nil <- system.then(
     system.each(
-      list.map(errors, fn(error) {
-        let #(location, reason) = error
-        let message = debug.render_reason(reason)
-        let hint = debug.hint(reason)
-        parser.render_error(
-          message,
-          hint,
-          source.code(location),
-          source.span(location),
-        )
-        |> system.stdout()
-      }),
+      list.map(errors, fn(error) { render_error(error) |> system.stdout() }),
     ),
   )
 
@@ -83,7 +73,20 @@ pub fn check_from(
     source.Release(..) -> #(cwd, "")
   }
 
-  do_check_all(context, dir, source, state, [], [path])
+  let step = infer.check(context, source)
+  // The host's expected result applies to the entry expression, not its imports.
+  let dependency_context = infer.Context(..context, expected_type: None)
+  check_loop(step, dependency_context, dir, state, [], [path])
+}
+
+pub fn render_error(error) {
+  let #(location, reason) = error
+  parser.render_error(
+    debug.render_reason(reason),
+    debug.hint(reason),
+    source.code(location),
+    source.span(location),
+  )
 }
 
 fn do_check_all(

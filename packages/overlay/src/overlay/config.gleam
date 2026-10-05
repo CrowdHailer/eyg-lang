@@ -1,3 +1,5 @@
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/state
@@ -15,6 +17,27 @@ pub type Config(effect, meta) {
     policy: policy.Policy(effect, meta),
     context: state.Value(meta),
   )
+}
+
+pub fn type_(rules, level, bindings) {
+  let #(agent_context, bindings) = binding.mono(level, bindings)
+  let ollama =
+    t.record([
+      #("origin", t.String),
+      #("api_key", t.option(t.String)),
+    ])
+  let llm =
+    t.record([
+      #("provider", t.union([#("Ollama", ollama)])),
+      #("model", t.String),
+    ])
+  let type_ =
+    t.record([
+      #("llm", llm),
+      #("policy", policy.type_(rules)),
+      #("context", agent_context),
+    ])
+  #(type_, bindings)
 }
 
 /// Decode configuration using the host's selected effect interfaces and rules.

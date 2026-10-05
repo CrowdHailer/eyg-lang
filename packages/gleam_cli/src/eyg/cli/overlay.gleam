@@ -8,6 +8,8 @@
 //// The code execution tool is defined sans io using an effect type defined in this project.
 //// The other tools could use the same effect logic, this is probably a good idea once we start applying policies for which files can be read.
 
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/cli/check
 import eyg/cli/internal/config
 import eyg/hub/cache
 import eyg/interpreter/block
@@ -41,6 +43,7 @@ import overlay/llm/tool
 import overlay/policy
 import overlay/tools/run
 import touch_grass/harness/computer.{type Effect} as _
+import touch_grass/interface
 
 // I don't need to implement streaming but if so that goes at the loam level
 // the tools module in overlay web should be reusable
@@ -56,10 +59,29 @@ pub fn execute(input, config: config.Config) {
   use source <- system.try(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
+  let rules = policy_rules()
+  let context =
+    infer.pure()
+    |> infer.with_effects(interface.types(computer.effects()))
+  let #(expected, bindings) =
+    overlay_config.type_(rules, context.level, context.bindings)
+  let context =
+    infer.Context(..context, bindings:)
+    |> infer.with_expected_type(expected)
+  use #(_, _, errors) <- system.then(check.check_from(
+    source,
+    cwd,
+    context,
+    state,
+  ))
+  use Nil <- system.try(case errors {
+    [] -> Ok(Nil)
+    _ -> Error(list.map(errors, check.render_error) |> string.join("\n"))
+  })
   use #(result, state) <- system.then(execute.block(source, [], state))
   case result {
     Ok(#(Some(user_config), _)) ->
-      case overlay_config.cast(user_config, policy_rules()) {
+      case overlay_config.cast(user_config, rules) {
         Ok(user_config) -> {
           // A context without a string readme is still usable by the agent.
           let readme =

@@ -1,5 +1,6 @@
 //// Bind a host's effect rules to a runtime policy.
 
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
@@ -39,6 +40,29 @@ pub fn match_rules(
       Error(Nil) -> Error(Nil)
     }
   })
+}
+
+pub fn type_(rules: List(#(interface.Interface(_, _), Rule))) {
+  let fields =
+    list.filter_map(rules, fn(rule) {
+      let #(interface, rule) = rule
+      case rule {
+        PolicyField(field) ->
+          Ok(#(
+            field,
+            t.Fun(
+              interface.lift_type,
+              t.Empty,
+              t.union([
+                #("Pass", interface.lift_type),
+                #("Mock", interface.lower_type),
+              ]),
+            ),
+          ))
+        Unchecked -> Error(Nil)
+      }
+    })
+  t.record(fields)
 }
 
 pub fn decode_policy(
