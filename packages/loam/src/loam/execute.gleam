@@ -12,12 +12,16 @@ import eyg/parser/location
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import loam/platform/computer
 import loam/source
 import loam/system
 import multiformats/cid/v1
 import ogre/origin
+
+pub type Module =
+  cache.Module(source.Location)
 
 pub type Value =
   state.Value(source.Location)
@@ -148,23 +152,29 @@ pub fn lookup(
   state: State,
 ) -> system.Effect(#(Result(Value, Reason), State)) {
   case reference {
-    ir.Content(cid) -> lookup_reference(cid, state)
-    ir.Package(package) -> lookup_package(package, state)
-    ir.Version(package, version) -> lookup_version(package, version, state)
-    ir.Pinned(release) -> lookup_pinned(release, state)
+    ir.Content(cid) -> take_value(lookup_reference(cid, state))
+    ir.Package(package) -> take_value(lookup_package(package, state))
+    ir.Version(package, version) ->
+      take_value(lookup_version(package, version, state))
+    ir.Pinned(release) -> take_value(lookup_pinned(release, state))
     ir.Relative(location:) -> lookup_relative(location, origin, state)
   }
 }
 
-fn lookup_reference(
+fn take_value(in: system.Effect(#(Result(Module, _), _))) {
+  use #(result, state) <- system.map(in)
+  #(result.map(result, fn(module) { module.value }), state)
+}
+
+pub fn lookup_reference(
   cid: v1.Cid,
   state: State,
-) -> system.Effect(#(Result(Value, Reason), State)) {
+) -> system.Effect(#(Result(Module, Reason), State)) {
   // A pulled release does not fetch its module, so ask for the one being read.
   let cache = cache.fetch(state.cache, cid)
   use state <- system.map(update(State(..state, cache:)))
   let result = case cache.module(state.cache, cid) {
-    cache.Available(cache.Module(value:, ..)) -> Ok(value)
+    cache.Available(module) -> Ok(module)
     cache.Unavailable(reason) -> Error(reason)
     cache.Unknown -> {
       // The module itself may have been fetched successfully; this branch
@@ -183,10 +193,10 @@ fn lookup_reference(
   #(result, state)
 }
 
-fn lookup_package(
+pub fn lookup_package(
   package: String,
   state: State,
-) -> system.Effect(#(Result(Value, Reason), State)) {
+) -> system.Effect(#(Result(Module, Reason), State)) {
   let cache = cache.pull(state.cache)
   use state <- system.then(update(State(..state, cache:)))
   case cache.package(state.cache, package) {
@@ -196,11 +206,11 @@ fn lookup_package(
   }
 }
 
-fn lookup_version(
+pub fn lookup_version(
   package: String,
   version: Int,
   state: State,
-) -> system.Effect(#(Result(Value, Reason), State)) {
+) -> system.Effect(#(Result(Module, Reason), State)) {
   let cache = cache.pull(state.cache)
   use state <- system.then(update(State(..state, cache:)))
   case cache.unbound_release(state.cache, package, version) {
@@ -213,10 +223,10 @@ fn lookup_version(
   }
 }
 
-fn lookup_pinned(
+pub fn lookup_pinned(
   release: ir.Release,
   state: State,
-) -> system.Effect(#(Result(Value, Reason), State)) {
+) -> system.Effect(#(Result(Module, Reason), State)) {
   let cache = cache.pull(state.cache)
   use state <- system.then(update(State(..state, cache:)))
 
