@@ -20,7 +20,7 @@ eyg_interpreter = ">= 8.0.0 and < 9.0.0"
 gleam_http = ">= 4.4.0 and < 5.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 oas_generator_utils = ">= 1.1.0 and < 2.0.0"
-ogre = ">= 1.2.0 and < 2.0.0"
+ogre = ">= 1.3.0 and < 2.0.0"
 overlay_llm = { path = "../overlay_llm" }
 touch_grass = { path = "../touch_grass" }
 

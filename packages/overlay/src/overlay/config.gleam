@@ -51,7 +51,7 @@ fn cast_provider(value) {
 fn cast_ollama(value) {
   use origin <- result.try(cast.field("origin", cast.as_string, value))
   use origin <- result.try(
-    origin.from_string(origin)
+    origin.from_string_strict(origin)
     |> result.replace_error(break.IncorrectTerm("origin", value.String(origin))),
   )
   use api_key <- result.try(cast.field(
