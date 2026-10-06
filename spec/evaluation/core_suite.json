@@ -770,6 +770,66 @@
     "value": {
       "integer": 2
     }
-    
+  },
+  {
+    "name": "query resolution computes a fixed point with set semantics",
+    "source": {
+      "0": "a",
+      "f": {
+        "0": "qs",
+        "l": "Out"
+      },
+      "a": {
+        "0": "a",
+        "f": {
+          "0": "a",
+          "f": {
+            "0": "qm"
+          },
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "qf",
+              "l": "Out"
+            },
+            "a": {
+              "0": "i",
+              "v": 1
+            }
+          }
+        },
+        "a": {
+          "0": "a",
+          "f": {
+            "0": "qr"
+          },
+          "a": {
+            "0": "f",
+            "l": "_",
+            "b": {
+              "0": "a",
+              "f": {
+                "0": "qf",
+                "l": "Out"
+              },
+              "a": {
+                "0": "i",
+                "v": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "value": {
+      "list": [
+        {
+          "integer": 1
+        },
+        {
+          "integer": 2
+        }
+      ]
+    }
   }
 ]

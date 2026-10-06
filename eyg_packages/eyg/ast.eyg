@@ -62,6 +62,11 @@ let source_decoder = !fix((self, parsed) -> {
       {tag: "x", decode: (_) -> { [Binary(d.field("v", binary_decoder, fields))] }},
       {tag: "i", decode: (_) -> { [Integer(d.field("v", d.integer, fields))] }},
       {tag: "s", decode: (_) -> { [String(d.field("v", d.string, fields))] }},
+      {tag: "q0", decode: (_) -> { [Query(EmptyTable({}))] }},
+      {tag: "qf", decode: (_) -> { [Query(Fact(d.field("l", d.string, fields)))] }},
+      {tag: "qr", decode: (_) -> { [Query(Rule({}))] }},
+      {tag: "qm", decode: (_) -> { [Query(Merge({}))] }},
+      {tag: "qs", decode: (_) -> { [Query(Resolve(d.field("l", d.string, fields)))] }},
       {tag: "ta", decode: (_) -> { [Tail({})] }},
       {tag: "c", decode: (_) -> { [Cons({})] }},
       {tag: "z", decode: (_) -> { [Vacant({})] }},
@@ -141,6 +146,16 @@ let parse = !fix((self, nodes) -> {
         Binary(value) -> { {value: node("x", [dag_json.field("v", dag_json.binary(value))]), rest: tail} }
         Integer(value) -> { {value: node("i", [dag_json.field("v", dag_json.integer(value))]), rest: tail} }
         String(value) -> { {value: node("s", [dag_json.field("v", dag_json.string(value))]), rest: tail} }
+        Query(operation) -> {
+          let value = match operation {
+            EmptyTable(_) -> { node("q0", []) }
+            Fact(value) -> { node("qf", [label(value)]) }
+            Rule(_) -> { node("qr", []) }
+            Merge(_) -> { node("qm", []) }
+            Resolve(value) -> { node("qs", [label(value)]) }
+          }
+          {value, rest: tail}
+        }
         Tail(_) -> { {value: node("ta", []), rest: tail} }
         Cons(_) -> { {value: node("c", []), rest: tail} }
         Vacant(_) -> { {value: node("z", []), rest: tail} }

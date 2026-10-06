@@ -9,6 +9,10 @@ pub const basic =
 
 pub fn render(exp: ir.Node(Nil), handler: String) -> String {
   let used = ir.list_builtins(exp)
+  let used = case needs_query_runtime(exp) {
+    True -> ["equal", "$query", ..list.filter(used, fn(x) { x != "equal" })]
+    False -> used
+  }
   let #(definitions, program) = case needs_effect_runtime(exp) {
     False -> #(list.map(used, render_builtin), do_render(exp))
     True -> #(
@@ -31,13 +35,21 @@ pub fn render_module(exp: ir.Node(Nil)) -> String {
   [
     "const $library = (" <> runtime.source <> ")",
     "const $runtime = $library.create_deferred()",
-    ..list.append(runtime_bindings(ir.list_builtins(exp)), [
+    ..list.append(runtime_bindings(query_builtins(exp)), [
       "const program = $run(" <> stack_expression(exp) <> ")",
       "export default {program, run: $library.run_effects, runAsync: $library.run_effects_async, Eff: $library.Eff}",
     ])
   ]
   |> string.join(";\n")
   |> string.append(";\n")
+}
+
+fn query_builtins(exp) {
+  let used = ir.list_builtins(exp)
+  case needs_query_runtime(exp) {
+    True -> ["equal", "$query", ..list.filter(used, fn(x) { x != "equal" })]
+    False -> used
+  }
 }
 
 fn runtime_bindings(used) {
@@ -97,6 +109,8 @@ fn stack_expression(source: ir.Node(Nil)) -> String {
       "$fn(handler => onReturn => body => $shallow(\""
       <> escape_js(label)
       <> "\", handler, onReturn, body))"
+    ir.Query(ir.EmptyTable) -> do_render(source)
+    ir.Query(_) -> "$fn(" <> do_render(source) <> ")"
     ir.Builtin(name) ->
       case runtime.defines(name) || render_builtin(name) != "" {
         True -> "$fn(" <> name <> ")"
@@ -107,9 +121,17 @@ fn stack_expression(source: ir.Node(Nil)) -> String {
   }
 }
 
+fn needs_query_runtime(node: ir.Node(a)) {
+  case node.0 {
+    ir.Query(_) -> True
+    _ -> list.any(ir.children(node), needs_query_runtime)
+  }
+}
+
 pub fn needs_effect_runtime(node: ir.Node(a)) {
   case node.0 {
-    ir.Perform(_)
+    ir.Query(_)
+    | ir.Perform(_)
     | ir.Handle(_)
     | ir.Shallow(_)
     | ir.Mask(_)
@@ -130,6 +152,14 @@ fn do_render(source) {
       let #(items, tail) = gather_items(tail, [value])
       render_list(list.reverse(items), do_render(tail))
     }
+    ir.Query(operation) ->
+      case operation {
+        ir.EmptyTable -> "$query.empty()"
+        ir.Fact(label) -> "$query.fact(\"" <> escape_js(label) <> "\")"
+        ir.Rule -> "$query.rule"
+        ir.Merge -> "$query.merge"
+        ir.Resolve(label) -> "$query.resolve(\"" <> escape_js(label) <> "\")"
+      }
     ir.Tail -> "[]"
     ir.Apply(#(ir.Apply(#(ir.Extend(label), _), value), _), rest) -> {
       // Do string in render_fields
@@ -285,6 +315,55 @@ fn render_branches(label, branch, otherwise, acc: String) {
 
 fn render_builtin(identifier) {
   case identifier {
+    "$query" ->
+      "const $query = (() => {
+  class Table {
+    constructor(facts = new Map(), rules = []) { this.facts = facts; this.rules = rules; }
+  }
+  const check = value => {
+    if (!(value instanceof Table)) throw {eygBreak: {IncorrectTerm: 'Table'}};
+    return value;
+  };
+  const combine = (left, right) => {
+    const result = new Map(left);
+    for (const [label, rows] of right) {
+      const merged = [...(result.get(label) || [])];
+      for (const row of rows) if (!merged.some(old => equal(old)(row).$T === 'True')) merged.push(row);
+      result.set(label, merged);
+    }
+    return result;
+  };
+  return {
+    empty: () => new Table(),
+    fact: label => row => new Table(new Map([[label, [row]]])),
+    rule: rule => new Table(new Map(), [rule]),
+    merge: a => b => new Table(combine(check(a).facts, check(b).facts), [...a.rules, ...b.rules]),
+    resolve: label => table => {
+      check(table);
+      let facts = table.facts;
+      for (;;) {
+        const snapshot = new Table(facts);
+        let next = facts;
+        for (const rule of table.rules) {
+          let derived;
+          try { derived = $runtime.run($runtime.call($runtime.pure_(rule), snapshot)); }
+          catch (error) {
+            if (error.eygBreak?.ImpureEffect !== undefined) throw {eygBreak: {ImpureQuery: error.eygBreak.ImpureEffect}};
+            throw error;
+          }
+          if (typeof Eff !== 'undefined' && derived instanceof Eff) throw {eygBreak: {ImpureQuery: derived.label}};
+          check(derived);
+          if (derived.rules.length) throw {eygBreak: {IncorrectTerm: 'facts returned by a rule'}};
+          next = combine(next, derived.facts);
+        }
+        let changed = false;
+        for (const [name, rows] of next) if (rows.length !== (facts.get(name) || []).length) changed = true;
+        facts = next;
+        if (!changed) return (facts.get(label) || []).reduceRight((tail, head) => [head, tail], []);
+      }
+    }
+  };
+})()"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
     "equal" ->

@@ -204,5 +204,42 @@
       }
     },
     "cid": "baguqeeranj6ckbez2utdhyks57fmzj46qsfd3doc4vopsa323izbi3tmnsja"
+  },
+  {
+    "name": "query EmptyTable",
+    "source": {
+      "0": "q0"
+    },
+    "cid": "baguqeerae6ztt2yokosg6sdodg6qi44ogvf5scsejts5f4ddbnp33sximg5q"
+  },
+  {
+    "name": "query Fact",
+    "source": {
+      "0": "qf",
+      "l": "Edge"
+    },
+    "cid": "baguqeera34rtbmpq45b6hcrz37yf4ptdqmucl6kg3j3bfeevdq2xopryt5iq"
+  },
+  {
+    "name": "query Rule",
+    "source": {
+      "0": "qr"
+    },
+    "cid": "baguqeerafvctkg2nor3bgvdm53vkoscztmaypxvqphg3f2ugr6elctxo6coa"
+  },
+  {
+    "name": "query Merge",
+    "source": {
+      "0": "qm"
+    },
+    "cid": "baguqeera3bvthp4tzdj6uauihdae34mcmccxhxsoauww3m275qbn6pi63bra"
+  },
+  {
+    "name": "query Resolve",
+    "source": {
+      "0": "qs",
+      "l": "Out"
+    },
+    "cid": "baguqeeralmu7aifsovwwmufantbcrubf4qi4ipvz7mehwfx2pp24lfzirr7q"
   }
 ]

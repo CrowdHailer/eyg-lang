@@ -73,6 +73,7 @@ pub fn render_error(description, hint, code, span) {
 
 fn reason_position(reason: parser.Reason) -> option.Option(Int) {
   case reason {
+    parser.InvalidQuery(_, pos) -> Some(pos)
     parser.UnexpectedToken(_, pos) -> Some(pos)
     parser.UnexpectEnd -> None
     parser.MissingEquals(pos) -> Some(pos)

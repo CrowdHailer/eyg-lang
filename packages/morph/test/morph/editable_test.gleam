@@ -1,7 +1,24 @@
 import eyg/ir/tree as ir
+import eyg/parser
 import gleeunit/should
 import morph/editable as et
 import non_empty_list.{NonEmptyList}
+
+pub fn query_round_trip_test() {
+  let source =
+    parser.all_from_string(
+      "resolve Out @{
+    fact Input(2), rule Out(!int_add(n, 1)) { var n Input(n) }
+  }",
+    )
+    |> should.be_ok()
+    |> ir.clear_annotation()
+  source
+  |> et.from_annotated()
+  |> et.to_annotated([])
+  |> ir.clear_annotation()
+  |> should.equal(source)
+}
 
 fn should_equal(given, expected) {
   should.equal(given, expected)

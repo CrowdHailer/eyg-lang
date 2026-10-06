@@ -19,6 +19,13 @@ title: large effectful function breaks across lines
           Binary: Binary |
           Integer: Integer |
           String: String |
+          Query: [
+            EmptyTable: {} |
+            Fact: String |
+            Rule: {} |
+            Merge: {} |
+            Resolve: String
+          ] |
           Tail: {} |
           Cons: {} |
           Vacant: {} |
@@ -67,6 +74,13 @@ title: large effectful function breaks across lines
           Binary: Binary |
           Integer: Integer |
           String: String |
+          Query: [
+            EmptyTable: {} |
+            Fact: String |
+            Rule: {} |
+            Merge: {} |
+            Resolve: String
+          ] |
           Tail: {} |
           Cons: {} |
           Vacant: {} |

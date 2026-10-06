@@ -50,6 +50,19 @@ pub fn encode(value: v.Value(m, c)) -> Encoded {
     v.Closure(_, body, _) ->
       capture.capture(value, body.1)
       |> ir.map_annotation(fn(_) { Nil })
+    v.Table(facts, rules) -> {
+      let items =
+        dict.to_list(facts)
+        |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+        |> list.flat_map(fn(pair) {
+          list.map(pair.1, fn(row) { #(ir.Fact(pair.0), row) })
+        })
+        |> list.append(list.map(rules, fn(rule) { #(ir.Rule, rule) }))
+      list.fold(items, #(ir.Query(ir.EmptyTable), Nil), fn(table, item) {
+        let entry = apply(#(ir.Query(item.0), Nil), encode(item.1))
+        apply(apply(#(ir.Query(ir.Merge), Nil), table), entry)
+      })
+    }
     v.Partial(switch, applied) ->
       list.fold(applied, #(partial(switch), Nil), fn(function, argument) {
         apply(function, encode(argument))
@@ -63,6 +76,7 @@ fn apply(function: Encoded, argument: Encoded) -> Encoded {
 
 fn partial(switch: v.Switch(c)) -> ir.Expression(Nil) {
   case switch {
+    v.Query(operation) -> ir.Query(operation)
     v.Cons -> ir.Cons
     v.Extend(label) -> ir.Extend(label)
     v.Overwrite(label) -> ir.Overwrite(label)

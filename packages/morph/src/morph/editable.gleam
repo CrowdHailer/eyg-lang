@@ -32,6 +32,7 @@ pub type Expression {
   Shallow(String)
   Mask(String)
   Builtin(String)
+  Query(ir.QueryOperation)
   Reference(ir.Reference)
 }
 
@@ -170,6 +171,7 @@ pub fn from_annotated(node) {
     ir.Mask(label) -> Mask(label)
 
     ir.Builtin(identifier) -> Builtin(identifier)
+    ir.Query(operation) -> Query(operation)
     ir.Reference(reference) -> Reference(reference)
   }
 }
@@ -429,6 +431,7 @@ pub fn to_annotated(source, rev) {
     Shallow(label) -> #(ir.Shallow(label), rev)
     Mask(label) -> #(ir.Mask(label), rev)
     Builtin(identifier) -> #(ir.Builtin(identifier), rev)
+    Query(operation) -> #(ir.Query(operation), rev)
     Reference(reference) -> #(ir.Reference(reference), rev)
   }
 }

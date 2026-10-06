@@ -30,6 +30,30 @@ fn do_capture(term, env, meta) {
         )
         #(exp, env)
       })
+    v.Table(facts, rules) -> {
+      let items =
+        list.flat_map(dict.to_list(facts), fn(pair) {
+          list.map(pair.1, fn(row) { #(ir.Fact(pair.0), row) })
+        })
+        |> list.append(list.map(rules, fn(rule) { #(ir.Rule, rule) }))
+      list.fold(
+        items,
+        #(#(ir.Query(ir.EmptyTable), meta), env),
+        fn(state, item) {
+          let #(table, env) = state
+          let #(value, env) = do_capture(item.1, env, meta)
+          let item = #(ir.Apply(#(ir.Query(item.0), meta), value), meta)
+          let table = #(
+            ir.Apply(
+              #(ir.Apply(#(ir.Query(ir.Merge), meta), table), meta),
+              item,
+            ),
+            meta,
+          )
+          #(table, env)
+        },
+      )
+    }
     v.Record(fields) ->
       list.fold_right(
         dict.to_list(fields),
@@ -112,6 +136,7 @@ fn do_capture(term, env, meta) {
 
 fn capture_defunc(switch, args, env, meta) {
   let exp = case switch {
+    v.Query(operation) -> ir.Query(operation)
     v.Cons -> ir.Cons
     v.Extend(label) -> ir.Extend(label)
     v.Overwrite(label) -> ir.Overwrite(label)

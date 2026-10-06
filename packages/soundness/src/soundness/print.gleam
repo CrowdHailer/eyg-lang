@@ -31,6 +31,7 @@ pub fn source(node) {
     ir.Shallow(label) -> "shallow " <> label
     ir.Mask(label) -> "mask " <> label
     ir.Builtin(identifier) -> "!" <> identifier
+    ir.Query(operation) -> string.inspect(operation)
     ir.Reference(_) -> "<reference>"
   }
 }
@@ -70,6 +71,7 @@ pub fn constructor(node) {
     ir.Shallow(label) -> "ir.shallow(" <> quote(label) <> ")"
     ir.Mask(label) -> "ir.mask(" <> quote(label) <> ")"
     ir.Builtin(identifier) -> "ir.builtin(" <> quote(identifier) <> ")"
+    ir.Query(operation) -> string.inspect(operation)
     ir.Reference(_) -> "<reference>"
   }
 }

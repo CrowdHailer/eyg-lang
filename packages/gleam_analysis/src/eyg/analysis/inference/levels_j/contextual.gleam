@@ -331,6 +331,7 @@ pub fn ftv(type_) {
     t.Fun(arg, eff, ret) -> set.union(ftv(arg), set.union(ftv(eff), ftv(ret)))
     t.Integer | t.Binary | t.String -> set.new()
     t.List(el) -> ftv(el)
+    t.Table(rows) -> ftv(rows)
     t.Record(rows) -> ftv(rows)
     t.Union(inner) -> ftv(inner)
     t.Empty -> set.new()
@@ -559,6 +560,18 @@ pub fn do_infer(source, env, eff, level, bindings) -> Step(_) {
       prim(shallow(label), env, eff, level, bindings, ir.Shallow(label))
     ir.Mask(label) ->
       prim(mask(label), env, eff, level, bindings, ir.Mask(label))
+    ir.Query(operation) -> {
+      let table = t.Table(q(0))
+      let scheme = case operation {
+        ir.EmptyTable -> table
+        ir.Fact(label) -> pure1(q(1), t.Table(t.RowExtend(label, q(1), q(0))))
+        ir.Merge -> pure2(table, table, table)
+        ir.Rule -> pure1(t.Fun(table, t.Empty, table), table)
+        ir.Resolve(label) ->
+          pure1(t.Table(t.RowExtend(label, q(1), q(0))), t.List(q(1)))
+      }
+      prim(scheme, env, eff, level, bindings, ir.Query(operation))
+    }
     ir.Builtin(id) ->
       case builtin(id) {
         Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Builtin(id))

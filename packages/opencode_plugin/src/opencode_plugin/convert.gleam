@@ -3,7 +3,8 @@
 //// Records become objects, lists become arrays, `True`/`False` become booleans,
 //// `None` becomes null and `Some(x)` becomes x.
 //// Other tagged values become an object with a single key, `GET({})` is `{GET: {}}`.
-//// Functions cannot cross to JavaScript and become null.
+//// Functions and lazy query tables cannot cross to JavaScript and become null.
+//// Resolve a query to a list before returning it to a host.
 
 import eyg/interpreter/value as v
 import gleam/dict
@@ -51,7 +52,7 @@ pub fn to_js(value: execute.Value) -> Dynamic {
     v.Tagged("None", v.Record(_)) -> null()
     v.Tagged("Some", inner) -> to_js(inner)
     v.Tagged(label, inner) -> object([#(label, to_js(inner))])
-    v.Closure(..) | v.Partial(..) -> null()
+    v.Table(..) | v.Closure(..) | v.Partial(..) -> null()
   }
 }
 

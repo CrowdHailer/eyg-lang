@@ -65,6 +65,15 @@ pub type Stack(m) {
 }
 
 pub type Kontinue(m) {
+  QueryNext(
+    label: String,
+    snapshot: Dict(String, List(Value(m))),
+    facts: Dict(String, List(Value(m))),
+    pending: List(Value(m)),
+    rules: List(Value(m)),
+    rounds: Int,
+    env: Env(m),
+  )
   Arg(ir.Node(m), Env(m))
   Apply(Value(m), Env(m))
   Assign(String, ir.Node(m), Env(m))
@@ -121,6 +130,8 @@ pub fn eval(exp, env: Env(m), k) {
     ir.Binary(data) -> value(v.Binary(data))
     ir.Integer(data) -> value(v.Integer(data))
     ir.String(data) -> value(v.String(data))
+    ir.Query(ir.EmptyTable) -> value(v.Table(dict.new(), []))
+    ir.Query(operation) -> value(v.Partial(v.Query(operation), []))
     ir.Tail -> value(v.LinkedList([]))
     ir.Cons -> value(v.Partial(v.Cons, []))
     ir.Vacant -> Error(break.Vacant)
@@ -160,6 +171,24 @@ pub fn apply(value, env, k, meta, rest) {
     Trace(_, env) -> Ok(#(V(value), env, rest))
     ProfileReturn(_, env) -> Ok(#(V(value), env, rest))
     Mask(_) | Pure -> Ok(#(V(value), env, rest))
+    QueryNext(label, snapshot, facts, pending, rules, rounds, env) -> {
+      use #(derived, nested) <- result.try(cast.as_table(value))
+      case nested {
+        [] ->
+          query_next(
+            label,
+            snapshot,
+            merge_facts(facts, derived),
+            pending,
+            rules,
+            rounds,
+            meta,
+            env,
+            rest,
+          )
+        _ -> Error(break.IncorrectTerm("facts returned by a rule", value))
+      }
+    }
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, rest) })
 }
@@ -179,6 +208,25 @@ fn invoke(f, arg, meta, env: Env(m), k: Stack(m)) {
     // Resume/Deep need access to k nothing needs access to env but extension might change that
     v.Partial(switch, applied) ->
       case switch, applied {
+        v.Query(ir.Fact(label)), [] ->
+          Ok(#(V(v.Table(dict.from_list([#(label, [arg])]), [])), env, k))
+        v.Query(ir.Rule), [] -> Ok(#(V(v.Table(dict.new(), [arg])), env, k))
+        v.Query(ir.Merge), [left] -> {
+          use #(left_facts, left_rules) <- result.try(cast.as_table(left))
+          use #(right_facts, right_rules) <- result.try(cast.as_table(arg))
+          Ok(#(
+            V(v.Table(
+              merge_facts(left_facts, right_facts),
+              list.append(left_rules, right_rules),
+            )),
+            env,
+            k,
+          ))
+        }
+        v.Query(ir.Resolve(label)), [] -> {
+          use #(facts, rules) <- result.try(cast.as_table(arg))
+          query_next(label, facts, facts, rules, rules, 0, meta, env, k)
+        }
         v.Cons, [item] -> {
           use elements <- result.try(cast.as_list(arg))
           Ok(#(V(v.LinkedList([item, ..elements])), env, k))
@@ -300,6 +348,7 @@ fn do_perform(label, arg, i_env, k, acc, skip) {
         Stack(CallWith(arg, e), meta, Stack(CallWith(resume, e), meta, rest))
       Ok(#(V(h), e, k))
     }
+    Stack(QueryNext(..), _, _) -> Error(break.ImpureQuery(label))
     Stack(kontinue, meta, rest) ->
       do_perform(label, arg, i_env, rest, [#(kontinue, meta), ..acc], skip)
     Empty if skip > 0 -> Error(break.MaskedEffect(label, arg))
@@ -320,4 +369,56 @@ pub fn deep(label, handle, exec, meta, env, k) {
 pub fn shallow(label, handle, on_return, exec, meta, env, k) {
   let k = Stack(Delimit(label, handle, env, Some(on_return)), meta, k)
   call(exec, v.unit(), meta, env, k)
+}
+
+// somewhere this needs outer k
+// fn shallow(label, handle, exec, meta, env, k) {
+//   let k = Stack(Delimit(label, handle, env, True), meta, k)
+//   call(exec, v.unit(), meta, env, k)
+// }
+
+// Set semantics: retain insertion order for repeatable output, and never insert
+// a duplicate. Every rule in a round sees the same immutable snapshot.
+fn merge_facts(left, right) {
+  dict.fold(right, left, fn(all, label, rows) {
+    let existing = dict.get(all, label) |> result.unwrap([])
+    let merged =
+      list.fold(rows, existing, fn(rows, row) {
+        case list.contains(rows, row) {
+          True -> rows
+          False -> list.append(rows, [row])
+        }
+      })
+    dict.insert(all, label, merged)
+  })
+}
+
+fn query_next(label, snapshot, facts, pending, rules, rounds, meta, env, k) {
+  case pending {
+    [rule, ..pending] -> {
+      let next = QueryNext(label, snapshot, facts, pending, rules, rounds, env)
+      call(rule, v.Table(snapshot, []), meta, env, Stack(next, meta, k))
+    }
+    [] ->
+      case facts == snapshot {
+        True ->
+          Ok(#(
+            V(v.LinkedList(dict.get(facts, label) |> result.unwrap([]))),
+            env,
+            k,
+          ))
+        False ->
+          query_next(
+            label,
+            facts,
+            facts,
+            rules,
+            rules,
+            rounds + 1,
+            meta,
+            env,
+            k,
+          )
+      }
+  }
 }

@@ -58,6 +58,9 @@ fn resolve(path, meta: source.Location, cwd) {
 
 fn capturable(value) {
   case value {
+    value.Table(facts, rules) ->
+      list.all(dict.values(facts), fn(rows) { list.all(rows, capturable) })
+      && list.all(rules, capturable)
     value.LinkedList(items) -> list.all(items, capturable)
     value.Record(fields) -> dict.values(fields) |> list.all(capturable)
     value.Tagged(_, inner) -> capturable(inner)

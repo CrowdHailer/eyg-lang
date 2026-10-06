@@ -452,6 +452,72 @@ See [`builtins_reference.md`](./builtins_reference.md) for the full list.
 
 ---
 
+## Query literals
+
+`@{ ... }` combines tables. `fact Relation(value)` constructs a single fact;
+`rule Relation(value) { ... }` constructs a lazy rule. Both are ordinary table
+values and can be bound, passed to functions, imported, and combined.
+`resolve Relation table` computes the least fixed point and returns the selected
+relation as a list without duplicates.
+
+```eyg
+let view = @{
+  rule Reachable({from, to}) {
+    var from
+    var to
+    Edge({from, to})
+  }
+  rule Reachable({from, to}) {
+    var from
+    var to
+    var middle
+    Edge({from, to: middle}),
+    Reachable({from: middle, to})
+  }
+}
+resolve Reachable @{
+  view,
+  fact Edge({from: "A", to: "B"}),
+  fact Edge({from: "B", to: "C"})
+}
+// [{from: "A", to: "B"}, {from: "B", to: "C"}, {from: "A", to: "C"}]
+```
+
+Declare logic variables with `var` at the beginning of a rule body. A variable's
+first occurrence in a relation pattern binds it; later occurrences compare it.
+Names without `var` refer to their ordinary lexical scope and match as constants.
+Record patterns may select a subset of fields, including nested records.
+An empty record pattern matches the unit value `{}`.
+
+Body clauses are evaluated from left to right. Bind a variable in a relation
+before using it in a computed expression or Boolean predicate. Heads and
+predicates can call any pure EYG function, package, or builtin. Use
+`!int_add(n, 1)` for arithmetic, as elsewhere in EYG. The type checker rejects
+effects in rules, non-Boolean predicates, and inconsistent relation schemas.
+`True({})` and `False({})` are Boolean predicates in a body.
+
+The distinct `Table` type wraps a row of named relations. Combining tables
+unifies their row types. A view can be polymorphic in its field types and used
+with different databases. Relations without facts resolve to an empty list.
+
+Queries are positive: there is no negation or aggregation syntax. Recursive
+rules terminate when a round adds no new facts. A rule that continually
+constructs new values, such as an unbounded integer successor, does not have a
+finite fixed point; put a bound in its predicate. The engine currently computes
+all relations in the composed table, including those other than the selected
+output. Result order is not part of the query contract.
+
+Embedding hosts can use `eyg/interpreter/budget.start` and `budget.advance` to
+limit interpreter transitions, including work inside pure predicates. A
+suspended `Loop` is not a result and must never authorize an operation. Track
+the returned step count across resumes and effects. This cooperative budget is
+not a hard time or memory limit: individual builtins can do substantial work
+within one transition. The ordinary interpreter entry points and generated
+JavaScript do not impose a budget; hosts needing hard limits must run them in
+an isolated worker or process with their own deadline and memory controls.
+
+---
+
 ## References
 
 Reference another module.

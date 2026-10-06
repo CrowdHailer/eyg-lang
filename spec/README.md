@@ -87,6 +87,16 @@ References are encoded as Content IDentifiers (CIDs).
 {"0": "hm", "l": label}
 // builtin(label)
 {"0": "b", "l": label}
+// empty table
+{"0": "q0"}
+// fact constructor: value -> Table(Relation(value))
+{"0": "qf", "l": label}
+// lazy rule constructor: (Table(rows) -> Table(rows)) -> Table(rows)
+{"0": "qr"}
+// table combination: Table(rows) -> Table(rows) -> Table(rows)
+{"0": "qm"}
+// resolve: Table(Relation(value), rows) -> List(value)
+{"0": "qs", "l": label}
 // reference(identifier)
 {"0": "#", "l": cid}
 // release(project,release,identifer)
@@ -167,6 +177,20 @@ Work that only needs doing once belongs outside `fix`.
 
 ## Builtins
 
+Query operations are atoms applied with ordinary `apply` nodes. A rule stores a
+pure function over a table of facts. Resolution starts with all input facts,
+calls every rule with the same snapshot, unions the returned facts, and repeats
+until no new facts appear. Equality gives set semantics. Rule functions must
+return facts, and effects cannot escape a rule to its caller or host runtime.
+The text parser lowers joins to list folds over the snapshot and pattern
+constraints to pure equality tests. This keeps rule expressions available to
+tree traversal, sharing, and closure capture without a second expression AST.
+
+Tables contain a row of named relations; table combination unifies these rows.
+The empty table and each fact have an open relation row so independent tables
+can be combined. An absent relation resolves to an empty list. Recursive rules
+with value-generating expressions need a finite bound to reach a fixed point.
+
 Builtins must behave the same way for all implementations.
 There is a test suite available in this repo that for checking the behaviour of all builtins.
 
@@ -185,5 +209,6 @@ This means there are no guarantees about memory usage of a general EYG program.
 It is possible to track use of builtins if you want these gurantees.
 Absence of `fix` alone does not prove termination: unchecked self-application,
 effect handlers, imports, and external waits must also be considered.
+Both `fix` and recursive queries can express nonterminating computations.
 It is a non-goal of the eyg libraries to support all these usecases.
 However if you have a need for them please reach out.

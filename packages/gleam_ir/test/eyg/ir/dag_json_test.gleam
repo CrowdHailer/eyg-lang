@@ -16,6 +16,26 @@ type Fixture {
   Fixture(name: String, source: Dynamic, cid: String)
 }
 
+pub fn query_operations_round_trip_test() {
+  [
+    tree.EmptyTable,
+    tree.Fact("Edge"),
+    tree.Rule,
+    tree.Merge,
+    tree.Resolve("Out"),
+  ]
+  |> list.each(fn(operation) {
+    let source = tree.query(operation)
+    source
+    |> codec.to_string
+    |> json.parse(codec.decoder(Nil))
+    |> should.equal(Ok(source))
+    tree.map_annotation(source, fn(_) { 42 })
+    |> tree.clear_annotation()
+    |> should.equal(source)
+  })
+}
+
 fn suite_decoder() {
   decode.list({
     use name <- decode.field("name", decode.string)

@@ -112,6 +112,11 @@ pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
     "h" -> label_decoder(ir.Handle, meta)
     "hs" -> label_decoder(ir.Shallow, meta)
     "hm" -> label_decoder(ir.Mask, meta)
+    "q0" -> d.success(#(ir.Query(ir.EmptyTable), meta))
+    "qf" -> label_decoder(fn(l) { ir.Query(ir.Fact(l)) }, meta)
+    "qr" -> d.success(#(ir.Query(ir.Rule), meta))
+    "qm" -> d.success(#(ir.Query(ir.Merge), meta))
+    "qs" -> label_decoder(fn(l) { ir.Query(ir.Resolve(l)) }, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
       use cid <- d.field("l", codec.decode_cid())
@@ -202,6 +207,14 @@ pub fn to_data_model(tree: ir.Node(meta)) -> json.Json {
     ir.Handle(x) -> node("h", [label(x)])
     ir.Shallow(x) -> node("hs", [label(x)])
     ir.Mask(x) -> node("hm", [label(x)])
+    ir.Query(operation) ->
+      case operation {
+        ir.EmptyTable -> node("q0", [])
+        ir.Fact(l) -> node("qf", [label(l)])
+        ir.Rule -> node("qr", [])
+        ir.Merge -> node("qm", [])
+        ir.Resolve(l) -> node("qs", [label(l)])
+      }
     ir.Builtin(x) -> node("b", [label(x)])
     ir.Reference(reference) ->
       case reference {

@@ -44,6 +44,7 @@ pub fn resolve(type_, bindings) {
     t.String -> t.String
     t.Empty -> t.Empty
     t.List(el) -> t.List(resolve(el, bindings))
+    t.Table(rows) -> t.Table(resolve(rows, bindings))
     t.Record(rows) -> t.Record(resolve(rows, bindings))
     t.Union(rows) -> t.Union(resolve(rows, bindings))
     t.RowExtend(label, field, rest) ->
@@ -89,6 +90,7 @@ pub fn gen(type_, level, bindings) {
     t.String -> t.String
     t.Empty -> t.Empty
     t.List(el) -> t.List(gen(el, level, bindings))
+    t.Table(rows) -> t.Table(gen(rows, level, bindings))
     t.Record(rows) -> t.Record(gen(rows, level, bindings))
     t.Union(rows) -> t.Union(gen(rows, level, bindings))
     t.RowExtend(label, field, rest) -> {
@@ -137,6 +139,10 @@ fn do_inst(poly, level, bindings, subs) {
     t.List(el) -> {
       let #(el, bindings, subs) = do_inst(el, level, bindings, subs)
       #(t.List(el), bindings, subs)
+    }
+    t.Table(rows) -> {
+      let #(rows, bindings, subs) = do_inst(rows, level, bindings, subs)
+      #(t.Table(rows), bindings, subs)
     }
     t.Record(rows) -> {
       let #(rows, bindings, subs) = do_inst(rows, level, bindings, subs)

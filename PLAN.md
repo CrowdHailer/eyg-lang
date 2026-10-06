@@ -64,20 +64,26 @@ The top level coding agent has hard rules but is not able to reach untrusted con
 This is an example of writing query literals in an EYG program
 
 ```eyg
-let x = 5
+let is_less_than_10 = (n) -> {
+    match !int_compare(n, 10) {
+        Lt(_) -> { True({}) }
+        | (_) -> { False({}) }
+    }
+}
 
 let view = @{
-    rule Reachable({from, to, 1}) {
+    rule Reachable({from, to, n: 1}) {
         var from
         var to
         Edge({from, to})
     }
-    rule Reachable({from, to, n + 1}) {
+    rule Reachable({from, to, n: !int_add(n, 1)}) {
         var from
         var to
         var n
+        var z
         Edge({from, to: z}),
-        Rechable({from: z, to, n}),
+        Reachable({from: z, to, n}),
         is_less_than_10(n)
     }
 }
@@ -91,9 +97,12 @@ let out = resolve Out @{
     view,
     db,
     rule Out({to, length}) {
+        var to
+        var length
         Reachable({from: "A", to, n: length})
     }
 }
+out
 // [{to: "B", length: 1}, {to: "C", length: 2}]
 ```
 
@@ -112,8 +121,8 @@ let out = resolve Out @{
 
 
 Tasks
-- [ ] Implement parsing for query literals
-- [ ] Implement a datalog engine that will calculate and resolve queries and facts.
+- [x] Implement parsing for query literals
+- [x] Implement a datalog engine that will calculate and resolve queries and facts.
 - [ ] Create an example of writing rules in a policy for overlay based on facts in a DB
     - [ ] A simple rule will be requests must be get
     - [ ] Create a rule that only allows files to be writen under the users home directory
@@ -135,3 +144,23 @@ Tasks
 - [ ] Make sure syntax highlighting works and the tutorial looks good.
 - [ ] Write a presentation explaining why EYG is so good for knowing what your agents are up to
     - The presenation should explain why this appoach is better than https://www.biscuitsec.org/
+
+## Implementation and verification work
+
+- [x] Extend the IR and its codecs with query operations; preserve sharing,
+      capture, compilation, and structural editing of query programs.
+- [x] Add row-polymorphic `Table` inference and reject effectful rule heads and
+      predicates, unsafe variables, and inconsistent relation schemas.
+- [x] Test lazy composition, joins, repeated variables, lexical constants,
+      recursion, duplicate elimination, and termination/resource limits.
+      The interpreter's cooperative step-budget API suspends unbounded queries
+      and predicates; ordinary entry points stay unbounded. Syntax documentation
+      distinguishes transition budgets from host-enforced time/memory limits.
+- [x] Wire repository packages to the local language implementation so CLI and
+      integration tests exercise this branch rather than published packages.
+- [ ] Verify interpreter/compiler parity and run the repository's Gleam and EYG
+      suites, plus executable tutorial and SQLite examples.
+- [ ] Audit every original deliverable, including the recorded SQLite demo and
+      rendered tutorial/presentation; leave a concise history on `bot/datalog`.
+- [x] Make multi-relation `Table` types readable in diagnostics and test the
+      displayed type for a polymorphic view.

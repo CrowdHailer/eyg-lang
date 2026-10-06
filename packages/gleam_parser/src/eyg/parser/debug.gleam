@@ -5,6 +5,8 @@ import gleam/string
 
 pub fn describe(reason) {
   case reason {
+    parser.InvalidQuery(message, position) ->
+      message <> " at position " <> int.to_string(position)
     parser.UnexpectedToken(token:, position:) ->
       "unexpected `"
       <> t.to_string(token)
@@ -69,6 +71,8 @@ pub fn describe(reason) {
 
 pub fn hint(reason) {
   case reason {
+    parser.InvalidQuery(..) ->
+      "declare query variables with var, then bind them in a relation before using them"
     parser.UnexpectedToken(..) -> "view the syntax guide"
     parser.UnexpectEnd -> "program must end with valid expression"
     parser.InvalidCharacter(..) ->

@@ -80,6 +80,7 @@ fn describe(reason) {
     break.UndefinedVariable(label) -> "undefined variable: " <> label
     break.UndefinedBuiltin(label) -> "undefined builtin: " <> label
     break.UndefinedReference(_) -> "undefined reference"
+    break.ImpureQuery(label) -> "effect in query rule: " <> label
     break.Vacant -> "vacant"
     break.NoMatch(term:) -> "no match: " <> inspect(term)
     break.UnhandledEffect(label, _) -> "unhandled effect: " <> label
@@ -100,6 +101,7 @@ pub fn inspect(value) {
     v.LinkedList(_) -> "List"
     v.Record(fields) -> "Record(" <> string.join(dict.keys(fields), ", ") <> ")"
     v.Tagged(label, _) -> "Tagged(" <> label <> ")"
+    v.Table(..) -> "Table"
     v.Closure(..) -> "Function"
     v.Partial(_, _) -> "Function"
   }
@@ -122,6 +124,7 @@ pub fn conforms(value, type_) {
     t.Union(rows), v.Tagged(label, inner) -> union_conforms(rows, label, inner)
     t.Fun(_, _, _), v.Closure(..) -> True
     t.Fun(_, _, _), v.Partial(_, _) -> True
+    t.Table(_), v.Table(..) -> True
     t.Promise(_), _ -> True
     _, _ -> False
   }

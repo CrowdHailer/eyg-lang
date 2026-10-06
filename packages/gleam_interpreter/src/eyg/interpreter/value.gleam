@@ -7,6 +7,10 @@ pub type Value(m, context) {
   Integer(value: Int)
   String(value: String)
   LinkedList(elements: List(Value(m, context)))
+  Table(
+    facts: Dict(String, List(Value(m, context))),
+    rules: List(Value(m, context)),
+  )
   Record(fields: Dict(String, Value(m, context)))
   Tagged(label: String, value: Value(m, context))
   Closure(
@@ -18,6 +22,7 @@ pub type Value(m, context) {
 }
 
 pub type Switch(context) {
+  Query(ir.QueryOperation)
   Cons
   Extend(label: String)
   Overwrite(label: String)

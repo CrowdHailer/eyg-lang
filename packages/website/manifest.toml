@@ -71,11 +71,11 @@ packages = [
 
 [requirements]
 argv = { version = ">= 1.0.2 and < 2.0.0" }
-eyg_analysis = { version = ">= 2.0.0 and < 4.0.0" }
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = { version = ">= 9.0.0 and < 10.0.0" }
-eyg_ir = { version = ">= 3.0.0 and < 4.0.0" }
-eyg_parser = { version = ">= 0.6.0 and < 1.0.0" }
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
 filepath = { version = ">= 1.1.2 and < 2.0.0" }
 glasshouse = { path = "../glasshouse" }
 gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
@@ -105,5 +105,5 @@ plinthx = { path = "../plinthx" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
 snag = { version = ">= 1.2.0 and < 2.0.0" }
 spotless = { version = ">= 7.0.0 and < 8.0.0" }
-touch_grass = { version = ">= 0.4.4 and < 1.0.0" }
+touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }

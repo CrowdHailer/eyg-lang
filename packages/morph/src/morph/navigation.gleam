@@ -89,6 +89,7 @@ fn do_last(projection) {
         e.Mask(_) -> projection
         e.Builtin(_) -> projection
         e.Reference(_) -> projection
+        e.Query(_) -> projection
       }
     p.Assign(p.AssignStatement(p), value, pre, post, tail) -> #(
       p.Assign(p.AssignPattern(p), value, pre, post, tail),

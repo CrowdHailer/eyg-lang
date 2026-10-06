@@ -472,6 +472,7 @@ fn rewrite(
     ir.Handle(label) -> ir.Handle(label)
     ir.Mask(label) -> ir.Mask(label)
     ir.Shallow(label) -> ir.Shallow(label)
+    ir.Query(operation) -> ir.Query(operation)
     ir.Builtin(identifier) -> ir.Builtin(identifier)
   }
   #(exp, Nil)

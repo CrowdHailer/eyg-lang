@@ -51,6 +51,7 @@ pub fn describe(reason) -> String {
       "unhandled effect " <> effect <> "(" <> inspect(lift) <> ")"
     break.ImpureEffect(effect, _) -> "effect escaped !pure: " <> effect
     break.MaskedEffect(effect, _) -> "no unmasked handler for: " <> effect
+    break.ImpureQuery(label) -> "effect in query rule: " <> label
     break.Vacant -> "tried to run a todo"
     break.Unrepresentable(..) -> "integer out of range"
   }
@@ -87,6 +88,7 @@ pub fn hint(reason) -> String {
       "handle the effect inside the function or remove the !pure constraint"
     break.MaskedEffect(_, _) ->
       "install an outer handler beyond the one skipped by mask"
+    break.ImpureQuery(_) -> "query rule heads and predicates must be pure"
     break.Vacant ->
       "replace the todo with an expression before running the program"
     break.Unrepresentable(..) ->
@@ -121,6 +123,14 @@ fn to_doc(value: v.Value(_, _), depth: Int) -> Document {
         v.Tagged(label, inner) ->
           doc.from_string(label)
           |> doc.append(wrap("(", to_doc(inner, depth + 1), ")"))
+        v.Table(facts, rules) ->
+          doc.from_string(
+            "Table("
+            <> int.to_string(dict.size(facts))
+            <> " relations, "
+            <> int.to_string(list.length(rules))
+            <> " rules)",
+          )
         v.Record(fields) -> record_doc(fields, depth)
         v.LinkedList(items) -> list_doc(items, depth)
         v.Closure(param, _, _) -> doc.from_string("fn(" <> param <> ") { ... }")

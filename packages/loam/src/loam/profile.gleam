@@ -328,6 +328,7 @@ fn describe(callable, meta, names) {
     }
     v.Partial(switch, _) -> {
       let name = case switch {
+        v.Query(operation) -> string.inspect(operation)
         v.Builtin(name) -> "!" <> name
         v.Perform(name) -> "perform " <> name
         v.Handle(name) -> "handle " <> name

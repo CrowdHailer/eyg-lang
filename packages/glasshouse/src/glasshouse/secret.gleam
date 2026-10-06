@@ -183,6 +183,13 @@ fn do_substitute(value, replacements) {
         })
       v.Closure(parameter, body, environment)
     }
+    v.Table(facts, rules) ->
+      v.Table(
+        dict.map_values(facts, fn(_, rows) {
+          list.map(rows, do_substitute(_, replacements))
+        }),
+        list.map(rules, do_substitute(_, replacements)),
+      )
     v.Integer(_) -> value
   }
 }

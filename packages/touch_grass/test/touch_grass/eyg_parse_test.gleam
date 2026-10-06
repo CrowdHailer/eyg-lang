@@ -1,6 +1,7 @@
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/list
 import multiformats/cid/v1
 import touch_grass/eyg_parse
 
@@ -14,6 +15,20 @@ fn cid() {
 pub fn encode_error_is_a_result_test() {
   assert eyg_parse.encode(Error("bad syntax"))
     == v.error(v.String("bad syntax"))
+}
+
+pub fn query_operations_test() {
+  [
+    #(ir.EmptyTable, v.Tagged("EmptyTable", v.unit())),
+    #(ir.Fact("Edge"), v.Tagged("Fact", v.String("Edge"))),
+    #(ir.Rule, v.Tagged("Rule", v.unit())),
+    #(ir.Merge, v.Tagged("Merge", v.unit())),
+    #(ir.Resolve("Out"), v.Tagged("Resolve", v.String("Out"))),
+  ]
+  |> list.each(fn(pair) {
+    assert eyg_parse.encode(Ok(ir.query(pair.0)))
+      == v.ok(v.LinkedList([v.Tagged("Query", pair.1)]))
+  })
 }
 
 pub fn encode_flattens_a_leaf_test() {
