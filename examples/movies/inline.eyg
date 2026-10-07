@@ -1,0 +1,26 @@
+let star = "Arnold Schwarzenegger"
+
+let movies = @{
+  fact Movie({id: 1, title: "The Terminator", year: 1984}),
+  fact Movie({id: 2, title: "Predator", year: 1987}),
+  fact Movie({id: 3, title: "True Lies", year: 1994}),
+  fact Cast({movie: 1, actor: "Arnold Schwarzenegger"}),
+  fact Cast({movie: 1, actor: "Linda Hamilton"}),
+  fact Cast({movie: 2, actor: "Arnold Schwarzenegger"}),
+  fact Cast({movie: 2, actor: "Carl Weathers"}),
+  fact Cast({movie: 3, actor: "Arnold Schwarzenegger"}),
+  fact Cast({movie: 3, actor: "Jamie Lee Curtis"})
+}
+
+let query = @{
+  rule CoStar({actor, title}) {
+    var movie var actor var title
+    Cast({movie, actor: star}),
+    Cast({movie, actor}),
+    Movie({id: movie, title})
+  }
+}
+
+let line = (a, b) -> { !string_append(a, !string_append(" · ", !string_append(b, "\n"))) }
+let show = (row) -> { perform StandardOut(line(row.actor, row.title)) }
+!list_fold(resolve CoStar @{movies, query}, {}, (row, _) -> { show(row) })

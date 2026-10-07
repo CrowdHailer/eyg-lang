@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# Record the movies demo: movies.eyg edited in vim on the left, a shell on the right.
+# It starts from inline.eyg, and the edits end at exactly movies.eyg.
+# Needs Xvfb, xterm, tmux, vim, ffmpeg, a loaded movies.sqlite and `eyg` on PATH.
+# Usage: bin/record [output.mp4]
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
+out=$(realpath -m "${1:-$here/movies.mp4}")
+work=$(mktemp -d)
+display=:77
+socket=agent
+session=movies
+left=$session:0.0
+right=$session:0.1
+
+cp "$here/inline.eyg" "$work/movies.eyg"
+ln -s "$here/movies.sqlite" "$work/movies.sqlite"
+cat > "$work/vimrc" <<VIM
+set nocompatible
+set runtimepath+=$repo/packages/vim-eyg
+syntax on
+filetype on
+set background=dark
+colorscheme desert
+set number paste wrap linebreak shortmess+=I laststatus=0 noshowmode
+VIM
+
+cleanup() {
+  [ -n "${recorder:-}" ] && kill -INT "$recorder" 2>/dev/null && wait "$recorder" || true
+  tmux -L "$socket" kill-session -t "$session" 2>/dev/null || true
+  [ -n "${terminal:-}" ] && kill "$terminal" 2>/dev/null || true
+  [ -n "${xvfb:-}" ] && kill "$xvfb" 2>/dev/null || true
+  rm -rf "$work"
+}
+trap cleanup EXIT
+
+Xvfb "$display" -screen 0 1920x1080x24 -nolisten tcp &
+xvfb=$!
+sleep 1
+
+tmux -L "$socket" -f /dev/null new-session -d -s "$session" -x 192 -y 54 -c "$work" \
+  "vim -u $work/vimrc movies.eyg"
+tmux -L "$socket" split-window -h -l 82 -t "$session" -c "$work" \
+  "env PS1='\[\e[1;32m\]\$\[\e[0m\] ' bash --norc --noprofile"
+tmux -L "$socket" set -g status-position bottom
+tmux -L "$socket" set -g status-style "bg=#5b2a86,fg=#ffffff,bold"
+tmux -L "$socket" set -g status-left-length 160
+tmux -L "$socket" set -g status-right " eyg.run "
+tmux -L "$socket" set -g window-status-format ""
+tmux -L "$socket" set -g window-status-current-format ""
+tmux -L "$socket" set -g pane-border-style "fg=#444444"
+tmux -L "$socket" set -g pane-active-border-style "fg=#444444"
+
+env -u TMUX DISPLAY="$display" xterm -geometry 192x54+0+0 -fa "DejaVu Sans Mono" -fs 12 \
+  -bg "#1c1c1c" -fg "#d0d0d0" -b 0 -e tmux -L "$socket" attach -t "$session" &
+terminal=$!
+sleep 2
+
+caption() { tmux -L "$socket" set -g status-left "  $1  "; }
+keys() { tmux -L "$socket" send-keys -t "$1" "${@:2}"; }
+# Type text one character at a time so the edit is readable.
+typing() {
+  local pane=$1 text=$2 i
+  for ((i = 0; i < ${#text}; i++)); do
+    local char=${text:i:1}
+    # tmux reads a lone ; argument as the end of its command.
+    [ "$char" = ";" ] && char='\;'
+    tmux -L "$socket" send-keys -t "$pane" -l -- "$char"
+    sleep 0.025
+  done
+}
+line() { typing "$left" "$1"; keys "$left" Enter; }
+ex() { keys "$left" Escape; typing "$left" "$1"; keys "$left" Enter; sleep 0.4; }
+# Search without leaving visual mode.
+search() { typing "$left" "$1"; keys "$left" Enter; sleep 0.4; }
+save() { ex ":w"; sleep 0.6; }
+run() { typing "$right" "$1"; sleep 0.3; keys "$right" Enter; sleep "${2:-3}"; }
+
+ffmpeg -loglevel error -y -f x11grab -draw_mouse 0 -framerate 30 -video_size 1920x1080 \
+  -i "$display" -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p "$out" &
+recorder=$!
+sleep 1
+
+caption "1. Typed query literals over inline facts: who has Arnold Schwarzenegger worked with?"
+sleep 4
+run "eyg run movies.eyg" 4
+
+caption "2. A rule body takes any pure EYG predicate: leave Arnold out"
+ex "/Cast({movie, actor}),"
+keys "$left" o
+typing "$left" "    not(!equal(actor, star)),"
+keys "$left" Escape g g
+keys "$left" o
+typing "$left" 'let not = (b) -> { match b { True(_) -> { False({}) } False(_) -> { True({}) } } }'
+save
+run "clear; eyg run movies.eyg" 4
+
+caption "3. Same rules, now resolved in SQLite: 36,273 films and 133,326 cast credits"
+ex "/^let movies"
+keys "$left" V
+sleep 0.4
+search "/^}"
+sleep 1.5
+keys "$left" d
+keys "$left" d d
+keys "$left" G d d
+keys "$left" o
+line 'let {facts, sql} = match perform SQLiteQuery({database: "movies.sqlite", query}) {'
+line '  Ok(result) -> { result }'
+line '  Error(reason) -> { !never(perform Abort(reason)) }'
+line '}'
+typing "$left" '!list_fold(resolve CoStar facts, {}, (row, _) -> { show(row) })'
+save
+run "clear; time eyg run movies.eyg | tail -n 12" 4
+run "eyg run movies.eyg | wc -l" 3
+
+caption "4. The interpreter planned each rule as SQL: clauses become joins on indexed columns"
+keys "$left" Escape G O
+typing "$left" 'let _ = !list_fold(sql, {}, (s, _) -> { perform StandardOut(!string_append(s, "\n")) })'
+save
+run "clear; eyg run movies.eyg | head -n 5" 5
+
+caption "5. Recursion in SQL, then rules over the result in memory: Arnold's co-stars one step from Kevin Bacon"
+ex '/^  }\n}'
+keys "$left" o
+line '  rule Bacon({actor: "Kevin Bacon", n: 0}) { True({}) }'
+line '  rule Bacon({actor: other, n: !int_add(n, 1)}) {'
+line '    var actor var n var movie var other'
+line '    Bacon({actor, n}), before(n, 2),'
+line '    Cast({movie, actor}), Cast({movie, actor: other})'
+typing "$left" '  }'
+ex "/^let not"
+keys "$left" o
+typing "$left" 'let before = (a, b) -> { match !int_compare(a, b) { Lt(_) -> { True({}) } | (_) -> { False({}) } } }'
+keys "$left" Escape G d d
+keys "$left" o
+line 'let close = resolve Close @{'
+line '  facts,'
+line '  rule Close({actor, title}) { var actor var title CoStar({actor, title}), Bacon({actor, n: 1}) }'
+line '}'
+typing "$left" '!list_fold(close, {}, (row, _) -> { show(row) })'
+save
+run "clear; time eyg run movies.eyg" 6
+
+caption "EYG: one typed language for queries and effects, in memory or in SQLite"
+sleep 5
+
+kill -INT "$recorder"
+wait "$recorder" || true
+recorder=
+if ! diff -q "$work/movies.eyg" "$here/movies.eyg" >/dev/null; then
+  diff "$work/movies.eyg" "$here/movies.eyg" >&2 || true
+  echo "the recorded edits did not end at movies.eyg" >&2
+  exit 1
+fi
+echo "recorded $out"

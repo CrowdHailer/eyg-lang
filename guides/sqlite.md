@@ -11,7 +11,8 @@ each rule becomes one `INSERT ... SELECT` whose joins and filters use the
 database's indexes, so queries stay fast over tables of hundreds of thousands of rows.
 
 The [movies example](../examples/movies/) loads 36,273 films with 133,326 cast
-credits from Wikipedia and queries them.
+credits from Wikipedia and queries them. [This recording](../examples/movies/movies.mp4)
+edits one file from inline facts to the database, with the CLI running beside it.
 
 ## Two effects
 
