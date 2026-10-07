@@ -65,7 +65,7 @@ fn chat_request_encode(model, system_prompt, messages, tools, stream) {
   let messages = list.map(messages, message_encode)
   let messages = case system_prompt {
     "" -> messages
-    prompt -> [json_message("system", prompt, [], []), ..messages]
+    prompt -> [json_message("system", prompt, [], [], ""), ..messages]
   }
   json.object([
     #("model", json.string(model)),
@@ -76,22 +76,32 @@ fn chat_request_encode(model, system_prompt, messages, tools, stream) {
 }
 
 fn message_encode(message: chat.Message(tool.Call)) {
-  let #(role, content, images, tool_calls) = case message {
-    chat.UserMessage(text:, images:) -> #("user", text, images, [])
-    chat.AssistantMessage(text:, tool_calls:, ..) -> {
-      #("assistant", text, [], tool_calls)
+  let #(role, content, images, tool_calls, thinking) = case message {
+    chat.UserMessage(text:, images:) -> #("user", text, images, [], "")
+    chat.AssistantMessage(thinking:, text:, tool_calls:) -> {
+      #("assistant", text, [], tool_calls, thinking)
     }
-    chat.ToolResultMessage(text:, images:, ..) -> #("tool", text, images, [])
+    chat.ToolResultMessage(text:, images:, ..) -> #(
+      "tool",
+      text,
+      images,
+      [],
+      "",
+    )
   }
-  json_message(role, content, images, tool_calls)
+  json_message(role, content, images, tool_calls, thinking)
 }
 
-fn json_message(role, content, images, tool_calls) {
+fn json_message(role, content, images, tool_calls, thinking) {
   json.object([
     #("role", json.string(role)),
     #("content", json.string(content)),
     #("images", json.array(images, json.string)),
     #("tool_calls", json.array(tool_calls, tool_call_encode)),
+    ..case thinking {
+      "" -> []
+      _ -> [#("thinking", json.string(thinking))]
+    }
   ])
 }
 
