@@ -1,0 +1,41 @@
+let star = "Arnold Schwarzenegger"
+let not = (b) -> { match b { True(_) -> { False({}) } False(_) -> { True({}) } } }
+let before = (a, b) -> { match !int_compare(a, b) { Lt(_) -> { True({}) } | (_) -> { False({}) } } }
+
+let query = @{
+  rule CoStar({actor, title, year}) {
+    var movie var actor var title var year
+    Cast({movie, actor: star}),
+    Cast({movie, actor}),
+    not(!equal(actor, star)),
+    Movie({id: movie, title, year}),
+    before(1990, year)
+  }
+  rule Bacon({actor: "Kevin Bacon", n: 0}) { True({}) }
+  rule Bacon({actor: other, n: !int_add(n, 1)}) {
+    var actor var n var movie var other
+    Bacon({actor, n}),
+    before(n, 2),
+    Cast({movie, actor}),
+    Cast({movie, actor: other})
+  }
+}
+
+let print = (text) -> { perform StandardOut(!string_append(text, "\n")) }
+let each = (items, f) -> { !list_fold(items, {}, (item, _) -> { f(item) }) }
+
+let {facts, sql} = match perform SQLiteQuery({database: "movies.sqlite", query}) {
+  Ok(result) -> { result }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}
+let _ = each(sql, (statement) -> { print(statement) })
+
+let close = resolve Close @{
+  facts,
+  rule Close({actor, title}) {
+    var actor var title
+    CoStar({actor, title}),
+    Bacon({actor, n: 1})
+  }
+}
+each(close, (row) -> { print(!string_append(row.actor, !string_append(" · ", row.title))) })
