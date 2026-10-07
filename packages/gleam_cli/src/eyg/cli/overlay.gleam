@@ -286,7 +286,7 @@ pub fn execute_call(
           let result = case result {
             // current state is not used by the CLI implementation, this will need to change.
             Ok(#(Some(value), _)) -> {
-              Ok(tool.Return(report(output, simple_debug.inspect(value)), []))
+              Ok(tool.Return(report(output, agent.inspect_result(value)), []))
             }
             Ok(#(None, _)) -> Ok(tool.Return(report(output, ""), []))
             Error(reason) -> {

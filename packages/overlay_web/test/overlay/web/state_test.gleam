@@ -727,5 +727,5 @@ pub fn package_context_test() {
     state.update(State(..state, status:), state.LlmStreamFinished(Ok(Nil)))
   let assert state.Asking([chat.ToolResultMessage("abc", response, [])]) =
     state.status
-  assert "\"hi\"" == response
+  assert "hi" == response
 }

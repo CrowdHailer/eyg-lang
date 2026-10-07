@@ -17,6 +17,7 @@ import gleam/dynamic/decode
 import gleam/list
 import gleam/string
 import multiformats/cid/v1
+import overlay/agent
 import overlay/llm/chat
 import overlay/llm/tool
 import overlay/tools/run
@@ -306,7 +307,7 @@ fn do_all_returns(
         UnknownTool(name:) -> Ok("unknown tool: " <> name)
         BadArguments(reasons) -> Ok(string.inspect(reasons))
         InvalidCode(reason) -> Ok(debug.describe(reason))
-        Successful(value) -> Ok(simple_debug.inspect(value))
+        Successful(value) -> Ok(agent.inspect_result(value))
         Errored(errors) -> {
           list.map(errors, fn(error) { analysis_debug.reason(error.1) })
           |> string.join("\n")

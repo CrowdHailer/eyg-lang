@@ -88,6 +88,14 @@ pub fn describe_effect(effect: interface.Interface(a, b)) -> String {
   debug.render_effect(name, lift_type, lower_type)
 }
 
+/// Print strings directly, this is needed so fetched documents do not have escapes in the code examples.
+pub fn inspect_result(value: v.Value(_, _)) -> String {
+  case value {
+    v.String(text) -> text
+    _ -> simple_debug.inspect(value)
+  }
+}
+
 pub type ToolCall {
   Run(String)
 }
