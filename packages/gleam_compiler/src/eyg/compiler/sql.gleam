@@ -254,6 +254,8 @@ type Sym(m, c) {
   Variant(String, Sym(m, c))
   Lambda(String, ir.Node(m), List(#(String, Sym(m, c))))
   Op(Operation, List(Sym(m, c)))
+  // The value of a branch that cannot be taken.
+  Unreachable
   // The snapshot of the database passed to the rule.
   Database
 }
@@ -491,7 +493,8 @@ fn operate(operation, args) {
     Tag(label), [value] -> Ok(Variant(label, value))
     Case(label), [branch, otherwise, value] ->
       branch_on(label, branch, otherwise, value)
-    NoCases, [_] -> Error("no cases matched")
+    // Every variant of a value the database computed has a branch.
+    NoCases, [_] -> Ok(Unreachable)
     Builtin(id), _ -> builtin(id, args)
     _, _ -> Ok(Op(operation, args))
   }
@@ -534,6 +537,8 @@ fn branch_on(label, branch, otherwise, value) {
 
 // Only boolean results can be chosen by a condition the database decides.
 fn choose(condition: Fragment, yes, no) {
+  use <- bool.guard(no == Unreachable, Ok(yes))
+  use <- bool.guard(yes == Unreachable, Ok(no))
   use yes <- try(boolean(yes))
   use no <- try(boolean(no))
   use <- bool.guard(yes == #("1", []) && no == #("0", []), Ok(Sql(condition)))

@@ -104,3 +104,21 @@ pub fn values_without_a_sql_type_are_rejected_test() {
   let assert Error(_) =
     plan("@{ rule Out({n}) { var n Input({n}), !int_parse(\"1\") } }")
 }
+
+pub fn negated_conditions_test() {
+  let assert Ok(plan) =
+    plan(
+      "let not = (b) -> { match b { True(_) -> { False({}) } False(_) -> { True({}) } } }
+      @{ rule Pair({actor, other}) {
+        var movie var actor var other
+        Cast({movie, actor}), Cast({movie, actor: other}), not(!equal(actor, other))
+      } }",
+    )
+  assert statements(plan)
+    == [
+      sql.Statement(
+        "INSERT OR IGNORE INTO temp.\"Pair\" (\"actor\", \"other\") SELECT DISTINCT t0.\"actor\", t1.\"actor\" FROM \"Cast\" AS t0, \"Cast\" AS t1 WHERE t1.\"movie\" = t0.\"movie\" AND NOT (t0.\"actor\" = t1.\"actor\")",
+        [],
+      ),
+    ]
+}
