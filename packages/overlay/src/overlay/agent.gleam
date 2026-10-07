@@ -7,6 +7,7 @@ import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
 import gleam/dict.{type Dict}
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/string
@@ -103,6 +104,21 @@ pub fn inspect_result(value: v.Value(_, _)) -> String {
   case value {
     v.String(text) -> text
     _ -> simple_debug.inspect(value)
+  }
+}
+
+/// Bound tool context while retaining both initial content and final diagnostics.
+/// The marker makes omission explicit and tells the agent how to recover detail.
+pub fn tool_result_text(text: String) -> String {
+  let length = string.length(text)
+  case length <= 24_000 {
+    True -> text
+    False ->
+      string.slice(text, 0, 12_000)
+      <> "\n\n[Tool result truncated: "
+      <> int.to_string(length - 24_000)
+      <> " characters omitted. Return a focused section or selected fields in another run to inspect the missing content.]\n\n"
+      <> string.slice(text, length - 12_000, 12_000)
   }
 }
 

@@ -322,7 +322,7 @@ fn do_all_returns(
           let message =
             chat.ToolResultMessage(
               tool_call_id: id,
-              text: report(output, text),
+              text: agent.tool_result_text(report(output, text)),
               images: [],
             )
           do_all_returns(calls, [message, ..acc])

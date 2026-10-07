@@ -248,10 +248,18 @@ pub fn result_to_message(
 ) -> chat.Message(a) {
   case result {
     Ok(tool.Return(text, images)) -> {
-      chat.ToolResultMessage(tool_call_id: call_id, text:, images:)
+      chat.ToolResultMessage(
+        tool_call_id: call_id,
+        text: agent.tool_result_text(text),
+        images:,
+      )
     }
     Error(reason) ->
-      chat.ToolResultMessage(tool_call_id: call_id, text: reason, images: [])
+      chat.ToolResultMessage(
+        tool_call_id: call_id,
+        text: agent.tool_result_text(reason),
+        images: [],
+      )
   }
 }
 
