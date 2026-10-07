@@ -154,7 +154,12 @@ pub const string_split = state.Arity2(do_string_split)
 pub fn do_string_split(s, pattern, _meta, env, k) {
   use s <- try(cast.as_string(s))
   use pattern <- try(cast.as_string(pattern))
-  let assert [first, ..parts] = string.split(s, pattern)
+  let #(first, parts) = case string.split(s, pattern) {
+    // Splitting the empty string into graphemes produces no pieces, but the
+    // EYG contract always returns a head (as the compiler does).
+    [] -> #("", [])
+    [first, ..parts] -> #(first, parts)
+  }
   let parts = v.LinkedList(list.map(parts, v.String))
 
   let value =
