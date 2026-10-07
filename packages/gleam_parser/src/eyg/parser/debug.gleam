@@ -80,7 +80,7 @@ pub fn hint(reason) {
     parser.IntegerLiteralOutOfRange(..) ->
       "on the JavaScript target integers must be within the safe range (-(2^53-1) to 2^53-1)"
     parser.MissingEquals(..) ->
-      "let bindings use the form `let name = expression`"
+      "let bindings use the form `let name = expression`, names are lower snake_case such as `star_count`"
     parser.MissingArrow(..) -> "functions are written as `(arg) -> { body }`"
     parser.UnclosedFunctionBody(..) ->
       "every `{` in a function body must be closed with `}`"

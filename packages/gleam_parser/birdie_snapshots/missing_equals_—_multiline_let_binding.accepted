@@ -5,7 +5,7 @@ file: ./test/eyg/parser/error_test.gleam
 test_name: missing_equals_multiline_test
 ---
 error: expected `=` after let binding name at position 6
-hint: let bindings use the form `let name = expression`
+hint: let bindings use the form `let name = expression`, names are lower snake_case such as `star_count`
 
  2 | 5
      ^
