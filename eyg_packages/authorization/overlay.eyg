@@ -1,0 +1,70 @@
+let common = import "./common.eyg"
+let paths = import "./paths.eyg"
+
+// Matches the CLI Overlay's Pass(lift)/Mock(lower) protocol. The database is
+// trusted. This gate checks lexical paths; its host must prevent link escapes.
+let make = (db, identity) -> {
+  let {tenant, actor} = identity
+  let fetch = (request) -> {
+    let {method, scheme, host, port} = request
+    let allowed = resolve Permit @{
+      db,
+      rule Permit({}) {
+        AllowedOrigin({tenant, actor, scheme, host, port}),
+        !equal(method, GET({}))
+      }
+    }
+    match common.nonempty(allowed) {
+      True(_) -> { Pass(request) }
+      False(_) -> { Mock(Error("only GET requests to an allowed origin are permitted")) }
+    }
+  }
+  let home_path = (path) -> {
+    match paths.normalize(path) {
+      Error(reason) -> { Error(reason) }
+      Ok(path) -> {
+        let allowed = resolve Permit @{
+          db,
+          rule Permit({}) {
+            var home
+            Home({tenant, actor, path: home}), paths.within(home, path)
+          }
+        }
+        match common.nonempty(allowed) {
+          True(_) -> { Ok(path) }
+          False(_) -> { Error("file access must stay under the user's home directory") }
+        }
+      }
+    }
+  }
+  let file = (request) -> {
+    match home_path(request.path) {
+      Ok(path) -> { Pass({path, ..request}) }
+      Error(reason) -> { Mock(Error(reason)) }
+    }
+  }
+  let directory = (path) -> {
+    match home_path(path) {
+      Ok(path) -> { Pass(path) }
+      Error(reason) -> { Mock(Error(reason)) }
+    }
+  }
+  let deny = (_) -> { Mock(Error("effect denied by policy")) }
+  {
+    fetch,
+    read_file: file, write_file: file, append_file: file,
+    read_directory: directory, make_directory: directory,
+    delete_file: deny, create_key: deny, standard_in: deny,
+    // Exit has no return value to mock; force a failed tool run.
+    exit: (_) -> { Pass(1) },
+    flip: (_) -> { Mock(False({})) },
+    random: (_) -> { Mock(0) },
+    env: (_) -> { Mock(None({})) },
+    cwd: (_) -> { Mock(Error({})) },
+    now: (value) -> { Pass(value) },
+    sleep: (_) -> { Mock({}) },
+    standard_out: (value) -> { Pass(value) },
+    standard_error: (value) -> { Pass(value) }
+  }
+}
+{make}

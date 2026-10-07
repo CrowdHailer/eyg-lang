@@ -1,0 +1,72 @@
+// Absolute POSIX resource paths. The host must independently enforce physical
+// filesystem containment; these pure checks do not inspect symlinks or mounts.
+let common = import "./common.eyg"
+let normalize = (path) -> {
+  let safe_bytes = !binary_fold(!string_to_binary(path), True({}), (byte, safe) -> {
+    match safe {
+      False(_) -> { safe }
+      True(_) -> {
+        match !equal(byte, 0) {
+          True(_) -> { False({}) }
+          False(_) -> { common.not(!equal(byte, 92)) }
+        }
+      }
+    }
+  })
+  match safe_bytes {
+    False(_) -> { Error("NUL and backslash are not valid resource path characters") }
+    True(_) -> {
+      match !string_starts_with(path, "/") {
+        False(_) -> { Error("resource paths must be absolute") }
+        True(_) -> {
+          let parts = !string_split(path, "/")
+          let walk = !fix((self, remaining, reversed) -> {
+            match !list_pop(remaining) {
+              Error(_) -> {
+                let ordered = !list_fold(reversed, [], (part, acc) -> { [part, ..acc] })
+                let text = !list_fold(ordered, "", (part, acc) -> {
+                  !string_append(acc, !string_append("/", part))
+                })
+                match !equal(text, "") { True(_) -> { Ok("/") } False(_) -> { Ok(text) } }
+              }
+              Ok({head, tail}) -> {
+                match common.contains(["", "."], head) {
+                  True(_) -> { self(tail, reversed) }
+                  False(_) -> {
+                    match !equal(head, "..") {
+                      False(_) -> { self(tail, [head, ..reversed]) }
+                      True(_) -> {
+                        match !list_pop(reversed) {
+                          Error(_) -> { Error("resource path escapes its root") }
+                          Ok({tail: rest}) -> { self(tail, rest) }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          })
+          walk([parts.head, ..parts.tail], [])
+        }
+      }
+    }
+  }
+}
+let within = (root, path) -> {
+  match normalize(root) {
+    Error(_) -> { False({}) }
+    Ok(root) -> {
+      match normalize(path) {
+        Error(_) -> { False({}) }
+        Ok(path) -> {
+          match common.contains(["/", path], root) {
+            True(_) -> { True({}) }
+            False(_) -> { !string_starts_with(path, !string_append(root, "/")) }
+          }
+        }
+      }
+    }
+  }
+}
+{normalize, within}

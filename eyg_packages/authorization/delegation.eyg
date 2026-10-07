@@ -1,0 +1,22 @@
+// Deliberately unrestricted delegation: every held right can be passed on.
+let view = @{
+  rule Can({tenant, actor, action, resource}) {
+    var tenant var actor var action var resource
+    Grant({tenant, actor, action, resource})
+  }
+  rule Can({tenant, actor: recipient, action, resource}) {
+    var tenant var owner var recipient var action var resource
+    Can({tenant, actor: owner, action, resource}),
+    Delegate({tenant, owner, recipient})
+  }
+}
+let authorize = (db, request) -> {
+  let {tenant, actor, action, resource} = request
+  resolve Permit @{
+    db, view,
+    rule Permit({tenant, actor, action, resource}) {
+      Can({tenant, actor, action, resource})
+    }
+  }
+}
+{view, authorize}

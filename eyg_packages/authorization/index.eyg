@@ -1,0 +1,10 @@
+{
+  rbac: import "./rbac.eyg",
+  relationships: import "./relationships.eyg",
+  delegation: import "./delegation.eyg",
+  attenuation: import "./attenuation.eyg",
+  provenance: import "./provenance.eyg",
+  admission: import "./admission.eyg",
+  enterprise: import "./enterprise.eyg",
+  overlay: import "./overlay.eyg"
+}

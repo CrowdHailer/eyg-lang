@@ -1,0 +1,22 @@
+// Run in a filesystem sandbox that confines physical access to HOME.
+// The pure policy checks normalized paths; it cannot inspect symlink targets.
+let {make} = import "../../eyg_packages/authorization/overlay.eyg"
+let home = match perform Env("HOME") {
+  Some(home) -> { home }
+  None(_) -> {
+    let _ = perform StandardError("HOME is required\n")
+    !never(perform Exit(1))
+  }
+}
+let db = @{
+  fact Home({tenant: "demo", actor: "alice", path: home}),
+  fact AllowedOrigin({tenant: "demo", actor: "alice", scheme: HTTPS({}), host: "api.example.com", port: None({})})
+}
+{
+  llm: {
+    provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
+    model: "qwen3:8b"
+  },
+  policy: make(db, {tenant: "demo", actor: "alice"}),
+  context: {readme: "Use absolute paths under HOME. Fetch permits GET to api.example.com only. File deletion is denied."}
+}

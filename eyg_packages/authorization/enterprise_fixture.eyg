@@ -1,0 +1,41 @@
+// Trusted facts used by the executable enterprise chapter. Times are small
+// logical timestamps so expiry and revocation examples are deterministic.
+let organization = @{
+  fact Department({tenant: "acme", department: "engineering"}),
+  fact Department({tenant: "acme", department: "sales"}),
+  fact Department({tenant: "beta", department: "engineering"}),
+  fact Team({tenant: "acme", department: "engineering", team: "ops"}),
+  fact Team({tenant: "acme", department: "sales", team: "sales"}),
+  fact Team({tenant: "beta", department: "engineering", team: "ops"}),
+  fact Member({tenant: "acme", actor: "alice", team: "ops", role: "engineer", expires: 900}),
+  fact Member({tenant: "acme", actor: "bob", team: "ops", role: "engineer", expires: 900}),
+  fact Member({tenant: "acme", actor: "carol", team: "sales", role: "analyst", expires: 900}),
+  fact Member({tenant: "beta", actor: "alice", team: "ops", role: "engineer", expires: 900}),
+  fact Project({tenant: "acme", project: "atlas", team: "ops", scope: "/acme/atlas"}),
+  fact Project({tenant: "acme", project: "crm", team: "sales", scope: "/acme/crm"}),
+  fact Project({tenant: "beta", project: "atlas", team: "ops", scope: "/beta/atlas"})
+}
+let policies = @{
+  fact TeamPolicy({tenant: "acme", team: "ops", role: "engineer", action: "read", mode: "automatic", expires: 1000, id: "ops-read"}),
+  fact TeamPolicy({tenant: "acme", team: "ops", role: "engineer", action: "write", mode: "automatic", expires: 1000, id: "ops-write"}),
+  fact TeamPolicy({tenant: "acme", team: "ops", role: "engineer", action: "create_agent", mode: "automatic", expires: 1000, id: "ops-agent"}),
+  fact TeamPolicy({tenant: "acme", team: "ops", role: "engineer", action: "create_automation", mode: "automatic", expires: 1000, id: "ops-automation"}),
+  fact TeamPolicy({tenant: "acme", team: "sales", role: "analyst", action: "read", mode: "automatic", expires: 1000, id: "sales-read"}),
+  fact TeamPolicy({tenant: "acme", team: "sales", role: "analyst", action: "create_agent", mode: "approved", expires: 1000, id: "sales-agent"}),
+  fact TeamPolicy({tenant: "beta", team: "ops", role: "engineer", action: "read", mode: "automatic", expires: 1000, id: "beta-read"})
+}
+let approval = fact Approval({tenant: "acme", actor: "carol", project: "crm", action: "create_agent", expires: 130})
+let agents = @{
+  fact Agent({tenant: "acme", actor: "a1", owner: "alice", project: "atlas", expires: 180}),
+  fact Agent({tenant: "acme", actor: "a2", owner: "bob", project: "atlas", expires: 200})
+}
+let tasks = @{
+  fact Task({tenant: "acme", task: "report", actor: "a1", project: "atlas", state: "running", expires: 150}),
+  fact Task({tenant: "acme", task: "review", actor: "a2", project: "atlas", state: "running", expires: 190})
+}
+let delegations = @{
+  fact Delegation({tenant: "acme", owner: "alice", recipient: "a1", action: "read", scope: "/acme/atlas/reports", expires: 170, id: "alice-report"}),
+  fact Delegation({tenant: "acme", owner: "bob", recipient: "a2", action: "read", scope: "/acme/atlas", expires: 190, id: "bob-review"})
+}
+let db = @{ organization, policies, approval, agents, tasks, delegations }
+{organization, policies, approval, agents, tasks, delegations, db}

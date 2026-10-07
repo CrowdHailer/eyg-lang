@@ -1,0 +1,243 @@
+let {assert} = import "../aok/source/index.eyg"
+let auth = import "./index.eyg"
+let common = import "./common.eyg"
+let paths = import "./paths.eyg"
+let company = import "./enterprise_fixture.eyg"
+let request = {tenant: "acme", actor: "alice", action: "read", resource: "/docs/report"}
+let grant = fact Grant({tenant: "acme", actor: "alice", action: "read", scope: "/docs", expires: 200, id: "root"})
+let delegated = @{
+  grant,
+  fact Delegation({tenant: "acme", owner: "alice", recipient: "bot", action: "read", scope: "/docs/report", expires: 150, id: "alice-bot"})
+}
+let bot_request = {actor: "bot", ..request}
+let allowed = (rows) -> { assert.true(common.nonempty(rows)) }
+let denied = (rows) -> { assert.equal([], rows) }
+
+let rbac = (_) -> {
+  let db = @{
+    fact Member({tenant: "acme", actor: "alice", role: "reader"}),
+    fact RolePermission({tenant: "acme", role: "reader", action: "read", resource: "/docs/report", policy: "read-docs"}),
+    fact RolePermission({tenant: "beta", role: "reader", action: "write", resource: "/docs/report", policy: "beta-write"})
+  }
+  let _ = assert.equal([
+    {tenant: "acme", actor: "alice", action: "read", resource: "/docs/report", role: "reader", policy: "read-docs"}
+  ], auth.rbac.authorize(db, request))
+  let _ = denied(auth.rbac.authorize(db, {actor: "mallory", ..request}))
+  let _ = denied(auth.rbac.authorize(db, {action: "write", ..request}))
+  let _ = denied(auth.rbac.authorize(db, {tenant: "beta", ..request}))
+  let _ = denied(auth.rbac.authorize(@{}, request))
+  {}
+}
+let relationships = (_) -> {
+  let db = @{
+    fact Grant({tenant: "acme", actor: "alice", action: "read", resource: "org"}),
+    fact Child({tenant: "acme", parent: "org", child: "team"}),
+    fact Child({tenant: "acme", parent: "team", child: "/docs/report"}),
+    fact Child({tenant: "acme", parent: "/docs/report", child: "org"}),
+    fact Child({tenant: "beta", parent: "org", child: "secret"})
+  }
+  let _ = allowed(auth.relationships.authorize(db, request))
+  let _ = denied(auth.relationships.authorize(db, {resource: "secret", ..request}))
+  let _ = denied(auth.relationships.authorize(db, {action: "write", ..request}))
+  let _ = denied(auth.relationships.authorize(@{}, request))
+  {}
+}
+let delegation = (_) -> {
+  let db = @{
+    fact Grant(request),
+    fact Delegate({tenant: "acme", owner: "alice", recipient: "bot"}),
+    fact Delegate({tenant: "acme", owner: "bot", recipient: "worker"}),
+    fact Delegate({tenant: "acme", owner: "worker", recipient: "alice"}),
+    fact Delegate({tenant: "beta", owner: "alice", recipient: "mallory"})
+  }
+  let _ = allowed(auth.delegation.authorize(db, bot_request))
+  let _ = allowed(auth.delegation.authorize(db, {actor: "worker", ..request}))
+  let _ = denied(auth.delegation.authorize(db, {actor: "mallory", ..request}))
+  let _ = denied(auth.delegation.authorize(db, {action: "write", ..bot_request}))
+  let _ = denied(auth.delegation.authorize(@{}, bot_request))
+  {}
+}
+let attenuation = (_) -> {
+  let _ = allowed(auth.attenuation.authorize(delegated, bot_request, 100))
+  let _ = denied(auth.attenuation.authorize(delegated, bot_request, 150))
+  let _ = denied(auth.attenuation.authorize(delegated, request, 200))
+  let _ = denied(auth.attenuation.authorize(delegated, {resource: "/docs/other", ..bot_request}, 100))
+  let _ = denied(auth.attenuation.authorize(delegated, {resource: "/docs/report/../../private", ..bot_request}, 100))
+  let _ = denied(auth.attenuation.authorize(delegated, {tenant: "beta", ..bot_request}, 100))
+  let _ = !list_fold([
+    {tenant: "acme", owner: "alice", recipient: "bot", action: "read", scope: "/", expires: 150, id: "scope"},
+    {tenant: "acme", owner: "alice", recipient: "bot", action: "read", scope: "/docs", expires: 201, id: "expiry"},
+    {tenant: "acme", owner: "alice", recipient: "bot", action: "write", scope: "/docs", expires: 150, id: "action"},
+    {tenant: "beta", owner: "alice", recipient: "bot", action: "read", scope: "/docs", expires: 150, id: "tenant"}
+  ], {}, (bad, _) -> {
+    let _ = denied(auth.attenuation.authorize(@{grant, fact Delegation(bad)}, bot_request, 100))
+    let _ = denied(auth.attenuation.authorize(@{grant, fact Delegation(bad)}, {action: "write", ..bot_request}, 100))
+    {}
+  })
+  {}
+}
+let provenance = (_) -> {
+  let cycle = @{
+    delegated,
+    fact Delegation({tenant: "acme", owner: "bot", recipient: "alice", action: "read", scope: "/docs/report", expires: 140, id: "cycle"})
+  }
+  let expected = [{tenant: "acme", actor: "bot", issuer: "alice", action: "read", resource: "/docs/report", scope: "/docs/report", expires: 150, grants: ["alice-bot", "root"]}]
+  let _ = assert.equal(expected, auth.provenance.authorize(cycle, bot_request, 100))
+  let alternate = @{
+    cycle,
+    fact Delegation({tenant: "acme", owner: "alice", recipient: "bot", action: "read", scope: "/docs/report", expires: 150, id: "alternate"})
+  }
+  let proofs = auth.provenance.authorize(alternate, bot_request, 100)
+  let _ = assert.equal(2, !list_fold(proofs, 0, (_, n) -> { !int_add(n, 1) }))
+  let _ = denied(auth.provenance.authorize(cycle, bot_request, 150))
+  let _ = denied(auth.provenance.authorize(@{}, bot_request, 100))
+  {}
+}
+let admission = (_) -> {
+  let identity = {tenant: "acme", actor: "alice"}
+  let proposal = {recipient: "bot", action: "read", scope: "/docs/report", expires: 150, id: "admitted"}
+  let new_rule = assert.ok(auth.admission.admit(grant, identity, proposal, 100))
+  let _ = allowed(auth.attenuation.authorize(@{grant, new_rule}, bot_request, 100))
+  let db = @{
+    grant,
+    fact Grant({tenant: "acme", actor: "alice", action: "write", scope: "/docs", expires: 200, id: "write"}),
+    fact Grant({tenant: "acme", actor: "alice", action: "delete", scope: "/docs", expires: 200, id: "delete"})
+  }
+  let _ = assert.ok(auth.admission.admit(db, identity, {action: "write", ..proposal}, 100))
+  let _ = !list_fold([
+    {action: "delete", ..proposal}, {scope: "/", ..proposal},
+    {expires: 201, ..proposal}, {expires: 100, ..proposal},
+    {scope: "/docs/../private", ..proposal}
+  ], {}, (bad, _) -> {
+    let _ = assert.error(auth.admission.admit(db, identity, bad, 100))
+    {}
+  })
+  let _ = assert.error(auth.admission.admit(db, {actor: "mallory", ..identity}, proposal, 100))
+  let _ = assert.error(auth.admission.admit(db, {tenant: "beta", ..identity}, proposal, 100))
+  {}
+}
+let resource_paths = (_) -> {
+  let _ = assert.equal(Ok("/home/alice/a"), paths.normalize("/home//alice/./b/../a/"))
+  let _ = assert.equal(Ok("/"), paths.normalize("/a/.."))
+  let _ = assert.equal(Ok("/"), paths.normalize("///"))
+  let _ = assert.true(paths.within("/", "/a"))
+  let _ = assert.true(paths.within("/home/alice/", "/home/alice"))
+  let _ = assert.true(paths.within("/home/alice", "/home/alice/.config/file"))
+  let _ = assert.false(paths.within("/home/alice", "/home/alice-other/file"))
+  let _ = assert.false(paths.within("relative", "/relative/file"))
+  let nul = assert.ok(!string_from_binary(!binary_from_integers([0])))
+  let _ = !list_fold(["relative", "/../a", "/home/alice/../../..", "/home/alice\\..\\secret", !string_append("/home/alice/", nul)], {}, (bad, _) -> {
+    let _ = assert.error(paths.normalize(bad))
+    assert.false(paths.within("/home/alice", bad))
+  })
+  {}
+}
+let overlay = (_) -> {
+  let policy = auth.overlay.make(@{
+    fact Home({tenant: "acme", actor: "alice", path: "/home/alice"}),
+    fact Home({tenant: "beta", actor: "alice", path: "/private"}),
+    fact AllowedOrigin({tenant: "acme", actor: "alice", scheme: HTTPS({}), host: "api.example.com", port: None({})})
+  }, {tenant: "acme", actor: "alice"})
+  let fetch = {method: GET({}), scheme: HTTPS({}), host: "api.example.com", port: None({}), path: "/", headers: [], query: None({}), body: !string_to_binary("")}
+  let pass = (decision) -> {
+    match decision { Pass(value) -> { value } Mock(_) -> { !never(perform Abort("expected Pass")) } }
+  }
+  let mock = (decision) -> {
+    match decision { Mock(value) -> { value } Pass(_) -> { !never(perform Abort("expected Mock")) } }
+  }
+  let _ = assert.equal(fetch, pass(policy.fetch(fetch)))
+  let _ = !list_fold([
+    {method: POST({}), ..fetch}, {host: "evil.example", ..fetch},
+    {scheme: HTTP({}), ..fetch}, {port: Some(8443), ..fetch}
+  ], {}, (bad, _) -> { let _ = assert.error(mock(policy.fetch(bad))) {} })
+  let write = {path: "/home/alice/a/../file", contents: !string_to_binary("hello")}
+  let _ = assert.equal("/home/alice/file", pass(policy.write_file(write)).path)
+  let _ = assert.equal("/home/alice/file", pass(policy.append_file(write)).path)
+  let _ = assert.equal("/home/alice/file", pass(policy.read_file({path: write.path, offset: 0, limit: 10})).path)
+  let _ = assert.equal("/home/alice", pass(policy.read_directory("/home/alice/.")))
+  let _ = assert.equal("/home/alice/new", pass(policy.make_directory("/home/alice/new")))
+  let _ = !list_fold(["/private/x", "/home/alice-other/x", "/home/alice/../../etc/x", "relative"], {}, (path, _) -> {
+    let _ = assert.error(mock(policy.write_file({path, ..write})))
+    let _ = assert.error(mock(policy.append_file({path, ..write})))
+    let _ = assert.error(mock(policy.read_file({path, offset: 0, limit: 10})))
+    let _ = assert.error(mock(policy.make_directory(path)))
+    let _ = assert.error(mock(policy.read_directory(path)))
+    {}
+  })
+  let _ = assert.error(mock(policy.delete_file("/home/alice/file")))
+  let _ = assert.error(mock(policy.create_key(Eddsa({}))))
+  let _ = assert.equal(mock(policy.flip({})), False({}))
+  let _ = assert.equal(mock(policy.random(10)), 0)
+  let _ = assert.error(mock(policy.standard_in({})))
+  let _ = assert.equal(None({}), mock(policy.env("HOME")))
+  let _ = assert.equal(Error({}), mock(policy.cwd({})))
+  let _ = assert.equal({}, mock(policy.sleep(1000)))
+  let _ = assert.equal({}, pass(policy.now({})))
+  let _ = assert.equal("hello", pass(policy.standard_out("hello")))
+  let _ = assert.equal("error", pass(policy.standard_error("error")))
+  {}
+}
+let enterprise_humans = (_) -> {
+  let request = {tenant: "acme", actor: "alice", project: "atlas", action: "create_agent", resource: "/acme/atlas"}
+  let sales = {actor: "carol", project: "crm", resource: "/acme/crm", ..request}
+  let _ = allowed(auth.enterprise.human(company.db, request, 100))
+  let _ = allowed(auth.enterprise.human(company.db, {actor: "bob", action: "create_automation", ..request}, 100))
+  let _ = allowed(auth.enterprise.human(company.db, sales, 100))
+  let _ = denied(auth.enterprise.human(company.db, sales, 130))
+  let _ = denied(auth.enterprise.human(@{company.organization, company.policies}, sales, 100))
+  let _ = denied(auth.enterprise.human(company.db, {action: "create_automation", ..sales}, 100))
+  let _ = denied(auth.enterprise.human(company.db, {actor: "carol", ..request}, 100))
+  let _ = denied(auth.enterprise.human(company.db, {tenant: "beta", resource: "/beta/atlas", ..request}, 100))
+  let _ = denied(auth.enterprise.human(company.db, {project: "crm", ..request}, 100))
+  let _ = denied(auth.enterprise.human(company.db, request, 900))
+  {}
+}
+let enterprise_agents = (_) -> {
+  let request = {tenant: "acme", actor: "a1", task: "report", project: "atlas", action: "read", resource: "/acme/atlas/reports/october"}
+  let permits = auth.enterprise.agent(company.db, request, 100)
+  let _ = assert.equal([{tenant: "acme", actor: "a1", task: "report", project: "atlas", action: "read", resource: "/acme/atlas/reports/october", expires: 150, grants: ["alice-report", "ops-read"]}], permits)
+  let _ = allowed(auth.enterprise.agent(company.db, {actor: "a2", task: "review", ..request}, 100))
+  let _ = denied(auth.enterprise.agent(company.db, request, 150))
+  let _ = denied(auth.enterprise.agent(company.db, request, 180))
+  let _ = denied(auth.enterprise.agent(company.db, {task: "review", ..request}, 100))
+  let _ = denied(auth.enterprise.agent(company.db, {action: "write", ..request}, 100))
+  let _ = denied(auth.enterprise.agent(company.db, {tenant: "beta", ..request}, 100))
+  let _ = denied(auth.enterprise.agent(company.db, {project: "crm", ..request}, 100))
+  let _ = denied(auth.enterprise.agent(company.db, {resource: "/acme/atlas/private", ..request}, 100))
+  let revoked = @{company.organization, company.policies, company.agents, company.tasks}
+  let _ = denied(auth.enterprise.agent(revoked, request, 101))
+  let cancelled = @{company.organization, company.policies, company.agents, company.delegations,
+    fact Task({tenant: "acme", task: "report", actor: "a1", project: "atlas", state: "cancelled", expires: 150})}
+  let _ = denied(auth.enterprise.agent(cancelled, request, 101))
+  let wrong_owner = @{company.organization, company.policies, company.tasks, company.delegations,
+    fact Agent({tenant: "acme", actor: "a1", owner: "bob", project: "atlas", expires: 180})}
+  let _ = denied(auth.enterprise.agent(wrong_owner, request, 101))
+  let no_policy = @{company.organization, company.agents, company.tasks, company.delegations}
+  let _ = denied(auth.enterprise.agent(no_policy, request, 101))
+  {}
+}
+let helpers = (_) -> {
+  let _ = assert.false(common.nonempty([]))
+  let _ = assert.true(common.contains([1, 2], 2))
+  let _ = assert.false(common.contains([1, 2], 3))
+  let _ = assert.false(common.not(True({})))
+  let _ = assert.true(common.not(False({})))
+  let _ = assert.equal(2, common.min(2, 3))
+  let _ = assert.equal(2, common.min(3, 2))
+  let _ = assert.equal(2, common.min(2, 2))
+  let _ = assert.true(common.at_most(2, 2))
+  {}
+}
+[
+  {name: "authorization: role based access and tenant isolation", test: rbac},
+  {name: "authorization: recursive relationships and cycles", test: relationships},
+  {name: "authorization: transitive delegation and cycles", test: delegation},
+  {name: "authorization: scope, action, expiry and tenant attenuation", test: attenuation},
+  {name: "authorization: proof paths terminate and retain provenance", test: provenance},
+  {name: "authorization: rule admission only permits attenuated read/write", test: admission},
+  {name: "authorization: canonical resource paths", test: resource_paths},
+  {name: "authorization: Overlay GET and home gates", test: overlay},
+  {name: "authorization: enterprise team creation policies", test: enterprise_humans},
+  {name: "authorization: long running agents, revocation and expiry", test: enterprise_agents},
+  {name: "authorization: predicate helpers", test: helpers}
+]

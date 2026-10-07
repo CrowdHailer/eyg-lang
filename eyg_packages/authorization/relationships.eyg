@@ -1,0 +1,21 @@
+let view = @{
+  rule Can({tenant, actor, action, resource}) {
+    var tenant var actor var action var resource
+    Grant({tenant, actor, action, resource})
+  }
+  rule Can({tenant, actor, action, resource: child}) {
+    var tenant var actor var action var parent var child
+    Can({tenant, actor, action, resource: parent}),
+    Child({tenant, parent, child})
+  }
+}
+let authorize = (db, request) -> {
+  let {tenant, actor, action, resource} = request
+  resolve Permit @{
+    db, view,
+    rule Permit({tenant, actor, action, resource}) {
+      Can({tenant, actor, action, resource})
+    }
+  }
+}
+{view, authorize}

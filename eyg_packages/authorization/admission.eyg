@@ -1,0 +1,27 @@
+let common = import "./common.eyg"
+let paths = import "./paths.eyg"
+let attenuation = import "./attenuation.eyg"
+
+// The host authenticates tenant/owner and assigns a unique id. Callers submit
+// data, never an executable Table. Only this template creates a delegation.
+let admit = (db, identity, proposal, now) -> {
+  let {tenant, actor: owner} = identity
+  let {recipient, action, scope, expires, id} = proposal
+  let admitted = resolve Admitted @{
+    db, attenuation.view(now),
+    fact AllowedAction("read"), fact AllowedAction("write"),
+    rule Admitted({tenant, owner, recipient, action, scope, expires, id}) {
+      var parent var until
+      AllowedAction(action),
+      Can({tenant, actor: owner, action, scope: parent, expires: until}),
+      paths.within(parent, scope),
+      common.before(now, expires),
+      common.at_most(expires, until)
+    }
+  }
+  match !list_pop(admitted) {
+    Error(_) -> { Error("proposal is not an attenuated read or write permission") }
+    Ok({head}) -> { Ok(fact Delegation(head)) }
+  }
+}
+{admit}

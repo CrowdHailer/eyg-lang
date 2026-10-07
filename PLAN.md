@@ -123,25 +123,32 @@ out
 Tasks
 - [x] Implement parsing for query literals
 - [x] Implement a datalog engine that will calculate and resolve queries and facts.
-- [ ] Create an example of writing rules in a policy for overlay based on facts in a DB
-    - [ ] A simple rule will be requests must be get
-    - [ ] Create a rule that only allows files to be writen under the users home directory
-    - [ ] Write a meta rule that states users can only create rules with read or write permissions.
+- [x] Create an example of writing rules in a policy for overlay based on facts in a DB
+    - [x] A simple rule will be requests must be get
+    - [x] Create a rule that only allows files to be writen under the users home directory
+    - [x] Write a meta rule that states users can only create rules with read or write permissions.
+    - Examples: `eyg_packages/authorization/overlay.eyg` and `admission.eyg`;
+      runnable CLI config: `examples/authorization/overlay.eyg`. Path checks are
+      lexical; the documented host boundary must prevent symlink/mount escapes.
 - [ ] Implement a to SQL function that will turn a table into a SQL query.
     - [ ] Show that this also builds a client adater for the imperative part of the program that implicitly decodes the query
     - [ ] Record a video of this working against a SQLite database
         - Accessing the DB is probably via an effect i.e. `let db = perform DB({})` In this environment the return type of that will be a table with internal row type matching the rows in the database
 - [ ] review this work against the flix programing language what queries can it represent that we cannot
 - [ ] review this work against crepe a Rust project
-- [ ] Write a tutorial explaining how to write rules for authorization using EYG and it's query literals, including
+- [x] Write a tutorial explaining how to write rules for authorization using EYG and it's query literals, including
     - role based access control
     - relation based access control
     - delegation
     - attenuated delegation
     - providence tracking
     - Full enterprise rules for multiple company departments with multiple team members and projects working wil multiple agents and long running tasks. Each team has it's own rules on when it can create or not an automation or agent.
-- [ ] Review the tutorial make sure every chapter has examples and that they work.
-- [ ] Make sure syntax highlighting works and the tutorial looks good.
+- [x] Review the tutorial make sure every chapter has examples and that they work.
+    - `guides/authorization.md`: CLI tests type-check and execute all nine blocks;
+      eleven EYG test groups cover permission, denial, expiry, and revocation.
+- [x] Make sure syntax highlighting works and the tutorial looks good.
+    - Shared TextMate grammar covers query syntax; website tests verify rendered
+      code and links. Chromium review at 1280px and 390px found no page overflow.
 - [ ] Write a presentation explaining why EYG is so good for knowing what your agents are up to
     - The presenation should explain why this appoach is better than https://www.biscuitsec.org/
 

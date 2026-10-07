@@ -1,5 +1,7 @@
 import gleam/bit_array
+import gleam/dict
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import jot
@@ -19,7 +21,13 @@ import website/routes/common
 import website/routes/home
 
 pub type Guide {
-  Guide(slug: String, name: String, description: String, document: jot.Document)
+  Guide(
+    slug: String,
+    filename: String,
+    name: String,
+    description: String,
+    document: jot.Document,
+  )
 }
 
 fn all(root) -> List(Guide) {
@@ -40,7 +48,8 @@ fn all(root) -> List(Guide) {
         |> string.trim,
       )
 
-    Ok(Guide(slug:, name:, description:, document:))
+    let filename = string.split(path, "/") |> list.last |> result.unwrap(path)
+    Ok(Guide(slug:, filename:, name:, description:, document:))
   })
 }
 
@@ -144,8 +153,17 @@ pub fn index_page() {
 
 fn guide_body(guide) {
   let Guide(document:, ..) = guide
-  let content =
-    lustre.to_lustre(document, guide_highlight.renderer())(fn(x) { x })
+  let known = from_repo()
+  let default = guide_highlight.renderer()
+  let renderer =
+    lustre.Renderer(..default, render_link: fn(attrs, children) {
+      let attrs = case dict.get(attrs, "href") {
+        Ok(href) -> dict.insert(attrs, "href", link_target(href, known))
+        Error(_) -> attrs
+      }
+      default.render_link(attrs, children)
+    })
+  let content = lustre.to_lustre(document, renderer)(fn(x) { x })
   [
     components.header(),
     h.main([a.class("mx-auto w-full max-w-4xl px-4 pt-20 pb-16")], [
@@ -156,6 +174,43 @@ fn guide_body(guide) {
     ]),
     components.footer(),
   ]
+}
+
+/// Preserve repository-relative links in the Markdown source while producing
+/// working guide routes and source links for the published HTML.
+pub fn link_target(href: String, guides: List(Guide)) -> String {
+  case string.starts_with(href, "../") {
+    True -> {
+      let kind = case string.ends_with(href, "/") {
+        True -> "tree"
+        False -> "blob"
+      }
+      "https://github.com/CrowdHailer/eyg-lang/"
+      <> kind
+      <> "/main/"
+      <> string.drop_start(href, 3)
+    }
+    False -> {
+      let #(filename, fragment) = case string.split_once(href, "#") {
+        Ok(#(file, fragment)) -> #(file, Some(fragment))
+        Error(_) -> #(href, None)
+      }
+      let filename = case string.starts_with(filename, "./") {
+        True -> string.drop_start(filename, 2)
+        False -> filename
+      }
+      case list.find(guides, fn(guide) { guide.filename == filename }) {
+        Ok(guide) ->
+          "/guides/"
+          <> guide.slug
+          <> case fragment {
+            Some(fragment) -> "#" <> fragment
+            None -> ""
+          }
+        Error(_) -> href
+      }
+    }
+  }
 }
 
 pub fn guide_page(guide: Guide) {

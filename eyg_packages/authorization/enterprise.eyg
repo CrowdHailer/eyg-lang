@@ -1,0 +1,69 @@
+let common = import "./common.eyg"
+let paths = import "./paths.eyg"
+let provenance = import "./provenance.eyg"
+
+// Every join includes the tenant. Department and team membership are facts
+// maintained by the organization, not claimed by a request or its agent.
+let view = (project, now) -> {
+  @{
+    rule Grant({tenant, actor, action, scope,
+                expires: common.min(member_until, policy_until), id}) {
+      var tenant var actor var department var team var role
+      var action var scope var member_until var policy_until var id
+      Department({tenant, department}),
+      Team({tenant, department, team}),
+      Member({tenant, actor, team, role, expires: member_until}),
+      Project({tenant, project, team, scope}),
+      TeamPolicy({tenant, team, role, action, mode: "automatic", expires: policy_until, id}),
+      common.before(now, member_until), common.before(now, policy_until)
+    }
+    rule Grant({tenant, actor, action, scope,
+                expires: common.min(approval_until, common.min(member_until, policy_until)), id}) {
+      var tenant var actor var department var team var role
+      var action var scope var member_until var policy_until var approval_until var id
+      Department({tenant, department}),
+      Team({tenant, department, team}),
+      Member({tenant, actor, team, role, expires: member_until}),
+      Project({tenant, project, team, scope}),
+      TeamPolicy({tenant, team, role, action, mode: "approved", expires: policy_until, id}),
+      Approval({tenant, actor, project, action, expires: approval_until}),
+      common.before(now, member_until), common.before(now, policy_until),
+      common.before(now, approval_until)
+    }
+    provenance.view(now)
+  }
+}
+
+let human = (db, request, now) -> {
+  let {tenant, actor, project, action, resource} = request
+  resolve Permit @{
+    db, view(project, now),
+    rule Permit({tenant, actor, project, action, resource, expires, grants}) {
+      var scope var project_scope var expires var grants
+      Project({tenant, project, scope: project_scope}),
+      Proof({tenant, actor, issuer: actor, action, scope, expires, grants}),
+      paths.within(project_scope, resource), paths.within(scope, resource)
+    }
+  }
+}
+
+// Long-running tasks reauthorize EVERY action against a fresh trusted snapshot
+// and timestamp. An old Permit is an explanation, never a reusable capability.
+let agent = (db, request, now) -> {
+  let {tenant, actor, task, project, action, resource} = request
+  resolve Permit @{
+    db, view(project, now),
+    rule Permit({tenant, actor, task, project, action, resource,
+                 expires: common.min(expires, common.min(agent_until, task_until)), grants}) {
+      var owner var agent_until var task_until var scope var project_scope
+      var expires var grants
+      Agent({tenant, actor, owner, project, expires: agent_until}),
+      Task({tenant, task, actor, project, state: "running", expires: task_until}),
+      Project({tenant, project, scope: project_scope}),
+      Proof({tenant, actor, issuer: owner, action, scope, expires, grants}),
+      common.before(now, agent_until), common.before(now, task_until),
+      paths.within(project_scope, resource), paths.within(scope, resource)
+    }
+  }
+}
+{view, human, agent}

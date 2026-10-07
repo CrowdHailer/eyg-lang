@@ -1,0 +1,21 @@
+let nonempty = (items) -> {
+  match !list_pop(items) { Ok(_) -> { True({}) } Error(_) -> { False({}) } }
+}
+let contains = (items, value) -> {
+  !list_fold(items, False({}), (item, found) -> {
+    match found { True(_) -> { found } False(_) -> { !equal(item, value) } }
+  })
+}
+let not = (value) -> {
+  match value { True(_) -> { False({}) } False(_) -> { True({}) } }
+}
+let before = (now, expires) -> {
+  match !int_compare(now, expires) { Lt(_) -> { True({}) } | (_) -> { False({}) } }
+}
+let at_most = (left, right) -> {
+  match !int_compare(left, right) { Gt(_) -> { False({}) } | (_) -> { True({}) } }
+}
+let min = (left, right) -> {
+  match !int_compare(left, right) { Gt(_) -> { right } | (_) -> { left } }
+}
+{nonempty, contains, not, before, at_most, min}

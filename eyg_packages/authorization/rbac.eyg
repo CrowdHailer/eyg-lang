@@ -1,0 +1,14 @@
+// The database and authenticated tenant/actor come from the host.
+let authorize = (db, request) -> {
+  let {tenant, actor, action, resource} = request
+  resolve Permit @{
+    db,
+    rule Permit({tenant, actor, action, resource, role, policy}) {
+      var role
+      var policy
+      Member({tenant, actor, role}),
+      RolePermission({tenant, role, action, resource, policy})
+    }
+  }
+}
+{authorize}
