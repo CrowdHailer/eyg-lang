@@ -1,3 +1,4 @@
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
@@ -32,7 +33,7 @@ fn do_capture(term, env, meta) {
       })
     v.Table(facts, rules) -> {
       let items =
-        list.flat_map(dict.to_list(facts), fn(pair) {
+        list.flat_map(table.to_list(facts), fn(pair) {
           list.map(pair.1, fn(row) { #(ir.Fact(pair.0), row) })
         })
         |> list.append(list.map(rules, fn(rule) { #(ir.Rule, rule) }))

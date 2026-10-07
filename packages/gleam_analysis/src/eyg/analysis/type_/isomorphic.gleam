@@ -78,6 +78,7 @@ pub fn ast() {
           #("Rule", unit),
           #("Merge", unit),
           #("Resolve", String),
+          #("Match", record([#("label", String), #("keys", List(String))])),
         ]),
       ),
       #("Tail", unit),

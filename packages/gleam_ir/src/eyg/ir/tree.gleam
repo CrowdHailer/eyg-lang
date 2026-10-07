@@ -49,13 +49,16 @@ pub type Expression(m) {
 }
 
 /// Query operations are atoms, like record extension and variant selection.
-/// Rules contain ordinary pure EYG closures; the parser lowers joins to folds.
+/// Rules contain ordinary pure EYG closures; each body clause is a `Match`.
 pub type QueryOperation {
   EmptyTable
   Fact(label: String)
   Rule
   Merge
   Resolve(label: String)
+  /// `Match(label, keys)(table)(key)(then)` unions `then(row)` for every row of
+  /// `label` whose `keys` fields equal `key`, so a runtime can use an index.
+  Match(label: String, keys: List(String))
 }
 
 pub fn query(operation) {

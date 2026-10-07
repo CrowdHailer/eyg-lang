@@ -1,5 +1,6 @@
 import eyg/interpreter/break
 import eyg/interpreter/expression
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import glasshouse/helpers.{sha256}
@@ -165,4 +166,23 @@ fn list_length(items) {
     [] -> 0
     [_, ..rest] -> 1 + list_length(rest)
   }
+}
+
+pub fn query_tables_round_trip_with_stable_relation_order_test() {
+  let facts =
+    table.from_list([
+      #("Z", [v.Integer(2), v.Integer(1)]),
+      #("A", [v.String("hello")]),
+    ])
+  let original = v.Table(facts, [])
+  assert round_trip(original) == Ok(original)
+  let reordered =
+    v.Table(
+      table.from_list([
+        #("A", [v.String("hello")]),
+        #("Z", [v.Integer(2), v.Integer(1)]),
+      ]),
+      [],
+    )
+  assert value.encode(original) == value.encode(reordered)
 }

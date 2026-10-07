@@ -5,6 +5,7 @@
 //// Replaying with a substitute value applies the same redaction,
 //// so requests built from the substitute match the recorded requests.
 
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/bit_array
@@ -185,9 +186,11 @@ fn do_substitute(value, replacements) {
     }
     v.Table(facts, rules) ->
       v.Table(
-        dict.map_values(facts, fn(_, rows) {
-          list.map(rows, do_substitute(_, replacements))
-        }),
+        table.to_list(facts)
+          |> list.map(fn(pair) {
+            #(pair.0, list.map(pair.1, do_substitute(_, replacements)))
+          })
+          |> table.from_list,
         list.map(rules, do_substitute(_, replacements)),
       )
     v.Integer(_) -> value

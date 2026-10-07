@@ -97,6 +97,8 @@ References are encoded as Content IDentifiers (CIDs).
 {"0": "qm"}
 // resolve: Table(Relation(value), rows) -> List(value)
 {"0": "qs", "l": label}
+// match rows of a relation by key: Table(Relation(row), rows) -> key -> (row -> Table(rows)) -> Table(rows)
+{"0": "qa", "l": label, "k": [field]}
 // reference(identifier)
 {"0": "#", "l": cid}
 // release(project,release,identifer)
@@ -182,7 +184,8 @@ pure function over a table of facts. Resolution starts with all input facts,
 calls every rule with the same snapshot, unions the returned facts, and repeats
 until no new facts appear. Equality gives set semantics. Rule functions must
 return facts, and effects cannot escape a rule to its caller or host runtime.
-The text parser lowers joins to list folds over the snapshot and pattern
+The text parser lowers each relation clause to a `qa` match whose key holds
+the fields already bound, so a runtime can use an index, and other pattern
 constraints to pure equality tests. This keeps rule expressions available to
 tree traversal, sharing, and closure capture without a second expression AST.
 

@@ -10,6 +10,7 @@ import eyg/interpreter/capture
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/dag_json as ir_json
 import eyg/ir/tree as ir
@@ -52,7 +53,7 @@ pub fn encode(value: v.Value(m, c)) -> Encoded {
       |> ir.map_annotation(fn(_) { Nil })
     v.Table(facts, rules) -> {
       let items =
-        dict.to_list(facts)
+        table.to_list(facts)
         |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
         |> list.flat_map(fn(pair) {
           list.map(pair.1, fn(row) { #(ir.Fact(pair.0), row) })

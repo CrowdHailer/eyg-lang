@@ -23,7 +23,7 @@ fn render_with(
 ) -> String {
   let used = ir.list_builtins(exp)
   let used = case needs_query_runtime(exp) {
-    True -> ["equal", "$query", ..list.filter(used, fn(x) { x != "equal" })]
+    True -> ["$query", ..used]
     False -> used
   }
   let #(definitions, program) = case needs_effect_runtime(exp) {
@@ -172,6 +172,15 @@ fn do_render(source) {
         ir.Rule -> "$query.rule"
         ir.Merge -> "$query.merge"
         ir.Resolve(label) -> "$query.resolve(\"" <> escape_js(label) <> "\")"
+        ir.Match(label, keys) ->
+          "$query.match(\""
+          <> escape_js(label)
+          <> "\", ["
+          <> string.join(
+            list.map(keys, fn(k) { "\"" <> escape_js(k) <> "\"" }),
+            ", ",
+          )
+          <> "])"
       }
     ir.Tail -> "[]"
     ir.Apply(#(ir.Apply(#(ir.Extend(label), _), value), _), rest) -> {
@@ -338,6 +347,9 @@ fn render_builtin(identifier) {
   case identifier {
     "$query" ->
       "const $query = (() => {
+  // Relations are Maps from a canonical key to the row, so membership is a
+  // lookup and iteration keeps insertion order. Tables are never mutated after
+  // construction, which makes it safe to cache indexes on a snapshot.
   class Table {
     constructor(facts = new Map(), rules = []) { this.facts = facts; this.rules = rules; }
   }
@@ -345,43 +357,105 @@ fn render_builtin(identifier) {
     if (!(value instanceof Table)) throw {eygBreak: {IncorrectTerm: 'Table'}};
     return value;
   };
-  const combine = (left, right) => {
-    const result = new Map(left);
-    for (const [label, rows] of right) {
-      const merged = [...(result.get(label) || [])];
-      for (const row of rows) if (!merged.some(old => equal(old)(row).$T === 'True')) merged.push(row);
-      result.set(label, merged);
+  const pure = value => {
+    if (typeof Eff !== 'undefined' && value instanceof Eff) throw {eygBreak: {ImpureQuery: value.label}};
+    return check(value);
+  };
+  const ids = new WeakMap();
+  let nextId = 0;
+  const keyOf = value => {
+    if (typeof value === 'number') return 'i' + value;
+    if (typeof value === 'string') return 's' + JSON.stringify(value);
+    if (typeof value === 'function') {
+      if (!ids.has(value)) ids.set(value, nextId++);
+      return 'f' + ids.get(value);
     }
-    return result;
+    if (value instanceof Uint8Array) return 'b' + Array.from(value).join(',');
+    if (Array.isArray(value)) {
+      const items = [];
+      while (value.length) { items.push(keyOf(value[0])); value = value[1]; }
+      return 'l[' + items.join(',') + ']';
+    }
+    if (Object.hasOwn(value, '$T')) return 't' + value.$T + '(' + keyOf(value.$V) + ')';
+    return 'r{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + keyOf(value[k])).join(',') + '}';
+  };
+  // Mutates `into`; only called on Maps owned by the caller.
+  const absorb = (into, facts, grown) => {
+    for (const [label, rows] of facts) {
+      let relation = into.get(label);
+      if (!relation) { relation = new Map(); into.set(label, relation); }
+      for (const [key, row] of rows) {
+        if (!relation.has(key)) { relation.set(key, row); if (grown) grown.add(label); }
+      }
+    }
+    return into;
+  };
+  const copy = facts => new Map([...facts].map(([label, rows]) => [label, new Map(rows)]));
+  const rows = (facts, label) => [...(facts.get(label) || new Map()).values()];
+  const index = (db, label, keys) => {
+    db.indexes ||= new Map();
+    const name = label + '|' + keys.join(',');
+    let found = db.indexes.get(name);
+    if (!found) {
+      found = new Map();
+      for (const row of rows(db.facts, label)) {
+        if (keys.length && (typeof row !== 'object' || keys.some(k => !Object.hasOwn(row, k)))) continue;
+        const key = keyOf(Object.fromEntries(keys.map(k => [k, row[k]])));
+        if (!found.has(key)) found.set(key, []);
+        found.get(key).push(row);
+      }
+      db.indexes.set(name, found);
+    }
+    return found;
   };
   return {
     empty: () => new Table(),
-    fact: label => row => new Table(new Map([[label, [row]]])),
+    fact: label => row => new Table(new Map([[label, new Map([[keyOf(row), row]])]])),
     rule: rule => new Table(new Map(), [rule]),
-    merge: a => b => new Table(combine(check(a).facts, check(b).facts), [...a.rules, ...b.rules]),
+    merge: a => b => new Table(absorb(copy(check(a).facts), check(b).facts), [...a.rules, ...b.rules]),
+    match: (label, keys) => db => key => then => {
+      check(db);
+      db.reading?.add(label);
+      const acc = new Map();
+      for (const row of index(db, label, keys).get(keyOf(key)) || []) {
+        let derived;
+        try { derived = pure($runtime.run($runtime.call($runtime.pure_(then), row))); }
+        catch (error) {
+          if (error.eygBreak?.ImpureEffect !== undefined) throw {eygBreak: {ImpureQuery: error.eygBreak.ImpureEffect}};
+          throw error;
+        }
+        if (derived.rules.length) throw {eygBreak: {IncorrectTerm: 'facts returned by a rule'}};
+        absorb(acc, derived.facts);
+      }
+      return new Table(acc);
+    },
     resolve: label => table => {
       check(table);
-      let facts = table.facts;
-      for (;;) {
-        const snapshot = new Table(facts);
-        let next = facts;
-        for (const rule of table.rules) {
+      const facts = copy(table.facts);
+      const reads = new Map();
+      let pending = table.rules.map((rule, i) => [i, rule]);
+      while (pending.length) {
+        const snapshot = new Table(copy(facts));
+        const grown = new Set();
+        for (const [i, rule] of pending) {
+          snapshot.reading = new Set();
           let derived;
           try { derived = $runtime.run($runtime.call($runtime.pure_(rule), snapshot)); }
           catch (error) {
             if (error.eygBreak?.ImpureEffect !== undefined) throw {eygBreak: {ImpureQuery: error.eygBreak.ImpureEffect}};
             throw error;
           }
-          if (typeof Eff !== 'undefined' && derived instanceof Eff) throw {eygBreak: {ImpureQuery: derived.label}};
-          check(derived);
+          pure(derived);
+
           if (derived.rules.length) throw {eygBreak: {IncorrectTerm: 'facts returned by a rule'}};
-          next = combine(next, derived.facts);
+          reads.set(i, snapshot.reading);
+          absorb(facts, derived.facts, grown);
         }
-        let changed = false;
-        for (const [name, rows] of next) if (rows.length !== (facts.get(name) || []).length) changed = true;
-        facts = next;
-        if (!changed) return (facts.get(label) || []).reduceRight((tail, head) => [head, tail], []);
+        delete snapshot.reading;
+        pending = table.rules.map((rule, i) => [i, rule]).filter(([i]) => [...reads.get(i)].some(l => grown.has(l)));
       }
+      table.reading?.add(label);
+      return rows(facts, label).reduceRight((tail, head) => [head, tail], []);
     }
   };
 })()"

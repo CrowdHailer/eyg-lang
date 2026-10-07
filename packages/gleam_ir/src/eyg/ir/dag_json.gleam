@@ -117,6 +117,11 @@ pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
     "qr" -> d.success(#(ir.Query(ir.Rule), meta))
     "qm" -> d.success(#(ir.Query(ir.Merge), meta))
     "qs" -> label_decoder(fn(l) { ir.Query(ir.Resolve(l)) }, meta)
+    "qa" -> {
+      use label <- d.field("l", d.string)
+      use keys <- d.field("k", d.list(d.string))
+      d.success(#(ir.Query(ir.Match(label, keys)), meta))
+    }
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
       use cid <- d.field("l", codec.decode_cid())
@@ -214,6 +219,8 @@ pub fn to_data_model(tree: ir.Node(meta)) -> json.Json {
         ir.Rule -> node("qr", [])
         ir.Merge -> node("qm", [])
         ir.Resolve(l) -> node("qs", [label(l)])
+        ir.Match(l, keys) ->
+          node("qa", [label(l), #("k", json.array(keys, codec.string))])
       }
     ir.Builtin(x) -> node("b", [label(x)])
     ir.Reference(reference) ->

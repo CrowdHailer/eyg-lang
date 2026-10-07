@@ -569,6 +569,17 @@ pub fn do_infer(source, env, eff, level, bindings) -> Step(_) {
         ir.Rule -> pure1(t.Fun(table, t.Empty, table), table)
         ir.Resolve(label) ->
           pure1(t.Table(t.RowExtend(label, q(1), q(0))), t.List(q(1)))
+        ir.Match(label, keys) -> {
+          let keys =
+            list.index_map(list.unique(keys), fn(k, i) { #(k, q(i + 3)) })
+          let row = case keys {
+            [] -> q(1)
+            _ -> t.Record(t.do_rows(keys, q(2)))
+          }
+          let table = t.Table(t.RowExtend(label, row, q(0)))
+          let key = t.Record(t.do_rows(keys, t.Empty))
+          pure3(table, key, t.Fun(row, t.Empty, table), table)
+        }
       }
       prim(scheme, env, eff, level, bindings, ir.Query(operation))
     }

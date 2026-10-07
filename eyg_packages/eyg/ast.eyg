@@ -67,6 +67,7 @@ let source_decoder = !fix((self, parsed) -> {
       {tag: "qr", decode: (_) -> { [Query(Rule({}))] }},
       {tag: "qm", decode: (_) -> { [Query(Merge({}))] }},
       {tag: "qs", decode: (_) -> { [Query(Resolve(d.field("l", d.string, fields)))] }},
+      {tag: "qa", decode: (_) -> { [Query(Match({label: d.field("l", d.string, fields), keys: d.field("k", d.list(d.string), fields)}))] }},
       {tag: "ta", decode: (_) -> { [Tail({})] }},
       {tag: "c", decode: (_) -> { [Cons({})] }},
       {tag: "z", decode: (_) -> { [Vacant({})] }},
@@ -153,6 +154,7 @@ let parse = !fix((self, nodes) -> {
             Rule(_) -> { node("qr", []) }
             Merge(_) -> { node("qm", []) }
             Resolve(value) -> { node("qs", [label(value)]) }
+            Match(value) -> { node("qa", [label(value.label), dag_json.field("k", dag_json.array(list.map(value.keys, dag_json.string)))]) }
           }
           {value, rest: tail}
         }

@@ -213,6 +213,7 @@ let test_release = (_) -> {
   {name: "ast query Rule", test: (_) -> { check("{\"0\":\"qr\"}", [Query(Rule({}))], "baguqeerafvctkg2nor3bgvdm53vkoscztmaypxvqphg3f2ugr6elctxo6coa") }},
   {name: "ast query Merge", test: (_) -> { check("{\"0\":\"qm\"}", [Query(Merge({}))], "baguqeera3bvthp4tzdj6uauihdae34mcmccxhxsoauww3m275qbn6pi63bra") }},
   {name: "ast query Resolve", test: (_) -> { check("{\"0\":\"qs\",\"l\":\"Out\"}", [Query(Resolve("Out"))], "baguqeeralmu7aifsovwwmufantbcrubf4qi4ipvz7mehwfx2pp24lfzirr7q") }},
+  {name: "ast query Match", test: (_) -> { check("{\"0\":\"qa\",\"k\":[\"from\"],\"l\":\"Edge\"}", [Query(Match({label: "Edge", keys: ["from"]}))], "baguqeerarb6ugkbor65gapn6t4puaxdpo4kzddvoihqy26mrrpxw7ziwfgva") }},
   {name: "ast ir suite variable", test: test_variable},
   {name: "ast ir suite function", test: test_function},
   {name: "ast ir suite apply", test: test_apply},

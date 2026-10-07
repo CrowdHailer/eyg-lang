@@ -1,4 +1,5 @@
 import eyg/interpreter/expression
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/dag_json as ir_json
 import eyg/ir/tree as ir
@@ -243,4 +244,20 @@ pub fn file_and_rotated_oauth_credentials_are_redacted_before_capture_test() {
     == value.encode(v.String(
       "Bearer ⟦secret:json:http:auth.example.com/oauth/token:access_token⟧",
     ))
+}
+
+pub fn secrets_in_query_facts_are_redacted_and_restored_test() {
+  let original =
+    v.Table(
+      table.from_list([
+        #("Token", [v.String(token.value)]),
+      ]),
+      [],
+    )
+  let redacted = secret.redact(original, [token])
+  assert !string.contains(
+    ir_json.to_string(value.encode(redacted)),
+    token.value,
+  )
+  assert secret.restore(redacted, [token]) == original
 }

@@ -24,6 +24,18 @@ pub fn query_operations_test() {
     #(ir.Rule, v.Tagged("Rule", v.unit())),
     #(ir.Merge, v.Tagged("Merge", v.unit())),
     #(ir.Resolve("Out"), v.Tagged("Resolve", v.String("Out"))),
+    #(
+      ir.Match("Edge", ["from"]),
+      v.Tagged(
+        "Match",
+        v.Record(
+          dict.from_list([
+            #("label", v.String("Edge")),
+            #("keys", v.LinkedList([v.String("from")])),
+          ]),
+        ),
+      ),
+    ),
   ]
   |> list.each(fn(pair) {
     assert eyg_parse.encode(Ok(ir.query(pair.0)))

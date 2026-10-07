@@ -8,7 +8,7 @@ pub type Value(m, context) {
   String(value: String)
   LinkedList(elements: List(Value(m, context)))
   Table(
-    facts: Dict(String, List(Value(m, context))),
+    facts: Dict(String, Dict(Value(m, context), Int)),
     rules: List(Value(m, context)),
   )
   Record(fields: Dict(String, Value(m, context)))

@@ -23,6 +23,7 @@ pub fn query_operations_round_trip_test() {
     tree.Rule,
     tree.Merge,
     tree.Resolve("Out"),
+    tree.Match("Edge", ["from", "to"]),
   ]
   |> list.each(fn(operation) {
     let source = tree.query(operation)

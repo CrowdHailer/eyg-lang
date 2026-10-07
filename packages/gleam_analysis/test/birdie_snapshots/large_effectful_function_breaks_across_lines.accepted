@@ -24,7 +24,11 @@ title: large effectful function breaks across lines
             Fact: String |
             Rule: {} |
             Merge: {} |
-            Resolve: String
+            Resolve: String |
+            Match: {
+              label: String,
+              keys: List(String),
+            }
           ] |
           Tail: {} |
           Cons: {} |
@@ -79,7 +83,11 @@ title: large effectful function breaks across lines
             Fact: String |
             Rule: {} |
             Merge: {} |
-            Resolve: String
+            Resolve: String |
+            Match: {
+              label: String,
+              keys: List(String),
+            }
           ] |
           Tail: {} |
           Cons: {} |
