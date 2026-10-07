@@ -141,3 +141,8 @@ pub fn let_after_expression_test() {
   snap_error("let x = 1\n3\nlet y = 5\n{}")
   |> birdie.snap(title: "let after expression")
 }
+
+pub fn error_at_start_test() {
+  snap_error("$")
+  |> birdie.snap(title: "error at the start of the source")
+}

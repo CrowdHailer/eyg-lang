@@ -53,11 +53,12 @@ fn do_gather(exp, acc) {
 pub fn format_error(reason: parser.Reason, source: String) -> String {
   let description = debug.describe(reason)
   let hint = debug.hint(reason)
-  let span = case reason_position(reason) {
-    Some(start) -> #(start, start)
-    None -> #(0, 0)
+  let lines = ["error: " <> description, "hint: " <> hint]
+  let context = case reason_position(reason) {
+    Some(start) -> ["", ..location.source_context(source, #(start, start))]
+    None -> []
   }
-  render_error(description, hint, source, span)
+  string.join(list.append(lines, context), "\n")
 }
 
 pub fn render_error(description, hint, code, span) {
