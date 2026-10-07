@@ -15,6 +15,7 @@ let tests = list.flatten([
   import "./eyg_packages/artifact_viewers/entry.eyg".tests,
   import "./eyg_packages/playwright/entry.eyg".tests,
   import "./eyg_packages/authorization/entry.eyg".tests,
+  import "./eyg_packages/datalogjs/entry.eyg".tests,
   import "./eyg_packages/json/entry.eyg".tests,
   import "./eyg_packages/fs/entry.eyg".tests,
   import "./eyg_packages/edit/entry.eyg".tests,
