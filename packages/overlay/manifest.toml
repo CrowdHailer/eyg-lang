@@ -12,6 +12,7 @@ packages = [
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "eyg_analysis", version = "3.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_analysis" },
   { name = "eyg_interpreter", version = "9.0.1", build_tools = ["gleam"], requirements = ["eyg_ir", "glam", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_interpreter" },
+  { name = "eyg_compiler", version = "0.1.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "eyg_parser", "gleam_json", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_compiler" },
   { name = "eyg_ir", version = "3.2.0", build_tools = ["gleam"], requirements = ["dag_json", "filepath", "gbor", "gleam_json", "gleam_stdlib", "gleb128", "midas", "multiformats"], source = "local", path = "../gleam_ir" },
   { name = "eyg_parser", version = "0.6.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_parser" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
@@ -35,7 +36,7 @@ packages = [
   { name = "ogre", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "ogre", source = "hex", outer_checksum = "C4B6FE623E9AFC26BE0B2D5AB59E907ECD1B58012039E4B4BB67D5A28B25E392" },
   { name = "overlay_llm", version = "0.2.0", build_tools = ["gleam"], requirements = ["castor", "gleam_http", "gleam_json", "gleam_sha256", "gleam_stdlib", "gleam_time", "midas", "oas_generator_utils", "ogre"], source = "local", path = "../overlay_llm" },
   { name = "splitter", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "8F1485306E0D59168A39E12ED8844F9F616EC59C3C63AFCFDAE04DBD68690CBC" },
-  { name = "touch_grass", version = "0.4.4", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "multiformats", "ogre"], source = "local", path = "../touch_grass" },
+  { name = "touch_grass", version = "0.4.4", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_compiler", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "multiformats", "ogre"], source = "local", path = "../touch_grass" },
 ]
 
 [requirements]

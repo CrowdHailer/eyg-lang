@@ -27,6 +27,18 @@ import touch_grass/acquire
 import touch_grass/mount
 import untethered/keypair
 
+pub type SqlValue {
+  SqlInteger(Int)
+  SqlText(String)
+  SqlBlob(BitArray)
+  SqlNull
+}
+
+/// Rows returned by the statement and the number of rows it changed.
+pub type SqlResult {
+  SqlResult(columns: List(String), rows: List(List(SqlValue)), changes: Int)
+}
+
 pub type Metadata {
   Metadata(kind: simplifile.FileType, size: Int)
 }
@@ -105,6 +117,14 @@ pub type Effect(a) {
   )
   WriteStdout(String, fn(Nil) -> Effect(a))
   WriteStderr(String, fn(Nil) -> Effect(a))
+  /// Run one statement on a SQLite database file, created if missing.
+  /// Connections are kept open so temporary tables last between statements.
+  Sql(
+    database: String,
+    sql: String,
+    params: List(SqlValue),
+    resume: fn(Result(SqlResult, String)) -> Effect(a),
+  )
 }
 
 pub fn append_file_bits(path, contents) {
@@ -167,6 +187,10 @@ pub fn write_stdout(text) {
 }
 
 /// Write exact text to standard error without adding a newline.
+pub fn sql(database, sql, params) {
+  Sql(database, sql, params, Done)
+}
+
 pub fn write_stderr(text) {
   WriteStderr(text, Done)
 }
@@ -281,6 +305,8 @@ pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
       WriteFileBits(path, bytes, fn(result) { then(resume(result), func) })
     WriteStdout(text, resume) ->
       WriteStdout(text, fn(value) { then(resume(value), func) })
+    Sql(database, sql, params, resume) ->
+      Sql(database, sql, params, fn(result) { then(resume(result), func) })
     WriteStderr(text, resume) ->
       WriteStderr(text, fn(value) { then(resume(value), func) })
     GenerateKey(resume) ->
@@ -513,6 +539,8 @@ fn run_step(
       continue(simplifile.write_bits(path, bytes), resume, trace)
     WriteStdout(text, resume) -> continue(io.print(text), resume, trace)
     WriteStderr(text, resume) -> continue(io.print_error(text), resume, trace)
+    Sql(database, sql, params, resume) ->
+      continue(run_sql(database, sql, params), resume, trace)
     GenerateKey(resume) -> continue(crypto.generate_key(), resume, trace)
     Fetch(request, resume) -> {
       use response <- promise.await(do_fetch(request))
@@ -666,3 +694,11 @@ pub fn read_chunk(
 ) -> Effect(Result(#(Option(BitArray), Reader), effect.FetchError)) {
   ReadChunk(reader, Done)
 }
+
+/// Run a statement now, outside an effect, for tests and tools.
+@external(javascript, "./system_ffi.mjs", "runSql")
+pub fn run_sql(
+  database: String,
+  sql: String,
+  params: List(SqlValue),
+) -> Result(SqlResult, String)

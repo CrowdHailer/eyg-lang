@@ -129,3 +129,8 @@ pub fn effects_are_bounded_and_exit_cannot_terminate_the_host_test() {
     virtual.run(system.command("git", ["status"], "/p"), machine)
     |> sandbox.run(host())
 }
+
+pub fn sql_cannot_open_a_host_database_in_the_virtual_sandbox_test() {
+  let #(result, _, _) = run(system.sql("/host/private.sqlite", "SELECT 1", []))
+  assert result == Error("host SQLite databases are not mounted in the sandbox")
+}

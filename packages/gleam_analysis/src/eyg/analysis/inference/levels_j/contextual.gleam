@@ -33,10 +33,19 @@ pub fn unpure() {
   Context([], t, 1, bindings, None)
 }
 
+/// Type variables in an effect's types are shared by every perform of it.
+/// Use negative variables so they cannot collide with fresh bindings.
 pub fn with_effect(context, label, lift, lower) {
-  let Context(eff:, ..) = context
+  let Context(eff:, bindings:, level:, ..) = context
   let eff = t.EffectExtend(label, #(lift, lower), eff)
-  Context(..context, eff:)
+  let bindings =
+    set.fold(set.union(ftv(lift), ftv(lower)), bindings, fn(bindings, i) {
+      case dict.has_key(bindings, i) {
+        True -> bindings
+        False -> dict.insert(bindings, i, binding.Unbound(level))
+      }
+    })
+  Context(..context, eff:, bindings:)
 }
 
 pub fn with_effects(context: Context, effects) {
