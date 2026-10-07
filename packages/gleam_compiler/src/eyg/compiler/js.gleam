@@ -395,18 +395,21 @@ fn render_builtin(identifier) {
   const index = (db, label, keys) => {
     db.indexes ||= new Map();
     const name = label + '|' + keys.join(',');
+    // Relations only grow while resolving, an index is current while its
+    // relation has the same size, so indexes are shared by every round.
+    const size = (db.facts.get(label) || new Map()).size;
     let found = db.indexes.get(name);
-    if (!found) {
-      found = new Map();
+    if (!found || found.size !== size) {
+      found = {size, index: new Map()};
       for (const row of rows(db.facts, label)) {
         if (keys.length && (typeof row !== 'object' || keys.some(k => !Object.hasOwn(row, k)))) continue;
         const key = keyOf(Object.fromEntries(keys.map(k => [k, row[k]])));
-        if (!found.has(key)) found.set(key, []);
-        found.get(key).push(row);
+        if (!found.index.has(key)) found.index.set(key, []);
+        found.index.get(key).push(row);
       }
       db.indexes.set(name, found);
     }
-    return found;
+    return found.index;
   };
   return {
     empty: () => new Table(),
@@ -433,9 +436,11 @@ fn render_builtin(identifier) {
       check(table);
       const facts = copy(table.facts);
       const reads = new Map();
+      const indexes = new Map();
       let pending = table.rules.map((rule, i) => [i, rule]);
       while (pending.length) {
         const snapshot = new Table(copy(facts));
+        snapshot.indexes = indexes;
         const grown = new Set();
         for (const [i, rule] of pending) {
           snapshot.reading = new Set();

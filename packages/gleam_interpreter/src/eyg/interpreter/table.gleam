@@ -120,3 +120,10 @@ pub fn key(row, keys) {
     _, _ -> Error(Nil)
   }
 }
+
+pub fn relation_size(facts: Facts(m, c), label) {
+  case dict.get(facts, label) {
+    Ok(relation) -> dict.size(relation)
+    Error(Nil) -> 0
+  }
+}

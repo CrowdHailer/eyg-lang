@@ -81,7 +81,12 @@ pub type Resolution(m) {
     current: Int,
     reading: Set(String),
     grown: Set(String),
-    indexes: Dict(#(String, List(String)), Dict(Value(m), List(Value(m)))),
+    // Relations only grow while resolving, an index is current while the
+    // relation it was built from has the same size.
+    indexes: Dict(
+      #(String, List(String)),
+      #(Int, Dict(Value(m), List(Value(m)))),
+    ),
     env: Env(m),
   )
 }
@@ -461,7 +466,6 @@ fn query_next(resolution: Resolution(m), meta: m, k: Stack(m)) -> Return(m) {
             snapshot: resolution.facts,
             pending:,
             grown: set.new(),
-            indexes: dict.new(),
           )
           |> query_next(meta, k)
         }
@@ -497,13 +501,16 @@ fn matching(
 ) -> #(List(Value(m)), Stack(m)) {
   case find_resolution(k, []) {
     Ok(#(resolution, meta, above, rest)) if facts == resolution.snapshot -> {
+      let size = table.relation_size(facts, label)
       let #(index, indexes) = case
         dict.get(resolution.indexes, #(label, keys))
       {
-        Ok(index) -> #(index, resolution.indexes)
-        Error(Nil) -> {
+        Ok(#(indexed, index)) if indexed == size -> #(index, resolution.indexes)
+        _ -> {
           let index = table.index(facts, label, keys)
-          #(index, dict.insert(resolution.indexes, #(label, keys), index))
+          let indexes =
+            dict.insert(resolution.indexes, #(label, keys), #(size, index))
+          #(index, indexes)
         }
       }
       let reading = set.insert(resolution.reading, label)
