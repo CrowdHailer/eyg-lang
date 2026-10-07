@@ -28,7 +28,7 @@ pub fn clauses_become_joins_test() {
   assert statements(plan)
     == [
       sql.Statement(
-        "INSERT OR IGNORE INTO temp.\"Out\" (\"director\", \"title\") SELECT DISTINCT t2.\"name\", t0.\"title\" FROM \"Movie\" AS t0, \"Directed\" AS t1, \"Person\" AS t2 WHERE t0.\"year\" = ? AND t1.\"movie\" = t0.\"id\" AND t2.\"id\" = t1.\"person\"",
+        "INSERT OR IGNORE INTO temp.\"Out\" (\"director\", \"title\") SELECT DISTINCT t2.\"name\", t0.\"title\" FROM \"Movie\" AS t0 CROSS JOIN \"Directed\" AS t1 CROSS JOIN \"Person\" AS t2 WHERE t0.\"year\" = ? AND t1.\"movie\" = t0.\"id\" AND t2.\"id\" = t1.\"person\"",
         [sql.Integer(1987)],
       ),
     ]
@@ -117,7 +117,7 @@ pub fn negated_conditions_test() {
   assert statements(plan)
     == [
       sql.Statement(
-        "INSERT OR IGNORE INTO temp.\"Pair\" (\"actor\", \"other\") SELECT DISTINCT t0.\"actor\", t1.\"actor\" FROM \"Cast\" AS t0, \"Cast\" AS t1 WHERE t1.\"movie\" = t0.\"movie\" AND NOT (t0.\"actor\" = t1.\"actor\")",
+        "INSERT OR IGNORE INTO temp.\"Pair\" (\"actor\", \"other\") SELECT DISTINCT t0.\"actor\", t1.\"actor\" FROM \"Cast\" AS t0 CROSS JOIN \"Cast\" AS t1 WHERE t1.\"movie\" = t0.\"movie\" AND NOT (t0.\"actor\" = t1.\"actor\")",
         [],
       ),
     ]

@@ -1,8 +1,8 @@
 //// Plan an evaluated EYG table as SQL for SQLite.
 ////
-//// Each rule's clauses become one `INSERT ... SELECT` with real joins: the
-//// `Match` keys become join and filter conditions, so the database's indexes
-//// and query planner do the work. Rule closures are partially evaluated:
+//// Each rule's clauses become one `INSERT ... SELECT` joined in clause order: the
+//// `Match` keys become join and filter conditions answered by the database's
+//// indexes. Rule closures are partially evaluated:
 //// captured values and helper functions are inlined, and `equal`,
 //// `int_compare`, arithmetic and string appends become SQL expressions.
 //// Relations named by rule heads or inline facts are temporary tables, every
@@ -210,7 +210,9 @@ fn insert(
   }
   let from_sql =
     list.map(from, fn(f) { identifier(f.1) <> " AS " <> f.0 })
-    |> string.join(", ")
+    // Clauses are joined in the order they are written, as the interpreter does.
+    // SQLite has no statistics for temporary relations and can pick a full scan.
+    |> string.join(" CROSS JOIN ")
   let where_sql = case where {
     [] -> ""
     _ ->
