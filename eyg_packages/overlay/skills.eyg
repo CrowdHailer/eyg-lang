@@ -1,0 +1,119 @@
+// Skills are instructions for specific tasks, loaded into an overlay agent's context.
+//
+// A skill is a file `<root>/.agents/skills/<dir>/SKILL.md` with frontmatter:
+//
+//   ---
+//   name: changelog
+//   description: How to write CHANGELOG entries.
+//   ---
+//   body...
+//
+// `read(root)` returns every skill as `{name, description, path, body}`.
+// `root` must be an absolute path, relative paths resolve from this library's directory.
+// `print(skills)` renders a section to append to the readme.
+
+let append = (a, b) -> {
+  !string_append(a, b)
+}
+
+let trim_cr = (line) -> {
+  match !string_ends_with(line, "\r") {
+    True(_) -> { !string_replace(line, "\r", "") }
+    False(_) -> { line }
+  }
+}
+
+// Parse `key: value` lines, only `name` and `description` are kept.
+let parse_fields = (frontmatter, fallback) -> {
+  let {head, tail} = !string_split(frontmatter, "\n")
+  !list_fold([head, ..tail], {name: fallback, description: ""}, (line, acc) -> {
+    match !string_split_once(trim_cr(line), ": ") {
+      Ok({pre: key, post: value}) -> {
+        match !equal(key, "name") {
+          True(_) -> { {name: value, ..acc} }
+          False(_) -> {
+            match !equal(key, "description") {
+              True(_) -> { {description: value, ..acc} }
+              False(_) -> { acc }
+            }
+          }
+        }
+      }
+      Error(_) -> { acc }
+    }
+  })
+}
+
+// Split `---\n<frontmatter>\n---\n<body>`.
+// A file without frontmatter is named by the fallback and has no description.
+let parse = (text, fallback) -> {
+  let plain = {name: fallback, description: "", body: text}
+  match !string_split_once(text, "---\n") {
+    Ok({pre, post}) -> {
+      match !equal(pre, "") {
+        True(_) -> {
+          match !string_split_once(post, "\n---\n") {
+            Ok({pre: frontmatter, post: body}) -> {
+              let {name, description} = parse_fields(frontmatter, fallback)
+              {name, description, body}
+            }
+            Error(_) -> { plain }
+          }
+        }
+        False(_) -> { plain }
+      }
+    }
+    Error(_) -> { plain }
+  }
+}
+
+let read_text = (path) -> {
+  match perform ReadFile({path, offset: 0, limit: 10000000}) {
+    Ok(bytes) -> {
+      match !string_from_binary(bytes) {
+        Ok(text) -> { Ok(text) }
+        Error(_) -> { Error(append(path, " is not valid utf-8")) }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+let read = (root) -> {
+  let directory = append(root, "/.agents/skills")
+  match perform ReadDirectory(directory) {
+    Ok(entries) -> {
+      let skills = !list_fold(entries, [], (entry, acc) -> {
+        match entry.type {
+          Directory(_) -> {
+            let path = append(directory, append("/", append(entry.name, "/SKILL.md")))
+            match read_text(path) {
+              Ok(text) -> {
+                let {name, description, body} = parse(text, entry.name)
+                [{name, description, path, body}, ..acc]
+              }
+              Error(_) -> { acc }
+            }
+          }
+          | (_) -> { acc }
+        }
+      })
+      !list_fold(skills, [], (skill, acc) -> { [skill, ..acc] })
+    }
+    Error(_) -> { [] }
+  }
+}
+
+let print = (skills) -> {
+  match !list_pop(skills) {
+    Error(_) -> { "" }
+    Ok(_) -> {
+      let intro = "\n\n## Skills\n\nSkills are instructions for specific tasks.\nWhen a task matches a skill description, FIRST read the skill body and follow it exactly.\nThe skills are `context.skills`, a list of `{name, description, path, body}`.\n\n"
+      !list_fold(skills, intro, (skill, acc) -> {
+        append(acc, append("- ", append(skill.name, append(": ", append(skill.description, "\n")))))
+      })
+    }
+  }
+}
+
+{read, print, parse, read_text}

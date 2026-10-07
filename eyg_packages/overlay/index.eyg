@@ -1,3 +1,4 @@
 {
-  access: import "./access.eyg"
+  policy: import "./policy.eyg",
+  skills: import "./skills.eyg"
 }

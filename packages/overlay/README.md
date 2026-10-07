@@ -72,6 +72,8 @@ let readme = string.append(readme, @overlay.print_skills(skills))
 
 The overlay harness has no concept of skills or AGENT.md.
 Instead because the configuration is fully scriptable it is expected to be implemented as EYG libraries.
+The [overlay EYG package](../../eyg_packages/overlay/) has `policy` helpers, i.e. `read_only(roots)` and `allow_all`, and `skills` helpers to load `.agents/skills/*/SKILL.md` files.
+It is not yet published so import it by path.
 
 NOTE: in `overlay_web` The llm configuration is provided through the UI.
 The policy is provided through the UI but is still an textarea input that accepts a program
@@ -153,3 +155,5 @@ This would allow a rich Overlay agent UI in the terminal but would also allow re
 
 Limit published reference loading to only trusted publisher, i.e. signatories or trusted content i.e. specific hashes for modules.
 This is potentially not an overlay specific capability
+
+Publish the `overlay` EYG package so configs can use `@overlay.policy` and `@overlay.skills` rather than importing by path.

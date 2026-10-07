@@ -1,0 +1,197 @@
+// Policy helpers for overlay agents.
+//
+// An overlay policy is a record with a function for each effect the agent may perform.
+// Each function receives the effect's value and returns:
+//
+//   Pass(value)  - perform the effect, possibly with a modified value.
+//   Mock(value)  - resume the agent's program with value, the effect is not performed.
+//
+// The CLI requires a field for every effect it gates, a missing field is a configuration error.
+// Start from `deny_all`, `allow_all`, `read_only` or `read_write` and overwrite the fields to change.
+// File paths given to a policy are absolute.
+
+let pass = (value) -> {
+  Pass(value)
+}
+
+// Deny a result returning effect with an error.
+let deny = (reason) -> {
+  (_) -> { Mock(Error(reason)) }
+}
+
+let append = (a, b) -> {
+  !string_append(a, b)
+}
+
+// Is the absolute path equal to or inside the absolute root.
+// Paths given to policies are already resolved so contain no `.` or `..` segments.
+let is_under = (root, path) -> {
+  let root = match !string_ends_with(root, "/") {
+    True(_) -> { root }
+    False(_) -> { append(root, "/") }
+  }
+  match !equal(append(path, "/"), root) {
+    True(_) -> { True({}) }
+    False(_) -> { !string_starts_with(path, root) }
+  }
+}
+
+let any_under = (roots, path) -> {
+  !list_fold(roots, False({}), (root, found) -> {
+    match found {
+      True(_) -> { True({}) }
+      False(_) -> { is_under(root, path) }
+    }
+  })
+}
+
+let denied = (effect, path) -> {
+  append(effect, append(" denied by policy: ", path))
+}
+
+// Deny an effect, naming it in the error.
+let refuse = (effect) -> {
+  deny(append(effect, " denied by policy"))
+}
+
+// Allow a file effect only for paths under one of the absolute roots.
+// `path_of` gets the path from the effect value.
+let under = (effect, roots, path_of) -> {
+  (value) -> {
+    let path = path_of(value)
+    match any_under(roots, path) {
+      True(_) -> { Pass(value) }
+      False(_) -> { Mock(Error(denied(effect, path))) }
+    }
+  }
+}
+
+let request_path = (request) -> {
+  request.path
+}
+
+let path = (path) -> {
+  path
+}
+
+// Files that hold secrets, by convention `.env.eyg`, are never readable.
+let is_secret = (path) -> {
+  !string_ends_with(path, ".env.eyg")
+}
+
+// Wrap a read_file policy so that secret files are denied.
+let hide_secrets = (read_file) -> {
+  (request) -> {
+    match is_secret(request.path) {
+      True(_) -> { Mock(Error(denied("read_file", request.path))) }
+      False(_) -> { read_file(request) }
+    }
+  }
+}
+
+// Deny every effect the CLI gates that can fail, `Env` returns `None`.
+// Now, Sleep, StandardOut and StandardError cannot fail and only observe the process so are passed.
+// The CLI does not gate effects that do no IO, such as Random and DecodeJSON, or Exit.
+let deny_all = {
+  append_file: refuse("append_file"),
+  create_key: refuse("create_key"),
+  cwd: (_) -> { Mock(Error({})) },
+  delete_file: refuse("delete_file"),
+  env: (_) -> { Mock(None({})) },
+  fetch: refuse("fetch"),
+  make_directory: refuse("make_directory"),
+  now: pass,
+  read_directory: refuse("read_directory"),
+  read_file: refuse("read_file"),
+  sign: refuse("sign"),
+  sleep: pass,
+  standard_error: pass,
+  standard_in: refuse("standard_in"),
+  standard_out: pass,
+  write_file: refuse("write_file")
+}
+
+// Allow every effect except StandardIn, which would read the input meant for the chat.
+// Reading secret files is still denied.
+let allow_all = {
+  append_file: pass,
+  create_key: pass,
+  cwd: pass,
+  delete_file: pass,
+  env: pass,
+  fetch: pass,
+  make_directory: pass,
+  read_directory: pass,
+  read_file: hide_secrets(pass),
+  sign: pass,
+  write_file: pass,
+  ..deny_all
+}
+
+// Read files and directories under the absolute roots, nothing can be changed.
+// Effects that only observe the process, such as Now and StandardOut, are allowed.
+let read_only = (roots) -> {
+  {
+    cwd: pass,
+    read_directory: under("read_directory", roots, path),
+    read_file: hide_secrets(under("read_file", roots, request_path)),
+    ..deny_all
+  }
+}
+
+// Read and write files and directories under the absolute roots.
+let read_write = (roots) -> {
+  {
+    append_file: under("append_file", roots, request_path),
+    delete_file: under("delete_file", roots, path),
+    make_directory: under("make_directory", roots, path),
+    write_file: under("write_file", roots, request_path),
+    ..read_only(roots)
+  }
+}
+
+// Add a header to fetch requests for one host, i.e. to add an API token the agent never sees.
+// Requests to other hosts are passed on to the `otherwise` policy.
+let with_header = (host, key, value, otherwise) -> {
+  (request) -> {
+    match !equal(request.host, host) {
+      True(_) -> { Pass({headers: [{key, value}, ..request.headers], ..request}) }
+      False(_) -> { otherwise(request) }
+    }
+  }
+}
+
+// Allow fetch only to the listed hosts, over https.
+let fetch_hosts = (hosts) -> {
+  (request) -> {
+    let allowed = !list_fold(hosts, False({}), (host, found) -> {
+      match found {
+        True(_) -> { True({}) }
+        False(_) -> { !equal(host, request.host) }
+      }
+    })
+    match allowed {
+      True(_) -> {
+        match request.scheme {
+          HTTPS(_) -> { Pass(request) }
+          | (_) -> { Mock(Error(append("fetch denied by policy, https required: ", request.host))) }
+        }
+      }
+      False(_) -> { Mock(Error(append("fetch denied by policy: ", request.host))) }
+    }
+  }
+}
+
+{
+  pass,
+  deny,
+  is_under,
+  under,
+  hide_secrets,
+  deny_all,
+  allow_all,
+  read_only,
+  read_write,
+  with_header,
+  fetch_hosts
+}

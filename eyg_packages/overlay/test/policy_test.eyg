@@ -1,0 +1,123 @@
+let {assert} = import "../../aok/index.eyg"
+let policy = import "../policy.eyg"
+
+let read = (path) -> {
+  {path, offset: 0, limit: 100}
+}
+
+let write = (path) -> {
+  {path, contents: !string_to_binary("x")}
+}
+
+let expect_pass = (decision) -> {
+  match decision {
+    Pass(value) -> { value }
+    Mock(_) -> { perform Abort("expected Pass, got Mock") }
+  }
+}
+
+let expect_mock = (decision) -> {
+  match decision {
+    Mock(value) -> { value }
+    Pass(_) -> { perform Abort("expected Mock, got Pass") }
+  }
+}
+
+let test_pass_and_deny = (_) -> {
+  let _ = assert.equal(5, expect_pass(policy.pass(5)))
+  let _ = assert.equal_string("no", assert.error(expect_mock(policy.deny("no")(5))))
+  {}
+}
+
+let test_is_under = (_) -> {
+  let _ = assert.true(policy.is_under("/project", "/project"))
+  let _ = assert.true(policy.is_under("/project", "/project/a.txt"))
+  let _ = assert.true(policy.is_under("/project/", "/project/a/b.txt"))
+  let _ = assert.false(policy.is_under("/project", "/project-other/a.txt"))
+  let _ = assert.false(policy.is_under("/project", "/etc/hostname"))
+  {}
+}
+
+let test_read_only = (_) -> {
+  let p = policy.read_only(["/project"])
+  let _ = expect_pass(p.read_file(read("/project/README.md")))
+  let _ = expect_pass(p.read_directory("/project/src"))
+  let _ = assert.equal_string(
+    "read_file denied by policy: /etc/hostname",
+    assert.error(expect_mock(p.read_file(read("/etc/hostname"))))
+  )
+  let _ = assert.equal_string(
+    "read_file denied by policy: /project/.env.eyg",
+    assert.error(expect_mock(p.read_file(read("/project/.env.eyg"))))
+  )
+  let _ = assert.equal_string(
+    "write_file denied by policy",
+    assert.error(expect_mock(p.write_file(write("/project/a.md"))))
+  )
+  let _ = assert.equal(None({}), expect_mock(p.env("HOME")))
+  let _ = expect_pass(p.standard_out("hi"))
+  {}
+}
+
+let test_read_write = (_) -> {
+  let p = policy.read_write(["/project/out"])
+  let _ = expect_pass(p.write_file(write("/project/out/a.md")))
+  let _ = expect_pass(p.make_directory("/project/out/nested"))
+  let _ = assert.equal_string(
+    "write_file denied by policy: /project/a.md",
+    assert.error(expect_mock(p.write_file(write("/project/a.md"))))
+  )
+  let _ = assert.equal_string(
+    "delete_file denied by policy: /project/a.md",
+    assert.error(expect_mock(p.delete_file("/project/a.md")))
+  )
+  {}
+}
+
+let test_allow_all_hides_secrets = (_) -> {
+  let _ = expect_pass(policy.allow_all.read_file(read("/project/README.md")))
+  let _ = assert.error(expect_mock(policy.allow_all.read_file(read("/project/.env.eyg"))))
+  let _ = expect_pass(policy.allow_all.write_file(write("/anywhere.txt")))
+  {}
+}
+
+let request = (scheme, host) -> {
+  {
+    method: GET({}),
+    scheme,
+    host,
+    port: None({}),
+    path: "/",
+    query: None({}),
+    headers: [],
+    body: !string_to_binary("")
+  }
+}
+
+let test_fetch = (_) -> {
+  let fetch = policy.with_header(
+    "api.example.com",
+    "authorization",
+    "Bearer secret",
+    policy.fetch_hosts(["eyg.run"])
+  )
+  let sent = expect_pass(fetch(request(HTTPS({}), "api.example.com")))
+  let _ = assert.equal([{key: "authorization", value: "Bearer secret"}], sent.headers)
+  let other = expect_pass(fetch(request(HTTPS({}), "eyg.run")))
+  let _ = assert.equal([], other.headers)
+  let _ = assert.equal_string(
+    "fetch denied by policy: evil.example",
+    assert.error(expect_mock(fetch(request(HTTPS({}), "evil.example"))))
+  )
+  let _ = assert.error(expect_mock(fetch(request(HTTP({}), "eyg.run"))))
+  {}
+}
+
+[
+  {name: "policy pass and deny", test: test_pass_and_deny},
+  {name: "policy is under", test: test_is_under},
+  {name: "policy read only", test: test_read_only},
+  {name: "policy read write", test: test_read_write},
+  {name: "policy allow all hides secrets", test: test_allow_all_hides_secrets},
+  {name: "policy fetch", test: test_fetch}
+]

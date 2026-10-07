@@ -8,10 +8,6 @@ EYG separates the **declaration** of an effect (in your script:
 The CLI in this repository ([`packages/gleam_cli`](../packages/gleam_cli/))
 implements the effects below.
 
-For scripts that need value-based restrictions around `Fetch` and the
-result-returning file-system effects, see
-[`overlay.access`](./access_policies.md).
-
 ## File system
 
 Relative filesystem paths are resolved from directory of the source expression that performs the effect.
