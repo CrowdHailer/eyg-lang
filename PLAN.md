@@ -192,3 +192,9 @@ Tasks
       comparison/presentation, and SQLite into four implementation commits.
 - [x] Make multi-relation `Table` types readable in diagnostics and test the
       displayed type for a polymorphic view.
+
+## Follow up
+
+- [ ] Investigate `?a` for query variables instead of declaring them with `var`.
+      Does it make parsing, lowering, highlighting or evaluation quicker or simpler?
+      Pros and cons of only this change: `notes/query_variable_syntax.md`.
