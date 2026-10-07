@@ -95,8 +95,8 @@ for roles, delegation, and agents, with executable examples in
 [`authorization`](./eyg_packages/authorization/).
 The [agent oversight presentation](./presentations/agent-oversight.html) is a
 standalone slide deck with keyboard navigation, speaker notes, and print styles.
-The [SQLite guide](./guides/sqlite.md) shows generated SQL, an inferred result
-decoder, and a recorded demo of database updates and revocation.
+The [SQLite guide](./guides/sqlite.md) resolves the same query tables inside a
+SQLite database, with rules run as SQL joins over a database of 36k films.
 
 
 ### Previous experiments

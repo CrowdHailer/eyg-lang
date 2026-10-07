@@ -1,192 +1,114 @@
 ---
 name: Querying SQLite
-description: Compile a typed EYG table into SQL joins and a generated imperative client.
+description: Resolve EYG query tables inside a SQLite database, with rules run as SQL joins.
 ---
 
 # Querying SQLite
 
-`eyg/compiler/sql.to_sql(expression, relation, sources)` compiles a pure EYG
-table expression into a SQLite query program and a JavaScript client. The
-selected relation's inferred type supplies both the runtime decoder and a
-TypeScript declaration. The caller specifies the **input database schema**;
-there is no separately maintained output schema.
+A query table can be resolved in memory with `resolve`, or inside a SQLite
+database with the `SQLiteQuery` effect. The same rules work in both. In SQLite
+each rule becomes one `INSERT ... SELECT` whose joins and filters use the
+database's indexes, so queries stay fast over tables of hundreds of thousands of rows.
 
-The [recorded demo](../examples/sqlite/demo.webm) shows a real file-backed SQLite
-database: Alice inherits access to a report and its appendix, a newly inserted
-child appears on the next query, and revoking her grant removes every result.
-The same steps have executable assertions in
-[demo.mjs](../examples/sqlite/demo.mjs).
+The [movies example](../examples/movies/) loads 36,273 films with 133,326 cast
+credits from Wikipedia and queries them.
 
-## Run the example
+## Two effects
 
-Use Gleam, Bun for the generator, and Node.js 24 for the database client. The
-demo was checked with Gleam 1.19.0 and Node.js 24.15.0. Database access uses
-[Node's built-in SQLite module](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html),
-including scalar-function registration; no npm database driver is needed.
+The CLI provides two effects for SQLite files. A path is relative to the script
+that performs the effect; `":memory:"` is one in memory database for the process.
 
-From the repository root:
-
-```sh
-cd packages/gleam_compiler
-gleam run -m sqlite_demo --runtime bun
-cd ../..
-node examples/sqlite/demo.mjs
-```
-
-The generator reads [view.eyg](../examples/sqlite/view.eyg) and writes
-`examples/sqlite/.generated/query.mjs` and `query.d.mts`. The demo creates an
-isolated temporary database and deletes it on exit. It never opens a user's
-existing database.
-
-## The EYG view
-
-The view combines a direct grant rule, recursive inheritance through `Child`,
-and a projection of Alice's permissions. For example, its recursive rule is:
+`SQLite` runs one statement. Parameters are always bound, never spliced into the SQL.
 
 ```eyg
-rule Access({actor, resource: child, action}) {
-  var actor var parent var child var action
-  Access({actor, resource: parent, action}),
-  Child({parent, child})
-}
+let rows = perform SQLite({
+  database: "movies.sqlite",
+  sql: "SELECT title FROM Movie WHERE year = ?",
+  parameters: [Integer(1987)]
+})
+// Ok([[Text("84 Charing Cross Road")], [Text("Adventures in Babysitting")], ...])
 ```
 
-The full file supplies the other rules and binds the lexical constant `actor`.
-Rule bodies and heads retain EYG's pure functions, structural equality, and
-set semantics. Repeated variables and constants become checked predicates.
-Cycles over a finite set of facts settle normally.
+Values are `Integer(Int)`, `Text(String)`, `Blob(Binary)` or `Null({})`.
+Use it to create tables, load data and run SQL written by hand.
 
-## The host contract
+`SQLiteQuery` resolves a query table in the database.
 
-The [generator](../packages/gleam_compiler/test/sqlite_demo.gleam) calls the
-compiler with `Source` mappings. For example:
-
-```gleam
-sql.Source("Child", "children", [
-  sql.Column("parent", "parent", t.String),
-  sql.Column("child", "child", t.String),
-])
-```
-
-This declares `Child` to contain records with two string fields, read from the
-corresponding SQLite columns. The host must choose trusted source mappings;
-the compiler checks their consistency with the EYG view. Runtime reads reject
-SQL values that violate that contract. Column and table identifiers are quoted;
-relation names and fact values are bound parameters.
-
-The compiler returns `Result(Query, String)`. `Query.result_type` is the inferred
-selected row type; `Query.sql` contains the source SELECTs, rule INSERT/SELECTs,
-and output SELECT with `%PREFIX%` placeholders. `Query.javascript` is a
-self-contained ES module, and `Query.typescript` its declaration. The generated
-module exports `run`, `decode`, and a `sql` preview that also includes temporary
-table setup, snapshot, seeding, and cleanup statements. These statements form a
-program: the client supplies parameters, registered functions, and iteration.
-They are not a single standalone SELECT suitable for pasting into another SQL
-engine.
-
-For this view, the generated type is:
-
-```typescript
-export type Row = { resource: string; action: string };
-```
-
-An imperative caller opens its authorized connection and consumes the result:
-
-```javascript
-import {DatabaseSync} from 'node:sqlite';
-import {run} from './.generated/query.mjs';
-
-const db = new DatabaseSync('authorization.sqlite');
-try {
-  for (const row of run(db)) {
-    console.log(row.resource, row.action);
+```eyg
+let star = "Arnold Schwarzenegger"
+let query = @{
+  rule CoStar({actor, title}) {
+    var movie var actor var title
+    Cast({movie, actor: star}),
+    Cast({movie, actor}),
+    Movie({id: movie, title})
   }
-} finally {
-  db.close();
+}
+match perform SQLiteQuery({database: "movies.sqlite", query}) {
+  Ok({facts, sql}) -> { resolve CoStar facts }
+  Error(reason) -> { [] }
 }
 ```
 
-No database effect was added to EYG. Database access belongs to this imperative
-host; the view is pure and cannot open a connection. An embedding application
-can expose an authorized database operation through its existing effect
-boundary without granting query predicates access to that connection.
+It returns the derived facts as a table, ready to `resolve` or to combine with
+more rules in memory, and the SQL it ran. A relation that no rule derives, and
+that has no inline facts, is read from the database table of the same name.
+Record fields are column names. Relations that rules derive, or that have inline
+facts, are temporary tables for the length of the query. If a database table has
+the same name, its rows are copied into the temporary table first.
 
-## Execution and decoding
+Every perform of `SQLiteQuery` shares one row type, so the type checker treats a
+program as having one view of its databases.
 
-SQLite reads each mapped table into a temporary fact set. Every round copies
-that set into a snapshot, executes the generated SQL joins, and inserts new
-facts with `INSERT OR IGNORE`. Pure EYG heads and guards run as registered
-JavaScript scalar functions. A round that adds no facts ends evaluation.
+## The generated SQL
 
-This design supports mutual recursion and joins involving several recursive
-relations. A single SQLite recursive CTE requires exactly one recursive table
-reference in each recursive SELECT, so it cannot directly express all these
-joins. See [SQLite's recursive CTE rules](https://www.sqlite.org/lang_with.html#recursive_common_table_expressions).
-This implementation uses full snapshot rounds; it makes no claim of indexed
-join-key optimization or semi-naive evaluation.
+The query above runs as:
 
-Canonical tagged JSON stored in temporary tables preserves the distinction
-between records, tags, lists, and binaries. Record field order does not affect
-deduplication. The generated decoder checks every field and variant before
-returning JavaScript values:
-
-| EYG value | JavaScript result |
-|---|---|
-| Integer | A safe integer `number` |
-| String | `string` |
-| Binary | `Uint8Array` |
-| List(a) | Array of decoded `a` |
-| Record | Object with the inferred fields |
-| True / False | `boolean` |
-| Other closed union | `{tag, value}` |
-
-Input SQL columns support Integer, String, Binary, Boolean encoded as 0/1,
-and one optional layer encoded as NULL or a scalar. Integers outside JavaScript's
-safe range are rejected, including 64-bit SQLite integers that would otherwise
-lose precision. Nested optional columns are rejected because NULL cannot
-distinguish `None` from `Some(None)`.
-
-## Boundaries and failure behavior
-
-The expression must be pure, closed, and reference-free; resolve imports before
-calling this API. Sources supply schemas for relation clauses inside rules;
-they do not substitute a database during compile-time table construction.
-The adapter accepts the positive rule lowering generated by query syntax.
-Arbitrary hand-built rule closures that inspect an entire snapshot are rejected
-instead of being treated as SQL joins. The selected result needs a concrete
-data schema; unresolved type variables, open row tails, functions, and nested
-tables cannot be decoded. Record fields beginning with `$` are reserved by the
-JavaScript representation. Head/guard functions use the JavaScript compiler's
-supported builtins; unsupported operations fail explicitly.
-
-`run(db, {maxRounds: 1000, maxFacts: 100000})` is the default budget. Limits count
-all composed relations, including input facts, and exceeding a limit throws
-without returning partial permissions. Fact counts are checked after each seed
-and rule statement; these limits are not hard bounds on temporary allocation.
-Neither limit interrupts a divergent pure predicate or an expensive SQL join.
-Hosts needing hard time or memory limits must run the client in an isolated
-worker or process and enforce those limits there.
-
-Each run uses a savepoint. Success drops its temporary tables; failure rolls
-them back without discarding an enclosing caller transaction. Base tables are
-read only. Functions are reused for repeat runs on the same client/connection.
-Every invocation rereads the database, so deletion of an input grant removes
-its derived access on the next invocation. A result is a snapshot, not a
-long-lived permission token: the host must coordinate authorization and action
-when concurrent revocation matters.
-
-## Verification and recording
-
-The compiler suite runs real Node SQLite tests for recursion, capture, schema
-checks, decoding, limits, rollback, quoted identifiers, and record equality:
-
-```sh
-cd packages/gleam_compiler
-gleam test --target javascript --runtime bun
+```sql
+INSERT OR IGNORE INTO temp."CoStar" ("actor", "title")
+SELECT DISTINCT t1."actor", t2."title"
+FROM "Cast" AS t0 CROSS JOIN "Cast" AS t1 CROSS JOIN "Movie" AS t2
+WHERE t0."actor" = ? AND t1."movie" = t0."movie" AND t2."id" = t0."movie"
 ```
 
-To record the demo again, install Playwright with Chromium in your development
-environment, generate the client, and run `node examples/sqlite/record.mjs` from
-the root. An optional argument specifies an already-installed Playwright module
-path. The recorder runs the live demo operations while displaying their actual
-results, checks assertions, and writes `examples/sqlite/demo.webm`.
+Each relation clause is a table in the join. The fields already bound when the
+clause is reached become conditions on that table, the same key the interpreter
+uses to look rows up in its index. Clauses join in the order they are written:
+put the most selective clause first and index the columns it is joined on.
+SQLite has no statistics for temporary tables and otherwise chooses full scans.
+
+Rules are run in rounds until no rule inserts a row. A rule only runs again
+when a relation it reads grew in the previous round. This supports recursion,
+mutual recursion and rules that read several recursive relations, which a
+single recursive CTE cannot express.
+
+## What can be planned
+
+Rule closures are partially evaluated. Values captured from the surrounding
+program, and functions called in heads and predicates, are inlined. These become SQL:
+
+| EYG | SQL |
+| --- | --- |
+| a variable bound by a clause | a column |
+| an integer, string, binary or captured value | a bound parameter |
+| `!equal(a, b)` | `a = b` |
+| `match !int_compare(a, b) { Lt(_) -> ... }` | `a < b`, `a = b`, `a > b` |
+| `match b { True(_) -> ... False(_) -> ... }` | `b`, `NOT b` |
+| `!int_add`, `!int_subtract`, `!int_multiply` | `+`, `-`, `*` |
+| `!string_append(a, b)` | `a \|\| b` |
+
+Other builtins, lists, variants stored in a column and whole-row variables are
+reported as errors before any SQL is run. Inline facts and derived rows must be
+records of integers, strings, binaries or Booleans. A Boolean is stored as 1 or 0
+and comes back as an integer.
+
+## Performance
+
+On the movies database, with indexes on `Cast(actor)` and `Cast(movie)`:
+
+| Query | SQLite | Interpreter |
+| --- | --- | --- |
+| Arnold Schwarzenegger's co-stars after 1990 and everyone within two degrees of Kevin Bacon (11,224 facts) | 0.2s | 5s, after 12s building a 170k fact table |
+
+The whole demo, `eyg run movies.eyg`, takes under half a second. Evaluation is
+not semi-naive, a rule that runs again recomputes all of its rows.

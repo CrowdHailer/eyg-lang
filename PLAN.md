@@ -134,11 +134,9 @@ Tasks
     - [x] Show that this also builds a client adater for the imperative part of the program that implicitly decodes the query
     - [x] Record a video of this working against a SQLite database
         - Accessing the DB is probably via an effect i.e. `let db = perform DB({})` In this environment the return type of that will be a table with internal row type matching the rows in the database
-    - `eyg/compiler/sql.to_sql` emits a SQLite program and a generated Node
-      client with an inferred decoder/declaration. The imperative host owns the
-      connection; no new language effect. `guides/sqlite.md` documents source
-      schemas, snapshot rounds, supported values, and execution limits.
-      `examples/sqlite/demo.webm` records live queries, updates, and revocation.
+    - Replaced: rules now lower to an indexed `Match`, `eyg/compiler/sql.plan` emits
+      real joins and the CLI resolves tables with the `SQLiteQuery` effect.
+      The cross join Node client was removed. See `guides/sqlite.md` and `examples/movies`.
 - [x] review this work against the flix programing language what queries can it represent that we cannot
 - [x] review this work against crepe a Rust project
     - `guides/query_comparison.md` cites primary documentation and distinguishes

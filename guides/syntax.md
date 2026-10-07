@@ -488,8 +488,12 @@ first occurrence in a relation pattern binds it; later occurrences compare it.
 Names without `var` refer to their ordinary lexical scope and match as constants.
 Record patterns may select a subset of fields, including nested records.
 An empty record pattern matches the unit value `{}`.
+A variant pattern such as `S(title)` binds inside the tag and skips rows holding
+another variant.
 
-Body clauses are evaluated from left to right. Bind a variable in a relation
+Body clauses are evaluated from left to right. Each relation clause finds its
+rows through an index on the fields already bound, so put the most selective
+clause first. SQLite joins clauses in the same order. Bind a variable in a relation
 before using it in a computed expression or Boolean predicate. Heads and
 predicates can call any pure EYG function, package, or builtin. Use
 `!int_add(n, 1)` for arithmetic, as elsewhere in EYG. The type checker rejects
