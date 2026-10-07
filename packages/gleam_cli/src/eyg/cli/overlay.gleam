@@ -11,6 +11,7 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/cli/check
 import eyg/cli/internal/config
+import eyg/cli/internal/terminal
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -23,7 +24,6 @@ import eyg/interpreter/value
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/http/response
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -137,7 +137,9 @@ fn outer_loop(
         Ok(history) -> system.Done(history)
         Error(reason) -> {
           // This output should be error and potentially show to the agent.
-          use Nil <- system.then(system.stdout(ansi.red(reason) <> "\n"))
+          use Nil <- system.then(system.stdout(
+            terminal.style(ansi.red, reason) <> "\n",
+          ))
           system.Done(history)
         }
       })
@@ -159,14 +161,15 @@ pub fn input(
   prompt: String,
   placeholder: String,
 ) -> system.Effect(Result(String, Nil)) {
-  let prompt = ansi.bold(ansi.yellow(prompt))
-  io.print(prompt)
-  io.print(" ")
-  io.print(ansi.dim(placeholder))
-  io.print("\r")
-  io.print(prompt)
-  io.print(" ")
-  use return <- system.map(system.prompt(""))
+  let prompt = case terminal.noninteractive() {
+    // The placeholder is overwritten as the user types.
+    True -> {
+      let prompt = ansi.bold(ansi.yellow(prompt))
+      prompt <> " " <> ansi.dim(placeholder) <> "\r" <> prompt <> " "
+    }
+    False -> prompt <> " "
+  }
+  use return <- system.map(system.prompt(prompt))
   case return {
     Ok(line) -> Ok(string.trim_end(line))
     Error(reason) -> Error(reason)
@@ -201,7 +204,7 @@ pub fn inner_loop(
   )(system.Done))
   case completion {
     Ok(completion) -> {
-      io.println(completion.content)
+      use Nil <- system.then(system.stdout(completion.content))
       let history = [chat.from_completion(completion), ..history]
       case completion.tool_calls {
         [] -> system.Done(#(Ok(history), eyg_state))
@@ -270,7 +273,7 @@ pub fn execute_call(
   let tool.FunctionCall(name, arguments) = call
   case agent.cast_tool_call(name, arguments) {
     Ok(call) -> {
-      io.println(ansi.bg_bright_green(log_line(call)))
+      use Nil <- system.then(system.stdout(log_line(call)))
       case call {
         agent.Run(code) -> {
           use #(result, eyg_state, output) <- system.then(run_do(
@@ -290,6 +293,7 @@ pub fn execute_call(
               Error(report(output, reason))
             }
           }
+          use Nil <- system.then(system.stdout(log_result(result)))
           system.Done(#(result, eyg_state))
         }
       }
@@ -304,7 +308,29 @@ pub fn execute_call(
 
 pub fn log_line(call) {
   case call {
-    agent.Run(_code) -> "Executing EYG code."
+    agent.Run(code) ->
+      terminal.style(ansi.bg_bright_green, "Executing EYG code.")
+      <> "\n"
+      <> terminal.style(ansi.dim, code)
+  }
+}
+
+/// Summarise a tool call result so the user can see what the agent saw.
+fn log_result(result: Result(tool.Return, String)) -> String {
+  case result {
+    Ok(tool.Return(text:, ..)) ->
+      terminal.style(ansi.green, "ok ")
+      <> terminal.style(ansi.dim, truncate(text))
+    Error(reason) ->
+      terminal.style(ansi.red, "error ")
+      <> terminal.style(ansi.dim, truncate(reason))
+  }
+}
+
+fn truncate(text) {
+  case string.length(text) > 500 {
+    True -> string.slice(text, 0, 500) <> "..."
+    False -> text
   }
 }
 

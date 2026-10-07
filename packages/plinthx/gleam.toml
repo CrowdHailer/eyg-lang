@@ -1,0 +1,10 @@
+name = "plinthx"
+version = "0.1.0"
+target = "javascript"
+description = "Bindings to platform APIs that published plinth does not have"
+
+[dependencies]
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

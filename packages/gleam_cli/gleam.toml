@@ -27,6 +27,7 @@ multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 overlay = { path = "../overlay" }
 overlay_llm = { path = "../overlay_llm" }
+plinthx = { path = "../plinthx" }
 simplifile = ">= 2.4.0 and < 3.0.0"
 touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }
