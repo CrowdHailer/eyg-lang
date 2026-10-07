@@ -93,6 +93,8 @@ The [`overlay`](./eyg_packages/overlay/) package contains access policy helpers 
 The [authorization tutorial](./guides/authorization.md) builds typed query policies
 for roles, delegation, and agents, with executable examples in
 [`authorization`](./eyg_packages/authorization/).
+The [agent oversight presentation](./presentations/agent-oversight.html) is a
+standalone slide deck with keyboard navigation, speaker notes, and print styles.
 
 
 ### Previous experiments

@@ -134,8 +134,10 @@ Tasks
     - [ ] Show that this also builds a client adater for the imperative part of the program that implicitly decodes the query
     - [ ] Record a video of this working against a SQLite database
         - Accessing the DB is probably via an effect i.e. `let db = perform DB({})` In this environment the return type of that will be a table with internal row type matching the rows in the database
-- [ ] review this work against the flix programing language what queries can it represent that we cannot
-- [ ] review this work against crepe a Rust project
+- [x] review this work against the flix programing language what queries can it represent that we cannot
+- [x] review this work against crepe a Rust project
+    - `guides/query_comparison.md` cites primary documentation and distinguishes
+      query expressibility from algorithms possible in the host language.
 - [x] Write a tutorial explaining how to write rules for authorization using EYG and it's query literals, including
     - role based access control
     - relation based access control
@@ -149,8 +151,12 @@ Tasks
 - [x] Make sure syntax highlighting works and the tutorial looks good.
     - Shared TextMate grammar covers query syntax; website tests verify rendered
       code and links. Chromium review at 1280px and 390px found no page overflow.
-- [ ] Write a presentation explaining why EYG is so good for knowing what your agents are up to
+- [x] Write a presentation explaining why EYG is so good for knowing what your agents are up to
     - The presenation should explain why this appoach is better than https://www.biscuitsec.org/
+    - `presentations/agent-oversight.html`: 12 slides with notes, source links,
+      keyboard controls, and print styles. The comparison scopes EYG's advantage
+      to owning the executor and preserves Biscuit's signed-token advantages.
+      Reviewed in Chromium on desktop/mobile; navigation and PDF export checked.
 
 ## Implementation and verification work
 
