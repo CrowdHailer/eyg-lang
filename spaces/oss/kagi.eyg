@@ -1,0 +1,303 @@
+// Kagi Search API client.
+//
+// API reference: https://kagi.com/api/docs (Kagi API, version 1)
+// The search endpoint is POST https://kagi.com/api/v1/search. Request bodies
+// and responses are JSON, encoded and decoded with the @json package.
+//
+// This client carries no credentials. The overlay policy attaches the
+// Authorization header for Kagi requests, see `.overlay.eyg`.
+
+let {http, list} = @standard
+let {encode: encode, decode: decode, parse_bytes: parse_bytes} = @json
+
+// --- Options ----------------------------------------------------------------
+
+// Default search options. Spread into a call to change individual fields:
+//
+//   let kagi = import "./kagi.eyg"
+//   kagi.search("kagi search", {limit: Some(5), ..kagi.defaults})
+//
+//   workflow:    Some("search" | "images" | "videos" | "news" | "podcasts")
+//   limit:       Some(integer, 1 to 1024, caps the number of results returned)
+//   page:        Some(integer, 1 to 10, for paginated results)
+//   lens_id:     Some(built-in lens identifier or shareable lens URL)
+//   safe_search: Some(True({})) to omit potentially NSFW content
+let defaults = {
+  workflow: None({}),
+  limit: None({}),
+  page: None({}),
+  lens_id: None({}),
+  safe_search: None({}),
+}
+
+// --- Request ----------------------------------------------------------------
+
+// Encode one optional option as zero or one JSON object fields.
+let optional_field = (label, encode_value) -> {
+  (option) -> {
+    match option {
+      Some(value) -> { [encode.field(label, encode_value(value))] }
+      None(_) -> { [] }
+    }
+  }
+}
+
+// Build the JSON body for POST /search.
+let encode_body = (query, options) -> {
+  let extras = list.flatten([
+    optional_field("workflow", encode.string)(options.workflow),
+    optional_field("limit", encode.integer)(options.limit),
+    optional_field("page", encode.integer)(options.page),
+    optional_field("lens_id", encode.string)(options.lens_id),
+    optional_field("safe_search", encode.boolean)(options.safe_search),
+  ])
+  encode.object([encode.field("query", encode.string(query)), ..extras])
+}
+
+// Build the Fetch request for the documented v1 search endpoint.
+// No Authorization header is set here; the overlay policy adds it.
+let request = (query, options) -> {
+  let base = http.post("kagi.com")
+  let with_path = http.path(base, "/api/v1/search")
+  let with_header = http.header(with_path, "Content-Type", "application/json")
+  http.body(with_header, !string_to_binary(encode_body(query, options)))
+}
+
+// --- Response ---------------------------------------------------------------
+
+// Find a field label in the flat DecodeJSON token list of an object's
+// contents, scanning at depth `at`. Returns Ok(tokens-following-the-label)
+// when the field is present, Error({}) when the object ends without it.
+let seek = !fix((self, parsed, at, label) -> {
+  match !list_pop(parsed) {
+    Ok({head, tail}) -> {
+      match !int_compare(head.depth, at) {
+        Lt(_) -> { Error({}) }
+        Eq(_) -> {
+          match head.term {
+            Field(name) -> {
+              match !equal(name, label) {
+                True(_) -> { Ok(tail) }
+                False(_) -> { self(tail, at, label) }
+              }
+            }
+            | (_) -> { self(tail, at, label) }
+          }
+        }
+        Gt(_) -> { self(tail, at, label) }
+      }
+    }
+    Error(_) -> { Error({}) }
+  }
+})
+
+// Decode an optional field, distinguishing three cases:
+//   absent field  -> None({})
+//   null value    -> None({})
+//   invalid value -> the whole decode fails
+// Presence is checked before decoding so an invalid value is reported as a
+// failure instead of an absent field. Treating them alike previously let a
+// malformed response decode as an empty successful response.
+let optional = (label, decoder) -> {
+  (parsed) -> {
+    match !list_pop(parsed) {
+      Ok({head}) -> {
+        match seek(parsed, head.depth, label) {
+          Error(_) -> { None({}) }
+          Ok(rest) -> {
+            match !list_pop(rest) {
+              Ok({head: first}) -> {
+                match first.term {
+                  Null(_) -> { None({}) }
+                  | (_) -> { Some(decoder(rest).value) }
+                }
+              }
+              Error(_) -> { None({}) }
+            }
+          }
+        }
+      }
+      Error(_) -> { None({}) }
+    }
+  }
+}
+
+// Result items from different collections share one main structure.
+let image_decoder = decode.object((image) -> {
+  {
+    url: decode.field("url", decode.string)(image),
+    height: optional("height", decode.integer)(image),
+    width: optional("width", decode.integer)(image),
+  }
+})
+
+let result_decoder = decode.object((result) -> {
+  {
+    url: decode.field("url", decode.string)(result),
+    title: decode.field("title", decode.string)(result),
+    snippet: optional("snippet", decode.string)(result),
+    time: optional("time", decode.string)(result),
+    image: optional("image", image_decoder)(result),
+  }
+})
+
+// `data` separates results by collection, the workflow option selects between
+// them. Field names follow the workflow option, values the response fields.
+let data_decoder = decode.object((data) -> {
+  {
+    search: optional("search", decode.list(result_decoder))(data),
+    images: optional("image", decode.list(result_decoder))(data),
+    videos: optional("video", decode.list(result_decoder))(data),
+    news: optional("news", decode.list(result_decoder))(data),
+    podcasts: optional("podcast", decode.list(result_decoder))(data),
+  }
+})
+
+// `meta` is debugging data Kagi may change, read only the documented fields.
+let meta_decoder = decode.object((meta) -> {
+  {
+    trace: optional("trace", decode.string)(meta),
+    node: optional("node", decode.string)(meta),
+    ms: optional("ms", decode.integer)(meta),
+  }
+})
+
+let success_decoder = decode.object((body) -> {
+  {
+    meta: decode.field("meta", meta_decoder)(body),
+    data: optional("data", data_decoder)(body),
+  }
+})
+
+// Error responses carry a list of error details. The API reference documents
+// an `error` field, live responses use `errors`, accept both.
+let error_item_decoder = decode.object((item) -> {
+  {
+    code: optional("code", decode.string)(item),
+    url: optional("url", decode.string)(item),
+    message: optional("message", decode.string)(item),
+    location: optional("location", decode.string)(item),
+  }
+})
+
+let error_decoder = decode.object((body) -> {
+  {
+    errors: optional("errors", decode.list(error_item_decoder))(body),
+    error: optional("error", decode.list(error_item_decoder))(body),
+  }
+})
+
+// Describe an error detail as `code - message` with whatever parts exist.
+let describe_error = (item) -> {
+  match item.code {
+    Some(code) -> {
+      match item.message {
+        Some(message) -> { !string_append(!string_append(code, " - "), message) }
+        None(_) -> { code }
+      }
+    }
+    None(_) -> {
+      match item.message {
+        Some(message) -> { message }
+        None(_) -> { "unknown error" }
+      }
+    }
+  }
+}
+
+// A formatted reason for a non-200 response, or a plain status message.
+let status_reason = (status, body) -> {
+  let details = match parse_bytes(body, error_decoder) {
+    Ok({errors, error}) -> {
+      match errors {
+        Some(items) -> { Some(items) }
+        None(_) -> { error }
+      }
+    }
+    Error(_) -> { None({}) }
+  }
+  match details {
+    Some(items) -> {
+      match !list_pop(items) {
+        Ok({head}) -> {
+          !string_append(
+            !string_append(
+              !string_append("Kagi error (", !int_to_string(status)),
+              "): "
+            ),
+            describe_error(head)
+          )
+        }
+        Error(_) -> { !string_append("Kagi returned status ", !int_to_string(status)) }
+      }
+    }
+    None(_) -> { !string_append("Kagi returned status ", !int_to_string(status)) }
+  }
+}
+
+// Decode a POST /search response: Ok for a 200, Error with a reason otherwise.
+let decode_response = (status, body) -> {
+  match !int_compare(status, 200) {
+    Eq(_) -> {
+      match parse_bytes(body, success_decoder) {
+        Ok({meta, data}) -> {
+          let collections = match data {
+            Some(data) -> { data }
+            None(_) -> {
+              {search: None({}), images: None({}), videos: None({}), news: None({}), podcasts: None({})}
+            }
+          }
+          let or_empty = (collection) -> {
+            match collection {
+              Some(items) -> { items }
+              None(_) -> { [] }
+            }
+          }
+          Ok({
+            meta: meta,
+            search: or_empty(collections.search),
+            images: or_empty(collections.images),
+            videos: or_empty(collections.videos),
+            news: or_empty(collections.news),
+            podcasts: or_empty(collections.podcasts),
+          })
+        }
+        Error(reason) -> { Error(!string_append("invalid response body: ", reason)) }
+      }
+    }
+    | (_) -> { Error(status_reason(status, body)) }
+  }
+}
+
+// --- API --------------------------------------------------------------------
+
+// Perform a search. Returns the decoded response, or Error for a transport
+// failure, a non-200 response, or a response that does not decode.
+let search = (query, options) -> {
+  match perform Fetch(request(query, options)) {
+    Error(reason) -> { Error(reason) }
+    Ok({status, body}) -> { decode_response(status, body) }
+  }
+}
+
+// Perform a search and return just the web results as {title, url, snippet}
+// records, where snippet is Some(String) or None({}).
+let search_results = (query, options) -> {
+  match search(query, options) {
+    Ok({search}) -> {
+      Ok(list.map(search)((result) -> {
+        {title: result.title, url: result.url, snippet: result.snippet}
+      }))
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+{
+  defaults,
+  encode_body,
+  request,
+  decode_response,
+  search,
+  search_results,
+}

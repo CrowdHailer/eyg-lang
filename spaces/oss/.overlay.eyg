@@ -1,0 +1,39 @@
+
+let {ollama_token, kagi_api_key} = import ".env.eyg"
+
+let base = @overlay.policy.allow_all
+
+// Attach the Kagi API bearer token to fetch requests for Kagi hosts.
+// The documented v1 Search API is served from `kagi.com`; `api.kagi.com` is
+// also authorised. Requests to any other host pass through the base policy
+// unchanged.
+let kagi_policy = import "./kagi_policy.eyg"
+
+let policy = {
+  fetch: kagi_policy.with_kagi_auth(kagi_api_key, base.fetch),
+  ..base
+}
+
+let expect = (result, message) -> {
+  match result {
+    Ok(value) -> { value }
+    Error(_) -> { !never(perform Exit(1)) }
+  }
+}
+
+let contents = expect(
+  perform ReadFile({path: "./README.md", offset: 0, limit: 1000000}),
+  "Could not read README.md"
+)
+let readme = expect(
+  !string_from_binary(contents),
+  "README.md is not valid UTF-8"
+)
+{
+  llm: {
+    provider: Ollama({origin: "https://ollama.com", api_key: Some(ollama_token)}),
+    model: "glm-5.3:cloud"
+  },
+  policy: policy,
+  context: {readme}
+}
