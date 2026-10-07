@@ -269,10 +269,23 @@ pub fn expression(exp, rev, errors) {
         frame.span(frame.Keyword, None, "mask "),
         frame.span(frame.ClassName, exp_key(rev), label),
       ])
-    e.Query(operation) ->
+    e.Query(operation) -> {
+      let #(word, label) = case operation {
+        ir.EmptyTable -> #("@{}", "")
+        ir.Fact(label) -> #("fact ", label)
+        ir.Rule -> #("rule", "")
+        ir.Merge -> #("merge", "")
+        ir.Resolve(label) -> #("resolve ", label)
+        ir.Match(label, keys) -> #(
+          "match ",
+          label <> "{" <> string.join(keys, ", ") <> "}",
+        )
+      }
       frame.Inline([
-        frame.span(frame.Keyword, exp_key(rev), string.inspect(operation)),
+        frame.span(frame.Keyword, exp_key(rev), word),
+        frame.span(frame.ClassName, None, label),
       ])
+    }
     e.Builtin(identifier) ->
       frame.Inline([frame.span(frame.Builtin, exp_key(rev), "!" <> identifier)])
     e.Reference(ir.Content(cid)) ->
