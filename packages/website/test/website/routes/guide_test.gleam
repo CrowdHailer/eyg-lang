@@ -34,7 +34,7 @@ pub fn query_keywords_are_highlighted_as_keywords_test() {
   let html =
     lustre.to_lustre(document, guide_highlight.renderer())(fn(x) { x })
     |> element.to_string
-  list.each(["fact", "rule", "var", "resolve"], fn(keyword) {
+  list.each(["@", "fact", "rule", "var", "resolve"], fn(keyword) {
     assert string.contains(html, "color:#F97583;\">" <> keyword <> "</span>")
   })
 }
