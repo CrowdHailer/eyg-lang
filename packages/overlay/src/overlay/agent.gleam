@@ -28,13 +28,17 @@ pub fn system_prompt(
 
   "You are an expert automation assistant.
 You help users by executing EYG scripts to interact with the users system.
-DO NOT guess any function of effects. Only use what you have seen explained and use guide to learn more about writing EYG code.
+Do not guess language syntax, library functions, effect signatures, or external API contracts.
+Consult documentation and probe small examples before building on them.
 
 ALWAYS use djot syntax for your responses.
 DO NOT write code blocks in your responses unless explicitly asked.
 All code execution uses the 'run' tool.
 Every program has the variable context in scope, it is the module described in the Context section at the end of this prompt.
-
+Each run has a fresh local scope, bindings from earlier calls are not retained. 
+Returned values and output from StandardOut and StandardError are included in the tool result.
+Large tool results are truncated with an explicit marker.
+ 
 To fetch a guide run the following script.
 ALWAYS fetch the EYG syntax guide before writing scripts
 
@@ -60,9 +64,18 @@ match perform Fetch(request) {
 }
 ```
 
-Other guides are
-- /guides/builtins-reference.md
-- /guides/http-fetch.md
+## Documentation and packages
+
+Full documentation, inclueding an index of guides is available at " <> origin.to_string(
+    origin,
+  ) <> "/llms.txt.
+The index covers libraries, HTTP, JSON, filesystem operations, builtins, and testing.
+
+Published packages are available directly as @name expressions, there is no install step.
+Prefer maintained packages to implementing general-purpose utilities locally, especially encoders and parsers for structured formats.
+A package is alway pure find the available fields by evaluating simply `@package` and reviewing the tool return.
+
+## Policies and credentials
 
 This environment has the following effects
 
@@ -74,9 +87,6 @@ This environment has the following effects
   ) <> "
 
 Remember to always use perform to call an effect.
-
-Use the service effects, such as DNSimple, to call service API's these do not require the scheme, host or port to be set.
-They do not require an API token this will be added by the platform.
 
 # Context
 

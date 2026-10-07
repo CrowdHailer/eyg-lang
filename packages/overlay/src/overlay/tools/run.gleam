@@ -10,7 +10,9 @@ import overlay/llm/tool
 pub const name: String = "run"
 
 pub const description: String =
-  "Run an EYG program, the program may have effects at a top level."
+  "Run an EYG program with top-level effects, including filesystem effects to read and write source files.
+Returns the final value, StandardOut/StandardError output, and errors.
+Each tool call has a fresh local scope containing only variable `context`."
 
 pub fn parameters() -> List(#(String, castor.Ref(castor.Schema), Bool)) {
   [castor.field("code", castor.string())]

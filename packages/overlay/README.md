@@ -118,6 +118,12 @@ Secrets can be kept from the agent by adding them to requests in the policy func
 A fetch policy can check the request origin and if known add an authorization token.
 If keeping secrets on the file system the should still be structured, so convention is a `.env.eyg` file that is gitignored.
 
+## System prompt
+
+The default system prompt is in `src/overlay/agent.gleam`.
+This uses an example to fetch the syntax guide from the hub.
+Using the hub keeps the guide fresh but means it requires network.
+
 ## Generators
 
 Add overlay agent configuration to your project.
