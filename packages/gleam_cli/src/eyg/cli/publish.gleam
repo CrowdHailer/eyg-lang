@@ -1,6 +1,7 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
 import eyg/cli/internal/store
+import eyg/cli/share
 import eyg/hub/cache
 import gleam/int
 import gleam/option.{None, Some}
@@ -29,11 +30,7 @@ pub fn execute(
         "Multiple signatories created; publishing requires exactly one local signatory. Run 'eyg signatory list' to inspect them.",
       )
   })
-  let input = source.File(file)
-  use code <- system.then(source.read_input(input))
-  use code <- system.try(code)
-  use source <- system.try(source.parse_input(code, source.File(file)))
-  use module <- system.then(client.share_module(source, config.client))
+  use module <- system.then(share.upload(source.File(file), config))
   use module <- system.try(module)
   use index <- system.then(client.run_all(cache.pull(cache.empty()), client))
   use index <- system.try(case index.cursor_status {

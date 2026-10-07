@@ -20,6 +20,17 @@ pub fn execute(
   input: source.Input,
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
+  use cid <- system.then(upload(input, config))
+  use cid <- system.try(cid)
+  use Nil <- system.then(system.stdout(v1.to_string(cid)))
+  system.Done(Ok(0))
+}
+
+/// Upload a module and its local imports, returning the bundled root CID.
+pub fn upload(
+  input: source.Input,
+  config: config.Config,
+) -> system.Effect(Result(v1.Cid, String)) {
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
   use input <- system.try(source.normalize_input(cwd, input))
@@ -41,10 +52,7 @@ pub fn execute(
       "unknown reference: " <> ir.reference_to_string(reference)
     })
   use bundle <- system.try(bundle)
-  use cid <- system.then(client.share_bundle(bundle, config.client))
-  use cid <- system.try(cid)
-  use Nil <- system.then(system.stdout(v1.to_string(cid)))
-  system.Done(Ok(0))
+  client.share_bundle(bundle, config.client)
 }
 
 fn halt(reason) {
