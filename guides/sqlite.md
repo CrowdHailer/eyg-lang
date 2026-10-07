@@ -111,5 +111,5 @@ On the movies database, with indexes on `Cast(actor)` and `Cast(movie)`:
 | --- | --- | --- |
 | Arnold Schwarzenegger's co-stars after 1990 and everyone within two degrees of Kevin Bacon (11,224 facts) | 0.2s | 5s, after 12s building a 170k fact table |
 
-The whole demo, `eyg run movies.eyg`, takes under half a second. Evaluation is
+The whole demo, `eyg run movies.eyg`, takes about half a second. Evaluation is
 not semi-naive, a rule that runs again recomputes all of its rows.
