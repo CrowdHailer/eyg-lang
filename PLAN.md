@@ -130,10 +130,15 @@ Tasks
     - Examples: `eyg_packages/authorization/overlay.eyg` and `admission.eyg`;
       runnable CLI config: `examples/authorization/overlay.eyg`. Path checks are
       lexical; the documented host boundary must prevent symlink/mount escapes.
-- [ ] Implement a to SQL function that will turn a table into a SQL query.
-    - [ ] Show that this also builds a client adater for the imperative part of the program that implicitly decodes the query
-    - [ ] Record a video of this working against a SQLite database
+- [x] Implement a to SQL function that will turn a table into a SQL query.
+    - [x] Show that this also builds a client adater for the imperative part of the program that implicitly decodes the query
+    - [x] Record a video of this working against a SQLite database
         - Accessing the DB is probably via an effect i.e. `let db = perform DB({})` In this environment the return type of that will be a table with internal row type matching the rows in the database
+    - `eyg/compiler/sql.to_sql` emits a SQLite program and a generated Node
+      client with an inferred decoder/declaration. The imperative host owns the
+      connection; no new language effect. `guides/sqlite.md` documents source
+      schemas, snapshot rounds, supported values, and execution limits.
+      `examples/sqlite/demo.webm` records live queries, updates, and revocation.
 - [x] review this work against the flix programing language what queries can it represent that we cannot
 - [x] review this work against crepe a Rust project
     - `guides/query_comparison.md` cites primary documentation and distinguishes
@@ -171,9 +176,19 @@ Tasks
       distinguishes transition budgets from host-enforced time/memory limits.
 - [x] Wire repository packages to the local language implementation so CLI and
       integration tests exercise this branch rather than published packages.
-- [ ] Verify interpreter/compiler parity and run the repository's Gleam and EYG
+- [x] Verify interpreter/compiler parity and run the repository's Gleam and EYG
       suites, plus executable tutorial and SQLite examples.
-- [ ] Audit every original deliverable, including the recorded SQLite demo and
+      The CONTRIBUTING matrix passes: 15 JavaScript and 9 Erlang packages.
+      Also checked loam, overlay, overlay_web, and pal on JavaScript, and all
+      67 hub integration tests against an isolated migrated PostgreSQL database.
+      The root EYG suite passes 158 tests; all 133 shared specification fixtures
+      pass in the compiler; separate regressions check escaped query effects.
+      The generated SQLite client and live demo assertions pass.
+- [x] Audit every original deliverable, including the recorded SQLite demo and
       rendered tutorial/presentation; leave a concise history on `bot/datalog`.
+      Website build succeeds; final Chromium checks cover both guides and all
+      12 slides at desktop/mobile widths. The SQLite video records live database
+      updates and revocation. History groups core queries/budgets, authorization,
+      comparison/presentation, and SQLite into four implementation commits.
 - [x] Make multi-relation `Table` types readable in diagnostics and test the
       displayed type for a polymorphic view.

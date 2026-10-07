@@ -1,0 +1,17 @@
+// The host supplies the schemas of Grant and Child from SQLite.
+let actor = "alice"
+@{
+  rule Access({actor, resource, action}) {
+    var actor var resource var action
+    Grant({actor, resource, action})
+  }
+  rule Access({actor, resource: child, action}) {
+    var actor var parent var child var action
+    Access({actor, resource: parent, action}),
+    Child({parent, child})
+  }
+  rule Out({resource, action}) {
+    var resource var action
+    Access({actor, resource, action})
+  }
+}

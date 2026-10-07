@@ -10,6 +10,7 @@ for pkg in packages/{eyg_tui,gleam_analysis,gleam_hub,gleam_interpreter,gleam_ir
 done
 ```
 To test the core JavaScript packages. The [CI matrix](./.github/workflows/test.yml) also covers the native SDKs, browser tooling and application examples.
+The compiler's SQLite integration tests also require Node.js 24 on PATH.
 ```sh
 for pkg in packages/{glasshouse,gleam_analysis,gleam_cli,gleam_compiler,gleam_compiled_runtime,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,loam,morph,otel,overlay_llm,overlay_web,plinthx,soundness,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )

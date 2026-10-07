@@ -28,6 +28,29 @@ pub fn to_js(
   }
 }
 
+pub fn to_js_expression(
+  program: tree.Node(a),
+  refs: dict.Dict(v1.Cid, binding.Poly),
+  handler: String,
+) -> String {
+  case js.needs_effect_runtime(program) {
+    True ->
+      program
+      |> ir.alpha
+      |> tree.clear_annotation
+      |> js.render_expression(handler)
+    False ->
+      program
+      |> infer_purity(refs)
+      |> ir.alpha
+      |> ir.k()
+      |> ir.unnest
+      |> monadic()
+      |> tree.clear_annotation()
+      |> js.render_expression(handler)
+  }
+}
+
 /// Compile a checked, closed program to an ES module with deferred host effects.
 /// The default export contains program, run, runAsync and the Eff constructor.
 /// Inline references before compiling; refs supplies inference types, not code.

@@ -41,13 +41,17 @@ fn do_alpha(node, env, i) {
   let #(exp, m) = node
   case exp {
     ir.Let(x, value, then) -> {
-      let new = string.concat([x, "$", int.to_string(i)])
+      let new =
+        string.concat([string.replace(x, "#", "$"), "$", int.to_string(i)])
       let #(value, i) = do_alpha(value, env, i + 1)
       let #(then, i) = do_alpha(then, [#(x, new), ..env], i + 1)
       #(#(ir.Let(new, value, then), m), i)
     }
     ir.Lambda(x, body) -> {
-      let new = string.concat([x, "$", int.to_string(i)])
+      // Captured environments distinguish shadowed bindings with `#` suffixes.
+      // The unique index retains binding identity after making that name JS-safe.
+      let new =
+        string.concat([string.replace(x, "#", "$"), "$", int.to_string(i)])
       let #(body, i) = do_alpha(body, [#(x, new), ..env], i + 1)
       #(#(ir.Lambda(new, body), m), i)
     }
