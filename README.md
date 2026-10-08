@@ -1,78 +1,24 @@
-# Eat Your Greens (EYG)
+![penelopea mascot for EYG](https://eyg.run/assets/pea.8C463682609CAA4A5A638D66BAA7C5F8115EB83B6ED1D7FA3DE7ABC8F2CAB5AA.webp)
 
-EYG is a scripting language with structural typing, managed effects and immutable dependencies.
+Source code for the EYG language and Overlay harness.
 
-Install the CLI with:
+Try them out on the [website](https://eyg.run) or install the CLI locally:
 
 ```sh
 curl -fsSL https://eyg.run/install | bash
 ```
 
-A hello world example script.
+Join the discussion on [discord](https://discord.gg/e4Js8xH7H)
 
-```eyg
-#!/usr/bin/env eyg
-{
-  script: (_) -> {
-    let _ = perform StandardOut("Hello, World!\n")
-    0
-  }
-}
-```
+## Philosophy
 
-Update permissions `chmod +x entry.eyg`.
-Then run the script directly `./entry.eyg`.
+**Building better languages and tools; for some measure of better.**
 
-## Scripts and modules
+"Eat Your Greens" is a reference to the idea that eating vegetables is good for you, however the benefit is only realised at some later time.
 
-Any file containing valid source code is a module.
-The file containing just `5` is a module.
+All the projects in this repository exist to increase the guarantees available when you build on them. 
 
-An EYG script is a function from the list of script arguments to a returned exit code.
-The type of a script function is `(List(String)) -> Integer`
-
-A valid script module has a script function as a field of a record.
-The type of a script file/module is `{script: (List(String)) -> Int, ..}`.
-
-Run a script using `eyg script path/to/script`.
-
-### Entryfiles
-
-An entryfile is the first module run.
-It can be a valid script file and, because records are extensible, have other fields.
-For example a module with a "shell" field is a valid shell config.
-
-Top-level modules may be executable and have a shebang (`#!/usr/bin/env eyg`).
-
-
-The example below works as a script and shell config.
-
-```eyg
-// entry.eyg
-let tests = import "./path/to/tests.eyg"
-{
-  script: (arguments) -> {
-    let counts = test({})
-    match !equal(counts.failed, 0) {
-      True({}) -> { 0 }
-      False({}) -> { 1 }
-    }
-  },
-  shell: (_) -> {
-    perform Break({})
-  }
-}
-```
-
-Start the shell with `eyg shell entry.eyg`
-Run all the tests with `eyg script entry.eyg`
-
-EYG is a strongly typed replacement for `bash`, `make` and shell tools in general.
-Type check your whole project, application and scripts with `eyg check entry.eyg`
-
-### Pure evaluation
-
-Use `eyg eval` for evaluating pure values, no side effects, and printing the result.
+Projects in this repo introduce extra contraints, over regular programming languages and tools. By doing so more guarantees about the system built on them can be given.
 
 ## Resources
 
@@ -116,16 +62,8 @@ The source for packages maintained as a standard library i.e. `standard` and `js
 The [`overlay`](./eyg_packages/overlay/) package contains policy and skills helpers for overlay agents.
 Other packages in this collection are for demo purposes i.e. `catfact`
 
-## Philosophy
-
-**Building better languages and tools; for some measure of better.**
-
-"Eat Your Greens" is a reference to the idea that eating vegetables is good for you, however the benefit is only realised at some later time.
-
-Projects in this repo introduce extra contraints, over regular programming languages and tools. By doing so more guarantees about the system built on them can be given.
-
 ### Previous experiments
 
 Over the last few years the Eat Greens Principle to build actor systems, datalog engines.
 A record of these experiments is at https://petersaxton.uk/log/.
-The code for these experiments is no longer available if you want to ask more about them reach out to me directly
+The code for these experiments is no longer available if you want to ask more about them reach out to me in the [discord](https://discord.gg/e4Js8xH7H)

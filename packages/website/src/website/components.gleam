@@ -1,12 +1,27 @@
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import website/components/icons
 
-const secondary_button_classes =
-  "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
+const secondary_button_classes = "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 
 fn header_link(target, text) {
   h.a([a.class(secondary_button_classes), a.href(target)], [element.text(text)])
+}
+
+fn header_icon_link(target, label, icon) {
+  h.a(
+    [
+      a.class(
+        secondary_button_classes
+        <> " inline-flex items-center justify-center w-10 h-10",
+      ),
+      a.href(target),
+      a.attribute("aria-label", label),
+      a.title(label),
+    ],
+    [icon],
+  )
 }
 
 pub fn header() {
@@ -25,7 +40,18 @@ pub fn header() {
           header_link("/guides", "Guides"),
           header_link("/roadmap", "Roadmap"),
           header_link("/news", "News"),
-          header_link("https://github.com/crowdhailer/eyg-lang", "Source"),
+        ]),
+        h.div([a.class("site-social flex items-center gap-1")], [
+          header_icon_link(
+            "https://github.com/crowdhailer/eyg-lang",
+            "EYG source on GitHub",
+            icons.github(),
+          ),
+          header_icon_link(
+            "https://discord.gg/RMYjPRgGXE",
+            "Join the EYG Discord",
+            icons.discord(),
+          ),
         ]),
         // TODO reinstate when something worthwhile happens
       // case session {

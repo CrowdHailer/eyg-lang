@@ -339,17 +339,37 @@
   }
 
   .site-header {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
-    gap: 0.25rem 2rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.25rem 1rem;
     padding-inline: clamp(0.5rem, 4vw, 2rem);
   }
 
   .site-nav {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-    gap: 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem 1rem;
     font-size: 0.875rem;
     text-align: center;
+  }
+
+  @media (max-width: 40rem) {
+    .site-header {
+      grid-template-columns: 1fr auto;
+    }
+
+    .site-nav {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      justify-content: space-between;
+      gap: 0.25rem;
+    }
+
+    .site-social {
+      grid-column: 2;
+      grid-row: 1;
+    }
   }
 
   .home-hero {

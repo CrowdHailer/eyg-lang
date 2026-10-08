@@ -1,5 +1,4 @@
 let allow_all = {
-    
     append_file: (value) -> { Pass(value) },
     create_key: (value) -> { Pass(value) },
     cwd: (value) -> { Pass(value) },
@@ -17,6 +16,7 @@ let allow_all = {
     standard_out: (value) -> { Pass(value) },
     write_file: (value) -> { Pass(value) }
 }
+
 let {api_key} = import ".env.eyg"
 
 let policy = {
