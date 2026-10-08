@@ -1,17 +1,29 @@
 
-let {ollama_token, kagi_api_key} = import ".env.eyg"
+let {ollama_token, kagi_api_key, hetzner_token} = import ".env.eyg"
 
-let base = @overlay.policy.allow_all
+let policy = @overlay.policy
 
-// Attach the Kagi API bearer token to fetch requests for Kagi hosts.
-// The documented v1 Search API is served from `kagi.com`; `api.kagi.com` is
-// also authorised. Requests to any other host pass through the base policy
-// unchanged.
-let kagi_policy = import "./kagi_policy.eyg"
+let fetch_policy = 
+  policy.with_header(
+    "api.kagi.com",
+    "Authorization",
+    !string_append("Bearer ", kagi_api_key),
+    policy.with_header(
+      "kagi.com",
+      "Authorization",
+      !string_append("Bearer ", kagi_api_key),
+      policy.with_header(
+        "api.hetzner.cloud",
+        "Authorization",
+        !string_append("Bearer ", hetzner_token),
+        policy.allow_all.fetch
+      )
+    )
+  )
 
 let policy = {
-  fetch: kagi_policy.with_kagi_auth(kagi_api_key, base.fetch),
-  ..base
+  fetch: fetch_policy,
+  ..policy.allow_all
 }
 
 let expect = (result, message) -> {

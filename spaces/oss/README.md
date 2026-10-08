@@ -1,6 +1,27 @@
 # OSS
 
-Work with my personal open source projects
+The context layer for my open source projects.
+My open source projects include:
+
+- The [EYG language](https://eyg.run) for building safe scripts with managed side effects and sound type inference.
+- Many Gleam libraries both on my [personal account](https://github.com/crowdhailer) and the [midas](https://github.com/midas-framework) account.
+- My [personal website](https://petersaxton.uk/) and [techical blog](https://crowdhailer.me/)
+- The [Gleam Weekly newsletter](https://gleamweekly.com/) and [Gleam Gathering](https://gleamgathering.com/)
+
+
+## Authorization
+
+DO NOT add authorization headers to requests, the fetch policy will add the required credentials for supported services.
+
+supported services:
+
+- api.hetzner.cloud
+- api.kapi.com and kagi.com
+
+For other services use the [spotless.run](https://spotless.run/llms.txt) service includes:
+
+- netlify
+- github
 
 ## Kagi search client
 
@@ -57,38 +78,3 @@ with the documented types. Optional fields decode as follows:
 
 A malformed response is therefore never reported as a successful empty
 response; regression tests in `kagi_test.eyg` cover this distinction.
-
-### Authentication
-
-The client carries no credentials. `.overlay.eyg` loads the Kagi API key
-from `.env.eyg` (git-ignored) and, through `kagi_policy.eyg`, attaches it
-as a bearer token to fetch requests for `kagi.com` and `api.kagi.com`
-only. Requests to any other host pass through the base policy unchanged.
-
-### Tests
-
-`kagi_test.eyg` holds the suite, written with the local `aok` package. All
-HTTP responses are fixtures, so the suite runs without network access.
-
-From the workspace root, print a per-test PASS/FAIL report:
-
-```eyg
-let aok = import "./aok/index.eyg"
-aok.all(import "./kagi_test.eyg")
-```
-
-`aok.run_all` returns the outcomes without printing, and
-`aok.debug(tests, "test name")` runs a single test with a source-located
-stack trace.
-
-`test.eyg` aggregates every suite into one flattened list of `{name, test}`
-records:
-
-```eyg
-@standard.list.flatten([
-  import "kagi_test.eyg"
-])
-```
-
-so the whole workspace suite can be run at once with
-`aok.all(import "./test.eyg")`. Add new suites to the list in `test.eyg`.
