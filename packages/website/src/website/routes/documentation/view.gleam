@@ -369,8 +369,8 @@ pub fn render(state) {
               "The Prompt effect sends information to the outside world, i.e. the text \"what is your name message\".
               It also receives data from the outside world, i.e. the response to the question or and Error if no response is given.",
               //   "Just as imporant is a responding to effects.
-              // Programs without effects (called pure) will always return the same answer.
-              // This next example introduces some non-determinism with the Choose effect.",
+            // Programs without effects (called pure) will always return the same answer.
+            // This next example introduces some non-determinism with the Choose effect.",
             ),
             p(
               "Some effects only send out information, such as a Log effect, in which case the return value will be an empty record.
