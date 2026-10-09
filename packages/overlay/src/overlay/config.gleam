@@ -7,6 +7,7 @@ import eyg/interpreter/value
 import gleam/result
 import ogre/origin
 import overlay/llm/provider
+import overlay/llm/provider/mistral
 import overlay/llm/provider/ollama
 import overlay/policy
 import touch_grass/interface
@@ -28,9 +29,16 @@ pub fn type_(rules, level, bindings) {
       #("origin", t.String),
       #("api_key", t.option(t.String)),
     ])
+  let mistral = t.record([#("api_key", t.String)])
   let llm =
     t.record([
-      #("provider", t.union([#("Ollama", ollama)])),
+      #(
+        "provider",
+        t.union([
+          #("Ollama", ollama),
+          #("Mistral", mistral),
+        ]),
+      ),
       #("model", t.String),
     ])
   let type_ =
@@ -75,6 +83,7 @@ fn cast_provider(
   use tagged <- result.try(cast.as_tagged(value))
   case tagged {
     #("Ollama", inner) -> result.map(cast_ollama(inner), provider.Ollama)
+    #("Mistral", inner) -> result.map(cast_mistral(inner), provider.Mistral)
     #(_, _) -> Error(break.NoMatch(value))
   }
 }
@@ -93,6 +102,11 @@ fn cast_ollama(
     value,
   ))
   Ok(ollama.Config(origin:, api_key:))
+}
+
+fn cast_mistral(value) {
+  use api_key <- result.try(cast.field("api_key", cast.as_string, value))
+  Ok(mistral.Config(api_key:))
 }
 
 fn cast_context(value: state.Value(m)) {
