@@ -167,7 +167,8 @@ fn chunk_decoder() {
   use type_ <- decode.field("type", decode.string)
   case type_ {
     "text" -> decode.field("text", decode.string, decode.success)
-    _ -> panic
+    // Other chunks, such as thinking, are not part of the content.
+    _ -> decode.success("unsupported chunk")
   }
 }
 
@@ -209,7 +210,15 @@ fn tool_call_encode(tool_call: tool.Call) {
 }
 
 pub fn completion_chunk_parse(remaining: BitArray, chunk: BitArray) {
-  let assert Ok(buffer) = bit_array.to_string(<<remaining:bits, chunk:bits>>)
+  let buffer = <<remaining:bits, chunk:bits>>
+  case bit_array.to_string(buffer) {
+    Ok(text) -> parse_lines(text)
+    // A chunk can end part way through a multi byte character.
+    Error(Nil) -> #([], buffer)
+  }
+}
+
+fn parse_lines(buffer) {
   let #(lines, remaining) = stringx.chunk_lines(buffer)
   let completion =
     list.filter_map(lines, fn(line) {

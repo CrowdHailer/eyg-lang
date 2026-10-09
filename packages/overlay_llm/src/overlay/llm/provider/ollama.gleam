@@ -120,17 +120,40 @@ pub fn tool_encode(tool) {
   ])
 }
 
+/// Each line of the stream is a JSON event.
+/// An error event is returned as content so it is shown to the user.
 pub fn completion_chunk_parse(remaining: BitArray, chunk: BitArray) {
-  let assert Ok(buffer) = bit_array.to_string(<<remaining:bits, chunk:bits>>)
-  let #(lines, remaining) = stringx.chunk_lines(buffer)
-  let assert Ok(completion) =
-    list.try_map(lines, fn(line) {
-      case json.parse(line, event_decoder()) {
-        Ok(event) -> Ok(event)
-        Error(_reason) -> Error(Nil)
-      }
-    })
-  #(completion, <<remaining:utf8>>)
+  let buffer = <<remaining:bits, chunk:bits>>
+  case bit_array.to_string(buffer) {
+    Ok(text) -> {
+      let #(lines, remaining) = stringx.chunk_lines(text)
+      let completions =
+        list.filter_map(lines, fn(line) {
+          case json.parse(line, event_decoder()) {
+            Ok(event) -> Ok(event)
+            Error(_) ->
+              case json.parse(line, error_decoder()) {
+                Ok(reason) ->
+                  Ok(
+                    chat.Completion(
+                      thinking: "",
+                      content: "Error: " <> reason,
+                      tool_calls: [],
+                    ),
+                  )
+                Error(_) -> Error(Nil)
+              }
+          }
+        })
+      #(completions, <<remaining:utf8>>)
+    }
+    // A chunk can end part way through a multi byte character.
+    Error(Nil) -> #([], buffer)
+  }
+}
+
+fn error_decoder() {
+  decode.field("error", decode.string, decode.success)
 }
 
 pub fn completion_response(
