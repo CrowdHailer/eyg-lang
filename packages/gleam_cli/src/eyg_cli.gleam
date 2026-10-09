@@ -15,6 +15,7 @@ import eyg/cli/shell
 import eyg/cli/signatory
 import eyg/cli/version
 import gleam/result
+import loam/platform/computer
 import loam/system
 
 pub fn main() {
@@ -75,6 +76,6 @@ fn with_config(parsed) {
     args.SignatoryInitial(name:) -> signatory.initial(name, config)
     args.SignatoryList -> signatory.list(config)
     args.SignatoryShow(alias:) -> signatory.show(alias, config)
-    args.Overlay(input:) -> overlay.execute(input, config)
+    args.Overlay(input:) -> overlay.execute(input, config, computer.effects())
   }
 }
