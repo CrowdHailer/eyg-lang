@@ -92,6 +92,14 @@ pub type Decision(meta) {
   Mock(state.Value(meta))
 }
 
+/// What to do after a decision
+pub type Action(m, eff) {
+  Perform(interface: interface.Interface(eff, m), input: state.Value(m))
+  Resume(state.Value(m))
+  Failed(state.Debug(m))
+  Unavailable
+}
+
 /// Decode the runtime decision value into Gleam value.
 pub fn decision_from_value(
   value: state.Value(meta),
