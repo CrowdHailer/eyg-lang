@@ -71,48 +71,48 @@ pub fn execute_all(
 fn execute_single(ctx: Context, call: tool.Call) -> #(Context, Progress) {
   let tool.Call(id:, function:) = call
   let tool.FunctionCall(name:, arguments:) = function
-  case name {
-    "run" ->
-      case run.cast(arguments) {
-        Ok(code) ->
-          case parser.all_from_string(code) {
-            Ok(source) -> {
-              let source = ir.map_annotation(source, fn(_) { [] })
-              case check_single(source, ctx.cache, ctx.context) {
-                [] -> {
-                  let #(ctx, output, call) =
-                    source
-                    |> execute(ctx.context)
-                    |> loop(ctx, [])
-                  #(ctx, Progress(id:, output:, call:))
-                }
-                errors -> {
-                  let references = missing_references(errors)
-                  case requires_pull(references, ctx.cache) {
-                    True -> {
-                      let cache = cache.pull(ctx.cache)
-                      let ctx = Context(..ctx, cache:)
-                      #(ctx, failed(id, Pulling(source)))
-                    }
-                    False -> {
-                      case to_fetch(references, ctx.cache, []) {
-                        [] -> #(ctx, failed(id, Errored(errors)))
-                        needed -> {
-                          let cache = cache.fetch_all(ctx.cache, needed)
-                          let ctx = Context(..ctx, cache:)
-                          #(ctx, failed(id, Fetching(needed, source)))
-                        }
-                      }
-                    }
-                  }
+  case agent.cast_tool_call(name, arguments) {
+    Ok(agent.Run(code)) -> run_code(ctx, id, code)
+    Error(agent.DecodeError(reason)) -> #(ctx, failed(id, BadArguments(reason)))
+    Error(agent.UnknownTool) -> #(ctx, failed(id, UnknownTool(name)))
+  }
+}
+
+fn run_code(ctx: Context, id: String, code: String) -> #(Context, Progress) {
+  case parser.all_from_string(code) {
+    Ok(source) -> {
+      let source = ir.map_annotation(source, fn(_) { [] })
+      case check_single(source, ctx.cache, ctx.context) {
+        [] -> {
+          let #(ctx, output, call) =
+            source
+            |> execute(ctx.context)
+            |> loop(ctx, [])
+          #(ctx, Progress(id:, output:, call:))
+        }
+        errors -> {
+          let references = missing_references(errors)
+          case requires_pull(references, ctx.cache) {
+            True -> {
+              let cache = cache.pull(ctx.cache)
+              let ctx = Context(..ctx, cache:)
+              #(ctx, failed(id, Pulling(source)))
+            }
+            False -> {
+              case to_fetch(references, ctx.cache, []) {
+                [] -> #(ctx, failed(id, Errored(errors)))
+                needed -> {
+                  let cache = cache.fetch_all(ctx.cache, needed)
+                  let ctx = Context(..ctx, cache:)
+                  #(ctx, failed(id, Fetching(needed, source)))
                 }
               }
             }
-            Error(reason) -> #(ctx, failed(id, InvalidCode(reason)))
           }
-        Error(reason) -> #(ctx, failed(id, BadArguments(reason)))
+        }
       }
-    _ -> #(ctx, failed(id, UnknownTool(name)))
+    }
+    Error(reason) -> #(ctx, failed(id, InvalidCode(reason)))
   }
 }
 
@@ -322,7 +322,7 @@ fn do_all_returns(
           let message =
             chat.ToolResultMessage(
               tool_call_id: id,
-              text: agent.tool_result_text(report(output, text)),
+              text: agent.tool_result_text(run.report(output, text)),
               images: [],
             )
           do_all_returns(calls, [message, ..acc])
@@ -330,14 +330,6 @@ fn do_all_returns(
         Error(Nil) -> Error(Nil)
       }
     }
-  }
-}
-
-/// Return everything printed before the final result of the tool call.
-pub fn report(output: List(String), result: String) -> String {
-  case list.reverse(output) {
-    [] -> result
-    printed -> "Output:\n" <> string.concat(printed) <> "\nResult:\n" <> result
   }
 }
 

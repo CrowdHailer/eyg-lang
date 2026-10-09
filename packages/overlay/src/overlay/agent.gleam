@@ -13,6 +13,7 @@ import gleam/list
 import gleam/string
 import oas/generator/utils
 import ogre/origin.{type Origin}
+import overlay/llm/tool
 import overlay/tools/run
 import touch_grass/http
 import touch_grass/interface
@@ -165,4 +166,9 @@ fn to(result, call) {
     Ok(arguments) -> Ok(call(arguments))
     Error(reason) -> Error(DecodeError(reason))
   }
+}
+
+/// Always just EYG run tools
+pub fn tools() -> List(tool.Tool) {
+  [run.spec()]
 }

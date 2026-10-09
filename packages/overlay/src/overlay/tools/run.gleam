@@ -4,6 +4,8 @@
 import castor
 import gleam/dict.{type Dict}
 import gleam/dynamic/decode
+import gleam/list
+import gleam/string
 import oas/generator/utils
 import overlay/llm/tool
 
@@ -30,4 +32,13 @@ pub fn cast(
     decode.field("code", decode.string, decode.success)
   }
   decode.run(arguments, decoder)
+}
+
+/// The text returned to the agent, everything printed before the final result of the program.
+/// Output is held newest first.
+pub fn report(output: List(String), result: String) -> String {
+  case list.reverse(output) {
+    [] -> result
+    printed -> "Output:\n" <> string.concat(printed) <> "\nResult:\n" <> result
+  }
 }

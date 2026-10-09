@@ -26,7 +26,6 @@ import gleam/dict
 import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/result
 import gleam/string
 import gleam_community/ansi
 import loam/execute
@@ -34,7 +33,6 @@ import loam/platform/computer
 import loam/source
 import loam/system
 import midas/continuation.{type Continuation as K}
-import ogre/origin
 import overlay/agent
 import overlay/config as overlay_config
 import overlay/llm/chat
@@ -83,14 +81,17 @@ pub fn execute(input, config: config.Config) {
     Ok(#(Some(user_config), _)) ->
       case overlay_config.cast(user_config, rules) {
         Ok(user_config) -> {
-          // A context without a string readme is still usable by the agent.
-          let readme =
-            cast.field("readme", cast.as_string, user_config.context)
-            |> result.unwrap("The context has no readme.")
           use Nil <- system.then(
             outer_loop(
               user_config.llm,
-              provider_context(config.client.origin, readme),
+              provider.Context(
+                system_prompt: agent.system_prompt(
+                  config.client.origin,
+                  computer.effects(),
+                  user_config.readme,
+                ),
+                tools: agent.tools(),
+              ),
               cwd,
               state,
               user_config.policy,
@@ -174,15 +175,6 @@ pub fn input(
     Ok(line) -> Ok(string.trim_end(line))
     Error(reason) -> Error(reason)
   }
-}
-
-fn provider_context(origin: origin.Origin, readme: String) -> provider.Context {
-  provider.Context(
-    system_prompt: agent.system_prompt(origin, computer.effects(), readme),
-    tools: [
-      run.spec(),
-    ],
-  )
 }
 
 pub fn inner_loop(
@@ -294,11 +286,13 @@ pub fn execute_call(
           let result = case result {
             // current state is not used by the CLI implementation, this will need to change.
             Ok(#(Some(value), _)) -> {
-              Ok(tool.Return(report(output, agent.inspect_result(value)), []))
+              Ok(
+                tool.Return(run.report(output, agent.inspect_result(value)), []),
+              )
             }
-            Ok(#(None, _)) -> Ok(tool.Return(report(output, ""), []))
+            Ok(#(None, _)) -> Ok(tool.Return(run.report(output, ""), []))
             Error(reason) -> {
-              Error(report(output, reason))
+              Error(run.report(output, reason))
             }
           }
           use Nil <- system.then(system.stdout(log_result(result)))
@@ -339,14 +333,6 @@ fn truncate(text) {
   case string.length(text) > 500 {
     True -> string.slice(text, 0, 500) <> "..."
     False -> text
-  }
-}
-
-/// Output is collected newest-first, scoped to a single tool call.
-fn report(output: List(String), result: String) -> String {
-  case list.reverse(output) {
-    [] -> result
-    printed -> "Output:\n" <> string.concat(printed) <> "\nResult:\n" <> result
   }
 }
 

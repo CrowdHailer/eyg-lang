@@ -14,7 +14,6 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
-import overlay/tools/run
 import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/tools
@@ -376,7 +375,6 @@ fn stream_next_chunk(provider, reader, remaining) {
 }
 
 fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
-  let tools = [run.spec()]
   let context =
     provider.Context(
       system_prompt: agent.system_prompt(
@@ -384,7 +382,7 @@ fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
         harness.effects(),
         context.readme(state.context),
       ),
-      tools:,
+      tools: agent.tools(),
     )
   let history = list.append(messages, state.history) |> list.reverse
   provider.stream_completion_request(state.llm, context, history)

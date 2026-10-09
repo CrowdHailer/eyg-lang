@@ -236,7 +236,7 @@ pub fn module(status: Status) -> cache.Module(tools.Meta) {
 }
 
 /// The module's own instructions, if it has a string readme field.
-/// probably can be removed or removed to overlay
+/// TODO move to the loading of context but overlay setup should also calculate types.
 pub fn provided_readme(status: Status) -> Option(String) {
   let cache.Module(value: module, ..) = module(status)
   case module {
