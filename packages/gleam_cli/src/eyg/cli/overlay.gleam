@@ -40,7 +40,7 @@ import overlay/llm/provider
 import overlay/llm/tool
 import overlay/policy
 import overlay/tools/run
-import touch_grass/harness/computer.{type Effect} as _
+import touch_grass/harness/computer as harness_computer
 import touch_grass/interface
 
 // I don't need to implement streaming but if so that goes at the loam level
@@ -48,6 +48,17 @@ import touch_grass/interface
 // policy is read as part of config, which can read files and effects. policy is pure
 
 // Env should be readable on startup
+/// Everything about a session that is fixed when it starts.
+pub type Session {
+  Session(
+    llm: provider.Llm,
+    provider_context: provider.Context,
+    cwd: String,
+    policy: policy.Policy(harness_computer.Effect, source.Location),
+    context: execute.Value,
+  )
+}
+
 pub fn execute(input, config: config.Config) {
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
@@ -81,10 +92,10 @@ pub fn execute(input, config: config.Config) {
     Ok(#(Some(user_config), _)) ->
       case overlay_config.cast(user_config, rules) {
         Ok(user_config) -> {
-          use Nil <- system.then(
-            outer_loop(
-              user_config.llm,
-              provider.Context(
+          let session =
+            Session(
+              llm: user_config.llm,
+              provider_context: provider.Context(
                 system_prompt: agent.system_prompt(
                   config.client.origin,
                   computer.effects(),
@@ -92,13 +103,11 @@ pub fn execute(input, config: config.Config) {
                 ),
                 tools: agent.tools(),
               ),
-              cwd,
-              state,
-              user_config.policy,
-              user_config.context,
-              [],
-            ),
-          )
+              cwd:,
+              policy: user_config.policy,
+              context: user_config.context,
+            )
+          use Nil <- system.then(outer_loop(session, state, []))
           Ok(0) |> system.Done
         }
         Error(reason) ->
@@ -114,12 +123,8 @@ pub fn execute(input, config: config.Config) {
 }
 
 fn outer_loop(
-  llm: provider.Llm,
-  provider_context: provider.Context,
-  cwd: String,
+  session: Session,
   eyg_state: execute.State,
-  policy: policy.Policy(Effect, source.Location),
-  user_context: execute.Value,
   history: List(chat.Message(tool.Call)),
 ) -> system.Effect(Nil) {
   use read <- system.then(input(">>>", "send a message"))
@@ -127,10 +132,7 @@ fn outer_loop(
     Ok("") -> system.Done(Nil)
     Ok(text) -> {
       use #(result, eyg_state) <- system.then(
-        inner_loop(llm, provider_context, cwd, eyg_state, policy, user_context, [
-          chat.UserMessage(text, []),
-          ..history
-        ]),
+        inner_loop(session, eyg_state, [chat.UserMessage(text, []), ..history]),
       )
       // A failed completion is reported and the session continues from the
       // history before the failed message, so the user can try again.
@@ -144,15 +146,7 @@ fn outer_loop(
           system.Done(history)
         }
       })
-      outer_loop(
-        llm,
-        provider_context,
-        cwd,
-        eyg_state,
-        policy,
-        user_context,
-        history,
-      )
+      outer_loop(session, eyg_state, history)
     }
     Error(Nil) -> system.Done(Nil)
   }
@@ -177,20 +171,17 @@ pub fn input(
   }
 }
 
+/// Complete and run tool calls until the agent replies without calling a tool.
 pub fn inner_loop(
-  llm: provider.Llm,
-  provider_context: provider.Context,
-  cwd: String,
+  session: Session,
   eyg_state: execute.State,
-  policy: policy.Policy(Effect, source.Location),
-  user_context: execute.Value,
   history: List(chat.Message(tool.Call)),
 ) -> system.Effect(
   #(Result(List(chat.Message(tool.Call)), String), execute.State),
 ) {
   use completion <- system.then(provider.completion(
-    llm,
-    provider_context,
+    session.llm,
+    session.provider_context,
     list.reverse(history),
     fetch,
   )(system.Done))
@@ -206,27 +197,16 @@ pub fn inner_loop(
               let #(history, eyg_state) = acc
               let tool.Call(id:, function:) = call
               use #(result, eyg_state) <- system.then(execute_call(
+                session,
                 function,
-                cwd,
                 eyg_state,
-                policy,
-                user_context,
               ))
-              // let result = result.map(result, pair.first)
-              let result = result_to_message(id, result)
-              let history = [result, ..history]
+
+              let history = [result_to_message(id, result), ..history]
               system.Done(#(history, eyg_state))
             }),
           )
-          inner_loop(
-            llm,
-            provider_context,
-            cwd,
-            eyg_state,
-            policy,
-            user_context,
-            history,
-          )
+          inner_loop(session, eyg_state, history)
         }
       }
     }
@@ -264,11 +244,9 @@ fn fetch(
 // ---------------------------- toools
 
 pub fn execute_call(
+  session: Session,
   call: tool.FunctionCall,
-  cwd: String,
   eyg_state: execute.State,
-  policy: policy.Policy(_, _),
-  context: execute.Value,
 ) -> system.Effect(#(Result(tool.Return, String), execute.State)) {
   let tool.FunctionCall(name, arguments) = call
   case agent.cast_tool_call(name, arguments) {
@@ -277,11 +255,9 @@ pub fn execute_call(
       case call {
         agent.Run(code) -> {
           use #(result, eyg_state, output) <- system.then(run_do(
+            session,
             code,
-            cwd,
             eyg_state,
-            policy,
-            context,
           ))
           let result = case result {
             // current state is not used by the CLI implementation, this will need to change.
@@ -291,9 +267,7 @@ pub fn execute_call(
               )
             }
             Ok(#(None, _)) -> Ok(tool.Return(run.report(output, ""), []))
-            Error(reason) -> {
-              Error(run.report(output, reason))
-            }
+            Error(reason) -> Error(run.report(output, reason))
           }
           use Nil <- system.then(system.stdout(log_result(result)))
           system.Done(#(result, eyg_state))
@@ -340,25 +314,23 @@ fn truncate(text) {
 // ---------------------- run
 
 pub fn run_do(
-  code,
-  cwd,
-  eyg_state,
-  policy: policy.Policy(_, _),
-  context: execute.Value,
+  session: Session,
+  code: String,
+  eyg_state: execute.State,
 ) -> system.Effect(#(Result(_, String), execute.State, List(String))) {
   let input = source.Stdin
 
   case source.parse_input(code, input) {
     Ok(source) -> {
-      let scope = [#("context", context)]
+      let scope = [#("context", session.context)]
 
       use #(result, state, output) <- system.map(
-        loop(block.execute(source, scope), eyg_state, policy, []),
+        loop(block.execute(source, scope), eyg_state, session.policy, []),
       )
       let result = case result {
         Ok(value) -> Ok(value)
         Error(#(reason, location, _env, k)) ->
-          Error(execute.render_error(reason, location, k, cwd))
+          Error(execute.render_error(reason, location, k, session.cwd))
       }
       #(result, state, output)
     }
