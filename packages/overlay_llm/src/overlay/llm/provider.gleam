@@ -57,7 +57,8 @@ pub fn completion_request(
   case provider {
     Ollama(config) ->
       ollama.completion_request(config, model, system_prompt, history, tools)
-    Mistral(_config) -> panic as "unsupported"
+    Mistral(config) ->
+      mistral.completion_request(config, model, system_prompt, history, tools)
   }
 }
 
@@ -68,7 +69,7 @@ pub fn completion_response(
   let Llm(provider:, model: _) = llm
   case provider {
     Ollama(_) -> ollama.completion_response(response)
-    Mistral(_) -> Error("Not implemented for mistral")
+    Mistral(_) -> mistral.completion_response(response)
   }
 }
 
