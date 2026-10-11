@@ -161,6 +161,15 @@ pub fn lookup(
   }
 }
 
+pub fn take_type(in: system.Effect(#(Result(Module, _), State)), errors) {
+  use #(result, state) <- system.map(in)
+  #(
+    result.map(result, fn(module) { module.type_ }) |> result.replace_error(Nil),
+    state,
+    errors,
+  )
+}
+
 fn take_value(in: system.Effect(#(Result(Module, _), _))) {
   use #(result, state) <- system.map(in)
   #(result.map(result, fn(module) { module.value }), state)

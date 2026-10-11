@@ -89,26 +89,6 @@ pub fn render_error(error) {
   )
 }
 
-fn do_check_all(
-  context: infer.Context,
-  directory: String,
-  source: #(ir.Expression(source.Location), source.Location),
-  state: execute.State,
-  errors: List(#(source.Location, error.Reason)),
-  visited: List(String),
-) -> system.Effect(
-  #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason))),
-) {
-  check_loop(
-    infer.check(context, source),
-    context,
-    directory,
-    state,
-    errors,
-    visited,
-  )
-}
-
 fn check_loop(
   step: infer.Step(infer.Analysis(source.Location)),
   context: infer.Context,
@@ -125,41 +105,19 @@ fn check_loop(
         list.append(errors, infer.all_errors(analysis)),
       ))
     infer.Lookup(reference:, resume:) -> {
-      case reference {
-        ir.Content(cid:) -> {
-          use #(result, state) <- system.then(execute.lookup_reference(
-            cid,
-            state,
-          ))
-          resume(type_from_lookup(result))
-          |> check_loop(context, directory, state, errors, visited)
-        }
-        ir.Package(package:) -> {
-          use #(result, state) <- system.then(execute.lookup_package(
-            package,
-            state,
-          ))
-          resume(type_from_lookup(result))
-          |> check_loop(context, directory, state, errors, visited)
-        }
-        ir.Version(package:, version:) -> {
-          use #(result, state) <- system.then(execute.lookup_version(
-            package,
-            version,
-            state,
-          ))
-          resume(type_from_lookup(result))
-          |> check_loop(context, directory, state, errors, visited)
-        }
-        ir.Pinned(release:) -> {
-          use #(result, state) <- system.then(execute.lookup_pinned(
-            release,
-            state,
-          ))
-          resume(type_from_lookup(result))
-          |> check_loop(context, directory, state, errors, visited)
-        }
-        ir.Relative(location:) -> {
+      use #(type_, state, errors) <- system.then(case reference {
+        ir.Content(cid:) ->
+          execute.take_type(execute.lookup_reference(cid, state), errors)
+        ir.Package(package:) ->
+          execute.take_type(execute.lookup_package(package, state), errors)
+        ir.Version(package:, version:) ->
+          execute.take_type(
+            execute.lookup_version(package, version, state),
+            errors,
+          )
+        ir.Pinned(release:) ->
+          execute.take_type(execute.lookup_pinned(release, state), errors)
+        ir.Relative(location:) ->
           case system.resolve_relative(directory, location) {
             Ok(path) -> {
               case cycle_check(visited, path) {
@@ -170,59 +128,33 @@ fn check_loop(
                       case source.parse_input(code, source.File(location)) {
                         Ok(dependency) -> {
                           let check =
-                            do_check_all(
+                            check_loop(
+                              infer.check(context, dependency),
                               context,
                               filepath.directory_name(path),
-                              dependency,
                               state,
                               errors,
                               [path, ..visited],
                             )
-                          use #(poly, _type_, errors) <- system.then(check)
-                          resume(Ok(poly))
-                          |> check_loop(
-                            context,
-                            directory,
-                            state,
-                            errors,
-                            visited,
-                          )
+                          use #(poly, _type_, errors) <- system.map(check)
+                          #(Ok(poly), state, errors)
                         }
                         Error(_reason) ->
-                          resume(Error(Nil))
-                          |> check_loop(
-                            context,
-                            directory,
-                            state,
-                            errors,
-                            visited,
-                          )
+                          system.Done(#(Error(Nil), state, errors))
                       }
-                    Error(_reason) -> {
-                      resume(Error(Nil))
-                      |> check_loop(context, directory, state, errors, visited)
-                    }
+                    Error(_reason) -> system.Done(#(Error(Nil), state, errors))
                   }
                 }
-                Error(_cycle) ->
-                  resume(Error(Nil))
-                  |> check_loop(context, directory, state, errors, visited)
+                Error(_cycle) -> system.Done(#(Error(Nil), state, errors))
               }
             }
-            Error(_reason) ->
-              resume(Error(Nil))
-              |> check_loop(context, directory, state, errors, visited)
+            Error(_reason) -> system.Done(#(Error(Nil), state, errors))
           }
-        }
-      }
+      })
+      type_
+      |> resume()
+      |> check_loop(context, directory, state, errors, visited)
     }
-  }
-}
-
-fn type_from_lookup(result) {
-  case result {
-    Ok(cache.Module(type_:, ..)) -> Ok(type_)
-    Error(_) -> Error(Nil)
   }
 }
 
