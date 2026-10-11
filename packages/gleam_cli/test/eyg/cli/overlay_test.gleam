@@ -14,6 +14,7 @@ import overlay/policy
 import touch_grass
 import touch_grass/file_system/read_file
 import touch_grass/harness/computer
+import touch_grass/interface
 
 // const allow_policy =
 //   "
@@ -232,4 +233,124 @@ pub fn nested_import_redirect_matches_checking_test() {
   let assert #(sandbox.Returned(#(Ok(#(Some(value.Integer(4)), _)), _, [])), _) =
     overlay.check_and_execute(session, code, state)
     |> sandbox.run(sandbox)
+}
+
+fn filesystem_session(record_gate, path_gate) {
+  let rules = [
+    #("ReadFile", policy.PolicyField("read_file")),
+    #("WriteFile", policy.PolicyField("write_file")),
+    #("AppendFile", policy.PolicyField("append_file")),
+    #("DeleteFile", policy.PolicyField("delete_file")),
+    #("MakeDirectory", policy.PolicyField("make_directory")),
+    #("ReadDirectory", policy.PolicyField("read_directory")),
+  ]
+  let code = "let record_gate = " <> record_gate <> "
+let path_gate = " <> path_gate <> "
+{
+  llm: {provider: Mistral({api_key: \"misty_secret\"}), model: \"le-chonk\"},
+  policy: {
+    read_file: record_gate, write_file: record_gate, append_file: record_gate,
+    delete_file: path_gate, make_directory: path_gate, read_directory: path_gate
+  },
+  context: {read: (path) -> {
+    perform ReadFile({path, offset: 0, limit: 100})
+  }}
+}"
+  let sandbox =
+    sandbox.sandbox()
+    |> sandbox.with_cwd("/project/work")
+    |> sandbox.with_file("/project/lib/agent.eyg", code)
+  let assert #(sandbox.Returned(#(Ok(session), state)), sandbox) =
+    overlay.setup(
+      source.File("/project/lib/agent.eyg"),
+      helpers.config,
+      computer.effects() |> interface.take(list.map(rules, fn(rule) { rule.0 })),
+      rules,
+      helpers.state(),
+    )
+    |> sandbox.run(sandbox)
+  #(session, state, sandbox)
+}
+
+pub fn filesystem_policies_receive_absolute_paths_test() {
+  let #(session, state, sandbox) =
+    filesystem_session(
+      "(lift) -> { Mock(Error(lift.path)) }",
+      "(path) -> { Mock(Error(path)) }",
+    )
+  use path <- list.each([
+    "./sub/../target",
+    "../work/target",
+    "/project/work/./target",
+  ])
+  let path = "\"" <> path <> "\""
+  use code <- list.each([
+    "perform ReadFile({path: " <> path <> ", offset: 7, limit: 11})",
+    "perform WriteFile({path: "
+      <> path
+      <> ", contents: !string_to_binary(\"payload\")})",
+    "perform AppendFile({path: "
+      <> path
+      <> ", contents: !string_to_binary(\"payload\")})",
+    "perform DeleteFile(" <> path <> ")",
+    "perform MakeDirectory(" <> path <> ")",
+    "perform ReadDirectory(" <> path <> ")",
+  ])
+  let assert #(
+    sandbox.Returned(#(
+      Ok(#(Some(value.Tagged("Error", value.String(path))), _)),
+      _,
+      [],
+    )),
+    _,
+  ) =
+    overlay.check_and_execute(session, code, state)
+    |> sandbox.run(sandbox)
+  assert path == "/project/work/target"
+}
+
+pub fn filesystem_policies_resolve_paths_from_source_test() {
+  let #(session, state, sandbox) =
+    filesystem_session(
+      "(lift) -> { Mock(Error(lift.path)) }",
+      "(path) -> { Mock(Error(path)) }",
+    )
+  let assert #(
+    sandbox.Returned(#(
+      Ok(#(Some(value.Tagged("Error", value.String(path))), _)),
+      _,
+      [],
+    )),
+    _,
+  ) =
+    overlay.check_and_execute(
+      session,
+      "context.read(\"./sub/../target\")",
+      state,
+    )
+    |> sandbox.run(sandbox)
+  assert path == "/project/lib/target"
+}
+
+pub fn invalid_filesystem_paths_return_an_effect_error_test() {
+  let #(session, state, sandbox) =
+    filesystem_session(
+      "(lift) -> { Mock(Error(lift.path)) }",
+      "(path) -> { Mock(Error(path)) }",
+    )
+  let assert #(
+    sandbox.Returned(#(
+      Ok(#(Some(value.Tagged("Error", value.String(reason))), _)),
+      _,
+      [],
+    )),
+    _,
+  ) =
+    overlay.check_and_execute(
+      session,
+      "perform ReadFile({path: \"../../../target\", offset: 0, limit: 1})",
+      state,
+    )
+    |> sandbox.run(sandbox)
+  assert reason == "invalid relative path outside filesystem"
 }

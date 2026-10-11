@@ -552,7 +552,38 @@ fn loop(
   }
 }
 
-/// Call the gate for an effect, unchecked effects are always performed.
+/// Resolve filesystem paths before a policy sees them. Other request fields
+/// stay intact, and the interface decoder still validates malformed requests.
+/// 
+/// This is an unfortunet amount of knowledge about the effects.
+/// Maybe all filesystem effects should be absolute
+fn resolve_policy_input(label, lift, origin) {
+  case label, lift {
+    "ReadFile", value.Record(fields)
+    | "WriteFile", value.Record(fields)
+    | "AppendFile", value.Record(fields)
+    ->
+      case dict.get(fields, "path") {
+        Ok(value.String(path)) -> {
+          use resolved <- system.map(source.resolve_filepath(origin, path))
+          use path <- result.map(resolved)
+          value.Record(dict.insert(fields, "path", value.String(path)))
+        }
+        _ -> system.Done(Ok(lift))
+      }
+    "DeleteFile", value.String(path)
+    | "MakeDirectory", value.String(path)
+    | "ReadDirectory", value.String(path)
+    -> {
+      use resolved <- system.map(source.resolve_filepath(origin, path))
+      result.map(resolved, value.String)
+    }
+    _, _ -> system.Done(Ok(lift))
+  }
+}
+
+/// Call the gate with absolute filesystem paths. Policy redirects must also
+/// use absolute paths. Unchecked effects are always performed.
 /// This could take a call as a continuation in which case the need for state would drop out
 /// To extract to policy would require the continuation change
 fn decide(
@@ -564,6 +595,16 @@ fn decide(
 ) -> system.Effect(
   #(policy.Action(source.Location, harness_computer.Effect), execute.State),
 ) {
+  use resolved <- system.then(resolve_policy_input(label, lift, meta.origin))
+  case resolved {
+    Ok(lift) -> decide_resolved(policy, label, lift, meta, state)
+    // Path resolution failures are ordinary filesystem effect errors.
+    Error(reason) ->
+      system.Done(#(policy.Resume(value.error(value.String(reason))), state))
+  }
+}
+
+fn decide_resolved(policy, label, lift, meta, state) {
   case dict.get(policy, label) {
     Ok(policy.Interface(interface, policy.Gated(gate))) -> {
       let return = expression.call(gate, [#(lift, meta)])
