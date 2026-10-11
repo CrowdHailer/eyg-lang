@@ -593,7 +593,7 @@ fn decide(
 
 // Resolve imports before asking the ReadFile gate, matching type checking.
 // This is lookup_reference_value there is a separate lookup_reference_type
-// is loam/execute.lookup_relative worth adding in a policy
+// is it worth loam/execute.lookup_relative handling a policy, maybe if eval and spawn is included.
 fn lookup_reference(reference, meta: source.Location, state, policy) {
   case reference {
     ir.Relative(path) -> {
@@ -614,7 +614,16 @@ fn lookup_reference(reference, meta: source.Location, state, policy) {
       case decided {
         policy.Perform(_, modified) ->
           case cast.field("path", cast.as_string, modified) {
-            Ok(path) -> execute.lookup(ir.Relative(path), meta.origin, state)
+            Ok(path) ->
+              execute.lookup_relative(
+                path,
+                meta.origin,
+                state,
+                fn(reference, meta, state) {
+                  // lookup reference in overlay accepts the policy
+                  lookup_reference(reference, meta, state, policy)
+                },
+              )
             Error(reason) -> system.Done(#(Error(reason), state))
           }
         policy.Resume(value.Tagged("Error", reason)) ->

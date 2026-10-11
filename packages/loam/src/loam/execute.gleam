@@ -157,8 +157,13 @@ pub fn lookup(
     ir.Version(package, version) ->
       take_value(lookup_version(package, version, state))
     ir.Pinned(release) -> take_value(lookup_pinned(release, state))
-    ir.Relative(location:) -> lookup_relative(location, origin, state)
+    ir.Relative(location:) ->
+      lookup_relative(location, origin, state, lookup_at)
   }
+}
+
+fn lookup_at(reference, meta: source.Location, state) {
+  lookup(reference, meta.origin, state)
 }
 
 pub fn take_type(in: system.Effect(#(Result(Module, _), State)), errors) {
@@ -256,10 +261,13 @@ fn abort(reason: String) -> break.Reason(m, c) {
   break.UnhandledEffect("Abort", v.String(reason))
 }
 
-fn lookup_relative(
+/// Evaluate a file module, using the supplied lookup for its dependencies.
+pub fn lookup_relative(
   location: String,
   origin: source.Origin,
   state: State,
+  lookup: fn(ir.Reference, source.Location, State) ->
+    system.Effect(#(Result(Value, Reason), State)),
 ) -> system.Effect(#(Result(Value, Reason), State)) {
   use resolved <- system.then(source.resolve_filepath(origin, location))
 
@@ -270,9 +278,10 @@ fn lookup_relative(
         Ok(code) ->
           case source.parse(code, source.Disk(path:)) {
             Ok(source) -> {
-              use #(result, state) <- system.then(pure_loop(
+              use #(result, state) <- system.then(pure_loop_with_lookup(
                 expression.execute(source, []),
                 state,
+                lookup,
               ))
               case result {
                 Ok(value) -> system.Done(#(Ok(value), state))
@@ -310,18 +319,27 @@ pub fn pure_loop(
   return: Result(Value, Debug),
   state: State,
 ) -> system.Effect(#(Result(Value, Debug), State)) {
+  pure_loop_with_lookup(return, state, lookup_at)
+}
+
+fn pure_loop_with_lookup(
+  return: Result(Value, Debug),
+  state: State,
+  lookup: fn(ir.Reference, source.Location, State) ->
+    system.Effect(#(Result(Value, Reason), State)),
+) -> system.Effect(#(Result(Value, Debug), State)) {
   case return {
     Ok(return) -> system.Done(#(Ok(return), state))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UndefinedReference(reference) -> {
           use value, state <- try_await(
-            lookup(reference, meta.origin, state),
+            lookup(reference, meta, state),
             meta,
             env,
             k,
           )
-          pure_loop(expression.resume(value, env, k), state)
+          pure_loop_with_lookup(expression.resume(value, env, k), state, lookup)
         }
         _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
       }
