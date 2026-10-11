@@ -8,7 +8,6 @@ import eyg/ir/tree as ir
 import eyg/parser
 import filepath
 import gleam/list
-import gleam/option.{None}
 import loam/execute
 import loam/platform/computer
 import loam/source
@@ -85,8 +84,8 @@ pub fn check_from(
   }
 
   let step = infer.check(context, source)
-  // The host's expected result applies to the entry expression, not its imports.
-  let dependency_context = infer.Context(..context, expected_type: None)
+  // Imported modules evaluate in an empty scope without top-level effects.
+  let dependency_context = infer.pure()
   check_loop(step, dependency_context, dir, state, [], [path], gate)
 }
 
