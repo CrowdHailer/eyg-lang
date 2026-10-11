@@ -4,6 +4,7 @@ import eyg/cli/check
 import eyg/cli/helpers
 import eyg/cli/overlay
 import eyg/interpreter/value
+import gleam/list
 import gleam/option.{Some}
 import gleam/string
 import loam/sandbox
@@ -144,4 +145,46 @@ pub fn read_file_policy_is_used_for_imports_test() {
   let assert system.Done(#(Error(reason), _state, _)) =
     overlay.check_and_execute(session, code, state)
   assert string.contains(reason, "type error")
+}
+
+pub fn relative_import_redirect_matches_checking_test() {
+  let sandbox =
+    sandbox.sandbox()
+    |> sandbox.with_cwd("/project")
+    |> sandbox.with_files([
+      #("/project/original.eyg", "\"original\""),
+      #("/project/safe.eyg", "3"),
+    ])
+  let input =
+    source.Code(
+      "{
+  llm: {provider: Mistral({api_key: \"misty_secret\"}), model: \"le-chonk\"},
+  policy: {read_file: (lift) -> {
+    match !equal(lift.path, \"/project/original.eyg\") {
+      True(_) -> { Pass({path: \"/project/safe.eyg\", ..lift}) }
+      False(_) -> { Pass(lift) }
+    }
+  }},
+  context: {}
+}",
+    )
+  let assert #(sandbox.Returned(#(Ok(session), state)), sandbox) =
+    overlay.setup(
+      input,
+      helpers.config,
+      [touch_grass.read_file() |> touch_grass.map(computer.ReadFile)],
+      [#(read_file.label, policy.PolicyField("read_file"))],
+      helpers.state(),
+    )
+    |> sandbox.run(sandbox)
+
+  use path <- list.each([
+    "./original.eyg",
+    "./sub/../original.eyg",
+    "/project/original.eyg",
+  ])
+  let code = "!int_add(import \"" <> path <> "\", 1)"
+  let assert #(sandbox.Returned(#(Ok(#(Some(value.Integer(4)), _)), _, [])), _) =
+    overlay.check_and_execute(session, code, state)
+    |> sandbox.run(sandbox)
 }

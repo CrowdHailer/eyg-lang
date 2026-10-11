@@ -591,20 +591,18 @@ fn decide(
   }
 }
 
-// Relative imports read files, so ask the ReadFile gate before resolving them.
+// Resolve imports before asking the ReadFile gate, matching type checking.
 // This is lookup_reference_value there is a separate lookup_reference_type
 // is loam/execute.lookup_relative worth adding in a policy
-fn lookup_reference(reference, meta, state, policy) {
+fn lookup_reference(reference, meta: source.Location, state, policy) {
   case reference {
     ir.Relative(path) -> {
-      let request =
-        value.Record(
-          dict.from_list([
-            #("path", value.String(path)),
-            #("offset", value.Integer(0)),
-            #("limit", value.Integer(100_000_000)),
-          ]),
-        )
+      use resolved <- system.then(source.resolve_filepath(meta.origin, path))
+      use path <- try(
+        result.replace_error(resolved, break.UndefinedReference(reference)),
+        state,
+      )
+      let request = import_request(path)
       use #(decided, state) <- system.then(decide(
         policy,
         "ReadFile",
