@@ -407,45 +407,46 @@ pub fn check_and_execute(
 
   case source.parse_input(code, input) {
     Ok(source) -> {
-      {
-        let base =
-          infer.pure()
-          |> infer.with_effects(interface.types(
-            dict.values(session.policy) |> list.map(fn(i) { i.interface }),
-          ))
-        // too many contexts, this is an infer context
-        let context =
-          infer.Context(..base, env: [
-            #("context", session.context.type_),
-            ..base.env
-          ])
-        use #(_, _, errors, _) <- system.then(check.check_from(
-          source,
-          session.cwd,
-          context,
-          eyg_state,
-          // import_gate(session.policy, source.1),
-          // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
-        ))
-        echo errors
-        system.Done(Nil)
-      }
-      // todo this is the place to check
-      // currently import just leaves relative in place
-      let scope = [#("context", session.context.value)]
+      use errors <- system.then(type_check(session, source, eyg_state))
+      case errors {
+        [] -> {
+          let scope = [#("context", session.context.value)]
 
-      use #(result, state, output) <- system.map(
-        loop(block.execute(source, scope), eyg_state, session.policy, []),
-      )
-      let result = case result {
-        Ok(value) -> Ok(value)
-        Error(#(reason, location, _env, k)) ->
-          Error(execute.render_error(reason, location, k, session.cwd))
+          use #(result, state, output) <- system.map(
+            loop(block.execute(source, scope), eyg_state, session.policy, []),
+          )
+          let result = case result {
+            Ok(value) -> Ok(value)
+            Error(#(reason, location, _env, k)) ->
+              Error(execute.render_error(reason, location, k, session.cwd))
+          }
+          #(result, state, output)
+        }
+        _errors -> system.Done(#(Error("type error"), eyg_state, []))
       }
-      #(result, state, output)
     }
     Error(reason) -> system.Done(#(Error(reason), eyg_state, []))
   }
+}
+
+fn type_check(session: Session(_), source, eyg_state) {
+  let base =
+    infer.pure()
+    |> infer.with_effects(interface.types(
+      dict.values(session.policy) |> list.map(fn(i) { i.interface }),
+    ))
+  // this is an infer context
+  let context =
+    infer.Context(..base, env: [#("context", session.context.type_), ..base.env])
+  use #(_, _, errors, _) <- system.map(check.check_from(
+    source,
+    session.cwd,
+    context,
+    eyg_state,
+    // import_gate(session.policy, source.1),
+    // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
+  ))
+  errors
 }
 
 /// This is a replacement for execute.loop because of the policy

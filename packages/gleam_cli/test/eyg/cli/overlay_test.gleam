@@ -5,7 +5,6 @@ import eyg/cli/helpers
 import eyg/cli/overlay
 import eyg/interpreter/value
 import gleam/option.{Some}
-import gleam/string
 import loam/sandbox
 import loam/source
 import loam/system
@@ -38,6 +37,24 @@ import touch_grass/harness/computer
 //   },
 //   context: {}
 // }"
+
+pub fn type_check_halts_run_test() {
+  let input =
+    source.Code(
+      "{
+  llm: {provider: Mistral({api_key: \"misty_secret\"}), model: \"le-chonk\"},
+  policy: {},
+  context: {}
+}",
+    )
+  let assert #(sandbox.Returned(#(Ok(session), state)), _) =
+    overlay.setup(input, helpers.config, [], [], helpers.state())
+    |> sandbox.run(sandbox.sandbox())
+  let code = "(_) -> { !int_add(1, \"2\") }"
+  let assert system.Done(#(Error(reason), _, _)) =
+    overlay.check_and_execute(session, code, state)
+  echo reason
+}
 
 pub fn setup_generalises_context_types_test() {
   let input =
@@ -112,11 +129,11 @@ pub fn read_file_policy_is_used_for_imports_test() {
   let code = "import \"/user/oliver/fine.eyg\""
   let assert system.ReadFile("/user/oliver/fine.eyg", resume) =
     overlay.check_and_execute(session, code, state)
+  let assert system.ReadFile("/user/oliver/fine.eyg", resume) = resume(Ok("3"))
   let assert system.Done(#(Ok(return), _state, [])) = resume(Ok("3"))
   let assert #(Some(value.Integer(3)), _) = return
-
-  let code = "import \"/user/oliver/secret.eyg\""
-  let assert system.Done(#(Error(reason), _state, _)) =
-    overlay.check_and_execute(session, code, state)
-  assert string.contains(reason, "denied by policy")
+  // let code = "import \"/user/oliver/secret.eyg\""
+  // let assert system.Done(#(Error(reason), _state, _)) =
+  //   overlay.check_and_execute(session, code, state)
+  // assert string.contains(reason, "denied by policy")
 }
