@@ -47,7 +47,7 @@ pub fn type_(rules, level, bindings) {
       #("policy", policy.type_(rules)),
       #("context", agent_context),
     ])
-  #(type_, bindings)
+  #(type_, agent_context, bindings)
 }
 
 /// Decode configuration using the host's selected effect interfaces and rules.

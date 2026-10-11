@@ -28,11 +28,13 @@ pub type Interface(a, meta) {
 pub type Policy(a, meta) =
   Dict(String, Interface(a, meta))
 
-/// Host rules select which effects are available, effects without a host rule are unavailable.
+/// Filter a harness, the full set of interfaces on a platform, down to the supported set and the associated rule.
+/// The rule links an interface to a field on a provided policy object.
+/// Any interface in the harness not mentioned by a rule is filtered out and will not appear in type inference it can never be called.
 pub fn match_rules(
-  harness: interface.Harness(a, meta),
+  harness: interface.Harness(eff, meta),
   rules: List(#(String, Rule)),
-) {
+) -> List(#(interface.Interface(eff, meta), Rule)) {
   list.filter_map(harness, fn(interface) {
     let interface.Interface(name:, ..) = interface
     case list.key_find(rules, name) {

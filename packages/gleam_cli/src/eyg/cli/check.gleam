@@ -29,7 +29,7 @@ pub fn execute(
   let context =
     infer.pure() |> infer.with_effects(interface.types(computer.effects()))
   let state = execute.State(config.client.origin, cache.empty())
-  use #(_poly, type_, errors) <- system.then(check_from(
+  use #(_poly, type_, errors, _) <- system.then(check_from(
     source,
     cwd,
     context,
@@ -55,13 +55,17 @@ pub fn execute(
   }
 }
 
+/// This type checks input within a location
+/// 
+/// The source location is taken from the top level meta data.
+/// TODO extract the source location metadata to something outside the tree
 pub fn check_from(
   source: ir.Node(source.Location),
   cwd: String,
   context: infer.Context,
   state: execute.State,
 ) -> system.Effect(
-  #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason))),
+  #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason)), _),
 ) {
   let #(dir, path) = case source.1.origin {
     source.Disk(path:) -> #(filepath.directory_name(path), path)
@@ -96,13 +100,14 @@ fn check_loop(
   state: execute.State,
   errors: List(#(source.Location, error.Reason)),
   visited: List(String),
-) -> system.Effect(#(binding.Poly, binding.Mono, _)) {
+) -> system.Effect(#(binding.Poly, binding.Mono, _, _)) {
   case step {
     infer.Done(analysis) ->
       system.Done(#(
         infer.poly_type(analysis),
         infer.type_(analysis),
         list.append(errors, infer.all_errors(analysis)),
+        analysis,
       ))
     infer.Lookup(reference:, resume:) -> {
       use #(type_, state, errors) <- system.then(case reference {
@@ -136,7 +141,7 @@ fn check_loop(
                               errors,
                               [path, ..visited],
                             )
-                          use #(poly, _type_, errors) <- system.map(check)
+                          use #(poly, _type_, errors, _) <- system.map(check)
                           #(Ok(poly), state, errors)
                         }
                         Error(_reason) ->

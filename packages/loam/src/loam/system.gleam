@@ -54,10 +54,10 @@ pub type Effect(a) {
   )
   ReadFile(String, fn(Result(String, String)) -> Effect(a))
   ReadFileRange(
-    String,
-    Int,
-    Int,
-    fn(Result(BitArray, simplifile.FileError)) -> Effect(a),
+    path: String,
+    offset: Int,
+    limit: Int,
+    resume: fn(Result(BitArray, simplifile.FileError)) -> Effect(a),
   )
   SetPermissions(String, Int, fn(Result(Nil, String)) -> Effect(a))
   Stdin(fn(Result(String, String)) -> Effect(a))

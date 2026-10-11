@@ -9,6 +9,7 @@
 //// The other tools could use the same effect logic, this is probably a good idea once we start applying policies for which files can be read.
 
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding
 import eyg/cli/check
 import eyg/cli/internal/config
 import eyg/cli/internal/terminal
@@ -26,6 +27,7 @@ import gleam/dict
 import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/pair
 import gleam/string
 import gleam_community/ansi
 import loam/execute
@@ -49,52 +51,107 @@ import touch_grass/interface
 
 // Env should be readable on startup
 /// Everything about a session that is fixed when it starts.
-pub type Session {
+pub type Session(eff) {
   Session(
     llm: provider.Llm,
     provider_context: provider.Context,
     cwd: String,
-    policy: policy.Policy(harness_computer.Effect, source.Location),
-    context: execute.Value,
+    policy: policy.Policy(eff, source.Location),
+    context: cache.Module(source.Location),
     styled: Bool,
   )
 }
 
+// Move with_variable and with_scope to analysis
+// check should be on run/script/shell etc and test the right things
+// --no-check can be an option
+// pass in a policy should be possible in other commands such as REPL etc
+// Safety in the language i.e. sandbox 
+// policy can have a debug effect during running it so we can see what's happening.
+// type check some new code and then eval returns Effect(value, resume)
+// This is the API choices such as use of types around eval can setup what's passed in.
+// TODO relative imports and file lookup
 pub fn execute(
   input: source.Input,
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
-  use cwd <- system.then(system.cwd())
-  use cwd <- system.try(cwd)
-  use input <- system.try(source.normalize_input(cwd, input))
-  use code <- system.then(source.read_input(input))
-  use code <- system.try(code)
-  use source <- system.try(source.parse_input(code, input))
-
   let state = execute.State(config.client.origin, cache.empty())
-  let rules = policy_rules()
+  use #(result, state) <- system.then(setup(
+    input,
+    config,
+    computer.effects(),
+    rule_mapping,
+    state,
+  ))
+  use session <- system.try(result)
+  use Nil <- system.then(outer_loop(session, state, []))
+  Ok(0) |> system.Done
+}
+
+fn try(result, state, then) {
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> system.Done(#(Error(reason), state))
+  }
+}
+
+/// Setup the chat session.
+/// The `Session` contains all information that is constant over the conversation
+/// 
+/// The `config` arg could be broken down as not that many parts are needed
+/// The harness and rule_mappings are passed in to make building other CLI tools easier
+pub fn setup(
+  input: source.Input,
+  config: config.Config,
+  harness: interface.Harness(harness_computer.Effect, source.Location),
+  rule_mapping: List(#(String, policy.Rule)),
+  state: execute.State,
+) -> system.Effect(
+  #(Result(Session(harness_computer.Effect), String), execute.State),
+) {
+  use cwd <- system.then(system.cwd())
+  use cwd <- try(cwd, state)
+  use input <- try(source.normalize_input(cwd, input), state)
+  use code <- system.then(source.read_input(input))
+  use code <- try(code, state)
+  use source <- try(source.parse_input(code, input), state)
+
+  // The harness bound with the rules
+  let agent_harness = policy.match_rules(harness, rule_mapping)
+
   let context =
     infer.pure()
-    |> infer.with_effects(interface.types(computer.effects()))
-  let #(expected, bindings) =
-    overlay_config.type_(rules, context.level, context.bindings)
+    // The policy is evaluated outside the policy and can access any effect
+    |> infer.with_effects(interface.types(harness))
+  let #(expected, context_type, bindings) =
+    overlay_config.type_(agent_harness, context.level, context.bindings)
   let context =
     infer.Context(..context, bindings:)
     |> infer.with_expected_type(expected)
-  use #(_, _, errors) <- system.then(check.check_from(
+
+  // TODO this analysis should return updated state
+  use #(_type, _, errors, analysis) <- system.then(check.check_from(
     source,
     cwd,
     context,
     state,
   ))
-  use Nil <- system.try(case errors {
-    [] -> Ok(Nil)
-    _ -> Error(list.map(errors, check.render_error) |> string.join("\n"))
-  })
+  use Nil <- try(
+    case errors {
+      [] -> Ok(Nil)
+      _ -> Error(list.map(errors, check.render_error) |> string.join("\n"))
+    },
+    state,
+  )
+
+  let context_poly = {
+    let mono = binding.resolve(context_type, analysis.bindings)
+    binding.gen(mono, 0, analysis.bindings)
+  }
   use #(result, state) <- system.then(execute.block(source, [], state))
   case result {
     Ok(#(Some(user_config), _)) ->
-      case overlay_config.cast(user_config, rules) {
+      case overlay_config.cast(user_config, agent_harness) {
         Ok(user_config) -> {
           let session =
             Session(
@@ -102,33 +159,45 @@ pub fn execute(
               provider_context: provider.Context(
                 system_prompt: agent.system_prompt(
                   config.client.origin,
-                  computer.effects(),
+                  // use the agent harness because the prompt should talk about effects that can't be used
+                  list.map(agent_harness, pair.first),
                   user_config.readme,
                 ),
                 tools: agent.tools(),
               ),
               cwd:,
               policy: user_config.policy,
-              context: user_config.context,
+              context: cache.Module(
+                value: user_config.context,
+                type_: context_poly,
+              ),
               styled: config.styled,
             )
-          use Nil <- system.then(outer_loop(session, state, []))
-          Ok(0) |> system.Done
+
+          system.Done(#(Ok(session), state))
         }
         Error(reason) ->
-          Error(execute.render_error(reason, source.1, state.Empty, cwd))
+          #(
+            Error(execute.render_error(reason, source.1, state.Empty, cwd)),
+            state,
+          )
           |> system.Done
       }
     Ok(#(None, _)) ->
-      Error(execute.render_error(break.Vacant, source.1, state.Empty, cwd))
+      #(
+        Error(execute.render_error(break.Vacant, source.1, state.Empty, cwd)),
+        state,
+      )
       |> system.Done
     Error(#(reason, location, _, k)) ->
-      Error(execute.render_error(reason, location, k, cwd)) |> system.Done
+      #(Error(execute.render_error(reason, location, k, cwd)), state)
+      |> system.Done
   }
 }
 
+/// A chat based outer loop, this is the layer that a ralph loop would replace
 fn outer_loop(
-  session: Session,
+  session: Session(harness_computer.Effect),
   eyg_state: execute.State,
   history: List(chat.Message(tool.Call)),
 ) -> system.Effect(Nil) {
@@ -178,8 +247,9 @@ fn input(
 }
 
 /// Complete and run tool calls until the agent replies without calling a tool.
-fn inner_loop(
-  session: Session,
+/// This is a sequential inner loop
+pub fn inner_loop(
+  session: Session(harness_computer.Effect),
   eyg_state: execute.State,
   history: List(chat.Message(tool.Call)),
 ) -> system.Effect(
@@ -250,7 +320,7 @@ fn fetch(
 // ---------------------------- toools
 
 fn execute_call(
-  session: Session,
+  session: Session(harness_computer.Effect),
   call: tool.FunctionCall,
   eyg_state: execute.State,
 ) -> system.Effect(#(Result(tool.Return, String), execute.State)) {
@@ -260,7 +330,7 @@ fn execute_call(
       use Nil <- system.then(system.stdout(log_line(session.styled, call)))
       case call {
         agent.Run(code) -> {
-          use #(result, eyg_state, output) <- system.then(run_do(
+          use #(result, eyg_state, output) <- system.then(check_and_execute(
             session,
             code,
             eyg_state,
@@ -325,8 +395,11 @@ fn truncate(text) {
 // There's a problem that the final execute is tied to runtime
 // ---------------------- run
 
-fn run_do(
-  session: Session,
+/// If extracted this would be the implementation of a tool called run.
+/// In a module run.gleam this would be the execute function
+/// A better name might be check_and_execute
+pub fn check_and_execute(
+  session: Session(harness_computer.Effect),
   code: String,
   eyg_state: execute.State,
 ) -> system.Effect(#(Result(_, String), execute.State, List(String))) {
@@ -334,7 +407,32 @@ fn run_do(
 
   case source.parse_input(code, input) {
     Ok(source) -> {
-      let scope = [#("context", session.context)]
+      {
+        let base =
+          infer.pure()
+          |> infer.with_effects(interface.types(
+            dict.values(session.policy) |> list.map(fn(i) { i.interface }),
+          ))
+        // too many contexts, this is an infer context
+        let context =
+          infer.Context(..base, env: [
+            #("context", session.context.type_),
+            ..base.env
+          ])
+        use #(_, _, errors, _) <- system.then(check.check_from(
+          source,
+          session.cwd,
+          context,
+          eyg_state,
+          // import_gate(session.policy, source.1),
+          // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
+        ))
+        echo errors
+        system.Done(Nil)
+      }
+      // todo this is the place to check
+      // currently import just leaves relative in place
+      let scope = [#("context", session.context.value)]
 
       use #(result, state, output) <- system.map(
         loop(block.execute(source, scope), eyg_state, session.policy, []),
@@ -350,7 +448,8 @@ fn run_do(
   }
 }
 
-// This is a replacement for execute.loop because of the police
+/// This is a replacement for execute.loop because of the policy
+/// In the future a unrestrained harness can have a rule of unrestrained for all interfaces
 fn loop(
   return: Result(_, execute.Debug),
   state: execute.State,
@@ -424,7 +523,9 @@ fn decide(
   lift: execute.Value,
   meta: source.Location,
   state: execute.State,
-) -> system.Effect(#(policy.Action(_, _), execute.State)) {
+) -> system.Effect(
+  #(policy.Action(source.Location, harness_computer.Effect), execute.State),
+) {
   case dict.get(policy, label) {
     Ok(policy.Interface(interface, policy.Gated(gate))) -> {
       let return = expression.call(gate, [#(lift, meta)])
@@ -471,6 +572,7 @@ fn lookup_reference(reference, meta, state, policy) {
         meta,
         state,
       ))
+
       case decided {
         policy.Perform(_, modified) ->
           case cast.field("path", cast.as_string, modified) {
@@ -511,29 +613,27 @@ fn lookup_reference(reference, meta, state, policy) {
   }
 }
 
-fn policy_rules() {
-  policy.match_rules(computer.effects(), [
-    #("AppendFile", policy.PolicyField("append_file")),
-    #("CreateKey", policy.PolicyField("create_key")),
-    #("CWD", policy.PolicyField("cwd")),
-    #("DecodeJSON", policy.Unchecked),
-    #("DeleteFile", policy.PolicyField("delete_file")),
-    #("Env", policy.PolicyField("env")),
-    #("Exit", policy.Unchecked),
-    #("EYGParse", policy.Unchecked),
-    #("Fetch", policy.PolicyField("fetch")),
-    #("Flip", policy.Unchecked),
-    #("Hash", policy.Unchecked),
-    #("MakeDirectory", policy.PolicyField("make_directory")),
-    #("Now", policy.PolicyField("now")),
-    #("Random", policy.Unchecked),
-    #("ReadDirectory", policy.PolicyField("read_directory")),
-    #("ReadFile", policy.PolicyField("read_file")),
-    #("Sign", policy.PolicyField("sign")),
-    #("Sleep", policy.PolicyField("sleep")),
-    #("StandardError", policy.PolicyField("standard_error")),
-    #("StandardIn", policy.PolicyField("standard_in")),
-    #("StandardOut", policy.PolicyField("standard_out")),
-    #("WriteFile", policy.PolicyField("write_file")),
-  ])
-}
+const rule_mapping = [
+  #("AppendFile", policy.PolicyField("append_file")),
+  #("CreateKey", policy.PolicyField("create_key")),
+  #("CWD", policy.PolicyField("cwd")),
+  #("DecodeJSON", policy.Unchecked),
+  #("DeleteFile", policy.PolicyField("delete_file")),
+  #("Env", policy.PolicyField("env")),
+  #("Exit", policy.Unchecked),
+  #("EYGParse", policy.Unchecked),
+  #("Fetch", policy.PolicyField("fetch")),
+  #("Flip", policy.Unchecked),
+  #("Hash", policy.Unchecked),
+  #("MakeDirectory", policy.PolicyField("make_directory")),
+  #("Now", policy.PolicyField("now")),
+  #("Random", policy.Unchecked),
+  #("ReadDirectory", policy.PolicyField("read_directory")),
+  #("ReadFile", policy.PolicyField("read_file")),
+  #("Sign", policy.PolicyField("sign")),
+  #("Sleep", policy.PolicyField("sleep")),
+  #("StandardError", policy.PolicyField("standard_error")),
+  #("StandardIn", policy.PolicyField("standard_in")),
+  #("StandardOut", policy.PolicyField("standard_out")),
+  #("WriteFile", policy.PolicyField("write_file")),
+]

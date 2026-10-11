@@ -1,5 +1,6 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/config
+import eyg/hub/cache
 import eyg/hub/schema
 import eyg/ir/car
 import eyg/ir/cid
@@ -12,21 +13,27 @@ import gleam/http/response
 import gleam/int
 import gleam/json
 import gleam/option.{None}
+import loam/execute
 import loam/os
 import loam/sandbox
 import midas/continuation
 import multiformats/cid/v1
 import ogre/origin
 
-const eyg_origin: client.Client =
-  client.Client(origin: origin.Origin(http.Https, "eyg.run", None))
+const eyg_origin = origin.Origin(http.Https, "eyg.run", None)
+
+const eyg_client: client.Client = client.Client(origin: eyg_origin)
 
 pub const config: config.Config =
   config.Config(
-    client: eyg_origin,
+    client: eyg_client,
     dirs: os.Directories(config_dir: "", cache_dir: "", data_dir: ""),
     styled: False,
   )
+
+pub fn state() {
+  execute.State(eyg_origin, cache.empty())
+}
 
 pub fn vacant_cid_response() {
   response.new(200)
