@@ -15,6 +15,10 @@ import loam/source
 import loam/system
 import touch_grass/interface
 
+pub fn allway_pass_gate(path, state) {
+  system.Done(#(Ok(path), state))
+}
+
 pub fn execute(
   input: source.Input,
   config: config.Config,
@@ -29,11 +33,13 @@ pub fn execute(
   let context =
     infer.pure() |> infer.with_effects(interface.types(computer.effects()))
   let state = execute.State(config.client.origin, cache.empty())
+
   use #(_poly, type_, errors, _) <- system.then(check_from(
     source,
     cwd,
     context,
     state,
+    allway_pass_gate,
   ))
 
   use Nil <- system.then(
@@ -64,6 +70,7 @@ pub fn check_from(
   cwd: String,
   context: infer.Context,
   state: execute.State,
+  gate,
 ) -> system.Effect(
   #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason)), _),
 ) {
@@ -80,7 +87,7 @@ pub fn check_from(
   let step = infer.check(context, source)
   // The host's expected result applies to the entry expression, not its imports.
   let dependency_context = infer.Context(..context, expected_type: None)
-  check_loop(step, dependency_context, dir, state, [], [path])
+  check_loop(step, dependency_context, dir, state, [], [path], gate)
 }
 
 pub fn render_error(error) {
@@ -100,6 +107,11 @@ fn check_loop(
   state: execute.State,
   errors: List(#(source.Location, error.Reason)),
   visited: List(String),
+  // The gate returns a modified path or is denied, for any reason
+  // The function is passed in so that we don't need to understand policy.
+  // but if rules and policy become part of the runtime we can be more concrete
+  gate: fn(String, execute.State) ->
+    system.Effect(#(Result(String, Nil), execute.State)),
 ) -> system.Effect(#(binding.Poly, binding.Mono, _, _)) {
   case step {
     infer.Done(analysis) ->
@@ -125,32 +137,42 @@ fn check_loop(
         ir.Relative(location:) ->
           case system.resolve_relative(directory, location) {
             Ok(path) -> {
-              case cycle_check(visited, path) {
-                Ok(Nil) -> {
-                  use code <- system.then(system.read_file(path))
-                  case code {
-                    Ok(code) ->
-                      case source.parse_input(code, source.File(location)) {
-                        Ok(dependency) -> {
-                          let check =
-                            check_loop(
-                              infer.check(context, dependency),
-                              context,
-                              filepath.directory_name(path),
-                              state,
-                              errors,
-                              [path, ..visited],
-                            )
-                          use #(poly, _type_, errors, _) <- system.map(check)
-                          #(Ok(poly), state, errors)
-                        }
+              use #(result, state) <- system.then(gate(path, state))
+              case result {
+                Ok(path) -> {
+                  case cycle_check(visited, path) {
+                    Ok(Nil) -> {
+                      use code <- system.then(system.read_file(path))
+                      case code {
+                        Ok(code) ->
+                          case source.parse_input(code, source.File(location)) {
+                            Ok(dependency) -> {
+                              let check =
+                                check_loop(
+                                  infer.check(context, dependency),
+                                  context,
+                                  filepath.directory_name(path),
+                                  state,
+                                  errors,
+                                  [path, ..visited],
+                                  gate,
+                                )
+                              use #(poly, _type_, errors, _) <- system.map(
+                                check,
+                              )
+                              #(Ok(poly), state, errors)
+                            }
+                            Error(_reason) ->
+                              system.Done(#(Error(Nil), state, errors))
+                          }
                         Error(_reason) ->
                           system.Done(#(Error(Nil), state, errors))
                       }
-                    Error(_reason) -> system.Done(#(Error(Nil), state, errors))
+                    }
+                    Error(_cycle) -> system.Done(#(Error(Nil), state, errors))
                   }
                 }
-                Error(_cycle) -> system.Done(#(Error(Nil), state, errors))
+                Error(_) -> system.Done(#(Error(Nil), state, errors))
               }
             }
             Error(_reason) -> system.Done(#(Error(Nil), state, errors))
@@ -158,7 +180,7 @@ fn check_loop(
       })
       type_
       |> resume()
-      |> check_loop(context, directory, state, errors, visited)
+      |> check_loop(context, directory, state, errors, visited, gate)
     }
   }
 }

@@ -5,6 +5,7 @@ import eyg/cli/helpers
 import eyg/cli/overlay
 import eyg/interpreter/value
 import gleam/option.{Some}
+import gleam/string
 import loam/sandbox
 import loam/source
 import loam/system
@@ -78,7 +79,13 @@ pub fn setup_generalises_context_types_test() {
   let context =
     infer.Context(..base, env: [#("context", session.context.type_)])
   let assert system.Done(#(_, type_, [], _)) =
-    check.check_from(source, session.cwd, context, state)
+    check.check_from(
+      source,
+      session.cwd,
+      context,
+      state,
+      check.allway_pass_gate,
+    )
   assert type_ == t.record([#("integer", t.Integer), #("string", t.String)])
 }
 
@@ -132,8 +139,9 @@ pub fn read_file_policy_is_used_for_imports_test() {
   let assert system.ReadFile("/user/oliver/fine.eyg", resume) = resume(Ok("3"))
   let assert system.Done(#(Ok(return), _state, [])) = resume(Ok("3"))
   let assert #(Some(value.Integer(3)), _) = return
-  // let code = "import \"/user/oliver/secret.eyg\""
-  // let assert system.Done(#(Error(reason), _state, _)) =
-  //   overlay.check_and_execute(session, code, state)
-  // assert string.contains(reason, "denied by policy")
+
+  let code = "import \"/user/oliver/secret.eyg\""
+  let assert system.Done(#(Error(reason), _state, _)) =
+    overlay.check_and_execute(session, code, state)
+  assert string.contains(reason, "type error")
 }

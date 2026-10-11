@@ -28,6 +28,7 @@ import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/pair
+import gleam/result
 import gleam/string
 import gleam_community/ansi
 import loam/execute
@@ -135,6 +136,7 @@ pub fn setup(
     cwd,
     context,
     state,
+    check.allway_pass_gate,
   ))
   use Nil <- try(
     case errors {
@@ -443,10 +445,45 @@ fn type_check(session: Session(_), source, eyg_state) {
     session.cwd,
     context,
     eyg_state,
-    // import_gate(session.policy, source.1),
+    import_gate(session.policy, source.1),
     // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
   ))
   errors
+}
+
+/// The ReadFile request a relative import of `path` is decided by.
+fn import_request(path) {
+  value.Record(
+    dict.from_list([
+      #("path", value.String(path)),
+      #("offset", value.Integer(0)),
+      #("limit", value.Integer(100_000_000)),
+    ]),
+  )
+}
+
+/// Decide the agent's relative imports when type checking, as they are decided when it runs.
+/// Policies are pure so asking the ReadFile gate performs no effects.
+fn import_gate(
+  policy: policy.Policy(harness_computer.Effect, source.Location),
+  meta: source.Location,
+) {
+  fn(path, state) {
+    use #(decided, state) <- system.map(decide(
+      policy,
+      "ReadFile",
+      import_request(path),
+      meta,
+      state,
+    ))
+    let path = case decided {
+      policy.Perform(_, modified) ->
+        cast.field("path", cast.as_string, modified)
+        |> result.replace_error(Nil)
+      policy.Resume(_) | policy.Failed(_) | policy.Unavailable -> Error(Nil)
+    }
+    #(path, state)
+  }
 }
 
 /// This is a replacement for execute.loop because of the policy
@@ -555,6 +592,8 @@ fn decide(
 }
 
 // Relative imports read files, so ask the ReadFile gate before resolving them.
+// This is lookup_reference_value there is a separate lookup_reference_type
+// is loam/execute.lookup_relative worth adding in a policy
 fn lookup_reference(reference, meta, state, policy) {
   case reference {
     ir.Relative(path) -> {
