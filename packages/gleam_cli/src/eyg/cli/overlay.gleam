@@ -152,7 +152,7 @@ fn outer_loop(
   }
 }
 
-pub fn input(
+fn input(
   prompt: String,
   placeholder: String,
 ) -> system.Effect(Result(String, Nil)) {
@@ -172,7 +172,7 @@ pub fn input(
 }
 
 /// Complete and run tool calls until the agent replies without calling a tool.
-pub fn inner_loop(
+fn inner_loop(
   session: Session,
   eyg_state: execute.State,
   history: List(chat.Message(tool.Call)),
@@ -214,7 +214,7 @@ pub fn inner_loop(
   }
 }
 
-pub fn result_to_message(
+fn result_to_message(
   call_id: String,
   result: Result(tool.Return, String),
 ) -> chat.Message(a) {
@@ -243,7 +243,7 @@ fn fetch(
 
 // ---------------------------- toools
 
-pub fn execute_call(
+fn execute_call(
   session: Session,
   call: tool.FunctionCall,
   eyg_state: execute.State,
@@ -282,7 +282,7 @@ pub fn execute_call(
   }
 }
 
-pub fn log_line(call) {
+fn log_line(call) {
   case call {
     agent.Run(code) ->
       terminal.style(ansi.bg_bright_green, "Executing EYG code.")
@@ -313,7 +313,7 @@ fn truncate(text) {
 // There's a problem that the final execute is tied to runtime
 // ---------------------- run
 
-pub fn run_do(
+fn run_do(
   session: Session,
   code: String,
   eyg_state: execute.State,
@@ -339,7 +339,7 @@ pub fn run_do(
 }
 
 // This is a replacement for execute.loop because of the police
-pub fn loop(
+fn loop(
   return: Result(_, execute.Debug),
   state: execute.State,
   policy: policy.Policy(_, _),
@@ -499,7 +499,7 @@ fn lookup_reference(reference, meta, state, policy) {
   }
 }
 
-pub fn policy_rules() {
+fn policy_rules() {
   policy.match_rules(computer.effects(), [
     #("AppendFile", policy.PolicyField("append_file")),
     #("CreateKey", policy.PolicyField("create_key")),
