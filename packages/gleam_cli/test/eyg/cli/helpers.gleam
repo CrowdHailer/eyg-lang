@@ -25,6 +25,7 @@ pub const config: config.Config =
   config.Config(
     client: eyg_origin,
     dirs: os.Directories(config_dir: "", cache_dir: "", data_dir: ""),
+    styled: False,
   )
 
 pub fn vacant_cid_response() {

@@ -23,7 +23,7 @@ pub fn initial(
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
   use Nil <- system.try(store.validate_alias(alias))
-  let config.Config(client:, dirs:) = config
+  let config.Config(client:, dirs:, ..) = config
   use keypair <- system.then(system.generate_key())
   use first <- system.then(client.initialise_principal(keypair, client))
   use first <- system.try(first)

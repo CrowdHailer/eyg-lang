@@ -56,10 +56,14 @@ pub type Session {
     cwd: String,
     policy: policy.Policy(harness_computer.Effect, source.Location),
     context: execute.Value,
+    styled: Bool,
   )
 }
 
-pub fn execute(input, config: config.Config) {
+pub fn execute(
+  input: source.Input,
+  config: config.Config,
+) -> system.Effect(Result(Int, String)) {
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
   use input <- system.try(source.normalize_input(cwd, input))
@@ -106,6 +110,7 @@ pub fn execute(input, config: config.Config) {
               cwd:,
               policy: user_config.policy,
               context: user_config.context,
+              styled: config.styled,
             )
           use Nil <- system.then(outer_loop(session, state, []))
           Ok(0) |> system.Done
@@ -127,7 +132,7 @@ fn outer_loop(
   eyg_state: execute.State,
   history: List(chat.Message(tool.Call)),
 ) -> system.Effect(Nil) {
-  use read <- system.then(input(">>>", "send a message"))
+  use read <- system.then(input(session.styled, ">>>", "send a message"))
   case read {
     Ok("") -> system.Done(Nil)
     Ok(text) -> {
@@ -141,7 +146,7 @@ fn outer_loop(
         Error(reason) -> {
           // This output should be error and potentially show to the agent.
           use Nil <- system.then(system.stdout(
-            terminal.style(ansi.red, reason) <> "\n",
+            terminal.style(session.styled, ansi.red, reason) <> "\n",
           ))
           system.Done(history)
         }
@@ -153,10 +158,11 @@ fn outer_loop(
 }
 
 fn input(
+  noninteractive: Bool,
   prompt: String,
   placeholder: String,
 ) -> system.Effect(Result(String, Nil)) {
-  let prompt = case terminal.noninteractive() {
+  let prompt = case noninteractive {
     // The placeholder is overwritten as the user types.
     True -> {
       let prompt = ansi.bold(ansi.yellow(prompt))
@@ -251,7 +257,7 @@ fn execute_call(
   let tool.FunctionCall(name, arguments) = call
   case agent.cast_tool_call(name, arguments) {
     Ok(call) -> {
-      use Nil <- system.then(system.stdout(log_line(call)))
+      use Nil <- system.then(system.stdout(log_line(session.styled, call)))
       case call {
         agent.Run(code) -> {
           use #(result, eyg_state, output) <- system.then(run_do(
@@ -269,7 +275,9 @@ fn execute_call(
             Ok(#(None, _)) -> Ok(tool.Return(run.report(output, ""), []))
             Error(reason) -> Error(run.report(output, reason))
           }
-          use Nil <- system.then(system.stdout(log_result(result)))
+          use Nil <- system.then(
+            system.stdout(log_result(session.styled, result)),
+          )
           system.Done(#(result, eyg_state))
         }
       }
@@ -282,24 +290,28 @@ fn execute_call(
   }
 }
 
-fn log_line(call) {
+fn log_line(noninteractive, call) {
   case call {
     agent.Run(code) ->
-      terminal.style(ansi.bg_bright_green, "Executing EYG code.")
+      terminal.style(
+        noninteractive,
+        ansi.bg_bright_green,
+        "Executing EYG code.",
+      )
       <> "\n"
-      <> terminal.style(ansi.dim, code)
+      <> terminal.style(noninteractive, ansi.dim, code)
   }
 }
 
 /// Summarise a tool call result so the user can see what the agent saw.
-fn log_result(result: Result(tool.Return, String)) -> String {
+fn log_result(noninteractive, result: Result(tool.Return, String)) -> String {
   case result {
     Ok(tool.Return(text:, ..)) ->
-      terminal.style(ansi.green, "ok ")
-      <> terminal.style(ansi.dim, truncate(text))
+      terminal.style(noninteractive, ansi.green, "ok ")
+      <> terminal.style(noninteractive, ansi.dim, truncate(text))
     Error(reason) ->
-      terminal.style(ansi.red, "error ")
-      <> terminal.style(ansi.dim, truncate(reason))
+      terminal.style(noninteractive, ansi.red, "error ")
+      <> terminal.style(noninteractive, ansi.dim, truncate(reason))
   }
 }
 

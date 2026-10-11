@@ -1,4 +1,5 @@
 import eyg/cli/internal/client
+import eyg/cli/internal/terminal
 import gleam/option
 import gleam/result
 import loam/os
@@ -6,7 +7,7 @@ import loam/system
 import ogre/origin
 
 pub type Config {
-  Config(client: client.Client, dirs: os.Directories)
+  Config(client: client.Client, dirs: os.Directories, styled: Bool)
 }
 
 pub fn load() -> system.Effect(Result(Config, Nil)) {
@@ -19,5 +20,6 @@ pub fn load() -> system.Effect(Result(Config, Nil)) {
   use dirs <- system.then(os.directories())
   use dirs <- system.try(dirs)
   let client = client.Client(origin:)
-  system.Done(Ok(Config(client:, dirs:)))
+  // TODO move interactive check to system
+  system.Done(Ok(Config(client:, dirs:, styled: terminal.styled())))
 }

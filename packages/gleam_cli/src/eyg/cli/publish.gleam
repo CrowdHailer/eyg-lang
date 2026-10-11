@@ -14,7 +14,7 @@ pub fn execute(
   file: String,
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
-  let config.Config(client:, dirs:) = config
+  let config.Config(client:, dirs:, ..) = config
   use signatories <- system.then(store.all_signatories(dirs))
   use signatories <- system.try(signatories)
   use signatory <- system.try(case signatories {

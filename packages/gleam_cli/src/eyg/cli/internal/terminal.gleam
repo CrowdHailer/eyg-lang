@@ -5,7 +5,7 @@ import plinthx/node/process
 import plinthx/node/tty
 
 /// According to specification NO_COLOR only disables colors however it's often useful to remove all ansi codes in that case.
-pub fn noninteractive() -> Bool {
+pub fn styled() -> Bool {
   case process.get() {
     Ok(process) ->
       tty.is_tty(process.stdout(process)) == Ok(True) && !no_color(process)
@@ -21,8 +21,12 @@ fn no_color(process) {
 }
 
 /// Apply an ansi style function only when writing to a terminal.
-pub fn style(apply: fn(String) -> String, text: String) -> String {
-  case noninteractive() {
+pub fn style(
+  styled: Bool,
+  apply: fn(String) -> String,
+  text: String,
+) -> String {
+  case styled {
     True -> apply(text)
     False -> text
   }
