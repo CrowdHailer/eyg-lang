@@ -321,6 +321,26 @@ pub fn select_test() {
   // cant have bare .name because white space will join it to previous thing
 }
 
+// Comparing r and s extends r's existing row with b inside the younger scope.
+// Since same captures r, its b field must not be generalised: both calls must
+// agree on the type of r.b.
+pub fn captured_record_field_is_not_generalised_test() {
+  let source =
+    "(r) -> {
+      let _ = r.a
+      let same = (s) -> {
+        let _ = s.b
+        !equal(r, s)
+      }
+      let _ = same({a: 1, b: 1})
+      same({a: 1, b: \"\"})
+    }"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.TypeMismatch(t.String, t.Integer)])
+}
+
 pub fn tag_test() {
   "Ok"
   |> calc(t.Empty)
@@ -447,6 +467,40 @@ pub fn perform_unifys_with_env_test() {
     #(Error(error.TypeMismatch(t.Integer, t.String)), "1", "Log(↑Integer ↓1)"),
     #(Ok(Nil), "(Integer <Log(↑Integer ↓1)>) -> 1", ""),
     #(Ok(Nil), "Integer", ""),
+  ])
+}
+
+// Ping extends the effect row already containing Other. Its reply is one value,
+// so binding it with let must not allow Integer and String uses independently.
+pub fn effect_reply_is_not_generalised_test() {
+  "(_) -> {
+    let _ = perform Other({})
+    let x = perform Ping({})
+    let _ = !int_add(x, 1)
+    !equal(x, \"\")
+  }"
+  |> calc(t.Empty)
+  |> should.equal([
+    ok("(0 <Other(↑{} ↓3), Ping(↑{} ↓Integer)>) -> 26", ""),
+    ok("26", ""),
+    ok("3", "Other(↑{} ↓3)"),
+    ok("({} <Other(↑{} ↓3)>) -> 3", ""),
+    ok("{}", ""),
+    ok("26", ""),
+    ok("Integer", "Ping(↑{} ↓Integer)"),
+    ok("({} <Ping(↑{} ↓Integer)>) -> Integer", ""),
+    ok("{}", ""),
+    ok("26", ""),
+    ok("Integer", ""),
+    ok("(Integer) -> Integer", ""),
+    ok("(Integer, Integer) -> Integer", ""),
+    ok("Integer", ""),
+    ok("Integer", ""),
+    #(Error(error.TypeMismatch(t.String, t.Integer)), "26", ""),
+    ok("(Integer) -> [True: {} | False: {}]", ""),
+    ok("(Integer, Integer) -> [True: {} | False: {}]", ""),
+    ok("Integer", ""),
+    ok("String", ""),
   ])
 }
 

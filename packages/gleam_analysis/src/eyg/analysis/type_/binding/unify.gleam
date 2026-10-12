@@ -163,7 +163,7 @@ fn rewrite_row(required, type_, level, bindings, check) {
       case dict.get(bindings, i) {
         Ok(binding.Bound(type_)) ->
           rewrite_row(required, type_, level, bindings, check)
-        _ ->
+        Ok(binding.Unbound(row_level)) ->
           case check {
             // catch infinite loop
             t.Var(j) if i == j -> {
@@ -171,7 +171,9 @@ fn rewrite_row(required, type_, level, bindings, check) {
               Error(error.SameTail(t.Var(i), t.Var(j)))
             }
             _ -> {
-              // Not sure why this is different to effects
+              // The new fields belong to the existing row, not the younger
+              // inference scope requesting its extension.
+              let level = int.min(level, row_level)
               let #(field, bindings) = binding.mono(level, bindings)
               let #(rest, bindings) = binding.mono(level, bindings)
 
@@ -179,6 +181,7 @@ fn rewrite_row(required, type_, level, bindings, check) {
               Ok(#(field, rest, dict.insert(bindings, i, binding.Bound(type_))))
             }
           }
+        Error(Nil) -> panic as "missing row binding"
       }
     }
     _ -> panic as "bad row"
@@ -212,13 +215,15 @@ fn rewrite_effect(required, type_, level, bindings, check: t.Type(_)) {
               Error(error.TypeMismatch(t.Var(i), t.Var(j)))
             }
             _ -> {
-              let #(lift, bindings) = binding.mono(level, bindings)
-              let #(reply, bindings) = binding.mono(level, bindings)
-
               // Might get bound during tail rewrite
               let assert Ok(binding) = dict.get(bindings, i)
               case binding {
-                binding.Unbound(level) -> {
+                binding.Unbound(row_level) -> {
+                  // Preserve sharing with the older effect row. Allocating
+                  // these at the caller's level would generalise its replies.
+                  let level = int.min(level, row_level)
+                  let #(lift, bindings) = binding.mono(level, bindings)
+                  let #(reply, bindings) = binding.mono(level, bindings)
                   let #(rest, bindings) = binding.mono(level, bindings)
 
                   let type_ = t.EffectExtend(required, #(lift, reply), rest)
