@@ -281,9 +281,6 @@ list. The CLI accepts both text syntax and DAG JSON through this effect.
 
 ## Cryptography
 
-For design rationale and extension guidance, see
-[`Crypto effects`](./crypto_effects.md).
-
 ### `Hash`
 
 Compute a cryptographic digest of a binary.
