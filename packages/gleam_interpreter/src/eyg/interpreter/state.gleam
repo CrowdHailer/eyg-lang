@@ -147,7 +147,7 @@ pub fn apply(value, env, k, meta, rest) {
 pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
   case f {
     v.Closure(param, body, captured) -> {
-      let k = Stack(Trace(arg, env), meta, k)
+      let k = trace(arg, meta, env, k)
       let env = Env(..env, scope: [#(param, arg), ..captured])
       Ok(#(E(body), env, k))
     }
@@ -193,7 +193,7 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         v.Perform(label), [] -> perform(label, arg, env, k)
         v.Handle(label), [handler] -> deep(label, handler, arg, meta, env, k)
         v.Resume(#(popped, captured)), [] -> {
-          let k = Stack(Trace(arg, env), meta, k)
+          let k = trace(arg, meta, env, k)
           Ok(#(V(arg), captured, move(popped, k)))
         }
         v.Builtin(key), applied ->
@@ -227,6 +227,16 @@ fn call_builtin(key, applied, meta, env: Env(m), kont) {
 }
 
 // In interpreter because circular dependencies interpreter -> spec -> stdlib/linked list
+
+// A Trace at the top means the caller has no work left besides returning.
+// Keep the latest call site, but restore the original caller's environment.
+// This stops the stack growing in effect handling
+fn trace(arg, meta, env, k) {
+  case k {
+    Stack(Trace(_, caller), _, rest) -> Stack(Trace(arg, caller), meta, rest)
+    _ -> Stack(Trace(arg, env), meta, k)
+  }
+}
 
 fn move(delimited, acc) {
   case delimited {
