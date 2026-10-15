@@ -1,0 +1,23 @@
+// Host-supplied usage is counted in admitted inference requests per window.
+// A Quota fact grants inference access up to its limit for this exact scope.
+let nonnegative = (used) -> {
+  match !int_compare(used, 0) {
+    Lt(_) -> { False({}) }
+    | (_) -> { True({}) }
+  }
+}
+let authorize = (db, request) -> {
+  let {tenant, actor, action, resource, window} = request
+  resolve Permit @{
+    db,
+    rule Permit({tenant, actor, resource, window, role: "usage-quota", policy, used, limit}) {
+      var policy var used var limit
+      Quota({tenant, actor, resource, window, limit, policy}),
+      Usage({tenant, actor, resource, window, used}),
+      !equal(action, "infer"),
+      nonnegative(used),
+      !equal(!int_compare(used, limit), Lt({}))
+    }
+  }
+}
+{authorize}

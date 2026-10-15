@@ -58,6 +58,7 @@ A sensible reason could be to create a runtime with a unique set of effects, i.e
 Another reason could be to imagine your own syntax, or even visual editor, and reuse the EYG interpreter and packages.
 
 - [spec](./spec) A JSON spec of all evaluation rules. Compiler and interpreter implementations should use this as their test suite.
+- [channel_policy](./packages/channel_policy/) Gleam prototype using the EYG Datalog evaluator for Slack-channel-based page access and GitHub PR authorization, with mocked integrations and a runnable walkthrough.
 - [gleam_analysis](./packages/gleam_analysis/) Type inference for expressions, effects and scope variables in EYG programs.
 - [gleam_cli](./packages/gleam_cli/) The CLI for running EYG programs and interacting with the EYG hub.
 - [gleam_hub](./packages/gleam_hub/) Schemas, encoders and decoders for the EYG Hub API. (Unpublished)
@@ -93,6 +94,8 @@ The [`overlay`](./eyg_packages/overlay/) package contains access policy helpers 
 The [authorization tutorial](./guides/authorization.md) builds typed query policies
 for roles, delegation, and agents, with executable examples in
 [`authorization`](./eyg_packages/authorization/).
+The interpreter can explain query answers with [proof trees](./guides/query_proofs.md),
+including the facts, rule derivations and successful guards behind each answer.
 The [agent oversight presentation](./presentations/agent-oversight.html) is a
 standalone slide deck with keyboard navigation, speaker notes, and print styles.
 The [SQLite guide](./guides/sqlite.md) resolves the same query tables inside a

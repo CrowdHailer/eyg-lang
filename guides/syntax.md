@@ -520,6 +520,11 @@ within one transition. The ordinary interpreter entry points and generated
 JavaScript do not impose a budget; hosts needing hard limits must run them in
 an isolated worker or process with their own deadline and memory controls.
 
+For engine-generated explanations, use `eyg/interpreter/explain.start` and
+`explain.advance`. They return the ordinary value alongside a finite proof tree
+for each query answer, including matched facts and successful predicates.
+See [Datalog proof trees](./query_proofs.md) for the host API and witness semantics.
+
 ---
 
 ## References

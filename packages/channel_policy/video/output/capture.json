@@ -1,0 +1,406 @@
+{
+  "description": "Real local Git commits and EYG policy evaluations; mocked Slack/GitHub services; illustrated UI.",
+  "sandbox": "/tmp/channel-policy-video-4QVDUV",
+  "head": "ba25f42d8ed5d8530835ba305050ef3156d3bc9c",
+  "nextHead": "1be598a279f28d2446668e53eb5cb75110ebe249",
+  "firstDiff": "diff --git a/infra/main.tf b/infra/main.tf\nindex 0a5abfe..ebba654 100644\n--- a/infra/main.tf\n+++ b/infra/main.tf\n@@ -1,3 +1,3 @@\n locals {\n-  replicas = 2\n+  replicas = 3\n }",
+  "firstCommit": "[ada/scale-workers ba25f42] Scale workers to three replicas\n 1 file changed, 1 insertion(+), 1 deletion(-)",
+  "secondCommit": "[ada/scale-workers 1be598a] Scale workers to four replicas\n 1 file changed, 1 insertion(+), 1 deletion(-)",
+  "source": "// The database and authenticated tenant/actor come from the host.\nlet authorize = (db, request) -> {\n  let {tenant, actor, action, resource} = request\n  resolve Permit @{\n    db,\n    rule Permit({tenant, actor, action, resource, role, policy}) {\n      var role\n      var policy\n      Member({tenant, actor, role}),\n      RolePermission({tenant, role, action, resource, policy})\n    }\n  }\n}\n{authorize}\n",
+  "quotaSource": "// Host-supplied usage is counted in admitted inference requests per window.\n// A Quota fact grants inference access up to its limit for this exact scope.\nlet nonnegative = (used) -> {\n  match !int_compare(used, 0) {\n    Lt(_) -> { False({}) }\n    | (_) -> { True({}) }\n  }\n}\nlet authorize = (db, request) -> {\n  let {tenant, actor, action, resource, window} = request\n  resolve Permit @{\n    db,\n    rule Permit({tenant, actor, resource, window, role: \"usage-quota\", policy, used, limit}) {\n      var policy var used var limit\n      Quota({tenant, actor, resource, window, limit, policy}),\n      Usage({tenant, actor, resource, window, used}),\n      !equal(action, \"infer\"),\n      nonnegative(used),\n      !equal(!int_compare(used, limit), Lt({}))\n    }\n  }\n}\n{authorize}\n",
+  "grants": "policy.Grant(\n  \"deployment-page\",\n  policy.View,\n  policy.Exact(policy.Page(\"console\", \"/deployments\")),\n  platform(),\n),\npolicy.Grant(\n  \"infra-submitter\",\n  policy.Change,\n  policy.Directory(\"acme/app\", \"infra\"),\n  platform(),\n),\npolicy.Grant(\n  \"infra-reviewer\",\n  policy.Approve,\n  policy.Directory(\"acme/app\", \"infra\"),\n  platform(),\n),",
+  "facts": {
+    "slack_user": "U_ADA",
+    "deployments_status": 200,
+    "finance_status": 403,
+    "unreviewed": "infra/main.tf [approve]: No eligible channel member approved the current head",
+    "wrong_reviewer": "infra/main.tf [approve]: No eligible channel member approved the current head",
+    "approved": "Allowed: 2 permission proofs",
+    "revoked": "infra/main.tf [approve]: No eligible channel member approved the current head",
+    "stale_review": "infra/main.tf [approve]: No eligible channel member approved the current head",
+    "reapproved": "Allowed: 2 permission proofs",
+    "inference_below_limit": true,
+    "inference_at_limit": false,
+    "page_proof": {
+      "kind": "rule",
+      "title": "Permit [rule 0]",
+      "fields": {
+        "action": "\"view\"",
+        "actor": "\"U_ADA\"",
+        "policy": "\"deployment-page\"",
+        "resource": "{kind: \"page\", path: \"/deployments\", scope: \"console\"}",
+        "role": "\"C_PLATFORM\"",
+        "tenant": "\"T_ACME\""
+      },
+      "source": "",
+      "children": [
+        {
+          "kind": "fact",
+          "title": "Member",
+          "fields": {
+            "actor": "\"U_ADA\"",
+            "role": "\"C_PLATFORM\"",
+            "tenant": "\"T_ACME\""
+          },
+          "source": "",
+          "children": []
+        },
+        {
+          "kind": "fact",
+          "title": "RolePermission",
+          "fields": {
+            "action": "\"view\"",
+            "policy": "\"deployment-page\"",
+            "resource": "{kind: \"page\", path: \"/deployments\", scope: \"console\"}",
+            "role": "\"C_PLATFORM\"",
+            "tenant": "\"T_ACME\""
+          },
+          "source": "",
+          "children": []
+        }
+      ]
+    },
+    "approved_proofs": [
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"change\"",
+          "actor": "\"U_ADA\"",
+          "policy": "\"infra-submitter\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_ADA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"change\"",
+              "policy": "\"infra-submitter\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"approve\"",
+          "actor": "\"U_BEA\"",
+          "policy": "\"infra-reviewer\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_BEA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"approve\"",
+              "policy": "\"infra-reviewer\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      }
+    ],
+    "reapproved_proofs": [
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"change\"",
+          "actor": "\"U_ADA\"",
+          "policy": "\"infra-submitter\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_ADA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"change\"",
+              "policy": "\"infra-submitter\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"approve\"",
+          "actor": "\"U_BEA\"",
+          "policy": "\"infra-reviewer\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_BEA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"approve\"",
+              "policy": "\"infra-reviewer\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      }
+    ],
+    "inference_proof": {
+      "kind": "rule",
+      "title": "Permit [rule 0]",
+      "fields": {
+        "actor": "\"U_ADA\"",
+        "limit": "50",
+        "policy": "\"llm-usage-limit\"",
+        "resource": "\"/v1/inference\"",
+        "role": "\"usage-quota\"",
+        "tenant": "\"T_ACME\"",
+        "used": "49",
+        "window": "\"2026-10\""
+      },
+      "source": "",
+      "children": [
+        {
+          "kind": "fact",
+          "title": "Quota",
+          "fields": {
+            "actor": "\"U_ADA\"",
+            "limit": "50",
+            "policy": "\"llm-usage-limit\"",
+            "resource": "\"/v1/inference\"",
+            "tenant": "\"T_ACME\"",
+            "window": "\"2026-10\""
+          },
+          "source": "",
+          "children": []
+        },
+        {
+          "kind": "fact",
+          "title": "Usage",
+          "fields": {
+            "actor": "\"U_ADA\"",
+            "resource": "\"/v1/inference\"",
+            "tenant": "\"T_ACME\"",
+            "used": "49",
+            "window": "\"2026-10\""
+          },
+          "source": "",
+          "children": []
+        },
+        {
+          "kind": "predicate",
+          "title": "Predicate passed",
+          "fields": {
+            "used": "49",
+            "policy": "\"llm-usage-limit\"",
+            "limit": "50",
+            "window": "\"2026-10\"",
+            "resource": "\"/v1/inference\"",
+            "action": "\"infer\"",
+            "actor": "\"U_ADA\"",
+            "tenant": "\"T_ACME\""
+          },
+          "source": "!equal(action, \"infer\")",
+          "children": []
+        },
+        {
+          "kind": "predicate",
+          "title": "Predicate passed",
+          "fields": {
+            "used": "49",
+            "policy": "\"llm-usage-limit\"",
+            "limit": "50",
+            "window": "\"2026-10\"",
+            "resource": "\"/v1/inference\"",
+            "action": "\"infer\"",
+            "actor": "\"U_ADA\"",
+            "tenant": "\"T_ACME\""
+          },
+          "source": "nonnegative(used)",
+          "children": []
+        },
+        {
+          "kind": "predicate",
+          "title": "Predicate passed",
+          "fields": {
+            "used": "49",
+            "policy": "\"llm-usage-limit\"",
+            "limit": "50",
+            "window": "\"2026-10\"",
+            "resource": "\"/v1/inference\"",
+            "action": "\"infer\"",
+            "actor": "\"U_ADA\"",
+            "tenant": "\"T_ACME\""
+          },
+          "source": "!equal(!int_compare(used, limit), Lt({}))",
+          "children": []
+        }
+      ]
+    }
+  },
+  "transcript": [
+    {
+      "command": "git init -b main",
+      "output": "Initialized empty Git repository in /tmp/channel-policy-video-4QVDUV/.git/"
+    },
+    {
+      "command": "git add infra/main.tf policies/rbac.eyg",
+      "output": ""
+    },
+    {
+      "command": "git status --short",
+      "output": "A  infra/main.tf\nA  policies/rbac.eyg"
+    },
+    {
+      "command": "git diff",
+      "output": ""
+    },
+    {
+      "command": "git diff --cached",
+      "output": "diff --git a/infra/main.tf b/infra/main.tf\nnew file mode 100644\nindex 0000000..0a5abfe\n--- /dev/null\n+++ b/infra/main.tf\n@@ -0,0 +1,3 @@\n+locals {\n+  replicas = 2\n+}\ndiff --git a/policies/rbac.eyg b/policies/rbac.eyg\nnew file mode 100644\nindex 0000000..fdacfbf\n--- /dev/null\n+++ b/policies/rbac.eyg\n@@ -0,0 +1,14 @@\n+// The database and authenticated tenant/actor come from the host.\n+let authorize = (db, request) -> {\n+  let {tenant, actor, action, resource} = request\n+  resolve Permit @{\n+    db,\n+    rule Permit({tenant, actor, action, resource, role, policy}) {\n+      var role\n+      var policy\n+      Member({tenant, actor, role}),\n+      RolePermission({tenant, role, action, resource, policy})\n+    }\n+  }\n+}\n+{authorize}"
+    },
+    {
+      "command": "git commit -m Add infrastructure and channel policy fixture",
+      "output": "[main (root-commit) 5b7b2d9] Add infrastructure and channel policy fixture\n 2 files changed, 17 insertions(+)\n create mode 100644 infra/main.tf\n create mode 100644 policies/rbac.eyg"
+    },
+    {
+      "command": "git switch -c ada/scale-workers",
+      "output": ""
+    },
+    {
+      "command": "git diff -- infra/main.tf",
+      "output": "diff --git a/infra/main.tf b/infra/main.tf\nindex 0a5abfe..ebba654 100644\n--- a/infra/main.tf\n+++ b/infra/main.tf\n@@ -1,3 +1,3 @@\n locals {\n-  replicas = 2\n+  replicas = 3\n }"
+    },
+    {
+      "command": "git add infra/main.tf",
+      "output": ""
+    },
+    {
+      "command": "git status --short",
+      "output": "M  infra/main.tf"
+    },
+    {
+      "command": "git diff",
+      "output": ""
+    },
+    {
+      "command": "git diff --cached",
+      "output": "diff --git a/infra/main.tf b/infra/main.tf\nindex 0a5abfe..ebba654 100644\n--- a/infra/main.tf\n+++ b/infra/main.tf\n@@ -1,3 +1,3 @@\n locals {\n-  replicas = 2\n+  replicas = 3\n }"
+    },
+    {
+      "command": "git log --oneline -10",
+      "output": "5b7b2d9 Add infrastructure and channel policy fixture"
+    },
+    {
+      "command": "git commit -m Scale workers to three replicas",
+      "output": "[ada/scale-workers ba25f42] Scale workers to three replicas\n 1 file changed, 1 insertion(+), 1 deletion(-)"
+    },
+    {
+      "command": "git rev-parse HEAD",
+      "output": "ba25f42d8ed5d8530835ba305050ef3156d3bc9c"
+    },
+    {
+      "command": "git add infra/main.tf",
+      "output": ""
+    },
+    {
+      "command": "git status --short",
+      "output": "M  infra/main.tf"
+    },
+    {
+      "command": "git diff",
+      "output": ""
+    },
+    {
+      "command": "git diff --cached",
+      "output": "diff --git a/infra/main.tf b/infra/main.tf\nindex ebba654..0896c06 100644\n--- a/infra/main.tf\n+++ b/infra/main.tf\n@@ -1,3 +1,3 @@\n locals {\n-  replicas = 3\n+  replicas = 4\n }"
+    },
+    {
+      "command": "git log --oneline -10",
+      "output": "ba25f42 Scale workers to three replicas\n5b7b2d9 Add infrastructure and channel policy fixture"
+    },
+    {
+      "command": "git commit -m Scale workers to four replicas",
+      "output": "[ada/scale-workers 1be598a] Scale workers to four replicas\n 1 file changed, 1 insertion(+), 1 deletion(-)"
+    },
+    {
+      "command": "git rev-parse HEAD",
+      "output": "1be598a279f28d2446668e53eb5cb75110ebe249"
+    }
+  ]
+}
