@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slack policy walkthrough · EYG</title>
+<style>body{background:#0b1020;color:#edf4ff;font:18px system-ui;margin:40px auto;padding:0 24px;max-width:1200px}
+h1{color:#60e3b0}video{width:100%;border-radius:16px;background:#121c30}p{color:#a1b2ce}
+nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:8px;margin-top:24px}
+button{background:#121c30;border:1px solid #29384f;color:#edf4ff;padding:14px;text-align:left;border-radius:8px;cursor:pointer}
+a{color:#8db9ff}</style><h1>From channel membership to enforced decisions</h1>
+<p>Gleam + EYG · Real local commits and evaluator results · Illustrated UI with mocked providers</p>
+<video controls preload="metadata" poster="poster.jpg" src="walkthrough.mp4"></video>
+<p><a href="walkthrough.mp4" download>Download MP4</a> · <a href="walkthrough.srt">Captions</a> ·
+<a href="transcript.md">Transcript</a> · <a href="proofs.json">Captured proof trees</a></p><nav><button onclick="document.querySelector('video').currentTime=0.00; document.querySelector('video').play()">00:00 One policy. Every decision.</button>
+<button onclick="document.querySelector('video').currentTime=15.04; document.querySelector('video').play()">00:15 Write the relationship rule</button>
+<button onclick="document.querySelector('video').currentTime=29.46; document.querySelector('video').play()">00:29 Choose who can do what</button>
+<button onclick="document.querySelector('video').currentTime=44.04; document.querySelector('video').play()">00:44 Sign in as Ada</button>
+<button onclick="document.querySelector('video').currentTime=59.12; document.querySelector('video').play()">00:59 Enforce the page permission</button>
+<button onclick="document.querySelector('video').currentTime=74.46; document.querySelector('video').play()">01:14 Why Ada is allowed: the page proof</button>
+<button onclick="document.querySelector('video').currentTime=92.79; document.querySelector('video').play()">01:32 Create a real commit</button>
+<button onclick="document.querySelector('video').currentTime=107.54; document.querySelector('video').play()">01:47 Open the pull request</button>
+<button onclick="document.querySelector('video').currentTime=120.38; document.querySelector('video').play()">02:00 An approval must carry permission</button>
+<button onclick="document.querySelector('video').currentTime=133.54; document.querySelector('video').play()">02:13 Bea approves the current commit</button>
+<button onclick="document.querySelector('video').currentTime=148.08; document.querySelector('video').play()">02:28 Why this PR passes: two permission trees</button>
+<button onclick="document.querySelector('video').currentTime=168.38; document.querySelector('video').play()">02:48 A new commit needs a new approval</button>
+<button onclick="document.querySelector('video').currentTime=181.92; document.querySelector('video').play()">03:01 Review the updated change</button>
+<button onclick="document.querySelector('video').currentTime=191.38; document.querySelector('video').play()">03:11 New head. Fresh evaluation. Explained allow.</button>
+<button onclick="document.querySelector('video').currentTime=209.12; document.querySelector('video').play()">03:29 Membership controls ongoing access</button>
+<button onclick="document.querySelector('video').currentTime=224.58; document.querySelector('video').play()">03:44 Add an LLM inference quota</button>
+<button onclick="document.querySelector('video').currentTime=239.96; document.querySelector('video').play()">03:59 Query the model below the limit</button>
+<button onclick="document.querySelector('video').currentTime=252.58; document.querySelector('video').play()">04:12 Why inference is allowed: facts plus predicates</button>
+<button onclick="document.querySelector('video').currentTime=271.54; document.querySelector('video').play()">04:31 At the limit, there is no permit tree</button>
+<button onclick="document.querySelector('video').currentTime=287.04; document.querySelector('video').play()">04:47 Try it, then connect the adapters</button></nav></html>

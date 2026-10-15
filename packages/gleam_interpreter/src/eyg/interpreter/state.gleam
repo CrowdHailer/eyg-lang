@@ -1,13 +1,16 @@
 import eyg/interpreter/break
 import eyg/interpreter/cast
+import eyg/interpreter/proof
 import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set.{type Set}
+import gleam/string
 
 pub type Context(m) =
   #(List(#(Kontinue(m), m)), Env(m))
@@ -84,14 +87,19 @@ pub type Resolution(m) {
       #(Int, Dict(Value(m), List(Value(m)))),
     ),
     env: Env(m),
+    proofs: Option(proof.Store(m, Context(m))),
   )
 }
 
 pub type Kontinue(m) {
+  /// Opt-in host boundary; explain.advance extracts this trace on completion.
+  Explain(List(proof.Query(m, Context(m))))
+  /// Evidence scoped to one matched branch or successful query predicate.
+  Premise(proof.Tree(m, Context(m)))
   QueryNext(Resolution(m))
   /// Union the tables returned by `then` for each remaining matched row.
   MatchNext(
-    rows: List(Value(m)),
+    rows: List(#(Value(m), Option(proof.Tree(m, Context(m))))),
     then: Value(m),
     acc: Dict(String, Dict(Value(m), Int)),
     env: Env(m),
@@ -168,6 +176,13 @@ pub fn eval(exp, env: Env(m), k) {
 
 pub fn apply(value, env, k, meta, rest) {
   case k {
+    Explain(_) -> Ok(#(V(value), env, rest))
+    Premise(tree) -> {
+      // A host-written rule may return a preconstructed table rather than call
+      // Fact at its head. Preserve the successful branch's evidence as well.
+      let rest = record_returned(value, tree, meta, rest)
+      Ok(#(V(value), env, rest))
+    }
     Assign(label, then, env) -> {
       let env = Env(..env, scope: [#(label, value), ..env.scope])
       Ok(#(E(then), env, rest))
@@ -192,6 +207,9 @@ pub fn apply(value, env, k, meta, rest) {
                 resolution.reading,
               ),
               grown: set.union(resolution.grown, grown),
+              proofs: option.map(resolution.proofs, fn(store) {
+                proof.commit(store, derived, resolution.current, meta)
+              }),
             )
           query_next(resolution, meta, rest)
         }
@@ -221,8 +239,10 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) -> Return(m) {
     // Resume/Deep need access to k nothing needs access to env but extension might change that
     v.Partial(switch, applied) ->
       case switch, applied {
-        v.Query(ir.Fact(label)), [] ->
+        v.Query(ir.Fact(label)), [] -> {
+          let k = record_derivation(label, arg, meta, k)
           Ok(#(V(v.Table(table.singleton(label, arg), [])), env, k))
+        }
         v.Query(ir.Rule), [] -> Ok(#(V(v.Table(dict.new(), [arg])), env, k))
         v.Query(ir.Merge), [left] -> {
           use #(left_facts, left_rules) <- result.try(cast.as_table(left))
@@ -238,8 +258,13 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) -> Return(m) {
         }
         v.Query(ir.Resolve(label)), [] -> {
           use #(facts, rules) <- result.try(cast.as_table(arg))
+          let proofs = case explaining(k) {
+            True -> Some(proof.seed(facts))
+            False -> None
+          }
           use <- bool.lazy_guard(rules == [], fn() {
             let #(_, k) = matching(facts, label, [], v.unit(), k)
+            let k = record_query(proofs, label, facts, k)
             Ok(#(V(v.LinkedList(table.rows(facts, label))), env, k))
           })
           let rules = list.index_map(rules, fn(rule, i) { #(i, rule) })
@@ -255,12 +280,14 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) -> Return(m) {
             grown: set.new(),
             indexes: dict.new(),
             env:,
+            proofs:,
           )
           |> query_next(meta, k)
         }
         v.Query(ir.Match(label, keys)), [db, key] -> {
           use #(facts, _rules) <- result.try(cast.as_table(db))
           let #(rows, k) = matching(facts, label, keys, key, k)
+          let rows = matched_proofs(facts, label, rows, k)
           match_next(rows, arg, dict.new(), meta, env, k)
         }
         v.Cons, [item] -> {
@@ -293,7 +320,10 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) -> Return(m) {
         v.Match(label), [branch, otherwise] -> {
           use #(l, inner) <- result.try(cast.as_tagged(arg))
           case l == label {
-            True -> call(branch, inner, meta, env, k)
+            True -> {
+              let k = record_predicate(label, branch, meta, env, k)
+              call(branch, inner, meta, env, k)
+            }
             False -> call(otherwise, arg, meta, env, k)
           }
         }
@@ -383,7 +413,13 @@ fn query_next(resolution: Resolution(m), meta: m, k: Stack(m)) -> Return(m) {
   case resolution.pending {
     [#(index, rule), ..pending] -> {
       let resolution =
-        Resolution(..resolution, pending:, current: index, reading: set.new())
+        Resolution(
+          ..resolution,
+          pending:,
+          current: index,
+          reading: set.new(),
+          proofs: option.map(resolution.proofs, proof.begin_rule),
+        )
       let db = v.Table(resolution.snapshot, [])
       let k = Stack(QueryNext(resolution), meta, k)
       call(rule, db, meta, resolution.env, k)
@@ -392,6 +428,13 @@ fn query_next(resolution: Resolution(m), meta: m, k: Stack(m)) -> Return(m) {
       case set.is_empty(resolution.grown) {
         True -> {
           let rows = table.rows(resolution.facts, resolution.label)
+          let k =
+            record_query(
+              resolution.proofs,
+              resolution.label,
+              resolution.facts,
+              k,
+            )
           Ok(#(V(v.LinkedList(rows)), resolution.env, k))
         }
         False -> {
@@ -416,7 +459,7 @@ fn query_next(resolution: Resolution(m), meta: m, k: Stack(m)) -> Return(m) {
 }
 
 fn match_next(
-  rows: List(Value(m)),
+  rows: List(#(Value(m), Option(proof.Tree(m, Context(m))))),
   then: Value(m),
   acc: Dict(String, Dict(Value(m), Int)),
   meta: m,
@@ -424,8 +467,12 @@ fn match_next(
   k: Stack(m),
 ) -> Return(m) {
   case rows {
-    [row, ..rows] -> {
+    [#(row, evidence), ..rows] -> {
       let k = Stack(MatchNext(rows, then, acc, env), meta, k)
+      let k = case evidence {
+        Some(tree) -> Stack(Premise(tree), meta, k)
+        None -> k
+      }
       call(then, row, meta, env, k)
     }
     [] -> Ok(#(V(v.Table(acc, [])), env, k))
@@ -478,5 +525,125 @@ fn find_resolution(k, above) {
       Ok(#(resolution, meta, above, rest))
     Stack(frame, meta, rest) -> find_resolution(rest, [#(frame, meta), ..above])
     Empty -> Error(Nil)
+  }
+}
+
+fn explaining(k) {
+  case k {
+    Empty -> False
+    Stack(Explain(_), _, _) -> True
+    Stack(_, _, rest) -> explaining(rest)
+  }
+}
+
+fn matched_proofs(facts, label, rows, k) {
+  let #(store, same_snapshot) = case find_resolution(k, []) {
+    Ok(#(resolution, _, _, _)) -> #(
+      resolution.proofs,
+      resolution.snapshot == facts,
+    )
+    Error(Nil) -> #(None, False)
+  }
+  list.map(rows, fn(row) {
+    let tree =
+      option.map(store, fn(store) {
+        case same_snapshot {
+          True -> proof.lookup(store, label, row)
+          False -> proof.Fact(label, row)
+        }
+      })
+    #(row, tree)
+  })
+}
+
+fn record_derivation(label, row, at, k) {
+  case find_resolution(k, []) {
+    Ok(#(resolution, meta, above, rest)) if resolution.proofs != None -> {
+      let premises =
+        list.filter_map(above, fn(frame) {
+          case frame.0 {
+            Premise(tree) -> Ok(tree)
+            _ -> Error(Nil)
+          }
+        })
+      let proofs =
+        option.map(resolution.proofs, fn(store) {
+          proof.record(store, label, row, resolution.current, at, premises)
+        })
+      let resolution = Resolution(..resolution, proofs:)
+      list.fold(above, Stack(QueryNext(resolution), meta, rest), fn(k, frame) {
+        Stack(frame.0, frame.1, k)
+      })
+    }
+    _ -> k
+  }
+}
+
+fn record_returned(value, tree, meta, rest) {
+  case value, find_resolution(rest, []) {
+    v.Table(facts, _), Ok(#(Resolution(proofs: Some(_), ..), _, _, _)) -> {
+      let k = Stack(Premise(tree), meta, rest)
+      let k =
+        dict.fold(facts, k, fn(k, label, rows) {
+          dict.fold(rows, k, fn(k, row, _) {
+            record_derivation(label, row, meta, k)
+          })
+        })
+      case k {
+        Stack(_, _, rest) -> rest
+        Empty -> rest
+      }
+    }
+    _, _ -> rest
+  }
+}
+
+fn record_predicate(label, branch, at, env: Env(m), k) {
+  case label, branch {
+    "True", v.Closure("$unit", _, _) -> {
+      case find_resolution(k, []) {
+        Ok(#(Resolution(proofs: Some(_), ..), _, _, _)) -> {
+          let #(_, bindings) =
+            list.fold(env.scope, #(set.new(), []), fn(acc, pair) {
+              let #(seen, bindings) = acc
+              let scalar = case pair.1 {
+                v.String(_) | v.Integer(_) -> True
+                v.Tagged("True", _) | v.Tagged("False", _) -> True
+                _ -> False
+              }
+              case
+                scalar
+                && !string.starts_with(pair.0, "$")
+                && !set.contains(seen, pair.0)
+              {
+                True -> #(
+                  set.insert(seen, pair.0),
+                  list.append(bindings, [pair]),
+                )
+                False -> #(set.insert(seen, pair.0), bindings)
+              }
+            })
+          Stack(Premise(proof.Predicate(at, bindings)), at, k)
+        }
+        _ -> k
+      }
+    }
+    _, _ -> k
+  }
+}
+
+fn record_query(proofs, label, facts, k) {
+  case proofs {
+    None -> k
+    Some(store) -> append_query(proof.query(store, label, facts), k)
+  }
+}
+
+fn append_query(query, k) {
+  case k {
+    Empty -> Empty
+    Stack(Explain(queries), meta, rest) ->
+      Stack(Explain([query, ..queries]), meta, rest)
+    Stack(frame, meta, rest) -> Stack(frame, meta, append_query(query, rest))
   }
 }

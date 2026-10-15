@@ -415,7 +415,7 @@ fn after_expression(exp, rest) {
   case rest {
     [#(t.LeftParen, _start), ..rest] -> {
       use #(arg, rest) <- try(expression(rest))
-      use #(args, _end, rest) <- try(do_args(rest, [arg]))
+      use #(args, call_end, rest) <- try(do_args(rest, [arg]))
       let args = list.reverse(args)
       let exp =
         list.fold(args, exp, fn(acc, arg) {
@@ -423,7 +423,11 @@ fn after_expression(exp, rest) {
           let #(_, #(_, end)) = arg
           #(ir.Apply(acc, arg), #(start, end + 1))
         })
-      after_expression(exp, rest)
+      // The actual closing token determines the full call span. A decoded
+      // string argument can be shorter than its source (escapes or UTF-8),
+      // and whitespace may precede the closing parenthesis.
+      let #(expression, #(start, _)) = exp
+      after_expression(#(expression, #(start, call_end)), rest)
     }
     [#(t.Dot, dot_at), #(t.Name(label), name_at), ..rest] -> {
       let end = name_at + string.length(label)

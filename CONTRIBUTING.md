@@ -12,7 +12,7 @@ done
 To test all the packages on the JavaScript environment.
 The compiler's SQLite integration tests also require Node.js 24 on `PATH`.
 ```sh
-for pkg in packages/{gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,morph,overlay_llm,topological,touch_grass,untethered,website}; do
+for pkg in packages/{channel_policy,gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,morph,overlay_llm,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
 done
 ```
