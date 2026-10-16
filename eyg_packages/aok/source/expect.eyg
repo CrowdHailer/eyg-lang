@@ -1,2 +1,54 @@
 // handle AokExpected((label, ))
-{}
+let fail = (message) -> { !never(perform Abort(message)) }
+
+let now = (check) -> {
+  (lift) -> {
+    match lift {
+      Now(lift) -> { Now(check(lift)) }
+      | (_) -> { fail("unexpected effect") }
+    }
+  }
+}
+
+let with_computer = (computation) -> {
+  handle Now((lift, resume) -> {
+    match perform AokExpected(Now(lift)) {
+      Now(reply) -> { resume(reply) }
+      | (_) -> { fail("unexpected reply") }
+    }
+  }, (_) -> {
+    handle StandardOut((lift, resume) -> {
+      match perform AokExpected(StandardOut(lift)) {
+        StandardOut(reply) -> { resume(reply) }
+        | (_) -> { fail("unexpected reply") }
+      }
+    }, computation)
+  })
+}
+
+let run = (program, expected) -> {
+  handle AokExpected((effect, resume) -> {
+    (state) -> {
+      match !list_pop(state) {
+        Ok({head: check, tail}) -> { 
+          resume(check(effect))(tail)
+        }
+        Error(_) -> { fail("unexpected effect") }
+      }
+    }
+  }, (_) -> {
+    let outcome = with_computer((_) -> { program({}) })
+    let finish = (remaining) -> {
+      match !list_pop(remaining) {
+        Ok(_) -> { fail("Expecting effect") }
+        Error(_) -> { outcome }
+      }
+    }
+    finish
+  })(expected)
+}
+
+{
+  now,
+  run,
+}

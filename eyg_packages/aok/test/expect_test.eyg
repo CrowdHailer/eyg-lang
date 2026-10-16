@@ -1,0 +1,70 @@
+let assert = import "../source/assert.eyg"
+let expect = import "../source/expect.eyg"
+
+let must_abort = (check) -> {
+  let result = handle Abort((message, _resume) -> { Ok(message) }, (_) -> {
+    Error(check({}))
+  })
+  assert.ok(result)
+}
+
+[
+  {
+    name: "pure test with no expected effects",
+    test: (_) -> {
+      let returned = expect.run((_) -> { !int_add(2, 1) }, [])
+      let _ = assert.equal(3, returned)
+      {}
+    }
+  },
+  {
+    name: "pure test with fails if effects expected",
+    test: (_) -> {
+      let program = (_) -> { !int_add(2, 1) }
+      let message = must_abort((_) -> {
+        expect.run(program, [
+          expect.now((_lift) -> { 100 })
+        ])
+      })
+      let _ = assert.equal_string("Expecting effect", message)
+      {}
+    }
+  },
+  {
+    name: "fails on effect when steps done",
+    test: (_) -> {
+      let program = (_) -> { !int_add(perform Now({}), 1) }
+      let message = must_abort((_) -> {
+        expect.run(program, [])
+      })
+      let _ = assert.equal_string("unexpected effect", message)
+      {}
+    }
+  },
+  {
+    name: "fails on unexpected effect",
+    test: (_) -> {
+      let program = (_) -> { perform StandardOut("hi") }
+      let message = must_abort((_) -> {
+        expect.run(program, [
+          expect.now((_lift) -> { 100 })
+        ])
+      })
+      let _ = assert.equal_string("unexpected effect", message)
+      {}
+    }
+  },
+  {
+    name: "return value from expectations",
+    test: (_) -> {
+      let program = (_) -> { [perform Now({}), perform Now({}), perform Now({})] }
+      let returned = expect.run(program, [
+        expect.now((_lift) -> { 123 }),
+        expect.now((_lift) -> { 456 }),
+        expect.now((_lift) -> { 789 })
+      ])
+      let _ = assert.equal([123, 456, 789], returned)
+      {}
+    }
+  }
+]
