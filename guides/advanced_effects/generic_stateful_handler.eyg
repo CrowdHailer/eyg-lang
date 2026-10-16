@@ -1,0 +1,31 @@
+let with_counter = (initial, computation) -> {
+  handle Update(
+    (transform, resume) -> {
+      (state) -> {
+        let state = transform(state)
+        resume(state)(state)
+      }
+    },
+    (_) -> { 
+      let value = computation({})
+      let finish = (count) -> { {count, value} }
+      finish
+    }
+  )(initial)
+}
+
+let increase = (amount) -> {
+  let _ = perform Update((state) -> { !int_add(state, amount) })
+  {}
+}
+
+let get = (_) -> {
+  perform Update((state) -> { state })
+}
+with_counter(0, (_) -> { 
+  let _ = increase(3)
+  let value = get({})
+  let _ = perform StandardOut(!int_to_string(value))
+  let _ = increase(2)
+  !int_to_string(value)
+})

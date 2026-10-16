@@ -1,0 +1,32 @@
+let with_state = (initial, f) -> {
+  // Generic State effect owns the shared state.
+  let run = handle State((update, resume, state) -> {
+    let state = update(state)
+    resume(state)(state)
+  }, (_) -> {
+    // These handlers translate operations; they do not hold separate state.
+    let value = handle Increase((amount, resume) -> {
+      let _ = perform State((state) -> { !int_add(state, amount) })
+      resume({})
+    }, (_) -> {
+      handle Get((_, resume) -> {
+        let state = perform State((state) -> { state })
+        resume(state)
+      }, f)
+    })
+
+    let finish = (state) -> { {state, value} }
+    finish
+  })
+  run(initial)
+}
+
+with_state(0, (_) -> {
+  let before = perform Get({})
+  let _ = perform Increase(2)
+  let middle = perform Get({})
+  let _ = perform Increase(-1)
+  let after = perform Get({})
+  [before, middle, after]
+})
+// {state: 1, value: [0, 2, 1]}

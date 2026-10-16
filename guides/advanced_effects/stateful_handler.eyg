@@ -1,0 +1,21 @@
+let with_counter = (initial, computation) -> {
+  handle Increment(
+    (_unit, resume) -> {
+      (state) -> {
+        resume(state)(!int_add(state, 1))
+      }
+    },
+    (_) -> { 
+      let value = computation({})
+      let finish = (count) -> { {count, value} }
+      finish
+    }
+  )(initial)
+}
+
+with_counter(0, (_) -> { 
+  let _ = perform Increment({})
+  let _ = perform Increment({})
+  let _ = perform Increment({})
+  "Done"
+})
