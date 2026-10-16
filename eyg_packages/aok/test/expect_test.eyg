@@ -26,7 +26,7 @@ let must_abort = (check) -> {
           expect.now((_lift) -> { 100 })
         ])
       })
-      let _ = assert.equal_string("Expecting effect", message)
+      let _ = assert.equal_string("expected effect `Now`, given no effect", message)
       {}
     }
   },
@@ -37,7 +37,7 @@ let must_abort = (check) -> {
       let message = must_abort((_) -> {
         expect.run(program, [])
       })
-      let _ = assert.equal_string("unexpected effect", message)
+      let _ = assert.equal_string("expected no effect, given effect `Now`", message)
       {}
     }
   },
@@ -47,10 +47,49 @@ let must_abort = (check) -> {
       let program = (_) -> { perform StandardOut("hi") }
       let message = must_abort((_) -> {
         expect.run(program, [
-          expect.now((_lift) -> { 100 })
+          expect.now((_lift) -> { !never(perform Abort("check should not run")) })
         ])
       })
-      let _ = assert.equal_string("unexpected effect", message)
+      let _ = assert.equal_string("expected effect `Now`, given effect `StandardOut`", message)
+      {}
+    }
+  },
+  {
+    name: "reports extra effect after consuming expectations",
+    test: (_) -> {
+      let message = must_abort((_) -> {
+        expect.run((_) -> {
+          let _ = perform Now({})
+          perform StandardOut("hi")
+        }, [expect.now((_lift) -> { 100 })])
+      })
+      let _ = assert.equal_string("expected no effect, given effect `StandardOut`", message)
+      {}
+    }
+  },
+  {
+    name: "reports next effect when expectations remain",
+    test: (_) -> {
+      let message = must_abort((_) -> {
+        expect.run((_) -> { perform Now({}) }, [
+          expect.now((_lift) -> { 100 }),
+          expect.now((_lift) -> { 200 })
+        ])
+      })
+      let _ = assert.equal_string("expected effect `Now`, given no effect", message)
+      {}
+    }
+  },
+  {
+    name: "passes effect payload to check and resumes with reply",
+    test: (_) -> {
+      let returned = expect.run((_) -> { perform StandardOut("hi") }, [
+        expect.standard_out((message) -> {
+          let _ = assert.equal_string("hi", message)
+          {}
+        })
+      ])
+      let _ = assert.equal({}, returned)
       {}
     }
   },

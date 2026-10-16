@@ -46,12 +46,14 @@ let policy = {
   cwd: Pass,
   delete_file: Pass,
   env: Pass,
+  exit: Pass,
   fetch: Pass,
+  flip: Pass,
   make_directory: Pass,
   now: Pass,
+  random: Pass,
   read_directory: Pass,
   read_file: Pass,
-  sign: Pass,
   sleep: Pass,
   standard_error: Pass,
   standard_in: Pass,
@@ -93,8 +95,11 @@ against its available effect interfaces:
   effect descriptions and the harness supplied to type checking, and rejected at runtime.
 
 The CLI's fixed mapping is in
-[`policy_rules`](../gleam_cli/src/eyg/cli/overlay.gleam). `Random`, `Flip`,
-`DecodeJSON`, `EYGParse`, `Hash`, and `Exit` are explicitly unchecked.
+[`rule_mapping`](../gleam_cli/src/eyg/cli/overlay.gleam). `DecodeJSON`, `EYGParse`,
+`Hash`, and `Sign` are explicitly unchecked: they deterministically compute from
+supplied values. Signing uses supplied key bytes, not an external key store.
+`Random`, `Flip`, and `CreateKey` use randomness and require gates; `Exit` changes
+process control flow and also requires a gate.
 All other selected effects require their configured policy fields; missing a
 required field is a configuration error, not permission to run the effect.
 
@@ -102,6 +107,8 @@ Gate functions receive the effect's input and must return:
 
 - `Pass(value)` to decode the input using the selected interface and perform the effect.
 - `Mock(value)` to resume the program with a result without performing the effect.
+
+`Exit` returns `Never`, so its gate can use `Pass(status)` to inspect or change the exit code but cannot return a `Mock` value.
 
 Gates are evaluated by the runtime's pure evaluator, which can resolve imports
 but cannot perform effects. Gate failures and invalid decisions are returned to

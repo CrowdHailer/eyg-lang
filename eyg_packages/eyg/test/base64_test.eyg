@@ -1,4 +1,4 @@
-let aok = import "../../aok/source/index.eyg"
+let aok = @aok
 let assert = aok.assert
 let base64 = import "../base64.eyg"
 let list = @standard.list

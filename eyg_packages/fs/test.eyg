@@ -1,4 +1,4 @@
-let {assert} = import "../aok/source/index.eyg"
+let {assert} = @aok
 let {list, list_files, read, read_range, write} = import "./index.eyg"
 
 let ignore = [".git", "node_modules", "build"]
@@ -32,7 +32,10 @@ let is_file = (items, target) -> {
 
 [
   {name: "fs list_files finds entry.eyg in the root directory",
-   test: (_) -> { assert.contains(files({}), "entry.eyg") }},
+   test: (_) -> {
+     let _ = assert.contains(files({}), "entry.eyg")
+     {}
+   }},
 
   {name: "fs list_files respects the ignore list (.git)",
    test: (_) -> { assert.false(!list_fold(files({}), False({}), (p, acc) -> {

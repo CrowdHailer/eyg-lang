@@ -90,20 +90,23 @@ let hide_secrets = (read_file) -> {
 }
 
 // Deny every effect the CLI gates that can fail, `Env` returns `None`.
-// Now, Sleep, StandardOut and StandardError cannot fail and only observe the process so are passed.
-// The CLI does not gate effects that do no IO, such as Random and DecodeJSON, or Exit.
+// Effects without an error result (time, randomness, output and Exit) are passed.
+// Exit has no return value: its policy can transform the status with Pass, not Mock.
+// Deterministic host helpers DecodeJSON, EYGParse, Hash and Sign have no policy gate.
 let deny_all = {
   append_file: refuse("append_file"),
   create_key: refuse("create_key"),
   cwd: (_) -> { Mock(Error({})) },
   delete_file: refuse("delete_file"),
   env: (_) -> { Mock(None({})) },
+  exit: pass,
   fetch: refuse("fetch"),
+  flip: pass,
   make_directory: refuse("make_directory"),
   now: pass,
+  random: pass,
   read_directory: refuse("read_directory"),
   read_file: refuse("read_file"),
-  sign: refuse("sign"),
   sleep: pass,
   standard_error: pass,
   standard_in: refuse("standard_in"),
@@ -123,13 +126,12 @@ let allow_all = {
   make_directory: pass,
   read_directory: pass,
   read_file: hide_secrets(pass),
-  sign: pass,
   write_file: pass,
   ..deny_all
 }
 
 // Read files and directories under the absolute roots, nothing can be changed.
-// Effects that only observe the process, such as Now and StandardOut, are allowed.
+// Time, randomness, process output and Exit are passed as in deny_all.
 let read_only = (roots) -> {
   {
     cwd: pass,

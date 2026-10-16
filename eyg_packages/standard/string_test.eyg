@@ -1,4 +1,4 @@
-let aok = import "../aok/source/index.eyg"
+let aok = @aok
 let assert = aok.assert
 let standard = import "./index.eyg.json"
 let s = standard.string

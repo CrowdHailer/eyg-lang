@@ -1,19 +1,28 @@
-let {assert} = import "../aok/source/index.eyg"
+let {assert} = @aok
 let {write_text, append_text, append_line, grep} = import "./index.eyg"
 
 let grep_text = "apple pie\nbanana split\ncherry tart\napple juice\ngrape soda"
 
 [
   {name: "edit grep finds multiple matches for one pattern",
-   test: (_) -> { assert.equal(
-     grep({text: grep_text, patterns: ["apple"]}),
-     [{content: "apple pie", line: 1}, {content: "apple juice", line: 4}]
-   ) }},
+   test: (_) -> {
+     let _ = assert.equal(
+       grep({text: grep_text, patterns: ["apple"]}),
+       [{content: "apple pie", line: 1}, {content: "apple juice", line: 4}]
+     )
+     {}
+   }},
   {name: "edit grep finds matches across patterns",
-   test: (_) -> { assert.equal(
-     grep({text: grep_text, patterns: ["split", "tart"]}),
-     [{content: "banana split", line: 2}, {content: "cherry tart", line: 3}]
-   ) }},
+   test: (_) -> {
+     let _ = assert.equal(
+       grep({text: grep_text, patterns: ["split", "tart"]}),
+       [{content: "banana split", line: 2}, {content: "cherry tart", line: 3}]
+     )
+     {}
+   }},
   {name: "edit grep returns empty list when nothing matches",
-   test: (_) -> { assert.equal(grep({text: grep_text, patterns: ["trampoline"]}), []) }},
+   test: (_) -> {
+     let _ = assert.equal(grep({text: grep_text, patterns: ["trampoline"]}), [])
+     {}
+   }},
 ]

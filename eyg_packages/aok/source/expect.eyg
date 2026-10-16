@@ -1,46 +1,148 @@
-// handle AokExpected((label, ))
 let fail = (message) -> { !never(perform Abort(message)) }
 
-let now = (check) -> {
-  (lift) -> {
-    match lift {
-      Now(lift) -> { Now(check(lift)) }
-      | (_) -> { fail("unexpected effect") }
+let describe_effect = (name) -> {
+  !string_append("effect `", !string_append(name, "`"))
+}
+
+let mismatch = (expected, given) -> {
+  fail(!string_append("expected ", !string_append(expected, !string_append(", given ", given))))
+}
+
+// Keep payloads tagged so different effects retain independent request/reply types.
+let append_file = {label: "AppendFile", wrap: AppendFile, unwrap: match {
+  AppendFile(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let create_key = {label: "CreateKey", wrap: CreateKey, unwrap: match {
+  CreateKey(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let cwd = {label: "CWD", wrap: CWD, unwrap: match {
+  CWD(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let delete_file = {label: "DeleteFile", wrap: DeleteFile, unwrap: match {
+  DeleteFile(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let env = {label: "Env", wrap: Env, unwrap: match {
+  Env(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let exit = {label: "Exit", wrap: Exit, unwrap: match {
+  Exit(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let fetch = {label: "Fetch", wrap: Fetch, unwrap: match {
+  Fetch(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let flip = {label: "Flip", wrap: Flip, unwrap: match {
+  Flip(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let make_directory = {label: "MakeDirectory", wrap: MakeDirectory, unwrap: match {
+  MakeDirectory(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let now = {label: "Now", wrap: Now, unwrap: match {
+  Now(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let random = {label: "Random", wrap: Random, unwrap: match {
+  Random(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let read_directory = {label: "ReadDirectory", wrap: ReadDirectory, unwrap: match {
+  ReadDirectory(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let read_file = {label: "ReadFile", wrap: ReadFile, unwrap: match {
+  ReadFile(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let sleep = {label: "Sleep", wrap: Sleep, unwrap: match {
+  Sleep(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let standard_error = {label: "StandardError", wrap: StandardError, unwrap: match {
+  StandardError(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let standard_in = {label: "StandardIn", wrap: StandardIn, unwrap: match {
+  StandardIn(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let standard_out = {label: "StandardOut", wrap: StandardOut, unwrap: match {
+  StandardOut(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+let write_file = {label: "WriteFile", wrap: WriteFile, unwrap: match {
+  WriteFile(value) -> { Ok(value) }
+  | (_) -> { Error({}) }
+}}
+
+let unwrap = (codec, {label, lift}) -> {
+  match codec.unwrap(lift) {
+    Ok(value) -> { value }
+    Error(_) -> { mismatch(describe_effect(codec.label), describe_effect(label)) }
+  }
+}
+
+let expected = (codec, check) -> {
+  {
+    label: codec.label,
+    check: (effect) -> {
+      {label: codec.label, lift: codec.wrap(check(unwrap(codec, effect)))}
     }
   }
 }
 
+let relay = (codec, lift, resume) -> {
+  let returned = perform AokExpected({label: codec.label, lift: codec.wrap(lift)})
+  resume(unwrap(codec, returned))
+}
+
+// Policy-controlled computer effects. Pure host helpers pass through to the runner.
 let with_computer = (computation) -> {
-  handle Now((lift, resume) -> {
-    match perform AokExpected(Now(lift)) {
-      Now(reply) -> { resume(reply) }
-      | (_) -> { fail("unexpected reply") }
-    }
-  }, (_) -> {
-    handle StandardOut((lift, resume) -> {
-      match perform AokExpected(StandardOut(lift)) {
-        StandardOut(reply) -> { resume(reply) }
-        | (_) -> { fail("unexpected reply") }
-      }
-    }, computation)
-  })
+  let computation = (_) -> { handle WriteFile(relay(write_file), computation) }
+  let computation = (_) -> { handle StandardOut(relay(standard_out), computation) }
+  let computation = (_) -> { handle StandardIn(relay(standard_in), computation) }
+  let computation = (_) -> { handle StandardError(relay(standard_error), computation) }
+  let computation = (_) -> { handle Sleep(relay(sleep), computation) }
+  let computation = (_) -> { handle ReadFile(relay(read_file), computation) }
+  let computation = (_) -> { handle ReadDirectory(relay(read_directory), computation) }
+  let computation = (_) -> { handle Random(relay(random), computation) }
+  let computation = (_) -> { handle Now(relay(now), computation) }
+  let computation = (_) -> { handle MakeDirectory(relay(make_directory), computation) }
+  let computation = (_) -> { handle Flip(relay(flip), computation) }
+  let computation = (_) -> { handle Fetch(relay(fetch), computation) }
+  // Exit never resumes the program. Its check supplies the outcome of this run.
+  let computation = (_) -> {
+    handle Exit((lift, _resume) -> { relay(exit, lift, (outcome) -> { outcome }) }, computation)
+  }
+  let computation = (_) -> { handle Env(relay(env), computation) }
+  let computation = (_) -> { handle DeleteFile(relay(delete_file), computation) }
+  let computation = (_) -> { handle CWD(relay(cwd), computation) }
+  let computation = (_) -> { handle CreateKey(relay(create_key), computation) }
+  handle AppendFile(relay(append_file), computation)
 }
 
 let run = (program, expected) -> {
   handle AokExpected((effect, resume) -> {
     (state) -> {
       match !list_pop(state) {
-        Ok({head: check, tail}) -> { 
-          resume(check(effect))(tail)
+        Ok({head: expected, tail}) -> {
+          resume(expected.check(effect))(tail)
         }
-        Error(_) -> { fail("unexpected effect") }
+        Error(_) -> { mismatch("no effect", describe_effect(effect.label)) }
       }
     }
   }, (_) -> {
     let outcome = with_computer((_) -> { program({}) })
     let finish = (remaining) -> {
       match !list_pop(remaining) {
-        Ok(_) -> { fail("Expecting effect") }
+        Ok({head, tail: _}) -> { mismatch(describe_effect(head.label), "no effect") }
         Error(_) -> { outcome }
       }
     }
@@ -49,6 +151,23 @@ let run = (program, expected) -> {
 }
 
 {
-  now,
+  append_file: expected(append_file),
+  create_key: expected(create_key),
+  cwd: expected(cwd),
+  delete_file: expected(delete_file),
+  env: expected(env),
+  exit: expected(exit),
+  fetch: expected(fetch),
+  flip: expected(flip),
+  make_directory: expected(make_directory),
+  now: expected(now),
+  random: expected(random),
+  read_directory: expected(read_directory),
+  read_file: expected(read_file),
+  sleep: expected(sleep),
+  standard_error: expected(standard_error),
+  standard_in: expected(standard_in),
+  standard_out: expected(standard_out),
+  write_file: expected(write_file),
   run,
 }

@@ -1,6 +1,6 @@
 ---
 name: Writing tests with aok
-description: Write tests for EYG packages using the aok test package.
+description: Write typed EYG tests with assertions and ordered computer-effect expectations.
 ---
 
 ## Writing a test
@@ -11,35 +11,63 @@ The `test` field is a function returning any value that throws abort in case of 
 Use `aok.assert` to write tests that assert on values.
 
 ```eyg
-let {assert, expect} = import "../aok/source/index.eyg"
-```
+let {assert, expect} = @aok
 
-```eyg
 [
-  {name: "addition",
-    test: (_) -> { assert.equal(!int_add(1, 1), 2) }},
+  {name: "addition test", test: (_) -> {
+    let _ = assert.equal(3, !int_add(1, 2))
+    {}
+  }}
 ]
 ```
 
 Use `aok.expect` to write tests that assert an effect is raised.
 
 ```eyg
-let my_func = (name) -> {
-  perform StandardOut(!string_append("Hello, ", name))
+let {assert, expect} = @aok
+
+let greet = (name) -> {
+  let time = perform Now({})
+  let _ = perform StandardOut(!string_append("Hello, ", name))
+  time
 }
 
 [
-  {name: "greeting",
-    test: (_) -> {
-      let {lift: message} = expect.standard_out(my_func, "Bill")
-      assert.equal(message, "Hello, Bill")
-  }},
+  {name: "greeting test", test: (_) -> {
+    let time = expect.run((_) -> { greet("Bill") }, [
+      expect.now((request) -> {
+        let _ = assert.equal({}, request)
+        123
+      }),
+      expect.standard_out((message) -> {
+        let _ = assert.equal_string("Hello, Bill", message)
+        {}
+      })
+    ])
+    let _ = assert.equal(123, time)
+    {}
+  }}
 ]
 ```
 
-The record also carries `resume`, which runs the rest of the function under
-test. It answers with the next `{lift, resume}` if the function performs the
-effect again, and aborts if it finishes without doing so.
+Each helper on the `expect` module corresponds to an effect available when running from the CLI.
+See the full [CLI effects reference](./cli_effects_reference.md).
+
+### Exiting
+
+`Exit` never resumes the program. Its check receives the exit status and returns
+the final value of `expect.run`, rather than a reply to `perform Exit`:
+
+```eyg
+let {assert, expect} = @aok
+let status = expect.run((_) -> { !never(perform Exit(7)) }, [
+  expect.exit((status) -> { assert.equal(7, status) })
+])
+assert.equal(7, status)
+```
+
+Any expectations after the exit remain unconsumed and fail the test. The test
+process itself is not terminated.
 
 ## Running test
 

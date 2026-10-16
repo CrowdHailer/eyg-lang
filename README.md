@@ -27,6 +27,7 @@ Projects in this repo introduce extra contraints, over regular programming langu
 - The language syntax is described in [`guides/syntax.md`](./guides/syntax.md).
 - Every `!builtin` is catalogued in [`guides/builtins_reference.md`](./guides/builtins_reference.md).
 - Full effect reference is in [`./guides/cli_effects_reference.md`](./guides/cli_effects_reference.md).
+- Write assertions and ordered effect expectations with [aok](./guides/writing_tests_with_aok.md).
 - File and import path resolution is explained in [`guides/file_resolution.md`](./guides/file_resolution.md).
 - To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md).
 
@@ -59,6 +60,8 @@ Another reason could be to imagine your own syntax, or even visual editor, and r
 [eyg_packages](./eyg_packages/)
 
 The source for packages maintained as a standard library i.e. `standard` and `json`.
+The [`aok`](./eyg_packages/aok/) package provides assertions, ordered computer-effect
+expectations, and test runners.
 The [`overlay`](./eyg_packages/overlay/) package contains policy and skills helpers for overlay agents.
 Other packages in this collection are for demo purposes i.e. `catfact`
 

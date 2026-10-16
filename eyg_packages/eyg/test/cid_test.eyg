@@ -1,4 +1,4 @@
-let aok = import "../../aok/source/index.eyg"
+let aok = @aok
 let assert = aok.assert
 let cid = import "../cid.eyg"
 

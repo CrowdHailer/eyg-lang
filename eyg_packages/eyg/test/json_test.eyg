@@ -1,5 +1,5 @@
 let j = import "../json.eyg"
-let aok = import "../../aok/source/index.eyg"
+let aok = @aok
 let assert = aok.assert
 
 let test_string = (_) -> {

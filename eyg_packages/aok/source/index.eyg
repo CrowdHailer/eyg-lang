@@ -1,4 +1,5 @@
 let assert = import "./assert.eyg"
+let expect = import "./expect.eyg"
 
 let reverse = (list) -> {
   !list_fold(list, [], (el, acc) -> { [el, ..acc] })
@@ -88,6 +89,7 @@ let debug = !fix((self, tests, name) -> {
 
 {
   assert,
+  expect,
   run_test,
   run_all,
   all,

@@ -177,7 +177,7 @@ Nothing follows it, so its return type is `Never`.
 
 ### `Random`
 
-Returns a uniformly random integer greater than 0 and less than max.
+Returns a uniformly random integer greater than or equal to 0 and less than max.
 
 ```eyg
 let dice = !int_add(perform Random(6), 1)

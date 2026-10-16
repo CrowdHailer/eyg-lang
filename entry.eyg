@@ -1,6 +1,6 @@
 #!/usr/bin/env eyg
 let list = @standard.list
-let aok = import "eyg_packages/aok/source/index.eyg"
+let aok = @aok
 
 let tests = list.flatten([
   import "./eyg_packages/aok/entry.eyg".tests,
@@ -16,7 +16,6 @@ let tests = list.flatten([
 let test = (_) -> {
   aok.all(tests)
 }
-let debug = aok.debug(tests)
 
 {
   script: (arguments) -> {

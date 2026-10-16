@@ -701,24 +701,26 @@ fn lookup_reference(reference, meta: source.Location, state, policy) {
   }
 }
 
-const rule_mapping = [
+// Only deterministic computations over supplied values bypass policy.
+// Randomness and process termination are observable effects, even without file IO.
+pub const rule_mapping = [
   #("AppendFile", policy.PolicyField("append_file")),
   #("CreateKey", policy.PolicyField("create_key")),
   #("CWD", policy.PolicyField("cwd")),
   #("DecodeJSON", policy.Unchecked),
   #("DeleteFile", policy.PolicyField("delete_file")),
   #("Env", policy.PolicyField("env")),
-  #("Exit", policy.Unchecked),
+  #("Exit", policy.PolicyField("exit")),
   #("EYGParse", policy.Unchecked),
   #("Fetch", policy.PolicyField("fetch")),
-  #("Flip", policy.Unchecked),
+  #("Flip", policy.PolicyField("flip")),
   #("Hash", policy.Unchecked),
   #("MakeDirectory", policy.PolicyField("make_directory")),
   #("Now", policy.PolicyField("now")),
-  #("Random", policy.Unchecked),
+  #("Random", policy.PolicyField("random")),
   #("ReadDirectory", policy.PolicyField("read_directory")),
   #("ReadFile", policy.PolicyField("read_file")),
-  #("Sign", policy.PolicyField("sign")),
+  #("Sign", policy.Unchecked),
   #("Sleep", policy.PolicyField("sleep")),
   #("StandardError", policy.PolicyField("standard_error")),
   #("StandardIn", policy.PolicyField("standard_in")),

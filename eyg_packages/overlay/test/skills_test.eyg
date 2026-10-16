@@ -1,4 +1,4 @@
-let {assert} = import "../../aok/source/index.eyg"
+let {assert} = @aok
 let skills = import "../skills.eyg"
 
 let test_parse_frontmatter = (_) -> {

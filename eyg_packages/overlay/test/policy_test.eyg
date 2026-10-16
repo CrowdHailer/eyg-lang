@@ -1,4 +1,4 @@
-let {assert} = import "../../aok/source/index.eyg"
+let {assert} = @aok
 let policy = import "../policy.eyg"
 
 let read = (path) -> {
@@ -12,14 +12,14 @@ let write = (path) -> {
 let expect_pass = (decision) -> {
   match decision {
     Pass(value) -> { value }
-    Mock(_) -> { perform Abort("expected Pass, got Mock") }
+    Mock(_) -> { !never(perform Abort("expected Pass, got Mock")) }
   }
 }
 
 let expect_mock = (decision) -> {
   match decision {
     Mock(value) -> { value }
-    Pass(_) -> { perform Abort("expected Mock, got Pass") }
+    Pass(_) -> { !never(perform Abort("expected Mock, got Pass")) }
   }
 }
 
@@ -27,6 +27,15 @@ let test_pass_and_deny = (_) -> {
   let _ = assert.equal(5, expect_pass(policy.pass(5)))
   let _ = assert.equal_string("no", assert.error(expect_mock(policy.deny("no")(5))))
   {}
+}
+
+let test_process_effects = (_) -> {
+  !list_fold([policy.deny_all, policy.allow_all, policy.read_only([]), policy.read_write([])], {}, (p, _) -> {
+    let _ = assert.equal(7, expect_pass(p.exit(7)))
+    let _ = assert.equal({}, expect_pass(p.flip({})))
+    let _ = assert.equal(10, expect_pass(p.random(10)))
+    {}
+  })
 }
 
 let test_is_under = (_) -> {
@@ -115,6 +124,7 @@ let test_fetch = (_) -> {
 
 [
   {name: "policy pass and deny", test: test_pass_and_deny},
+  {name: "policy defaults pass process effects", test: test_process_effects},
   {name: "policy is under", test: test_is_under},
   {name: "policy read only", test: test_read_only},
   {name: "policy read write", test: test_read_write},
