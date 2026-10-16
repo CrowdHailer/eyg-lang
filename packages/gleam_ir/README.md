@@ -71,7 +71,7 @@ pub fn size(node) {
 ```
 
 This function bakes in the knowledge that `Let`, `Lambda` and `Apply` are the only nodes with children.
-The `_` captures all remaining expression varients and assumes they are leaves, have size 1.
+The `_` captures all remaining expression variants and assumes they are leaves, have size 1.
 If the AST was modified to include other nodes with children we would need to remember to update the size function or the catch all clause would give the wrong answer.
 
 Using a traversal helper the size function simplifies to.

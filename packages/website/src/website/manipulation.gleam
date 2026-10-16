@@ -201,7 +201,7 @@ pub fn insert_tag() {
 
 fn do_insert_tag(buffer) {
   use rebuild <- result.map(buffer.tag(buffer))
-  let hints = listx.value_map(buffer.varients(buffer), debug.mono)
+  let hints = listx.value_map(buffer.variants(buffer), debug.mono)
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
@@ -212,7 +212,7 @@ pub fn insert_case() {
 fn do_insert_case(buffer) {
   use rebuild <- result.map(buffer.match(buffer))
 
-  let hints = listx.value_map(buffer.varients(buffer), debug.mono)
+  let hints = listx.value_map(buffer.variants(buffer), debug.mono)
   case hints {
     [] -> {
       let rebuild = fn(label, context, refs) { rebuild([label], context, refs) }

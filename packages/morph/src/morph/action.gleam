@@ -214,10 +214,10 @@ pub fn make_case(projection, analysis) {
         }),
       )
     }
-    #(p.Match(top, label, branch, pre, post, otherwise), zoom), varients -> {
+    #(p.Match(top, label, branch, pre, post, otherwise), zoom), variants -> {
       // analysis needs to be fetched from the top path
       let used = list.flatten([listx.keys(pre), [label], listx.keys(post)])
-      let others = list.filter(varients, fn(v) { !list.contains(used, v.0) })
+      let others = list.filter(variants, fn(v) { !list.contains(used, v.0) })
 
       Ok(
         Choose("", others, fn(new) {

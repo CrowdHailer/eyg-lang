@@ -41,7 +41,7 @@ pub type Effect {
   Sleep(Int)
   StandardError(String)
   StandardIn
-  StanardOut(String)
+  StandardOut(String)
   WriteFile(write_file.Input)
 }
 
@@ -68,7 +68,7 @@ pub fn effects() -> interface.Harness(Effect, meta) {
     tg.sleep() |> tg.map(Sleep),
     tg.standard_error() |> tg.map(StandardError),
     tg.standard_in() |> tg.replace(StandardIn),
-    tg.standard_out() |> tg.map(StanardOut),
+    tg.standard_out() |> tg.map(StandardOut),
     tg.write_file() |> tg.map(WriteFile),
   ]
 }

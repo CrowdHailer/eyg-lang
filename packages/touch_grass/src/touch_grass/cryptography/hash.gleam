@@ -33,7 +33,7 @@ pub fn decode(lift) {
 }
 
 fn decode_algorithm(value) {
-  cast.as_varient(value, [#("SHA256", cast.as_unit(_, Sha256))])
+  cast.as_variant(value, [#("SHA256", cast.as_unit(_, Sha256))])
 }
 
 pub fn encode(digest: BitArray) -> v.Value(m, c) {

@@ -29,7 +29,7 @@ pub fn method() -> binding.Mono {
 pub fn method_to_gleam(
   value: v.Value(a, b),
 ) -> Result(http.Method, break.Reason(a, b)) {
-  cast.as_varient(value, [
+  cast.as_variant(value, [
     #("CONNECT", cast.as_unit(_, http.Connect)),
     #("DELETE", cast.as_unit(_, http.Delete)),
     #("GET", cast.as_unit(_, http.Get)),
@@ -65,7 +65,7 @@ pub fn scheme() -> binding.Mono {
 pub fn scheme_to_gleam(
   value: v.Value(a, b),
 ) -> Result(http.Scheme, break.Reason(a, b)) {
-  cast.as_varient(value, [
+  cast.as_variant(value, [
     #("HTTP", cast.as_unit(_, http.Http)),
     #("HTTPS", cast.as_unit(_, http.Https)),
   ])

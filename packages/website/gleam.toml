@@ -7,7 +7,7 @@ gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 argv = ">= 1.0.2 and < 2.0.0"
 eyg_analysis = ">= 2.0.0 and < 4.0.0"
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 2.1.0 and < 9.0.0"
+eyg_interpreter = ">= 9.0.0 and < 10.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
 eyg_parser = ">= 0.3.4 and < 1.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
@@ -33,7 +33,7 @@ plinth = ">= 0.10.2 and < 1.0.0"
 simplifile = ">= 2.4.0 and < 3.0.0"
 snag = ">= 1.2.0 and < 2.0.0"
 spotless = ">= 7.0.0 and < 8.0.0"
-touch_grass = ">= 0.2.5 and < 1.0.0"
+touch_grass = ">= 0.4.4 and < 1.0.0"
 untethered = { path = "../untethered" }
 
 [dev_dependencies]

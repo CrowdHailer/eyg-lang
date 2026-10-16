@@ -11,7 +11,7 @@ target = "javascript"
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 envoy = ">= 1.2.0 and < 2.0.0"
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 8.0.0 and < 9.0.0"
+eyg_interpreter = ">= 9.0.0 and < 10.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
 eyg_parser = ">= 0.4.0 and < 1.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
@@ -29,7 +29,7 @@ multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 shellout = ">= 1.8.0 and < 2.0.0"
 simplifile = ">= 2.7.0 and < 3.0.0"
-touch_grass = ">= 0.4.1 and < 1.0.0"
+touch_grass = ">= 0.4.4 and < 1.0.0"
 untethered = { path = "../untethered" }
 
 [dev_dependencies]

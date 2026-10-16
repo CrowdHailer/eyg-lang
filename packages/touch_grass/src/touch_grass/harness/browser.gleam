@@ -1,6 +1,6 @@
 //// The harness describes all the effects available in an execution environment.
 //// This is similar to the Hardware Abstraction Layer (HAL) from the rust ecosystem.
-//// Or platforms in from Roc ecosystem.
+//// Or platforms from the Roc ecosystem.
 //// 
 //// The touch grass library consists of modules that specify individual interfaces to the platform.
 //// For example Log, with definitions for types and casting values.
@@ -9,7 +9,7 @@
 //// The browser workspace can look very similar to the cli workspace, but might have a different implementation.
 //// 
 //// The harness specification is not shared with the cli specification because there are a few differences in effects available.
-//// Consistency accross platforms is managed by resusing touch_grass interfaces
+//// Consistency across platforms is managed by reusing touch_grass interfaces
 
 import eyg/analysis/type_/isomorphic as t
 import gleam/http/request.{type Request}

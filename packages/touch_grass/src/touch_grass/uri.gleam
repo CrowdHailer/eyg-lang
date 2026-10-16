@@ -14,7 +14,7 @@ pub fn uri() -> binding.Mono {
     #("scheme", http.scheme()),
     // host + port = authority
     #("host", t.String),
-    #("port", t.option(t.String)),
+    #("port", t.option(t.Integer)),
     // path can be empty
     #("path", t.String),
     #("query", t.key_value_list(t.String)),

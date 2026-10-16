@@ -52,7 +52,7 @@ fn eddsa_key() {
 
 pub fn decode(lift) {
   // Options are accepted but ignored; Ed25519 takes no algorithm parameters.
-  cast.as_varient(lift, [#("Eddsa", fn(_opts) { Ok(Eddsa) })])
+  cast.as_variant(lift, [#("Eddsa", fn(_opts) { Ok(Eddsa) })])
 }
 
 pub fn encode(result: Result(Key, String)) -> v.Value(m, c) {

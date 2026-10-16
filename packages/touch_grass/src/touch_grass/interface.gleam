@@ -4,7 +4,7 @@ import eyg/interpreter/break
 import eyg/interpreter/state
 import gleam/list
 
-/// The harness types concretly implementing the browser harness effect types
+/// The harness types concretely implementing the browser harness effect types
 pub type Harness(eff, meta) =
   List(Interface(eff, meta))
 
@@ -28,7 +28,7 @@ pub fn take(
   })
 }
 
-/// Cast a rasied effect to an effect type in a harness
+/// Cast a raised effect to an effect type in a harness
 pub fn cast(
   effects: Harness(eff, a),
   label: String,

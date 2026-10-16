@@ -31,7 +31,7 @@ pub fn lower() {
 pub fn decode(lift) {
   use key <- try(cast.field("key", Ok, lift))
   use data <- try(cast.field("data", cast.as_binary, lift))
-  cast.as_varient(key, [
+  cast.as_variant(key, [
     #("Eddsa", fn(keydata) {
       use d <- try(cast.field("d", cast.as_binary, keydata))
       Ok(EddsaSign(private_key: d, data:))

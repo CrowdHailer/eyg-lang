@@ -78,7 +78,7 @@ pub fn as_tagged(value) {
   }
 }
 
-pub fn as_varient(value, decoders) {
+pub fn as_variant(value, decoders) {
   use #(tag, inner) <- try(as_tagged(value))
   case list.key_find(decoders, tag) {
     Ok(decoder) -> decoder(inner)
@@ -88,7 +88,7 @@ pub fn as_varient(value, decoders) {
 }
 
 pub fn as_option(value, decoder) {
-  as_varient(value, [
+  as_variant(value, [
     #("Some", fn(inner) {
       use inner <- try(decoder(inner))
       Ok(Some(inner))

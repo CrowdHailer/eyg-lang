@@ -144,7 +144,7 @@ pub fn environment_time_random_and_stdin_use_configured_sandbox_values_test() {
 
 pub fn outputs_keep_raw_writes_distinct_from_cli_lines_test() {
   let workflow = {
-    use _ <- system.then(computer.extrinsic(harness.StanardOut("raw"), origin))
+    use _ <- system.then(computer.extrinsic(harness.StandardOut("raw"), origin))
     use _ <- system.then(system.stdout(" line"))
     use _ <- system.then(computer.extrinsic(
       harness.StandardError("error"),

@@ -94,7 +94,7 @@ pub fn extrinsic(
       use input <- system.map(system.stdin())
       input |> result.map(bit_array.from_string) |> standard_in.encode
     }
-    computer.StanardOut(text) ->
+    computer.StandardOut(text) ->
       system.map(system.write_stdout(text), standard_out.encode)
     computer.WriteFile(input) ->
       system.map(write_file(origin, input), write_file.encode)

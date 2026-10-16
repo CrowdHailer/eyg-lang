@@ -145,7 +145,7 @@ pub fn fields(buffer) {
   }
 }
 
-pub fn varients(buffer) {
+pub fn variants(buffer) {
   case target_type(buffer) {
     Ok(iso.Union(rows)) -> analysis.rows(rows)
     _ -> []

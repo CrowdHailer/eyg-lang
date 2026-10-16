@@ -36,7 +36,7 @@ pub fn abort() -> Interface(String, a) {
   Interface(abort.label, abort.lift(), abort.lower(), abort.decode)
 }
 
-/// alert is the same interface as Print but show to the user in a browser context
+/// alert is the same interface as Print but shown to the user in a browser context
 pub fn alert() -> Interface(String, a) {
   Interface("Alert", print.lift(), print.lower(), print.decode)
 }

@@ -7,7 +7,7 @@ gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 castor = ">= 2.1.0 and < 3.0.0"
 eyg_analysis = ">= 2.0.0 and < 4.0.0"
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 6.0.0 and < 9.0.0"
+eyg_interpreter = ">= 9.0.0 and < 10.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
 eyg_parser = ">= 0.5.1 and < 1.0.0"
 gleam_fetch = ">= 1.4.0 and < 2.0.0"
@@ -23,7 +23,7 @@ overlay = { path = "../overlay" }
 overlay_llm = ">= 0.2.0 and < 1.0.0"
 pal = { path = "../pal" }
 spotless = ">= 7.0.0 and < 8.0.0"
-touch_grass = ">= 0.2.11 and < 1.0.0"
+touch_grass = ">= 0.4.4 and < 1.0.0"
 untethered = { path = "../untethered" }
 
 [dev_dependencies]
