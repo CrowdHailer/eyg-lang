@@ -11,7 +11,7 @@ The `test` field is a function returning any value that throws abort in case of 
 Use `aok.assert` to write tests that assert on values.
 
 ```eyg
-let {assert, expect} = import "../aok/index.eyg"
+let {assert, expect} = import "../aok/source/index.eyg"
 ```
 
 ```eyg

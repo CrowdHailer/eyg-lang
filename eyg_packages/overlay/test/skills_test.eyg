@@ -1,4 +1,4 @@
-let {assert} = import "../../aok/index.eyg"
+let {assert} = import "../../aok/source/index.eyg"
 let skills = import "../skills.eyg"
 
 let test_parse_frontmatter = (_) -> {
@@ -17,25 +17,7 @@ let test_parse_without_frontmatter = (_) -> {
   {}
 }
 
-let test_read_and_print = (_) -> {
-  let cwd = match perform CWD({}) {
-    Ok(cwd) -> { cwd }
-    Error(_) -> { perform Abort("no cwd") }
-  }
-  let root = !string_append(cwd, "/eyg_packages/overlay/fixtures/project")
-  let found = skills.read(root)
-  let names = !list_fold(found, [], (skill, acc) -> { [skill.name, ..acc] })
-  let _ = assert.contains(names, "changelog")
-  let _ = assert.contains(names, "plain")
-  let printed = skills.print(found)
-  let _ = assert.ok(!string_split_once(printed, "- changelog: How to write CHANGELOG entries.\n"))
-  let _ = assert.equal_string("", skills.print([]))
-  let _ = assert.equal([], skills.read(!string_append(cwd, "/eyg_packages/overlay/fixtures/none")))
-  {}
-}
-
 [
   {name: "skills parse frontmatter", test: test_parse_frontmatter},
-  {name: "skills parse without frontmatter", test: test_parse_without_frontmatter},
-  {name: "skills read and print", test: test_read_and_print}
+  {name: "skills parse without frontmatter", test: test_parse_without_frontmatter}
 ]

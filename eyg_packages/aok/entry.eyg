@@ -1,5 +1,9 @@
-let aok = import "./index.eyg"
-let tests = import "./test.eyg"
+let {list} = @standard:1
+let aok = import "./source/index.eyg"
+let tests = list.flatten([
+  import "./test/index_test.eyg",
+  import "./test/assert_test.eyg"
+])
 
 {
   tests,

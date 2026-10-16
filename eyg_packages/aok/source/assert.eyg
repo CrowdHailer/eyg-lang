@@ -1,0 +1,61 @@
+let abort = (message) -> {
+  !never(perform Abort(message))
+}
+
+let quote = (s) -> {
+  !string_append("`", !string_append(s, "`"))
+}
+
+{
+  equal: (a, b) -> {
+    match !equal(a, b) {
+      True(_) -> { a }
+      False(_) -> { abort("values were not equal") }
+    }
+  },
+  equal_string: (a, b) -> {
+    match !equal(a, b) {
+      True(_) -> { a }
+      False(_) -> {
+        abort(!string_append(quote(a), !string_append(" does not equal ", quote(b))))
+      }
+    }
+  },
+  ok: (result) -> {
+    match result {
+      Ok(value) -> { value }
+      | (_) -> { abort("value was not `Ok`") }
+    }
+  },
+  error: (result) -> {
+    match result {
+      Error(reason) -> { reason }
+      | (_) -> { abort("value was not `Error`") }
+    }
+  },
+  true: (condition) -> {
+    match condition {
+      True(_) -> { {} }
+      False(_) -> { abort("value was not `True`") }
+    }
+  },
+  false: (condition) -> {
+    match condition {
+      False(_) -> { {} }
+      True(_) -> { abort("value was not `False`") }
+    }
+  },
+  contains: !fix((self, items, value) -> {
+    match !list_pop(items) {
+      Ok({head, tail}) -> {
+        match !equal(head, value) {
+          True(_) -> { value }
+          False(_) -> { self(tail, value) }
+        }
+      }
+      Error(_) -> { abort("list did not contain expected value") }
+    }
+  })
+}
+
+

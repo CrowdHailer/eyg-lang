@@ -1,0 +1,68 @@
+let assert = import "../source/assert.eyg"
+
+// let pass_test = (test) -> {
+//   match aok.run_test(test) {
+//     Pass(_) -> { {} }
+//     Fail(reason) -> { abort(!string_append("expected pass, got fail: ", reason)) }
+//   }
+// }
+
+// let fail_test = (test, expected_reason) -> {
+//   match aok.run_test(test) {
+//     Pass(_) -> { abort("expected fail, got pass") }
+//     Fail(reason) -> {
+//       let _ = assert.equal_string(reason, expected_reason)
+//       {}
+//     }
+//   }
+// }
+
+[
+  {name: "equal returns its first arg when values match",
+   test: (_) -> {
+     let _ = assert.equal(assert.equal(7, 7), 7)
+     {}
+   }},
+
+  // {name: "equal aborts when values differ",
+  //  test: (_) -> { fail_test((_) -> { assert.equal(1, 2) }, "values were not equal") }},
+
+  {name: "equal_string passes on equal strings",
+   test: (_) -> {
+     let _ = assert.equal_string(assert.equal_string("hi", "hi"), "hi")
+     {}
+   }},
+
+  {name: "ok unwraps an Ok variant",
+   test: (_) -> {
+     let _ = assert.equal(assert.ok(Ok(42)), 42)
+     {}
+   }},
+
+  // {name: "ok aborts on Error",
+  //  test: (_) -> { fail_test((_) -> { assert.ok(Error("nope")) }, "value was not `Ok`") }},
+
+  {name: "error unwraps the Error reason",
+   test: (_) -> {
+     let _ = assert.equal_string(assert.error(Error("bad")), "bad")
+     {}
+   }},
+
+  // {name: "error aborts on Ok",
+  //  test: (_) -> { fail_test((_) -> { assert.error(Ok(1)) }, "value was not `Error`") }},
+
+  // {name: "true passes on True",
+  //  test: (_) -> { pass_test((_) -> { assert.true(True({})) }) }},
+
+  // {name: "true aborts on False",
+  //  test: (_) -> { fail_test((_) -> { assert.true(False({})) }, "value was not `True`") }},
+
+  // {name: "false passes on False",
+  //  test: (_) -> { pass_test((_) -> { assert.false(False({})) }) }},
+
+  // {name: "contains finds an element",
+  //  test: (_) -> {
+  //    let _ = assert.equal(assert.contains([1, 2, 3], 2), 2)
+  //    {}
+  //  }},
+]

@@ -1,6 +1,6 @@
 // Each test mirrors one fixture from spec/ir_suite.json. 
 
-let aok = import "../../aok/index.eyg"
+let aok = import "../../aok/source/index.eyg"
 let assert = aok.assert
 let ast = import "../ast.eyg"
 let cid = import "../cid.eyg"

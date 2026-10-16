@@ -1,0 +1,65 @@
+let aok = import "../source/index.eyg"
+let assert = aok.assert
+
+let abort = (reason) -> { !never(perform Abort(reason)) }
+
+let pass_test = (test) -> {
+  match aok.run_test(test) {
+    Pass(_) -> { {} }
+    Fail(reason) -> { abort(!string_append("expected pass, got fail: ", reason)) }
+  }
+}
+
+let fail_test = (test, expected_reason) -> {
+  match aok.run_test(test) {
+    Pass(_) -> { abort("expected fail, got pass") }
+    Fail(reason) -> {
+      let _ = assert.equal_string(reason, expected_reason)
+      {}
+    }
+  }
+}
+
+[
+  
+
+  {name: "contains aborts when absent",
+   test: (_) -> { fail_test(
+     (_) -> { assert.contains([1, 2, 3], 99) },
+     "list did not contain expected value"
+   ) }},
+
+  {name: "run_test catches Abort as Fail",
+   test: (_) -> {
+     match aok.run_test((_) -> { abort("nope") }) {
+       Fail(reason) -> {
+         let _ = assert.equal_string(reason, "nope")
+         {}
+       }
+       Pass(_) -> { abort("expected Fail") }
+     }
+   }},
+
+  {name: "run_test returns Pass on success",
+   test: (_) -> {
+     match aok.run_test((_) -> { 0 }) {
+       Pass(_) -> { {} }
+       Fail(reason) -> { abort(!string_append("expected Pass, got Fail: ", reason)) }
+     }
+   }},
+
+  {name: "run_all preserves test order",
+   test: (_) -> {
+     let results = aok.run_all([
+       {name: "first", test: (_) -> { 0 }},
+       {name: "second", test: (_) -> { 0 }},
+     ])
+     match !list_pop(results) {
+       Ok({head, tail: _}) -> {
+         let _ = assert.equal_string(head.name, "first")
+         {}
+       }
+       Error(_) -> { abort("run_all returned empty list") }
+     }
+   }},
+]

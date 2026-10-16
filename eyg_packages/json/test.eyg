@@ -1,4 +1,4 @@
-let {assert} = import "../aok/index.eyg"
+let {assert} = import "../aok/source/index.eyg"
 let json = import "./index.eyg"
 
 let person_decoder = json.decode.object((parsed) -> {

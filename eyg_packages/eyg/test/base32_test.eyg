@@ -1,7 +1,7 @@
 // The expected values are the RFC 4648 test vectors, lowercased and with
 // the padding removed.
 
-let aok = import "../../aok/index.eyg"
+let aok = import "../../aok/source/index.eyg"
 let assert = aok.assert
 let base32 = import "../base32.eyg"
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env eyg
 let list = @standard.list
-let aok = import "eyg_packages/aok/index.eyg"
+let aok = import "eyg_packages/aok/source/index.eyg"
 
 let tests = list.flatten([
   import "./eyg_packages/aok/entry.eyg".tests,
