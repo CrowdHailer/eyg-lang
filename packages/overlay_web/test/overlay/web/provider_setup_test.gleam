@@ -34,18 +34,14 @@ pub fn restores_ollama_session_test() {
   let #(state, actions, llm) =
     provider_setup.update(
       state,
-      provider_setup.SessionSettingsLoaded(
-        "ollama",
-        "qwen3.5:397b",
-        "ollama-key",
-      ),
+      provider_setup.SessionSettingsLoaded("ollama", "gemma4:31b", "ollama-key"),
       test_origin(),
       True,
     )
 
   let assert Some(provider.Llm(
     provider.Ollama(ollama.Config(origin: selected_origin, api_key: Some(key))),
-    "qwen3.5:397b",
+    "gemma4:31b",
   )) = llm
   assert [] == actions
   assert test_origin() == selected_origin
@@ -120,7 +116,7 @@ pub fn provider_selection_resets_model_and_token_test() {
     )
 
   assert Some(provider_setup.Ollama) == state.provider
-  assert "qwen3.5:397b" == state.model_name
+  assert "gemma4:31b" == state.model_name
   assert "" == state.api_key
 }
 

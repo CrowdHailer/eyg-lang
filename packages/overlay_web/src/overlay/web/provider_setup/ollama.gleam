@@ -9,12 +9,12 @@ pub const label = "Ollama Cloud"
 pub const token_url = "https://ollama.com/settings/keys"
 
 pub fn default_model() {
-  "qwen3.5:397b"
+  "gemma4:31b"
 }
 
 pub fn models() {
   [
-    #("qwen3.5:397b", "Qwen 3.5 397B"),
+    #("gemma4:31b", "Gemma 4 31B"),
     #("gpt-oss:120b", "GPT-OSS 120B"),
     #("kimi-k2.6", "Kimi K2.6"),
     #("mistral-large-3:675b", "Mistral Large 3"),
