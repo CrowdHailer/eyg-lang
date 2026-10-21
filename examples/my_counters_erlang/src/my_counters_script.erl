@@ -7,7 +7,7 @@
 -export([run/1]).
 
 run(Code) when is_list(Code) ->
-    run(unicode:characters_to_binary(Code));
+  run(unicode:characters_to_binary(Code));
 run(Code) when is_binary(Code) ->
   case eyg@parser:all_from_string(Code) of
     {ok, Source} ->
@@ -60,8 +60,8 @@ extrinsic(<<"StartCounter">>, #string{value = Name}) ->
 extrinsic(<<"GetValue">>, #string{value = Name}) ->
   {ok, #integer{value = my_counter:get_value(binary_to_existing_atom(Name, utf8))}};
 extrinsic(<<"SetTickRate">>, #record{fields = #{
-    <<"name">> := #string{value = Name}, <<"seconds">> := #integer{value = Seconds}
-  }}) when Seconds > 0 ->
+  <<"name">> := #string{value = Name}, <<"seconds">> := #integer{value = Seconds}
+}}) when Seconds > 0 ->
   ok = my_counter:set_tick_rate(binary_to_existing_atom(Name, utf8), Seconds),
   {ok, eyg@interpreter@value:unit()};
 extrinsic(Label, Value) -> {error, #unhandled_effect{label = Label, value = Value}}.
@@ -91,8 +91,8 @@ inference_context() ->
 
 debug_type_error({Span, Reason}, Source) ->
   eyg@parser:render_error(
-      eyg@analysis@type_@binding@debug:render_reason(Reason),
-      eyg@analysis@type_@binding@debug:hint(Reason),
-      Source,
-      Span
+    eyg@analysis@type_@binding@debug:render_reason(Reason),
+    eyg@analysis@type_@binding@debug:hint(Reason),
+    Source,
+    Span
   ).

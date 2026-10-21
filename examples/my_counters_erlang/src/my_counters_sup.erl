@@ -5,14 +5,14 @@
 -export([init/1]).
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 start_child(Name) ->
-    supervisor:start_child(?MODULE, #{
-        id => Name,
-        start => {my_counter, start_link, [Name]},
-        restart => transient
-    }).
+  supervisor:start_child(?MODULE, #{
+    id => Name,
+    start => {my_counter, start_link, [Name]},
+    restart => transient
+  }).
 
 init([]) ->
-    {ok, {#{strategy => one_for_one}, []}}.
+  {ok, {#{strategy => one_for_one}, []}}.

@@ -16,7 +16,7 @@ loop() ->
         ":quit" -> ok;
         "" -> loop();
         Source ->
-          io:put_chars(my_counters_script:run(Source)),
+          io:format("~ts~n", [my_counters_script:run(Source)]),
           loop()
       end
   end.

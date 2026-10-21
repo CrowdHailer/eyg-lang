@@ -38,7 +38,7 @@ hello
 Blank lines are ignored.
 Each expression is evaluated independently, so bindings from one line are not available on the next.
 
-## Effects
+### Effects
 
 The script runner declares effects:
 
@@ -51,12 +51,63 @@ The script runner declares effects:
 | `perform GetValue("first_counter")` | Returns the counter's current integer value. |
 | `perform SetTickRate({name: "first_counter", seconds: 2})` | Changes the increment interval to two seconds and returns `{}`. |
 
-## Counters
+### Counters
 
 The EYG shell starts the counter application automatically. When using the
 Erlang shell, first run:
 
 ```erlang
 {ok, _} = application:ensure_all_started(my_counters).
+```
+
+## Agent shell
+
+Set `OLLAMA_TOKEN` to your Ollama API token before starting.
+
+```sh
+export OLLAMA_TOKEN="your Ollama API token"
+gleam build
+erl -pa build/dev/erlang/*/ebin -noshell \
+  -eval 'shell:start_interactive({my_counters_agent, start, []}).'
+```
+
+Try these prompts:
+
+```text
+Start a counter named foo.
+Start a counter named bar.
+Set foo's tick interval to five seconds, then read its value.
+Change foo's tick interval to one second.
+Read foo's current value.
+```
+
+The agent system prompt is tightly focused on the counter effects.
+A more general system prompt is an exercise for the reader.
+
+## Videos
+
+Both recordings use this example and show the live counter in Erlang Observer:
+
+- [EYG shell demo](counter-demo.mp4)
+- [Agent demo](counter-agent-demo.mp4)
+
+To follow either recording, start a fresh node from this directory.
+
+```sh
+gleam build
+erl -sname my_counters -pa build/dev/erlang/*/ebin
+```
+
+Run `observer:start().` in the Erlang shell. This requires an Erlang installation
+with wx/Observer support and a graphical display. Press **Ctrl-G**, enter
+`s my_counters_shell` (or `s my_counters_agent`), then `c` to connect to that job.
+
+In the EYG shell.
+
+```eyg
+perform StartCounter("foo")
+perform StartCounter("bar")
+perform SetTickRate({name: "foo", seconds: 5})
+perform GetValue("foo")
 ```
 
