@@ -10,11 +10,8 @@ const highlighter = await createHighlighter({
   themes: [githubDark],
 });
 
-// Includes aliases such as sh, js, and erl. Unknown fences stay plain text.
-const languages = new Set(highlighter.getLoadedLanguages());
-
 export function supportsLanguage(language) {
-  return languages.has(language);
+  return highlighter.getLoadedLanguages().includes(language);
 }
 
 export function highlight(source, language) {

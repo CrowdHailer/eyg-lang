@@ -136,16 +136,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{matrix.bun}}
-      - uses: actions/setup-node@v4
-        if: matrix.package == 'website'
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: packages/website/package-lock.json
-      - name: Install website JavaScript dependencies
-        if: matrix.package == 'website'
-        run: npm ci
-        working-directory: packages/website
+      - name: Install JavaScript dependencies
+        run: if [ -f package-lock.json ]; then npm ci; fi
+        working-directory: packages/${{matrix.package}}
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}
