@@ -1,5 +1,7 @@
 -module(my_counters_script).
 -include_lib("eyg_interpreter/include/eyg@interpreter@break_UnhandledEffect.hrl").
+-include_lib("eyg_interpreter/include/eyg@interpreter@value_Integer.hrl").
+-include_lib("eyg_interpreter/include/eyg@interpreter@value_Record.hrl").
 -include_lib("eyg_interpreter/include/eyg@interpreter@value_String.hrl").
 
 -export([run/1]).
@@ -48,8 +50,10 @@ loop(Result) -> Result.
 extrinsic(<<"Log">>, #string{value = String})->
   io:put_chars(String),
   {ok, eyg@interpreter@value:unit()};
-extrinsic(<<"Random">>, {integer, Max}) when Max > 0 ->
-  {ok, {integer, rand:uniform(Max)}};
+extrinsic(<<"Random">>, #integer{value = Max}) when Max > 0 ->
+  {ok, #integer{value = rand:uniform(Max)}};
+extrinsic(<<"Now">>, #record{fields = Fields}) when map_size(Fields) =:= 0 ->
+  {ok, #integer{value = erlang:system_time(millisecond)}};
 extrinsic(Label, Value) -> {error, #unhandled_effect{label = Label, value = Value}}.
 
 type_check(Source) ->
@@ -65,7 +69,9 @@ inference_context() ->
   Context0 = Infer:pure(),
   Unit = eyg@analysis@type_@isomorphic:record([]),
   Context1 = Infer:with_effect(Context0, <<"Log">>, string, Unit),
-  Context1.
+  Context2 = Infer:with_effect(Context1, <<"Random">>, integer, integer),
+  Context3 = Infer:with_effect(Context2, <<"Now">>, Unit, integer),
+  Context3.
 
 debug_type_error({Span, Reason}, Source) ->
   eyg@parser:render_error(

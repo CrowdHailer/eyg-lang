@@ -37,3 +37,14 @@ hello
 
 Blank lines are ignored.
 Each expression is evaluated independently, so bindings from one line are not available on the next.
+
+## Effects
+
+The script runner declares effects:
+
+| Expression | Result |
+| --- | --- |
+| `perform Log("hello\n")` | Prints the string and returns `{}`. |
+| `perform Random(6)` | Returns a random integer from 1 to 6, inclusive. |
+| `perform Now({})` | Returns the current Unix timestamp in milliseconds as an integer. |
+
