@@ -136,6 +136,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{matrix.bun}}
+      - name: Install JavaScript dependencies
+        run: if [ -f package-lock.json ]; then npm ci; fi
+        working-directory: packages/${{matrix.package}}
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{matrix.otp}}

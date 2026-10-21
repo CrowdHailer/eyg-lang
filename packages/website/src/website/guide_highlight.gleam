@@ -8,8 +8,9 @@ import lustre/element
 import lustre/element/html as h
 import pamphlet/lustre
 
-/// Highlight fenced EYG blocks during static rendering, using the shared VS Code
-/// grammar. Other languages use Pamphlet's default code-block renderer.
+/// Highlight supported code fences during static rendering, using Shiki's bundled
+/// languages and the shared EYG VS Code grammar. Unknown and unlabelled languages
+/// use Pamphlet's default code-block renderer.
 /// Reference tables scroll independently so long signatures fit narrow screens.
 pub fn renderer() -> lustre.Renderer(msg, t) {
   let default = lustre.default()
@@ -33,15 +34,17 @@ pub fn renderer() -> lustre.Renderer(msg, t) {
       }
     },
     render_code_block: fn(attrs, language, content) {
-      case language {
-        Some("eyg") -> fn(continue) {
-          let #(background, foreground, lines) = highlight(content)
+      let supported =
+        language |> option.map(supports_language) |> option.unwrap(False)
+      case language, supported {
+        Some(language), True -> fn(continue) {
+          let #(background, foreground, lines) = highlight(content, language)
           let attrs =
             attrs
             |> dict.upsert("class", fn(previous) {
               case previous {
-                Some(previous) -> previous <> " language-eyg"
-                _ -> "language-eyg"
+                Some(previous) -> previous <> " language-" <> language
+                _ -> "language-" <> language
               }
             })
             |> dict.to_list
@@ -71,13 +74,17 @@ pub fn renderer() -> lustre.Renderer(msg, t) {
             ),
           )
         }
-        _ -> default.render_code_block(attrs, language, content)
+        _, _ -> default.render_code_block(attrs, language, content)
       }
     },
   )
 }
 
+@external(javascript, "../guide_highlight_ffi.mjs", "supportsLanguage")
+fn supports_language(language: String) -> Bool
+
 @external(javascript, "../guide_highlight_ffi.mjs", "highlight")
 fn highlight(
   source: String,
+  language: String,
 ) -> #(String, String, Array(Array(#(String, String))))
