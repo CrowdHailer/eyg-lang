@@ -18,7 +18,7 @@ This scripting can be for simple configuration or a rich plugin or modding syste
 
 ## Getting started
 
-EYG's toolkit consists of a set of composable parts, for these examples we will need all the following parts
+EYG's toolkit consists of a set of composable parts, for these examples we will need all the following parts.
 
 ```sh
 gleam add eyg_analysis eyg_interpreter eyg_parser touch_grass
