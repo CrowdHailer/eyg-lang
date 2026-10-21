@@ -1,6 +1,5 @@
 name = "eyg_interpreter"
-version = "9.0.0"
-target = "javascript"
+version = "9.0.1"
 
 description = "EYG interpreter for the JavaScript runtime for server and browser."
 licences = ["Apache-2.0"]
