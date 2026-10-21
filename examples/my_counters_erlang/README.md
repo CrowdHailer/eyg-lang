@@ -47,4 +47,16 @@ The script runner declares effects:
 | `perform Log("hello\n")` | Prints the string and returns `{}`. |
 | `perform Random(6)` | Returns a random integer from 1 to 6, inclusive. |
 | `perform Now({})` | Returns the current Unix timestamp in milliseconds as an integer. |
+| `perform StartCounter("first_counter")` | Starts a named counter at zero and returns `{}`. |
+| `perform GetValue("first_counter")` | Returns the counter's current integer value. |
+| `perform SetTickRate({name: "first_counter", seconds: 2})` | Changes the increment interval to two seconds and returns `{}`. |
+
+## Counters
+
+The EYG shell starts the counter application automatically. When using the
+Erlang shell, first run:
+
+```erlang
+{ok, _} = application:ensure_all_started(my_counters).
+```
 

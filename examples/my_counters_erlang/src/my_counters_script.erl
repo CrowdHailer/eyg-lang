@@ -54,6 +54,16 @@ extrinsic(<<"Random">>, #integer{value = Max}) when Max > 0 ->
   {ok, #integer{value = rand:uniform(Max)}};
 extrinsic(<<"Now">>, #record{fields = Fields}) when map_size(Fields) =:= 0 ->
   {ok, #integer{value = erlang:system_time(millisecond)}};
+extrinsic(<<"StartCounter">>, #string{value = Name}) ->
+  {ok, _} = my_counters_sup:start_child(binary_to_atom(Name, utf8)),
+  {ok, eyg@interpreter@value:unit()};
+extrinsic(<<"GetValue">>, #string{value = Name}) ->
+  {ok, #integer{value = my_counter:get_value(binary_to_existing_atom(Name, utf8))}};
+extrinsic(<<"SetTickRate">>, #record{fields = #{
+    <<"name">> := #string{value = Name}, <<"seconds">> := #integer{value = Seconds}
+  }}) when Seconds > 0 ->
+  ok = my_counter:set_tick_rate(binary_to_existing_atom(Name, utf8), Seconds),
+  {ok, eyg@interpreter@value:unit()};
 extrinsic(Label, Value) -> {error, #unhandled_effect{label = Label, value = Value}}.
 
 type_check(Source) ->
@@ -71,7 +81,13 @@ inference_context() ->
   Context1 = Infer:with_effect(Context0, <<"Log">>, string, Unit),
   Context2 = Infer:with_effect(Context1, <<"Random">>, integer, integer),
   Context3 = Infer:with_effect(Context2, <<"Now">>, Unit, integer),
-  Context3.
+  Context4 = Infer:with_effect(Context3, <<"StartCounter">>, string, Unit),
+  Context5 = Infer:with_effect(Context4, <<"GetValue">>, string, integer),
+  TickRate = eyg@analysis@type_@isomorphic:record([
+    {<<"name">>, string}, {<<"seconds">>, integer}
+  ]),
+  Context6 = Infer:with_effect(Context5, <<"SetTickRate">>, TickRate, Unit),
+  Context6.
 
 debug_type_error({Span, Reason}, Source) ->
   eyg@parser:render_error(

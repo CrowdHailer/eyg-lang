@@ -4,7 +4,7 @@ description: Step by step guide to using EYG types, effects and packages from er
 ---
 
 This guide adds EYG scripting to an Erlang application `my_counters`.
-Just want the code look at [example](examples/my_counters_erlang).
+Just want the code look at [example](../examples/my_counters_erlang).
 
 Embedding EYG in Erlang gives you a scripting environment with tight controls over what can be accessed.
 With this control you can:
@@ -157,6 +157,10 @@ extrinsic(<<"Log">>, #string{value = String})->
   {ok, eyg@interpreter@value:unit()};
 extrinsic(Label, Value) -> {error, #unhandled_effect{label = Label, value = Value}}.
 ```
+
+Effects can be implemented at any level of abstraction.
+They can be core utilities like logging or more specific to the application.
+The counter example has additional utilities `Random` and `Now` as well as three effects for managing the counter application.
 
 ## Type checking
 
