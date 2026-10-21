@@ -174,7 +174,10 @@ pub fn get_module(
   }
 }
 
-fn follow_reference(
+/// Resolve a reference to its module CID using the cached release ledger.
+/// This does not queue requests or require the module to have been fetched.
+/// A pinned release must match the ledger's CID for that package and version.
+pub fn follow_reference(
   cache: Cache(meta),
   reference: ir.Reference,
 ) -> Result(v1.Cid, Nil) {

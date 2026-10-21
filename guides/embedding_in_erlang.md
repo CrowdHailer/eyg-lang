@@ -214,3 +214,45 @@ If type checking succeeds, run the program; otherwise, return the formatted diag
 
 You now have an EYG scripting environment that checks programs before running them and has the full power of Erlang available for implementing effects.
 To expose more of your application, add effect handlers and their corresponding types to the inference context.
+
+## Loading releases
+
+The [example runner](../examples/my_counters_erlang/src/my_counters_script.erl)
+also loads dependencies from `https://eyg.run` using `eyg_hub` and `gleam_httpc`.
+For example, try this in the Erlang shell:
+
+```erlang
+io:put_chars(my_counters_script:run(
+  <<"let {list} = @standard list.length([1, 2, 3])">>
+)).
+```
+
+This prints `3`. `@standard` selects the latest release in the hub's package
+ledger. `@standard:1` selects a version, while `@name:version:<module-cid>` pins
+both the version and module. Use the fully pinned form in shared programs.
+Content references (`#<module-cid>`) are also supported; relative file imports
+are not resolved by this runner.
+
+Loading has two parts: supplying a dependency's type during inference, and its
+value during execution:
+
+1. `eyg@hub@cache:prepare/2` queues the initial module fetches and any required package
+   ledger pull. `drain/2` flushes those actions, performs the HTTP requests, and
+   feeds responses to `eyg@hub@cache:update/3`. It repeats until no actions remain,
+   including requests for transitive dependencies and further ledger pages.
+2. When inference returns a `lookup`, `eyg@hub@cache:follow_reference/2` resolves its
+   module CID. The runner fetches it and resumes inference with the cached
+   module's `type_` field. Pinned releases must match the ledger's CID.
+3. If type checking succeeds, execution begins. An `undefined_reference` break
+   is resumed with the cached module's `value` field, just as an effect break is
+   resumed with the host's reply.
+
+Each fetched module is re-encoded as DAG-JSON and hashed with SHA-256 to check
+its CID before it enters the cache. Unavailable dependencies produce the normal
+type diagnostics; a script with type errors is not executed.
+
+`run/1` starts with an empty cache, so self-contained expressions do not make
+network requests. The HTTP applications start when a request is needed.
+`run/2` accepts an existing cache; both functions return the formatted result.
+Newly loaded dependencies are shared within that evaluation, not retained
+between shell inputs.

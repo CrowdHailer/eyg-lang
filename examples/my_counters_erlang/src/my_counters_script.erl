@@ -1,19 +1,25 @@
 -module(my_counters_script).
+-include_lib("eyg_hub/include/eyg@hub@cache_Module.hrl").
+-include_lib("eyg_interpreter/include/eyg@interpreter@break_UndefinedReference.hrl").
 -include_lib("eyg_interpreter/include/eyg@interpreter@break_UnhandledEffect.hrl").
 -include_lib("eyg_interpreter/include/eyg@interpreter@value_Integer.hrl").
 -include_lib("eyg_interpreter/include/eyg@interpreter@value_Record.hrl").
 -include_lib("eyg_interpreter/include/eyg@interpreter@value_String.hrl").
 
--export([run/1]).
+-export([run/1, run/2]).
 
-run(Code) when is_list(Code) ->
-  run(unicode:characters_to_binary(Code));
-run(Code) when is_binary(Code) ->
+run(Code) ->
+  run(Code, eyg@hub@cache:empty()).
+
+run(Code, Cache) when is_list(Code) ->
+  run(unicode:characters_to_binary(Code), Cache);
+run(Code, Cache0) when is_binary(Code) ->
   case eyg@parser:all_from_string(Code) of
     {ok, Source} ->
-      case type_check(Source) of
+      {Errors, Cache1} = type_check(Source, Cache0),
+      case Errors of
         [] ->
-          Result = loop(eyg@interpreter@expression:execute(Source, [])),
+          Result = loop(eyg@interpreter@expression:execute(Source, []), Cache1),
           case Result of
             {ok, Value} -> debug_interpreter_value(Value);
             {error, Reason} -> debug_interpreter_error(Reason, Code)
@@ -38,14 +44,20 @@ debug_interpreter_error({Reason, Span, _, _}, Code) ->
     Span
   ).
 
-loop({error, {#unhandled_effect{label = Label, value = Value}, Span, Env, Stack}}) ->
+loop({error, {#unhandled_effect{label = Label, value = Value}, Span, Env, Stack}}, Cache) ->
   case extrinsic(Label, Value) of
     {ok, Reply} ->
-      loop(eyg@interpreter@expression:resume(Reply, Env, Stack));
+      loop(eyg@interpreter@expression:resume(Reply, Env, Stack), Cache);
     {error, Reason} ->
       {error, {Reason, Span, Env, Stack}}
   end;
-loop(Result) -> Result.
+loop({error, {#undefined_reference{reference = Reference}, _, Env, Stack}} = Result, Cache) ->
+  case eyg@hub@cache:get_reference(Cache, Reference) of
+    {ok, #module{value = Value}} ->
+      loop(eyg@interpreter@expression:resume(Value, Env, Stack), Cache);
+    {error, _} -> Result
+  end;
+loop(Result, _Cache) -> Result.
 
 extrinsic(<<"Log">>, #string{value = String})->
   io:put_chars(String),
@@ -66,13 +78,25 @@ extrinsic(<<"SetTickRate">>, #record{fields = #{
   {ok, eyg@interpreter@value:unit()};
 extrinsic(Label, Value) -> {error, #unhandled_effect{label = Label, value = Value}}.
 
-type_check(Source) ->
+type_check(Source, Cache0) ->
+  {ok, Origin} = ogre@origin:from_string(<<"https://eyg.run">>),
+  Cache1 = drain(eyg@hub@cache:prepare(Cache0, Source), Origin),
   Infer = eyg@analysis@inference@levels_j@contextual,
-  Analysis = type_check_loop(Infer:check(inference_context(), Source)),
-  Infer:all_errors(Analysis).
+  {Analysis, Cache2} = type_check_loop(Infer:check(inference_context(), Source), Cache1, Origin),
+  {Infer:all_errors(Analysis), Cache2}.
 
-type_check_loop({done, Analysis}) -> Analysis;
-type_check_loop({lookup, _Reference, Resume}) -> type_check_loop(Resume({error, nil})).
+type_check_loop({done, Analysis}, Cache, _Origin) -> {Analysis, Cache};
+type_check_loop({lookup, Reference, Resume}, Cache0, Origin) ->
+  {Fetched, Cache2} = case eyg@hub@cache:follow_reference(Cache0, Reference) of
+    {ok, Cid} ->
+      Cache1 = drain(eyg@hub@cache:fetch(Cache0, Cid), Origin),
+      case eyg@hub@cache:get_module(Cache1, Cid) of
+        {ok, #module{type_ = PolyType}} -> {{ok, PolyType}, Cache1};
+        {error, _} -> {{error, nil}, Cache1}
+      end;
+    {error, _} -> {{error, nil}, Cache0}
+  end,
+  type_check_loop(Resume(Fetched), Cache2, Origin).
 
 inference_context() ->
   Infer = eyg@analysis@inference@levels_j@contextual,
@@ -96,3 +120,56 @@ debug_type_error({Span, Reason}, Source) ->
     Source,
     Span
   ).
+
+drain(Cache0, Origin) ->
+  {Cache1, Actions} = eyg@hub@cache:flush(Cache0),
+  case Actions of
+    [] -> Cache1;
+    _ ->
+      {ok, _} = application:ensure_all_started(gleam_httpc),
+      drain(perform_actions(Actions, Cache1, Origin), Origin)
+  end.
+
+perform_actions([], Cache, _Origin) -> Cache;
+perform_actions([Action | Rest], Cache0, Origin) ->
+  Completed = perform_cache_action(Action, Origin),
+  {Cache1, _Resolved} = eyg@hub@cache:update(Cache0, Completed, fun(_) -> {0, 0} end),
+  perform_actions(Rest, Cache1, Origin).
+
+perform_cache_action({fetch_module, Cid}, Origin) ->
+  Request = eyg@hub@client:fetch_module_request(Cid, Origin),
+  Result = case gleam@httpc:send_bits(Request) of
+    {ok, Response} ->
+      case eyg@hub@client:fetch_module_response(Response) of
+        {ok, {some, Tree}} -> verify_module(Cid, Tree);
+        {ok, none} -> {error, <<"Module not found">>};
+        {error, Reason} -> cache_error(Reason)
+      end;
+    {error, Reason} -> cache_error(Reason)
+  end,
+  {fetch_module_completed, Cid, Result};
+perform_cache_action({pull_packages, Offset}, Origin) ->
+  Request = eyg@hub@client:pull_packages_request(
+    {pull_parameters, Offset, 1000, []}, Origin
+  ),
+  Result = case gleam@httpc:send_bits(Request) of
+    {ok, Response} ->
+      case eyg@hub@client:pull_packages_response(Response) of
+        {ok, {pull_response, Entries}} -> {ok, Entries};
+        {error, Reason} -> cache_error(Reason)
+      end;
+    {error, Reason} -> cache_error(Reason)
+  end,
+  {pull_packages_completed, Result}.
+
+verify_module(Cid, Tree) ->
+  Bytes = eyg@ir@dag_json:to_block(Tree),
+  Digest = crypto:hash(sha256, Bytes),
+  Actual = {cid, dag_json:code(), {multihash, sha256, Digest}},
+  case Actual =:= Cid of
+    true -> {ok, Tree};
+    false -> {error, <<"Hub returned module with the wrong CID">>}
+  end.
+
+cache_error(Reason) ->
+  {error, unicode:characters_to_binary(io_lib:format("~p", [Reason]))}.

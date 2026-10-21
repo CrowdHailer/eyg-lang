@@ -22,6 +22,37 @@ pub fn empty_cache_has_no_effects_test() {
   assert #(cache, []) == cache.flush(cache)
 }
 
+pub fn follow_content_before_fetching_test() {
+  let #(cid, _) = code(7)
+  assert Ok(cid) == cache.follow_reference(cache.empty(), ir.Content(cid))
+}
+
+pub fn follow_named_releases_before_fetching_test() {
+  let #(first, _) = code(1)
+  let #(second, _) = code(2)
+  let #(cache, _) =
+    cache.pull_packages_completed(
+      cache.empty(),
+      Ok([
+        archived_naming("std", 1, 1, first),
+        archived_naming("std", 2, 2, second),
+      ]),
+    )
+  let #(cache, _) = cache.pull_packages_completed(cache, Ok([]))
+
+  assert Ok(second) == cache.follow_reference(cache, ir.Package("std"))
+  assert Ok(first) == cache.follow_reference(cache, ir.Version("std", 1))
+  assert Ok(second)
+    == cache.follow_reference(cache, ir.Pinned(ir.Release("std", 2, second)))
+  assert Error(Nil)
+    == cache.follow_reference(cache, ir.Pinned(ir.Release("std", 2, first)))
+  assert Error(Nil) == cache.follow_reference(cache, ir.Package("missing"))
+  assert Error(Nil) == cache.follow_reference(cache, ir.Version("std", 3))
+  assert Error(Nil) == cache.follow_reference(cache, ir.Relative("./local.eyg"))
+  assert #(cache, []) == cache.flush(cache)
+  assert Error(cache.NotRequested) == cache.get_module(cache, second)
+}
+
 pub fn pull_idempotency_test() {
   let cache = cache.pull(cache.empty())
 
