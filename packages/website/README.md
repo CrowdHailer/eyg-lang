@@ -4,6 +4,7 @@
 ## Development
 
 ```sh
+npm ci     # Install the locked JavaScript dependencies, including Shiki
 gleam dev
 gleam test  # Run the tests
 ```
