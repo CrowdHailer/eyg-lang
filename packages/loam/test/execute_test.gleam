@@ -1,4 +1,5 @@
 import birdie
+import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
@@ -6,9 +7,12 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import gleam/dict
 import gleam/list
+import gleam/option.{Some}
 import loam/execute
+import loam/sandbox
 import loam/source
 import multiformats/cid/v1
+import ogre/origin
 
 /// Run a snippet of EYG source text and capture the formatted runtime error.
 fn snap_text(code: String) -> String {
@@ -179,4 +183,16 @@ pub fn release_with_unbound_cid_test() {
   let failing = at_release("missing_lib", 2, dag_json.vacant_cid)
   execute.render_error(reason, failing, state.Empty, "")
   |> birdie.snap(title: "runtime: release origin with unbound cid")
+}
+
+pub fn recorded_blocks_return_each_effect_in_order_test() {
+  let assert Ok(program) =
+    source.parse("let first = perform Now({}) perform Now({})", source.Inline)
+  let state = execute.State(origin.https("unused.invalid"), cache.ready())
+  let workflow = execute.block_recorded(program, [], state)
+  let sandbox = sandbox.sandbox() |> sandbox.with_now(7)
+  let assert #(sandbox.Returned(#(Ok(#(Some(v.Integer(7)), _)), _, records)), _) =
+    sandbox.run(workflow, sandbox)
+  assert records
+    == [#("Now", v.unit(), v.Integer(7)), #("Now", v.unit(), v.Integer(7))]
 }
