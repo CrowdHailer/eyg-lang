@@ -26,6 +26,7 @@ gleam_x = { path = "../gleam_x" }
 kryptos = ">= 1.3.0 and < 2.0.0"
 loam = { path = "../loam" }
 midas = ">= 3.0.0 and < 4.0.0"
+morph = { path = "../morph" }
 multiformats = ">= 4.0.0 and < 5.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 overlay = { path = "../overlay" }
