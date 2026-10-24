@@ -8,9 +8,7 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
-import morph/lustre/frame
-import morph/lustre/highlight
-import morph/lustre/render
+import morph/lustre as render
 import morph/projection as p
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
@@ -60,19 +58,7 @@ pub fn render_projection(
   proj: #(p.Focus, List(p.Break)),
   errors: List(#(List(Int), a)),
 ) -> element.Element(b) {
-  let #(focus, zoom) = proj
-  case focus, zoom {
-    p.Exp(e), [] ->
-      frame.Statements(render.statements(e, errors))
-      |> highlight.frame(highlight.focus())
-      |> frame.to_fat_line
-    _, _ -> {
-      // This is NOT reversed because zoom works from inside out
-      let frame = render.projection_frame(proj, render.Statements, errors)
-      render.push_render(frame, zoom, render.Statements, errors)
-      |> frame.to_fat_line
-    }
-  }
+  render.projection(proj, render.Statements, errors)
 }
 
 pub fn code_path_click_decoder(

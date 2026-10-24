@@ -4,9 +4,6 @@ import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/attribute as a
-import lustre/element.{text}
-import lustre/element/html as h
 import morph/editable as e
 import morph/lustre/frame
 import morph/lustre/highlight
@@ -42,9 +39,9 @@ pub const reference = "token symbol"
 pub fn do_let(rev, pattern, value) {
   let assignment =
     list.flatten([
-      [h.span([exp_key(rev)], [text("let ")])],
+      [frame.span([], exp_key(rev), "let ")],
       pattern,
-      [h.span([exp_key(rev)], [text(" = ")])],
+      [frame.span([], exp_key(rev), " = ")],
     ])
   frame.prepend_spans(assignment, value)
 }
@@ -55,7 +52,6 @@ pub fn assign(p, value, rev, errors) {
 
 pub fn assigns(a, rev, errors) {
   list.index_map(a, fn(a, i) { assign_pair(a, [i, ..rev], errors) })
-  |> frame.to_fat_lines()
 }
 
 // ignore tail vacant will need for spotless history
@@ -67,7 +63,6 @@ pub fn statements(code, errors) {
     e.Block(assigns, tail, _) -> block_content(assigns, tail, rev, errors)
     exp -> [expression(exp, rev, errors)]
   }
-  |> frame.to_fat_lines()
 }
 
 // is for unwrapped block
@@ -78,7 +73,6 @@ pub fn top(code, errors) {
     e.Block(assigns, tail, _) -> block_content(assigns, tail, rev, errors)
     exp -> [expression(exp, rev, errors)]
   }
-  |> frame.to_fat_lines()
 }
 
 fn block_content(assigns, tail, rev, errors) {
@@ -93,7 +87,7 @@ fn assign_pair(kv, rev, errors) {
 
 pub fn pattern(p, rev) {
   case p {
-    e.Bind(x) -> [h.span([exp_key(rev)], [text(x)])]
+    e.Bind(x) -> [frame.span([], exp_key(rev), x)]
     e.Destructure(fields) -> {
       list.index_map(fields, fn(f, i) { do_field(f, i, rev) })
       |> do_destructured(rev)
@@ -106,18 +100,18 @@ pub fn do_field(f, i, rev) {
   let j = i + 1
   let #(field, var) = f
   [
-    h.span([exp_key([i, ..rev])], [text(field)]),
-    h.span([], [text(": ")]),
-    h.span([exp_key([j, ..rev])], [text(var)]),
+    frame.span([], exp_key([i, ..rev]), field),
+    frame.span([], None, ": "),
+    frame.span([], exp_key([j, ..rev]), var),
   ]
 }
 
 pub fn do_destructured(fields, rev) {
   fields
-  |> list.intersperse([h.span([], [text(", ")])])
+  |> list.intersperse([frame.span([], None, ", ")])
   |> list.flatten
-  |> list.append([h.span([exp_key(rev)], [text("}")])])
-  |> list.append([h.span([exp_key(rev)], [text("{")])], _)
+  |> list.append([frame.span([], exp_key(rev), "}")])
+  |> list.append([frame.span([], exp_key(rev), "{")], _)
 }
 
 pub fn patterns(ps, rev) {
@@ -127,10 +121,10 @@ pub fn patterns(ps, rev) {
 
 pub fn join_patterns(ps) {
   ps
-  |> list.intersperse([text(", ")])
+  |> list.intersperse([frame.span([], None, ", ")])
   |> list.flatten
-  |> list.append([text(")")])
-  |> list.append([text("(")], _)
+  |> list.append([frame.span([], None, ")")])
+  |> list.append([frame.span([], None, "(")], _)
 }
 
 fn render_args(args, rev, errors) {
@@ -151,13 +145,12 @@ fn render_args_rev(last, rest) {
     Ok(spanss) ->
       list.fold(spanss, last, fn(tail, spans) {
         tail
-        |> frame.prepend_spans([text(", ")], _)
+        |> frame.prepend_spans([frame.span([], None, ", ")], _)
         |> frame.prepend_spans(spans, _)
       })
     Error(Nil) -> {
       list.reverse([last, ..rest])
-      |> list.map(frame.append_spans(_, [text(",")]))
-      |> frame.to_fat_lines
+      |> list.map(frame.append_spans(_, [frame.span([], None, ",")]))
       |> frame.Multiline([], _, [])
     }
   }
@@ -166,13 +159,16 @@ fn render_args_rev(last, rest) {
 pub fn render_call(f, args) {
   let args =
     args
-    |> frame.prepend_spans([text("(")], _)
-    |> frame.append_spans([text(")")])
+    |> frame.prepend_spans([frame.span([], None, "(")], _)
+    |> frame.append_spans([frame.span([], None, ")")])
 
   case f {
     frame.Inline(fspans) -> frame.prepend_spans(fspans, args)
     frame.Statements(inner) -> {
-      let f = frame.Multiline([text("{")], inner, [text("}")])
+      let f =
+        frame.Multiline([frame.span([], None, "{")], inner, [
+          frame.span([], None, "}"),
+        ])
       frame.join(f, args)
     }
     frame.Multiline(_, _, _) -> frame.join(f, args)
@@ -180,22 +176,23 @@ pub fn render_call(f, args) {
 }
 
 fn exp_key(rev) {
-  a.attribute("data-rev", string.join(list.map(rev, int.to_string), ","))
+  // a.attribute("data-rev", string.join(list.map(rev, int.to_string), ","))
+  Some(rev)
 }
 
 fn continue_space(rev) {
-  frame.Inline([h.span([a.class(collapsed), exp_key(rev)], [text("...")])])
+  frame.Inline([frame.span([collapsed], exp_key(rev), "...")])
 }
 
 /// errors are identified by their reverse path
 pub fn expression(exp, rev, errors) {
   let frame = case exp {
-    e.Block(_, _, False) -> frame.Inline([text("{ ... }")])
+    e.Block(_, _, False) -> frame.Inline([frame.span([], None, "{ ... }")])
     e.Block(assigns, tail, True) ->
       frame.Multiline(
-        [h.span([], [text("{")])],
-        frame.to_fat_lines(block_content(assigns, tail, rev, errors)),
-        [h.span([], [text("}")])],
+        [frame.span([], None, "{")],
+        block_content(assigns, tail, rev, errors),
+        [frame.span([], None, "}")],
       )
     e.Call(f, args) -> {
       let args = render_args(args, rev, errors)
@@ -217,26 +214,20 @@ pub fn expression(exp, rev, errors) {
         rev,
       )
     }
-    e.Vacant ->
-      frame.Inline([h.span([a.class(vacant), exp_key(rev)], [text("Vacant")])])
-    e.Variable(x) ->
-      frame.Inline([h.span([a.class(variable), exp_key(rev)], [text(x)])])
+    e.Vacant -> frame.Inline([frame.span([vacant], exp_key(rev), "Vacant")])
+    e.Variable(x) -> frame.Inline([frame.span([variable], exp_key(rev), x)])
     e.Integer(v) ->
       frame.Inline([
-        h.span([a.class(integer), exp_key(rev)], [text(int.to_string(v))]),
+        frame.span([integer], exp_key(rev), int.to_string(v)),
       ])
     e.Binary(bytes) ->
       frame.Inline([
-        h.span([a.class(binary), exp_key(rev)], [text(string.inspect(bytes))]),
+        frame.span([binary], exp_key(rev), string.inspect(bytes)),
       ])
 
     e.String(v) ->
       frame.Inline([
-        h.span([a.class(string), exp_key(rev)], [
-          text("\""),
-          text(v),
-          text("\""),
-        ]),
+        frame.span([string], exp_key(rev), string.concat(["\"", v, "\""])),
       ])
     e.List(items, tail) -> {
       render_list(
@@ -260,11 +251,10 @@ pub fn expression(exp, rev, errors) {
     e.Select(from, label) ->
       expression(from, [0, ..rev], errors)
       |> frame.append_spans([
-        text("."),
-        h.span([exp_key([1, ..rev])], [text(label)]),
+        frame.span([], None, "."),
+        frame.span([], exp_key([1, ..rev]), label),
       ])
-    e.Tag(label) ->
-      frame.Inline([h.span([a.class(tag), exp_key(rev)], [text(label)])])
+    e.Tag(label) -> frame.Inline([frame.span([tag], exp_key(rev), label)])
     e.Case(top, matches, otherwise) -> {
       let top = expression(top, [0, ..rev], errors)
       let matches =
@@ -281,65 +271,43 @@ pub fn expression(exp, rev, errors) {
     }
     e.Perform(label) ->
       frame.Inline([
-        h.span([a.class(keyword)], [text("perform ")]),
-        h.span([a.class(effect), exp_key(rev)], [text(label)]),
+        frame.span([keyword], None, "perform "),
+        frame.span([effect], exp_key(rev), label),
       ])
     e.Deep(label) ->
       frame.Inline([
-        h.span([a.class(keyword)], [text("handle ")]),
-        h.span([a.class(effect), exp_key(rev)], [text(label)]),
+        frame.span([keyword], None, "handle "),
+        frame.span([effect], exp_key(rev), label),
       ])
     e.Builtin(identifier) ->
-      frame.Inline([
-        h.span([a.class(builtin), exp_key(rev)], [text("!"), text(identifier)]),
-      ])
+      frame.Inline([frame.span([builtin], exp_key(rev), "!" <> identifier)])
     e.Reference(ir.Content(cid)) ->
-      frame.Inline([
-        h.span([a.class(reference), exp_key(rev)], [
-          text(v1.to_string(cid)),
-        ]),
-      ])
+      frame.Inline([frame.span([reference], exp_key(rev), v1.to_string(cid))])
     e.Reference(ir.Relative(location)) ->
       frame.Inline([
-        h.span(
-          [
-            a.class(reference),
-            exp_key(rev),
-          ],
-          [text(location)],
-        ),
+        frame.span([reference], exp_key(rev), location),
       ])
     e.Reference(ir.Package(package:)) ->
       frame.Inline([
-        h.span(
-          [
-            a.class(reference),
-            exp_key(rev),
-          ],
-          [text("@" <> package)],
-        ),
+        frame.span([reference], exp_key(rev), "@" <> package),
       ])
     e.Reference(ir.Version(package:, version:)) ->
       frame.Inline([
-        h.span(
-          [
-            a.class(reference),
-            exp_key(rev),
-            a.title("release = " <> int.to_string(version)),
-          ],
-          [text("@" <> package <> ":" <> int.to_string(version))],
-        ),
+        frame.span(
+          [reference],
+          exp_key(rev),
+          "@" <> package <> ":" <> int.to_string(version),
+        )
+        |> frame.with_title("release = " <> int.to_string(version)),
       ])
     e.Reference(ir.Pinned(ir.Release(package:, version:, module:))) ->
       frame.Inline([
-        h.span(
-          [
-            a.class(reference),
-            exp_key(rev),
-            a.title("module = " <> v1.to_string(module)),
-          ],
-          [text("@" <> package <> ":" <> int.to_string(version))],
-        ),
+        frame.span(
+          [reference],
+          exp_key(rev),
+          "@" <> package <> ":" <> int.to_string(version),
+        )
+        |> frame.with_title("module = " <> v1.to_string(module)),
       ])
   }
   case list.key_find(errors, rev), exp {
@@ -352,56 +320,103 @@ pub fn expression(exp, rev, errors) {
 pub fn render_function(args, body, rev) {
   body
   // TODO handle spaces on wrapping
-  |> frame.prepend_spans([h.span([exp_key(rev)], [text(" -> ")])], _)
+  |> frame.prepend_spans([frame.span([], exp_key(rev), " -> ")], _)
   |> frame.prepend_spans(args, _)
   // |> frame.append_spans([text(" }")])
 }
 
+fn collection_path(items, tail, rev) {
+  let items = case tail {
+    Some(tail) -> [tail, ..items]
+    None -> items
+  }
+  case frame.all_inline(items) {
+    Ok(_) -> exp_key(rev)
+    Error(_) -> None
+  }
+}
+
+// These tokens used to be bare text inside the collection's clickable span.
+fn collection_punctuation(spans: List(frame.Span), rev) {
+  list.map(spans, fn(span) {
+    case span.rev, span.text {
+      None, "(" | None, ")" | None, "." -> frame.Span(..span, rev: exp_key(rev))
+      _, _ -> span
+    }
+  })
+}
+
 pub fn render_list(items, tail, rev) {
+  let inline_path = collection_path(items, tail, rev)
   let tail = case tail {
-    Some(tail) -> [frame.prepend_spans([text("..")], tail)]
+    Some(tail) -> [
+      frame.prepend_spans([frame.span([], inline_path, "..")], tail),
+    ]
     None -> []
   }
   let items = list.append(items, tail)
-  let items = frame.delimit(items, ", ")
   case frame.all_inline(items) {
     Ok(spans) ->
-      frame.Inline([
-        h.span(
-          [exp_key(rev)],
-          list.flatten([[text("[")], list.flatten(spans), [text("]")]]),
-        ),
-      ])
+      frame.Inline(
+        // frame.span(
+        //   [],
+        //   exp_key(rev),
+        //   list.flatten([[text("[")], list.flatten(spans), [text("]")]]),
+        // ),
+        list.flatten([
+          [frame.span([], exp_key(rev), "[")],
+          list.intersperse(spans, [frame.span([], exp_key(rev), ", ")])
+            |> list.flatten
+            |> collection_punctuation(rev),
+          [frame.span([], exp_key(rev), "]")],
+        ]),
+      )
     Error(Nil) -> {
-      let inner = frame.to_fat_lines(items)
-      frame.Multiline([h.span([exp_key(rev)], [text("[")])], inner, [
-        h.span([exp_key(rev)], [text("]")]),
-      ])
+      frame.Multiline(
+        [frame.span([], exp_key(rev), "[")],
+        frame.delimit(items, ", "),
+        [
+          frame.span([], exp_key(rev), "]"),
+        ],
+      )
     }
   }
 }
 
 pub fn render_record(fields, original, rev) {
+  let inline_path = collection_path(fields, original, rev)
   let original = case original {
-    Some(original) -> [frame.prepend_spans([text("..")], original)]
+    Some(original) -> [
+      frame.prepend_spans([frame.span([], inline_path, "..")], original),
+    ]
     None -> []
   }
   let fields = list.append(fields, original)
-  let fields = frame.delimit(fields, ", ")
 
   case frame.all_inline(fields) {
     Ok(spans) ->
-      frame.Inline([
-        h.span(
-          [exp_key(rev)],
-          list.flatten([[text("{")], list.flatten(spans), [text("}")]]),
-        ),
-      ])
+      frame.Inline(
+        list.flatten([
+          [frame.span([], exp_key(rev), "{")],
+          list.intersperse(spans, [frame.span([], exp_key(rev), ", ")])
+            |> list.flatten
+            |> collection_punctuation(rev),
+          [frame.span([], exp_key(rev), "}")],
+        ]),
+        //   [
+        //   h.span(
+        //     [exp_key(rev)],
+        //   ),
+        // ]
+      )
     Error(Nil) -> {
-      let inner = frame.to_fat_lines(fields)
-      frame.Multiline([h.span([exp_key(rev)], [text("{")])], inner, [
-        h.span([exp_key(rev)], [text("}")]),
-      ])
+      frame.Multiline(
+        [frame.span([], exp_key(rev), "{")],
+        frame.delimit(fields, ", "),
+        [
+          frame.span([], exp_key(rev), "}"),
+        ],
+      )
     }
   }
 }
@@ -410,43 +425,36 @@ pub fn render_field(field, i, rev, errors) {
   let #(label, value) = field
   let value = expression(value, [i + 1, ..rev], errors)
   frame.prepend_spans(
-    [h.span([exp_key([i, ..rev])], [text(label), text(": ")])],
+    [frame.span([], exp_key([i, ..rev]), label <> ": ")],
     value,
   )
 }
 
 pub fn do_render_field(field, rev) {
   let #(label, value) = field
-  frame.prepend_spans(
-    [h.span([], [h.span([exp_key(rev)], [text(label)]), text(": ")])],
-    value,
-  )
+  frame.prepend_spans([frame.span([], exp_key(rev), label <> ": ")], value)
 }
 
 pub fn render_case(top, branches, otherwise, rev) {
   let spans = case top {
     frame.Inline(spans) -> spans
-    _ -> {
-      [text("some big case")]
-    }
+    _ -> [frame.span([], None, "some big case")]
   }
   list.append(branches, case otherwise {
     Some(otherwise) -> [otherwise]
     None -> []
   })
-  |> frame.to_fat_lines
-  |> frame.Multiline([text(" {")], _, [text("}")])
+  |> frame.Multiline([frame.span([], None, " {")], _, [
+    frame.span([], None, "}"),
+  ])
   |> frame.prepend_spans(spans, _)
-  |> frame.prepend_spans([h.span([exp_key(rev)], [text("match ")])], _)
+  |> frame.prepend_spans([frame.span([], exp_key(rev), "match ")], _)
 }
 
 pub fn render_branch(field, rev, errors) {
   let #(label, value) = field
   let value = expression(value, [0, ..rev], errors)
-  frame.prepend_spans(
-    [h.span([a.class(tag), exp_key(rev)], [text(label), text(" ")])],
-    value,
-  )
+  frame.prepend_spans([frame.span([tag], exp_key(rev), label <> " ")], value)
 }
 
 pub type RenderKind {
@@ -520,8 +528,8 @@ fn render_break(break, inner, rev, kind, errors) {
     t.SelectValue(label) ->
       inner
       |> frame.append_spans([
-        text("."),
-        h.span([exp_key([1, ..rev])], [text(label)]),
+        frame.span([], None, "."),
+        frame.span([], exp_key([1, ..rev]), label),
       ])
     t.OverwriteTail(fields) -> {
       let fields =
@@ -550,14 +558,13 @@ fn render_break(break, inner, rev, kind, errors) {
         _, _, _ ->
           list.append(assignments, [expression(then, [len, ..rev], errors)])
       }
-      |> frame.to_fat_lines()
       |> frame.Statements
     }
     t.BlockTail(assigns) -> {
       let lines =
         list.index_map(assigns, fn(a, i) { assign_pair(a, [i, ..rev], errors) })
         |> list.append([inner])
-      frame.Statements(frame.to_fat_lines(lines))
+      frame.Statements(lines)
     }
     t.CaseTop(matches, otherwise) -> {
       let matches =
@@ -586,10 +593,7 @@ fn render_break(break, inner, rev, kind, errors) {
       let branch =
         frame.prepend_spans(
           [
-            h.span([a.class(tag), exp_key([self, ..rev])], [
-              text(label),
-              text(" "),
-            ]),
+            frame.span([tag], exp_key([self, ..rev]), label <> " "),
           ],
           inner,
         )
@@ -687,23 +691,23 @@ pub fn projection_frame(zip, kind, errors) {
             highlight.focus(),
           )
         t.AssignPattern(p) -> {
-          let p = [
-            highlight.spans(pattern(p, [0, self, ..rev]), highlight.focus()),
-          ]
+          let p =
+            highlight.spans(pattern(p, [0, self, ..rev]), highlight.focus())
           do_let([self, ..rev], p, expression(value, [1, self, ..rev], errors))
         }
         t.AssignField(label, var, pre, post) -> {
           // to the pattern
           let rev = [0, self, ..rev]
           let self = list.length(pre) * 2
-          let spans = [
+          let spans =
             highlight.spans(
-              [h.span([exp_key([self, ..rev])], [text(label)])],
+              [frame.span([], exp_key([self, ..rev]), label)],
               highlight.focus(),
-            ),
-            h.span([], [text(": ")]),
-            h.span([exp_key([self + 1, ..rev])], [text(var)]),
-          ]
+            )
+            |> list.append([
+              frame.span([], None, ": "),
+              frame.span([], exp_key([self + 1, ..rev]), var),
+            ])
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
           let post =
@@ -719,14 +723,15 @@ pub fn projection_frame(zip, kind, errors) {
         t.AssignBind(label, var, pre, post) -> {
           let rev = [0, self, ..rev]
           let self = list.length(pre) * 2
-          let spans = [
-            h.span([exp_key([self, ..rev])], [text(label)]),
-            h.span([], [text(": ")]),
-            highlight.spans(
-              [h.span([exp_key(rev)], [text(var)])],
+          let spans =
+            [
+              frame.span([], exp_key([self, ..rev]), label),
+              frame.span([], None, ": "),
+            ]
+            |> list.append(highlight.spans(
+              [frame.span([], exp_key(rev), var)],
               highlight.focus(),
-            ),
-          ]
+            ))
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
           let post =
@@ -747,7 +752,6 @@ pub fn projection_frame(zip, kind, errors) {
           _, _, _ ->
             list.append(assignments, [expression(then, [len, ..rev], errors)])
         }
-        |> frame.to_fat_lines
         |> frame.Statements
       case list.key_find(errors, list.reverse(rev)) {
         Ok(_) -> highlight.frame(frame, highlight.error())
@@ -762,24 +766,24 @@ pub fn projection_frame(zip, kind, errors) {
       let post =
         list.index_map(post, fn(p, i) { pattern(p, [self + 1 + i, ..rev]) })
       let pattern = case detail {
-        t.AssignStatement(p) -> [
-          highlight.spans(pattern(p, [self, ..rev]), highlight.focus()),
-        ]
-        t.AssignPattern(p) -> [
-          highlight.spans(pattern(p, [self, ..rev]), highlight.focus()),
-        ]
+        t.AssignStatement(p) ->
+          highlight.spans(pattern(p, [self, ..rev]), highlight.focus())
+
+        t.AssignPattern(p) ->
+          highlight.spans(pattern(p, [self, ..rev]), highlight.focus())
 
         t.AssignField(label, var, pre, post) -> {
           let rev = [self, ..rev]
           let self = list.length(pre) * 2
-          let spans = [
+          let spans =
             highlight.spans(
-              [h.span([exp_key([self, ..rev])], [text(label)])],
+              [frame.span([], exp_key([self, ..rev]), label)],
               highlight.focus(),
-            ),
-            h.span([], [text(": ")]),
-            h.span([exp_key([self + 1, ..rev])], [text(var)]),
-          ]
+            )
+            |> list.append([
+              frame.span([], None, ": "),
+              frame.span([], exp_key([self + 1, ..rev]), var),
+            ])
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
           let post =
@@ -789,14 +793,15 @@ pub fn projection_frame(zip, kind, errors) {
         t.AssignBind(label, var, pre, post) -> {
           let rev = [self, ..rev]
           let self = list.length(pre) * 2
-          let spans = [
-            h.span([exp_key([self, ..rev])], [text(label)]),
-            h.span([], [text(": ")]),
-            highlight.spans(
-              [h.span([exp_key(rev)], [text(var)])],
+          let spans =
+            [
+              frame.span([], exp_key([self, ..rev]), label),
+              frame.span([], None, ": "),
+            ]
+            |> list.append(highlight.spans(
+              [frame.span([], exp_key(rev), var)],
               highlight.focus(),
-            ),
-          ]
+            ))
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
           let post =
@@ -812,8 +817,13 @@ pub fn projection_frame(zip, kind, errors) {
       let self = list.length(pre) * 2
       let len = self + { list.length(post) + 1 } * 2
       let value = expression(value, [self + 1, ..rev], errors)
-      let label = highlight.spans([text(label)], highlight.focus())
-      let field = frame.prepend_spans([label, text(": ")], value)
+      let label =
+        highlight.spans([frame.span([], None, label)], highlight.focus())
+      let field =
+        frame.prepend_spans(
+          [label, [frame.span([], exp_key(rev), ": ")]] |> list.flatten,
+          value,
+        )
 
       let pre =
         list.index_map(pre, fn(field, i) {
@@ -840,12 +850,13 @@ pub fn projection_frame(zip, kind, errors) {
       let from = expression(from, rev, errors)
       let frame =
         from
-        |> frame.append_spans([
-          highlight.spans(
-            [text("."), h.span([exp_key(rev)], [text(label)])],
-            highlight.focus(),
-          ),
-        ])
+        |> frame.append_spans(highlight.spans(
+          [
+            frame.span([], None, "."),
+            frame.span([], exp_key(rev), label),
+          ],
+          highlight.focus(),
+        ))
       case list.key_find(errors, list.reverse(rev)) {
         Ok(_) -> highlight.frame(frame, highlight.error())
         Error(_) -> frame
@@ -858,12 +869,10 @@ pub fn projection_frame(zip, kind, errors) {
       let branch =
         frame.prepend_spans(
           [
-            highlight.spans(
-              [h.span([a.class(tag)], [text(label)])],
-              highlight.focus(),
-            ),
-            text(" "),
-          ],
+            highlight.spans([frame.span([tag], None, label)], highlight.focus()),
+            [frame.span([], None, " ")],
+          ]
+            |> list.flatten,
           value,
         )
       let pre =

@@ -31,6 +31,11 @@ The tree could be enhanced with meta data or we need to map to a plain AST conce
 
 Render `Editable` code and `Projection`s into HTML using Lustre elements.
 
+`morph/lustre` provides `expression`, `statements`, and `top` for rendering code,
+and `projection` for rendering a selection with its surrounding context.
+Its `frame` function converts an existing frame tree into Lustre elements,
+preserving indentation, AST paths, focus, and errors.
+
 The projections are built into a set of nested frames,
 indicating in the printed output is single line or multiline.
 This abstraction might match the formatting libraries that already exist and is so using one of them might be a good idea.
@@ -58,4 +63,3 @@ project onto a surface
 target/situation surroundsing
 environs/locallity,perifery
 district/situation
-
