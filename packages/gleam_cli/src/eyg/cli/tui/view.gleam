@@ -7,13 +7,21 @@ import etui/widgets/clear
 import etui/widgets/input
 import etui/widgets/paragraph
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug
 import eyg/cli/tui/state
+import gleam/int
 import gleam/list
+import gleam/string
 import morph/lustre/frame
 import morph/lustre/render
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let errors = infer.all_errors(state.buffer.analysis)
+  let assert [code_area, error_area] =
+    geometry.split_v(screen, [
+      geometry.Fill,
+      geometry.Length(list.length(errors)),
+    ])
   let active = case state.mode {
     state.Navigating -> True
     state.Manipulating(..) -> False
@@ -22,10 +30,22 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   let lines =
     render.projection(state.buffer.projection, render.Statements, errors)
     |> code(active)
+  let line_count = list.length(lines)
+  let visible_height = int.min(line_count, code_area.size.height)
+  let content_area =
+    geometry.rect_new(
+      code_area.position.x,
+      geometry.bottom(code_area) - visible_height,
+      code_area.size.width,
+      visible_height,
+    )
+  // Like a shell, keep the end of the program visible as it grows upward.
+  let lines = list.drop(lines, int.max(0, line_count - visible_height))
 
   let buf =
     buffer.buffer_new(screen)
-    |> paragraph.render_styled(screen, lines)
+    |> paragraph.render_styled(content_area, lines)
+    |> paragraph.render_styled(error_area, error_lines(errors))
 
   case state.mode {
     state.Navigating -> buf
@@ -39,7 +59,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
         block.block_new()
         |> block.with_border(block.Rounded)
         |> block.with_title(title, block.Top)
-      let area = geometry.centered_rect(50, 3, screen)
+      let area = geometry.centered_rect(50, 3, code_area)
       let inner = block.inner(area, border)
       let buf = buf |> clear.render(area) |> block.render(area, border)
       case inner.size.width > 0 && inner.size.height > 0 {
@@ -48,6 +68,21 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       }
     }
   }
+}
+
+fn error_lines(errors) -> List(span.Line) {
+  let error_style = style.default_style() |> style.with_fg(style.Indexed(1))
+  list.map(errors, fn(error) {
+    let #(_path, reason) = error
+    // Type formatting can introduce line breaks; each diagnostic gets one row.
+    let message =
+      debug.reason(reason)
+      |> string.replace("\r\n", " ")
+      |> string.replace("\n", " ")
+      |> string.replace("\r", " ")
+      |> string.replace("\t", " ")
+    span.line_new([span.span_styled("error: " <> message, error_style)])
+  })
 }
 
 fn code(value: frame.Frame, active: Bool) -> List(span.Line) {
