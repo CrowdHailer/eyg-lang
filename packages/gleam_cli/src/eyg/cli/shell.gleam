@@ -20,7 +20,14 @@ import loam/system
 
 pub fn execute(input, config: config.Config) {
   let state = execute.State(config.client.origin, cache.empty())
-  use initial <- system.then(case input {
+  use initial <- system.then(read_input(input, state))
+  use #(scope, state) <- system.try(initial)
+  use Nil <- system.then(system.stdout("type /help for shell commands"))
+  loop("", scope, [], state)
+}
+
+pub fn read_input(input, state) {
+  case input {
     Some(input) -> {
       use cwd <- system.then(system.cwd())
       use cwd <- system.try(cwd)
@@ -40,10 +47,7 @@ pub fn execute(input, config: config.Config) {
       }
     }
     None -> system.Done(Ok(#([], state)))
-  })
-  use #(scope, state) <- system.try(initial)
-  use Nil <- system.then(system.stdout("type /help for shell commands"))
-  loop("", scope, [], state)
+  }
 }
 
 // `defs` is the assignments entered so far, kept so `/type` can type

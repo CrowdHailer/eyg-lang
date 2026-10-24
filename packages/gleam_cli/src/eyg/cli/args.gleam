@@ -3,6 +3,7 @@ import loam/source
 
 pub type Args {
   Shell(Option(source.Input))
+  Tui(Option(source.Input))
   Run(input: source.Input)
   Script(input: source.Input, arguments: List(String))
   Eval(input: source.Input)
@@ -30,6 +31,13 @@ pub fn parse(args) {
     ["shell", "#" <> _ as code] | ["shell", "@" <> _ as code] ->
       Shell(Some(source.Code(code)))
     ["shell", file] -> Shell(Some(source.File(file)))
+    ["tui"] -> Tui(None)
+    ["tui", "-c", code] | ["tui", "--code", code] ->
+      Tui(Some(source.Code(code)))
+    ["tui", "-"] | ["tui", "--stdin"] -> Tui(Some(source.Stdin))
+    ["tui", "#" <> _ as code] | ["tui", "@" <> _ as code] ->
+      Tui(Some(source.Code(code)))
+    ["tui", file] -> Tui(Some(source.File(file)))
     ["run", "-c", code] | ["run", "--code", code] -> Run(source.Code(code))
     ["run", "-"] | ["run", "--stdin"] -> Run(source.Stdin)
     ["run", "#" <> _ as code] | ["run", "@" <> _ as code] ->
@@ -102,10 +110,15 @@ pub const help_text =
 usage: eyg [<command> [<args>]]
 commands:
   (no args)              start the shell
-  shell <file>           Start a shell with the file as shell config
-  shell #<mod>, @<pkg>   Start a shell with a module or package as shell config
-  shell -, --stdin       Start a shell with stdin as shell config
-  shell -c, --code <code>Start a shell with inline shell config
+  shell <file>           start a shell with the file as shell config
+  shell #<mod>, @<pkg>   start a shell with a module or package as shell config
+  shell -, --stdin       start a shell with stdin as shell config
+  shell -c, --code <code>start a shell with inline shell config
+  tui                    start the tui
+  tui <file>             start a tui with the file as shell config
+  tui #<mod>, @<pkg>     start a tui with a module or package as shell config
+  tui -, --stdin         start a tui with stdin as shell config
+  tui -c, --code <code>  start a tui with inline shell config
   script <file>          run the script from the provided file
   script -, --stdin      run a script read from stdin
   script -c, --code <code>
