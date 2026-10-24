@@ -70,13 +70,46 @@ fn line(spans: List(frame.Span)) -> span.Line {
   let red = style.Rgb(255, 0, 0)
 
   list.map(spans, fn(span) {
+    let base = syntax_style(span.token_type)
     let style = case span.error {
       True ->
-        style.underline_style()
+        base
+        |> style.add_modifier(style.underline())
         |> style.with_underline_color(red)
-      False -> style.default_style()
+      False -> base
     }
     span.span_styled(span.text, style)
   })
   |> span.line_new
+}
+
+fn syntax_style(token_type: frame.TokenType) -> style.Style {
+  case token_type {
+    frame.Plain | frame.Punctuation | frame.ClassName -> style.default_style()
+
+    frame.Comment ->
+      style.default_style()
+      |> style.add_modifier(style.dim())
+
+    frame.Number | frame.Symbol ->
+      style.default_style()
+      |> style.with_fg(style.Indexed(5))
+
+    frame.String | frame.Char | frame.Builtin ->
+      style.default_style()
+      |> style.with_fg(style.Indexed(2))
+
+    frame.Keyword ->
+      style.default_style()
+      |> style.with_fg(style.Indexed(6))
+
+    frame.Variable ->
+      style.default_style()
+      |> style.with_fg(style.Indexed(3))
+
+    frame.Important ->
+      style.default_style()
+      |> style.with_fg(style.Indexed(3))
+      |> style.add_modifier(style.bold())
+  }
 }
