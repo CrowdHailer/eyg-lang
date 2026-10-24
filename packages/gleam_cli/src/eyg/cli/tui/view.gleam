@@ -11,15 +11,17 @@ import eyg/cli/tui/state
 import gleam/list
 import morph/lustre/frame
 import morph/lustre/render
-import morph/projection
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let errors = infer.all_errors(state.buffer.analysis)
+  let active = case state.mode {
+    state.Navigating -> True
+    state.Manipulating(..) -> False
+  }
 
   let lines =
-    render.top(projection.rebuild(state.buffer.projection), errors)
-    |> frame.Statements
-    |> code
+    render.projection(state.buffer.projection, render.Statements, errors)
+    |> code(active)
 
   let buf =
     buffer.buffer_new(screen)
@@ -48,25 +50,36 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   }
 }
 
-fn code(frame: frame.Frame) -> List(span.Line) {
-  case frame {
-    frame.Inline(spans) -> list.wrap(line(spans))
+fn code(value: frame.Frame, active: Bool) -> List(span.Line) {
+  case value {
+    frame.Inline(spans) -> list.wrap(line(spans, active))
+    frame.Multiline([], inner, []) | frame.Statements(inner) ->
+      list.flat_map(inner, code(_, active))
     frame.Multiline(pre, inner, post) -> {
+      // Indent the whole selected structure, but not a selected child alone.
+      // Its boundary lines may also contain unselected context or delimiters.
+      let focused =
+        list.any(pre, fn(s) { s.focus })
+        && list.any(post, fn(s) { s.focus })
+        && list.all(inner, frame.fully_focused)
+      let indent =
+        span.span_styled(
+          "  ",
+          focus_style(style.default_style(), focused, active),
+        )
       list.flatten([
-        [line(pre)],
-        list.map(inner, code)
-          |> list.flatten
+        [line(pre, active)],
+        list.flat_map(inner, code(_, active))
           |> list.map(fn(line) {
-            span.Line(..line, spans: [span.span_plain("  "), ..line.spans])
+            span.Line(..line, spans: [indent, ..line.spans])
           }),
-        [line(post)],
+        [line(post, active)],
       ])
     }
-    frame.Statements(frames) -> list.map(frames, code) |> list.flatten
   }
 }
 
-fn line(spans: List(frame.Span)) -> span.Line {
+fn line(spans: List(frame.Span), active: Bool) -> span.Line {
   let red = style.Rgb(255, 0, 0)
 
   list.map(spans, fn(span) {
@@ -78,9 +91,25 @@ fn line(spans: List(frame.Span)) -> span.Line {
         |> style.with_underline_color(red)
       False -> base
     }
+    let style = focus_style(style, span.focus, active)
     span.span_styled(span.text, style)
   })
   |> span.line_new
+}
+
+fn focus_style(base: style.Style, focused: Bool, active: Bool) -> style.Style {
+  case focused, active {
+    False, _ -> base
+    True, True ->
+      base
+      |> style.with_fg(style.Default)
+      |> style.with_bg(style.Default)
+      |> style.add_modifier(style.reverse())
+    True, False ->
+      base
+      |> style.add_modifier(style.dim())
+      |> style.add_modifier(style.underline())
+  }
 }
 
 fn syntax_style(token_type: frame.TokenType) -> style.Style {

@@ -47,6 +47,19 @@ pub type Frame {
   Statements(List(Frame))
 }
 
+/// Whether all spans in a frame belong to the structural selection.
+/// Renderers can use this to extend selection styling through layout spacing.
+pub fn fully_focused(value: Frame) -> Bool {
+  case value {
+    Inline(spans) -> list.all(spans, fn(s) { s.focus })
+    Statements(inner) -> list.all(inner, fully_focused)
+    Multiline(pre, inner, post) ->
+      list.all(pre, fn(s) { s.focus })
+      && list.all(inner, fully_focused)
+      && list.all(post, fn(s) { s.focus })
+  }
+}
+
 fn is_inline(m) {
   case m {
     Inline(spans) -> Ok(spans)

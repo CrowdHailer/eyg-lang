@@ -9,6 +9,7 @@ import lustre/element
 import lustre/element/html as h
 import lustre/event
 import morph/lustre as render
+import morph/lustre/render as frame_render
 import morph/projection as p
 import plinth/browser/element as pelement
 import plinth/browser/event as pevent
@@ -58,7 +59,7 @@ pub fn render_projection(
   proj: #(p.Focus, List(p.Break)),
   errors: List(#(List(Int), a)),
 ) -> element.Element(b) {
-  render.projection(proj, render.Statements, errors)
+  render.projection(proj, frame_render.Statements, errors)
 }
 
 pub fn code_path_click_decoder(

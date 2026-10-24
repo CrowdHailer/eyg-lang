@@ -620,15 +620,23 @@ pub fn push_render(frame, zoom, is_expression, errors) {
   }
 }
 
-// Not used any more
-// pub fn projection(zip, kind) -> element.Element(a) {
-//   let #(_focus, zoom) = zip
-//   // This is NOT reversed because zoom works from inside out
-//   let frame = projection_frame(zip, kind)
-//   push_render(frame, zoom, kind)
-//   |> frame.to_fat_line
-//   // TO fat line is very similar to top function
-// }
+/// Render the selected structure and its surrounding context as a frame.
+pub fn projection(proj: t.Projection, kind: RenderKind, errors) -> frame.Frame {
+  let #(focus, zoom) = proj
+  case focus, zoom {
+    t.Exp(exp), [] -> {
+      let rendered = case kind {
+        Statements | ReadonlyStatements ->
+          frame.Statements(statements(exp, errors))
+        Expression -> expression(exp, [], errors)
+      }
+      highlight.frame(rendered, highlight.focus())
+    }
+    _, _ ->
+      projection_frame(proj, kind, errors)
+      |> push_render(zoom, kind, errors)
+  }
+}
 
 pub fn projection_frame(zip, kind, errors) {
   let #(focus, zoom) = zip

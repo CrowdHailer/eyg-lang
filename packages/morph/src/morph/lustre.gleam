@@ -6,15 +6,8 @@ import lustre/attribute as a
 import lustre/element.{type Element}
 import lustre/element/html as h
 import morph/lustre/frame as f
-import morph/lustre/highlight
 import morph/lustre/render
 import morph/projection as p
-
-pub type RenderKind {
-  Statements
-  Expression
-  ReadonlyStatements
-}
 
 /// Render an expression with its syntax classes, AST paths, and errors.
 pub fn expression(exp, rev, errors) -> Element(msg) {
@@ -37,30 +30,11 @@ pub fn top(code, errors) -> List(Element(msg)) {
 /// Render the focus and its surrounding context, then produce Lustre elements.
 pub fn projection(
   proj: p.Projection,
-  kind: RenderKind,
+  kind: render.RenderKind,
   errors,
 ) -> Element(msg) {
-  let #(focus, zoom) = proj
-  let rendered = case focus, zoom {
-    p.Exp(exp), [] -> {
-      let rendered = case kind {
-        Statements | ReadonlyStatements ->
-          f.Statements(render.statements(exp, errors))
-        Expression -> render.expression(exp, [], errors)
-      }
-      highlight.frame(rendered, highlight.focus())
-    }
-    _, _ -> {
-      let kind = case kind {
-        Statements -> render.Statements
-        Expression -> render.Expression
-        ReadonlyStatements -> render.ReadonlyStatements
-      }
-      render.projection_frame(proj, kind, errors)
-      |> render.push_render(zoom, kind, errors)
-    }
-  }
-  frame(rendered)
+  render.projection(proj, kind, errors)
+  |> frame
 }
 
 /// Interpret the chosen layout without flattening its indentation boundaries.
@@ -97,22 +71,11 @@ fn body(children, inherited_focus, selected_boundaries) {
     !inherited_focus
     && selected_boundaries
     && children != []
-    && list.all(children, fully_focused)
+    && list.all(children, f.fully_focused)
   let content = list.map(children, render_frame(_, inherited_focus || focused))
   case focused {
     True -> [h.div([a.styles(focus_styles())], content)]
     False -> content
-  }
-}
-
-fn fully_focused(value) {
-  case value {
-    f.Inline(spans) -> list.all(spans, fn(s) { s.focus })
-    f.Statements(inner) -> list.all(inner, fully_focused)
-    f.Multiline(pre, inner, post) ->
-      list.all(pre, fn(s) { s.focus })
-      && list.all(inner, fully_focused)
-      && list.all(post, fn(s) { s.focus })
   }
 }
 
