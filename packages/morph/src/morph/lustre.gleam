@@ -157,9 +157,19 @@ fn focus_styles() {
 }
 
 fn span(value: f.Span, inherited_focus: Bool) -> Element(msg) {
-  let classes = case value.class {
-    [] -> []
-    classes -> [a.class(string.join(classes, " "))]
+  let classes = case value.token_type {
+    f.Plain -> []
+    f.Comment -> [a.class("token comment")]
+    f.Punctuation -> [a.class("token punctuation")]
+    f.Important -> [a.class("token important")]
+    f.Char -> [a.class("token char")]
+    f.Number -> [a.class("token number")]
+    f.String -> [a.class("token string")]
+    f.ClassName -> [a.class("token class-name")]
+    f.Keyword -> [a.class("token keyword")]
+    f.Builtin -> [a.class("token builtin")]
+    f.Symbol -> [a.class("token symbol")]
+    f.Variable -> [a.class("token variable")]
   }
   let path = case value.rev {
     None -> []

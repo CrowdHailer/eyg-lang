@@ -1,9 +1,27 @@
 import gleam/list
 import gleam/option.{type Option, None}
 
+/// Syntax categories named after Prism token types.
+/// `Plain` represents text without a syntax category.
+/// https://prismjs.com/tokens.html
+pub type TokenType {
+  Plain
+  Comment
+  Punctuation
+  Important
+  Char
+  Number
+  String
+  ClassName
+  Keyword
+  Builtin
+  Symbol
+  Variable
+}
+
 pub type Span {
   Span(
-    class: List(String),
+    token_type: TokenType,
     rev: Option(List(Int)),
     text: String,
     focus: Bool,
@@ -12,8 +30,8 @@ pub type Span {
   )
 }
 
-pub fn span(class, rev, text) {
-  Span(class:, rev:, text:, focus: False, error: False, title: None)
+pub fn span(token_type: TokenType, rev, text) {
+  Span(token_type:, rev:, text:, focus: False, error: False, title: None)
 }
 
 pub fn with_title(span: Span, title: String) {
@@ -55,7 +73,7 @@ pub fn prepend_spans(new, m) {
     Statements(inner) ->
       prepend_spans(
         new,
-        Multiline([span([], None, "{")], inner, [span([], None, "}")]),
+        Multiline([span(Plain, None, "{")], inner, [span(Plain, None, "}")]),
       )
   }
 }
@@ -66,7 +84,7 @@ pub fn append_spans(m, new) {
     Multiline(pre, inner, post) -> Multiline(pre, inner, list.append(post, new))
     Statements(inner) ->
       append_spans(
-        Multiline([span([], None, "{")], inner, [span([], None, "}")]),
+        Multiline([span(Plain, None, "{")], inner, [span(Plain, None, "}")]),
         new,
       )
   }
@@ -89,7 +107,7 @@ pub fn delimit(frames, delimiter) {
   case list.reverse(frames) {
     [] -> []
     [last, ..rest] -> {
-      let rest = list.map(rest, append_spans(_, [span([], None, delimiter)]))
+      let rest = list.map(rest, append_spans(_, [span(Plain, None, delimiter)]))
       list.reverse([last, ..rest])
     }
   }
