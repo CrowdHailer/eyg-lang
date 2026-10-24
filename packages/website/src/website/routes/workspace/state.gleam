@@ -16,6 +16,7 @@ import morph/analysis
 import morph/buffer.{type Buffer}
 import morph/editable as e
 import morph/input
+import morph/manipulation as m
 import morph/picker
 import morph/projection as p
 import multiformats/cid/v1
@@ -31,7 +32,6 @@ import touch_grass/harness/browser as harness
 import touch_grass/interface
 import website/command
 import website/config
-import website/manipulation as m
 
 pub type State {
   State(
@@ -379,18 +379,26 @@ fn user_pressed_command_key(state, key) {
     ])
     "i" -> edit(state, m.insert())
     "o" -> edit(state, m.overwrite())
-    "p" -> edit(state, m.perform())
+    "p" -> edit(state, m.perform(interface.types(harness.effects())))
     "a" -> navigate(state, "increase selection", buffer.increase)
     "s" -> edit(state, m.insert_string())
     "d" -> edit(state, m.delete())
     "f" -> edit(state, m.insert_function())
     "g" -> edit(state, m.select_field())
-    "h" -> edit(state, m.insert_handle())
+    "h" -> edit(state, m.insert_handle(interface.types(harness.effects())))
     "j" -> edit(state, m.insert_builtin())
     "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> edit(state, m.create_empty_list())
     "l" -> edit(state, m.create_list())
-    "@" -> edit(state, m.choose_release(state.cache))
+    "@" ->
+      edit(
+        state,
+        m.choose_release(
+          list.map(dict.to_list(state.cache.packages), fn(entry) {
+            #(entry.0, entry.1.version)
+          }),
+        ),
+      )
     "#" -> edit(state, m.insert_reference())
     "Z" -> edit(state, m.redo())
     "z" -> edit(state, m.undo())

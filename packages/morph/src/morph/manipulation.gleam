@@ -1,19 +1,19 @@
-//// This module doesn't keep a state or decide the key bindings or define effects
-//// Nested objects that look like mini apps has been a complexity multiplier
-//// It does not track running state or type checking context
-//// This module contains just functions from buffer transformations to a editable states
-//// The editable states are consistent over all eyg.run pages
-//// This shouldn't move to morph because it makes descisions on representing to the user
-//// i.e. all choose labels are represented the same way
-//// This doesn't handle Async like copy paste
-//// separate command mapping
-//// This module also includes the logic from inference types to a rendered version of that using debug.mono
-//// This builds on run_context and harness because it is the top understanding of these concept of manipulating in the browser
+//// Shared editing operations for the web and terminal workspace.
+//// Effects and published package index are provided by the caller.
+//// Async IO and key bindings remain with the frontend.
+//// State management also remains with the top level application.
+//// 
+//// Optional improvements
+//// 
+//// - Instead of returning a `Rebuild` function a new buffer with no analysis could be returned
+////   This would not require re analysis on every keypress.
+////   However if fast enough analysis on every keypress is fine.
+//// - This module/package could depend on the sans-io implementation of a cache
+////   That approach could allow better shared search functionality when the amount of packages grows.
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
-import eyg/hub/cache
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
@@ -24,8 +24,6 @@ import gleam/string
 import morph/buffer.{type Buffer}
 import morph/picker
 import multiformats/cid/v1
-import touch_grass/harness/browser as harness
-import touch_grass/interface
 
 /// Represents an available manipulation that can be performed on the AST.
 /// `name` is the human-readable label (e.g. "Delete", "Insert Variable").
@@ -271,28 +269,28 @@ fn do_assign_before(buffer) {
 
 // EFFECTS perform, handle
 
-pub fn perform() {
-  Operation(name: "perform", apply: do_perform)
+pub fn perform(effects) {
+  Operation(name: "perform", apply: do_perform(_, effects))
 }
 
-fn do_perform(buffer) {
+fn do_perform(buffer, effects) {
   use rebuild <- result.map(buffer.perform(buffer))
-  let hints = effect_hints()
+  let hints = effect_hints(effects)
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
-pub fn insert_handle() {
-  Operation(name: "insert handle", apply: do_insert_handle)
+pub fn insert_handle(effects) {
+  Operation(name: "insert handle", apply: do_insert_handle(_, effects))
 }
 
-fn do_insert_handle(buffer) {
+fn do_insert_handle(buffer, effects) {
   use rebuild <- result.map(buffer.insert_handle(buffer))
-  let hints = effect_hints()
+  let hints = effect_hints(effects)
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
-fn effect_hints() {
-  list.map(interface.types(harness.effects()), fn(effect) {
+fn effect_hints(effects) {
+  list.map(effects, fn(effect) {
     let #(key, types) = effect
     #(key, render_effect(types))
   })
@@ -357,16 +355,16 @@ fn do_choose_module(buffer, modules: dict.Dict(_, buffer.Buffer)) {
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
-pub fn choose_release(cache) {
-  Operation(name: "choose release", apply: do_choose_release(_, cache))
+pub fn choose_release(packages: List(#(String, Int))) {
+  Operation(name: "choose release", apply: do_choose_release(_, packages))
 }
 
-fn do_choose_release(buffer, cache: cache.Cache(m)) {
+fn do_choose_release(buffer, packages) {
   use rebuild <- result.map(buffer.insert_release(buffer))
 
   let hints =
-    list.map(dict.to_list(cache.packages), fn(release) {
-      let #(package, cache.Entry(version:, ..)) = release
+    list.map(packages, fn(release) {
+      let #(package, version) = release
       #(package, int.to_string(version))
     })
 

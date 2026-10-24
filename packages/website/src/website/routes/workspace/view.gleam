@@ -13,10 +13,10 @@ import lustre/element/html as h
 import lustre/event
 import morph/buffer
 import morph/editable
+import morph/manipulation
 import morph/projection
 import website/command
 import website/components/output
-import website/manipulation
 import website/routes/editor/view as editor_view
 import website/routes/workspace/state
 import website/ui

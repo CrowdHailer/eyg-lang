@@ -14,6 +14,7 @@ import gleam/result
 import morph/buffer
 import morph/editable as e
 import morph/input
+import morph/manipulation as m
 import morph/navigation
 import morph/picker
 import multiformats/cid/v1
@@ -26,7 +27,6 @@ import touch_grass/harness/browser as harness
 import touch_grass/interface
 import website/command
 import website/config
-import website/manipulation as m
 import website/routes/documentation/examples
 
 pub type State {
@@ -444,18 +444,26 @@ fn user_pressed_key(state, key) {
     // ])
     _, "i" -> edit(state, m.insert())
     _, "o" -> edit(state, m.overwrite())
-    _, "p" -> edit(state, m.perform())
+    _, "p" -> edit(state, m.perform(interface.types(harness.effects())))
     _, "a" -> navigate(state, "increase selection", buffer.increase)
     _, "s" -> edit(state, m.insert_string())
     _, "d" -> edit(state, m.delete())
     _, "f" -> edit(state, m.insert_function())
     _, "g" -> edit(state, m.select_field())
-    _, "h" -> edit(state, m.insert_handle())
+    _, "h" -> edit(state, m.insert_handle(interface.types(harness.effects())))
     _, "j" -> edit(state, m.insert_builtin())
     _, "k" -> navigate(state, "toggle", buffer.toggle_open)
     _, "L" -> edit(state, m.create_empty_list())
     _, "l" -> edit(state, m.create_list())
-    _, "@" -> edit(state, m.choose_release(state.cache))
+    _, "@" ->
+      edit(
+        state,
+        m.choose_release(
+          list.map(dict.to_list(state.cache.packages), fn(entry) {
+            #(entry.0, entry.1.version)
+          }),
+        ),
+      )
     _, "#" -> edit(state, m.insert_reference())
     _, "Z" -> edit(state, m.redo())
     _, "z" -> edit(state, m.undo())

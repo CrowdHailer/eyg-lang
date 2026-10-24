@@ -10,11 +10,11 @@ import gleam/http/response
 import gleam/option.{None}
 import midas/continuation
 import morph/editable
+import morph/manipulation
 import morph/picker
 import multiformats/cid/v1
 import ogre/origin
 import pal/system
-import website/manipulation
 import website/routes/documentation/state.{State}
 
 pub fn analyse_web_effect_test() {
