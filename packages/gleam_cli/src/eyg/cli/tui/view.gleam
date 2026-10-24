@@ -1,22 +1,25 @@
 import etui/buffer
 import etui/geometry
 import etui/span
+import etui/style
 import etui/widgets/block
 import etui/widgets/clear
 import etui/widgets/input
 import etui/widgets/paragraph
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/cli/tui/state
 import gleam/list
-import gleam/string
 import morph/lustre/frame
 import morph/lustre/render
 import morph/projection
 
 pub fn render(state: state.State, screen: geometry.Rect) {
+  let errors = infer.all_errors(state.buffer.analysis)
+
   let lines =
-    render.expression(projection.rebuild(state.buffer.projection), [], [])
+    render.top(projection.rebuild(state.buffer.projection), errors)
+    |> frame.Statements
     |> code
-    |> list.map(span.line_plain)
 
   let buf =
     buffer.buffer_new(screen)
@@ -45,21 +48,35 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   }
 }
 
-fn code(frame: frame.Frame) -> List(String) {
+fn code(frame: frame.Frame) -> List(span.Line) {
   case frame {
-    frame.Inline(spans) ->
-      list.map(spans, fn(span) { span.text }) |> string.concat() |> list.wrap
+    frame.Inline(spans) -> list.wrap(line(spans))
     frame.Multiline(pre, inner, post) -> {
-      let pre = list.map(pre, fn(span) { span.text }) |> string.concat()
-      let post = list.map(post, fn(span) { span.text }) |> string.concat()
       list.flatten([
-        [pre],
+        [line(pre)],
         list.map(inner, code)
           |> list.flatten
-          |> list.map(string.append("  ", _)),
-        [post],
+          |> list.map(fn(line) {
+            span.Line(..line, spans: [span.span_plain("  "), ..line.spans])
+          }),
+        [line(post)],
       ])
     }
     frame.Statements(frames) -> list.map(frames, code) |> list.flatten
   }
+}
+
+fn line(spans: List(frame.Span)) -> span.Line {
+  let red = style.Rgb(255, 0, 0)
+
+  list.map(spans, fn(span) {
+    let style = case span.error {
+      True ->
+        style.underline_style()
+        |> style.with_underline_color(red)
+      False -> style.default_style()
+    }
+    span.span_styled(span.text, style)
+  })
+  |> span.line_new
 }
