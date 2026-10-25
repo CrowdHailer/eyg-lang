@@ -18,7 +18,13 @@ import touch_grass/interface
 
 /// Note the buffer is a morph buffer not an etui buffer
 pub type State {
-  State(quit: Bool, mode: Mode, buffer: Buffer, execute_state: execute.State)
+  State(
+    quit: Bool,
+    mode: Mode,
+    buffer: Buffer,
+    execute_state: execute.State,
+    message: String,
+  )
 }
 
 pub type Mode {
@@ -53,13 +59,13 @@ pub fn input_widget(kind: InputKind) -> input.InputWidget {
   }
 }
 
-// Failure is common with web
+// Failure is common with web (maybe move to morph)
 pub type Failure {
   NoKeyBinding(key: String)
   ActionFailed(action: String)
 }
 
-pub fn fail_message(reason) {
+fn fail_message(reason) {
   case reason {
     NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
     ActionFailed(action) ->
@@ -74,7 +80,8 @@ pub fn init(
   // I think cache types should turn into a lookup
   let buffer =
     buffer.empty(repl_context(scope), cache.types(execute_state.cache))
-  State(quit: False, mode: Navigating, buffer:, execute_state:)
+  let message = "Enter runs the program"
+  State(quit: False, mode: Navigating, buffer:, execute_state:, message:)
 }
 
 pub fn repl_context(
@@ -233,14 +240,14 @@ fn command_key_press(state: State, key: String) -> State {
     ">" -> edit(state, m.insert_after())
     // "Enter" -> confirm(state)
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
-    _ -> state
+    _ -> fail(state, fail_message(NoKeyBinding(key)))
   }
 }
 
 fn navigate(state: State, name, func) {
   case func(state.buffer) {
     Ok(buffer) -> State(..state, buffer:)
-    Error(_) -> fail(state, name)
+    Error(_) -> fail(state, fail_message(ActionFailed(name)))
   }
 }
 
@@ -274,12 +281,12 @@ fn edit(state: State, operation: m.Operation) -> State {
         ),
       )
     // Reference pickers need parsing before their rebuild callbacks can run.
-    Ok(m.UserInput(_)) -> fail(state, name)
+    Ok(m.UserInput(_)) -> fail(state, fail_message(ActionFailed(name)))
 
-    Error(Nil) -> fail(state, name)
+    Error(Nil) -> fail(state, fail_message(ActionFailed(name)))
   }
 }
 
-fn fail(state, _action) {
-  state
+fn fail(state, message) {
+  State(..state, message:)
 }

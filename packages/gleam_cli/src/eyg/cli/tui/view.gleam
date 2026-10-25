@@ -17,10 +17,11 @@ import morph/lustre/render
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let errors = infer.all_errors(state.buffer.analysis)
-  let assert [code_area, error_area] =
+  let assert [code_area, error_area, message_area] =
     geometry.split_v(screen, [
       geometry.Fill,
       geometry.Length(list.length(errors)),
+      geometry.Length(1),
     ])
   let active = case state.mode {
     state.Navigating -> True
@@ -42,10 +43,15 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   // Like a shell, keep the end of the program visible as it grows upward.
   let lines = list.drop(lines, int.max(0, line_count - visible_height))
 
+  let message_style = style.default_style() |> style.with_bg(style.Indexed(5))
   let buf =
     buffer.buffer_new(screen)
     |> paragraph.render_styled(content_area, lines)
     |> paragraph.render_styled(error_area, error_lines(errors))
+    |> buffer.set_style(message_area, message_style)
+    |> paragraph.render_styled(message_area, [
+      span.line_new([span.span_styled(state.message, message_style)]),
+    ])
 
   case state.mode {
     state.Navigating -> buf
