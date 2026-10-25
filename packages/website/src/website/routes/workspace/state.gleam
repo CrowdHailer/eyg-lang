@@ -14,6 +14,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import morph/analysis
 import morph/buffer.{type Buffer}
+import morph/command
 import morph/editable as e
 import morph/input
 import morph/manipulation as m
@@ -30,7 +31,6 @@ import plinth/browser/window_proxy
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import touch_grass/interface
-import website/command
 import website/config
 
 pub type State {

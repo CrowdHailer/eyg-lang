@@ -16,6 +16,7 @@ import loam/platform/computer
 import loam/source
 import morph/analysis
 import morph/buffer.{type Buffer}
+import morph/command
 import morph/editable as e
 import morph/manipulation as m
 import morph/picker
@@ -62,20 +63,6 @@ pub fn input_widget(kind: InputKind) -> input.InputWidget {
           Error(_) -> Error("Enter a valid integer")
         }
       })
-  }
-}
-
-// Failure is common with web (maybe move to morph)
-pub type Failure {
-  NoKeyBinding(key: String)
-  ActionFailed(action: String)
-}
-
-fn fail_message(reason) {
-  case reason {
-    NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
-    ActionFailed(action) ->
-      string.concat(["Action ", action, " not possible at this position"])
   }
 }
 
@@ -246,14 +233,14 @@ fn command_key_press(state: State, key: String) -> State {
     ">" -> edit(state, m.insert_after())
     "enter" -> confirm(state)
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
-    _ -> fail(state, fail_message(NoKeyBinding(key)))
+    _ -> fail(state, command.fail_message(command.NoKeyBinding(key)))
   }
 }
 
 fn navigate(state: State, name, func) {
   case func(state.buffer) {
     Ok(buffer) -> State(..state, buffer:)
-    Error(_) -> fail(state, fail_message(ActionFailed(name)))
+    Error(_) -> fail(state, command.fail_message(command.ActionFailed(name)))
   }
 }
 
@@ -287,9 +274,10 @@ fn edit(state: State, operation: m.Operation) -> State {
         ),
       )
     // Reference pickers need parsing before their rebuild callbacks can run.
-    Ok(m.UserInput(_)) -> fail(state, fail_message(ActionFailed(name)))
+    Ok(m.UserInput(_)) ->
+      fail(state, command.fail_message(command.ActionFailed(name)))
 
-    Error(Nil) -> fail(state, fail_message(ActionFailed(name)))
+    Error(Nil) -> fail(state, command.fail_message(command.ActionFailed(name)))
   }
 }
 

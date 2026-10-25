@@ -12,6 +12,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import morph/buffer
+import morph/command
 import morph/editable as e
 import morph/input
 import morph/manipulation as m
@@ -23,7 +24,6 @@ import pal/system
 import spotless/oauth_2_1/token
 import touch_grass/harness/browser as harness
 import touch_grass/interface
-import website/command
 import website/config
 import website/routes/documentation/state as doc
 import website/routes/home/examples

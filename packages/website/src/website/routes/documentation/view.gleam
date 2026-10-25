@@ -13,12 +13,12 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import morph/buffer
+import morph/command
 import morph/input
 import morph/manipulation
 import morph/picker
 import touch_grass/harness/browser
 import touch_grass/interface
-import website/command
 import website/components
 import website/routes/documentation/examples
 import website/routes/documentation/state
