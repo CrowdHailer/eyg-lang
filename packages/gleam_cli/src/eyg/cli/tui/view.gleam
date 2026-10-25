@@ -9,6 +9,7 @@ import etui/widgets/input
 import etui/widgets/paragraph
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
+import eyg/cli/etui/widgets/combobox
 import eyg/cli/tui/state
 import eyg/interpreter/simple_debug
 import gleam/int
@@ -36,7 +37,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     ])
   let active = case state.mode {
     state.Navigating -> True
-    state.Manipulating(..) -> False
+    state.FreeInput(..) | state.PickSingle(..) -> False
   }
 
   let input_lines =
@@ -74,7 +75,21 @@ pub fn render(state: state.State, screen: geometry.Rect) {
 
   case state.mode {
     state.Navigating -> buf
-    state.Manipulating(editing, kind) -> {
+    state.PickSingle(box, _) -> {
+      let border =
+        block.block_new()
+        |> block.with_border(block.Rounded)
+        |> block.with_title(
+          "↑↓ pick · Tab fill · Enter apply · Esc cancel",
+          block.Top,
+        )
+      let area = geometry.centered_rect(50, 12, code_area)
+      buf
+      |> clear.render(area)
+      |> block.render(area, border)
+      |> combobox.render(block.inner(area, border), box)
+    }
+    state.FreeInput(editing, kind) -> {
       let widget = state.input_widget(kind)
       let title = case input.validate(widget, editing.value) {
         Ok(_) -> "Enter: apply | Esc: cancel"

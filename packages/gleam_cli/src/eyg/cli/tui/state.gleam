@@ -2,6 +2,7 @@ import etui/backend
 import etui/keys
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/cli/etui/widgets/combobox
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/state as istate
@@ -37,7 +38,8 @@ pub type State {
 
 pub type Mode {
   Navigating
-  Manipulating(input: input.InputState, kind: InputKind)
+  FreeInput(input: input.InputState, kind: InputKind)
+  PickSingle(box: combobox.Combobox, rebuild: m.Rebuild(String))
   // id is likely to be added in when we get a full IDE
   // ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   // Running(id: String, run: Run)
@@ -102,9 +104,16 @@ pub fn update(event: backend.InputEvent, state: State) -> State {
   case state.mode, event {
     _, backend.KeyPress("ctrl+q") -> State(..state, quit: True)
     Navigating, backend.KeyPress(key:) -> command_key_press(state, key)
-    Manipulating(input:, kind:), backend.KeyPress(key:) ->
+    PickSingle(box, rebuild), event ->
+      case combobox.update(event, box) {
+        combobox.Cancelled -> State(..state, mode: Navigating)
+        combobox.Selected(value) ->
+          submit_input(state, value, EnterText(rebuild))
+        combobox.Updated(box) -> State(..state, mode: PickSingle(box, rebuild))
+      }
+    FreeInput(input:, kind:), backend.KeyPress(key:) ->
       input_key_pressed(state, input, kind, key)
-    Manipulating(input:, kind:), backend.Paste(text:) -> {
+    FreeInput(input:, kind:), backend.Paste(text:) -> {
       let edited =
         text
         |> string.replace("\r", "")
@@ -113,7 +122,7 @@ pub fn update(event: backend.InputEvent, state: State) -> State {
         |> list.fold(input, fn(editing, char) {
           input.insert_char(input_widget(kind), editing, char)
         })
-      State(..state, mode: Manipulating(edited, kind))
+      State(..state, mode: FreeInput(edited, kind))
     }
     _, backend.Resize(width: _, height: _) -> state
     _, backend.Tick -> state
@@ -157,7 +166,7 @@ fn input_key_pressed(
             keys.End -> input.move_to_end(input)
             _ -> input
           }
-          State(..state, mode: Manipulating(edited, kind))
+          State(..state, mode: FreeInput(edited, kind))
         }
       }
   }
@@ -264,24 +273,25 @@ fn edit(state: State, operation: m.Operation) -> State {
     Ok(m.UserInput(m.EnterText(value, rebuild))) ->
       State(
         ..state,
-        mode: Manipulating(input.state_from_string(value), EnterText(rebuild)),
+        mode: FreeInput(input.state_from_string(value), EnterText(rebuild)),
       )
     Ok(m.UserInput(m.EnterInteger(value, rebuild))) ->
       State(
         ..state,
-        mode: Manipulating(
+        mode: FreeInput(
           input.state_from_string(int.to_string(value)),
           EnterInteger(rebuild),
         ),
       )
-    Ok(m.UserInput(m.PickSingle(choices, rebuild))) ->
+    Ok(m.UserInput(m.PickSingle(picker.Typing(_, choices), rebuild))) ->
       State(
         ..state,
-        mode: Manipulating(
-          input.state_from_string(picker.current(choices)),
-          EnterText(rebuild),
+        mode: PickSingle(
+          combobox.new(list.map(choices, fn(choice) { choice.0 })),
+          rebuild,
         ),
       )
+
     // Reference pickers need parsing before their rebuild callbacks can run.
     Ok(m.UserInput(_)) ->
       fail(state, command.fail_message(command.ActionFailed(name)))
