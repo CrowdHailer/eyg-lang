@@ -200,7 +200,7 @@ fn focus_style(base: style.Style, focused: Bool, active: Bool) -> style.Style {
 
 fn syntax_style(token_type: frame.TokenType) -> style.Style {
   case token_type {
-    frame.Plain | frame.Punctuation | frame.ClassName -> style.default_style()
+    frame.Plain | frame.Punctuation -> style.default_style()
 
     frame.Comment ->
       style.default_style()
@@ -225,6 +225,10 @@ fn syntax_style(token_type: frame.TokenType) -> style.Style {
     frame.Important ->
       style.default_style()
       |> style.with_fg(style.Indexed(3))
+      |> style.add_modifier(style.bold())
+    frame.ClassName ->
+      style.default_style()
+      |> style.with_fg(style.Indexed(12))
       |> style.add_modifier(style.bold())
   }
 }

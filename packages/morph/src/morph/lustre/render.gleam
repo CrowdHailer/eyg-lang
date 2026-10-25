@@ -13,7 +13,7 @@ import multiformats/cid/v1
 pub fn do_let(rev, pattern, value) {
   let assignment =
     list.flatten([
-      [frame.span(frame.Plain, exp_key(rev), "let ")],
+      [frame.span(frame.Keyword, exp_key(rev), "let ")],
       pattern,
       [frame.span(frame.Plain, exp_key(rev), " = ")],
     ])
@@ -61,7 +61,7 @@ fn assign_pair(kv, rev, errors) {
 
 pub fn pattern(p, rev) {
   case p {
-    e.Bind(x) -> [frame.span(frame.Plain, exp_key(rev), x)]
+    e.Bind(x) -> [frame.span(frame.Variable, exp_key(rev), x)]
     e.Destructure(fields) -> {
       list.index_map(fields, fn(f, i) { do_field(f, i, rev) })
       |> do_destructured(rev)
@@ -76,7 +76,7 @@ pub fn do_field(f, i, rev) {
   [
     frame.span(frame.Plain, exp_key([i, ..rev]), field),
     frame.span(frame.Plain, None, ": "),
-    frame.span(frame.Plain, exp_key([j, ..rev]), var),
+    frame.span(frame.Variable, exp_key([j, ..rev]), var),
   ]
 }
 
@@ -203,7 +203,7 @@ pub fn expression(exp, rev, errors) {
 
     e.String(v) ->
       frame.Inline([
-        frame.span(frame.String, exp_key(rev), string.concat(["\"", v, "\""])),
+        frame.span(frame.String, exp_key(rev), string.inspect(v)),
       ])
     e.List(items, tail) -> {
       render_list(
@@ -431,7 +431,7 @@ pub fn render_case(top, branches, otherwise, rev) {
     frame.span(frame.Plain, None, "}"),
   ])
   |> frame.prepend_spans(spans, _)
-  |> frame.prepend_spans([frame.span(frame.Plain, exp_key(rev), "match ")], _)
+  |> frame.prepend_spans([frame.span(frame.Keyword, exp_key(rev), "match ")], _)
 }
 
 pub fn render_branch(field, rev, errors) {
@@ -700,7 +700,7 @@ pub fn projection_frame(zip, kind, errors) {
             )
             |> list.append([
               frame.span(frame.Plain, None, ": "),
-              frame.span(frame.Plain, exp_key([self + 1, ..rev]), var),
+              frame.span(frame.Variable, exp_key([self + 1, ..rev]), var),
             ])
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
@@ -723,7 +723,7 @@ pub fn projection_frame(zip, kind, errors) {
               frame.span(frame.Plain, None, ": "),
             ]
             |> list.append(highlight.spans(
-              [frame.span(frame.Plain, exp_key(rev), var)],
+              [frame.span(frame.Variable, exp_key(rev), var)],
               highlight.focus(),
             ))
           let pre =
@@ -776,7 +776,7 @@ pub fn projection_frame(zip, kind, errors) {
             )
             |> list.append([
               frame.span(frame.Plain, None, ": "),
-              frame.span(frame.Plain, exp_key([self + 1, ..rev]), var),
+              frame.span(frame.Variable, exp_key([self + 1, ..rev]), var),
             ])
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
@@ -793,7 +793,7 @@ pub fn projection_frame(zip, kind, errors) {
               frame.span(frame.Plain, None, ": "),
             ]
             |> list.append(highlight.spans(
-              [frame.span(frame.Plain, exp_key(rev), var)],
+              [frame.span(frame.Variable, exp_key(rev), var)],
               highlight.focus(),
             ))
           let pre =
