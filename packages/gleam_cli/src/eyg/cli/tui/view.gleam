@@ -10,11 +10,15 @@ import etui/widgets/paragraph
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/cli/tui/state
+import eyg/interpreter/simple_debug
 import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import morph/lustre/frame
 import morph/lustre/render
+import morph/projection
+import morph/repl/history
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let errors = infer.all_errors(state.buffer.analysis)
@@ -35,9 +39,14 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     state.Manipulating(..) -> False
   }
 
-  let lines =
+  let input_lines =
     render.projection(state.buffer.projection, render.Statements, errors)
     |> code(active)
+  let lines =
+    state.history
+    |> list.reverse
+    |> list.flat_map(history_lines(_, code_area.size.width))
+    |> list.append(input_lines)
   let line_count = list.length(lines)
   let visible_height = int.min(line_count, code_area.size.height)
   let content_area =
@@ -82,6 +91,32 @@ pub fn render(state: state.State, screen: geometry.Rect) {
         True -> input.render(buf, inner, widget, editing)
         False -> buf
       }
+    }
+  }
+}
+
+fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
+  let lines =
+    entry.buffer.projection
+    |> projection.rebuild
+    |> render.statements([])
+    |> list.flat_map(code(_, False))
+  case entry.value {
+    None -> lines
+    Some(value) -> {
+      let value_lines =
+        simple_debug.render(value, int.max(1, width - 2))
+        |> string.split("\n")
+        |> list.index_map(fn(line, index) {
+          let prefix = case index {
+            0 -> "= "
+            _ -> "  "
+          }
+          span.line_new([
+            span.span_styled(prefix <> line, style.default_style()),
+          ])
+        })
+      list.append(lines, value_lines)
     }
   }
 }

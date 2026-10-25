@@ -4,12 +4,10 @@ import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
 import eyg/interpreter/block
-import eyg/interpreter/simple_debug
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
 import gleam/string
 import loam/execute
 import loam/platform/computer
@@ -21,6 +19,7 @@ import morph/editable as e
 import morph/manipulation as m
 import morph/picker
 import morph/projection
+import morph/repl/history
 import touch_grass/interface
 
 /// Note the buffer is a morph buffer not an etui buffer
@@ -29,6 +28,8 @@ pub type State {
     quit: Bool,
     mode: Mode,
     buffer: Buffer,
+    scope: istate.Scope(source.Location),
+    history: List(history.Entry(source.Location)),
     execute_state: execute.State,
     message: String,
   )
@@ -74,7 +75,15 @@ pub fn init(
   let buffer =
     buffer.empty(repl_context(scope), cache.types(execute_state.cache))
   let message = "Enter runs the program"
-  State(quit: False, mode: Navigating, buffer:, execute_state:, message:)
+  State(
+    quit: False,
+    mode: Navigating,
+    buffer:,
+    scope:,
+    history: [],
+    execute_state:,
+    message:,
+  )
 }
 
 pub fn repl_context(
@@ -291,12 +300,15 @@ fn confirm(state: State) {
       let source =
         e.to_annotated(expression, [])
         |> ir.map_annotation(fn(_) { source.Location(source.Repl, source.Json) })
-      // execute.block(source, [], state.execute_state)
+
       let scope = []
       case loop(block.execute(source, scope), state) {
-        Ok(#(Some(value), _scope)) ->
-          State(..state, message: simple_debug.inspect(value))
-        Ok(#(None, _)) -> State(..state, message: "")
+        Ok(#(value, scope)) -> {
+          let entry = history.Entry(value:, effects: [], buffer: state.buffer)
+          let history = [entry, ..state.history]
+          State(..state, history:, scope:, message: "")
+        }
+
         Error(#(reason, location, _, stack)) ->
           fail(state, execute.render_error(reason, location, stack, cwd))
       }
