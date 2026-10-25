@@ -20,6 +20,7 @@ import morph/input
 import morph/manipulation as m
 import morph/picker
 import morph/projection as p
+import morph/repl/history
 import multiformats/cid/v1
 import multiformats/hashes
 import ogre/origin
@@ -38,7 +39,7 @@ pub type State {
     mode: Mode,
     user_error: Option(command.Failure),
     focused: Target,
-    previous: List(Previous),
+    previous: List(history.Entry(Meta)),
     after: Option(p.Projection),
     scope: List(#(String, istate.Value(Meta))),
     repl: Buffer,
@@ -49,17 +50,6 @@ pub type State {
     origin: origin.Origin,
     cache: cache.Cache(Meta),
     counter: Int,
-  )
-}
-
-pub type EffectRecord =
-  #(String, #(istate.Value(Meta), istate.Value(Meta)))
-
-pub type Previous {
-  Previous(
-    value: Option(istate.Value(List(Int))),
-    effects: List(EffectRecord),
-    buffer: buffer.Buffer,
   )
 }
 
@@ -76,7 +66,7 @@ pub type Mode {
   Manipulating(m.UserInput)
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
-  RunningShell(occured: List(EffectRecord), status: Run)
+  RunningShell(occured: List(history.EffectRecord(Meta)), status: Run)
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))
   SigningPayload(popup: Option(window_proxy.WindowProxy), payload: String)
@@ -272,7 +262,11 @@ pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
           case output {
             Stop(value:, scope:) -> {
               let entry =
-                Previous(value:, effects: list.reverse([]), buffer: state.repl)
+                history.Entry(
+                  value:,
+                  effects: list.reverse([]),
+                  buffer: state.repl,
+                )
               let previous = [entry, ..state.previous]
 
               let repl =
@@ -310,7 +304,11 @@ pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
           case output {
             Stop(value:, scope:) -> {
               let entry =
-                Previous(value:, effects: list.reverse([]), buffer: state.repl)
+                history.Entry(
+                  value:,
+                  effects: list.reverse([]),
+                  buffer: state.repl,
+                )
               let previous = [entry, ..state.previous]
 
               let repl =
@@ -454,7 +452,7 @@ fn move_up(state) {
     }
     Error(Nil) ->
       case state.focused == Repl, state.previous, state.after {
-        True, [Previous(buffer: repl, ..), ..], None -> {
+        True, [history.Entry(buffer: repl, ..), ..], None -> {
           #(State(..state, repl:, after: Some(state.repl.projection)), [])
         }
         _, _, _ -> fail(state, "move above")
@@ -542,7 +540,7 @@ fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
       case output {
         Stop(value:, scope:) -> {
           let entry =
-            Previous(value:, effects: list.reverse([]), buffer: state.repl)
+            history.Entry(value:, effects: list.reverse([]), buffer: state.repl)
           let previous = [entry, ..state.previous]
 
           let repl =

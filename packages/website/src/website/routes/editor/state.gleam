@@ -3,8 +3,8 @@ import eyg/hub/cache
 import eyg/hub/schema
 import eyg/interpreter/state
 import eyg/ir/tree as ir
-import gleam/option.{type Option}
 import morph/buffer
+import morph/repl/history
 import multiformats/cid/v1
 import ogre/origin
 import spotless/oauth_2_1/token
@@ -13,7 +13,7 @@ import website/config
 
 pub type State {
   State(
-    previous: List(Previous),
+    previous: List(history.Entry(Meta)),
     scope: List(state.Value(Meta)),
     buffer: buffer.Buffer,
     cache: cache.Cache(Meta),
@@ -75,14 +75,3 @@ pub fn update(state: State, message) -> #(State, List(_)) {
     // }
   }
 }
-
-pub type Previous {
-  Previous(
-    value: Option(state.Value(List(Int))),
-    effects: List(Effect),
-    buffer: buffer.Buffer,
-  )
-}
-
-pub type Effect =
-  #(String, #(state.Value(List(Int)), state.Value(List(Int))))

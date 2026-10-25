@@ -16,6 +16,7 @@ import morph/command
 import morph/editable
 import morph/manipulation
 import morph/projection
+import morph/repl/history
 import website/components/output
 import website/routes/editor/view as editor_view
 import website/routes/workspace/state
@@ -211,7 +212,7 @@ fn top(children) {
 }
 
 pub fn render_previous(
-  previous,
+  previous: List(history.Entry(state.Meta)),
   on_readonly,
   on_previous,
 ) -> element.Element(a) {
@@ -220,7 +221,7 @@ pub fn render_previous(
     list.index_map(list.reverse(previous), fn(p, i) {
       let i = count - i
       case p {
-        state.Previous(value, effects, buffer) ->
+        history.Entry(value, effects, buffer) ->
           h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
             h.div([a.class("relative pr-8")], [
               h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
