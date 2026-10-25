@@ -3,17 +3,23 @@ import etui/keys
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
+import eyg/interpreter/block
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state as istate
+import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import loam/execute
 import loam/platform/computer
 import loam/source
 import morph/analysis
 import morph/buffer.{type Buffer}
+import morph/editable as e
 import morph/manipulation as m
 import morph/picker
+import morph/projection
 import touch_grass/interface
 
 /// Note the buffer is a morph buffer not an etui buffer
@@ -238,7 +244,7 @@ fn command_key_press(state: State, key: String) -> State {
     "v" -> edit(state, m.insert_variable())
     "<" -> edit(state, m.insert_before())
     ">" -> edit(state, m.insert_after())
-    // "Enter" -> confirm(state)
+    "enter" -> confirm(state)
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
     _ -> fail(state, fail_message(NoKeyBinding(key)))
   }
@@ -285,6 +291,33 @@ fn edit(state: State, operation: m.Operation) -> State {
 
     Error(Nil) -> fail(state, fail_message(ActionFailed(name)))
   }
+}
+
+fn confirm(state: State) {
+  // TODO remove 
+  let cwd = "/repl"
+  let expression = projection.rebuild(state.buffer.projection)
+  case expression {
+    e.Vacant -> fail(state, "write a program")
+    _ -> {
+      let source =
+        e.to_annotated(expression, [])
+        |> ir.map_annotation(fn(_) { source.Location(source.Repl, source.Json) })
+      // execute.block(source, [], state.execute_state)
+      let scope = []
+      case loop(block.execute(source, scope), state) {
+        Ok(#(Some(value), _scope)) ->
+          State(..state, message: simple_debug.inspect(value))
+        Ok(#(None, _)) -> State(..state, message: "")
+        Error(#(reason, location, _, stack)) ->
+          fail(state, execute.render_error(reason, location, stack, cwd))
+      }
+    }
+  }
+}
+
+fn loop(return, _state) {
+  return
 }
 
 fn fail(state, message) {

@@ -2,6 +2,7 @@ import etui/buffer
 import etui/geometry
 import etui/span
 import etui/style
+import etui/text
 import etui/widgets/block
 import etui/widgets/clear
 import etui/widgets/input
@@ -17,11 +18,17 @@ import morph/lustre/render
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let errors = infer.all_errors(state.buffer.analysis)
+  let message_lines = text.wrap(state.message, screen.size.width)
+  let message_height =
+    int.min(
+      list.length(message_lines),
+      int.max(0, screen.size.height - list.length(errors) - 1),
+    )
   let assert [code_area, error_area, message_area] =
     geometry.split_v(screen, [
       geometry.Fill,
       geometry.Length(list.length(errors)),
-      geometry.Length(1),
+      geometry.Length(message_height),
     ])
   let active = case state.mode {
     state.Navigating -> True
@@ -49,9 +56,12 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     |> paragraph.render_styled(content_area, lines)
     |> paragraph.render_styled(error_area, error_lines(errors))
     |> buffer.set_style(message_area, message_style)
-    |> paragraph.render_styled(message_area, [
-      span.line_new([span.span_styled(state.message, message_style)]),
-    ])
+    |> paragraph.render_styled(
+      message_area,
+      list.map(message_lines, fn(line) {
+        span.line_new([span.span_styled(line, message_style)])
+      }),
+    )
 
   case state.mode {
     state.Navigating -> buf
