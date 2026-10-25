@@ -260,22 +260,7 @@ pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
             |> loop(state)
 
           case output {
-            Stop(value:, scope:) -> {
-              let entry =
-                history.Entry(
-                  value:,
-                  effects: list.reverse([]),
-                  buffer: state.repl,
-                )
-              let previous = [entry, ..state.previous]
-
-              let repl =
-                buffer.empty(
-                  ctx(State(..state, scope:), Repl),
-                  cache.types(state.cache),
-                )
-              #(State(..state, mode: Editing, previous:, scope:, repl:), [])
-            }
+            Stop(value:, scope:) -> complete(state, value, scope)
             Running(run, counter, effect) -> {
               let mode = RunningShell([], run)
               let effects = case effect {
@@ -302,22 +287,7 @@ pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
         RunningShell(occured: _, status:) -> {
           let output = restart(status, state)
           case output {
-            Stop(value:, scope:) -> {
-              let entry =
-                history.Entry(
-                  value:,
-                  effects: list.reverse([]),
-                  buffer: state.repl,
-                )
-              let previous = [entry, ..state.previous]
-
-              let repl =
-                buffer.empty(
-                  ctx(State(..state, scope:), Repl),
-                  cache.types(state.cache),
-                )
-              #(State(..state, mode: Editing, previous:, scope:, repl:), [])
-            }
+            Stop(value:, scope:) -> complete(state, value, scope)
             Running(run, counter, effect) -> {
               let mode = RunningShell([], run)
               let effects = case effect {
@@ -538,18 +508,7 @@ fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
         |> block.execute(state.scope)
         |> loop(state)
       case output {
-        Stop(value:, scope:) -> {
-          let entry =
-            history.Entry(value:, effects: list.reverse([]), buffer: state.repl)
-          let previous = [entry, ..state.previous]
-
-          let repl =
-            buffer.empty(
-              ctx(State(..state, scope:), Repl),
-              cache.types(state.cache),
-            )
-          #(State(..state, mode: Editing, previous:, scope:, repl:), [])
-        }
+        Stop(value:, scope:) -> complete(state, value, scope)
         Running(run, counter, effect) -> {
           let mode = RunningShell([], run)
           let effects = case effect {
@@ -562,6 +521,13 @@ fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
     }
     _ -> fail(state, "Can't execute module")
   }
+}
+
+fn complete(state: State, value, scope) {
+  let entry = history.Entry(value:, effects: [], buffer: state.repl)
+  let previous = [entry, ..state.previous]
+  let repl = buffer.empty(repl_context(scope), cache.types(state.cache))
+  #(State(..state, mode: Editing, previous:, scope:, repl:), [])
 }
 
 // TODO test with sign effect
