@@ -286,11 +286,14 @@ fn edit(state: State, operation: m.Operation) -> State {
           EnterInteger(rebuild),
         ),
       )
-    Ok(m.UserInput(m.PickSingle(picker.Typing(_, choices), rebuild))) ->
+    Ok(m.UserInput(m.PickSingle(picker.Typing(value, choices), rebuild))) ->
       State(
         ..state,
         mode: PickSingle(
-          combobox.new(list.map(choices, fn(choice) { choice.0 })),
+          combobox.Combobox(
+            ..combobox.new(choices),
+            input: input.state_from_string(value),
+          ),
           rebuild,
         ),
       )

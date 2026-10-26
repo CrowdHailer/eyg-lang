@@ -15,7 +15,7 @@ import gleam/string
 
 pub type Combobox {
   Combobox(
-    items: List(String),
+    items: List(#(String, String)),
     input: input.InputState,
     selection: select.ListState,
   )
@@ -27,14 +27,14 @@ pub type Action {
   Cancelled
 }
 
-pub fn new(items: List(String)) -> Combobox {
+pub fn new(items: List(#(String, String))) -> Combobox {
   Combobox(items, input.state_new(), select.state_new())
 }
 
-fn matches(box: Combobox) -> List(String) {
+fn matches(box: Combobox) -> List(#(String, String)) {
   let query = string.lowercase(box.input.value)
   list.filter(box.items, fn(item) {
-    string.starts_with(string.lowercase(item), query)
+    string.starts_with(string.lowercase(item.0), query)
   })
 }
 
@@ -76,8 +76,9 @@ fn completion(box: Combobox) -> String {
   let items = matches(box)
   case list.first(list.drop(items, box.selection.selected)) {
     Error(_) -> box.input.value
-    Ok(selected) -> {
-      let shared = list.fold(items, selected, common_prefix)
+    Ok(#(selected, _)) -> {
+      let shared: String =
+        list.fold(items, selected, fn(acc, item) { common_prefix(acc, item.0) })
       case string.length(shared) > string.length(box.input.value) {
         True -> shared
         False -> {
@@ -85,9 +86,12 @@ fn completion(box: Combobox) -> String {
             string.slice(selected, 0, string.length(box.input.value) + 1)
           items
           |> list.filter(fn(item) {
-            string.starts_with(string.lowercase(item), string.lowercase(branch))
+            string.starts_with(
+              string.lowercase(item.0),
+              string.lowercase(branch),
+            )
           })
-          |> list.fold(selected, common_prefix)
+          |> list.fold(selected, fn(acc, item) { common_prefix(acc, item.0) })
         }
       }
     }
@@ -148,13 +152,39 @@ pub fn render(buf, area: geometry.Rect, box: Combobox) {
           paragraph.render_styled(buf, list_area, [
             span.line_plain("No matches"),
           ])
-        items ->
-          select.render_stateful(
-            buf,
-            list_area,
-            select.list_new(items),
-            box.selection,
-          )
+        items -> {
+          let start =
+            int.max(0, box.selection.selected - list_area.size.height + 1)
+          let lines =
+            items
+            |> list.index_map(fn(item, i) {
+              let #(item, hint) = item
+              let hint = " : " <> hint |> string.replace("\n", " ")
+              let selected = i == box.selection.selected
+              let base =
+                style.default_style() |> style.with_fg(style.Rgb(111, 220, 255))
+              let base = case selected {
+                True -> base |> style.with_bg(style.Rgb(40, 48, 80))
+                False -> base
+              }
+              span.line_new([
+                span.span_styled(
+                  case selected {
+                    True -> "› "
+                    False -> "  "
+                  }
+                    <> item,
+                  base,
+                ),
+                span.span_styled(
+                  hint,
+                  style.with_fg(base, style.Rgb(210, 169, 255)),
+                ),
+              ])
+            })
+            |> list.drop(start)
+          paragraph.render_styled(buf, list_area, lines)
+        }
       }
     }
   }
