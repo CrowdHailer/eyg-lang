@@ -173,7 +173,7 @@ fn input_key_pressed(
 }
 
 fn submit_input(state: State, value: String, kind: InputKind) -> State {
-  let context = repl_context([])
+  let context = repl_context(state.scope)
   let refs = cache.types(state.execute_state.cache)
   case kind {
     EnterText(rebuild) ->
@@ -268,7 +268,10 @@ fn edit(state: State, operation: m.Operation) -> State {
     Ok(m.Resolved(gen)) ->
       State(
         ..state,
-        buffer: gen(repl_context([]), cache.types(state.execute_state.cache)),
+        buffer: gen(
+          repl_context(state.scope),
+          cache.types(state.execute_state.cache),
+        ),
       )
     Ok(m.UserInput(m.EnterText(value, rebuild))) ->
       State(
@@ -311,7 +314,7 @@ fn confirm(state: State) {
         e.to_annotated(expression, [])
         |> ir.map_annotation(fn(_) { source.Location(source.Repl, source.Json) })
 
-      let scope = []
+      let scope = state.scope
       case loop(block.execute(source, scope), state) {
         Ok(#(value, scope)) -> {
           let entry = history.Entry(value:, effects: [], buffer: state.buffer)
