@@ -6,9 +6,9 @@ import plinthx/node/tty
 
 /// According to specification NO_COLOR only disables colors however it's often useful to remove all ansi codes in that case.
 pub fn styled() -> Bool {
-  case process.get() {
+  case tty.get() {
     Ok(process) ->
-      tty.is_tty(process.stdout(process)) == Ok(True) && !no_color(process)
+      tty.is_write_tty(tty.stdout(process)) == True && !no_color(process)
     Error(Nil) -> False
   }
 }

@@ -9,7 +9,5 @@ pub fn main() {
 pub fn process_is_the_native_object_test() {
   let assert Ok(process) = process.get()
   // Piped output has no isTTY property.
-  let assert True = case tty.is_tty(process.stdout(process)) {
-    Ok(_) | Error(Nil) -> True
-  }
+  let assert True = tty.is_write_tty(tty.stdout(process)) || True
 }
