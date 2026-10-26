@@ -247,7 +247,7 @@ pub fn expression(tokens) {
       }
     }
     t.String(value) -> {
-      let span = #(start, start + string.length(value) + 2)
+      let span = #(start, start + string.byte_size(value) + 2)
       Ok(#(#(ir.String(value), span), rest))
     }
     t.LeftSquare -> do_list(rest, start, [])
@@ -359,7 +359,7 @@ pub fn expression(tokens) {
     t.Import ->
       case rest {
         [#(t.String(value), end), ..rest] -> {
-          let span = #(start, end + string.length(value) + 2)
+          let span = #(start, end + string.byte_size(value) + 2)
           Ok(#(#(ir.Reference(ir.Relative(value)), span), rest))
         }
         _ -> Error(InvalidImportPath(next_pos(rest, start + 6)))

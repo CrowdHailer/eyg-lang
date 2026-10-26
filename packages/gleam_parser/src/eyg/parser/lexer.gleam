@@ -27,6 +27,7 @@ fn pop(raw, start) {
   case raw {
     <<"//", rest:bits>> -> comment(<<>>, rest, done)
     <<"\r\n", rest:bits>> -> whitespace(<<"\r\n">>, rest, done)
+    <<"\r", rest:bits>> -> whitespace(<<"\r">>, rest, done)
     <<"\n", rest:bits>> -> whitespace(<<"\n">>, rest, done)
     <<" ", rest:bits>> -> whitespace(<<" ">>, rest, done)
     <<"\t", rest:bits>> -> whitespace(<<"\t">>, rest, done)
@@ -143,7 +144,7 @@ fn to_string(bits) {
 fn comment(buffer, rest, done) {
   case rest {
     // leave newline on stack to end up as witespace
-    <<"\r\n", _:bits>> | <<"\n", _:bits>> ->
+    <<"\r", _:bits>> | <<"\n", _:bits>> ->
       done(t.Comment(to_string(buffer)), bit_array.byte_size(buffer) + 2, rest)
     // A comment at EOF (no trailing newline) closes here.
     <<>> ->
@@ -160,6 +161,8 @@ fn whitespace(buffer, rest, done) {
   case rest {
     <<"\r\n", rest:bits>> ->
       whitespace(bit_array.append(buffer, <<"\r\n">>), rest, done)
+    <<"\r", rest:bits>> ->
+      whitespace(bit_array.append(buffer, <<"\r">>), rest, done)
     <<"\n", rest:bits>> ->
       whitespace(bit_array.append(buffer, <<"\n">>), rest, done)
     <<" ", rest:bits>> ->

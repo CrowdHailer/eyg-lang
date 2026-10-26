@@ -131,7 +131,7 @@ pub fn update(event: backend.InputEvent, state: State) -> State {
     _, backend.MouseScroll(x: _, y: _, up: _) -> state
     _, backend.MouseDrag(x: _, y: _, button: _) -> state
     _, backend.MouseMove(x: _, y: _) -> state
-    _, backend.Paste(text: _) -> state
+    Navigating, backend.Paste(text:) -> paste(state, text)
   }
 }
 
@@ -338,4 +338,20 @@ fn loop(return, _state) {
 
 fn fail(state, message) {
   State(..state, message:)
+}
+
+pub fn paste(state: State, text: String) -> State {
+  case source.parse(text, source.Repl) {
+    Ok(source) ->
+      State(
+        ..state,
+        buffer: buffer.from_source(
+          source,
+          repl_context(state.scope),
+          cache.types(state.execute_state.cache),
+        ),
+        message: "",
+      )
+    Error(reason) -> fail(state, reason)
+  }
 }

@@ -9,7 +9,7 @@ eyg_analysis = ">= 2.0.0 and < 4.0.0"
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = ">= 9.0.0 and < 10.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
-eyg_parser = ">= 0.5.1 and < 1.0.0"
+eyg_parser = ">= 0.5.3 and < 1.0.0"
 gleam_fetch = ">= 1.4.0 and < 2.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"
 gleam_javascript = ">= 1.0.1 and < 2.0.0"

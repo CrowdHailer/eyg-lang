@@ -16,7 +16,7 @@ eyg_compiler = { path = "../gleam_compiler" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = ">= 9.0.0 and < 10.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
-eyg_parser = ">= 0.4.0 and < 1.0.0"
+eyg_parser = ">= 0.5.3 and < 1.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
 gleam_crypto = ">= 1.5.1 and < 2.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"

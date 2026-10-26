@@ -13,7 +13,7 @@ envoy = ">= 1.2.0 and < 2.0.0"
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = ">= 9.0.0 and < 10.0.0"
 eyg_ir = ">= 3.0.0 and < 4.0.0"
-eyg_parser = ">= 0.4.0 and < 1.0.0"
+eyg_parser = ">= 0.5.3 and < 1.0.0"
 filepath = ">= 1.1.2 and < 2.0.0"
 gleam_crypto = ">= 1.6.0 and < 2.0.0"
 gleam_fetch = ">= 1.4.1 and < 2.0.0"

@@ -11,7 +11,7 @@ packages = [
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "eyg_analysis", version = "3.0.1", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "C7634F5EFFBBDC59B10776729D7AE187D29D3587D5B951DF1F8936A298A94A55" },
   { name = "eyg_ir", version = "3.2.0", build_tools = ["gleam"], requirements = ["dag_json", "filepath", "gbor", "gleam_json", "gleam_stdlib", "gleb128", "midas", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "BAD26EC286D1EE6F24EB86EDB02927A5CEAF7A182FE2CD55E05772CC44E35537" },
-  { name = "eyg_parser", version = "0.5.2", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "5BAFF0F0C6EB452A9E17CB8499256EDD680287C4F34895891EFD8F59C4EFC8C9" },
+  { name = "eyg_parser", version = "0.5.3", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "DBF96A0F0E4EADCD3802CAAF03FF57D39B3487E1397C10DBAF77B7C53D6356E1" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
   { name = "gbor", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib", "ieee_float"], otp_app = "gbor", source = "hex", outer_checksum = "229405DE143C1D669194276B1F338471F6EFAA5796BA6D1CF42F33B01347B82F" },
   { name = "glam", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "48A043A12091F93D911C316DD8F7FFD03CD9FF6F50848FC56E359D3C168DF0FA" },
@@ -35,7 +35,7 @@ packages = [
 dag_json = { version = ">= 3.0.0 and < 4.0.0" }
 eyg_analysis = { version = ">= 2.0.0 and < 4.0.0" }
 eyg_ir = { version = ">= 3.0.0 and < 4.0.0" }
-eyg_parser = { version = ">= 0.3.0 and < 1.0.0" }
+eyg_parser = { version = ">= 0.5.3 and < 1.0.0" }
 gleam_crypto = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_javascript = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_json = { version = ">= 3.0.0 and < 4.0.0" }

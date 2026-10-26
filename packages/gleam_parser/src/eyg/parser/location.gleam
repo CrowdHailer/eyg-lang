@@ -5,6 +5,7 @@
 //// interpreter does not depend on this module — the CLI calls it after
 //// composing the interpreter's description and hint.
 
+import gleam/bit_array
 import gleam/int
 import gleam/list
 import gleam/string
@@ -29,12 +30,38 @@ pub fn is_empty(span: Span) -> Bool {
 pub fn source_context(source: String, span: Span) -> List(String) {
   let #(start, end) = span
   let end = int.max(end, start)
-  let lines = string.split(source, "\n")
+  let bytes = bit_array.from_string(source)
+  let lines = split_lines(bytes, bytes, 0, 0, [])
   do_render(lines, start, end, 1, 0, [])
 }
 
+// Keep the original byte widths: CRLF is one line ending but two bytes.
+// Normalizing source first would invalidate spans after a CRLF.
+fn split_lines(source, remaining, start, offset, acc) {
+  case remaining {
+    <<"\r\n", rest:bits>> ->
+      split_lines(source, rest, offset + 2, offset + 2, [
+        #(source_line(source, start, offset), 2),
+        ..acc
+      ])
+    <<"\r", rest:bits>> | <<"\n", rest:bits>> ->
+      split_lines(source, rest, offset + 1, offset + 1, [
+        #(source_line(source, start, offset), 1),
+        ..acc
+      ])
+    <<_, rest:bits>> -> split_lines(source, rest, start, offset + 1, acc)
+    _ -> list.reverse([#(source_line(source, start, offset), 0), ..acc])
+  }
+}
+
+fn source_line(source, start, end) {
+  let assert Ok(bytes) = bit_array.slice(source, start, end - start)
+  let assert Ok(line) = bit_array.to_string(bytes)
+  line
+}
+
 fn do_render(
-  lines: List(String),
+  lines: List(#(String, Int)),
   start: Int,
   end: Int,
   line_num: Int,
@@ -43,13 +70,14 @@ fn do_render(
 ) -> List(String) {
   case lines {
     [] -> list.reverse(acc)
-    [line, ..rest] -> {
+    [#(line, ending_width), ..rest] -> {
       let line_len = string.byte_size(line)
       let line_end = offset + line_len
+      let next_offset = line_end + ending_width
       let line_starts_inside = start <= line_end && end >= offset
       case line_starts_inside, start > line_end {
         // span not yet reached — keep scanning.
-        _, True -> do_render(rest, start, end, line_num + 1, line_end + 1, acc)
+        _, True -> do_render(rest, start, end, line_num + 1, next_offset, acc)
         // span has passed — stop rendering.
         False, False -> acc
         True, False -> {
@@ -63,7 +91,7 @@ fn do_render(
           }
           let rendered = render_line(line_num, line, caret_start, width)
           let acc = [rendered, ..acc]
-          do_render(rest, start, end, line_num + 1, line_end + 1, acc)
+          do_render(rest, start, end, line_num + 1, next_offset, acc)
         }
       }
     }
