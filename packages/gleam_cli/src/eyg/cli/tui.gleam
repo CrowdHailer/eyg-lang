@@ -100,20 +100,7 @@ pub fn execute(
       let _ = mutable_reference.update(listeners, fn(all) { [remove, ..all] })
       Nil
     }
-    let dispatch = fn(events) {
-      case
-        apply_until(events, mutable_reference.get(state), fn(state, event) {
-          update(state, event)
-        })
-      {
-        Continue(next) -> {
-          let _ = mutable_reference.set(state, next)
-          draw()
-          Nil
-        }
-        Stop(return) -> finish(Ok(return))
-      }
-    }
+    let dispatch = fn(events) { dispatch(events, state, draw, finish, guard) }
     let on_text = fn(chunk) {
       use <- guard
       cancel_timeout()
@@ -130,7 +117,7 @@ pub fn execute(
                 use <- guard
                 let _ = mutable_reference.set(timeout, None)
                 let pending = mutable_reference.set(input, "")
-                dispatch(input.flush(pending))
+                dispatch(input.flush(pending) |> list.map(state.Input))
               },
               40,
             )
@@ -138,7 +125,7 @@ pub fn execute(
           Nil
         }
       }
-      dispatch(events)
+      dispatch(events |> list.map(state.Input))
     }
     guard(fn() {
       subscribe(tty.on_end(stdin, fn() { finish(Ok(0)) }))
@@ -196,10 +183,30 @@ pub fn apply_until(
   }
 }
 
-fn update(state, message) {
-  let state = state.update(message, state)
-  case state.quit {
-    True -> Stop(0)
-    False -> Continue(state)
+fn dispatch(events, state, draw, finish, guard) {
+  case
+    apply_until(events, #(mutable_reference.get(state), []), fn(acc, event) {
+      let #(next, effects) = state.update(event, acc.0)
+      case next.quit {
+        True -> Stop(0)
+        False -> Continue(#(next, list.append(acc.1, effects)))
+      }
+    })
+  {
+    Stop(status) -> finish(Ok(status))
+    Continue(#(next, effects)) -> {
+      let _ = mutable_reference.set(state, next)
+      draw()
+      list.each(effects, fn(effect) {
+        let _ =
+          system.run(effect)
+          |> promise.map(fn(message) {
+            use <- guard
+            dispatch([state.Task(message)], state, draw, finish, guard)
+          })
+          |> promise.rescue(fn(error) { finish(Error(string.inspect(error))) })
+        Nil
+      })
+    }
   }
 }

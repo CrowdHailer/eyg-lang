@@ -5,14 +5,17 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/cli/etui/widgets/combobox
 import eyg/hub/cache
 import eyg/interpreter/block
+import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
+import gleam/option.{type Option}
 import gleam/string
 import loam/execute
 import loam/platform/computer
 import loam/source
+import loam/system
 import morph/analysis
 import morph/buffer.{type Buffer}
 import morph/command
@@ -33,6 +36,7 @@ pub type State {
     history: List(history.Entry(source.Location)),
     execute_state: execute.State,
     message: String,
+    counter: Int,
   )
 }
 
@@ -40,6 +44,11 @@ pub type Mode {
   Navigating
   FreeInput(input: input.InputState, kind: InputKind)
   PickSingle(box: combobox.Combobox, rebuild: m.Rebuild(String))
+  Running(
+    task_id: Int,
+    env: istate.Env(source.Location),
+    k: istate.Stack(source.Location),
+  )
   // id is likely to be added in when we get a full IDE
   // ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   // Running(id: String, run: Run)
@@ -52,6 +61,15 @@ pub type InputKind {
   // PickRelease(m.Rebuild(ir.Release))
   EnterText(m.Rebuild(String))
   EnterInteger(m.Rebuild(Int))
+}
+
+pub type Event {
+  Input(backend.InputEvent)
+  Task(Message)
+}
+
+pub type Message {
+  EffectHandled(task_id: Int, value: istate.Value(source.Location))
 }
 
 /// Use the same configuration for rendering and editing the input.
@@ -85,6 +103,7 @@ pub fn init(
     history: [],
     execute_state:,
     message:,
+    counter: 0,
   )
 }
 
@@ -100,20 +119,34 @@ pub fn repl_context(
   |> infer.with_effects(interface.types(computer.effects()))
 }
 
-pub fn update(event: backend.InputEvent, state: State) -> State {
+pub fn update(
+  event: Event,
+  state: State,
+) -> #(State, List(system.Effect(Message))) {
   case state.mode, event {
-    _, backend.KeyPress("ctrl+q") -> State(..state, quit: True)
-    Navigating, backend.KeyPress(key:) -> command_key_press(state, key)
-    PickSingle(box, rebuild), event ->
+    _, Input(backend.KeyPress("ctrl+q")) -> #(State(..state, quit: True), [])
+    Running(..), Input(backend.KeyPress("esc")) -> #(
+      State(..state, mode: Navigating, message: "Cancelled"),
+      [],
+    )
+    Running(..), Input(_) -> #(state, [])
+    Running(task_id, env, k), Task(EffectHandled(id, value)) if id == task_id ->
+      loop(block.resume(value, env, k), state)
+    Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
+    PickSingle(box, rebuild), Input(event) -> #(
       case combobox.update(event, box) {
         combobox.Cancelled -> State(..state, mode: Navigating)
         combobox.Selected(value) ->
           submit_input(state, value, EnterText(rebuild))
         combobox.Updated(box) -> State(..state, mode: PickSingle(box, rebuild))
-      }
-    FreeInput(input:, kind:), backend.KeyPress(key:) ->
-      input_key_pressed(state, input, kind, key)
-    FreeInput(input:, kind:), backend.Paste(text:) -> {
+      },
+      [],
+    )
+    FreeInput(input:, kind:), Input(backend.KeyPress(key:)) -> #(
+      input_key_pressed(state, input, kind, key),
+      [],
+    )
+    FreeInput(input:, kind:), Input(backend.Paste(text:)) -> {
       let edited =
         text
         |> string.replace("\r", "")
@@ -122,16 +155,19 @@ pub fn update(event: backend.InputEvent, state: State) -> State {
         |> list.fold(input, fn(editing, char) {
           input.insert_char(input_widget(kind), editing, char)
         })
-      State(..state, mode: FreeInput(edited, kind))
+      #(State(..state, mode: FreeInput(edited, kind)), [])
     }
-    _, backend.Resize(width: _, height: _) -> state
-    _, backend.Tick -> state
-    _, backend.MousePress(x: _, y: _, button: _) -> state
-    _, backend.MouseRelease(x: _, y: _, button: _) -> state
-    _, backend.MouseScroll(x: _, y: _, up: _) -> state
-    _, backend.MouseDrag(x: _, y: _, button: _) -> state
-    _, backend.MouseMove(x: _, y: _) -> state
-    Navigating, backend.Paste(text:) -> paste(state, text)
+    _, Input(backend.Resize(width: _, height: _)) -> #(state, [])
+    _, Input(backend.Tick) -> #(state, [])
+    _, Input(backend.MousePress(x: _, y: _, button: _)) -> #(state, [])
+    _, Input(backend.MouseRelease(x: _, y: _, button: _)) -> #(state, [])
+    _, Input(backend.MouseScroll(x: _, y: _, up: _)) -> #(state, [])
+    _, Input(backend.MouseDrag(x: _, y: _, button: _)) -> #(state, [])
+    _, Input(backend.MouseMove(x: _, y: _)) -> #(state, [])
+    Navigating, Input(backend.Paste(text:)) -> #(paste(state, text), [])
+    _, Task(_) -> {
+      #(state, [])
+    }
   }
 }
 
@@ -191,9 +227,12 @@ fn submit_input(state: State, value: String, kind: InputKind) -> State {
   }
 }
 
-fn command_key_press(state: State, key: String) -> State {
+fn command_key_press(
+  state: State,
+  key: String,
+) -> #(State, List(system.Effect(Message))) {
   case key {
-    "esc" -> state
+    "esc" -> #(state, [])
     "right" -> navigate(state, "move right", buffer.next)
     "left" -> navigate(state, "move left", buffer.previous)
     "up" -> navigate(state, "move up", buffer.up)
@@ -251,20 +290,23 @@ fn command_key_press(state: State, key: String) -> State {
     ">" -> edit(state, m.insert_after())
     "enter" -> confirm(state)
     " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
-    _ -> fail(state, command.fail_message(command.NoKeyBinding(key)))
+    _ -> #(fail(state, command.fail_message(command.NoKeyBinding(key))), [])
   }
 }
 
 fn navigate(state: State, name, func) {
   case func(state.buffer) {
-    Ok(buffer) -> State(..state, buffer:)
-    Error(_) -> fail(state, command.fail_message(command.ActionFailed(name)))
+    Ok(buffer) -> #(State(..state, buffer:), [])
+    Error(_) -> #(
+      fail(state, command.fail_message(command.ActionFailed(name))),
+      [],
+    )
   }
 }
 
-fn edit(state: State, operation: m.Operation) -> State {
+fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
   let m.Operation(name:, apply:) = operation
-  case apply(state.buffer) {
+  let state = case apply(state.buffer) {
     Ok(m.Resolved(gen)) ->
       State(
         ..state,
@@ -304,36 +346,69 @@ fn edit(state: State, operation: m.Operation) -> State {
 
     Error(Nil) -> fail(state, command.fail_message(command.ActionFailed(name)))
   }
+  #(state, [])
 }
 
-fn confirm(state: State) {
-  // TODO remove 
-  let cwd = "/repl"
+fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
   let expression = projection.rebuild(state.buffer.projection)
   case expression {
-    e.Vacant -> fail(state, "write a program")
+    e.Vacant -> #(fail(state, "write a program"), [])
     _ -> {
       let source =
         e.to_annotated(expression, [])
         |> ir.map_annotation(fn(_) { source.Location(source.Repl, source.Json) })
 
-      let scope = state.scope
-      case loop(block.execute(source, scope), state) {
-        Ok(#(value, scope)) -> {
-          let entry = history.Entry(value:, effects: [], buffer: state.buffer)
-          let history = [entry, ..state.history]
-          State(..state, history:, scope:, message: "")
-        }
-
-        Error(#(reason, location, _, stack)) ->
-          fail(state, execute.render_error(reason, location, stack, cwd))
-      }
+      loop(block.execute(source, state.scope), state)
     }
   }
 }
 
-fn loop(return, _state) {
-  return
+fn loop(
+  return: Result(
+    #(Option(istate.Value(source.Location)), istate.Scope(source.Location)),
+    istate.Debug(source.Location),
+  ),
+  state: State,
+) -> #(State, List(system.Effect(Message))) {
+  case return {
+    Ok(#(value, scope)) -> {
+      let entry = history.Entry(value:, effects: [], buffer: state.buffer)
+      let history = [entry, ..state.history]
+      #(State(..state, mode: Navigating, history:, scope:, message: ""), [])
+    }
+    Error(#(break.UnhandledEffect(label, lift), location, env, k)) ->
+      case computer.cast(label, lift) {
+        Ok(effect) ->
+          case computer.extrinsic(effect, location.origin) {
+            system.Done(value) -> loop(block.resume(value, env, k), state)
+            effect -> {
+              let task_id = state.counter
+              #(
+                State(
+                  ..state,
+                  mode: Running(task_id, env, k),
+                  counter: task_id + 1,
+                  message: "Running · Esc: cancel",
+                ),
+                [system.map(effect, EffectHandled(task_id, _))],
+              )
+            }
+          }
+        Error(reason) -> evaluation_failed(state, reason, location, k)
+      }
+    Error(#(reason, location, _, stack)) ->
+      evaluation_failed(state, reason, location, stack)
+  }
+}
+
+fn evaluation_failed(state, reason, location, stack) {
+  #(
+    fail(
+      State(..state, mode: Navigating),
+      execute.render_error(reason, location, stack, "/repl"),
+    ),
+    [],
+  )
 }
 
 fn fail(state, message) {
