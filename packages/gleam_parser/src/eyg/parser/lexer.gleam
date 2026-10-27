@@ -238,6 +238,7 @@ fn keyword_or_name(buffer) {
     "deep" -> t.Deep
     "handle" -> t.Handle
     "import" -> t.Import
+    "todo" -> t.Todo
     _ -> t.Name(buffer)
   }
 }

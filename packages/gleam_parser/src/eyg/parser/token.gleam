@@ -13,6 +13,7 @@ pub type Token {
   Deep
   Handle
   Import
+  Todo
   // Having keyword token instead of using name prevents keywords used as names
   Equal
   Comma
@@ -71,6 +72,7 @@ pub fn to_string(token) {
     Deep -> "deep"
     Handle -> "handle"
     Import -> "import"
+    Todo -> "todo"
     // Having keyword token instead of using name prevents keywords used as names
     Equal -> "="
     Comma -> ","

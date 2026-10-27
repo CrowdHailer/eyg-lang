@@ -33,7 +33,7 @@ pub fn punctuation_test() {
 }
 
 pub fn keyword_test() {
-  "let match perform deep handle import"
+  "let match perform deep handle import todo"
   |> lexer.lex
   |> should.equal([
     #(t.Let, 0),
@@ -47,7 +47,23 @@ pub fn keyword_test() {
     #(t.Handle, 23),
     #(t.Whitespace(" "), 29),
     #(t.Import, 30),
+    #(t.Whitespace(" "), 36),
+    #(t.Todo, 37),
   ])
+}
+
+pub fn todo_keyword_boundary_test() {
+  "todos todo_value todo1"
+  |> lexer.lex
+  |> should.equal([
+    #(t.Name("todos"), 0),
+    #(t.Whitespace(" "), 5),
+    #(t.Name("todo_value"), 6),
+    #(t.Whitespace(" "), 16),
+    #(t.Name("todo1"), 17),
+  ])
+
+  t.Todo |> t.to_string |> should.equal("todo")
 }
 
 pub fn string_test() {

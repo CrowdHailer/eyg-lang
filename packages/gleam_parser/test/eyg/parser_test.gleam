@@ -2,8 +2,9 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
 import eyg/parser/parser.{
-  InvalidCidReference, InvalidImportPath, InvalidReleaseVersion,
+  InvalidCidReference, InvalidImportPath, InvalidReleaseVersion, UnexpectedToken,
 } as _
+import eyg/parser/token
 import gleeunit/should
 import multiformats/cid/v1
 
@@ -31,6 +32,23 @@ pub fn literal_test() {
   // |> parser.all_from_string()
   // |> should.be_ok()
   // |> should.equal(#(ir.String("hello"), #(0, 7)))
+}
+
+pub fn todo_test() {
+  "  todo"
+  |> parser.all_from_string()
+  |> should.be_ok()
+  |> should.equal(#(ir.Vacant, #(2, 6)))
+}
+
+pub fn todo_is_reserved_test() {
+  "let todo = 1 todo"
+  |> parser.all_from_string()
+  |> should.equal(Error(UnexpectedToken(token.Todo, 4)))
+
+  "(todo) -> { todo }"
+  |> parser.all_from_string()
+  |> should.equal(Error(UnexpectedToken(token.Todo, 1)))
 }
 
 pub fn negative_integer_test() {
