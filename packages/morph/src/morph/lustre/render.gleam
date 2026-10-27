@@ -264,7 +264,8 @@ pub fn expression(exp, rev, errors) {
       ])
     e.Reference(ir.Relative(location)) ->
       frame.Inline([
-        frame.span(frame.Symbol, exp_key(rev), location),
+        frame.span(frame.Keyword, exp_key(rev), "import "),
+        frame.span(frame.String, exp_key(rev), string.inspect(location)),
       ])
     e.Reference(ir.Package(package:)) ->
       frame.Inline([
