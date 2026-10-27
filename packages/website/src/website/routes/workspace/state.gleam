@@ -20,6 +20,7 @@ import morph/input
 import morph/manipulation as m
 import morph/picker
 import morph/projection as p
+import morph/repl
 import morph/repl/history
 import multiformats/cid/v1
 import multiformats/hashes
@@ -53,20 +54,15 @@ pub type State {
   )
 }
 
-// This run is different to a doc run, it doesn't have a success case
-pub type Run {
-  Exception(istate.Reason(Meta))
-  Aborted(String)
-  Handling(task_id: Int, env: istate.Env(Meta), k: istate.Stack(Meta))
-  Blocked(dep: cache.Dependency, env: istate.Env(Meta), k: istate.Stack(Meta))
-}
-
 pub type Mode {
   Editing
   Manipulating(m.UserInput)
   // Only the shell is ever run
   // Once the run finishes the input is reset and running return
-  RunningShell(occured: List(history.EffectRecord(Meta)), status: Run)
+  RunningShell(
+    occured: List(history.EffectRecord(Meta)),
+    status: repl.Run(Meta),
+  )
   WritingToClipboard
   ReadingFromClipboard(rebuild: Rebuild(e.Expression))
   SigningPayload(popup: Option(window_proxy.WindowProxy), payload: String)
@@ -254,7 +250,9 @@ pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
     Ignore -> #(state, [])
     EffectHandled(task_id: tid, value:) ->
       case state.mode {
-        RunningShell(_occured, Handling(task_id:, env:, k:)) if tid == task_id -> {
+        RunningShell(_occured, repl.Handling(task_id:, env:, k:))
+          if tid == task_id
+        -> {
           let output =
             block.resume(value, env, k)
             |> loop(state)
@@ -801,16 +799,16 @@ fn loop(
             }
             platform.Work(effect) -> {
               let effect = system.map(effect, EffectHandled(state.counter, _))
-              let run = Handling(state.counter, env, k)
+              let run = repl.Handling(state.counter, env, k)
               Running(run, state.counter + 1, Some(effect))
             }
             platform.Abort(reason) ->
-              Running(Aborted(reason), state.counter, None)
+              Running(repl.Aborted(reason), state.counter, None)
             platform.Spotless(service: _, operation: _) ->
-              Running(Aborted("unsupported"), state.counter, None)
+              Running(repl.Aborted("unsupported"), state.counter, None)
           }
         }
-        Error(reason) -> Running(Exception(reason), state.counter, None)
+        Error(reason) -> Running(repl.Exception(reason), state.counter, None)
       }
     }
     Error(#(break.UndefinedReference(ir.Content(cid)), _, env, k)) ->
@@ -818,7 +816,7 @@ fn loop(
         Ok(cache.Module(value:, ..)) -> loop(block.resume(value, env, k), state)
         // All dependencies are marked as blocked the view shows error vs running status
         Error(_) -> {
-          let run = Blocked(cache.Content(cid), env, k)
+          let run = repl.Blocked(cache.Content(cid), env, k)
           Running(run, state.counter, None)
         }
       }
@@ -826,7 +824,7 @@ fn loop(
       case cache.release_code(state.cache, release) {
         Ok(cache.Module(value:, ..)) -> loop(block.resume(value, env, k), state)
         _ -> {
-          let run = Blocked(cache.Pinned(release), env, k)
+          let run = repl.Blocked(cache.Pinned(release), env, k)
           Running(run, state.counter, None)
         }
       }
@@ -834,13 +832,14 @@ fn loop(
     Ok(#(value, scope)) -> {
       Stop(value, scope)
     }
-    Error(#(reason, _, _, _)) -> Running(Exception(reason), state.counter, None)
+    Error(#(reason, _, _, _)) ->
+      Running(repl.Exception(reason), state.counter, None)
   }
 }
 
-pub fn restart(run: Run, state: State) -> StopOrRunning {
+pub fn restart(run: repl.Run(Meta), state: State) -> StopOrRunning {
   case run {
-    Blocked(dep:, env:, k:) -> {
+    repl.Blocked(dep:, env:, k:) -> {
       let reason = cache.dep_to_reason(dep)
       let return = Error(#(reason, [], env, k))
       loop(return, state)
@@ -853,5 +852,5 @@ pub fn restart(run: Run, state: State) -> StopOrRunning {
 /// Really Stop means clear and push onto history
 pub type StopOrRunning {
   Stop(value: Option(istate.Value(Meta)), scope: istate.Scope(Meta))
-  Running(Run, Int, Option(system.Effect(Message)))
+  Running(repl.Run(Meta), Int, Option(system.Effect(Message)))
 }

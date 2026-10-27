@@ -4,6 +4,7 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/option.{Some}
 import morph/buffer
+import morph/repl
 import morph/repl/history
 import ogre/origin
 import pal/system
@@ -34,7 +35,7 @@ pub fn execute_async_effect_test() {
   let source = ir.call(ir.perform("Alert"), [ir.string("Beep")])
   let state = with_source(source)
   let assert #(state, [effect]) = command(state, "Enter")
-  let assert state.RunningShell([], state.Handling(0, ..)) = state.mode
+  let assert state.RunningShell([], repl.Handling(0, ..)) = state.mode
   let assert system.Alert("Beep", resume) = effect
   let assert system.Done(message) = resume()
   let assert #(state, []) = state.update(state, message)
