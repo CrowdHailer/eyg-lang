@@ -9,6 +9,7 @@ import etui/widgets/input
 import etui/widgets/paragraph
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
 import eyg/cli/etui/widgets/combobox
 import eyg/cli/tui/state
 import eyg/interpreter/simple_debug
@@ -22,7 +23,17 @@ import morph/projection
 import morph/repl/history
 
 pub fn render(state: state.State, screen: geometry.Rect) {
-  let errors = infer.all_errors(state.buffer.analysis)
+  let errors =
+    infer.all_errors(state.buffer.analysis)
+    |> list.filter(fn(error) {
+      let #(path, reason) = error
+      let is_vacant = reason == error.Todo
+      let last = case path {
+        [] | [_] -> True
+        _ -> False
+      }
+      !{ last && is_vacant }
+    })
   let message_lines = text.wrap(state.message, screen.size.width)
   let message_height =
     int.min(
@@ -141,12 +152,8 @@ fn error_lines(errors) -> List(span.Line) {
   list.map(errors, fn(error) {
     let #(_path, reason) = error
     // Type formatting can introduce line breaks; each diagnostic gets one row.
-    let message =
-      debug.reason(reason)
-      |> string.replace("\r\n", " ")
-      |> string.replace("\n", " ")
-      |> string.replace("\r", " ")
-      |> string.replace("\t", " ")
+    // span_styled takes care of them.
+    let message = debug.reason(reason)
     span.line_new([span.span_styled("error: " <> message, error_style)])
   })
 }
