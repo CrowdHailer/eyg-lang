@@ -101,6 +101,25 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
     |> projection.rebuild
     |> render.statements([])
     |> list.flat_map(code(_, False))
+    |> list.append(
+      entry.effects
+      |> list.reverse
+      |> list.map(fn(effect) {
+        let #(label, #(lift, reply)) = effect
+        span.line_new([
+          span.span_styled(
+            "✔ "
+              // TODO extract helpers to print effects
+              <> label
+              <> "("
+              <> simple_debug.inspect(lift)
+              <> ") -> "
+              <> simple_debug.inspect(reply),
+            style.default_style() |> style.with_fg(style.Indexed(7)),
+          ),
+        ])
+      }),
+    )
   case entry.value {
     None -> lines
     Some(value) -> {
