@@ -7,7 +7,9 @@ import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
+import eyg/interpreter/value
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -24,7 +26,9 @@ import morph/manipulation as m
 import morph/picker
 import morph/projection
 import morph/repl/history
+import touch_grass/harness/computer as harness
 import touch_grass/interface
+import touch_grass/standard_in
 
 /// Note the buffer is a morph buffer not an etui buffer
 pub type State {
@@ -68,6 +72,12 @@ pub type InputKind {
   // PickRelease(m.Rebuild(ir.Release))
   EnterText(m.Rebuild(String))
   EnterInteger(m.Rebuild(Int))
+  ReplyStandardIn(
+    // active: Active,
+    env: istate.Env(source.Location),
+    k: istate.Stack(source.Location),
+    occured: List(history.EffectRecord(source.Location)),
+  )
 }
 
 pub type Event {
@@ -91,6 +101,7 @@ pub fn input_widget(kind: InputKind) -> input.InputWidget {
           Error(_) -> Error("Enter a valid integer")
         }
       })
+    ReplyStandardIn(..) -> input.input_new("Standard input")
   }
 }
 
@@ -146,19 +157,18 @@ pub fn update(
       loop(block.resume(value, env, k), state, occured)
     }
     Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
-    PickSingle(box, rebuild), Input(event) -> #(
+    PickSingle(box, rebuild), Input(event) ->
       case combobox.update(event, box) {
-        combobox.Cancelled -> State(..state, mode: Navigating)
+        combobox.Cancelled -> #(State(..state, mode: Navigating), [])
         combobox.Selected(value) ->
           submit_input(state, value, EnterText(rebuild))
-        combobox.Updated(box) -> State(..state, mode: PickSingle(box, rebuild))
-      },
-      [],
-    )
-    FreeInput(input:, kind:), Input(backend.KeyPress(key:)) -> #(
-      input_key_pressed(state, input, kind, key),
-      [],
-    )
+        combobox.Updated(box) -> #(
+          State(..state, mode: PickSingle(box, rebuild)),
+          [],
+        )
+      }
+    FreeInput(input:, kind:), Input(backend.KeyPress(key:)) ->
+      input_key_pressed(state, input, kind, key)
     FreeInput(input:, kind:), Input(backend.Paste(text:)) -> {
       let edited =
         text
@@ -189,13 +199,13 @@ fn input_key_pressed(
   input: input.InputState,
   kind: InputKind,
   key: String,
-) -> State {
+) -> #(State, _) {
   let keys.KeyEvent(code:, modifiers:) = keys.parse(key)
   case modifiers.ctrl || modifiers.alt {
-    True -> state
+    True -> #(state, [])
     False ->
       case code {
-        keys.Escape -> State(..state, mode: Navigating)
+        keys.Escape -> #(State(..state, mode: Navigating), [])
         keys.Enter -> submit_input(state, input.value, kind)
         _ -> {
           let edited = case code {
@@ -215,28 +225,42 @@ fn input_key_pressed(
             keys.End -> input.move_to_end(input)
             _ -> input
           }
-          State(..state, mode: FreeInput(edited, kind))
+          #(State(..state, mode: FreeInput(edited, kind)), [])
         }
       }
   }
 }
 
-fn submit_input(state: State, value: String, kind: InputKind) -> State {
+fn submit_input(
+  state: State,
+  value: String,
+  kind: InputKind,
+) -> #(State, List(_)) {
   let context = repl_context(state.scope)
   let refs = cache.types(state.execute_state.cache)
   case kind {
-    EnterText(rebuild) ->
-      State(..state, mode: Navigating, buffer: rebuild(value, context, refs))
+    EnterText(rebuild) -> #(
+      State(..state, mode: Navigating, buffer: rebuild(value, context, refs)),
+      [],
+    )
     EnterInteger(rebuild) ->
       case int.parse(value) {
-        Ok(value) ->
+        Ok(value) -> #(
           State(
             ..state,
             mode: Navigating,
             buffer: rebuild(value, context, refs),
-          )
-        Error(_) -> state
+          ),
+          [],
+        )
+        Error(_) -> #(state, [])
       }
+
+    ReplyStandardIn(env:, k:, occured:) -> {
+      let reply =
+        system.Done(standard_in.encode(Ok(bit_array.from_string(value))))
+      after_perform(reply, "StandardIn", value.unit(), env, k, state, occured)
+    }
   }
 }
 
@@ -393,28 +417,61 @@ fn loop(
     Error(#(break.UnhandledEffect(label, lift), location, env, k)) ->
       case computer.cast(label, lift) {
         Ok(effect) ->
-          case computer.extrinsic(effect, location.origin) {
-            system.Done(value) -> {
-              let occured = [#(label, #(lift, value))]
-              loop(block.resume(value, env, k), state, occured)
-            }
-            effect -> {
-              let task_id = state.counter
-              let active = Handling(task_id:, label:, lift:)
-              #(
-                State(
-                  ..state,
-                  mode: Running(active, env, k, occured),
-                  counter: task_id + 1,
-                ),
-                [system.map(effect, EffectHandled(task_id, _))],
-              )
-            }
-          }
+          perform(effect, location.origin, label, lift, env, k, state, occured)
         Error(reason) -> evaluation_failed(state, reason, location, k)
       }
     Error(#(reason, location, _, stack)) ->
       evaluation_failed(state, reason, location, stack)
+  }
+}
+
+fn perform(effect, origin, label, lift, env, k, state, occured) {
+  case effect {
+    harness.StandardOut(_) | harness.StandardError(_) ->
+      after_perform(
+        system.Done(value.unit()),
+        label,
+        lift,
+        env,
+        k,
+        state,
+        occured,
+      )
+    harness.StandardIn -> {
+      let mode = FreeInput(input.state_new(), ReplyStandardIn(env, k, occured))
+      #(State(..state, mode:), [])
+    }
+    _ ->
+      after_perform(
+        computer.extrinsic(effect, origin),
+        label,
+        lift,
+        env,
+        k,
+        state,
+        occured,
+      )
+  }
+}
+
+fn after_perform(reply, label, lift, env, k, state, occured) {
+  case reply {
+    system.Done(value) -> {
+      let occured = [#(label, #(lift, value)), ..occured]
+      loop(block.resume(value, env, k), state, occured)
+    }
+    effect -> {
+      let task_id = state.counter
+      let active = Handling(task_id:, label:, lift:)
+      #(
+        State(
+          ..state,
+          mode: Running(active, env, k, occured),
+          counter: task_id + 1,
+        ),
+        [system.map(effect, EffectHandled(task_id, _))],
+      )
+    }
   }
 }
 
