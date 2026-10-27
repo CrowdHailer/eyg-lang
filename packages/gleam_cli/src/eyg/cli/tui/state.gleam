@@ -10,7 +10,7 @@ import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import loam/execute
 import loam/platform/computer
@@ -35,7 +35,7 @@ pub type State {
     scope: istate.Scope(source.Location),
     history: List(history.Entry(source.Location)),
     execute_state: execute.State,
-    message: String,
+    message: Option(String),
     counter: Int,
   )
 }
@@ -94,7 +94,7 @@ pub fn init(
   // I think cache types should turn into a lookup
   let buffer =
     buffer.empty(repl_context(scope), cache.types(execute_state.cache))
-  let message = "Enter runs the program"
+
   State(
     quit: False,
     mode: Navigating,
@@ -102,7 +102,7 @@ pub fn init(
     scope:,
     history: [],
     execute_state:,
-    message:,
+    message: None,
     counter: 0,
   )
 }
@@ -123,10 +123,11 @@ pub fn update(
   event: Event,
   state: State,
 ) -> #(State, List(system.Effect(Message))) {
+  let state = State(..state, message: None)
   case state.mode, event {
     _, Input(backend.KeyPress("ctrl+q")) -> #(State(..state, quit: True), [])
     Running(..), Input(backend.KeyPress("esc")) -> #(
-      State(..state, mode: Navigating, message: "Cancelled"),
+      State(..state, mode: Navigating),
       [],
     )
     Running(..), Input(_) -> #(state, [])
@@ -374,7 +375,7 @@ fn loop(
     Ok(#(value, scope)) -> {
       let entry = history.Entry(value:, effects: [], buffer: state.buffer)
       let history = [entry, ..state.history]
-      #(State(..state, mode: Navigating, history:, scope:, message: ""), [])
+      #(State(..state, mode: Navigating, history:, scope:), [])
     }
     Error(#(break.UnhandledEffect(label, lift), location, env, k)) ->
       case computer.cast(label, lift) {
@@ -388,7 +389,6 @@ fn loop(
                   ..state,
                   mode: Running(task_id, env, k),
                   counter: task_id + 1,
-                  message: "Running · Esc: cancel",
                 ),
                 [system.map(effect, EffectHandled(task_id, _))],
               )
@@ -412,7 +412,7 @@ fn evaluation_failed(state, reason, location, stack) {
 }
 
 fn fail(state, message) {
-  State(..state, message:)
+  State(..state, message: Some(message))
 }
 
 pub fn paste(state: State, text: String) -> State {
@@ -425,7 +425,6 @@ pub fn paste(state: State, text: String) -> State {
           repl_context(state.scope),
           cache.types(state.execute_state.cache),
         ),
-        message: "",
       )
     Error(reason) -> fail(state, reason)
   }

@@ -2,16 +2,13 @@ import etui/buffer
 import etui/geometry
 import etui/span
 import etui/style
-import etui/text
 import etui/widgets/block
 import etui/widgets/clear
 import etui/widgets/input
 import etui/widgets/paragraph
-import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/binding/error
 import eyg/cli/etui/widgets/combobox
 import eyg/cli/tui/state
+import eyg/cli/tui/view/info
 import eyg/interpreter/simple_debug
 import gleam/int
 import gleam/list
@@ -23,34 +20,16 @@ import morph/projection
 import morph/repl/history
 
 pub fn render(state: state.State, screen: geometry.Rect) {
-  let errors =
-    infer.all_errors(state.buffer.analysis)
-    |> list.filter(fn(error) {
-      let #(path, reason) = error
-      let is_vacant = reason == error.Todo
-      let last = case path {
-        [] | [_] -> True
-        _ -> False
-      }
-      !{ last && is_vacant }
-    })
-  let message_lines = text.wrap(state.message, screen.size.width)
-  let message_height =
-    int.min(
-      list.length(message_lines),
-      int.max(0, screen.size.height - list.length(errors) - 1),
-    )
-  let assert [code_area, error_area, message_area] =
+  let assert [code_area, status_line] =
     geometry.split_v(screen, [
       geometry.Fill,
-      geometry.Length(list.length(errors)),
-      geometry.Length(message_height),
+      geometry.Length(1),
     ])
   let active = case state.mode {
     state.Navigating -> True
     state.FreeInput(..) | state.PickSingle(..) | state.Running(..) -> False
   }
-
+  let errors = info.block_errors(state)
   let input_lines =
     render.projection(state.buffer.projection, render.Statements, errors)
     |> code(active)
@@ -71,18 +50,12 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   // Like a shell, keep the end of the program visible as it grows upward.
   let lines = list.drop(lines, int.max(0, line_count - visible_height))
 
-  let message_style = style.default_style() |> style.with_bg(style.Indexed(5))
   let buf =
     buffer.buffer_new(screen)
     |> paragraph.render_styled(content_area, lines)
-    |> paragraph.render_styled(error_area, error_lines(errors))
-    |> buffer.set_style(message_area, message_style)
-    |> paragraph.render_styled(
-      message_area,
-      list.map(message_lines, fn(line) {
-        span.line_new([span.span_styled(line, message_style)])
-      }),
-    )
+    // |> paragraph.render_styled(error_area, error_lines(errors))
+    // |> buffer.set_style(message_area, message_style)
+    |> paragraph.render_styled(status_line, [info.status(state)])
 
   case state.mode {
     state.Navigating | state.Running(..) -> buf
@@ -147,16 +120,16 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
   }
 }
 
-fn error_lines(errors) -> List(span.Line) {
-  let error_style = style.default_style() |> style.with_fg(style.Indexed(1))
-  list.map(errors, fn(error) {
-    let #(_path, reason) = error
-    // Type formatting can introduce line breaks; each diagnostic gets one row.
-    // span_styled takes care of them.
-    let message = debug.reason(reason)
-    span.line_new([span.span_styled("error: " <> message, error_style)])
-  })
-}
+// fn error_lines(errors) -> List(span.Line) {
+//   let error_style = style.default_style() |> style.with_fg(style.Indexed(1))
+//   list.map(errors, fn(error) {
+//     let #(_path, reason) = error
+//     // Type formatting can introduce line breaks; each diagnostic gets one row.
+//     // span_styled takes care of them.
+//     let message = debug.reason(reason)
+//     span.line_new([span.span_styled("error: " <> message, error_style)])
+//   })
+// }
 
 fn code(value: frame.Frame, active: Bool) -> List(span.Line) {
   case value {

@@ -71,6 +71,20 @@ counter1
 
 ---
 
+## Vacant Expressions
+
+The `todo` keyword represents a vacant node.
+It can appear anywhere an expression is expected.
+
+```eyg
+let value = todo
+let unfinished = (x) -> { todo }
+unfinished(todo)
+```
+
+
+---
+
 ## Let Bindings
 
 `let` binds a value to a name. In a block (at the top level or inside a function body), multiple `let` bindings are written on successive lines and their scope extends to the end of the block.
