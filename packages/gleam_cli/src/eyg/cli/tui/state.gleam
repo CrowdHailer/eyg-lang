@@ -141,7 +141,11 @@ pub fn update(
   event: Event,
   state: State,
 ) -> #(State, List(system.Effect(Message))) {
-  let state = State(..state, message: None)
+  // A message stays until the next input from the user.
+  let state = case event {
+    Input(_) -> State(..state, message: None)
+    Task(_) -> state
+  }
   case state.mode, event {
     _, Input(backend.KeyPress("ctrl+q")) -> #(State(..state, quit: True), [])
     Running(..), Input(backend.KeyPress("esc")) -> #(
