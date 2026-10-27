@@ -184,6 +184,8 @@ pub fn apply_until(
 }
 
 fn dispatch(events, state, draw, finish, guard) {
+  // No events no redraw needed
+  use <- bool.guard(events == [], Nil)
   case
     apply_until(events, #(mutable_reference.get(state), []), fn(acc, event) {
       let #(next, effects) = state.update(event, acc.0)
