@@ -2,7 +2,7 @@
 version: 2.0.2
 title: multiple_error_test
 file: ./test/eyg/cli/tui/view_test.gleam
-test_name: show_error_test
+test_name: multiple_error_test
 ---
                                                                                 
                                                                                 

@@ -5,6 +5,9 @@ import etui/geometry
 import eyg/cli/tui/state.{State}
 import eyg/cli/tui/view
 import eyg/hub/cache
+import eyg/interpreter/builtin
+import eyg/interpreter/state as istate
+import eyg/interpreter/value
 import eyg/parser/lexer
 import eyg/parser/parser
 import eyg/parser/token
@@ -17,7 +20,7 @@ import loam/execute
 import morph/buffer
 import ogre/origin
 
-pub fn show_error_test() {
+pub fn multiple_error_test() {
   let state =
     state.init([], execute_state())
     |> with_code("let foo = todo let bar = unknown let baz = {}.foo")
@@ -25,6 +28,21 @@ pub fn show_error_test() {
   let buffer = view.render(state, screen())
   buffer_coloured_text(buffer)
   |> birdie.snap("multiple_error_test")
+}
+
+pub fn in_progress_effects_test() {
+  let state =
+    state.init([], execute_state())
+    |> with_code("let x = perform Sleep(200) let x = perform Sleep(5000) 10")
+    |> with_run(
+      state.Handling(task_id: 1, label: "Sleep", lift: value.Integer(5000)),
+      [#("Sleep", #(value.Integer(200), value.unit()))],
+    )
+
+  let #(state, _) = state.update(state.Input(backend.KeyPress(" ")), state)
+  let buffer = view.render(state, screen())
+  buffer_coloured_text(buffer)
+  |> birdie.snap("in_progress_effects_test")
 }
 
 fn screen() {
@@ -43,6 +61,18 @@ fn with_source(state, source) {
       source,
       state.repl_context(state.scope),
       cache.types(state.execute_state.cache),
+    ),
+  )
+}
+
+fn with_run(state, active, occured) {
+  State(
+    ..state,
+    mode: state.Running(
+      active:,
+      env: builtin.default([]),
+      k: istate.Empty,
+      occured:,
     ),
   )
 }

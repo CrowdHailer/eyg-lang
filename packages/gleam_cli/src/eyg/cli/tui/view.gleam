@@ -20,10 +20,11 @@ import morph/projection
 import morph/repl/history
 
 pub fn render(state: state.State, screen: geometry.Rect) {
+  let status_lines = info.status(state)
   let assert [code_area, status_line] =
     geometry.split_v(screen, [
       geometry.Fill,
-      geometry.Length(1),
+      geometry.Length(list.length(status_lines)),
     ])
   let active = case state.mode {
     state.Navigating -> True
@@ -55,7 +56,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     |> paragraph.render_styled(content_area, lines)
     // |> paragraph.render_styled(error_area, error_lines(errors))
     // |> buffer.set_style(message_area, message_style)
-    |> paragraph.render_styled(status_line, [info.status(state)])
+    |> paragraph.render_styled(status_line, status_lines)
 
   case state.mode {
     state.Navigating | state.Running(..) -> buf
@@ -119,17 +120,6 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
     }
   }
 }
-
-// fn error_lines(errors) -> List(span.Line) {
-//   let error_style = style.default_style() |> style.with_fg(style.Indexed(1))
-//   list.map(errors, fn(error) {
-//     let #(_path, reason) = error
-//     // Type formatting can introduce line breaks; each diagnostic gets one row.
-//     // span_styled takes care of them.
-//     let message = debug.reason(reason)
-//     span.line_new([span.span_styled("error: " <> message, error_style)])
-//   })
-// }
 
 fn code(value: frame.Frame, active: Bool) -> List(span.Line) {
   case value {

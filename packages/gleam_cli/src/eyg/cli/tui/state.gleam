@@ -45,14 +45,21 @@ pub type Mode {
   FreeInput(input: input.InputState, kind: InputKind)
   PickSingle(box: combobox.Combobox, rebuild: m.Rebuild(String))
   Running(
-    task_id: Int,
+    active: Active,
     env: istate.Env(source.Location),
     k: istate.Stack(source.Location),
+    occured: List(history.EffectRecord(source.Location)),
   )
   // id is likely to be added in when we get a full IDE
   // ReadingFromClipboard(id: String, rebuild: Rebuild(e.Expression))
   // Running(id: String, run: Run)
   // UnFocused
+}
+
+/// Same as repl.Run(meta) except when finished it always moves to history.
+pub type Active {
+  Handling(task_id: Int, label: String, lift: execute.Value)
+  Blocked(dep: cache.Dependency)
 }
 
 pub type InputKind {
@@ -131,8 +138,13 @@ pub fn update(
       [],
     )
     Running(..), Input(_) -> #(state, [])
-    Running(task_id, env, k), Task(EffectHandled(id, value)) if id == task_id ->
-      loop(block.resume(value, env, k), state)
+    Running(Handling(task_id:, label:, lift:), env, k, occured),
+      Task(EffectHandled(id, value))
+      if id == task_id
+    -> {
+      let occured = [#(label, #(lift, value)), ..occured]
+      loop(block.resume(value, env, k), state, occured)
+    }
     Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
     PickSingle(box, rebuild), Input(event) -> #(
       case combobox.update(event, box) {
@@ -359,7 +371,7 @@ fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
         e.to_annotated(expression, [])
         |> ir.map_annotation(fn(_) { source.Location(source.Repl, source.Json) })
 
-      loop(block.execute(source, state.scope), state)
+      loop(block.execute(source, state.scope), state, [])
     }
   }
 }
@@ -370,10 +382,11 @@ fn loop(
     istate.Debug(source.Location),
   ),
   state: State,
+  occured: List(history.EffectRecord(source.Location)),
 ) -> #(State, List(system.Effect(Message))) {
   case return {
     Ok(#(value, scope)) -> {
-      let entry = history.Entry(value:, effects: [], buffer: state.buffer)
+      let entry = history.Entry(value:, effects: occured, buffer: state.buffer)
       let history = [entry, ..state.history]
       #(State(..state, mode: Navigating, history:, scope:), [])
     }
@@ -381,13 +394,17 @@ fn loop(
       case computer.cast(label, lift) {
         Ok(effect) ->
           case computer.extrinsic(effect, location.origin) {
-            system.Done(value) -> loop(block.resume(value, env, k), state)
+            system.Done(value) -> {
+              let occured = [#(label, #(lift, value))]
+              loop(block.resume(value, env, k), state, occured)
+            }
             effect -> {
               let task_id = state.counter
+              let active = Handling(task_id:, label:, lift:)
               #(
                 State(
                   ..state,
-                  mode: Running(task_id, env, k),
+                  mode: Running(active, env, k, occured),
                   counter: task_id + 1,
                 ),
                 [system.map(effect, EffectHandled(task_id, _))],
