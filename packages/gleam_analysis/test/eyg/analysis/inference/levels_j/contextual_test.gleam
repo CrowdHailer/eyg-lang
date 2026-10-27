@@ -97,6 +97,72 @@ pub fn expectation_constrains_the_result_test() {
     ]
 }
 
+pub fn info_at_resolves_type_and_effect_test() {
+  let effect = t.EffectExtend("Log", #(t.String, t.Integer), t.Empty)
+  let context = j.pure() |> j.with_effect("Log", t.String, t.Integer)
+  let source = parse("perform Log(\"hello\")")
+  let assert j.Done(analysis) = j.check(context, source)
+
+  assert j.info_at(analysis, source.1)
+    == Ok(j.NodeInfo(Ok(Nil), t.Integer, effect, []))
+  assert j.type_at(analysis, source.1) == Ok(t.Integer)
+}
+
+pub fn info_at_preserves_scope_test() {
+  let source = #(
+    ir.Let("x", #(ir.Integer(5), "value"), #(ir.Variable("x"), "body")),
+    "root",
+  )
+  let assert j.Done(analysis) = j.check(j.pure(), source)
+
+  assert j.info_at(analysis, "body")
+    == Ok(j.NodeInfo(Ok(Nil), t.Integer, t.Empty, [#("x", t.Integer)]))
+  assert j.scope_at(analysis, "body") == Ok([#("x", t.Integer)])
+  assert j.info_at(analysis, "absent") == Error(Nil)
+}
+
+pub fn failed_expectation_retains_bindings_and_resolves_errors_test() {
+  let #(arg, bindings) = binding.mono(1, dict.new())
+  let context =
+    j.Context(..j.pure(), bindings:)
+    |> j.with_expected_type(t.Fun(arg, t.Empty, t.List(arg)))
+  let source = parse("(x) -> { !string_uppercase(x) }")
+  let assert j.Done(analysis) = j.check(context, source)
+  let reason = error.TypeMismatch(t.String, t.List(t.String))
+
+  assert binding.resolve(arg, analysis.bindings) == t.String
+  assert j.info_at(analysis, source.1)
+    == Ok(
+      j.NodeInfo(Error(reason), t.Fun(t.String, t.Empty, t.String), t.Empty, []),
+    )
+  assert j.all_errors(analysis) == [#(source.1, reason)]
+}
+
+pub fn failed_application_retains_partial_constraints_test() {
+  let source = parse("(f) -> { !int_add(f(1), 1) }((x) -> { \"hello\" })")
+  let assert #(ir.Apply(_, argument), _) = source
+  let assert j.Done(analysis) = j.check(j.pure(), source)
+
+  assert j.type_at(analysis, argument.1)
+    == Ok(t.Fun(t.Integer, t.Empty, t.String))
+  assert j.all_errors(analysis)
+    == [#(source.1, error.TypeMismatch(t.String, t.Integer))]
+}
+
+pub fn failed_effect_check_retains_partial_constraints_test() {
+  let #(field, bindings) = binding.mono(1, dict.new())
+  let lift = t.record([#("x", field), #("y", t.Integer)])
+  let context =
+    j.Context(..j.pure(), bindings:)
+    |> j.with_effect("Ping", lift, t.unit)
+  let source = parse("perform Ping({x: 1, y: \"bad\"})")
+  let assert j.Done(analysis) = j.check(context, source)
+
+  assert binding.resolve(field, analysis.bindings) == t.Integer
+  assert j.all_errors(analysis)
+    == [#(source.1, error.TypeMismatch(t.String, t.Integer))]
+}
+
 pub fn simple_function_test() {
   "(_) -> { 5 }"
   |> calc(t.Empty)

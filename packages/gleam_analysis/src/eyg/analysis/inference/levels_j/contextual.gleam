@@ -88,15 +88,15 @@ pub fn check(context: Context, source: ir.Node(a)) -> Step(Analysis(_)) {
 fn check_expected_type(analysis, expected, level) {
   let Analysis(bindings:, tree:, ..) = analysis
   let #(expression, #(result, type_, eff, env)) = tree
-  case unify.unify(type_, expected, level, bindings) {
+  case unify.unify_with_bindings(type_, expected, level, bindings) {
     Ok(bindings) -> Analysis(..analysis, bindings:)
-    Error(reason) -> {
+    Error(#(reason, bindings)) -> {
       let result = case result {
         Ok(Nil) -> Error(reason)
         Error(_) -> result
       }
       let tree = #(expression, #(result, type_, eff, env))
-      Analysis(..analysis, tree:)
+      Analysis(..analysis, bindings:, tree:)
     }
   }
 }
@@ -125,7 +125,7 @@ pub fn missing_references(inference) {
 }
 
 pub fn all_errors(inference) {
-  let Analysis(_bindings, acc, source) = inference
+  let Analysis(bindings, acc, source) = inference
   let meta = ir.get_annotation(source)
   let info = ir.get_annotation(acc)
   let assert Ok(info) = list.strict_zip(meta, info)
@@ -135,13 +135,27 @@ pub fn all_errors(inference) {
     let #(meta, #(result, _type, _eff, _scope)) = pair
     case result {
       Ok(Nil) -> Error(Nil)
-      Error(reason) -> Ok(#(meta, reason))
+      Error(reason) -> Ok(#(meta, error.resolve(reason, bindings)))
     }
   })
 }
 
-fn info_at(inference: Analysis(_), desired) {
-  let Analysis(_bindings, acc, source) = inference
+/// Information attached to one node. Types in status, type and effect are
+/// resolved against the analysis bindings; scope retains polymorphic schemes.
+pub type NodeInfo {
+  NodeInfo(
+    status: Result(Nil, error.Reason),
+    type_: binding.Mono,
+    effect: binding.Mono,
+    scope: List(#(String, binding.Poly)),
+  )
+}
+
+/// Looks up a node by its original annotation. An erroneous node still returns
+/// `Ok(NodeInfo(...))` with its error in `status` and its best-effort type.
+/// `Error(Nil)` means no matching annotation was found.
+pub fn info_at(inference: Analysis(a), desired: a) -> Result(NodeInfo, Nil) {
+  let Analysis(bindings, acc, source) = inference
   let meta = ir.get_annotation(source)
   let info = ir.get_annotation(acc)
   let assert Ok(info) = list.strict_zip(meta, info)
@@ -149,20 +163,28 @@ fn info_at(inference: Analysis(_), desired) {
   |> list.find_map(fn(pair) {
     let #(meta, info) = pair
     case meta == desired {
-      True -> Ok(info)
+      True -> {
+        let #(status, type_, effect, scope) = info
+        Ok(NodeInfo(
+          status: result.map_error(status, error.resolve(_, bindings)),
+          type_: binding.resolve(type_, bindings),
+          effect: binding.resolve(effect, bindings),
+          scope:,
+        ))
+      }
       False -> Error(Nil)
     }
   })
 }
 
 pub fn type_at(inference: Analysis(_), desired) {
-  use #(_result, type_, _effect, _scope) <- try(info_at(inference, desired))
-  Ok(binding.resolve(type_, inference.bindings))
+  use info <- try(info_at(inference, desired))
+  Ok(info.type_)
 }
 
 pub fn scope_at(inference: Analysis(_), desired) {
-  use #(_result, _type, _effect, scope) <- try(info_at(inference, desired))
-  Ok(scope)
+  use info <- try(info_at(inference, desired))
+  Ok(info.scope)
 }
 
 pub fn arity_at(inference: Analysis(_), desired) {
@@ -355,10 +377,15 @@ pub fn do_infer(source, env, eff, level, bindings) -> Step(_) {
       let #(test_eff, bindings) = binding.mono(level, bindings)
 
       let #(bindings, result) = case
-        unify.unify(t.Fun(ty_arg, test_eff, ty_ret), ty_fun, level, bindings)
+        unify.unify_with_bindings(
+          t.Fun(ty_arg, test_eff, ty_ret),
+          ty_fun,
+          level,
+          bindings,
+        )
       {
         Ok(bindings) -> #(bindings, Ok(Nil))
-        Error(reason) -> #(bindings, Error(reason))
+        Error(#(reason, bindings)) -> #(bindings, Error(reason))
       }
 
       let level = level - 1
@@ -381,11 +408,11 @@ pub fn do_infer(source, env, eff, level, bindings) -> Step(_) {
       }
 
       let #(bindings, result) = case
-        unify.unify(test_eff, eff, level, bindings)
+        unify.unify_with_bindings(test_eff, eff, level, bindings)
       {
         Ok(bindings) -> #(bindings, result)
         // First error, is there a result.and function
-        Error(reason) -> #(bindings, case result {
+        Error(#(reason, bindings)) -> #(bindings, case result {
           Ok(Nil) -> Error(reason)
           Error(reason) -> Error(reason)
         })

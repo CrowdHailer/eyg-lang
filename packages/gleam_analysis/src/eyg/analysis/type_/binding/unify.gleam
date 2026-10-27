@@ -6,12 +6,22 @@ import gleam/int
 import gleam/io
 import gleam/result.{try}
 
+@deprecated("Use unify_with_bindings to retain bindings on failure")
 pub fn unify(t1, t2, level, bindings) {
+  unify_with_bindings(t1, t2, level, bindings)
+  |> result.map_error(fn(failure) { failure.0 })
+}
+
+// Returns bindings in both Ok/Error branch this makes it easier to work with try
+pub fn unify_with_bindings(t1, t2, level, bindings) {
   case do_unify([#(t1, t2)], level, bindings) {
-    Error(error.TypeMismatch(t.Var(_x), t.Var(_y))) ->
-      Error(error.TypeMismatch(
-        binding.resolve(t1, bindings),
-        binding.resolve(t2, bindings),
+    Error(#(error.TypeMismatch(t.Var(_x), t.Var(_y)), bindings)) ->
+      Error(#(
+        error.TypeMismatch(
+          binding.resolve(t1, bindings),
+          binding.resolve(t2, bindings),
+        ),
+        bindings,
       ))
     result -> result
   }
@@ -86,7 +96,7 @@ fn do_unify(ts, level, bindings) -> Result(dict.Dict(Int, binding.Binding), _) {
         t.Never, _, t.Never, _ -> do_unify(ts, level, bindings)
         t.Promise(t1), _, t.Promise(t2), _ ->
           do_unify([#(t1, t2), ..ts], level, bindings)
-        _, _, _, _ -> Error(error.TypeMismatch(t1, t2))
+        _, _, _, _ -> Error(#(error.TypeMismatch(t1, t2), bindings))
       }
     }
   }
@@ -104,7 +114,7 @@ fn do_occurs_and_levels(i, level, types, bindings) {
     [] -> Ok(bindings)
     [type_, ..types] ->
       case type_ {
-        t.Var(j) if i == j -> Error(error.Recursive)
+        t.Var(j) if i == j -> Error(#(error.Recursive, bindings))
         t.Var(j) -> {
           let assert Ok(binding) = dict.get(bindings, j)
           case binding {
@@ -146,7 +156,7 @@ fn do_occurs_and_levels(i, level, types, bindings) {
 
 fn rewrite_row(required, type_, level, bindings, check) {
   case type_ {
-    t.Empty -> Error(error.MissingRow(required))
+    t.Empty -> Error(#(error.MissingRow(required), bindings))
     t.RowExtend(l, field, rest) if l == required -> Ok(#(field, rest, bindings))
     t.RowExtend(l, other_field, rest) -> {
       use #(field, new_tail, bindings) <- try(rewrite_row(
@@ -168,7 +178,7 @@ fn rewrite_row(required, type_, level, bindings, check) {
             // catch infinite loop
             t.Var(j) if i == j -> {
               io.println("same tails")
-              Error(error.SameTail(t.Var(i), t.Var(j)))
+              Error(#(error.SameTail(t.Var(i), t.Var(j)), bindings))
             }
             _ -> {
               // The new fields belong to the existing row, not the younger
@@ -190,7 +200,7 @@ fn rewrite_row(required, type_, level, bindings, check) {
 
 fn rewrite_effect(required, type_, level, bindings, check: t.Type(_)) {
   case type_ {
-    t.Empty -> Error(error.MissingRow(required))
+    t.Empty -> Error(#(error.MissingRow(required), bindings))
     t.EffectExtend(l, eff, rest) if l == required -> Ok(#(eff, rest, bindings))
     t.EffectExtend(l, other_eff, rest) -> {
       use #(eff, new_tail, bindings) <- try(rewrite_effect(
@@ -212,7 +222,7 @@ fn rewrite_effect(required, type_, level, bindings, check: t.Type(_)) {
             // catch infinite loop
             t.Var(j) if i == j -> {
               io.println("same effect tails")
-              Error(error.TypeMismatch(t.Var(i), t.Var(j)))
+              Error(#(error.TypeMismatch(t.Var(i), t.Var(j)), bindings))
             }
             _ -> {
               // Might get bound during tail rewrite
