@@ -136,7 +136,7 @@ pub fn value_to_type(value, bindings, meta: t) {
               let #(test_eff, bindings) = binding.mono(level, bindings)
 
               let bindings = case
-                unify.unify(
+                unify.unify_with_bindings(
                   t.Fun(t_arg, test_eff, ty_ret),
                   func,
                   level,
@@ -144,7 +144,7 @@ pub fn value_to_type(value, bindings, meta: t) {
                 )
               {
                 Ok(bindings) -> bindings
-                Error(_reason) -> bindings
+                Error(#(_reason, bindings)) -> bindings
               }
               #(ty_ret, bindings)
             })

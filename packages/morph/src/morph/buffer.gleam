@@ -7,6 +7,7 @@
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as iso
 import eyg/ir/dag_json
 import gleam/dict
@@ -131,11 +132,29 @@ pub fn add_references(buffer, new, context, refs) {
   }
 }
 
-/// public for testing as a helper
-pub fn target_type(buffer) {
+/// Returns resolved analysis information for the current selection. Fails only if its annotation is absent.
+pub fn target_info(buffer: Buffer) -> Result(infer.NodeInfo, Nil) {
   let Buffer(projection:, analysis:, ..) = buffer
   let path = p.path(projection)
-  infer.type_at(analysis, list.reverse(path))
+  infer.info_at(analysis, list.reverse(path))
+}
+
+pub fn target_type(buffer) {
+  use info <- result.map(target_info(buffer))
+  info.type_
+}
+
+pub fn block_errors(buffer: Buffer) {
+  infer.all_errors(buffer.analysis)
+  |> list.filter(fn(error) {
+    let #(path, reason) = error
+    let is_vacant = reason == error.Todo
+    let last = case path {
+      [] | [_] -> True
+      _ -> False
+    }
+    !{ last && is_vacant }
+  })
 }
 
 pub fn fields(buffer) {

@@ -58,10 +58,14 @@ fn do_check_against_state(b, refs, source, old) {
   // Needs to be open for handle etc
   let init_field = t.Record(t.do_rows([#("init", new)], rest))
 
-  let #(meta, b, migrate) = case unify.unify(init_field, program, level, b) {
+  let #(meta, b, migrate) = case
+    unify.unify_with_bindings(init_field, program, level, b)
+  {
     Ok(b) -> {
       // if has init check if init is old or new state type
-      let #(migrate_field, upgrade, b) = case unify.unify(old, new, level, b) {
+      let #(migrate_field, upgrade, b) = case
+        unify.unify_with_bindings(old, new, level, b)
+      {
         Ok(b) -> #([], False, b)
         Error(_reason) -> {
           let migrate_field = #("migrate", t.Fun(old, t.Empty, new))
@@ -75,7 +79,7 @@ fn do_check_against_state(b, refs, source, old) {
 
       let expect =
         t.do_rows([handle_field, render_field, ..migrate_field], remainder)
-      case unify.unify(expect, rest, level, b) {
+      case unify.unify_with_bindings(expect, rest, level, b) {
         Ok(b) -> #(
           #(
             case original_err {
@@ -90,10 +94,14 @@ fn do_check_against_state(b, refs, source, old) {
           b,
           upgrade,
         )
-        Error(reason) -> #(#(Error(reason), program, t.Empty, []), b, False)
+        Error(#(reason, _)) -> #(
+          #(Error(reason), program, t.Empty, []),
+          b,
+          False,
+        )
       }
     }
-    Error(reason) -> {
+    Error(#(reason, _)) -> {
       #(#(Error(reason), program, t.Empty, []), b, False)
     }
   }
