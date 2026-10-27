@@ -259,7 +259,9 @@ pub fn expression(exp, rev, errors) {
     e.Builtin(identifier) ->
       frame.Inline([frame.span(frame.Builtin, exp_key(rev), "!" <> identifier)])
     e.Reference(ir.Content(cid)) ->
-      frame.Inline([frame.span(frame.Symbol, exp_key(rev), v1.to_string(cid))])
+      frame.Inline([
+        frame.span(frame.Symbol, exp_key(rev), "#" <> v1.to_string(cid)),
+      ])
     e.Reference(ir.Relative(location)) ->
       frame.Inline([
         frame.span(frame.Symbol, exp_key(rev), location),
