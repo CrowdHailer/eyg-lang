@@ -25,4 +25,5 @@ overlay_llm = { path = "../overlay_llm" }
 touch_grass = { path = "../touch_grass" }
 
 [dev_dependencies]
+eyg_parser = { path = "../gleam_parser" }
 gleeunit = ">= 1.0.0 and < 2.0.0"

@@ -24,9 +24,15 @@ eyg overlay path/to/.overlay.eyg
 The `.overlay.eyg` file returns a record with the following fields:
 
 - `llm` a record `{provider, model}` matching the `Llm` type in gleam module `overlay/llm/provider`.
-  The providers in the CLI are `Ollama({origin: String, api_key: Option(String)})`,
+  [OpenAI compatible endpoints](../../guides/openai_compatible.md) use
+  `OpenAI({origin, api_key, path, headers})` with Chat Completions function tools.
+  [Bedrock](../../guides/bedrock.md) uses
+  `Bedrock({region, access_key_id, secret_access_key, session_token})` with Converse.
+  [Codex subscriptions](../../guides/codex_models.md) use
+  `Codex({access_token, account_id})` with the source branch's private Responses transport.
+  `Ollama({origin: String, api_key: Option(String)})` selects Ollama;
   use `origin: "https://ollama.com"` for Ollama cloud or `"http://localhost:11434"` for a local server,
-  and `Mistral({api_key: String})`.
+  `Mistral({api_key: String})` selects Mistral.
 - `policy` A record of gate functions for the fields required by the host's effect rules.
 - `context` A record with at least the field `readme`. The readme content is added as context to the agent. The agent is able to access the context by the `context` variable in any programs it runs.
 

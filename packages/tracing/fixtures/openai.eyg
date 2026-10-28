@@ -1,0 +1,15 @@
+let pass = (value) -> { Pass(value) }
+{
+  llm: {
+    provider: OpenAI({origin: "http://127.0.0.1:7209", api_key: Some("fixture-key"), path: "/v1/chat/completions", headers: [{key: "x-fixture", value: "checked"}]}),
+    model: "scripted-chat"
+  },
+  policy: {
+    acquire: pass, mount: pass, append_file: pass, create_key: pass, cwd: pass,
+    delete_file: pass, env: pass, exit: pass, fetch: pass, flip: pass,
+    make_directory: pass, now: pass, random: pass, read_directory: pass,
+    read_file: pass, sleep: pass,
+    standard_error: pass, standard_in: pass, standard_out: pass, write_file: pass
+  },
+  context: {}
+}

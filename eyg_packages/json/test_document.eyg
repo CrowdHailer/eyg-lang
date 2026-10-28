@@ -1,0 +1,60 @@
+let {assert} = @aok
+let document = import "./document.eyg"
+let flat = (text) -> { assert.ok(document.parse(text)) }
+
+[
+  {name: "json document preserves every term and nested empties", test: (_) -> {
+    let original = "{\"x\":[true,false,null,-7,1.050e-2,[],{},\"é 🌱\\u0001\"],\"y\":{\"empty\":[],\"tail\":\"ok\"}}"
+    let parsed = flat(original)
+    let _ = assert.equal(parsed, flat(document.render(parsed)))
+    {}
+  }},
+  {name: "json document replaces nested strings and retains unknown fields", test: (_) -> {
+    let parsed = flat("{\"tokens\":{\"access_token\":\"old\",\"unknown\":[1,{\"access_token\":\"keep\"}]},\"access_token\":\"outer\",\"other\":null}")
+    let changed = assert.ok(document.replace(parsed, ["tokens", "access_token"], "new"))
+    let expected = "{\"tokens\":{\"access_token\":\"new\",\"unknown\":[1,{\"access_token\":\"keep\"}]},\"access_token\":\"outer\",\"other\":null}"
+    let _ = assert.equal(flat(expected), flat(document.render(changed)))
+    {}
+  }},
+  {name: "json document replaces top-level strings and preserves siblings", test: (_) -> {
+    let parsed = flat("{\"before\":{},\"last_refresh\":\"old\",\"after\":[false]}")
+    let changed = assert.ok(document.replace(parsed, ["last_refresh"], "fresh"))
+    let _ = assert.equal(flat("{\"before\":{},\"last_refresh\":\"fresh\",\"after\":[false]}"), flat(document.render(changed)))
+    {}
+  }},
+  {name: "json document rejects missing or non-string replacement paths", test: (_) -> {
+    let parsed = flat("{\"tokens\":{\"access_token\":\"old\"},\"n\":1}")
+    let _ = assert.error(document.replace(parsed, ["missing"], "x"))
+    let _ = assert.error(document.replace(parsed, ["tokens", "missing"], "x"))
+    let _ = assert.error(document.replace(parsed, ["n"], "x"))
+    let _ = assert.error(document.replace(parsed, ["n", "inner"], "x"))
+    let _ = assert.error(document.replace(parsed, ["tokens"], "x"))
+    let _ = assert.equal_string("{\"tokens\":{\"access_token\":\"old\"},\"n\":1}", document.render(parsed))
+    {}
+  }},
+  {name: "json document supports primitive roots and reports invalid input", test: (_) -> {
+    let _ = assert.equal_string("\"new\"", document.render(assert.ok(document.replace(flat("\"old\""), [], "new"))))
+    let _ = assert.error(document.parse("{"))
+    let _ = assert.equal_string("[]", document.render(flat("[]")))
+    let _ = assert.equal_string("{}", document.render(flat("{}")))
+    let _ = assert.equal_string("null", document.render(flat("null")))
+    {}
+  }},
+  {name: "json document preserves exponent-only and negative decimal numbers", test: (_) -> {
+    let parsed = flat("[-1.005e3,1e-2,0.000e0]")
+    let _ = assert.equal(parsed, flat(document.render(parsed)))
+    {}
+  }},
+  {name: "json document rejects invalid document representations", test: (_) -> {
+    let empty = handle Abort((reason, _resume) -> { Error(reason) }, (_) -> { Ok(document.render([])) })
+    let _ = assert.equal_string("invalid JSON document", assert.error(empty))
+    let field = handle Abort((reason, _resume) -> { Error(reason) }, (_) -> { Ok(document.render([{depth: 0, term: Field("x")}])) })
+    let _ = assert.equal_string("expected a JSON value", assert.error(field))
+    let object = handle Abort((reason, _resume) -> { Error(reason) }, (_) -> {
+      Ok(document.render([{depth: 0, term: Object({})}, {depth: 1, term: String("invalid")}]))
+    })
+    let _ = assert.equal_string("invalid JSON object", assert.error(object))
+    let _ = assert.error(document.replace([], [], "x"))
+    {}
+  }}
+]

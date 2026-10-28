@@ -1,5 +1,5 @@
 let aok = @aok
-let tests = import "./test.eyg"
+let tests = @standard.list.flatten([import "./test.eyg", import "./test_document.eyg"])
 
 {
   tests,

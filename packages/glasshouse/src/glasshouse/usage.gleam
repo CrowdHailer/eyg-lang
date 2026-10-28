@@ -1,7 +1,7 @@
 //// Token usage reported by model providers.
 ////
 //// Ollama reports `prompt_eval_count` and `eval_count`,
-//// OpenAI compatible APIs such as Mistral report a `usage` object.
+//// OpenAI compatible APIs and Bedrock report a `usage` object.
 //// Streamed responses report usage in their final event,
 //// each line of a body is checked and the last report wins.
 
@@ -57,8 +57,25 @@ fn decoder() {
         },
         decode.success,
       ),
+      decode.field(
+        "usage",
+        {
+          use input <- decode.field("inputTokens", decode.int)
+          use output <- decode.optional_field("outputTokens", 0, decode.int)
+          decode.success(Usage(input:, output:))
+        },
+        decode.success,
+      ),
+      decode.field("usage", response_usage_decoder(), decode.success),
+      decode.at(["response", "usage"], response_usage_decoder()),
     ],
   )
+}
+
+fn response_usage_decoder() {
+  use input <- decode.field("input_tokens", decode.int)
+  use output <- decode.optional_field("output_tokens", 0, decode.int)
+  decode.success(Usage(input:, output:))
 }
 
 /// A rough count for text, about four characters a token.

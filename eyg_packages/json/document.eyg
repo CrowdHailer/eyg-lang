@@ -1,0 +1,150 @@
+// Preserve unknown JSON fields while replacing an existing string by field path.
+// The document is the flat, ordered representation returned by DecodeJSON.
+let encode = import "./encode.eyg"
+
+let reverse = (items) -> { !list_fold(items, [], (item, acc) -> { [item, ..acc] }) }
+let append = (left, right) -> {
+  !list_fold(reverse(left), right, (item, acc) -> { [item, ..acc] })
+}
+let take = (items) -> {
+  match !list_pop(items) {
+    Ok(item) -> { item }
+    Error(_) -> { !never(perform Abort("invalid JSON document")) }
+  }
+}
+let pad = !fix((self, text, width) -> {
+  match !int_compare(!string_length(text), width) {
+    Lt(_) -> { self(!string_append("0", text), width) }
+    | (_) -> { text }
+  }
+})
+let number = ({sign, integer, decimal, exponent}) -> {
+  let prefix = match sign { Positive(_) -> { "" } Negative(_) -> { "-" } }
+  let fraction = match !equal(decimal.size, 0) {
+    True(_) -> { "" }
+    False(_) -> { !string_append(".", pad(!int_to_string(decimal.numerator), decimal.size)) }
+  }
+  !string_append(prefix, !string_append(!int_to_string(integer),
+    !string_append(fraction, !string_append("e", !int_to_string(exponent)))))
+}
+
+let value = !fix((self, items) -> {
+  let {head, tail} = take(items)
+  let {term, depth} = head
+  match term {
+    Object(_) -> {
+      let fields = !fix((read, remaining, acc) -> {
+        match !list_pop(remaining) {
+          Ok({head, tail}) -> {
+            match !int_compare(head.depth, depth) {
+              Gt(_) -> {
+                let key = match head.term {
+                  Field(key) -> { key }
+                  | (_) -> { !never(perform Abort("invalid JSON object")) }
+                }
+                let encoded = self(tail)
+                read(encoded.rest, [encode.field(key, encoded.value), ..acc])
+              }
+              | (_) -> { {value: encode.object(reverse(acc)), rest: remaining} }
+            }
+          }
+          Error(_) -> { {value: encode.object(reverse(acc)), rest: []} }
+        }
+      })
+      fields(tail, [])
+    }
+    Array(_) -> {
+      let values = !fix((read, remaining, acc) -> {
+        match !list_pop(remaining) {
+          Ok({head}) -> {
+            match !int_compare(head.depth, depth) {
+              Gt(_) -> {
+                let encoded = self(remaining)
+                read(encoded.rest, [encoded.value, ..acc])
+              }
+              | (_) -> { {value: encode.array(reverse(acc)), rest: remaining} }
+            }
+          }
+          Error(_) -> { {value: encode.array(reverse(acc)), rest: []} }
+        }
+      })
+      values(tail, [])
+    }
+    String(text) -> { {value: encode.string(text), rest: tail} }
+    Integer(n) -> { {value: encode.integer(n), rest: tail} }
+    Number(n) -> { {value: number(n), rest: tail} }
+    True(_) -> { {value: "true", rest: tail} }
+    False(_) -> { {value: "false", rest: tail} }
+    Null(_) -> { {value: "null", rest: tail} }
+    Field(_) -> { !never(perform Abort("expected a JSON value")) }
+  }
+})
+
+let render = (document) -> { value(document).value }
+let parse = (text) -> { perform DecodeJSON(!string_to_binary(text)) }
+
+// Return the start of a field's value and the nodes before it.
+let locate = !fix((self, items, parent_depth, key, before) -> {
+  match !list_pop(items) {
+    Ok({head, tail}) -> {
+      match !int_compare(head.depth, parent_depth) {
+        Gt(_) -> {
+          let found = match head.term {
+            Field(label) -> {
+              match !equal(head.depth, !int_add(parent_depth, 1)) {
+                True(_) -> { !equal(label, key) }
+                False(_) -> { False({}) }
+              }
+            }
+            | (_) -> { False({}) }
+          }
+          match found {
+            True(_) -> { Ok({before: reverse([head, ..before]), rest: tail}) }
+            False(_) -> { self(tail, parent_depth, key, [head, ..before]) }
+          }
+        }
+        | (_) -> { Error(!string_append("missing field: ", key)) }
+      }
+    }
+    Error(_) -> { Error(!string_append("missing field: ", key)) }
+  }
+})
+
+let replace = !fix((self, items, path, text) -> {
+  match !list_pop(path) {
+    Error(_) -> {
+      match !list_pop(items) {
+        Ok({head, tail}) -> {
+          match head.term {
+            String(_) -> { Ok([{term: String(text), depth: head.depth}, ..tail]) }
+            | (_) -> { Error("expected an existing string field") }
+          }
+        }
+        | (_) -> { Error("expected an existing string field") }
+      }
+    }
+    Ok({head: key, tail: path}) -> {
+      match !list_pop(items) {
+        Ok({head, tail}) -> {
+          match head.term {
+            Object(_) -> {
+              match locate(tail, head.depth, key, [head]) {
+                Ok({before, rest}) -> {
+                  match self(rest, path, text) {
+                    Ok(changed) -> { Ok(append(before, changed)) }
+                    Error(reason) -> { Error(reason) }
+                  }
+                }
+                Error(reason) -> { Error(reason) }
+              }
+            }
+            | (_) -> { Error("expected an object in field path") }
+          }
+        }
+        | (_) -> { Error("expected an object in field path") }
+      }
+    }
+  }
+})
+
+{parse, render, replace}

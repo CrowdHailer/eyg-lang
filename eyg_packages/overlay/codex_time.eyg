@@ -1,0 +1,44 @@
+// UTC seconds for the file cache's last_refresh field. Input is Unix milliseconds.
+// Civil date conversion uses 400-year Gregorian eras.
+let divide = (n, divisor) -> {
+  let quotient = match !int_divide(n, divisor) { Ok(q) -> { q } Error(_) -> { 0 } }
+  match !int_compare(n, 0) {
+    Lt(_) -> {
+      match !equal(n, !int_multiply(quotient, divisor)) {
+        True(_) -> { quotient }
+        False(_) -> { !int_subtract(quotient, 1) }
+      }
+    }
+    | (_) -> { quotient }
+  }
+}
+let pad = !fix((self, n, width) -> {
+  match !int_compare(!string_length(n), width) {
+    Lt(_) -> { self(!string_append("0", n), width) }
+    | (_) -> { n }
+  }
+})
+let format = (milliseconds) -> {
+  let days = divide(milliseconds, 86400000)
+  let z = !int_add(days, 719468)
+  let era = divide(z, 146097)
+  let doe = !int_subtract(z, !int_multiply(era, 146097))
+  let yoe = divide(!int_subtract(!int_add(!int_subtract(doe, divide(doe, 1460)), divide(doe, 36524)), divide(doe, 146096)), 365)
+  let year = !int_add(yoe, !int_multiply(era, 400))
+  let doy = !int_subtract(doe, !int_subtract(!int_add(!int_multiply(365, yoe), divide(yoe, 4)), divide(yoe, 100)))
+  let mp = divide(!int_add(!int_multiply(5, doy), 2), 153)
+  let day = !int_add(!int_subtract(doy, divide(!int_add(!int_multiply(153, mp), 2), 5)), 1)
+  let month = !int_add(mp, match !int_compare(mp, 10) { Lt(_) -> { 3 } | (_) -> { -9 } })
+  let year = !int_add(year, match !int_compare(month, 3) { Lt(_) -> { 1 } | (_) -> { 0 } })
+  let within_day = !int_subtract(milliseconds, !int_multiply(days, 86400000))
+  let hours = divide(within_day, 3600000)
+  let within_hour = !int_subtract(within_day, !int_multiply(hours, 3600000))
+  let minutes = divide(within_hour, 60000)
+  let seconds = divide(!int_subtract(within_hour, !int_multiply(minutes, 60000)), 1000)
+  !list_fold([
+    pad(!int_to_string(year), 4), "-", pad(!int_to_string(month), 2), "-",
+    pad(!int_to_string(day), 2), "T", pad(!int_to_string(hours), 2), ":",
+    pad(!int_to_string(minutes), 2), ":", pad(!int_to_string(seconds), 2), "Z"
+  ], "", (part, acc) -> { !string_append(acc, part) })
+}
+{format}

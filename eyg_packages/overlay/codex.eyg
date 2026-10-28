@@ -1,0 +1,201 @@
+// Use a ChatGPT subscription as the model of an overlay agent.
+//
+// Log in with the Codex CLI using its file credential store.
+// `read(path)` reads that file, the path must be absolute, and returns the overlay provider.
+// `refresh(path)` exchanges the refresh token for new tokens, saves them to the file and returns the provider.
+//
+// Read and refresh return Result(provider, error); unwrap the result in configuration.
+//
+// Refreshed tokens, including a rotated refresh token, are saved before returning a provider.
+// Deny the agent reading the auth file, as `policy.allow_all` does not.
+
+let {parse, decode, encode, document} = import "../json/index.eyg"
+let clock = import "./codex_time.eyg"
+
+let optional_string = (label, parsed) -> {
+  let found = handle Abort((reason, _resume) -> { Error(reason) }, (_) -> {
+    Ok(decode.field(label, decode.string, parsed))
+  })
+  match found {
+    Ok(value) -> { Some(value) }
+    Error(reason) -> {
+      match !equal(reason, "Missing field") {
+        True(_) -> { None({}) }
+        False(_) -> { !never(perform Abort(reason)) }
+      }
+    }
+  }
+}
+
+let auth = decode.object((decoded) -> {
+  let tokens = decode.field("tokens", decode.object((tokens) -> {
+    {
+      id_token: decode.field("id_token", decode.string, tokens),
+      access_token: decode.field("access_token", decode.string, tokens),
+      refresh_token: decode.field("refresh_token", decode.string, tokens),
+      account_id: decode.field("account_id", decode.string, tokens)
+    }
+  }), decoded)
+  {
+    auth_mode: decode.field("auth_mode", decode.string, decoded),
+    last_refresh: decode.field("last_refresh", decode.string, decoded),
+    tokens
+  }
+})
+
+let refreshed = decode.object((decoded) -> {
+  {
+    access_token: decode.field("access_token", decode.string, decoded),
+    refresh_token: optional_string("refresh_token", decoded),
+    id_token: optional_string("id_token", decoded)
+  }
+})
+
+let read_auth = (path) -> {
+  match perform ReadFile({path, offset: 0, limit: 1000000}) {
+    Ok(bytes) -> {
+      match !string_from_binary(bytes) {
+        Ok(text) -> {
+          match parse(text, auth) {
+            Ok(auth) -> {
+              match !equal(auth.auth_mode, "chatgpt") {
+                True(_) -> {
+                  match document.parse(text) {
+                    Ok(document) -> {
+                      let {auth_mode, last_refresh, tokens} = auth
+                      Ok({document, auth_mode, last_refresh, tokens})
+                    }
+                    Error(reason) -> { Error(reason) }
+                  }
+                }
+                False(_) -> { Error("codex auth file must use ChatGPT login") }
+              }
+            }
+            Error(reason) -> { Error(!string_append("invalid codex auth file: ", reason)) }
+          }
+        }
+        Error(_) -> { Error("codex auth file is not valid utf-8") }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+let provider = (tokens) -> {
+  Codex({access_token: tokens.access_token, account_id: tokens.account_id})
+}
+
+let read = (path) -> {
+  match read_auth(path) {
+    Ok(auth) -> { Ok(provider(auth.tokens)) }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+// The client id of the Codex CLI.
+let client_id = "app_EMoamEEZ73f0CkXaXp7hrann"
+
+let refresh_request = (refresh_token) -> {
+  let body = encode.object([
+    encode.field("client_id", encode.string(client_id)),
+    encode.field("grant_type", encode.string("refresh_token")),
+    encode.field("refresh_token", encode.string(refresh_token))
+  ])
+  {
+    method: POST({}),
+    scheme: HTTPS({}),
+    host: "auth.openai.com",
+    port: None({}),
+    path: "/oauth/token",
+    query: None({}),
+    headers: [{key: "content-type", value: "application/json"}],
+    body: !string_to_binary(body)
+  }
+}
+
+let encode_auth = (auth) -> {
+  encode.object([
+    encode.field("auth_mode", encode.string(auth.auth_mode)),
+    encode.field("OPENAI_API_KEY", encode.null({})),
+    encode.field("tokens", encode.object([
+      encode.field("id_token", encode.string(auth.tokens.id_token)),
+      encode.field("access_token", encode.string(auth.tokens.access_token)),
+      encode.field("refresh_token", encode.string(auth.tokens.refresh_token)),
+      encode.field("account_id", encode.string(auth.tokens.account_id))
+    ])),
+    encode.field("last_refresh", encode.string(auth.last_refresh))
+  ])
+}
+
+let parse_body = (body) -> {
+  match !string_from_binary(body) {
+    Ok(text) -> { parse(text, refreshed) }
+    Error(_) -> { Error("refresh response is not valid utf-8") }
+  }
+}
+
+let save = (path, auth, fresh) -> {
+  let tokens = {
+    access_token: fresh.access_token,
+    refresh_token: match fresh.refresh_token { Some(value) -> { value } None(_) -> { auth.tokens.refresh_token } },
+    id_token: match fresh.id_token { Some(value) -> { value } None(_) -> { auth.tokens.id_token } },
+    ..auth.tokens
+  }
+  let now = clock.format(perform Now({}))
+  let updates = [
+    {path: ["tokens", "access_token"], value: tokens.access_token},
+    {path: ["tokens", "refresh_token"], value: tokens.refresh_token},
+    {path: ["tokens", "id_token"], value: tokens.id_token},
+    {path: ["last_refresh"], value: now}
+  ]
+  let changed = !list_fold(updates, Ok(auth.document), (update, changed) -> {
+    match changed {
+      Ok(doc) -> { document.replace(doc, update.path, update.value) }
+      Error(reason) -> { Error(reason) }
+    }
+  })
+  match changed {
+    Ok(doc) -> {
+      let rendered = handle Abort((reason, _resume) -> { Error(reason) }, (_) -> { Ok(document.render(doc)) })
+      match rendered {
+        Ok(text) -> {
+          match perform WriteFile({path, contents: !string_to_binary(text)}) {
+            Ok(_) -> { Ok(provider(tokens)) }
+            Error(reason) -> { Error(!string_append("failed to save refreshed tokens; log in again with codex login: ", reason)) }
+          }
+        }
+        Error(reason) -> { Error(reason) }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+let refresh = (path) -> {
+  match read_auth(path) {
+    Ok(auth) -> {
+      match perform Fetch(refresh_request(auth.tokens.refresh_token)) {
+        Ok({status, body}) -> {
+          match !equal(status, 200) {
+            True(_) -> {
+              match parse_body(body) {
+                Ok(fresh) -> { save(path, auth, fresh) }
+                Error(reason) -> { Error(reason) }
+              }
+            }
+            False(_) -> {
+              Error(!string_append(
+                "codex token refresh failed, log in again with `codex login`, status ",
+                !int_to_string(status)
+              ))
+            }
+          }
+        }
+        Error(reason) -> { Error(reason) }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+{read, refresh, refresh_request, encode_auth}

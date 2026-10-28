@@ -7,8 +7,12 @@ import eyg/interpreter/value
 import gleam/result
 import ogre/origin
 import overlay/llm/provider
+import overlay/llm/provider/bedrock
+import overlay/llm/provider/codex
 import overlay/llm/provider/mistral
 import overlay/llm/provider/ollama
+import overlay/llm/provider/openai
+import overlay/llm/sigv4
 import overlay/policy
 import touch_grass/interface
 
@@ -30,6 +34,13 @@ pub fn type_(rules, level, bindings) {
       #("api_key", t.option(t.String)),
     ])
   let mistral = t.record([#("api_key", t.String)])
+  let openai =
+    t.record([
+      #("origin", t.String),
+      #("api_key", t.option(t.String)),
+      #("path", t.String),
+      #("headers", t.List(t.record([#("key", t.String), #("value", t.String)]))),
+    ])
   let llm =
     t.record([
       #(
@@ -37,6 +48,20 @@ pub fn type_(rules, level, bindings) {
         t.union([
           #("Ollama", ollama),
           #("Mistral", mistral),
+          #("OpenAI", openai),
+          #(
+            "Bedrock",
+            t.record([
+              #("region", t.String),
+              #("access_key_id", t.String),
+              #("secret_access_key", t.String),
+              #("session_token", t.option(t.String)),
+            ]),
+          ),
+          #(
+            "Codex",
+            t.record([#("access_token", t.String), #("account_id", t.String)]),
+          ),
         ]),
       ),
       #("model", t.String),
@@ -84,6 +109,9 @@ fn cast_provider(
   case tagged {
     #("Ollama", inner) -> result.map(cast_ollama(inner), provider.Ollama)
     #("Mistral", inner) -> result.map(cast_mistral(inner), provider.Mistral)
+    #("OpenAI", inner) -> result.map(cast_openai(inner), provider.OpenAI)
+    #("Bedrock", inner) -> result.map(cast_bedrock(inner), provider.Bedrock)
+    #("Codex", inner) -> result.map(cast_codex(inner), provider.Codex)
     #(_, _) -> Error(break.NoMatch(value))
   }
 }
@@ -115,4 +143,66 @@ fn cast_context(value: state.Value(m)) {
     Error(_) -> #("The context has no readme", value)
   }
   |> Ok
+}
+
+/// Any OpenAI compatible chat completions API.
+fn cast_openai(value) {
+  use origin <- result.try(cast.field("origin", cast_origin, value))
+  use api_key <- result.try(cast.field(
+    "api_key",
+    cast.as_option(_, cast.as_string),
+    value,
+  ))
+  use path <- result.try(cast.field("path", cast.as_string, value))
+  use headers <- result.try(cast.field("headers", cast_headers, value))
+  Ok(openai.Config(origin:, path:, api_key:, headers:))
+}
+
+fn cast_origin(value) {
+  use raw <- result.try(cast.as_string(value))
+  origin.from_string_strict(raw)
+  |> result.replace_error(break.IncorrectTerm("origin", value))
+}
+
+/// Headers are a list of `{key, value}` records.
+fn cast_headers(value) {
+  cast.as_list_of(value, fn(header) {
+    use key <- result.try(cast.field("key", cast.as_string, header))
+    use value <- result.try(cast.field("value", cast.as_string, header))
+    Ok(#(key, value))
+  })
+}
+
+/// Amazon Bedrock, the session token is needed for temporary credentials.
+fn cast_bedrock(value) {
+  use region <- result.try(cast.field("region", cast.as_string, value))
+  use access_key_id <- result.try(cast.field(
+    "access_key_id",
+    cast.as_string,
+    value,
+  ))
+  use secret_access_key <- result.try(cast.field(
+    "secret_access_key",
+    cast.as_string,
+    value,
+  ))
+  use session_token <- result.try(cast.field(
+    "session_token",
+    cast.as_option(_, cast.as_string),
+    value,
+  ))
+  let credentials =
+    sigv4.Credentials(access_key_id:, secret_access_key:, session_token:)
+  Ok(bedrock.Config(region:, credentials:))
+}
+
+/// A ChatGPT subscription through the Codex backend.
+fn cast_codex(value) {
+  use access_token <- result.try(cast.field(
+    "access_token",
+    cast.as_string,
+    value,
+  ))
+  use account_id <- result.try(cast.field("account_id", cast.as_string, value))
+  Ok(codex.Config(access_token:, account_id:))
 }
