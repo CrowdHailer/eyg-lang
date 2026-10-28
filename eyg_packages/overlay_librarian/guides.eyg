@@ -1,6 +1,10 @@
 // The guides published on eyg.run.
 
 let index = [
+  {slug: "eyg-as-an-opencode-plugin", title: "EYG as an OpenCode plugin", summary: "Add an EYG tool with computer effects, policy-aware subagents and prompt guidance.", keywords: "eyg as an opencode plugin"},
+  {slug: "eyg-as-the-opencode-tool-dispatcher", title: "EYG as the OpenCode tool dispatcher", summary: "Route native and MCP tools through EYG while retaining host permissions and child policies.", keywords: "eyg as the opencode tool dispatcher"},
+  {slug: "eyg-in-pi", title: "EYG in Pi", summary: "Expose Pi tools as effects with inherited policies and usage reporting.", keywords: "eyg in pi"},
+  {slug: "policies-for-embedded-harnesses", title: "Policies for embedded harnesses", summary: "Gate computer and host effects with composable EYG functions.", keywords: "policies for embedded harnesses"},
   {slug: "a-todo-host-using-the-native-api", title: "A todo host using the native API", summary: "Consume the standalone JavaScript shell with plain task data.", keywords: "a todo host using the native api"},
   {slug: "compiled-eyg-in-nginx", title: "Compiled EYG in nginx", summary: "Await native subrequests from an EYG request handler in QuickJS.", keywords: "compiled eyg in nginx"},
   {slug: "playing-hashi-through-eyg", title: "Playing Hashi through EYG", summary: "Give a puzzle shell and an agent only the original game's operations.", keywords: "playing hashi through eyg"},

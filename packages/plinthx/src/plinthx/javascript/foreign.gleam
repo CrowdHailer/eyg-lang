@@ -8,8 +8,19 @@ import gleam/javascript/promise.{type Promise}
 @external(javascript, "./foreign_ffi.mjs", "identity")
 pub fn to_dynamic(value: a) -> Dynamic
 
+@external(javascript, "./foreign_ffi.mjs", "nullValue")
+pub fn null_value() -> Dynamic
+
 @external(javascript, "./foreign_ffi.mjs", "apply")
 pub fn apply(function: Dynamic, arguments: Array(Dynamic)) -> Dynamic
+
+/// Invoke a native object's method with its receiver preserved.
+@external(javascript, "./foreign_ffi.mjs", "call")
+pub fn call(
+  object: Dynamic,
+  method: String,
+  arguments: Array(Dynamic),
+) -> Dynamic
 
 @external(javascript, "./foreign_ffi.mjs", "tryApply")
 pub fn try_apply(
@@ -22,6 +33,9 @@ pub fn is_function(value: Dynamic) -> Bool
 
 @external(javascript, "./foreign_ffi.mjs", "isUndefined")
 pub fn is_undefined(value: Dynamic) -> Bool
+
+@external(javascript, "./foreign_ffi.mjs", "isUint8Array")
+pub fn is_uint8_array(value: Dynamic) -> Bool
 
 @external(javascript, "./foreign_ffi.mjs", "isThenable")
 pub fn is_thenable(value: Dynamic) -> Bool

@@ -1,0 +1,35 @@
+// The policy used when a project has no `.opencode/eyg.eyg`.
+// Files and directories in the project can be read and changed, nothing else is allowed.
+// The plugin replaces PROJECT with the project directory.
+let project = "PROJECT"
+
+let inside = (path) -> {
+  match !equal(path, project) {
+    True(_) -> { True({}) }
+    False(_) -> { !string_starts_with(path, !string_append(project, "/")) }
+  }
+}
+
+let within = (path_of) -> {
+  (lift) -> {
+    let path = path_of(lift)
+    match inside(path) {
+      True(_) -> { Pass(lift) }
+      False(_) -> { Mock(Error(!string_append("outside the project: ", path))) }
+    }
+  }
+}
+
+let request_path = (request) -> { request.path }
+let path = (path) -> { path }
+
+{
+  policy: {
+    append_file: within(request_path),
+    delete_file: within(path),
+    make_directory: within(path),
+    read_directory: within(path),
+    read_file: within(request_path),
+    write_file: within(request_path)
+  }
+}

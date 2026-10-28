@@ -1,0 +1,15 @@
+{
+  "name": "opencode-eyg",
+  "version": "0.1.0",
+  "type": "module",
+  "files": ["dist"],
+  "main": "dist/dispatch.mjs",
+  "exports": {
+    ".": "./dist/dispatch.mjs",
+    "./plugin": "./dist/eyg.mjs",
+    "./core": "./dist/core.mjs"
+  },
+  "scripts": { "build": "gleam run -m build", "test": "gleam test" },
+  "dependencies": { "@opencode-ai/plugin": "1.19.0", "@opencode-ai/sdk": "1.19.0", "ai": "6.0.168" },
+  "devDependencies": { "effect": "4.0.0-beta.83" }
+}
