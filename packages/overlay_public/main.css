@@ -105,6 +105,8 @@ pre {
 .chat {
   display: flex;
   flex-direction: column;
+  max-height: 100dvh;
+  min-height: 0;
   /* background: rgb(245, 245, 245); */
   /* border-left: 1px solid black; */
   padding-inline: 10px;
@@ -117,6 +119,7 @@ pre {
   justify-content: center;
   min-height: 4.5rem;
   position: relative;
+  flex-shrink: 0;
   transition: all 1s;
 
   &>h1 {
@@ -307,6 +310,8 @@ pre {
   flex-grow: 1;
   display: flex;
   flex-direction: column-reverse;
+  min-height: 0;
+  overflow: auto;
   /* justify-content: center; */
 }
 
@@ -384,6 +389,7 @@ pre {
 }
 
 .chat-input {
+  flex-shrink: 0;
   /* border: 2px dashed #ccc; */
   border: var(--border) solid var(--color-base-content);
   border-radius: var(--radius-box);
