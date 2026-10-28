@@ -1,5 +1,4 @@
 import etui/backend
-import etui/keys
 import etui/style
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
@@ -260,52 +259,17 @@ fn input_key_pressed(
   kind: InputKind,
   key: String,
 ) -> #(State, _) {
-  let keys.KeyEvent(code:, modifiers:) = keys.parse(key)
-  case modifiers.ctrl || modifiers.alt {
-    True -> #(state, [])
-    False ->
-      case code {
-        keys.Escape ->
-          case kind {
-            ReplyStandardIn(env:, k:, occured:) -> {
-              let reply = system.Done(standard_in.encode(Error("Cancelled")))
-              after_perform(
-                reply,
-                "StandardIn",
-                value.unit(),
-                env,
-                k,
-                state,
-                occured,
-              )
-            }
-            EnterText(_) | EnterInteger(_) | PickCid(_) -> #(
-              State(..state, mode: Navigating),
-              [],
-            )
-          }
-        keys.Enter -> submit_input(state, input.value, kind)
-        _ -> {
-          let edited = case code {
-            keys.Char(char) ->
-              input.insert_char(input_widget(kind), input, char)
-            keys.Left -> input.move_cursor_left(input)
-            keys.Right -> input.move_cursor_right(input)
-            keys.Backspace -> input.backspace(input)
-            keys.Delete -> {
-              let moved = input.move_cursor_right(input)
-              case moved.cursor == input.cursor {
-                True -> input
-                False -> input.backspace(moved)
-              }
-            }
-            keys.Home -> input.move_to_start(input)
-            keys.End -> input.move_to_end(input)
-            _ -> input
-          }
-          #(State(..state, mode: FreeInput(edited, kind)), [])
-        }
-      }
+  case key, kind {
+    "esc", ReplyStandardIn(env:, k:, occured:) -> {
+      let reply = system.Done(standard_in.encode(Error("Cancelled")))
+      after_perform(reply, "StandardIn", value.unit(), env, k, state, occured)
+    }
+    "esc", _ -> #(State(..state, mode: Navigating), [])
+    "enter", _ -> submit_input(state, input.value, kind)
+    _, _ -> {
+      let edited = combobox.edit_input(input_widget(kind), input, key)
+      #(State(..state, mode: FreeInput(edited, kind)), [])
+    }
   }
 }
 

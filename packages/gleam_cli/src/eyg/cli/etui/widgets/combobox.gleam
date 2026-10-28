@@ -56,7 +56,8 @@ pub fn update(event: backend.InputEvent, box: Combobox) -> Action {
           ),
         ),
       )
-    backend.KeyPress(key) -> with_input(box, edit_input(box.input, key))
+    backend.KeyPress(key) ->
+      with_input(box, edit_input(input.input_new(""), box.input, key))
     backend.Paste(text) -> {
       let edited =
         text
@@ -117,11 +118,30 @@ fn with_input(box: Combobox, edited: input.InputState) -> Action {
   Updated(Combobox(..box, input: edited, selection:))
 }
 
-fn edit_input(editing: input.InputState, key: String) -> input.InputState {
+/// Field editing shared by every text input in the TUI.
+pub fn edit_input(
+  widget: input.InputWidget,
+  editing: input.InputState,
+  key: String,
+) -> input.InputState {
+  case key {
+    "ctrl+a" -> input.move_to_start(editing)
+    "ctrl+e" -> input.move_to_end(editing)
+    "ctrl+u" -> input.clear_state(editing)
+    "ctrl+k" -> input.delete_to_end(editing)
+    _ -> edit_key(widget, editing, key)
+  }
+}
+
+fn edit_key(
+  widget: input.InputWidget,
+  editing: input.InputState,
+  key: String,
+) -> input.InputState {
   case keys.parse(key) {
     keys.KeyEvent(code, keys.Modifiers(ctrl: False, alt: False, ..)) ->
       case code {
-        keys.Char(char) -> input.insert_char(input.input_new(""), editing, char)
+        keys.Char(char) -> input.insert_char(widget, editing, char)
         keys.Backspace -> input.backspace(editing)
         keys.Left -> input.move_cursor_left(editing)
         keys.Right -> input.move_cursor_right(editing)
