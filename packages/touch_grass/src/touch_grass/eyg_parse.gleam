@@ -67,6 +67,8 @@ fn flatten(node: ir.Node(m), rest: List(v.Value(a, b))) -> List(v.Value(a, b)) {
     ir.NoCases -> [tagged("NoCases", v.unit()), ..rest]
     ir.Perform(label) -> [tagged("Perform", v.String(label)), ..rest]
     ir.Handle(label) -> [tagged("Handle", v.String(label)), ..rest]
+    ir.Shallow(label) -> [tagged("Shallow", v.String(label)), ..rest]
+    ir.Mask(label) -> [tagged("Mask", v.String(label)), ..rest]
     ir.Builtin(identifier) -> [tagged("Builtin", v.String(identifier)), ..rest]
     ir.Reference(reference) -> {
       let reference = case reference {

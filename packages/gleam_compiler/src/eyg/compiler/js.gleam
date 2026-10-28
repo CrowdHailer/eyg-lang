@@ -1,19 +1,8 @@
+import eyg/compiler/runtime
 import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
 import gleam/string
-
-// can't wrap program in `()` because js assumes expression and breaks with let
-// but also cant wrap in `{}` because in brackets is assuemd to be object
-// label is the name of a function that is passed to the runner.
-fn assign_to(source: ir.Node(Nil), label) {
-  let #(exp, _meta) = source
-  case exp {
-    ir.Let(x, v, t) -> ir.let_(x, v, assign_to(t, label))
-    _ ->
-      ir.let_(label, source, ir.apply(ir.variable("run"), ir.variable(label)))
-  }
-}
 
 pub const basic =
   "(label, value) => ({Alert: (x) => window.alert(x), Ask: (_) => 10, Log: (x) => console.log(x)})[label](value)"
@@ -22,17 +11,18 @@ pub fn render(exp: ir.Node(Nil), handler: String) -> String {
   let used = ir.list_builtins(exp)
   let #(definitions, program) = case needs_effect_runtime(exp) {
     False -> #(list.map(used, render_builtin), do_render(exp))
-    True -> {
-      let used = [
-        "bind",
-        "handle",
-        ..list.filter(used, fn(x) { x != "bind" && x != "handle" })
-      ]
-      #(
-        ["let extrinsic = " <> handler, ..list.map(used, render_builtin)],
-        do_render(assign_to(exp, "program")),
-      )
-    }
+    True -> #(
+      [
+        "const extrinsic = " <> handler,
+        "const $runtime = (" <> runtime.source <> ").create(extrinsic)",
+        "const $run = $runtime.run, $fn = $runtime.function_, $call = $runtime.call, $bind = $runtime.bind, $handle = $runtime.handle, $perform = $runtime.perform, $mask = $runtime.mask, $shallow = $runtime.shallow",
+        "const bind = $runtime.bind_builtin, fix = $runtime.fix, list_fold = $runtime.list_fold, binary_fold = $runtime.binary_fold, never = $runtime.never, pure = $runtime.pure_",
+        ..used
+        |> list.filter(fn(name) { !runtime.defines(name) })
+        |> list.map(render_builtin)
+      ],
+      "$run(" <> stack_expression(exp) <> ")",
+    )
   }
   list.append(definitions, [program])
   |> list.filter(fn(x) { x != "" })
@@ -40,12 +30,73 @@ pub fn render(exp: ir.Node(Nil), handler: String) -> String {
   |> string.concat
 }
 
-fn needs_effect_runtime(node: ir.Node(Nil)) {
+// Lower every application in a runtime-backed program, not only effectful
+// calls: pure tail recursion and calls to returned state functions need the
+// same trampoline. Straight-line pure programs keep the compact renderer.
+fn stack_expression(source: ir.Node(Nil)) -> String {
+  case source.0 {
+    ir.Apply(f, a) ->
+      "$bind("
+      <> stack_expression(f)
+      <> ", $f => $bind("
+      <> stack_expression(a)
+      <> ", $a => $call($f, $a)))"
+    ir.Let(x, value, then) ->
+      "$bind("
+      <> stack_expression(value)
+      <> ", "
+      <> x
+      <> " => "
+      <> stack_expression(then)
+      <> ")"
+    ir.Lambda(x, body) -> "$fn(" <> x <> " => " <> stack_expression(body) <> ")"
+    ir.Variable(x) -> x
+    ir.Integer(_) | ir.String(_) | ir.Binary(_) | ir.Empty | ir.Tail ->
+      do_render(source)
+    ir.Cons -> "$fn(x => xs => [x, xs])"
+    ir.Extend(label) | ir.Overwrite(label) ->
+      "$fn(value => record => ({...record, [\""
+      <> escape_js(label)
+      <> "\"]: value}))"
+    ir.Select(label) -> "$fn(record => record[\"" <> escape_js(label) <> "\"])"
+    ir.Tag(label) ->
+      "$fn(value => ({$T: \"" <> escape_js(label) <> "\", $V: value}))"
+    ir.Case(label) ->
+      "$fn(branch => otherwise => value => value.$T === \""
+      <> escape_js(label)
+      <> "\" ? $call(branch, value.$V) : $call(otherwise, value))"
+    ir.NoCases -> "$fn(value => { throw {eygBreak: {NoMatch: value}}; })"
+    ir.Perform(label) ->
+      "$fn(value => $perform(\"" <> escape_js(label) <> "\", value))"
+    ir.Handle(label) ->
+      "$fn(handler => body => $handle(\""
+      <> escape_js(label)
+      <> "\", handler, body))"
+    ir.Mask(label) -> "$fn(body => $mask(\"" <> escape_js(label) <> "\", body))"
+    ir.Shallow(label) ->
+      "$fn(handler => onReturn => body => $shallow(\""
+      <> escape_js(label)
+      <> "\", handler, onReturn, body))"
+    ir.Builtin(name) ->
+      case runtime.defines(name) || render_builtin(name) != "" {
+        True -> "$fn(" <> name <> ")"
+        False -> render_break("UndefinedBuiltin", name)
+      }
+    ir.Vacant -> render_break("NotImplemented", "")
+    ir.Reference(_) -> panic as "unsupported compilation reference"
+  }
+}
+
+pub fn needs_effect_runtime(node: ir.Node(a)) {
   case node.0 {
     ir.Perform(_)
     | ir.Handle(_)
+    | ir.Shallow(_)
+    | ir.Mask(_)
+    | ir.Builtin("pure")
     | ir.Builtin("bind")
     | ir.Builtin("fix")
+    | ir.Builtin("never")
     | ir.Builtin("list_fold")
     | ir.Builtin("binary_fold") -> True
     _ -> list.any(ir.children(node), needs_effect_runtime)
@@ -214,39 +265,6 @@ fn render_branches(label, branch, otherwise, acc: String) {
 
 fn render_builtin(identifier) {
   case identifier {
-    "bind" ->
-      "function Eff(label, value, k) {
-  this.label = label;
-  this.value = value;
-  this.k = k;
-}
-
-let bind = (m, then) => {
-  if (!(m instanceof Eff)) return then(m);
-  let k = (x) => bind(m.k(x), then);
-  return new Eff(m.label, m.value, k);
-};
-
-let perform = (label) => (value) => new Eff(label, value, (x) => x);
-
-let run = (exec) => {
-  let m = exec
-  while (m instanceof Eff) {
-    m = m.k(extrinsic(m.label, m.value));
-  }
-  return m;
-}"
-    "handle" ->
-      "let handle = (label) => (handler) => (exec) => {
-  return do_handle(label, handler, exec({}));
-};
-
-let do_handle = (label, handler, m) => {
-  if (!(m instanceof Eff)) return m;
-  let k = (x) => do_handle(label, handler, m.k(x));
-  if (m.label == label) return handler(m.value)(k);
-  return new Eff(m.label, m.value, k);
-}"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
     "equal" ->
@@ -263,11 +281,6 @@ let do_handle = (label, handler, m) => {
 }"
     "$undefined_variable" ->
       "let $undefined_variable = (name) => { throw {eygBreak: {UndefinedVariable: name}}; }"
-    "fix" ->
-      "let fix = (f) => {
-  const self = (x) => bind(f(self), (g) => g(x));
-  return f(self);
-}"
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
     "int_divide" ->
@@ -328,18 +341,6 @@ let do_handle = (label, handler, m) => {
   return new Uint8Array(bytes);
 }"
     "binary_size" -> "let binary_size = (x) => x.length"
-    "binary_fold" ->
-      "let binary_fold = (bytes) => (acc) => (f) => {
-  const loop = (start, acc) => {
-    for (let i = start; i < bytes.length; i++) {
-      const previous = acc;
-      acc = bind(f(bytes[i]), (g) => g(previous));
-      if (acc instanceof Eff) return bind(acc, (value) => loop(i + 1, value));
-    }
-    return acc;
-  };
-  return loop(0, acc);
-}"
     "binary_concat" ->
       "let binary_concat = (x) => (y) => {
   const result = new Uint8Array(x.length + y.length);
@@ -353,20 +354,6 @@ let do_handle = (label, handler, m) => {
     if (x[i] !== y[i]) { order = x[i] - y[i]; break; }
   }
   return {$T: order < 0 ? 'Lt' : order > 0 ? 'Gt' : 'Eq', $V: {}};
-}"
-    "list_fold" ->
-      "let list_fold = (items) => (acc) => (f) => {
-  while (items.length != 0) {
-    const item = items[0];
-    items = items[1];
-    const previous = acc;
-    acc = bind(f(item), (g) => g(previous));
-    if (acc instanceof Eff) {
-      const rest = items;
-      return bind(acc, (value) => list_fold(rest)(value)(f));
-    }
-  }
-  return acc
 }"
     _ -> ""
   }

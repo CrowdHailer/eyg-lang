@@ -83,3 +83,35 @@ pub fn effects_with_the_same_common_tail_dont_unify_test() {
   )
   |> should.be_error()
 }
+
+pub fn extending_an_older_effect_row_does_not_generalise_its_reply_test() {
+  let #(older, b) = binding.mono(0, dict.new())
+  let #(lift, b) = binding.mono(5, b)
+  let #(reply, b) = binding.mono(5, b)
+  let #(tail, b) = binding.mono(5, b)
+  let b =
+    unify.unify_with_bindings(
+      t.EffectExtend("A", #(lift, reply), tail),
+      t.EffectExtend("B", #(t.Integer, t.unit), older),
+      5,
+      b,
+    )
+    |> should.be_ok
+  let assert t.Var(#(False, _)) = binding.gen(lift, 0, b)
+  let assert t.Var(#(False, _)) = binding.gen(reply, 0, b)
+}
+
+pub fn extending_an_older_record_row_does_not_generalise_its_field_test() {
+  let #(older, b) = binding.mono(0, dict.new())
+  let #(field, b) = binding.mono(5, b)
+  let #(tail, b) = binding.mono(5, b)
+  let b =
+    unify.unify_with_bindings(
+      t.RowExtend("a", field, tail),
+      t.RowExtend("b", t.Integer, older),
+      5,
+      b,
+    )
+    |> should.be_ok
+  let assert t.Var(#(False, _)) = binding.gen(field, 0, b)
+}

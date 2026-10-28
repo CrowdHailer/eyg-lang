@@ -173,11 +173,27 @@ let test_add_integer_builtin = (_) -> {
   )
 }
 
+let test_shallow_handler = (_) -> {
+  check(
+    "{\"0\":\"hs\",\"l\":\"Ping\"}",
+    [Shallow("Ping")],
+    "baguqeera6jzj7ilnpjkcfwdjrk4fb2yfqc3zlxsgt7plmso4xbzfqlsko4ga"
+  )
+}
+
 let test_cid_reference = (_) -> {
   check(
     "{\"0\":\"#\",\"l\":{\"/\":\"baguqeeraqyvjt4lhfr66jw66yhg37xaj7tvdde5pifx7eqdq2a4zgzpffwaq\"}}",
     [ContentReference(list_cid)],
     "baguqeeraducomc4bf5bbqmqmwqzvk7zxw2yf3zhjjcd2j344kzh5x4sjii7q"
+  )
+}
+
+let test_mask = (_) -> {
+  check(
+    "{\"0\":\"hm\",\"l\":\"Ping\"}",
+    [Mask("Ping")],
+    "baguqeerasmabgv7kmy3kv42xydltjby63pi5w7lztqzkc2uru4vd6gfpjova"
   )
 }
 
@@ -190,6 +206,8 @@ let test_release = (_) -> {
 }
 
 [
+  {name: "ast ir suite shallow handler", test: test_shallow_handler},
+  {name: "ast ir suite mask", test: test_mask},
   {name: "ast ir suite variable", test: test_variable},
   {name: "ast ir suite function", test: test_function},
   {name: "ast ir suite apply", test: test_apply},

@@ -110,6 +110,8 @@ pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
     "n" -> d.success(#(ir.NoCases, meta))
     "p" -> label_decoder(ir.Perform, meta)
     "h" -> label_decoder(ir.Handle, meta)
+    "hs" -> label_decoder(ir.Shallow, meta)
+    "hm" -> label_decoder(ir.Mask, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
       use cid <- d.field("l", codec.decode_cid())
@@ -198,6 +200,8 @@ pub fn to_data_model(tree: ir.Node(meta)) -> json.Json {
     ir.NoCases -> node("n", [])
     ir.Perform(x) -> node("p", [label(x)])
     ir.Handle(x) -> node("h", [label(x)])
+    ir.Shallow(x) -> node("hs", [label(x)])
+    ir.Mask(x) -> node("hm", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
     ir.Reference(reference) ->
       case reference {

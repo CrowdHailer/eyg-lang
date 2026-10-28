@@ -18,6 +18,8 @@ fn check_term(term) {
 }
 
 pub fn literal_test() {
+  check_term(v.Partial(v.Shallow("Ping"), []))
+  check_term(v.Partial(v.Mask("Ping"), []))
   check_term(v.Integer(0))
   check_term(v.String("hello"))
   check_term(v.LinkedList([]))
@@ -50,6 +52,18 @@ pub fn simple_fn_test() {
   capture.capture(term, Nil)
   |> run([v.unit()])
   |> should.equal(Ok(v.String("hello")))
+}
+
+pub fn captured_pure_function_preserves_the_runtime_guard_test() {
+  let source =
+    ir.apply(
+      ir.builtin("pure"),
+      ir.lambda("_", ir.apply(ir.perform("Log"), ir.unit())),
+    )
+  let assert Ok(function) = r.execute(source, [])
+  let assert Ok(rebuilt) = round_trip(function)
+  let assert Error(#(break.ImpureEffect("Log", _), _, _, _)) =
+    r.call(rebuilt, [#(v.unit(), Nil)])
 }
 
 pub fn nested_fn_test() {

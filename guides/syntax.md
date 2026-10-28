@@ -378,9 +378,65 @@ perform Log("hello")
 handle Log
 ```
 
-`handle` is used to install custom effect handlers in advanced embedding scenarios.
+Apply it to a callback `(payload, resume) -> { ... }` and a body
+`(_) -> { ... }`:
+
+```eyg
+handle Ping((_, resume) -> { resume(1) }, (_) -> {
+  let a = perform Ping({})
+  let b = perform Ping({})
+  !int_add(a, b)
+})
+// 2
+```
+
+Handlers are **deep**: `resume(reply)` runs the suspended computation with
+the same handler installed again. The callback itself runs outside that
+handler, so an effect it performs directly propagates outward. Returning
+without calling `resume` abandons the suspended computation.
+
+See [Proving EYG's handlers are deep](./deep_effect_handlers.md) for runtime
+and typing demonstrations and patterns for testing effects.
+
+### Shallow handlers
+
+`handle shallow EffectName` takes three curried arguments: an operation
+callback, a normal-return callback, and a body called with `{}`.
+
+```eyg
+handle shallow Ping((lift, _resume) -> { lift },
+  (value) -> { !string_length(value) },
+  (_) -> { "hello" })
+// 5
+```
+
+The operation callback receives `(lift, resume)`. This `resume` runs the raw
+body without reinstalling the matching handler or its return callback. Install
+the next handler explicitly before resuming. Inner intervening handlers are
+still captured. The normal-return callback converts the body's result only
+when it completes under this handler; it is not applied to the operation
+callback's answer. Both callbacks run outside the delimiter.
+
+Both deep and shallow continuations support multiple resumptions. The
+[shallow-handler guide](./shallow_effect_handlers.md) explains state, ordered
+expectations, and the current effect-row inference restriction. `shallow` is
+only a keyword immediately after `handle`.
 
 ---
+
+### Mask
+
+`mask EffectName` is a first-class function taking a body called with `{}`.
+Inside that body, operations skip one enclosing handler for that label:
+
+```eyg
+mask State((_) -> { assertion(request) })
+```
+
+Handlers installed inside the body still apply. The mask has dynamic extent and
+is preserved when execution suspends and resumes. `mask` remains a variable name
+when it is not followed by an uppercase effect label. See
+[masking and purity](./masking_effects.md) for typing and unchecked-runtime rules.
 
 ## Builtins
 

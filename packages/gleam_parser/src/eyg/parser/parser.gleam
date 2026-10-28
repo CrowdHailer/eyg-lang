@@ -175,6 +175,13 @@ pub fn expression(tokens) {
 
   use #(exp, rest) <- try(case token {
     t.Todo -> Ok(#(#(ir.Vacant, #(start, start + 4)), rest))
+    t.Name("mask") -> {
+      case rest {
+        [#(t.Uppername(label), end), ..rest] ->
+          Ok(#(#(ir.Mask(label), #(start, end + string.length(label))), rest))
+        _ -> Ok(#(#(ir.Variable("mask"), #(start, start + 4)), rest))
+      }
+    }
     t.Name(label) -> {
       let span = #(start, start + string.length(label))
       Ok(#(#(ir.Variable(label), span), rest))
@@ -287,6 +294,12 @@ pub fn expression(tokens) {
       }
     t.Handle ->
       case rest {
+        [#(t.Name("shallow"), _), #(t.Uppername(label), end), ..rest] -> {
+          let span = #(start, end + string.length(label))
+          Ok(#(#(ir.Shallow(label), span), rest))
+        }
+        [#(t.Name("shallow"), at), ..rest] ->
+          Error(ExpectedEffectName("handle shallow", next_pos(rest, at + 7)))
         [#(t.Uppername(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
           Ok(#(#(ir.Handle(label), span), rest))

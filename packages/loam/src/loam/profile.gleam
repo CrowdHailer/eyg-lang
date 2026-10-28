@@ -331,6 +331,9 @@ fn describe(callable, meta, names) {
         v.Builtin(name) -> "!" <> name
         v.Perform(name) -> "perform " <> name
         v.Handle(name) -> "handle " <> name
+        v.Mask(name) -> "mask " <> name
+        v.Shallow(name) -> "handle shallow " <> name
+        v.Pure -> "!pure"
         v.Resume(_) -> "<resume>"
         v.Select(name) -> "." <> name
         v.Tag(name) -> name

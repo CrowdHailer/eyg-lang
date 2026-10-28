@@ -1,0 +1,40 @@
+// See ../deep_effect_handlers.md. No platform effects or imports are needed.
+let twice = (_) -> {
+  let a = perform Ping({})
+  let b = perform Ping({})
+  !int_add(a, b)
+}
+
+let repeated = handle Ping((_, resume) -> { resume(1) }, twice)
+
+// A shallow inner handler would give 101; a deep one gives 2.
+let shadowed = handle Ping((_, resume) -> { resume(100) }, (_) -> {
+  handle Ping((_, resume) -> { resume(1) }, twice)
+})
+
+// The handler callback runs outside its own delimiter. Its Ping goes outward,
+// while both Pings in twice still reach the reinstated inner handler.
+let forwarded = handle Ping((_, resume) -> { resume(100) }, (_) -> {
+  handle Ping((_, resume) -> { resume(perform Ping({})) }, twice)
+})
+
+// Capturing/resuming a different effect must preserve the inner delimiter too.
+let unrelated = handle Other((_, resume) -> { resume(10) }, (_) -> {
+  handle Ping((_, resume) -> { resume(1) }, (_) -> {
+    let a = perform Ping({})
+    let b = perform Other({})
+    let c = perform Ping({})
+    !int_add(a, !int_add(b, c))
+  })
+})
+
+// Calling one continuation twice is a separate property from handler depth.
+let multi_shot = handle Ping((_, resume) -> {
+  !int_add(resume(1), resume(2))
+}, (_) -> {
+  !int_multiply(perform Ping({}), 2)
+})
+
+let early_return = handle Ping((_, _resume) -> { 99 }, twice)
+
+{repeated, shadowed, forwarded, unrelated, multi_shot, early_return}

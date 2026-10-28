@@ -259,6 +259,16 @@ pub fn expression(exp, rev, errors) {
         frame.span(frame.Keyword, None, "handle "),
         frame.span(frame.ClassName, exp_key(rev), label),
       ])
+    e.Shallow(label) ->
+      frame.Inline([
+        frame.span(frame.Keyword, None, "handle shallow "),
+        frame.span(frame.ClassName, exp_key(rev), label),
+      ])
+    e.Mask(label) ->
+      frame.Inline([
+        frame.span(frame.Keyword, None, "mask "),
+        frame.span(frame.ClassName, exp_key(rev), label),
+      ])
     e.Builtin(identifier) ->
       frame.Inline([frame.span(frame.Builtin, exp_key(rev), "!" <> identifier)])
     e.Reference(ir.Content(cid)) ->

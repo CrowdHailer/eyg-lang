@@ -10,7 +10,7 @@
 
 let base64 = import "./base64.eyg"
 let dag_json = import "./dag_json.eyg"
-let json = import "../json/index.eyg.json"
+let json = import "../json/index.eyg"
 let list = @standard.list
 let result = @standard.result
 let string = @standard.string
@@ -74,6 +74,8 @@ let source_decoder = !fix((self, parsed) -> {
       {tag: "n", decode: (_) -> { [NoCases({})] }},
       {tag: "p", decode: (_) -> { [Perform(d.field("l", d.string, fields))] }},
       {tag: "h", decode: (_) -> { [Handle(d.field("l", d.string, fields))] }},
+      {tag: "hs", decode: (_) -> { [Shallow(d.field("l", d.string, fields))] }},
+      {tag: "hm", decode: (_) -> { [Mask(d.field("l", d.string, fields))] }},
       {tag: "b", decode: (_) -> { [Builtin(d.field("l", d.string, fields))] }},
       {tag: "#", decode: (_) -> { [ContentReference(d.field("l", link_decoder, fields))] }},
       {tag: "@", decode: (_) -> {
@@ -151,6 +153,8 @@ let parse = !fix((self, nodes) -> {
         NoCases(_) -> { {value: node("n", []), rest: tail} }
         Perform(value) -> { {value: node("p", [label(value)]), rest: tail} }
         Handle(value) -> { {value: node("h", [label(value)]), rest: tail} }
+        Shallow(value) -> { {value: node("hs", [label(value)]), rest: tail} }
+        Mask(value) -> { {value: node("hm", [label(value)]), rest: tail} }
         Builtin(value) -> { {value: node("b", [label(value)]), rest: tail} }
         ContentReference(value) -> {
           {value: node("#", [dag_json.field("l", dag_json.link(value))]), rest: tail}
@@ -193,4 +197,3 @@ let ast_to_string = (nodes) -> {
   source_json_to_ast,
   source_json_bytes_to_ast
 }
-

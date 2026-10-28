@@ -1,0 +1,29 @@
+// Each handler preserves the computation's value, allowing nesting.
+let with_counter = (handler, f) -> {
+  let run = handler((_, resume) -> {
+    (state) -> {
+      let next = !int_add(state, 1)
+      resume(next)(next)
+    }
+  }, (_) -> {
+    let value = f({})
+    let finish = (state) -> { {state, value} }
+    finish
+  })
+  run(0)
+}
+
+let with_left = with_counter(handle IncrementLeft)
+let with_right = with_counter(handle IncrementRight)
+
+let program = (_) -> {
+  let a = perform IncrementLeft({})
+  let b = perform IncrementRight({})
+  let c = perform IncrementLeft({})
+  [a, b, c]
+}
+
+{
+  left_outside: with_left((_) -> { with_right(program) }),
+  right_outside: with_right((_) -> { with_left(program) })
+}

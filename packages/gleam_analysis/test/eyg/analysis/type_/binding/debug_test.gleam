@@ -1,6 +1,9 @@
 import birdie
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/parser
+import gleam/dict
 import gleeunit/should
 
 fn snapshot(type_, width: Int, title: String) -> Nil {
@@ -24,6 +27,16 @@ pub fn primitive_types_match_legacy_rendering_test() {
   t.Never
   |> debug.render(80)
   |> should.equal("Never")
+}
+
+pub fn effect_mismatch_names_the_given_type_before_the_required_type_test() {
+  let assert Ok(tree) = parser.all_from_string("perform GetValue(3)")
+  let context =
+    infer.with_effects(infer.pure(), [#("GetValue", #(t.String, t.Integer))])
+  let analysis = infer.check_with_references(context, dict.new(), tree)
+  let assert [#(_, reason)] = infer.all_errors(analysis)
+  debug.render_reason(reason)
+  |> should.equal("type mismatch given: Integer expected: String")
 }
 
 pub fn small_list_test() {

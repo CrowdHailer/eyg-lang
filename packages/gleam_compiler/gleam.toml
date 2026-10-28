@@ -22,4 +22,5 @@ gleam_javascript = ">= 1.0.0 and < 2.0.0"
 gleam_json = ">= 3.0.0 and < 4.0.0"
 midas = ">= 3.0.0 and < 4.0.0"
 plinth = ">= 0.11.0 and < 1.0.0"
+plinthx = { path = "../plinthx" }
 simplifile = ">= 2.2.0 and < 3.0.0"

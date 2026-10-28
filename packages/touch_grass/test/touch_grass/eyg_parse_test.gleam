@@ -22,6 +22,16 @@ pub fn encode_flattens_a_leaf_test() {
   assert nodes == [v.Tagged("Integer", v.Integer(42))]
 }
 
+pub fn encode_shallow_handler_test() {
+  assert eyg_parse.encode(Ok(ir.shallow("Ping")))
+    == v.ok(v.LinkedList([v.Tagged("Shallow", v.String("Ping"))]))
+}
+
+pub fn encode_mask_test() {
+  assert eyg_parse.encode(Ok(ir.mask("Ping")))
+    == v.ok(v.LinkedList([v.Tagged("Mask", v.String("Ping"))]))
+}
+
 pub fn encode_flattens_children_in_preorder_test() {
   let node = ir.let_("x", ir.integer(0), ir.variable("x"))
   let assert v.Tagged("Ok", v.LinkedList(nodes)) = eyg_parse.encode(Ok(node))

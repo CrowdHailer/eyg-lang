@@ -8,6 +8,56 @@ import eyg/parser
 import gleam/dict
 import gleam/list
 import gleeunit/should
+import simplifile
+
+pub fn captured_record_field_is_not_generalised_test() {
+  let source =
+    "(r) -> {
+      let _ = r.a
+      let same = (s) -> {
+        let _ = s.b
+        !equal(r, s)
+      }
+      let _ = same({a: 1, b: 1})
+      same({a: 1, b: \"\"})
+    }"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.TypeMismatch(t.String, t.Integer)])
+}
+
+pub fn effect_reply_is_not_generalised_test() {
+  "(_) -> {
+    let _ = perform Other({})
+    let x = perform Ping({})
+    let _ = !int_add(x, 1)
+    !equal(x, \"\")
+  }"
+  |> calc(t.Empty)
+  |> should.equal([
+    ok("(0 <Other(↑{} ↓3), Ping(↑{} ↓Integer)>) -> 26", ""),
+    ok("26", ""),
+    ok("3", "Other(↑{} ↓3)"),
+    ok("({} <Other(↑{} ↓3)>) -> 3", ""),
+    ok("{}", ""),
+    ok("26", ""),
+    ok("Integer", "Ping(↑{} ↓Integer)"),
+    ok("({} <Ping(↑{} ↓Integer)>) -> Integer", ""),
+    ok("{}", ""),
+    ok("26", ""),
+    ok("Integer", ""),
+    ok("(Integer) -> Integer", ""),
+    ok("(Integer, Integer) -> Integer", ""),
+    ok("Integer", ""),
+    ok("Integer", ""),
+    #(Error(error.TypeMismatch(t.String, t.Integer)), "26", ""),
+    ok("(Integer) -> [True: {} | False: {}]", ""),
+    ok("(Integer, Integer) -> [True: {} | False: {}]", ""),
+    ok("Integer", ""),
+    ok("String", ""),
+  ])
+}
 
 fn parse(src) {
   src
@@ -387,26 +437,6 @@ pub fn select_test() {
   // cant have bare .name because white space will join it to previous thing
 }
 
-// Comparing r and s extends r's existing row with b inside the younger scope.
-// Since same captures r, its b field must not be generalised: both calls must
-// agree on the type of r.b.
-pub fn captured_record_field_is_not_generalised_test() {
-  let source =
-    "(r) -> {
-      let _ = r.a
-      let same = (s) -> {
-        let _ = s.b
-        !equal(r, s)
-      }
-      let _ = same({a: 1, b: 1})
-      same({a: 1, b: \"\"})
-    }"
-  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
-  j.all_errors(analysis)
-  |> list.map(fn(entry) { entry.1 })
-  |> should.equal([error.TypeMismatch(t.String, t.Integer)])
-}
-
 pub fn tag_test() {
   "Ok"
   |> calc(t.Empty)
@@ -536,38 +566,118 @@ pub fn perform_unifys_with_env_test() {
   ])
 }
 
-// Ping extends the effect row already containing Other. Its reply is one value,
-// so binding it with let must not allow Integer and String uses independently.
-pub fn effect_reply_is_not_generalised_test() {
-  "(_) -> {
-    let _ = perform Other({})
-    let x = perform Ping({})
-    let _ = !int_add(x, 1)
-    !equal(x, \"\")
-  }"
-  |> calc(t.Empty)
-  |> should.equal([
-    ok("(0 <Other(↑{} ↓3), Ping(↑{} ↓Integer)>) -> 26", ""),
-    ok("26", ""),
-    ok("3", "Other(↑{} ↓3)"),
-    ok("({} <Other(↑{} ↓3)>) -> 3", ""),
-    ok("{}", ""),
-    ok("26", ""),
-    ok("Integer", "Ping(↑{} ↓Integer)"),
-    ok("({} <Ping(↑{} ↓Integer)>) -> Integer", ""),
-    ok("{}", ""),
-    ok("26", ""),
-    ok("Integer", ""),
-    ok("(Integer) -> Integer", ""),
-    ok("(Integer, Integer) -> Integer", ""),
-    ok("Integer", ""),
-    ok("Integer", ""),
-    #(Error(error.TypeMismatch(t.String, t.Integer)), "26", ""),
-    ok("(Integer) -> [True: {} | False: {}]", ""),
-    ok("(Integer, Integer) -> [True: {} | False: {}]", ""),
-    ok("Integer", ""),
-    ok("String", ""),
-  ])
+// Check every node: a successful root alone can hide a nested inference error.
+fn check_handler(source, effects, expected) {
+  let context = j.Context(..j.pure(), eff: effects)
+  let analysis =
+    source |> parse |> j.check_with_references(context, dict.new(), _)
+  j.all_errors(analysis) |> should.equal([])
+  j.type_(analysis) |> debug.mono |> should.equal(expected)
+}
+
+pub fn deep_handler_removes_repeated_effect_test() {
+  check_handler(
+    "handle Ping((_, resume) -> { resume(1) }, (_) -> {
+      let a = perform Ping({})
+      let b = perform Ping({})
+      !int_add(a, b)
+    })",
+    t.Empty,
+    "Integer",
+  )
+}
+
+pub fn deep_handler_shadows_outer_handler_test() {
+  check_handler(
+    "handle Ping((_, resume) -> { resume(100) }, (_) -> {
+      handle Ping((_, resume) -> { resume(1) }, (_) -> {
+        let a = perform Ping({})
+        let b = perform Ping({})
+        !int_add(a, b)
+      })
+    })",
+    t.Empty,
+    "Integer",
+  )
+}
+
+pub fn handler_callback_effect_escapes_test() {
+  let source =
+    "handle Ping((_, resume) -> {
+    resume(perform Ping({}))
+  }, (_) -> {
+    let a = perform Ping({})
+    let b = perform Ping({})
+    !int_add(a, b)
+  })"
+  check_handler(
+    source,
+    t.EffectExtend("Ping", #(t.unit, t.Integer), t.Empty),
+    "Integer",
+  )
+  let analysis =
+    source |> parse |> j.check_with_references(j.pure(), dict.new(), _)
+  j.all_errors(analysis)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.MissingRow("Ping")])
+}
+
+pub fn deep_handler_preserves_other_effects_test() {
+  check_handler(
+    "handle Ping((_, resume) -> { resume(1) }, (_) -> {
+      let a = perform Ping({})
+      let b = perform Other({})
+      let c = perform Ping({})
+      !int_add(a, !int_add(b, c))
+    })",
+    t.EffectExtend("Other", #(t.unit, t.Integer), t.Empty),
+    "Integer",
+  )
+}
+
+pub fn returning_deep_resumption_requires_recursive_type_test() {
+  let analysis =
+    "handle Log((lift, resume) -> { {lift, resume} }, (_) -> {
+      perform Log(\"hello\")
+    })"
+    |> parse
+    |> j.check_with_references(j.pure(), dict.new(), _)
+  j.all_errors(analysis)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.Recursive])
+}
+
+pub fn composed_handlers_keep_reply_and_result_types_linked_test() {
+  let source =
+    simplifile.read("../../guides/examples/composed_stateful_handlers.eyg")
+    |> should.be_ok
+  let analysis =
+    source |> parse |> j.check_with_references(j.pure(), dict.new(), _)
+  j.all_errors(analysis) |> should.equal([])
+  let counter = fn(value) {
+    t.record([#("state", t.Integer), #("value", value)])
+  }
+  let result = counter(counter(t.List(t.Integer)))
+  j.type_(analysis)
+  |> should.equal(
+    t.record([#("left_outside", result), #("right_outside", result)]),
+  )
+
+  let wrong =
+    "let example = "
+    <> source
+    <> "\n!list_fold(example.left_outside.value.value, \"\", !string_append)"
+  let analysis =
+    wrong |> parse |> j.check_with_references(j.pure(), dict.new(), _)
+  j.all_errors(analysis)
+  |> list.any(fn(entry) {
+    case entry.1 {
+      error.TypeMismatch(t.String, t.Integer)
+      | error.TypeMismatch(t.Integer, t.String) -> True
+      _ -> False
+    }
+  })
+  |> should.be_true
 }
 
 pub fn only_unknown_effect_test() {
@@ -581,6 +691,129 @@ pub fn only_unknown_effect_test() {
     #(Ok(Nil), "(Integer <..1>) -> 2", ""),
     #(Ok(Nil), "Integer", ""),
   ])
+}
+
+pub fn call_pure_effect_reply_test() {
+  let source = "(_) -> { let f = !pure(perform Get({})) f(41) }"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis) |> should.equal([])
+
+  let assert t.Fun(
+    _,
+    t.EffectExtend(
+      "Get",
+      #(t.Record(t.Empty), t.Fun(t.Integer, effects, reply)),
+      tail,
+    ),
+    returned,
+  ) = j.poly_type(analysis)
+  reply |> should.equal(returned)
+  effects |> should.equal(t.Empty)
+  tail |> should.equal(t.Empty)
+}
+
+pub fn handle_function_reply_test() {
+  let source =
+    "handle Get((_, resume) -> { resume((x) -> { !int_add(x, 1) }) }, (_) -> {
+      let f = !pure(perform Get({}))
+      f(41)
+    })"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis) |> should.equal([])
+  j.type_(analysis) |> should.equal(t.Integer)
+}
+
+pub fn effect_function_reply_is_not_generalised_test() {
+  let source =
+    "(_) -> {
+      let f = !pure(perform Get({}))
+      let _ = f(41)
+      f(\"wrong argument\")
+    }"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.TypeMismatch(t.String, t.Integer)])
+}
+
+pub fn pure_rejects_effectful_functions_test() {
+  let programs = [
+    #("!pure((x) -> { perform Log(x) })", "Log"),
+    #("let f = (x) -> { perform Log(x) } !pure(f)", "Log"),
+    #(
+      "handle Get((_, resume) -> {
+      resume((x) -> { perform Log(x) })
+    }, (_) -> { let f = !pure(perform Get({})) f(41) })",
+      "Log",
+    ),
+    #("!pure((_) -> { !never(perform Abort(\"failed\")) })", "Abort"),
+  ]
+  // An available handler does not make the function itself pure.
+  let context = j.pure() |> j.with_effect("Log", t.Integer, t.unit)
+  list.each(programs, fn(example) {
+    let #(source, effect) = example
+    let assert j.Done(analysis) = j.check(context, parse(source))
+    j.all_errors(analysis)
+    |> list.map(fn(entry) { entry.1 })
+    |> list.contains(error.MissingRow(effect))
+    |> should.be_true
+  })
+}
+
+pub fn pure_accepts_internally_handled_effects_test() {
+  let source =
+    "!pure((x) -> {
+      handle Log((message, resume) -> { resume(message) }, (_) -> { perform Log(x) })
+    })(41)"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis) |> should.equal([])
+  j.type_(analysis) |> should.equal(t.Integer)
+}
+
+pub fn pure_rejects_non_functions_test() {
+  let assert j.Done(analysis) = j.check(j.pure(), parse("!pure(41)"))
+  let assert [#(_, error.TypeMismatch(t.Integer, t.Fun(..)))] =
+    j.all_errors(analysis)
+}
+
+pub fn pure_preserves_let_polymorphism_test() {
+  let source = "let id = !pure((x) -> { x }) let _ = id(41) id(\"yes\")"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis) |> should.equal([])
+  j.type_(analysis) |> should.equal(t.String)
+}
+
+pub fn pure_only_constrains_one_application_test() {
+  let source =
+    "let f = !pure((x) -> { (_) -> { perform Log(x) } })
+    let g = f(41)
+    g({})"
+  let context = j.pure() |> j.with_effect("Log", t.Integer, t.unit)
+  let assert j.Done(analysis) = j.check(context, parse(source))
+  j.all_errors(analysis) |> should.equal([])
+  j.type_(analysis) |> should.equal(t.unit)
+
+  let assert j.Done(pure_context) = j.check(j.pure(), parse(source))
+  j.all_errors(pure_context)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.MissingRow("Log")])
+}
+
+pub fn handler_can_call_function_request_test() {
+  let source =
+    "handle Apply((f, resume) -> { resume(f(41)) }, (_) -> {
+      perform Apply((x) -> { !int_add(x, 1) })
+    })"
+  let assert j.Done(analysis) = j.check(j.pure(), parse(source))
+  j.all_errors(analysis) |> should.equal([])
+  j.type_(analysis) |> should.equal(t.Integer)
+}
+
+pub fn recursive_function_type_is_still_rejected_test() {
+  let assert j.Done(analysis) = j.check(j.pure(), parse("(f) -> { f(f) }"))
+  j.all_errors(analysis)
+  |> list.map(fn(entry) { entry.1 })
+  |> should.equal([error.Recursive])
 }
 
 pub fn combine_effect_test() {

@@ -3,31 +3,27 @@ import eyg/compiler/js
 import eyg/parser
 import gleam/dict
 import gleam/dynamic.{type Dynamic}
-import gleam/javascript/array.{type Array}
+import gleam/javascript/array
 import gleam/list
 import gleam/pair
 import gleeunit/should
 import plinth/browser/window.{eval}
-
-@external(javascript, "./js_ffi.mjs", "list")
-fn do_list(items: Array(Dynamic)) -> Dynamic
+import plinthx/javascript/foreign
 
 /// This is needed because dynamic.list creates nested head/tail tuples
 fn list(items, encode) {
-  items
-  |> list.map(encode)
-  |> array.from_list()
-  |> do_list
+  list.fold_right(
+    items,
+    foreign.to_dynamic(array.from_list([])),
+    fn(tail, item) { foreign.to_dynamic(array.from_list([encode(item), tail])) },
+  )
 }
-
-@external(javascript, "./js_ffi.mjs", "object")
-fn do_object(items: Array(#(String, Dynamic))) -> Dynamic
 
 /// This is needed because dynamic.properties creates a dictionary
 fn object(items) {
   items
   |> array.from_list
-  |> do_object
+  |> foreign.object
 }
 
 fn tagged(label, value) -> Dynamic {
@@ -291,6 +287,33 @@ pub fn effect_test() {
   )
 }
 
+pub fn deep_handler_shadows_outer_handler_test() {
+  // Shallow resumption would let the second Ping reach the outer handler: 101.
+  test_eval(
+    "handle Ping((_, resume) -> { resume(100) }, (_) -> {
+      handle Ping((_, resume) -> { resume(1) }, (_) -> {
+        let a = perform Ping({})
+        let b = perform Ping({})
+        !int_add(a, b)
+      })
+    })",
+    dynamic.int(2),
+  )
+}
+
+pub fn deep_handler_callback_effect_escapes_test() {
+  test_eval(
+    "handle Ping((_, resume) -> { resume(100) }, (_) -> {
+      handle Ping((_, resume) -> { resume(perform Ping({})) }, (_) -> {
+        let a = perform Ping({})
+        let b = perform Ping({})
+        !int_add(a, b)
+      })
+    })",
+    dynamic.int(200),
+  )
+}
+
 pub fn compile_builtin_test() {
   test_eval("!int_compare(1, 2)", tagged("Lt", unit()))
   test_compilation(
@@ -321,6 +344,21 @@ int_add(1)(2)",
     ),
   )
   test_eval("!list_fold([1, 2, 3], 0, !int_add)", dynamic.int(6))
+}
+
+pub fn pure_builtin_test() {
+  test_eval("!pure(!int_add(1))(41)", dynamic.int(42))
+  test_eval(
+    "let n = 1 let f = (x) -> { !int_add(n, x) } !pure(f)(41)",
+    dynamic.int(42),
+  )
+  test_eval("let f = (x) -> { x } !equal(f, !pure(f))", tagged("False", unit()))
+  test_eval(
+    "handle Get((_, resume) -> { resume((x) -> { !int_add(x, 1) }) }, (_) -> {
+      let f = !pure(perform Get({})) f(41)
+    })",
+    dynamic.int(42),
+  )
 }
 
 // Regressions from the compiler investigation, before replacing the backend.

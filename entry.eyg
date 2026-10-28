@@ -5,7 +5,7 @@ let aok = @aok
 let tests = list.flatten([
   import "./eyg_packages/aok/entry.eyg".tests,
   import "./eyg_packages/standard/test.eyg",
-  // import "./eyg_packages/eyg/entry.eyg".tests,
+  import "./eyg_packages/eyg/entry.eyg".tests,
   import "./eyg_packages/overlay/entry.eyg".tests,
   import "./eyg_packages/tiling/entry.eyg".tests,
   import "./eyg_packages/artifact_viewers/entry.eyg".tests,

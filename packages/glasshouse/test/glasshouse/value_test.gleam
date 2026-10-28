@@ -1,3 +1,4 @@
+import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
@@ -64,6 +65,22 @@ pub fn closure_round_trips_test() {
   assert result == v.Integer(15)
 }
 
+pub fn recorded_masks_and_pure_functions_keep_their_boundaries_test() {
+  let assert Ok(mask) = round_trip(v.Partial(v.Mask("Log"), []))
+  let assert Ok(callback) =
+    expression.execute(
+      ir.lambda("_", ir.apply(ir.perform("Log"), ir.integer(42))),
+      [],
+    )
+  let assert Error(#(break.MaskedEffect("Log", v.Integer(42)), _, _, _)) =
+    expression.call(mask, [#(callback, Nil)])
+  let assert Ok(guarded) =
+    expression.call(v.Partial(v.Builtin("pure"), []), [#(callback, Nil)])
+  let assert Ok(restored) = round_trip(guarded)
+  let assert Error(#(break.ImpureEffect("Log", v.Integer(42)), _, _, _)) =
+    expression.call(restored, [#(v.unit(), Nil)])
+}
+
 pub fn matching_inlines_content_references_on_both_sides_test() {
   let #(store, id) = store.put_node(store.new(), ir.integer(42), sha256)
   let assert Ok(#(cid, _)) = v1.from_string(id)
@@ -85,6 +102,27 @@ pub fn externalize_moves_large_binaries_test() {
   assert value.references(external) |> list_length == 1
   assert value.decode(external, store, Nil) == Ok(v.ok(big))
   assert value.inline(external, store) == Ok(encoded)
+}
+
+pub fn partially_applied_shallow_handler_round_trips_test() {
+  let assert Ok(handler) =
+    expression.execute(ir.lambda("_", ir.lambda("_", ir.integer(42))), [])
+  let assert Ok(on_return) =
+    expression.execute(
+      ir.lambda("x", ir.apply(ir.builtin("string_length"), ir.variable("x"))),
+      [],
+    )
+  let assert Ok(restored) =
+    round_trip(v.Partial(v.Shallow("Ping"), [handler, on_return]))
+  let assert Ok(body) =
+    expression.execute(ir.lambda("_", ir.string("hello")), [])
+  assert expression.call(restored, [#(body, Nil)]) == Ok(v.Integer(5))
+  let assert Ok(body) =
+    expression.execute(
+      ir.lambda("_", ir.apply(ir.perform("Ping"), ir.unit())),
+      [],
+    )
+  assert expression.call(restored, [#(body, Nil)]) == Ok(v.Integer(42))
 }
 
 pub fn externalize_keeps_small_binaries_test() {

@@ -85,6 +85,8 @@ fn do_last(projection) {
           }
         e.Perform(_) -> projection
         e.Deep(_) -> projection
+        e.Shallow(_) -> projection
+        e.Mask(_) -> projection
         e.Builtin(_) -> projection
         e.Reference(_) -> projection
       }

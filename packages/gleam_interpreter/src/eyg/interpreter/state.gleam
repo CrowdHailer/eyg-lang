@@ -4,6 +4,7 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 
 pub type Context(m) =
@@ -68,7 +69,10 @@ pub type Kontinue(m) {
   Apply(Value(m), Env(m))
   Assign(String, ir.Node(m), Env(m))
   CallWith(Value(m), Env(m))
-  Delimit(String, Value(m), Env(m), Bool)
+  /// None is deep; Some(on_return) is shallow with an explicit return clause.
+  Delimit(String, Value(m), Env(m), Option(Value(m)))
+  Mask(String)
+  Pure
   /// Restore the caller's environment when a closure or continuation returns,
   /// including after an effect resumes. The argument is used in stack traces.
   Trace(Value(m), Env(m))
@@ -129,6 +133,8 @@ pub fn eval(exp, env: Env(m), k) {
     ir.Case(label) -> value(v.Partial(v.Match(label), []))
     ir.NoCases -> value(v.Partial(v.NoCases, []))
     ir.Handle(label) -> value(v.Partial(v.Handle(label), []))
+    ir.Shallow(label) -> value(v.Partial(v.Shallow(label), []))
+    ir.Mask(label) -> value(v.Partial(v.Mask(label), []))
     ir.Builtin(identifier) ->
       case dict.get(env.builtins, identifier) {
         Ok(_) -> value(v.Partial(v.Builtin(identifier), []))
@@ -148,9 +154,12 @@ pub fn apply(value, env, k, meta, rest) {
     Arg(arg, env) -> Ok(#(E(arg), env, Stack(Apply(value, env), meta, rest)))
     Apply(f, env) -> call(f, value, meta, env, rest)
     CallWith(arg, env) -> call(value, arg, meta, env, rest)
-    Delimit(_, _, env, _) -> Ok(#(V(value), env, rest))
+    Delimit(_, _, env, None) -> Ok(#(V(value), env, rest))
+    Delimit(_, _, env, Some(on_return)) ->
+      call(on_return, value, meta, env, rest)
     Trace(_, env) -> Ok(#(V(value), env, rest))
     ProfileReturn(_, env) -> Ok(#(V(value), env, rest))
+    Mask(_) | Pure -> Ok(#(V(value), env, rest))
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, rest) })
 }
@@ -207,6 +216,12 @@ fn invoke(f, arg, meta, env: Env(m), k: Stack(m)) {
         v.NoCases, [] -> Error(break.NoMatch(arg))
         v.Perform(label), [] -> perform(label, arg, env, k)
         v.Handle(label), [handler] -> deep(label, handler, arg, meta, env, k)
+        v.Shallow(label), [handler, on_return] ->
+          shallow(label, handler, on_return, arg, meta, env, k)
+        v.Mask(label), [] ->
+          call(arg, v.unit(), meta, env, Stack(Mask(label), meta, k))
+        v.Pure, [function] ->
+          call(function, arg, meta, env, Stack(Pure, meta, k))
         v.Resume(#(popped, captured)), [] -> {
           let k = trace(arg, meta, env, k)
           Ok(#(V(arg), captured, move(popped, k)))
@@ -256,17 +271,29 @@ fn trace(arg, meta, env, k) {
 fn move(delimited, acc) {
   case delimited {
     [] -> acc
+    [#(Trace(arg, env), meta), ..rest] -> move(rest, trace(arg, meta, env, acc))
     [#(step, meta), ..rest] -> move(rest, Stack(step, meta, acc))
   }
 }
 
-fn do_perform(label, arg, i_env, k, acc) {
+fn do_perform(label, arg, i_env, k, acc, skip) {
   case k {
-    // shallow is always false
-    Stack(Delimit(l, h, e, shallow), meta, rest) if l == label -> {
-      let acc = case shallow {
-        True -> acc
-        False -> [#(Delimit(label, h, e, False), meta), ..acc]
+    Stack(Pure, _, _) -> Error(break.ImpureEffect(label, arg))
+    Stack(Mask(l), meta, rest) if l == label ->
+      do_perform(label, arg, i_env, rest, [#(Mask(l), meta), ..acc], skip + 1)
+    Stack(Delimit(l, h, e, on_return), meta, rest) if l == label && skip > 0 ->
+      do_perform(
+        label,
+        arg,
+        i_env,
+        rest,
+        [#(Delimit(l, h, e, on_return), meta), ..acc],
+        skip - 1,
+      )
+    Stack(Delimit(l, h, e, on_return), meta, rest) if l == label -> {
+      let acc = case on_return {
+        Some(_) -> acc
+        None -> [#(Delimit(label, h, e, None), meta), ..acc]
       }
       let resume = v.Partial(v.Resume(#(acc, i_env)), [])
       let k =
@@ -274,22 +301,23 @@ fn do_perform(label, arg, i_env, k, acc) {
       Ok(#(V(h), e, k))
     }
     Stack(kontinue, meta, rest) ->
-      do_perform(label, arg, i_env, rest, [#(kontinue, meta), ..acc])
+      do_perform(label, arg, i_env, rest, [#(kontinue, meta), ..acc], skip)
+    Empty if skip > 0 -> Error(break.MaskedEffect(label, arg))
     Empty -> Error(break.UnhandledEffect(label, arg))
   }
 }
 
 pub fn perform(label, arg, i_env, k: Stack(m)) {
-  do_perform(label, arg, i_env, k, [])
+  do_perform(label, arg, i_env, k, [], 0)
 }
 
 // rename handle and move the handle for runner with handles out
 pub fn deep(label, handle, exec, meta, env, k) {
-  let k = Stack(Delimit(label, handle, env, False), meta, k)
+  let k = Stack(Delimit(label, handle, env, None), meta, k)
   call(exec, v.unit(), meta, env, k)
 }
-// somewhere this needs outer k
-// fn shallow(label, handle, exec, meta, env, k) {
-//   let k = Stack(Delimit(label, handle, env, True), meta, k)
-//   call(exec, v.unit(), meta, env, k)
-// }
+
+pub fn shallow(label, handle, on_return, exec, meta, env, k) {
+  let k = Stack(Delimit(label, handle, env, Some(on_return)), meta, k)
+  call(exec, v.unit(), meta, env, k)
+}

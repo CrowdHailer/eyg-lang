@@ -2,7 +2,8 @@ import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
 import eyg/parser/parser.{
-  InvalidCidReference, InvalidImportPath, InvalidReleaseVersion, UnexpectedToken,
+  ExpectedEffectName, InvalidCidReference, InvalidImportPath,
+  InvalidReleaseVersion, UnexpectedToken,
 } as _
 import eyg/parser/token
 import gleeunit/should
@@ -56,6 +57,24 @@ pub fn todo_is_reserved_test() {
   "(todo) -> { todo }"
   |> parser.all_from_string()
   |> should.equal(Error(UnexpectedToken(token.Todo, 1)))
+}
+
+pub fn shallow_handler_and_contextual_keyword_test() {
+  parser.all_from_string("handle shallow Ping")
+  |> should.equal(Ok(#(ir.Shallow("Ping"), #(0, 19))))
+  parser.all_from_string("handle Ping")
+  |> should.equal(Ok(#(ir.Handle("Ping"), #(0, 11))))
+  parser.all_from_string("let shallow = 1 shallow") |> should.be_ok
+  parser.all_from_string("handle shallow ping")
+  |> should.equal(Error(ExpectedEffectName("handle shallow", 15)))
+  parser.all_from_string("handle shallow")
+  |> should.equal(Error(ExpectedEffectName("handle shallow", 14)))
+}
+
+pub fn mask_contextual_keyword_test() {
+  parser.all_from_string("mask Ping")
+  |> should.equal(Ok(#(ir.Mask("Ping"), #(0, 9))))
+  parser.all_from_string("let mask = (x) -> { x } mask(42)") |> should.be_ok
 }
 
 pub fn negative_integer_test() {

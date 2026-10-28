@@ -166,6 +166,16 @@
     "cid": "baguqeera5sahowe6a7xgdocvybfg23hckdizgoql3akvvo3qaswbjviqcvzq"
   },
   {
+    "name": "shallow effect handler",
+    "source": {"0": "hs", "l": "Ping"},
+    "cid": "baguqeera6jzj7ilnpjkcfwdjrk4fb2yfqc3zlxsgt7plmso4xbzfqlsko4ga"
+  },
+  {
+    "name": "mask effect handler",
+    "source": {"0": "hm", "l": "Ping"},
+    "cid": "baguqeerasmabgv7kmy3kv42xydltjby63pi5w7lztqzkc2uru4vd6gfpjova"
+  },
+  {
     "name": "add integer builtin",
     "source": {
       "0": "b",

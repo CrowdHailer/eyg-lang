@@ -121,6 +121,9 @@ fn capture_defunc(switch, args, env, meta) {
     v.NoCases -> ir.NoCases
     v.Perform(label) -> ir.Perform(label)
     v.Handle(label) -> ir.Handle(label)
+    v.Shallow(label) -> ir.Shallow(label)
+    v.Mask(label) -> ir.Mask(label)
+    v.Pure -> ir.Builtin("pure")
     v.Resume(_) -> {
       panic as "not idea how to capture the func here, is it even possible"
     }

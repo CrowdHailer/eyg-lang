@@ -1,0 +1,18 @@
+// State-passing Increment handler. Returns the number of calls made by f.
+// Its state transitions are in tail position. The interpreter and compiler
+// provide bounded tail-call storage. See ../advanced_effects.md.
+let count_calls = (f) -> {
+  let run = handle Increment((_, resume) -> {
+    (count) -> {
+      let next = !int_add(count, 1)
+      resume({})(next)
+    }
+  }, (_) -> {
+    let _ = f({})
+    let finish = (count) -> { count }
+    finish
+  })
+  run(0)
+}
+
+count_calls

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "mask skips exactly one handler and restores normal scope",
+    "source": "handle Ping((_, k) -> { k(100) }, (_) -> { handle Ping((_, k) -> { k(1) }, (_) -> { let a = mask Ping((_) -> { perform Ping({}) }) let b = perform Ping({}) !int_add(a, b) }) })",
+    "value": 101
+  },
+  {
+    "name": "nested masks skip two handlers",
+    "source": "handle Ping((_, k) -> { k(100) }, (_) -> { handle Ping((_, k) -> { k(10) }, (_) -> { handle Ping((_, k) -> { k(1) }, (_) -> { mask Ping((_) -> { mask Ping((_) -> { perform Ping({}) }) }) }) }) })",
+    "value": 100
+  },
+  {
+    "name": "handlers installed inside mask remain active",
+    "source": "handle Ping((_, k) -> { k(1) }, (_) -> { mask Ping((_) -> { handle Ping((_, k) -> { k(42) }, (_) -> { perform Ping({}) }) }) })",
+    "value": 42
+  },
+  {
+    "name": "mask survives repeated operations and multi-shot resumption",
+    "source": "handle Choose((_, k) -> { !int_add(k(1), k(2)) }, (_) -> { handle Ping((_, k) -> { k(10) }, (_) -> { handle Ping((_, k) -> { k(1) }, (_) -> { mask Ping((_) -> { let n = perform Choose({}) let a = perform Ping({}) let b = perform Ping({}) !int_add(n, !int_add(a, b)) }) }) }) })",
+    "value": 43
+  },
+  {
+    "name": "skipped and selected handlers have independent request and reply types",
+    "source": "handle Ping((text, k) -> { k(!string_length(text)) }, (_) -> { handle Ping((n, k) -> { k(!int_to_string(n)) }, (_) -> { let text = perform Ping(42) mask Ping((_) -> { perform Ping(text) }) }) })",
+    "value": 2
+  },
+  {
+    "name": "mask separates function reply effects from private State",
+    "source": "handle Log((n, k) -> { k(!int_add(n, 1)) }, (_) -> { handle State((_, k) -> { k((n) -> { perform Log(n) }) }, (_) -> { let f = perform State({}) mask State((_) -> { f(41) }) }) })",
+    "value": 42
+  },
+  {
+    "name": "mask can be passed as a first-class value",
+    "source": "let outside = mask Ping handle Ping((_, k) -> { k(42) }, (_) -> { handle Ping((_, k) -> { k(0) }, (_) -> { outside((_) -> { perform Ping({}) }) }) })",
+    "value": 42
+  },
+  {
+    "name": "pure allows internally handled effects",
+    "source": "!pure((n) -> { handle Ping((value, k) -> { k(!int_add(value, 1)) }, (_) -> { perform Ping(n) }) })(41)",
+    "value": 42
+  },
+  {
+    "name": "pure guards one application, not returned functions",
+    "source": "handle Ping((n, k) -> { k(!int_add(n, 1)) }, (_) -> { let f = !pure((_) -> { (n) -> { perform Ping(n) } }) let g = f({}) g(41) })",
+    "value": 42
+  },
+  {
+    "name": "obtaining a pure function may perform effects",
+    "source": "handle Get((_, k) -> { k((n) -> { !int_add(n, 1) }) }, (_) -> { !pure(perform Get({}))(41) })",
+    "value": 42
+  }
+]

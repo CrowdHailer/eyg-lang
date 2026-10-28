@@ -71,6 +71,8 @@ fn do_print(source) {
     // do/act/effect(effect is a verb and noun)
     ir.Perform(label) -> #(string.concat(["perform(", label, ")"]), [])
     ir.Handle(label) -> #(string.concat(["handle(", label, ")"]), [])
+    ir.Shallow(label) -> #(string.concat(["handle shallow(", label, ")"]), [])
+    ir.Mask(label) -> #(string.concat(["mask(", label, ")"]), [])
 
     ir.Builtin(identifier) -> #(
       string.concat(["builtin(", identifier, ")"]),

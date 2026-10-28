@@ -1,0 +1,14 @@
+let deep_ping = (handler, body) -> {
+  let run = !fix((self, body) -> {
+    handle shallow Ping((lift, resume) -> {
+      handler(lift, (reply) -> { self((_) -> { resume(reply) }) })
+    }, (value) -> { value }, body)
+  })
+  run(body)
+}
+deep_ping((_, resume) -> { resume(1) }, (_) -> {
+  let a = perform Ping({})
+  let b = perform Ping({})
+  !int_add(a, b)
+})
+// 2

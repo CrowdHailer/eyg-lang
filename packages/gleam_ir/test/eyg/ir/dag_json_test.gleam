@@ -102,3 +102,36 @@ pub fn reject_pinned_reference_without_version_test() {
   |> result.is_error
   |> should.be_true
 }
+
+pub fn shallow_encoding_is_distinct_and_round_trips_test() {
+  let source = tree.shallow("Ping")
+  source |> codec.to_string |> should.equal("{\"0\":\"hs\",\"l\":\"Ping\"}")
+  source
+  |> codec.to_string
+  |> json.parse(codec.decoder(Nil))
+  |> should.equal(Ok(source))
+  tree.handle("Ping")
+  |> codec.to_string
+  |> should.equal("{\"0\":\"h\",\"l\":\"Ping\"}")
+  tree.map_annotation(source, fn(_) { 42 })
+  |> should.equal(#(tree.Shallow("Ping"), 42))
+  tree.rewrite_with(source, 0, fn(acc, node) { fn(k) { k(#(acc + 1, node)) } })(
+    fn(x) { x },
+  )
+  |> should.equal(#(1, source))
+}
+
+pub fn mask_encoding_and_traversals_test() {
+  let source = tree.mask("Ping")
+  source |> codec.to_string |> should.equal("{\"0\":\"hm\",\"l\":\"Ping\"}")
+  source
+  |> codec.to_string
+  |> json.parse(codec.decoder(Nil))
+  |> should.equal(Ok(source))
+  tree.map_annotation(source, fn(_) { 42 })
+  |> should.equal(#(tree.Mask("Ping"), 42))
+  tree.rewrite_with(source, 0, fn(acc, node) { fn(k) { k(#(acc + 1, node)) } })(
+    fn(x) { x },
+  )
+  |> should.equal(#(1, source))
+}

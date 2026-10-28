@@ -72,6 +72,9 @@ fn partial(switch: v.Switch(c)) -> ir.Expression(Nil) {
     v.NoCases -> ir.NoCases
     v.Perform(label) -> ir.Perform(label)
     v.Handle(label) -> ir.Handle(label)
+    v.Mask(label) -> ir.Mask(label)
+    v.Shallow(label) -> ir.Shallow(label)
+    v.Pure -> ir.Builtin("pure")
     v.Builtin(identifier) -> ir.Builtin(identifier)
     v.Resume(_) -> ir.Vacant
   }
