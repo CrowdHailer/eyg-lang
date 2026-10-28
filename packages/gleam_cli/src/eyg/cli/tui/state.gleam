@@ -156,10 +156,7 @@ pub fn update(
     Running(Handling(task_id:, label:, lift:), env, k, occured),
       Task(EffectHandled(id, value))
       if id == task_id
-    -> {
-      let occured = [#(label, #(lift, value)), ..occured]
-      loop(block.resume(value, env, k), state, occured)
-    }
+    -> after_perform(system.Done(value), label, lift, env, k, state, occured)
     Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
     PickSingle(box, rebuild), Input(event) ->
       case combobox.update(event, box) {
@@ -416,7 +413,12 @@ fn loop(
     Ok(#(value, scope)) -> {
       let entry = history.Entry(value:, effects: occured, buffer: state.buffer)
       let history = [entry, ..state.history]
-      #(State(..state, mode: Navigating, history:, scope:), [])
+      let buffer =
+        buffer.empty(
+          repl_context(scope),
+          cache.types(state.execute_state.cache),
+        )
+      #(State(..state, mode: Navigating, history:, scope:, buffer:), [])
     }
     Error(#(break.UnhandledEffect(label, lift), location, env, k)) ->
       case computer.cast(label, lift) {

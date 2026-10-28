@@ -43,10 +43,7 @@ pub type Source {
 /// command line.
 pub fn read_input(input: Input) -> system.Effect(Result(String, String)) {
   case input {
-    File(path:) -> {
-      use code <- system.map(system.read_file(path))
-      result.map(code, strip_shebang)
-    }
+    File(path:) -> system.read_file(path)
     Code(code:) -> system.Done(Ok(code))
     Stdin -> system.stdin()
   }
@@ -68,6 +65,7 @@ pub fn parse(
   code: String,
   origin: Origin,
 ) -> Result(ir.Node(Location), String) {
+  let code = strip_shebang(code)
   case json.parse(code, dag_json.decoder(Location(origin, Json))) {
     Ok(source) -> Ok(source)
     Error(_) ->
