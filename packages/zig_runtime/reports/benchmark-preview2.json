@@ -1,0 +1,144 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "4003446ea34a1d13e04c5aa5997178de3f2523f05802c33d4b4eb87aaeaf67ab",
+  "build_info": {
+    "zig": "0.14.1",
+    "mode": "ReleaseFast",
+    "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+    "git_reference": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+    "protocol": 1
+  },
+  "binary_bytes": 2740416,
+  "machine": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "processor": "",
+    "cpu_count": 5
+  },
+  "measurement": "monotonic native event dispatch plus complete JSON cell-frame construction; excludes JSON serialization, terminal transport, startup; sandboxed effects in Gleam",
+  "warmup_iterations": 1,
+  "iterations": 3,
+  "parity_passed": false,
+  "correctness_gates": {
+    "release_fast_build": true,
+    "same_binary_full_differential": false,
+    "same_binary_raw_input": false,
+    "same_binary_pty_parity_cleanup": false,
+    "same_binary_pty_under_10ms": false,
+    "same_binary_ready_hub_parity_cleanup": false,
+    "same_binary_ready_hub_under_10ms": false
+  },
+  "parity_report": "/workspace/eyg-lang/packages/zig_runtime/reports/differential.json",
+  "workloads": {
+    "integer-input": {
+      "native": {
+        "samples": 27,
+        "p50_ms": 0.452041,
+        "p95_ms": 1.54624,
+        "p99_ms": 2.193202,
+        "max_ms": 2.193202,
+        "mean_ms": 0.5977933703703703,
+        "under_10ms": true
+      },
+      "events_per_iteration": 9
+    },
+    "unicode-input": {
+      "native": {
+        "samples": 12,
+        "p50_ms": 0.417359,
+        "p95_ms": 0.95903,
+        "p99_ms": 0.95903,
+        "max_ms": 0.95903,
+        "mean_ms": 0.5249569166666667,
+        "under_10ms": true
+      },
+      "events_per_iteration": 4
+    },
+    "arithmetic": {
+      "native": {
+        "samples": 6,
+        "p50_ms": 0.981879,
+        "p95_ms": 10.689785,
+        "p99_ms": 10.689785,
+        "max_ms": 10.689785,
+        "mean_ms": 3.1084295,
+        "under_10ms": false
+      },
+      "events_per_iteration": 2
+    },
+    "picker": {
+      "native": {
+        "samples": 30,
+        "p50_ms": 0.933848,
+        "p95_ms": 2.343338,
+        "p99_ms": 3.156019,
+        "max_ms": 3.156019,
+        "mean_ms": 1.0714628333333334,
+        "under_10ms": true
+      },
+      "events_per_iteration": 10
+    },
+    "history-30": {
+      "native": {
+        "samples": 198,
+        "p50_ms": 1.03861,
+        "p95_ms": 5.544249,
+        "p99_ms": 21.094047,
+        "max_ms": 23.192485,
+        "mean_ms": 1.854674813131313,
+        "under_10ms": false
+      },
+      "events_per_iteration": 66
+    },
+    "structural-navigation": {
+      "native": {
+        "samples": 30,
+        "p50_ms": 0.690128,
+        "p95_ms": 2.115548,
+        "p99_ms": 9.142021,
+        "max_ms": 9.142021,
+        "mean_ms": 1.0522082333333334,
+        "under_10ms": true
+      },
+      "events_per_iteration": 10
+    },
+    "nested-program-edit": {
+      "native": {
+        "samples": 54,
+        "p50_ms": 0.392016,
+        "p95_ms": 3.42057,
+        "p99_ms": 4.827903,
+        "max_ms": 4.827903,
+        "mean_ms": 0.7164197777777778,
+        "under_10ms": true
+      },
+      "events_per_iteration": 18
+    },
+    "long-cjk-input": {
+      "native": {
+        "samples": 21,
+        "p50_ms": 0.672382,
+        "p95_ms": 3.902178,
+        "p99_ms": 4.641227,
+        "max_ms": 4.641227,
+        "mean_ms": 1.0758038095238094,
+        "under_10ms": true
+      },
+      "events_per_iteration": 7
+    },
+    "binary-value": {
+      "native": {
+        "samples": 6,
+        "p50_ms": 0.781469,
+        "p95_ms": 0.929251,
+        "p99_ms": 0.929251,
+        "max_ms": 0.929251,
+        "mean_ms": 0.802856,
+        "under_10ms": true
+      },
+      "events_per_iteration": 2
+    }
+  },
+  "performance_passed": false,
+  "passed": false
+}

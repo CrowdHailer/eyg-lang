@@ -1,0 +1,92 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "ccbfcf5b994ff669a0cde0d224c9886f2f6cca7386945ffd97d1a3dffc9ecee1",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "counts": {
+    "spec": {
+      "checked": 107,
+      "passed": 107,
+      "failed": 0
+    },
+    "generated-program": {
+      "checked": 5000,
+      "passed": 5000,
+      "failed": 0
+    },
+    "generated-external-effects": {
+      "checked": 500,
+      "passed": 500,
+      "failed": 0
+    }
+  },
+  "failures": [],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true
+  },
+  "coverage": {
+    "ir_nodes": {
+      "#": 125,
+      ".": 109,
+      "@": 230,
+      "a": 52739,
+      "b": 18874,
+      "c": 1907,
+      "e": 3205,
+      "f": 5764,
+      "g": 2207,
+      "h": 477,
+      "i": 16832,
+      "l": 3130,
+      "m": 879,
+      "n": 459,
+      "o": 2,
+      "p": 1483,
+      "s": 2618,
+      "t": 462,
+      "ta": 948,
+      "u": 2660,
+      "v": 7973,
+      "x": 23,
+      "z": 3
+    },
+    "builtins": {
+      "binary_compare": 32,
+      "binary_concat": 33,
+      "binary_fold": 23,
+      "binary_from_integers": 29,
+      "binary_size": 30,
+      "equal": 161,
+      "fix": 419,
+      "int_absolute": 2128,
+      "int_add": 6127,
+      "int_compare": 550,
+      "int_divide": 158,
+      "int_multiply": 1350,
+      "int_parse": 34,
+      "int_subtract": 1804,
+      "int_to_string": 1810,
+      "list_fold": 39,
+      "list_pop": 26,
+      "not_a_real_builtin": 1,
+      "string_append": 1841,
+      "string_ends_with": 35,
+      "string_from_binary": 34,
+      "string_length": 24,
+      "string_lowercase": 917,
+      "string_replace": 34,
+      "string_split": 43,
+      "string_split_once": 40,
+      "string_starts_with": 34,
+      "string_to_binary": 221,
+      "string_uppercase": 897
+    }
+  },
+  "passed": true,
+  "elapsed_seconds": 11.009334880999972
+}

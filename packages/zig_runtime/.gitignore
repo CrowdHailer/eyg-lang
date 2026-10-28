@@ -1,0 +1,12 @@
+.zig-cache/
+zig-out/
+work/
+__pycache__/
+**/__pycache__/
+android/node_modules/
+android/.expo/
+android/work/
+android/android/.gradle/
+android/android/app/build/
+android/android/build/
+android/android/app/src/main/jniLibs/

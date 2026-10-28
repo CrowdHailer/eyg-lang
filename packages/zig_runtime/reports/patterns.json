@@ -1,0 +1,9 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "seed": 20261028,
+  "checked": 2000,
+  "failed": 0,
+  "failures": [],
+  "binary_sha256": "6f235509002d8ef16970d0a1a8cbadd70382b6f7bd98e01f6f3fdbc125f0beb0",
+  "passed": true
+}

@@ -1,0 +1,177 @@
+{
+  "passed": false,
+  "transport_checks_passed": true,
+  "checks": 95,
+  "cases": [
+    "GET UTF-8 response, repeated headers, cookies",
+    "Latin-1 response headers",
+    "Latin-1 request headers",
+    "UTF-8 URL path",
+    "gzip decompression",
+    "HTTP error statuses remain successful responses",
+    "HEAD returns no response bytes",
+    "TRACE matches pinned empty response body",
+    "CONNECT non-success response is represented",
+    "relative redirects",
+    "query and existing percent escapes",
+    "POST preserves binary body",
+    "PUT preserves binary body",
+    "PATCH preserves binary body",
+    "DELETE preserves binary body",
+    "OPTIONS empty body",
+    "long OTHER method remains untruncated",
+    "same-origin redirect retains authorization",
+    "cross-port redirect strips credentials",
+    "POST redirect 301",
+    "POST redirect 302",
+    "POST redirect 303",
+    "POST redirect 307",
+    "POST redirect 308",
+    "redirect limit",
+    "header injection",
+    "invalid port",
+    "OPTIONS body matches oracle rejection",
+    "non-Latin-1 header rejected",
+    "closed port error value matches oracle",
+    "OTHER method constructor parity 0: 'ACL'",
+    "OTHER method constructor parity 1: 'BIND'",
+    "OTHER method constructor parity 2: 'CHECKOUT'",
+    "OTHER method constructor parity 3: 'COPY'",
+    "OTHER method constructor parity 4: 'LINK'",
+    "OTHER method constructor parity 5: 'LOCK'",
+    "OTHER method constructor parity 6: 'M-SEARCH'",
+    "OTHER method constructor parity 7: 'MERGE'",
+    "OTHER method constructor parity 8: 'MKACTIVITY'",
+    "OTHER method constructor parity 9: 'MKCALENDAR'",
+    "OTHER method constructor parity 10: 'MKCOL'",
+    "OTHER method constructor parity 11: 'MOVE'",
+    "OTHER method constructor parity 12: 'NOTIFY'",
+    "OTHER method constructor parity 13: 'PROPFIND'",
+    "OTHER method constructor parity 14: 'PROPPATCH'",
+    "OTHER method constructor parity 15: 'PURGE'",
+    "OTHER method constructor parity 16: 'QUERY'",
+    "OTHER method constructor parity 17: 'REBIND'",
+    "OTHER method constructor parity 18: 'REPORT'",
+    "OTHER method constructor parity 19: 'SEARCH'",
+    "OTHER method constructor parity 20: 'SOURCE'",
+    "OTHER method constructor parity 21: 'SUBSCRIBE'",
+    "OTHER method constructor parity 22: 'UNBIND'",
+    "OTHER method constructor parity 23: 'UNLINK'",
+    "OTHER method constructor parity 24: 'UNLOCK'",
+    "OTHER method constructor parity 25: 'UNSUBSCRIBE'",
+    "OTHER method constructor parity 26: ''",
+    "OTHER method constructor parity 27: 'BAD METHOD'",
+    "OTHER method constructor parity 28: '\\r\\n'",
+    "OTHER method constructor parity 29: '\u03bb'",
+    "OTHER method constructor parity 30: 'ZZZ'",
+    "OTHER method constructor parity 31: 'XXXXXXXXXXXXXXXXXXXXXXXX'",
+    "OTHER method constructor parity 32: 'get'",
+    "OTHER method constructor parity 33: 'purge'",
+    "OTHER method constructor parity 34: 'x-custom-extension'",
+    "OTHER method constructor parity 35: '\\nB_ !xzBB\\ny2'",
+    "OTHER method constructor parity 36: 'y0\u03bb\u03bbC!__\u03bbCA'",
+    "OTHER method constructor parity 37: 'zy \\r 1\\r0001zAB'",
+    "OTHER method constructor parity 38: 'Cz!zyxBCC2\\n!\\n'",
+    "OTHER method constructor parity 39: '\\rxBA1\u03bb\u03bb\u03bb z_'",
+    "OTHER method constructor parity 40: 'AA2!\\n0!1BAC0'",
+    "OTHER method constructor parity 41: 'CyzBzCxC\\r_Az\\nA\\r2xA'",
+    "OTHER method constructor parity 42: '0_ C2\\n0!x\u03bbz\\r'",
+    "OTHER method constructor parity 43: 'y\u03bbz!CzB\\r'",
+    "OTHER method constructor parity 44: '!\\r B0!xy0'",
+    "OTHER method constructor parity 45: '  z\u03bbz\\r\u03bb21'",
+    "OTHER method constructor parity 46: 'B!!xBz0_z21y\u03bb0'",
+    "OTHER method constructor parity 47: '\u03bb1B_CB\\n\u03bb 00yBy'",
+    "OTHER method constructor parity 48: 'Az20\\r'",
+    "OTHER method constructor parity 49: '!!A10y\\rxz00yy\\nBx0Bx'",
+    "OTHER method constructor parity 50: 'zCxCzB\u03bb'",
+    "OTHER method constructor parity 51: 'xA_\\rzxzz00'",
+    "OTHER method constructor parity 52: '\\n1B2'",
+    "OTHER method constructor parity 53: '!\\rz\\ny2z\\r'",
+    "OTHER method constructor parity 54: '0A\u03bb_\u03bbxy0A\\n 0_\u03bb\u03bb\\n0AB02'",
+    "shared GET helper returns owned response",
+    "untrusted TLS certificate error matches oracle",
+    "HTTPS using configured CA verifies peer",
+    "TLS hostname mismatch rejected",
+    "Android hashed PEM trust directory decoded",
+    "HTTPS verifies with PEM-only trust directory",
+    "Android hashed DER trust directory decoded",
+    "HTTPS verifies with DER-only trust directory",
+    "authenticated proxy CONNECT upgrades to verified TLS",
+    "proxy rejection matches HTTP407 without direct or plaintext fallback"
+  ],
+  "network": "loopback HTTP and HTTPS only",
+  "oracle_commit": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "2e67efb77d9bc9ab6d9e2a01e9ff6f8e68b5795f57425a721c524e0dfe2483de",
+  "oracle_runtime": "1.3.13",
+  "oracle_compared": true,
+  "oracle_comparisons": 86,
+  "parity_complete": false,
+  "unsupported_count": 3,
+  "exact_error_mappings": [
+    "closed port",
+    "untrusted TLS",
+    "hostname mismatch",
+    "redirect limit",
+    "OPTIONS body"
+  ],
+  "error_strings": "Exact mapping checked for closed port, untrusted TLS, hostname mismatch, redirect limit and OPTIONS body; other native errors remain explicit",
+  "unsupported": [
+    {
+      "case": "header injection",
+      "native": {
+        "tagged": {
+          "label": "Error",
+          "value": {
+            "string": "InvalidFetchHeader"
+          }
+        }
+      },
+      "oracle": {
+        "oracle_exception": {
+          "name": "TypeError",
+          "message": "Header 'x-bad' has invalid value: 'bad\r\nInjected: yes'",
+          "string": "TypeError: Header 'x-bad' has invalid value: 'bad\r\nInjected: yes'"
+        }
+      },
+      "reason": "Oracle throws outside the Result contract; native preserves Error result"
+    },
+    {
+      "case": "invalid port",
+      "native": {
+        "tagged": {
+          "label": "Error",
+          "value": {
+            "string": "InvalidFetchPort"
+          }
+        }
+      },
+      "oracle": {
+        "oracle_exception": {
+          "name": "TypeError",
+          "message": "Failed to construct 'Request': Invalid URL \"http://127.0.0.1:70000/unicode\"",
+          "string": "TypeError [ERR_INVALID_URL]: Failed to construct 'Request': Invalid URL \"http://127.0.0.1:70000/unicode\""
+        }
+      },
+      "reason": "Oracle throws outside the Result contract; native preserves Error result"
+    },
+    {
+      "case": "non-Latin-1 header rejected",
+      "native": {
+        "tagged": {
+          "label": "Error",
+          "value": {
+            "string": "InvalidFetchHeader"
+          }
+        }
+      },
+      "oracle": {
+        "oracle_exception": {
+          "name": "TypeError",
+          "message": "Header 'x-emoji' has invalid value: '\ud83c\udf3f'",
+          "string": "TypeError: Header 'x-emoji' has invalid value: '\ud83c\udf3f'"
+        }
+      },
+      "reason": "Oracle throws outside the Result contract; native preserves Error result"
+    }
+  ]
+}

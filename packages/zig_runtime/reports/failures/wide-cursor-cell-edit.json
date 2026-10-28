@@ -1,0 +1,36 @@
+{
+  "request": {
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "key": "s"
+      },
+      {
+        "paste": "界x"
+      },
+      {
+        "key": "left"
+      },
+      {
+        "key": "left"
+      },
+      {
+        "key": "z"
+      },
+      {
+        "key": "w"
+      },
+      {
+        "key": "backspace"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  }
+}

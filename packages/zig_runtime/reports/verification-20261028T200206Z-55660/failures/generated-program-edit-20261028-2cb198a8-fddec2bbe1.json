@@ -1,0 +1,229 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "2cb198a80f5e89398fd79ac313732fec8d07c01b5c6a125933e449400a5dc67e",
+  "category": "generated-program-edit",
+  "name": "83",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 120,
+    "height": 40,
+    "events": [
+      {
+        "paste": "!int_to_string(let x = let {x, y: z} = {x: 87, y: -97} !int_add(x, z) !int_multiply(x, 2))"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "c"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "i"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": "g"
+      },
+      {
+        "key": "l"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "C"
+      },
+      {
+        "key": "left"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "k"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 120,
+    "height": 40,
+    "events": [
+      {
+        "paste": "!int_to_string(let x = let {x, y: z} = {x: 87, y: -97} !int_add(x, z) !int_multiply(x, 2))"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "c"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "i"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": "g"
+      },
+      {
+        "key": "l"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "C"
+      },
+      {
+        "key": "left"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "k"
+      }
+    ]
+  },
+  "failure": {
+    "category": "generated-program-edit",
+    "name": "83",
+    "request": {
+      "files": {},
+      "op": "tui",
+      "width": 120,
+      "height": 40,
+      "events": [
+        {
+          "paste": "!int_to_string(let x = let {x, y: z} = {x: 87, y: -97} !int_add(x, z) !int_multiply(x, 2))"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "c"
+        },
+        {
+          "key": "d"
+        },
+        {
+          "key": "i"
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "k"
+        },
+        {
+          "key": "g"
+        },
+        {
+          "key": "l"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "C"
+        },
+        {
+          "key": "left"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "a"
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": "d"
+        },
+        {
+          "key": "k"
+        }
+      ]
+    },
+    "native_error": null,
+    "oracle_error": {
+      "kind": "timeout",
+      "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+    }
+  }
+}

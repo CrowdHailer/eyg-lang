@@ -1,0 +1,16 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "seed": 20261028,
+  "binary_sha256": "6ea9f68ddf5da4f1de7b613894d693031af1b708e317fe932f34d4c08e106053",
+  "failures": [],
+  "passed": true,
+  "counts": {
+    "canonicalCID": 1061,
+    "cachedResolution": 1000,
+    "defaultVersion": 1,
+    "rejectTamperedModule": 1,
+    "verifyReorderedModule": 1,
+    "rejectImpureOrBrokenModule": 3,
+    "unknownRelease": 3
+  }
+}

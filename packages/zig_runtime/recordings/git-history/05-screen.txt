@@ -1,0 +1,40 @@
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+let git = import "packages/zig_runtime/git/native.eyg"                                                                                  
+  ▸ 4 more lines                                                                                                                        
+= {}                                                                                                                                    
+subjects(git.query({repo: repo, ref: revision, limit: 1}))                                                                              
+▸ 1 effect                                                                                                                              
+= ["Verify subsecond TUI history and mutable ref freshness"]                                                                            
+subjects(git.query({repo: repo, ref: revision, contains: "TUI", limit: 1}))                                                             
+▸ 1 effect                                                                                                                              
+= ["Verify subsecond TUI history and mutable ref freshness"]                                                                            
+subjects(git.query({repo: repo, ref: revision, author: "Peter", since: 1793200000, until: 1793210000, limit: 1}))                       
+▸ 1 effect                                                                                                                              
+= ["Verify subsecond TUI history and mutable ref freshness"]                                                                            
+subjects(git.query({repo: repo, ref: revision, path: "dark/git/read.eyg", limit: 1}))                                                   
+▸ 1 effect                                                                                                                              
+= ["Accelerate EYG Git decoding with compiled pure modules and bounded object caching"]                                                 
+Write EYG…                                                                                                                              
+↑ history · Ctrl+Q quit                                                                                                                 

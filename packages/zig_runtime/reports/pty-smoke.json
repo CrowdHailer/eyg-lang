@@ -1,0 +1,181 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "7005f666a95640d371a6f71285a8e01df29d142eedc694a78b4ab66af4ea1ec7",
+  "measurement": "write key bytes to local PTY through synchronized frame terminator; includes dispatch, rendering, ANSI encoding, transport, VT decoding, Python scheduling; excludes startup; standalone Escape has oracle 40ms timeout",
+  "terminal_model": "pyte 0.8.2; internal full-cell tests additionally cover dim, underline color, hyperlinks",
+  "checked": 17,
+  "failures": [
+    {
+      "name": "unicode-paste",
+      "difference": {
+        "path": "$.cells[1601].data",
+        "expected": "i",
+        "got": "e"
+      }
+    },
+    {
+      "name": "string-apply",
+      "difference": {
+        "path": "$.cells[1601].data",
+        "expected": "i",
+        "got": "e"
+      }
+    },
+    {
+      "name": "string-run",
+      "difference": {
+        "path": "$.cells[1441].data",
+        "expected": "i",
+        "got": "e"
+      }
+    },
+    {
+      "name": "picker-open",
+      "difference": {
+        "path": "$.cells[1441].data",
+        "expected": "i",
+        "got": "e"
+      }
+    },
+    {
+      "name": "picker-next",
+      "difference": {
+        "path": "$.cells[1441].data",
+        "expected": "i",
+        "got": "e"
+      }
+    },
+    {
+      "name": "picker-close",
+      "difference": {
+        "path": "$.cells[1441].data",
+        "expected": "i",
+        "got": "e"
+      }
+    },
+    {
+      "name": "resize",
+      "difference": {
+        "path": "$.cells[2401].data",
+        "expected": "i",
+        "got": "e"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "name": "integer-open",
+      "native_ns": 12887455,
+      "gleam_ns": 46949562,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-type",
+      "native_ns": 13163136,
+      "gleam_ns": 24101184,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-apply",
+      "native_ns": 7279424,
+      "gleam_ns": 22131455,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-run",
+      "native_ns": 3008340,
+      "gleam_ns": 25511202,
+      "standalone_escape": false
+    },
+    {
+      "name": "history-open",
+      "native_ns": 3682683,
+      "gleam_ns": 21268872,
+      "standalone_escape": false
+    },
+    {
+      "name": "history-close",
+      "native_ns": 4033015,
+      "gleam_ns": 11021684,
+      "standalone_escape": false
+    },
+    {
+      "name": "paste-arithmetic",
+      "native_ns": 3288475,
+      "gleam_ns": 61927653,
+      "standalone_escape": false
+    },
+    {
+      "name": "run-arithmetic",
+      "native_ns": 5468770,
+      "gleam_ns": 33291858,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-open",
+      "native_ns": 3405606,
+      "gleam_ns": 49777685,
+      "standalone_escape": false
+    },
+    {
+      "name": "unicode-paste",
+      "native_ns": 8159380,
+      "gleam_ns": 28466279,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-apply",
+      "native_ns": 7075859,
+      "gleam_ns": 23783362,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-run",
+      "native_ns": 5631013,
+      "gleam_ns": 27048590,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-open",
+      "native_ns": 5036696,
+      "gleam_ns": 68409369,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-next",
+      "native_ns": 4467483,
+      "gleam_ns": 18648687,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-close",
+      "native_ns": 49831139,
+      "gleam_ns": 60858775,
+      "standalone_escape": true
+    }
+  ],
+  "native_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l\u001b[0m\u001b[?25h"
+  },
+  "gleam_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l"
+  },
+  "key_to_frame": {
+    "samples": 14,
+    "p50_ms": 5.036696,
+    "p95_ms": 13.163136,
+    "p99_ms": 13.163136,
+    "max_ms": 13.163136,
+    "mean_ms": 6.184809642857143,
+    "under_10ms": false
+  },
+  "parity_passed": false,
+  "cleanup_passed": true,
+  "passed": false
+}

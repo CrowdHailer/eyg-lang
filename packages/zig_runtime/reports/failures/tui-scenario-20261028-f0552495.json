@@ -1,0 +1,59 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "paste": "match Some(1) { Some(x) -> { x } | (_) -> { 0 } }"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "<"
+      },
+      {
+        "paste": "Other"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "a"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "paste": "match Some(1) { Some(x) -> { x } | (_) -> { 0 } }"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      }
+    ]
+  }
+}

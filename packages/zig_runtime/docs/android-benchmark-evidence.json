@@ -1,0 +1,30 @@
+{
+  "target": "host C ABI; Android device not measured",
+  "iterations": 10000,
+  "workload": "parse/evaluate !int_add(20,22); external effect continuation resume",
+  "evaluate": {
+    "p50_ms": 0.003416,
+    "p95_ms": 0.005719,
+    "p99_ms": 0.037208,
+    "max_ms": 1.451397
+  },
+  "resume": {
+    "p50_ms": 0.001767,
+    "p95_ms": 0.002927,
+    "p99_ms": 0.005327,
+    "max_ms": 0.602198
+  },
+  "pure_sync_isolated": {
+    "p50_ms": 0.005045,
+    "p95_ms": 0.008529,
+    "p99_ms": 0.079593,
+    "max_ms": 2.202104
+  },
+  "pure_sync_workload": "fresh session, fixed-buffer pure function evaluation, result serialization and session destruction",
+  "budget_ms": 10,
+  "passed": true,
+  "librarySha256": "6da471e6a433dfae7463da81786b06effa6362dc6b9d65afc3c054f6620d00b6",
+  "sourceDrift": [],
+  "recordedAt": "2026-10-28T21:09:22.370314+00:00",
+  "source_report_sha256": "41105f44bf4f703dbb25c53aa2b49fe188dedfdb22036866811fc5dc8a568be2"
+}

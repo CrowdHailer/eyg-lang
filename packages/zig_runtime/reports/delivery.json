@@ -1,0 +1,332 @@
+{
+  "created_at": "2026-10-28T21:21:00.656841+00:00",
+  "workspace": "/workspace/eyg-lang",
+  "package": "packages/zig_runtime",
+  "status": "implemented; strict oracle qualification has documented gaps; Android APK and device validation blocked",
+  "oracle_commit": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "git_reference_commit": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+  "run": "cd /workspace/eyg-lang/packages/zig_runtime && ./zig-out/bin/eyg",
+  "build": "cd /workspace/eyg-lang/packages/zig_runtime && ./scripts/zig build -Doptimize=ReleaseFast",
+  "verify": "cd /workspace/eyg-lang/packages/zig_runtime && ./scripts/verify",
+  "desktop": {
+    "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+    "strict_qualified": false,
+    "main_differential": {
+      "checked": 7198,
+      "compared": 7195,
+      "passed": 7195,
+      "uncomparable": 3
+    },
+    "native_mismatches": 0,
+    "performance": {
+      "samples": 12800,
+      "p50_ms": 0.356304,
+      "p95_ms": 1.008371,
+      "p99_ms": 2.464721,
+      "max_ms": 8.833814,
+      "all_under_10ms": true,
+      "measurement": "Monotonic wall time for native event dispatch, complete cell-frame construction, and reusable frame-output arena reset inside the timed interval; excludes JSON serialization, terminal transport, startup; sandboxed effects in Gleam."
+    },
+    "verification": "reports/verification.json",
+    "detailed_reports": "reports/verification-20261028T204149Z-67462"
+  },
+  "git": {
+    "implementation": "Native Zig loose and packed objects, refs, history queries and atomic writes; EYG effects facade; no Git subprocess in production",
+    "benchmark": {
+      "repo": "/workspace/eyg-lang",
+      "count": 20,
+      "native_roundtrip": {
+        "samples": 100,
+        "min_ms": 1.3213,
+        "p50_ms": 2.7819,
+        "p95_ms": 10.8517,
+        "p99_ms": 16.9163,
+        "max_ms": 139.364
+      },
+      "native_includes": [
+        "JSONL roundtrip",
+        "repository and pack-index setup",
+        "zlib decoding",
+        "SHA-1 object and index checks",
+        "full structured commit records"
+      ],
+      "cache": "OS file caches warm; native decoded cache starts empty each query",
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+      "logical_cpus": 5,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "oracle_commit": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+      "gleam_cold_query": {
+        "samples": 3,
+        "min_ms": 786,
+        "p50_ms": 899,
+        "p95_ms": 918,
+        "p99_ms": 918,
+        "max_ms": 918
+      },
+      "gleam_warm_query": {
+        "samples": 3,
+        "min_ms": 20,
+        "p50_ms": 22,
+        "p95_ms": 26,
+        "p99_ms": 26,
+        "max_ms": 26
+      },
+      "gleam_fresh_process": {
+        "samples": 3,
+        "min_ms": 1850.9109,
+        "p50_ms": 1994.1146,
+        "p95_ms": 2647.6986,
+        "p99_ms": 2647.6986,
+        "max_ms": 2647.6986
+      }
+    },
+    "recording": "recordings/git-history/eyg-git-history.mp4"
+  },
+  "book": {
+    "title": "Crafting an EYG interpreter",
+    "chapters": 14,
+    "source_appendix_files": 172,
+    "extracted_standalone_build_verified": true,
+    "appendix_check_passed": true
+  },
+  "android": {
+    "sdk_audit": {
+      "status": "passed",
+      "total": 124,
+      "registered": 90,
+      "classifiedExcluded": 34,
+      "unclassified": 0,
+      "manifest": "capabilities.json",
+      "source": "node_modules/expo/bundledNativeModules.json",
+      "proof": "SDK58 package sources/platform metadata; per-entry reasons and evidence paths"
+    },
+    "native_oracle": {
+      "status": "passed",
+      "generatedPrograms": 1000,
+      "generatedExternalEffectPrograms": 1000,
+      "seed": "0x455947"
+    },
+    "js_effect_tests": {
+      "status": "passed",
+      "tests": 52,
+      "seededValueCases": 2000,
+      "recursiveViewTests": 6,
+      "compiledWidgetTests": 3,
+      "backgroundTests": 13,
+      "syncCallbackBoundaryTests": 3
+    },
+    "kotlin_lifecycle": {
+      "status": "passed",
+      "checks": 69,
+      "seededConcurrentSchedules": 64,
+      "seed": "0x455947",
+      "nativeCancellationOwnership": "passed",
+      "jniSignatures": "verified unchanged plus compatible cancel(long)"
+    },
+    "bounded_pure_callbacks": {
+      "status": "passed",
+      "realNativeCallbacks": 46,
+      "argumentDependentDecisions": 34,
+      "jniCalls": 1000,
+      "canonicalIrForeignFields": "passed",
+      "effectsAndReferences": "rejected",
+      "unmeteredBuiltinsRejected": [
+        "equal",
+        "string_split",
+        "string_split_once",
+        "string_replace"
+      ],
+      "definitionPlusCallStepLimit": 10000,
+      "allocatorBytes": 4194304,
+      "sourceBytes": 4096,
+      "requestAndOutputBytes": 65536,
+      "allocationOutputStepExhaustion": "clean errors",
+      "closedHostCleanup": "passed",
+      "deviceLatency": "not measured"
+    },
+    "durable_background_entrypoints": {
+      "status": "passed host integration",
+      "unitTests": 13,
+      "generatedPrograms": 32,
+      "freshNativeProcesses": 3,
+      "freshNativeSessions": 33,
+      "sdkResourcesDisposed": 34,
+      "coldDeliveryBeforeHydration": "gated until durable restore",
+      "inputResultsAndEffects": "passed",
+      "persistedSlotIdentities": "passed",
+      "cancelUnregisterAndLateCleanup": "passed",
+      "slotLimit": 16,
+      "slotReset": "requires zero definitions/active runs/OS registrations and JS process restart",
+      "androidOsScheduling": "not verified"
+    },
+    "host_performance": {
+      "status": "passed",
+      "artifact": "native-benchmark.json",
+      "iterations": 10000,
+      "wallSamples": 30000,
+      "target": "host C ABI; Android device not measured",
+      "maxEvaluateMs": 1.451397,
+      "maxResumeMs": 0.602198,
+      "maxPureIsolatedMs": 2.202104,
+      "p99EvaluateMs": 0.037208,
+      "p99ResumeMs": 0.005327,
+      "p99PureIsolatedMs": 0.079593,
+      "thresholdMs": 10,
+      "librarySha256": "6da471e6a433dfae7463da81786b06effa6362dc6b9d65afc3c054f6620d00b6",
+      "sourceDrift": []
+    },
+    "source_drift": {
+      "inputs": 19,
+      "changed": []
+    },
+    "apk": {
+      "status": "blocked",
+      "reason": "Network policy denies repo.reactnative.dev, the Maven Central redirect destination for react-android-0.88.1-debug.aar",
+      "httpStatus": 403,
+      "blockedUrl": "https://repo.reactnative.dev/maven2/com/facebook/react/react-android/0.88.1/react-android-0.88.1-debug.aar",
+      "authorizedReachabilityRetry": {
+        "time": "2026-10-28T18:30:25Z",
+        "method": "HEAD",
+        "status": 403,
+        "source": "envoy CONNECT tunnel response",
+        "curlExitCode": 56,
+        "networkPolicySnapshot": "restricted; repo.reactnative.dev absent from egress rules"
+      },
+      "sourceBuildAlternative": {
+        "status": "not build-ready; isolated offline resolution failed on uncached Kotlin2.2 plugin; required Boost publisher host also outside enforced policy",
+        "report": "source-build-feasibility.json",
+        "blockedSourceHost": "archives.boost.io",
+        "sourceArchivesFetched": false,
+        "blockedAarRetried": false,
+        "validatedSourcesAndNativeArtifactsPreserved": true
+      }
+    },
+    "device_launch": "not verified; software emulator shut down after APK dependency was denied",
+    "physical_phone_features": "not verified"
+  },
+  "limits": [
+    "Three generated edits hang the actual next-tui oracle. Native remains responsive; these remain failed/uncomparable, never counted as matches.",
+    "Fifty-six malformed-IR inputs crash the actual oracle; native safely rejects them. The tested implementations are not universally equivalent.",
+    "Three invalid HTTP constructor cases throw outside Result in the JavaScript oracle but return Error natively.",
+    "Physical standalone Escape retains the oracle-compatible approximately 40ms ambiguity deadline; it is excluded from the dispatch-and-render under-10ms statement.",
+    "Git query completion is asynchronous and can exceed 10ms; first UI feedback is separately measured. The 100-query sample preserves a 139.364ms maximum.",
+    "Android performance measurements are host C ABI results. APK dependency access is blocked by environment network policy; OS scheduling and hardware features have not been validated on a device."
+  ],
+  "artifacts": [
+    {
+      "path": "README.md",
+      "bytes": 4587,
+      "sha256": "7621dc19ea98b9718bf5558f8668d5135a5c95d3cf3e7e46c3c72cb7dceff2fd"
+    },
+    {
+      "path": "zig-out/bin/eyg",
+      "bytes": 2740672,
+      "sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd"
+    },
+    {
+      "path": "docs/book.md",
+      "bytes": 49504,
+      "sha256": "73676b10a18d29b70ebbb80f97970552eda0daf18c93b2fdb86089b023916440"
+    },
+    {
+      "path": "docs/talk.md",
+      "bytes": 12668,
+      "sha256": "615b658350b38cbdd8cf6419277a376256322a881d675da0d881caa4c07f4e17"
+    },
+    {
+      "path": "docs/library-and-code-review.md",
+      "bytes": 24033,
+      "sha256": "8aa1dfff8a0ef47dfc68034b25e6f840497705ab16f2f3c18b53929e17f3da2f"
+    },
+    {
+      "path": "docs/source-listings.md",
+      "bytes": 1934629,
+      "sha256": "79b4c7b683b26120dc68b43e74b2be7249263633e0aafc5c98ec7394590b8b5b"
+    },
+    {
+      "path": "docs/book-validation.json",
+      "bytes": 52695,
+      "sha256": "0e62f1121c71e49899b440c2e9f2b322adedf5d477f4797c9d27457cc75ff357"
+    },
+    {
+      "path": "reports/verification.json",
+      "bytes": 30581,
+      "sha256": "7d39e556607c027d613948944b3f8416c56a33ea1f1c2a0342e444a575880aaf"
+    },
+    {
+      "path": "reports/git-benchmark.json",
+      "bytes": 1152,
+      "sha256": "a3ac7d9a04105e8c59d18139a04e9808b1f37f77b56d0d1952a907f4e6ef8b46"
+    },
+    {
+      "path": "recordings/git-history/eyg-git-history.mp4",
+      "bytes": 170740,
+      "sha256": "bdd4358035d1481a59e1d069b9c4b2f45af612cced4de5b012059562f433e9a9"
+    },
+    {
+      "path": "recordings/git-history/eyg-git-history.cast",
+      "bytes": 126977,
+      "sha256": "556a9b5155d40bcce84aea42f59ff7119ae5db4539da64fb6a584966e39f7ac7"
+    },
+    {
+      "path": "recordings/git-history/eyg-git-history.png",
+      "bytes": 60461,
+      "sha256": "b009e9a7442effad65c01ded9b5d4f8e5ae393dd644e1c4c36cabf703efa1c47"
+    },
+    {
+      "path": "recordings/git-history/verification.json",
+      "bytes": 2126,
+      "sha256": "48287708f1103cb574120e0cc79681e15a0217a06e824c00f750f4816c4ecd8d"
+    },
+    {
+      "path": "android/README.md",
+      "bytes": 19547,
+      "sha256": "e7278f581aa66155a7cb94c980abd5feef37e10b4f739b43abb333e9d0961bb4"
+    },
+    {
+      "path": "android/validation.json",
+      "bytes": 9555,
+      "sha256": "4e718ecca9b3f4550e8bfd043ab7daac7f44b82343dfe08f7fe756f58131aede"
+    },
+    {
+      "path": "android/capabilities.json",
+      "bytes": 63305,
+      "sha256": "09e2dafa38bd32977826c75813066029a22e3b21c8e6d4033c67485055f72355"
+    },
+    {
+      "path": "android/native-libraries.json",
+      "bytes": 3775,
+      "sha256": "efbd181f45f529426fc8945507cc949e16006e0262392b2ff959989153046845"
+    },
+    {
+      "path": "android/native-benchmark.json",
+      "bytes": 2611,
+      "sha256": "41105f44bf4f703dbb25c53aa2b49fe188dedfdb22036866811fc5dc8a568be2"
+    },
+    {
+      "path": "android/source-build-feasibility.json",
+      "bytes": 3647,
+      "sha256": "529a00be1e7a9e54449735a7f8a211d1dafd2685d4120d7d1a12435eb2caaf9b"
+    },
+    {
+      "path": "android/modules/eyg-runtime/android/src/main/jniLibs/arm64-v8a/libeyg_jni.so",
+      "bytes": 7464,
+      "sha256": "a8d9fdd3237b7adf28ca034f6c379c4d2b6227f00db33f62e297875355dd6299"
+    },
+    {
+      "path": "android/modules/eyg-runtime/android/src/main/jniLibs/arm64-v8a/libeyg_zig.so",
+      "bytes": 1979912,
+      "sha256": "829ca093f6f6c2be2719d5cdb258413a87b6af7b32ee9a038f6ebd7d2bab104f"
+    },
+    {
+      "path": "android/modules/eyg-runtime/android/src/main/jniLibs/x86_64/libeyg_jni.so",
+      "bytes": 7128,
+      "sha256": "929d2d668500a8a6ef56c8df23daaa473579622f726681471d0e86bed5a1cf10"
+    },
+    {
+      "path": "android/modules/eyg-runtime/android/src/main/jniLibs/x86_64/libeyg_zig.so",
+      "bytes": 2109984,
+      "sha256": "c0d4d679825619ae7a4e9f18e53fb6ff78fd06185b45a967d6962868b3e6eaf0"
+    }
+  ]
+}

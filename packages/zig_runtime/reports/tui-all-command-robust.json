@@ -1,0 +1,81 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "c7558f0229557c6ddde24a9ab45063507ac3bc6cbf038ab4dfec0f0aa11ea664",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "/workspace/eyg-lang/work/tui-path-verified/bin/eyg",
+    "--only",
+    "tui",
+    "--traces",
+    "100",
+    "--edit-traces",
+    "0",
+    "--oracle-timeout",
+    "5",
+    "--no-shrink",
+    "--report",
+    "reports/tui-all-command-robust.json"
+  ],
+  "comparison": "Exact object keys, arrays, strings and buffer cells; JSON Numbers compare by JavaScript IEEE-754 value, with booleans separate. Rendered text is never normalized.",
+  "rng_streams": {
+    "programs": 20261028,
+    "syntax": 20261029,
+    "behaviour": 20261028,
+    "program_edits": 20261030
+  },
+  "passed": true,
+  "status": "complete",
+  "counts": {
+    "tui-scenario": {
+      "checked": 39,
+      "compared": 39,
+      "passed": 39,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "tui-world": {
+      "checked": 14,
+      "compared": 14,
+      "passed": 14,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "tui-hub": {
+      "checked": 8,
+      "compared": 8,
+      "passed": 8,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-behaviour": {
+      "checked": 100,
+      "compared": 100,
+      "passed": 100,
+      "failed": 0,
+      "uncomparable": 0
+    }
+  },
+  "failures": [],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true,
+    "number_difference": true,
+    "numeric_string": true,
+    "number_token_equivalence": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "peer_failures": [],
+  "oracle_timeout_seconds": 5.0,
+  "elapsed_seconds": 251.8640094500006
+}

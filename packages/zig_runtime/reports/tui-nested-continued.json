@@ -1,0 +1,1031 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "c7558f0229557c6ddde24a9ab45063507ac3bc6cbf038ab4dfec0f0aa11ea664",
+  "seed": 20261030,
+  "oracle_timeout_seconds": 3,
+  "checked": 100,
+  "matched": 87,
+  "mismatched": 10,
+  "oracle_failures": [
+    {
+      "index": 15,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 80,
+        "height": 40,
+        "events": [
+          {
+            "paste": "let x = !int_add({answer: -96, name: \"é\"}.answer, !int_add(-30, 35)) !int_multiply(x, 2)"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "up"
+          }
+        ]
+      },
+      "error": "/workspace/tooling/bin/bun did not answer within 3s"
+    },
+    {
+      "index": 22,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 80,
+        "height": 40,
+        "events": [
+          {
+            "paste": "let x = let {x, y: z} = {x: {answer: -97, name: \"é\"}.answer, y: match Some(41) { Some(x) -> { x } | (_) -> { 0 } }} !int_add(x, z) !int_multiply(x, 2)"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "a"
+          }
+        ]
+      },
+      "error": "/workspace/tooling/bin/bun did not answer within 3s"
+    },
+    {
+      "index": 83,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 120,
+        "height": 40,
+        "events": [
+          {
+            "paste": "!int_to_string(let x = let {x, y: z} = {x: 87, y: -97} !int_add(x, z) !int_multiply(x, 2))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "k"
+          }
+        ]
+      },
+      "error": "/workspace/tooling/bin/bun did not answer within 3s"
+    }
+  ],
+  "failures": [
+    {
+      "index": 20,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 120,
+        "height": 10,
+        "events": [
+          {
+            "paste": "[let x = !list_fold([90, -75], 0, (x, acc) -> { !int_add(x, acc) }) !int_multiply(x, 2), let x = let {x, y: z} = {x: 80, y: 15} !int_add(x, z) !int_multiply(x, 2), !list_fold([{answer: 76, name: \"λ\"}.answer, let x = -44 !int_multiply(x, 2)], 0, (x, acc) -> { !int_add(x, acc) })]"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "left"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[15].cells[961].modifiers",
+        "expected": 32,
+        "got": 40
+      }
+    },
+    {
+      "index": 37,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 120,
+        "height": 40,
+        "events": [
+          {
+            "paste": "{count: {answer: let {x, y: z} = {x: -11, y: -46} !int_add(x, z), name: !int_to_string(28)}.answer, name: !string_append(!string_append(\"hello\", \"a\\nb\"), !int_to_string(-49)), items: [!list_fold([let x = -99 !int_multiply(x, 2), let {x, y: z} = {x: 9, y: 46} !int_add(x, z)], 0, (x, acc) -> { !int_add(x, acc) }), {answer: !int_add(8, -66), name: !int_to_string(-21)}.answer]}"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[20].cells[4377].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 57,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "!int_to_string(let x = let x = 33 !int_multiply(x, 2) !int_multiply(x, 2))"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": " "
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[13].cells[1760].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 67,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 40,
+        "height": 24,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string(let x = 69 !int_multiply(x, 2)), !string_append(!int_to_string(-10), !string_append(\"a\\nb\", \"λ\")))"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "down"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[4].cells[654].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 70,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 40,
+        "height": 40,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string(let x = 59 !int_multiply(x, 2)), !int_to_string(match Some(-13) { Some(x) -> { x } | (_) -> { 0 } }))"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "f"
+          },
+          {
+            "key": "down"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[7].cells[1520].modifiers",
+        "expected": 32,
+        "got": 40
+      }
+    },
+    {
+      "index": 71,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 80,
+        "height": 40,
+        "events": [
+          {
+            "paste": "{answer: {answer: let {x, y: z} = {x: -97, y: -91} !int_add(x, z), name: !string_append(\"a\\nb\", \"a\\nb\")}.answer, name: !int_to_string(let x = 60 !int_multiply(x, 2))}.answer"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "paste": "7"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "a"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[2].cells[3041].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 74,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 40,
+        "height": 24,
+        "events": [
+          {
+            "paste": "(x) -> { !int_add(x, !int_add(let {x, y: z} = {x: -42, y: 90} !int_add(x, z), !int_add(-38, -60))) }"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "left"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[18].cells[640].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 91,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 120,
+        "height": 10,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string({answer: -25, name: \"λ\"}.answer), !int_to_string(!list_fold([69, -47], 0, (x, acc) -> { !int_add(x, acc) })))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "paste": "7"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[14].cells[1014].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 98,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 120,
+        "height": 10,
+        "events": [
+          {
+            "paste": "(x) -> { !int_add(x, {answer: !list_fold([86, 4], 0, (x, acc) -> { !int_add(x, acc) }), name: !string_append(\"λ\", \"界\")}.answer) }"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "esc"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[12].cells[1074].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    },
+    {
+      "index": 99,
+      "request": {
+        "op": "tui",
+        "files": {},
+        "width": 80,
+        "height": 10,
+        "events": [
+          {
+            "paste": "(x) -> { !int_add(x, let x = let {x, y: z} = {x: -79, y: 8} !int_add(x, z) !int_multiply(x, 2)) }"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[18].cells[160].modifiers",
+        "expected": 32,
+        "got": 0
+      }
+    }
+  ],
+  "status": "complete",
+  "passed": false,
+  "elapsed_seconds": 351.24007670799983
+}

@@ -1,0 +1,281 @@
+{
+  "expo": "58.0.21",
+  "node": "24.19.0",
+  "zig": "0.14.1",
+  "ndk": "27.1.12297006",
+  "registeredExpoModules": 67,
+  "reactNativeRegistry": true,
+  "npmInstall": "passed",
+  "expoPrebuildAndroid": "passed",
+  "typescript": "passed",
+  "androidHermesBundle": {
+    "status": "passed",
+    "modules": 2538,
+    "callbackReplyDeferDate": "included",
+    "cancelRunIsolation": "included",
+    "sourceFriendlyAliases": "included",
+    "artifact": "work/bundle/_expo/static/js/android/index-1602936032dae551e05bad3e2cf863fa.hbc",
+    "fullSdkRegistry": "included",
+    "recursiveViews": "included",
+    "compiledWidgetLayout": "included",
+    "bytes": 6099235,
+    "durableBackgroundBootstrap": "included",
+    "boundedPureSync": "included"
+  },
+  "jsEffectTests": {
+    "status": "passed",
+    "tests": 52,
+    "seededValueCases": 2000,
+    "recursiveViewTests": 6,
+    "compiledWidgetTests": 3,
+    "backgroundTests": 13,
+    "syncCallbackBoundaryTests": 3
+  },
+  "nativeHostBridge": {
+    "status": "passed",
+    "effectResumeCases": 3000,
+    "seed": "0x455947"
+  },
+  "nativeHostOracle": {
+    "status": "passed",
+    "generatedPrograms": 1000,
+    "generatedEffectPrograms": 1000,
+    "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd"
+  },
+  "androidArm64Libraries": "cross-compiled final shared core, metadata, casts, hub/TLS, computer effects, Git and cancellation",
+  "androidX8664Libraries": "cross-compiled final shared core, metadata, casts, hub/TLS, computer effects, Git and cancellation",
+  "apk": {
+    "status": "blocked",
+    "reason": "Network policy denies repo.reactnative.dev, the Maven Central redirect destination for react-android-0.88.1-debug.aar",
+    "httpStatus": 403,
+    "blockedUrl": "https://repo.reactnative.dev/maven2/com/facebook/react/react-android/0.88.1/react-android-0.88.1-debug.aar",
+    "authorizedReachabilityRetry": {
+      "time": "2026-10-28T18:30:25Z",
+      "method": "HEAD",
+      "status": 403,
+      "source": "envoy CONNECT tunnel response",
+      "curlExitCode": 56,
+      "networkPolicySnapshot": "restricted; repo.reactnative.dev absent from egress rules"
+    },
+    "sourceBuildAlternative": {
+      "status": "not build-ready; isolated offline resolution failed on uncached Kotlin2.2 plugin; required Boost publisher host also outside enforced policy",
+      "report": "source-build-feasibility.json",
+      "blockedSourceHost": "archives.boost.io",
+      "sourceArchivesFetched": false,
+      "blockedAarRetried": false,
+      "validatedSourcesAndNativeArtifactsPreserved": true
+    }
+  },
+  "deviceLaunch": "not verified; software emulator shut down after APK dependency was denied",
+  "physicalPhoneFeatures": "not verified",
+  "backgroundContinuationPersistence": "live continuations are not serialized; durable entrypoint source starts fresh VMs after restart",
+  "hostJni": {
+    "status": "passed",
+    "effectResumeCases": 1000,
+    "utf8AndEmbeddedNul": "passed",
+    "nativeCancel": "passed"
+  },
+  "hostBenchmarkLoaded": {
+    "status": "failed strict wall maximum",
+    "artifact": "native-benchmark-loaded.json",
+    "p99EvaluateMs": 0.015237,
+    "p99ResumeMs": 0.013066,
+    "maxEvaluateMs": 15.921601,
+    "maxResumeMs": 28.333551
+  },
+  "androidLibraryPageAlignment": "16 KiB (ELF LOAD p_align=0x4000 or greater)",
+  "androidModuleLoader": "relative .eyg/.json plus named/versioned/pinned/content hub references; CID verified; all module initialization pure",
+  "androidNativeGit": "GitQuery linked; native head/history verified through C ABI",
+  "mobileUi": "source editor and result view; desktop terminal buffer parity not claimed",
+  "minimumAndroidApi": 26,
+  "nativeImportTests": {
+    "relativeClosureImport": "passed",
+    "nestedReturnedClosureEffects": "passed",
+    "impureStandardInInitializer": "rejected",
+    "cyclicImport": "passed",
+    "fileUriPercentEncoding": "passed"
+  },
+  "nativeGitTests": {
+    "headVsGit": "passed",
+    "historyVsGit": "passed",
+    "originRelativeRepository": "passed"
+  },
+  "finalNativeOracle": {
+    "status": "passed",
+    "generatedPrograms": 1000,
+    "generatedExternalEffectPrograms": 1000,
+    "seed": "0x455947"
+  },
+  "nativeHubTests": {
+    "latest": "passed",
+    "version": "passed",
+    "pinned": "passed",
+    "content": "passed",
+    "transitivePinnedDependency": "passed",
+    "phoneEffectsFromReturnedClosure": "passed",
+    "impureModuleInitializer": "rejected",
+    "unpinnedInitializationDependency": "rejected",
+    "hashMismatch": "rejected"
+  },
+  "nativeComputerEffects": {
+    "FetchLoopback": "passed",
+    "EYGParse": "passed",
+    "DecodeJSON": "passed",
+    "HashSHA256": "passed",
+    "Inflate": "passed",
+    "CreateKey": "passed",
+    "SignRFC8032": "passed"
+  },
+  "kotlinLifecycle": {
+    "status": "passed",
+    "checks": 69,
+    "seededConcurrentSchedules": 64,
+    "seed": "0x455947",
+    "nativeCancellationOwnership": "passed",
+    "jniSignatures": "verified unchanged plus compatible cancel(long)"
+  },
+  "nativeAndroidTlsTrust": {
+    "directories": [
+      "/apex/com.android.conscrypt/cacerts",
+      "/system/etc/security/cacerts"
+    ],
+    "formats": [
+      "PEM",
+      "DER"
+    ],
+    "hostFixtureTests": "passed",
+    "deviceValidation": "not verified"
+  },
+  "expoCallbackReturns": {
+    "declaredSynchronousReturns": "passed",
+    "asynchronousReplyTokens": "passed",
+    "deferredSdkCallAwait": "passed",
+    "deadlockAvoidance": "passed",
+    "timeoutsCancellationEviction": "passed",
+    "lateResourceDisposal": "passed",
+    "dateRoundtrip": "passed",
+    "dynamicSynchronousEygCallbacks": "passed bounded pure source/IR subset through real C ABI, JNI and production host injection"
+  },
+  "phoneFeatureProtocol": [
+    "Expo",
+    "ExpoNextEvent",
+    "ExpoReply",
+    "ExpoRelease",
+    "ExpoView"
+  ],
+  "hostBenchmarkQuiet": {
+    "status": "passed",
+    "artifact": "native-benchmark.json",
+    "iterations": 10000,
+    "wallSamples": 30000,
+    "target": "host C ABI; Android device not measured",
+    "maxEvaluateMs": 1.451397,
+    "maxResumeMs": 0.602198,
+    "maxPureIsolatedMs": 2.202104,
+    "p99EvaluateMs": 0.037208,
+    "p99ResumeMs": 0.005327,
+    "p99PureIsolatedMs": 0.079593,
+    "thresholdMs": 10,
+    "librarySha256": "6da471e6a433dfae7463da81786b06effa6362dc6b9d65afc3c054f6620d00b6",
+    "sourceDrift": []
+  },
+  "realVmPhoneWorkflow": {
+    "status": "passed",
+    "seed": "0x455947",
+    "generatedPrograms": 32,
+    "callbackCycles": 60,
+    "approvals": 34,
+    "denials": 26,
+    "nativeSessionsDestroyed": 33,
+    "foreignCamelCaseData": "passed",
+    "suspendedVmCancellation": "passed",
+    "sdk": "deterministic fixture; hardware not validated"
+  },
+  "sourceConstructibleProtocol": {
+    "objectSelector": "expo_handle",
+    "eventTimeout": "timeout_ms",
+    "foreignDictionary": "expo_object",
+    "foreignFieldLookup": "Expo object selector with string or path list"
+  },
+  "nativeWideIntegerReplies": {
+    "status": "passed",
+    "finiteValues": [
+      1e+20,
+      -1e+20,
+      1e+100,
+      -1e+100
+    ]
+  },
+  "nativeCancellation": {
+    "status": "passed",
+    "realBlockedNativeHttp": "passed",
+    "positiveGitMutationControl": "passed",
+    "noSubsequentGitMutationAfterCancel": "passed",
+    "stickyCancellation": "passed",
+    "cancelCallMs": 0.079368
+  },
+  "nativeBinaryReplyAliases": "passed canonical, padding, alias bits, and whitespace",
+  "nativeEffectCastErrors": "passed; structured Runtime breaks for EYGParse, DecodeJSON, Hash, Sign",
+  "nativeSourceMetadata": "shared source.disk/content wired; JSON-first and located imports",
+  "androidLibrarySourceDrift": {
+    "inputs": 19,
+    "changed": []
+  },
+  "registeredPackages": 91,
+  "registeredPackageSurfaces": 101,
+  "customAdapters": [
+    "eyg-widgets",
+    "eyg-background"
+  ],
+  "sdkBundleAudit": {
+    "status": "passed",
+    "total": 124,
+    "registered": 90,
+    "classifiedExcluded": 34,
+    "unclassified": 0,
+    "manifest": "capabilities.json",
+    "source": "node_modules/expo/bundledNativeModules.json",
+    "proof": "SDK58 package sources/platform metadata; per-entry reasons and evidence paths"
+  },
+  "androidWidgetProvider": {
+    "configuration": "enableAndroid:true; EygWidget receiver/provider generated by Expo prebuild",
+    "layoutCompiler": "actual Expo Babel plugin tested",
+    "nativeDeviceRendering": "not verified"
+  },
+  "boundedPureSynchronousCallbacks": {
+    "status": "passed",
+    "realNativeCallbacks": 46,
+    "argumentDependentDecisions": 34,
+    "jniCalls": 1000,
+    "canonicalIrForeignFields": "passed",
+    "effectsAndReferences": "rejected",
+    "unmeteredBuiltinsRejected": [
+      "equal",
+      "string_split",
+      "string_split_once",
+      "string_replace"
+    ],
+    "definitionPlusCallStepLimit": 10000,
+    "allocatorBytes": 4194304,
+    "sourceBytes": 4096,
+    "requestAndOutputBytes": 65536,
+    "allocationOutputStepExhaustion": "clean errors",
+    "closedHostCleanup": "passed",
+    "deviceLatency": "not measured"
+  },
+  "durableBackgroundEntrypoints": {
+    "status": "passed host integration",
+    "unitTests": 13,
+    "generatedPrograms": 32,
+    "freshNativeProcesses": 3,
+    "freshNativeSessions": 33,
+    "sdkResourcesDisposed": 34,
+    "coldDeliveryBeforeHydration": "gated until durable restore",
+    "inputResultsAndEffects": "passed",
+    "persistedSlotIdentities": "passed",
+    "cancelUnregisterAndLateCleanup": "passed",
+    "slotLimit": 16,
+    "slotReset": "requires zero definitions/active runs/OS registrations and JS process restart",
+    "androidOsScheduling": "not verified"
+  }
+}

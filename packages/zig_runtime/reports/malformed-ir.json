@@ -1,0 +1,1497 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "699904fb9e029b928bee3dda44072444093bc7aaf6708d1a3dc0e6666c9eb538",
+  "checked": 6499,
+  "failed": 0,
+  "categories": {
+    "baseline": 24,
+    "missing-field": 49,
+    "field-type": 490,
+    "extra-field": 24,
+    "integer-edge": 11,
+    "version-edge": 11,
+    "base64-edge": 22,
+    "cid-alias": 864,
+    "closure-normalization": 4,
+    "random-release": 1020,
+    "random-field": 988,
+    "random-cid": 1000,
+    "nested-mutation": 981,
+    "random-base64": 1011
+  },
+  "failures": [],
+  "oracle_crashes": [
+    {
+      "category": "missing-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "f",
+          "l": "x"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "missing-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "l",
+          "l": "x",
+          "t": {
+            "0": "v",
+            "l": "x"
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "missing-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "l",
+          "l": "x",
+          "v": {
+            "0": "i",
+            "v": 1
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "missing-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "a": {
+            "0": "i",
+            "v": 1
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "missing-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "f",
+            "l": "x",
+            "b": {
+              "0": "v",
+              "l": "x"
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiaaa"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAIAAA"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiaaa="
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiaaduojqws3djnztq"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaicah7"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAICAH7"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaicah7"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaicah7orzgc2lmnfxgo"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaieah774"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAIEAH774"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaieah774======"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaieah7752heyljnruw4zy"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaigah7777q"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAIGAH7777Q"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaigah7777q===="
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaigah7777xi4tbnfwgs3th"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiiah777776"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAIIAH777776"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiiah777776==="
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiiah7777765dsmfuwy2lom4"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaikah7777777y"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAIKAH7777777Y"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaikah7777777y="
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaikah77777773uojqws3djnztq"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiqah777777777777q"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAIQAH777777777777Q"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiqah777777777777q===="
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiaiqah777777777777xi4tbnfwgs3th"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiajaah7777777777777777777777777"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAJAAH7777777777777777777777777"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiajaah7777777777777777777777777"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiajaah7777777777777777777777777orzgc2lmnfxgo"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiakaah777777777777777777777777777777777777777777777777774"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bQEAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAQASIAKAAH777777777777777777777777777777777777777777777777774"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiakaah777777777777777777777777777777777777777777777777774======"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "cid-alias",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "#",
+          "l": {
+            "/": "bqeaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaeaqcaibaqasiakaah7777777777777777777777777777777777777777777777777752heyljnruw4zy"
+          }
+        }
+      },
+      "error": "RangeError: Not an integer",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "l",
+            "l": "x1",
+            "v": {
+              "0": "i",
+              "v": -9007199254740991
+            },
+            "t": {
+              "0": "v",
+              "l": "x1"
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "t",
+              "l": "Some"
+            },
+            "a": {
+              "0": "a",
+              "f": {
+                "0": "f",
+                "l": "n",
+                "b": {
+                  "0": "a",
+                  "f": {
+                    "0": "a",
+                    "f": {
+                      "0": "b",
+                      "l": "int_add"
+                    },
+                    "a": {
+                      "0": "v",
+                      "l": "n"
+                    }
+                  },
+                  "a": {
+                    "0": "i",
+                    "v": 3
+                  }
+                }
+              },
+              "a": {
+                "0": "i",
+                "v": -1
+              }
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "f",
+          "l": "x",
+          "b": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "p": "standard"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "b",
+              "l": "int_absolute"
+            },
+            "a": {
+              "0": "i",
+              "v": 9007199254740991
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "t",
+              "l": "Other"
+            },
+            "a": {
+              "0": "i",
+              "v": 4367
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "l",
+          "l": "x",
+          "v": "a",
+          "t": {
+            "0": "v",
+            "l": "x"
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "i",
+            "v": 7
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "l": "label"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "b",
+              "l": "string_lowercase"
+            },
+            "a": {
+              "0": "s",
+              "v": "क्‍ष"
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "h",
+              "l": "Probe"
+            },
+            "a": {
+              "0": "f",
+              "l": "x",
+              "b": {
+                "0": "f",
+                "l": "resume",
+                "b": {
+                  "0": "a",
+                  "f": {
+                    "0": "v",
+                    "l": "resume"
+                  },
+                  "a": {
+                    "0": "a",
+                    "f": {
+                      "0": "a",
+                      "f": {
+                        "0": "b",
+                        "l": "int_add"
+                      },
+                      "a": {
+                        "0": "v",
+                        "l": "x"
+                      }
+                    },
+                    "a": {
+                      "0": "i",
+                      "v": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "v": 8070
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "b",
+              "l": "equal"
+            },
+            "a": {
+              "0": "a",
+              "f": {
+                "0": "f",
+                "l": "n",
+                "b": {
+                  "0": "a",
+                  "f": {
+                    "0": "a",
+                    "f": {
+                      "0": "b",
+                      "l": "int_add"
+                    },
+                    "a": {
+                      "0": "v",
+                      "l": "n"
+                    }
+                  },
+                  "a": {
+                    "0": "i",
+                    "v": 3
+                  }
+                }
+              },
+              "a": {
+                "0": "i",
+                "v": 0
+              }
+            }
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "i",
+            "v": 4
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "a",
+              "f": {
+                "0": "e",
+                "l": "name"
+              },
+              "a": {
+                "0": "a",
+                "f": {
+                  "0": "a",
+                  "f": {
+                    "0": "c"
+                  },
+                  "a": {
+                    "0": "i",
+                    "v": -9007199254740991
+                  }
+                },
+                "a": {
+                  "0": "a",
+                  "f": {
+                    "0": "a",
+                    "f": {
+                      "0": "c"
+                    },
+                    "a": {
+                      "0": "i",
+                      "v": -1
+                    }
+                  },
+                  "a": {
+                    "0": "ta"
+                  }
+                }
+              }
+            },
+            "a": {
+              "0": "a",
+              "f": {
+                "0": "a",
+                "f": {
+                  "0": "e",
+                  "l": "a"
+                },
+                "a": {
+                  "0": "a",
+                  "f": {
+                    "0": "a",
+                    "f": {
+                      "0": "b",
+                      "l": "int_multiply"
+                    },
+                    "a": {
+                      "0": "i",
+                      "v": -1
+                    }
+                  },
+                  "a": {
+                    "0": "i",
+                    "v": 1
+                  }
+                }
+              },
+              "a": {
+                "0": "u"
+              }
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "i",
+            "v": 1
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "l": "label"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "b",
+            "l": "binary_from_integers"
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "f",
+            "l": "x",
+            "b": {
+              "0": "v",
+              "l": "x"
+            }
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "i",
+            "v": 2
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "b",
+              "l": "int_add"
+            },
+            "a": {
+              "0": "i",
+              "v": 9007199254740991
+            }
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": "a",
+          "a": {
+            "0": "a",
+            "f": {
+              "0": "f",
+              "l": "n",
+              "b": {
+                "0": "a",
+                "f": {
+                  "0": "a",
+                  "f": {
+                    "0": "b",
+                    "l": "int_add"
+                  },
+                  "a": {
+                    "0": "v",
+                    "l": "n"
+                  }
+                },
+                "a": {
+                  "0": "i",
+                  "v": 3
+                }
+              }
+            },
+            "a": {
+              "0": "i",
+              "v": -9007199254740991
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "a",
+              "f": {
+                "0": "m",
+                "l": "Some"
+              },
+              "a": {
+                "0": "f",
+                "l": "x",
+                "b": {
+                  "0": "a",
+                  "f": {
+                    "0": "a",
+                    "f": {
+                      "0": "b",
+                      "l": "int_add"
+                    },
+                    "a": {
+                      "0": "v",
+                      "l": "x"
+                    }
+                  },
+                  "a": {
+                    "0": "i",
+                    "v": 1
+                  }
+                }
+              }
+            },
+            "a": {
+              "0": "n"
+            }
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "l": "x",
+          "b": {
+            "0": "v",
+            "l": "x"
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "v": {
+            "/": {
+              "bytes": "AQ"
+            }
+          }
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "nested-mutation",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "h",
+              "l": "Probe"
+            },
+            "a": {
+              "0": "f",
+              "l": "x",
+              "b": {
+                "0": "f",
+                "l": "resume",
+                "b": {
+                  "0": "a",
+                  "f": {
+                    "0": "v",
+                    "l": "resume"
+                  },
+                  "a": {
+                    "0": "a",
+                    "f": {
+                      "0": "a",
+                      "f": {
+                        "0": "b",
+                        "l": "int_add"
+                      },
+                      "a": {
+                        "0": "v",
+                        "l": "x"
+                      }
+                    },
+                    "a": {
+                      "0": "i",
+                      "v": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "a": "a"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    },
+    {
+      "category": "random-field",
+      "request": {
+        "op": "eval",
+        "program": {
+          "0": "a",
+          "l": "label"
+        }
+      },
+      "error": "RangeError: Maximum call stack size exceeded.",
+      "native": {
+        "decode_error": true
+      }
+    }
+  ],
+  "native_rejections_of_oracle_crashes": 71,
+  "comparable": 6428,
+  "oracle_crash_count": 71,
+  "passed": true,
+  "limitation": "Oracle decoder crashes are recorded separately; native rejects those malformed trees safely rather than reproducing host stack overflows.",
+  "seconds": 7.184
+}

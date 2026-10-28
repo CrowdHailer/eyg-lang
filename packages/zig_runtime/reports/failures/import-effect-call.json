@@ -1,0 +1,18 @@
+{
+  "request": {
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "files": {
+      "ask.eyg": "(_) -> { perform StandardOut(\"hello\") }"
+    },
+    "events": [
+      {
+        "paste": "let run = import \"ask.eyg\" run({})"
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  }
+}

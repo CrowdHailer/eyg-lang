@@ -1,0 +1,481 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "/workspace/eyg-lang/packages/zig_runtime/tests/differential.py",
+    "--binary",
+    "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+    "--bun",
+    "/workspace/tooling/bin/bun",
+    "--report",
+    "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/differential.json",
+    "--programs",
+    "5000",
+    "--syntax",
+    "1000",
+    "--traces",
+    "100",
+    "--edit-traces",
+    "100",
+    "--oracle-timeout",
+    "5.0",
+    "--no-shrink"
+  ],
+  "comparison": "Exact object keys, arrays, strings and buffer cells; JSON Numbers compare by JavaScript IEEE-754 value, with booleans separate. Rendered text is never normalized.",
+  "rng_streams": {
+    "programs": 20261028,
+    "syntax": 20261029,
+    "behaviour": 20261028,
+    "program_edits": 20261030
+  },
+  "passed": false,
+  "status": "complete",
+  "counts": {
+    "spec": {
+      "checked": 107,
+      "compared": 107,
+      "passed": 107,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-program": {
+      "checked": 5000,
+      "compared": 5000,
+      "passed": 5000,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-external-effects": {
+      "checked": 500,
+      "compared": 500,
+      "passed": 500,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-external-values": {
+      "checked": 250,
+      "compared": 250,
+      "passed": 250,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "syntax-fixture": {
+      "checked": 21,
+      "compared": 21,
+      "passed": 21,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "diagnostic-fixture": {
+      "checked": 25,
+      "compared": 25,
+      "passed": 25,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-syntax": {
+      "checked": 1000,
+      "compared": 1000,
+      "passed": 1000,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "real-world-syntax": {
+      "checked": 8,
+      "compared": 8,
+      "passed": 8,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "tui-scenario": {
+      "checked": 48,
+      "compared": 48,
+      "passed": 48,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "tui-world": {
+      "checked": 16,
+      "compared": 16,
+      "passed": 16,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "tui-effect-cast": {
+      "checked": 15,
+      "compared": 15,
+      "passed": 15,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "tui-hub": {
+      "checked": 8,
+      "compared": 8,
+      "passed": 8,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-behaviour": {
+      "checked": 100,
+      "compared": 100,
+      "passed": 100,
+      "failed": 0,
+      "uncomparable": 0
+    },
+    "generated-program-edit": {
+      "checked": 100,
+      "compared": 97,
+      "passed": 97,
+      "failed": 3,
+      "uncomparable": 3
+    }
+  },
+  "failures": [
+    {
+      "category": "generated-program-edit",
+      "name": "15",
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 40,
+        "events": [
+          {
+            "paste": "let x = !int_add({answer: -96, name: \"e\u0301\"}.answer, !int_add(-30, 35)) !int_multiply(x, 2)"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "up"
+          }
+        ]
+      },
+      "native_error": null,
+      "oracle_error": {
+        "kind": "timeout",
+        "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+      },
+      "reproducer": "reports/verification-20261028T204149Z-67462/failures/generated-program-edit-20261028-c1d28826-a8fffc57a5.json"
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "22",
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 40,
+        "events": [
+          {
+            "paste": "let x = let {x, y: z} = {x: {answer: -97, name: \"e\u0301\"}.answer, y: match Some(41) { Some(x) -> { x } | (_) -> { 0 } }} !int_add(x, z) !int_multiply(x, 2)"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "a"
+          }
+        ]
+      },
+      "native_error": null,
+      "oracle_error": {
+        "kind": "timeout",
+        "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+      },
+      "reproducer": "reports/verification-20261028T204149Z-67462/failures/generated-program-edit-20261028-c1d28826-24f4e44c57.json"
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "83",
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 40,
+        "events": [
+          {
+            "paste": "!int_to_string(let x = let {x, y: z} = {x: 87, y: -97} !int_add(x, z) !int_multiply(x, 2))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "k"
+          }
+        ]
+      },
+      "native_error": null,
+      "oracle_error": {
+        "kind": "timeout",
+        "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+      },
+      "reproducer": "reports/verification-20261028T204149Z-67462/failures/generated-program-edit-20261028-c1d28826-fddec2bbe1.json"
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true,
+    "number_difference": true,
+    "numeric_string": true,
+    "number_token_equivalence": true
+  },
+  "coverage": {
+    "ir_nodes": {
+      "#": 108,
+      ".": 129,
+      "@": 218,
+      "a": 54362,
+      "b": 19051,
+      "c": 2076,
+      "e": 3395,
+      "f": 5784,
+      "g": 2241,
+      "h": 449,
+      "i": 17108,
+      "l": 3403,
+      "m": 891,
+      "n": 461,
+      "o": 2,
+      "p": 1955,
+      "s": 2749,
+      "t": 527,
+      "ta": 1040,
+      "u": 2779,
+      "v": 8288,
+      "x": 154,
+      "z": 1
+    },
+    "builtins": {
+      "binary_compare": 32,
+      "binary_concat": 33,
+      "binary_fold": 26,
+      "binary_from_integers": 22,
+      "binary_size": 25,
+      "equal": 154,
+      "fix": 429,
+      "int_absolute": 2154,
+      "int_add": 6095,
+      "int_compare": 571,
+      "int_divide": 134,
+      "int_multiply": 1413,
+      "int_parse": 33,
+      "int_subtract": 1889,
+      "int_to_string": 1830,
+      "list_fold": 42,
+      "list_pop": 31,
+      "not_a_real_builtin": 1,
+      "string_append": 1845,
+      "string_ends_with": 30,
+      "string_from_binary": 29,
+      "string_length": 33,
+      "string_lowercase": 926,
+      "string_replace": 45,
+      "string_split": 35,
+      "string_split_once": 29,
+      "string_starts_with": 44,
+      "string_to_binary": 220,
+      "string_uppercase": 901
+    }
+  },
+  "peer_failures": [
+    {
+      "category": "generated-program-edit",
+      "name": "15",
+      "native_error": null,
+      "oracle_error": {
+        "kind": "timeout",
+        "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "22",
+      "native_error": null,
+      "oracle_error": {
+        "kind": "timeout",
+        "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "83",
+      "native_error": null,
+      "oracle_error": {
+        "kind": "timeout",
+        "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+      }
+    }
+  ],
+  "oracle_timeout_seconds": 5.0,
+  "elapsed_seconds": 122.78412177300015
+}

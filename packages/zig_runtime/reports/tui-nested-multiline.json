@@ -1,0 +1,292 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "f0552495f1b021271d564fae21722f8f86e94c4a3d62f3983e46e1892cddacbc",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "/workspace/eyg-lang/work/tui-multiline-args/bin/eyg",
+    "--edit-only",
+    "--edit-traces",
+    "100",
+    "--no-shrink",
+    "--report",
+    "reports/tui-nested-multiline.json"
+  ],
+  "comparison": "Exact object keys, arrays, strings and buffer cells; JSON Numbers compare by JavaScript IEEE-754 value, with booleans separate. Rendered text is never normalized.",
+  "rng_streams": {
+    "programs": 20261028,
+    "syntax": 20261029,
+    "behaviour": 20261028,
+    "program_edits": 20261030
+  },
+  "passed": false,
+  "status": "running",
+  "counts": {
+    "generated-program-edit": {
+      "checked": 15,
+      "passed": 12,
+      "failed": 3
+    }
+  },
+  "failures": [
+    {
+      "category": "generated-program-edit",
+      "name": "9",
+      "difference": {
+        "path": "$.frames[7].cells[365].symbol",
+        "expected": " ",
+        "got": "I"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 40,
+        "height": 10,
+        "events": [
+          {
+            "paste": "[match Some({answer: 17, name: \"é\"}.answer) { Some(x) -> { x } | (_) -> { 0 } }, !list_fold([!list_fold([96, -73], 0, (x, acc) -> { !int_add(x, acc) }), !int_add(-17, -77)], 0, (x, acc) -> { !int_add(x, acc) }), {answer: !int_add(-55, -20), name: !int_to_string(-88)}.answer]"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "left"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "13",
+      "difference": {
+        "path": "$.frames[8].cells[1845].symbol",
+        "expected": " ",
+        "got": "I"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string({answer: -4, name: \"a\\nb\"}.answer), !string_append(!int_to_string(50), !int_to_string(68)))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "14",
+      "difference": {
+        "path": "$.frames[13].cells[726].fg",
+        "expected": null,
+        "got": 12
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 10,
+        "events": [
+          {
+            "paste": "match Some(match Some(!int_add(78, -89)) { Some(x) -> { x } | (_) -> { 0 } }) { Some(x) -> { x } | (_) -> { 0 } }"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          }
+        ]
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true,
+    "number_difference": true,
+    "numeric_string": true,
+    "number_token_equivalence": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "elapsed_seconds": 92.675267222
+}

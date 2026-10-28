@@ -1,0 +1,16 @@
+APK assembly reached Android/Kotlin compilation and native module autolinking.
+The final build is blocked by the managed environment HTTP destination policy:
+
+https://repo.reactnative.dev/maven2/com/facebook/react/react-android/0.88.1/react-android-0.88.1-debug.aar
+
+Maven Central redirects the official React Native artifact to this host. The
+proxy returns HTTP 403 because repo.reactnative.dev is outside the allowlist.
+Allow this host in the environment network configuration, then repeat:
+
+cd packages/zig_runtime/android/android
+ANDROID_HOME=/path/to/sdk ./gradlew :app:assembleDebug --no-daemon
+
+Zig/JNI Android ARM64 and x86-64 libraries already cross-compile successfully.
+The app's Expo prebuild, TypeScript, Android Hermes bundle, JS effects tests,
+actual host JNI tests, and native C ABI differential oracle checks pass.
+No APK or successful device launch is claimed in this delivery.

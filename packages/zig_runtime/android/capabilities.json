@@ -1,0 +1,1971 @@
+{
+  "expo": "58.0.21",
+  "platform": "android",
+  "registeredPackageCount": 91,
+  "registeredExpoFeaturePackageCount": 67,
+  "registeredSurfaceCount": 101,
+  "customAdapters": [
+    {
+      "name": "eyg-widgets",
+      "exports": [
+        "home",
+        "notification"
+      ],
+      "status": "precompiled generic layout; widget/notification Android device behavior unverified"
+    },
+    {
+      "name": "eyg-background",
+      "exports": [
+        "define",
+        "list",
+        "get",
+        "result",
+        "cancel",
+        "forget",
+        "run",
+        "resetSlots"
+      ],
+      "status": "durable source entrypoints; fresh VM per callback; cold restart host-tested; Android OS scheduling unverified"
+    }
+  ],
+  "registeredModules": [
+    {
+      "name": "@expo/ui",
+      "requestedVersion": "~58.0.25",
+      "installedVersion": "58.0.25",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "@expo/ui",
+        "@expo/ui/community/bottom-sheet",
+        "@expo/ui/community/datetime-picker",
+        "@expo/ui/community/masked-view",
+        "@expo/ui/community/menu",
+        "@expo/ui/community/pager-view",
+        "@expo/ui/community/picker",
+        "@expo/ui/community/segmented-control",
+        "@expo/ui/community/slider",
+        "@expo/ui/jetpack-compose",
+        "@expo/ui/jetpack-compose/modifiers"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@expo/vector-icons",
+      "requestedVersion": "^15.0.2",
+      "installedVersion": "15.1.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@expo/vector-icons"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-async-storage/async-storage",
+      "requestedVersion": "2.2.0",
+      "installedVersion": "2.2.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-async-storage/async-storage"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-community/datetimepicker",
+      "requestedVersion": "9.2.1",
+      "installedVersion": "9.2.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-community/datetimepicker"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-community/netinfo",
+      "requestedVersion": "12.0.1",
+      "installedVersion": "12.0.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-community/netinfo"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-community/slider",
+      "requestedVersion": "5.2.1",
+      "installedVersion": "5.2.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-community/slider"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-masked-view/masked-view",
+      "requestedVersion": "0.3.2",
+      "installedVersion": "0.3.2",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-masked-view/masked-view"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-picker/picker",
+      "requestedVersion": "2.11.4",
+      "installedVersion": "2.11.4",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-picker/picker"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@react-native-segmented-control/segmented-control",
+      "requestedVersion": "2.5.7",
+      "installedVersion": "2.5.7",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@react-native-segmented-control/segmented-control"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@shopify/flash-list",
+      "requestedVersion": "2.3.2",
+      "installedVersion": "2.3.2",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@shopify/flash-list"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@shopify/react-native-skia",
+      "requestedVersion": "2.14.0",
+      "installedVersion": "2.14.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@shopify/react-native-skia"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "@stripe/stripe-react-native",
+      "requestedVersion": "0.81.0",
+      "installedVersion": "0.81.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "@stripe/stripe-react-native"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo",
+      "requestedVersion": "58.0.21",
+      "installedVersion": "58.0.21",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-app-metrics",
+      "requestedVersion": "~58.0.14",
+      "installedVersion": "58.0.14",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-app-metrics"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-application",
+      "requestedVersion": "~58.1.2",
+      "installedVersion": "58.1.2",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-application"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-asset",
+      "requestedVersion": "~58.0.19",
+      "installedVersion": "58.0.19",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-asset"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-audio",
+      "requestedVersion": "~58.0.10",
+      "installedVersion": "58.0.10",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-audio"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-auth-session",
+      "requestedVersion": "~58.0.16",
+      "installedVersion": "58.0.16",
+      "nativePlatforms": null,
+      "surfaces": [
+        "expo-auth-session"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-background-fetch",
+      "requestedVersion": "~58.0.11",
+      "installedVersion": "58.0.11",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-background-fetch"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-background-task",
+      "requestedVersion": "~58.0.11",
+      "installedVersion": "58.0.11",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-background-task"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-battery",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-battery"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-blur",
+      "requestedVersion": "~58.0.5",
+      "installedVersion": "58.0.5",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-blur"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-brightness",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-brightness"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-calendar",
+      "requestedVersion": "~58.0.6",
+      "installedVersion": "58.0.6",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-calendar"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-camera",
+      "requestedVersion": "~58.0.14",
+      "installedVersion": "58.0.14",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-camera"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-cellular",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-cellular"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-checkbox",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": null,
+      "surfaces": [
+        "expo-checkbox"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-clipboard",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-clipboard"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-constants",
+      "requestedVersion": "~58.0.14",
+      "installedVersion": "58.0.14",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-constants"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-contacts",
+      "requestedVersion": "~58.0.10",
+      "installedVersion": "58.0.10",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-contacts"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-crypto",
+      "requestedVersion": "~58.0.7",
+      "installedVersion": "58.0.7",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-crypto"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-device",
+      "requestedVersion": "~58.0.5",
+      "installedVersion": "58.0.5",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-device"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-document-picker",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-document-picker"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-eas-client",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-eas-client"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-file-system",
+      "requestedVersion": "~58.0.13",
+      "installedVersion": "58.0.13",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-file-system"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-font",
+      "requestedVersion": "~58.0.11",
+      "installedVersion": "58.0.11",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-font"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-gl",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-gl"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-haptics",
+      "requestedVersion": "~58.0.7",
+      "installedVersion": "58.0.7",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-haptics"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-hinge",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-hinge"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-image",
+      "requestedVersion": "~58.0.18",
+      "installedVersion": "58.0.18",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-image"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-image-manipulator",
+      "requestedVersion": "~58.0.16",
+      "installedVersion": "58.0.16",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-image-manipulator"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-image-picker",
+      "requestedVersion": "~58.0.10",
+      "installedVersion": "58.0.10",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-image-picker"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-intent-launcher",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "android"
+      ],
+      "surfaces": [
+        "expo-intent-launcher"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-keep-awake",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-keep-awake"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-linear-gradient",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-linear-gradient"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-linking",
+      "requestedVersion": "~58.0.15",
+      "installedVersion": "58.0.15",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-linking"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-local-authentication",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-local-authentication"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-localization",
+      "requestedVersion": "~58.0.5",
+      "installedVersion": "58.0.5",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-localization"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-location",
+      "requestedVersion": "~58.0.20",
+      "installedVersion": "58.0.20",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-location"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-mail-composer",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-mail-composer"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-maps",
+      "requestedVersion": "~58.0.11",
+      "installedVersion": "58.0.11",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-maps"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-media-library",
+      "requestedVersion": "~58.0.13",
+      "installedVersion": "58.0.13",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-media-library"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-mesh-gradient",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-mesh-gradient"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-navigation-bar",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "android"
+      ],
+      "surfaces": [
+        "expo-navigation-bar"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-network",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-network"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-notifications",
+      "requestedVersion": "~58.1.7",
+      "installedVersion": "58.1.7",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-notifications"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-observe",
+      "requestedVersion": "~58.0.16",
+      "installedVersion": "58.0.16",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-observe"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-print",
+      "requestedVersion": "~58.0.8",
+      "installedVersion": "58.0.8",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-print"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-screen-capture",
+      "requestedVersion": "~58.0.6",
+      "installedVersion": "58.0.6",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "web"
+      ],
+      "surfaces": [
+        "expo-screen-capture"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-screen-orientation",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-screen-orientation"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-secure-store",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-secure-store"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-sensors",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-sensors"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-sharing",
+      "requestedVersion": "~58.0.21",
+      "installedVersion": "58.0.21",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-sharing"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-sms",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-sms"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-speech",
+      "requestedVersion": "~58.0.3",
+      "installedVersion": "58.0.3",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-speech"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-splash-screen",
+      "requestedVersion": "~58.0.12",
+      "installedVersion": "58.0.12",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-splash-screen"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-sqlite",
+      "requestedVersion": "~58.0.14",
+      "installedVersion": "58.0.14",
+      "nativePlatforms": [
+        "apple",
+        "android",
+        "devtools"
+      ],
+      "surfaces": [
+        "expo-sqlite"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-status-bar",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-status-bar"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-store-review",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-store-review"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-symbols",
+      "requestedVersion": "~58.0.4",
+      "installedVersion": "58.0.4",
+      "nativePlatforms": [
+        "apple"
+      ],
+      "surfaces": [
+        "expo-symbols"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-system-ui",
+      "requestedVersion": "~58.0.7",
+      "installedVersion": "58.0.7",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-system-ui"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-task-manager",
+      "requestedVersion": "~58.0.12",
+      "installedVersion": "58.0.12",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-task-manager"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-tracking-transparency",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-tracking-transparency"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-updates",
+      "requestedVersion": "~58.0.19",
+      "installedVersion": "58.0.19",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-updates"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-video",
+      "requestedVersion": "~58.0.13",
+      "installedVersion": "58.0.13",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-video"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-video-thumbnails",
+      "requestedVersion": "~58.0.2",
+      "installedVersion": "58.0.2",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-video-thumbnails"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-web-browser",
+      "requestedVersion": "~58.0.7",
+      "installedVersion": "58.0.7",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-web-browser"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "expo-widgets",
+      "requestedVersion": "~58.0.25",
+      "installedVersion": "58.0.25",
+      "nativePlatforms": [
+        "apple",
+        "android"
+      ],
+      "surfaces": [
+        "expo-widgets"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "lottie-react-native",
+      "requestedVersion": "~7.5.0",
+      "installedVersion": "7.5.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "lottie-react-native"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native",
+      "requestedVersion": "0.88.1",
+      "installedVersion": "0.88.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-gesture-handler",
+      "requestedVersion": "~3.3.0",
+      "installedVersion": "3.3.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-gesture-handler"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-keyboard-controller",
+      "requestedVersion": "1.22.7",
+      "installedVersion": "1.22.7",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-keyboard-controller"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-maps",
+      "requestedVersion": "1.29.11",
+      "installedVersion": "1.29.11",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-maps"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-pager-view",
+      "requestedVersion": "9.0.7",
+      "installedVersion": "9.0.7",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-pager-view"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-reanimated",
+      "requestedVersion": "4.7.1",
+      "installedVersion": "4.7.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-reanimated"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-safe-area-context",
+      "requestedVersion": "~5.10.1",
+      "installedVersion": "5.10.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-safe-area-context"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-screens",
+      "requestedVersion": "~4.30.0",
+      "installedVersion": "4.30.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-screens"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-svg",
+      "requestedVersion": "15.16.0",
+      "installedVersion": "15.16.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-svg"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-view-shot",
+      "requestedVersion": "6.1.1",
+      "installedVersion": "6.1.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-view-shot"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-webview",
+      "requestedVersion": "14.0.1",
+      "installedVersion": "14.0.1",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-webview"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    },
+    {
+      "name": "react-native-worklets",
+      "requestedVersion": "0.13.0",
+      "installedVersion": "0.13.0",
+      "nativePlatforms": null,
+      "surfaces": [
+        "react-native-worklets"
+      ],
+      "status": "registered; Android native/hardware behavior requires device validation"
+    }
+  ],
+  "bundledManifestSha256": "62b8d2f808d0f08ee1811b7daacd96067dfb46a6ca1b0c3b1b723921f46ed8b3",
+  "bundleCoverage": {
+    "total": 124,
+    "registered": 90,
+    "classifiedExcluded": 34,
+    "unclassified": 0
+  },
+  "bundleAudit": [
+    {
+      "name": "@expo/dom-webview",
+      "sdkVersion": "~58.0.2",
+      "decision": "infrastructure",
+      "reason": "Expo DOM-component web runtime; the public Android WebView is registered as react-native-webview.",
+      "evidence": "package.json description; build/DOMWebView.js"
+    },
+    {
+      "name": "@expo/fingerprint",
+      "sdkVersion": "~0.21.7",
+      "decision": "development",
+      "reason": "Build fingerprint generator, not an Android phone API.",
+      "evidence": "package.json description and bin"
+    },
+    {
+      "name": "@expo/metro-runtime",
+      "sdkVersion": "~58.0.15",
+      "decision": "infrastructure",
+      "reason": "Metro runtime and bundler integration; included transitively by Expo.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "@expo/vector-icons",
+      "sdkVersion": "^15.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@expo/vector-icons/package.json"
+    },
+    {
+      "name": "@expo/ui",
+      "sdkVersion": "~58.0.25",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@expo/ui/package.json"
+    },
+    {
+      "name": "@react-native-async-storage/async-storage",
+      "sdkVersion": "2.2.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-async-storage/async-storage/package.json"
+    },
+    {
+      "name": "@react-native-community/datetimepicker",
+      "sdkVersion": "9.2.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-community/datetimepicker/package.json"
+    },
+    {
+      "name": "@react-native-masked-view/masked-view",
+      "sdkVersion": "0.3.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-masked-view/masked-view/package.json"
+    },
+    {
+      "name": "@react-native-community/slider",
+      "sdkVersion": "5.2.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-community/slider/package.json"
+    },
+    {
+      "name": "@react-native-community/netinfo",
+      "sdkVersion": "12.0.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-community/netinfo/package.json"
+    },
+    {
+      "name": "@react-native-community/viewpager",
+      "sdkVersion": "5.0.11",
+      "decision": "obsolete",
+      "reason": "Legacy pager implementation replaced by registered react-native-pager-view.",
+      "evidence": "package.json version 5.0.11; README.md"
+    },
+    {
+      "name": "@react-native-picker/picker",
+      "sdkVersion": "2.11.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-picker/picker/package.json"
+    },
+    {
+      "name": "@react-native-segmented-control/segmented-control",
+      "sdkVersion": "2.5.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@react-native-segmented-control/segmented-control/package.json"
+    },
+    {
+      "name": "@stripe/stripe-react-native",
+      "sdkVersion": "0.81.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@stripe/stripe-react-native/package.json"
+    },
+    {
+      "name": "eslint-config-expo",
+      "sdkVersion": "~58.0.4",
+      "decision": "development",
+      "reason": "ESLint configuration.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "expo-analytics-amplitude",
+      "sdkVersion": "~11.3.0",
+      "decision": "obsolete",
+      "reason": "Legacy unimodule analytics client; current SDK phone APIs use the registered SDK58 modules.",
+      "evidence": "package.json version 11.3.0; unimodule.json"
+    },
+    {
+      "name": "expo-app-auth",
+      "sdkVersion": "~11.1.0",
+      "decision": "obsolete",
+      "reason": "Deprecated authentication module; registered expo-auth-session is its supported replacement.",
+      "evidence": "README.md deprecation; package.json version 11.1.0"
+    },
+    {
+      "name": "expo-app-intents",
+      "sdkVersion": "~0.5.14",
+      "decision": "ios-only",
+      "reason": "Apple App Intents and Siri integration.",
+      "evidence": "expo-module.config.json apple platform; ios/"
+    },
+    {
+      "name": "expo-app-loader-provider",
+      "sdkVersion": "~8.0.0",
+      "decision": "obsolete",
+      "reason": "Legacy app-loading infrastructure.",
+      "evidence": "package.json description/version 8.0.0"
+    },
+    {
+      "name": "expo-app-metrics",
+      "sdkVersion": "~58.0.14",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-app-metrics/package.json"
+    },
+    {
+      "name": "expo-apple-authentication",
+      "sdkVersion": "~58.0.2",
+      "decision": "ios-only",
+      "reason": "Apple native authentication; Android OAuth can use registered expo-auth-session.",
+      "evidence": "expo-module.config.json apple platform; src/ExpoAppleAuthentication.ts"
+    },
+    {
+      "name": "expo-application",
+      "sdkVersion": "~58.1.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-application/package.json"
+    },
+    {
+      "name": "expo-asset",
+      "sdkVersion": "~58.0.19",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-asset/package.json"
+    },
+    {
+      "name": "expo-audio",
+      "sdkVersion": "~58.0.10",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-audio/package.json"
+    },
+    {
+      "name": "expo-auth-session",
+      "sdkVersion": "~58.0.16",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-auth-session/package.json"
+    },
+    {
+      "name": "expo-background-fetch",
+      "sdkVersion": "~58.0.11",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-background-fetch/package.json"
+    },
+    {
+      "name": "expo-background-task",
+      "sdkVersion": "~58.0.11",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-background-task/package.json"
+    },
+    {
+      "name": "expo-battery",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-battery/package.json"
+    },
+    {
+      "name": "expo-blur",
+      "sdkVersion": "~58.0.5",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-blur/package.json"
+    },
+    {
+      "name": "expo-brightness",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-brightness/package.json"
+    },
+    {
+      "name": "expo-brownfield",
+      "sdkVersion": "~58.0.17",
+      "decision": "infrastructure",
+      "reason": "Embeds React Native into an existing native application; this app already has an Android activity.",
+      "evidence": "package.json description; README.md"
+    },
+    {
+      "name": "expo-build-properties",
+      "sdkVersion": "~58.0.11",
+      "decision": "development",
+      "reason": "Prebuild configuration plugin already applied to set minSDK26.",
+      "evidence": "app.plugin.js; app.config.js"
+    },
+    {
+      "name": "expo-calendar",
+      "sdkVersion": "~58.0.6",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-calendar/package.json"
+    },
+    {
+      "name": "expo-camera",
+      "sdkVersion": "~58.0.14",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-camera/package.json"
+    },
+    {
+      "name": "expo-cellular",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-cellular/package.json"
+    },
+    {
+      "name": "expo-checkbox",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-checkbox/package.json"
+    },
+    {
+      "name": "expo-clipboard",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-clipboard/package.json"
+    },
+    {
+      "name": "expo-constants",
+      "sdkVersion": "~58.0.14",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-constants/package.json"
+    },
+    {
+      "name": "expo-contacts",
+      "sdkVersion": "~58.0.10",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-contacts/package.json"
+    },
+    {
+      "name": "expo-crypto",
+      "sdkVersion": "~58.0.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-crypto/package.json"
+    },
+    {
+      "name": "expo-dev-client",
+      "sdkVersion": "~58.0.17",
+      "decision": "development",
+      "reason": "Development launcher/menu, not a phone feature.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "expo-device",
+      "sdkVersion": "~58.0.5",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-device/package.json"
+    },
+    {
+      "name": "expo-document-picker",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-document-picker/package.json"
+    },
+    {
+      "name": "expo-eas-client",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-eas-client/package.json"
+    },
+    {
+      "name": "expo-file-system",
+      "sdkVersion": "~58.0.13",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-file-system/package.json"
+    },
+    {
+      "name": "expo-font",
+      "sdkVersion": "~58.0.11",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-font/package.json"
+    },
+    {
+      "name": "expo-gl",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-gl/package.json"
+    },
+    {
+      "name": "expo-glass-effect",
+      "sdkVersion": "~58.0.5",
+      "decision": "ios-only",
+      "reason": "Apple liquid-glass visual effect; Android fallback is not the native feature.",
+      "evidence": "expo-module.config.json apple platform; src/GlassView.tsx"
+    },
+    {
+      "name": "expo-google-app-auth",
+      "sdkVersion": "~8.3.0",
+      "decision": "obsolete",
+      "reason": "Deprecated Google authentication module; registered expo-auth-session supports provider flows.",
+      "evidence": "README.md deprecation; package.json version 8.3.0"
+    },
+    {
+      "name": "expo-haptics",
+      "sdkVersion": "~58.0.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-haptics/package.json"
+    },
+    {
+      "name": "expo-hinge",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-hinge/package.json"
+    },
+    {
+      "name": "expo-image",
+      "sdkVersion": "~58.0.18",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-image/package.json"
+    },
+    {
+      "name": "expo-image-loader",
+      "sdkVersion": "~58.0.3",
+      "decision": "internal",
+      "reason": "Internal image-loading service consumed by the registered image packages.",
+      "evidence": "package.json description; expo-module.config.json"
+    },
+    {
+      "name": "expo-image-manipulator",
+      "sdkVersion": "~58.0.16",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-image-manipulator/package.json"
+    },
+    {
+      "name": "expo-image-picker",
+      "sdkVersion": "~58.0.10",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-image-picker/package.json"
+    },
+    {
+      "name": "expo-intent-launcher",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-intent-launcher/package.json"
+    },
+    {
+      "name": "expo-insights",
+      "sdkVersion": "~58.0.11",
+      "decision": "obsolete",
+      "reason": "Current SDK entry is an inert module exporting no public methods.",
+      "evidence": "build/index.js exports {}; build/index.d.ts"
+    },
+    {
+      "name": "expo-keep-awake",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-keep-awake/package.json"
+    },
+    {
+      "name": "expo-linear-gradient",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-linear-gradient/package.json"
+    },
+    {
+      "name": "expo-linking",
+      "sdkVersion": "~58.0.15",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-linking/package.json"
+    },
+    {
+      "name": "expo-local-authentication",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-local-authentication/package.json"
+    },
+    {
+      "name": "expo-localization",
+      "sdkVersion": "~58.0.5",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-localization/package.json"
+    },
+    {
+      "name": "expo-location",
+      "sdkVersion": "~58.0.20",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-location/package.json"
+    },
+    {
+      "name": "expo-mail-composer",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-mail-composer/package.json"
+    },
+    {
+      "name": "expo-manifests",
+      "sdkVersion": "~58.0.1",
+      "decision": "internal",
+      "reason": "Native updates-manifest models consumed by registered expo-updates.",
+      "evidence": "package.json description; expo-module.config.json"
+    },
+    {
+      "name": "expo-maps",
+      "sdkVersion": "~58.0.11",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-maps/package.json"
+    },
+    {
+      "name": "expo-mcp",
+      "sdkVersion": "~0.2.1",
+      "decision": "development",
+      "reason": "Development MCP integration.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "expo-media-library",
+      "sdkVersion": "~58.0.13",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-media-library/package.json"
+    },
+    {
+      "name": "expo-mesh-gradient",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-mesh-gradient/package.json"
+    },
+    {
+      "name": "expo-module-template",
+      "sdkVersion": "~58.0.9",
+      "decision": "development",
+      "reason": "Native-module project scaffold.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "expo-modules-core",
+      "sdkVersion": "~58.0.28",
+      "decision": "infrastructure",
+      "reason": "Shared native module runtime linked by Expo and the EYG native module.",
+      "evidence": "expo-module.config.json; package.json"
+    },
+    {
+      "name": "expo-navigation-bar",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-navigation-bar/package.json"
+    },
+    {
+      "name": "expo-network",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-network/package.json"
+    },
+    {
+      "name": "expo-notifications",
+      "sdkVersion": "~58.1.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-notifications/package.json"
+    },
+    {
+      "name": "expo-observe",
+      "sdkVersion": "~58.0.16",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-observe/package.json"
+    },
+    {
+      "name": "expo-print",
+      "sdkVersion": "~58.0.8",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-print/package.json"
+    },
+    {
+      "name": "expo-live-photo",
+      "sdkVersion": "~58.0.7",
+      "decision": "ios-only",
+      "reason": "Apple Live Photo native view.",
+      "evidence": "expo-module.config.json apple platform"
+    },
+    {
+      "name": "expo-router",
+      "sdkVersion": "~58.0.28",
+      "decision": "infrastructure",
+      "reason": "Alternative file-based app routing; EYG uses a single activity and its own workspace UI.",
+      "evidence": "package.json description; README.md"
+    },
+    {
+      "name": "expo-screen-capture",
+      "sdkVersion": "~58.0.6",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-screen-capture/package.json"
+    },
+    {
+      "name": "expo-screen-orientation",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-screen-orientation/package.json"
+    },
+    {
+      "name": "expo-secure-store",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-secure-store/package.json"
+    },
+    {
+      "name": "expo-sensors",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-sensors/package.json"
+    },
+    {
+      "name": "expo-server",
+      "sdkVersion": "~58.0.6",
+      "decision": "server",
+      "reason": "Server-side Expo request handlers, not an Android API.",
+      "evidence": "package.json exports; README.md"
+    },
+    {
+      "name": "expo-sharing",
+      "sdkVersion": "~58.0.21",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-sharing/package.json"
+    },
+    {
+      "name": "expo-sms",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-sms/package.json"
+    },
+    {
+      "name": "expo-speech",
+      "sdkVersion": "~58.0.3",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-speech/package.json"
+    },
+    {
+      "name": "expo-splash-screen",
+      "sdkVersion": "~58.0.12",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-splash-screen/package.json"
+    },
+    {
+      "name": "expo-sqlite",
+      "sdkVersion": "~58.0.14",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-sqlite/package.json"
+    },
+    {
+      "name": "expo-status-bar",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-status-bar/package.json"
+    },
+    {
+      "name": "expo-store-review",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-store-review/package.json"
+    },
+    {
+      "name": "expo-symbols",
+      "sdkVersion": "~58.0.4",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-symbols/package.json"
+    },
+    {
+      "name": "expo-system-ui",
+      "sdkVersion": "~58.0.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-system-ui/package.json"
+    },
+    {
+      "name": "expo-task-manager",
+      "sdkVersion": "~58.0.12",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-task-manager/package.json"
+    },
+    {
+      "name": "expo-tracking-transparency",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-tracking-transparency/package.json"
+    },
+    {
+      "name": "expo-updates",
+      "sdkVersion": "~58.0.19",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-updates/package.json"
+    },
+    {
+      "name": "expo-video-thumbnails",
+      "sdkVersion": "~58.0.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-video-thumbnails/package.json"
+    },
+    {
+      "name": "expo-video",
+      "sdkVersion": "~58.0.13",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-video/package.json"
+    },
+    {
+      "name": "expo-web-browser",
+      "sdkVersion": "~58.0.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-web-browser/package.json"
+    },
+    {
+      "name": "expo-widgets",
+      "sdkVersion": "~58.0.25",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/expo-widgets/package.json"
+    },
+    {
+      "name": "jest-expo",
+      "sdkVersion": "~58.0.13",
+      "decision": "development",
+      "reason": "Jest test preset.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "lottie-react-native",
+      "sdkVersion": "~7.5.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/lottie-react-native/package.json"
+    },
+    {
+      "name": "react",
+      "sdkVersion": "19.3.0",
+      "decision": "infrastructure",
+      "reason": "Rendering framework used by the app; React hooks cannot be called as imperative effects.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "react-dom",
+      "sdkVersion": "19.3.0",
+      "decision": "web-only",
+      "reason": "Browser DOM renderer.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "react-native",
+      "sdkVersion": "0.88.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native/package.json"
+    },
+    {
+      "name": "react-native-web",
+      "sdkVersion": "~0.21.4",
+      "decision": "web-only",
+      "reason": "Browser implementation of React Native.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "react-native-gesture-handler",
+      "sdkVersion": "~3.3.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-gesture-handler/package.json"
+    },
+    {
+      "name": "react-native-keyboard-controller",
+      "sdkVersion": "1.22.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-keyboard-controller/package.json"
+    },
+    {
+      "name": "react-native-maps",
+      "sdkVersion": "1.29.11",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-maps/package.json"
+    },
+    {
+      "name": "react-native-pager-view",
+      "sdkVersion": "9.0.7",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-pager-view/package.json"
+    },
+    {
+      "name": "react-native-worklets",
+      "sdkVersion": "0.13.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-worklets/package.json"
+    },
+    {
+      "name": "react-native-reanimated",
+      "sdkVersion": "4.7.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-reanimated/package.json"
+    },
+    {
+      "name": "react-native-screens",
+      "sdkVersion": "~4.30.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-screens/package.json"
+    },
+    {
+      "name": "react-native-safe-area-context",
+      "sdkVersion": "~5.10.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-safe-area-context/package.json"
+    },
+    {
+      "name": "react-native-svg",
+      "sdkVersion": "15.16.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-svg/package.json"
+    },
+    {
+      "name": "react-native-view-shot",
+      "sdkVersion": "6.1.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-view-shot/package.json"
+    },
+    {
+      "name": "react-native-webview",
+      "sdkVersion": "14.0.1",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/react-native-webview/package.json"
+    },
+    {
+      "name": "react-server-dom-webpack",
+      "sdkVersion": "~19.3.0",
+      "decision": "server",
+      "reason": "React Server Components transport and webpack integration.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "sentry-expo",
+      "sdkVersion": "~7.0.0",
+      "decision": "obsolete",
+      "reason": "Deprecated wrapper for Sentry; external error telemetry is not a phone capability.",
+      "evidence": "README.md deprecation"
+    },
+    {
+      "name": "unimodules-app-loader",
+      "sdkVersion": "~58.0.2",
+      "decision": "obsolete",
+      "reason": "Legacy unimodules app-loader implementation.",
+      "evidence": "package.json description; README.md"
+    },
+    {
+      "name": "unimodules-image-loader-interface",
+      "sdkVersion": "~6.1.0",
+      "decision": "obsolete",
+      "reason": "Legacy internal unimodules image-loader interface.",
+      "evidence": "package.json description"
+    },
+    {
+      "name": "@shopify/react-native-skia",
+      "sdkVersion": "2.14.0",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@shopify/react-native-skia/package.json"
+    },
+    {
+      "name": "@shopify/flash-list",
+      "sdkVersion": "2.3.2",
+      "decision": "registered",
+      "evidence": "package.json dependency; src/modules.ts static import; node_modules/@shopify/flash-list/package.json"
+    },
+    {
+      "name": "@sentry/react-native",
+      "sdkVersion": "~8.28.0",
+      "decision": "external-observability",
+      "reason": "External error/profiling service requiring a Sentry project; local metrics are available through expo-app-metrics/expo-observe.",
+      "evidence": "package.json description; README.md DSN configuration"
+    },
+    {
+      "name": "react-native-bootsplash",
+      "sdkVersion": "^6.3.10",
+      "decision": "redundant-infrastructure",
+      "reason": "Alternative native launch splash; registered expo-splash-screen owns this activity splash.",
+      "evidence": "package.json description; app.config.js"
+    }
+  ],
+  "protocol": [
+    "Expo",
+    "ExpoNextEvent",
+    "ExpoReply",
+    "ExpoRelease",
+    "ExpoView"
+  ],
+  "platformNotes": [
+    "SDK58 expo-widgets includes Android widgets/custom notifications despite its iOS-oriented README; layouts need the widget compiler and declared Android provider configuration.",
+    "SDK58 expo-symbols implements Android Material Symbols in JavaScript/assets although its native module config lists Apple.",
+    "SDK58 expo-tracking-transparency exposes Android Advertising ID; its tracking permission prompts apply to iOS.",
+    "expo-updates requires a configured updates URL/runtime and signed release build for remote updates; no update service is configured by default.",
+    "Apple App Intents, native Apple authentication, glass effects, Live Photos and iOS Live Activities remain platform-specific."
+  ],
+  "limits": [
+    "Registration covers package entrypoints and listed Android subpaths, not proof of every export behavior or native feature on hardware.",
+    "React hooks are not imperative phone effects; call corresponding SDK functions or mount their exported components.",
+    "ExpoView supports nested descriptor children; protected APIs still require Expo permission calls.",
+    "eyg-widgets supplies a precompiled generic tree layout and declared EygWidget Android provider. Additional widget providers/layout code require a rebuild; runtime EYG callbacks cannot be serialized as widget worklets.",
+    "Reanimated/Worklets UI-thread callbacks also require precompiled worklets; runtime EYG callbacks execute in the JavaScript host.",
+    "eyg-background restores durable source entrypoints behind 16 synchronously defined TaskManager slots; each OS callback starts a fresh VM. Live continuation serialization is not implemented.",
+    "Background slot identities survive forget to prevent stale delivery to another task; 16 historical names until verified resetSlots and JavaScript process restart.",
+    "Synchronous dynamic callbacks use isolated pure EYG source with max10000 total VM steps, fixed4MiB allocator, 4096-byte source and64KiB input/output. Effects, references, structural equal and substring split/replace builtins are rejected.",
+    "Google Maps, Stripe payments, push notifications and remote updates require provider/project configuration.",
+    "Native hardware features and APK launch have not been validated unless separately recorded in validation.json."
+  ]
+}

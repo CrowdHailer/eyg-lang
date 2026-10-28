@@ -1,0 +1,522 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "9f31204db5c4d40958ee3d6191bd68bec399833a82c88be331aeb316ff97a2a7",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "../../work/tui-dev/bin/eyg",
+    "--only",
+    "tui",
+    "--traces",
+    "100",
+    "--no-shrink",
+    "--report",
+    "reports/tui-broad.json"
+  ],
+  "counts": {
+    "tui-scenario": {
+      "checked": 18,
+      "passed": 14,
+      "failed": 4
+    },
+    "tui-world": {
+      "checked": 11,
+      "passed": 10,
+      "failed": 1
+    },
+    "generated-behaviour": {
+      "checked": 9,
+      "passed": 6,
+      "failed": 3
+    }
+  },
+  "failures": [
+    {
+      "category": "tui-scenario",
+      "name": "integer-input",
+      "difference": {
+        "path": "$.frames[8].cells[1845].symbol",
+        "expected": "I",
+        "got": "\u0001"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "key": "n"
+          },
+          {
+            "key": "1"
+          },
+          {
+            "key": "2"
+          },
+          {
+            "key": "backspace"
+          },
+          {
+            "key": "3"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "4"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "tui-scenario",
+      "name": "string-unicode",
+      "difference": {
+        "path": "$.frames[3].cells[1845].symbol",
+        "expected": "S",
+        "got": "\u0001"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "key": "s"
+          },
+          {
+            "paste": "hello λ👩‍💻é\nworld"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "tui-scenario",
+      "name": "history-source-lifetime",
+      "difference": {
+        "path": "$.frames[5].cells[1845].symbol",
+        "expected": "S",
+        "got": "\u0001"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "!int_add(20, 22)"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "s"
+          },
+          {
+            "paste": "hello λé"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "tui-scenario",
+      "name": "record-list",
+      "difference": {
+        "path": "$.frames[1].cells[1845].symbol",
+        "expected": "{",
+        "got": "\f"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "key": "R"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "n"
+          },
+          {
+            "key": "3"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "L"
+          }
+        ]
+      }
+    },
+    {
+      "category": "tui-world",
+      "name": "import-missing",
+      "difference": {
+        "path": "$.frames[1].cells[1845].symbol",
+        "expected": "m",
+        "got": "8"
+      },
+      "request": {
+        "files": {
+          "lib/answer.eyg": "42",
+          "main.eyg": "{answer: 42}",
+          ".hidden.eyg": "0"
+        },
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "import \"missing.eyg\""
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "3",
+      "difference": {
+        "path": "$.frames[3].cells[2765].symbol",
+        "expected": "{",
+        "got": [
+          170
+        ]
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 24,
+        "events": [
+          {
+            "key": "esc"
+          },
+          {
+            "key": "delete"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "backspace"
+          },
+          {
+            "key": "delete"
+          },
+          {
+            "key": "b"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "resize": [
+              120,
+              3
+            ]
+          },
+          {
+            "resize": [
+              40,
+              10
+            ]
+          },
+          {
+            "key": "w"
+          },
+          {
+            "key": "w"
+          },
+          {
+            "key": "ctrl+k"
+          },
+          {
+            "key": " "
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "s"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "s"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "paste": "invalid!!"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "4",
+      "difference": {
+        "path": "$.frames[2].cells[465].symbol",
+        "expected": "S",
+        "got": [
+          162
+        ]
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 20,
+        "height": 24,
+        "events": [
+          {
+            "paste": "let x = 2 x"
+          },
+          {
+            "paste": "\"hello λ\""
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "paste": "42"
+          },
+          {
+            "key": "y"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "q"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "Y"
+          },
+          {
+            "key": "ctrl+a"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "paste": "👩‍💻é"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "q"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": "k"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "7",
+      "difference": {
+        "path": "$.frames[7].cells[85].fg",
+        "expected": 12,
+        "got": null
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 40,
+        "height": 5,
+        "events": [
+          {
+            "key": " "
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "L"
+          },
+          {
+            "resize": [
+              1,
+              24
+            ]
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "end"
+          },
+          {
+            "key": "j"
+          },
+          {
+            "resize": [
+              20,
+              3
+            ]
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "t"
+          },
+          {
+            "key": "#"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "l"
+          }
+        ]
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "elapsed_seconds": 26.062864635000096
+}

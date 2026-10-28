@@ -1,0 +1,73 @@
+{
+  "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "measurement": "Monotonic wall time for native event dispatch, complete cell-frame construction, and reusable frame-output arena reset inside the timed interval; excludes JSON serialization, terminal transport, startup; sandboxed effects in Gleam.",
+  "machine": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "processor": "",
+    "cpu_count": 5
+  },
+  "report_sources": {
+    "benchmark": {
+      "path": "reports/verification-20261028T204149Z-67462/benchmark.json",
+      "sha256": "fefb330a10c467ea377b59d79c425b3ba68615bb853d5cf01d857a2fc4340294"
+    },
+    "pty": {
+      "path": "reports/verification-20261028T204149Z-67462/pty.json",
+      "sha256": "e0fe3845201d70b85e2261f6ceae7d666e2c2c1b8e0deddf96776683c906524a"
+    },
+    "pty-hub": {
+      "path": "reports/verification-20261028T204149Z-67462/pty-hub.json",
+      "sha256": "9f616b8760362285056a4dd8f11bdec84060edc1e6dc26068c752c32774a2fbc"
+    }
+  },
+  "native_wall": {
+    "samples": 12800,
+    "p50_ms": 0.356304,
+    "p95_ms": 1.008371,
+    "p99_ms": 2.464721,
+    "max_ms": 8.833814,
+    "mean_ms": 0.442799593984375,
+    "under_10ms": true
+  },
+  "native_cpu": {
+    "samples": 12800,
+    "p50_ms": 0.355502,
+    "p95_ms": 1.003557,
+    "p99_ms": 2.464211,
+    "max_ms": 8.832991,
+    "mean_ms": 0.441300858359375,
+    "under_10ms": true
+  },
+  "performance_passed": true,
+  "strict_parity_passed": false,
+  "combined_passed": false,
+  "pty": {
+    "checks": 21,
+    "timing": {
+      "samples": 16,
+      "p50_ms": 0.497324,
+      "p95_ms": 4.949743,
+      "p99_ms": 4.949743,
+      "max_ms": 4.949743,
+      "mean_ms": 0.9196734375,
+      "under_10ms": true
+    }
+  },
+  "hub_pty": {
+    "checks": 10,
+    "timing": {
+      "samples": 7,
+      "p50_ms": 0.761952,
+      "p95_ms": 1.741612,
+      "p99_ms": 1.741612,
+      "max_ms": 1.741612,
+      "mean_ms": 0.9656887142857143,
+      "under_10ms": true
+    }
+  },
+  "raw_samples_filtered": false,
+  "escape_note": "Standalone Escape uses the pinned ambiguity timer and is outside the sub-10ms key timing gate.",
+  "standalone_escape_ms": 40.690598
+}

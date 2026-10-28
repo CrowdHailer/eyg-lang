@@ -1,0 +1,21 @@
+install
++- install eyg
+   +- zig build-exe eyg ReleaseFast native 1 errors
+src/main.zig:33:18: error: expected 1 argument(s), found 2
+    try std.posix.clock_gettime(std.posix.CLOCK.THREAD_CPUTIME_ID, &time);
+        ~~~~~~~~~^~~~~~~~~~~~~~
+/workspace/tooling/ziglang/ziglang/lib/std/posix.zig:5704:5: note: function declared here
+pub fn clock_gettime(clock_id: clockid_t) ClockGetTimeError!timespec {
+~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+referenced by:
+    request: src/main.zig:187:59
+    protocol: src/main.zig:104:33
+    6 reference(s) hidden; use '-freference-trace=8' to see all references
+error: the following command failed with 1 compilation errors:
+/workspace/tooling/ziglang/ziglang/zig build-exe -fstrip -OReleaseFast -Mroot=/workspace/eyg-lang/work/book-framealloc-cpu-20261028/packages/zig_runtime/src/main.zig --cache-dir /workspace/eyg-lang/work/book-framealloc-cpu-20261028/packages/zig_runtime/.zig-cache --global-cache-dir /workspace/eyg-lang/work/book-framealloc-cpu-20261028/global-cache --name eyg --zig-lib-dir /workspace/tooling/ziglang/ziglang/lib/ --listen=- 
+Build Summary: 0/3 steps succeeded; 1 failed
+install transitive failure
++- install eyg transitive failure
+   +- zig build-exe eyg ReleaseFast native 1 errors
+error: the following build command failed with exit code 1:
+/workspace/eyg-lang/work/book-framealloc-cpu-20261028/packages/zig_runtime/.zig-cache/o/f5032da8263744107fc42a5daac06972/build /workspace/tooling/ziglang/ziglang/zig /workspace/tooling/ziglang/ziglang/lib /workspace/eyg-lang/work/book-framealloc-cpu-20261028/packages/zig_runtime /workspace/eyg-lang/work/book-framealloc-cpu-20261028/packages/zig_runtime/.zig-cache /workspace/eyg-lang/work/book-framealloc-cpu-20261028/global-cache --seed 0xf205bd7f -Zb5566114b5e5370a -Doptimize=ReleaseFast --summary all

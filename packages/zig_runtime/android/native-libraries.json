@@ -1,0 +1,81 @@
+{
+  "zig": "0.14.1",
+  "ndk": "27.1.12297006",
+  "minimumAndroidApi": 26,
+  "features": [
+    "shared EYG evaluator",
+    "GitQuery",
+    "pure relative imports",
+    "named/versioned/pinned/content hub references",
+    "canonical CID validation",
+    "verified TLS Fetch",
+    "EYGParse/DecodeJSON/CreateKey/Sign/Hash/Inflate",
+    "source provenance and effect cast validation",
+    "cooperative sticky cancellation",
+    "asynchronous caller effects suspension/resume",
+    "bounded isolated synchronous pure EYG callbacks",
+    "explicit input binding for durable background entrypoints"
+  ],
+  "sourceSha256": {
+    "android_bridge.zig": "831841069e71e2a8d9a646218d60fd337e9f4c76530fff3704d5a08a6884e186",
+    "computer.zig": "2e03a83b92540cf3768bcdfb16ae188589a92ad46cd72ff75f9c9cbdeacaa3a4",
+    "effect_cast.zig": "4aa18496543c9bc55fe9695cf71f99b5e4a4c967a0c71efd7061967c050188db",
+    "generated_builtins_inspect.zig": "cb3cd5f21147698bb4d2005bc6ecaf0002c2bed2b2203853b219a78c4ef415fb",
+    "git.zig": "8df63d12697b0691aa6fef0d0a75146e880ec4c25cd373859e1874e9f149af3b",
+    "git_config.zig": "46dacb4b8925faa404c7ee5c29aac96a81a2225b2af0479c405b738a8d4c85c6",
+    "git_write.zig": "8b2c7c201393bfa806cc759b686fb765e469ac4e5da65d2e07f326b3c5838be0",
+    "http.zig": "a25fe2c70fb5c414c81e72a28a72ce981bde3004bb8cc1cc5f2d58988e386973",
+    "hub.zig": "5a051507b41f7097f8a17b9b45020c126c45591b53bb1d72f746a826fb166d82",
+    "inspection.zig": "8324a20a5462a1dee21728e4364fc10fa5f74ea2fdbae09ad0280a10975f55fe",
+    "interpreter.zig": "7499911d154dc8f51476a42caf7be94d17eae2293709cf6665d0141ca56a2095",
+    "ir_codec.zig": "a915c047734a60a3ddfa6885e8319c6ed18e530275971adb864a9c0dafe44e2c",
+    "oracle_order.zig": "efa88b609a50cf69bb4d23995474737d0b55a6113684861c867c641122eddc0f",
+    "parser.zig": "7a400b85e7973c9b5029e76bbe5b065307325db260a54bbe75a3cac229db2393",
+    "pretty.zig": "fa6b95062c3bc1e94135ca33b3b77f8466b2f9287bd7fabf1e33268a5f1cecbb",
+    "resume_inspect.zig": "0e654956ddeb9edadf95cd8101647ed787fc451a97fc9f39db60edc9703856c6",
+    "source.zig": "47e3a7dd6d7fc7f8815d46790509a4700308d7ca0a13b43d6da1cfbcab16f157",
+    "unicode.zig": "a97ae32f1dd421c23d806e7d2445d85ea849d15404bddd20b542a8ebe109865a",
+    "unicode_data.zig": "4323de4a76674cbbd0b36945329529d804875875d72c16ebc3fb65ea02e8af1a"
+  },
+  "sourceDrift": [],
+  "jniSourceSha256": "d3faf5f3a3d20420bf352d737fec30e93ba177c1ec28e0d63e08ab82dd8e89c0",
+  "kotlinSourceSha256": {
+    "EygNative.kt": "b1922c44fd57e4e93b1a7f4449a7664066c6ac16f32850bb8dc59fd8f2b16e27",
+    "EygRuntimeModule.kt": "b70cbebac9a19a48b969c06dd005959e0ce7a97c52d1ac1b25385ead0c62e188",
+    "NativeSessions.kt": "7ea9ce6d58ecd8f8bf03cbaf077c4378cf970a54ac69902f6b493dcc7274ea34"
+  },
+  "libraries": [
+    {
+      "abi": "arm64-v8a",
+      "file": "libeyg_jni.so",
+      "bytes": 7464,
+      "sha256": "a8d9fdd3237b7adf28ca034f6c379c4d2b6227f00db33f62e297875355dd6299",
+      "loadAlignment": 16384,
+      "pureExport": "Java_expo_modules_eyg_EygNative_pure"
+    },
+    {
+      "abi": "arm64-v8a",
+      "file": "libeyg_zig.so",
+      "bytes": 1979912,
+      "sha256": "829ca093f6f6c2be2719d5cdb258413a87b6af7b32ee9a038f6ebd7d2bab104f",
+      "loadAlignment": 16384,
+      "pureExport": "eyg_android_pure"
+    },
+    {
+      "abi": "x86_64",
+      "file": "libeyg_jni.so",
+      "bytes": 7128,
+      "sha256": "929d2d668500a8a6ef56c8df23daaa473579622f726681471d0e86bed5a1cf10",
+      "loadAlignment": 16384,
+      "pureExport": "Java_expo_modules_eyg_EygNative_pure"
+    },
+    {
+      "abi": "x86_64",
+      "file": "libeyg_zig.so",
+      "bytes": 2109984,
+      "sha256": "c0d4d679825619ae7a4e9f18e53fb6ff78fd06185b45a967d6962868b3e6eaf0",
+      "loadAlignment": 16384,
+      "pureExport": "eyg_android_pure"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "oracle_source_unmodified": true,
+  "request": {
+    "op": "tui",
+    "files": {},
+    "width": 40,
+    "height": 10,
+    "events": [
+      {
+        "paste": "let x=1 x"
+      },
+      {
+        "key": " "
+      }
+    ]
+  },
+  "oracle_paste_control_frames": 2,
+  "oracle_navigation": "timeout",
+  "oracle_timeout_seconds": 2,
+  "oracle_observed_seconds": 2.0049570490000406,
+  "native_frames": 3,
+  "native_protocol_request_seconds": 0.05735829199966247,
+  "native_binary_sha256": "f0552495f1b021271d564fae21722f8f86e94c4a3d62f3983e46e1892cddacbc",
+  "oracle_navigation_source_sha256": "1f0b8b896f1d4106c4eead4b5836ac4acfc5cc7eff8507ee121bd77e5c263412",
+  "explanation": "next_vacant starts with root path [] but next traverses a non-vacant Block through assignment/value/tail without returning root; the cycle never reaches its initial-path or root-expression termination checks.",
+  "parity_complete": false
+}

@@ -1,0 +1,14 @@
+apply plugin: 'com.android.library'
+apply plugin: 'expo-module-gradle-plugin'
+
+group = 'run.eyg'
+version = '0.1.0'
+
+android {
+  namespace 'expo.modules.eyg'
+  defaultConfig {
+    minSdkVersion 26
+    consumerProguardFiles 'consumer-rules.pro'
+    ndk { abiFilters 'arm64-v8a', 'x86_64' }
+  }
+}

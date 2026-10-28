@@ -1,0 +1,12 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "op": "diagnostic",
+    "source": "§"
+  },
+  "minimized": {
+    "op": "diagnostic",
+    "source": "§"
+  }
+}

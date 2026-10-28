@@ -1,0 +1,96 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "op": "tui",
+    "width": 20,
+    "height": 10,
+    "events": [
+      {
+        "paste": "invalid!!"
+      },
+      {
+        "key": "e"
+      },
+      {
+        "key": "n"
+      },
+      {
+        "key": "p"
+      },
+      {
+        "key": "t"
+      },
+      {
+        "key": "j"
+      },
+      {
+        "key": "n"
+      },
+      {
+        "key": "home"
+      },
+      {
+        "key": "up"
+      },
+      {
+        "key": "t"
+      },
+      {
+        "key": "R"
+      },
+      {
+        "key": "t"
+      },
+      {
+        "paste": "!int_add(20, 22)"
+      },
+      {
+        "key": "ctrl+a"
+      },
+      {
+        "paste": "👩‍💻é"
+      },
+      {
+        "key": "e"
+      },
+      {
+        "key": "e"
+      },
+      {
+        "key": "w"
+      },
+      {
+        "key": "ctrl+a"
+      },
+      {
+        "key": "h"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "paste": "{x: 1, y: 2}"
+      }
+    ]
+  },
+  "minimized": {
+    "op": "tui",
+    "width": 20,
+    "height": 10,
+    "events": [
+      {
+        "paste": "👩‍💻é"
+      }
+    ]
+  }
+}

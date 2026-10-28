@@ -1,0 +1,45 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "paste": "{x: 1, y: [2, 3]}"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "u"
+      },
+      {
+        "key": "ctrl+z"
+      },
+      {
+        "key": "ctrl+y"
+      }
+    ]
+  },
+  "minimized": {
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "paste": "{x: 1, y: [2, 3]}"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "ctrl+y"
+      }
+    ]
+  }
+}

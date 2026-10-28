@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -eu
+package_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+export ZIG_GLOBAL_CACHE_DIR=${ZIG_GLOBAL_CACHE_DIR:-"$package_dir/work/zig-global-cache"}
+if command -v zig >/dev/null 2>&1; then
+  if [ "$(zig version)" = 0.14.1 ]; then
+    exec zig "$@"
+  fi
+fi
+if [ -x /workspace/tooling/ziglang/ziglang/zig ]; then
+  exec /workspace/tooling/ziglang/ziglang/zig "$@"
+fi
+if [ ! -x "$package_dir/work/tooling/ziglang/zig" ]; then
+  python3 -m pip install --target "$package_dir/work/tooling" 'ziglang==0.14.1'
+fi
+exec "$package_dir/work/tooling/ziglang/zig" "$@"

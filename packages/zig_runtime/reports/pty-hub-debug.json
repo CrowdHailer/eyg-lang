@@ -1,0 +1,104 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "8ecde99412bdfe0f598a644f873b10563dbeb9cd57f34de132d2b12ae386b525",
+  "fixture": {
+    "cid": "baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+    "program": {
+      "0": "i",
+      "v": 42
+    },
+    "module_delay_ms": 500
+  },
+  "passed": false,
+  "failures": [
+    {
+      "name": "reference-loading",
+      "difference": {
+        "path": "$.cells[1860].data",
+        "expected": ":",
+        "got": " "
+      }
+    },
+    {
+      "name": "modal-during-load",
+      "difference": {
+        "path": "$.cells[1860].data",
+        "expected": ":",
+        "got": " "
+      }
+    },
+    {
+      "name": "modal-cancelled-load",
+      "difference": {
+        "path": "$.cells[1860].data",
+        "expected": ":",
+        "got": " "
+      }
+    }
+  ],
+  "requests": [
+    {
+      "phase": "gleam",
+      "path": "/packages/pull?",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "gleam",
+      "path": "/packages/pull?since=1",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "gleam",
+      "path": "/modules/baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "native",
+      "path": "/packages/pull",
+      "user_agent": "zig/0.14.1 (std.http)"
+    },
+    {
+      "phase": "native",
+      "path": "/packages/pull?since=1",
+      "user_agent": "zig/0.14.1 (std.http)"
+    },
+    {
+      "phase": "native",
+      "path": "/modules/baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+      "user_agent": "zig/0.14.1 (std.http)"
+    }
+  ],
+  "native_samples_ns": [
+    5652398,
+    22432394,
+    4251085,
+    8219591,
+    23171395,
+    8860723,
+    2703379
+  ],
+  "gleam_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l"
+  },
+  "native_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l\u001b[0m\u001b[?25h"
+  },
+  "checked": 10,
+  "parity_passed": false,
+  "cleanup_passed": true,
+  "key_to_frame": {
+    "samples": 7,
+    "p50_ms": 8.219591,
+    "p95_ms": 23.171395,
+    "p99_ms": 23.171395,
+    "max_ms": 23.171395,
+    "mean_ms": 10.755852142857144,
+    "under_10ms": false
+  }
+}

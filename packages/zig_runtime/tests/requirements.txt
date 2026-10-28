@@ -1,0 +1,4 @@
+pyte==0.8.2
+wcwidth==0.9.4
+cryptography==50.0.0
+Pillow==12.3.0

@@ -1,0 +1,40 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "files": {
+      "lib/answer.eyg": "42",
+      "main.eyg": "{answer: 42}",
+      ".hidden.eyg": "0"
+    },
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "paste": "import \"missing.eyg\""
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {
+      "lib/answer.eyg": "42",
+      "main.eyg": "{answer: 42}",
+      ".hidden.eyg": "0"
+    },
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "events": [
+      {
+        "paste": "import \"missing.eyg\""
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  }
+}

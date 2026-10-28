@@ -1,0 +1,65 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "017100bd1cae1a90a66e684d4299849ca2f0b24a004baa0167dea8676331c544",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "counts": {
+    "tui-scenario": {
+      "checked": 17,
+      "passed": 13,
+      "failed": 4
+    }
+  },
+  "failures": [
+    {
+      "category": "tui-scenario",
+      "name": "delete-undo",
+      "difference": {
+        "path": "$.frames[3].cells[1761].symbol",
+        "expected": "y",
+        "got": "x"
+      }
+    },
+    {
+      "category": "tui-scenario",
+      "name": "standard-input",
+      "difference": {
+        "path": "$.frames[1].cells[1760].modifiers",
+        "expected": 32,
+        "got": 40
+      }
+    },
+    {
+      "category": "tui-scenario",
+      "name": "standard-input-cancel",
+      "difference": {
+        "path": "$.frames[1].cells[1760].modifiers",
+        "expected": 32,
+        "got": 40
+      }
+    },
+    {
+      "category": "tui-scenario",
+      "name": "invalid-paste",
+      "difference": {
+        "path": "$.frames[1].cells[1842].symbol",
+        "expected": "e",
+        "got": "C"
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "passed": false,
+  "elapsed_seconds": 38.428547109999954
+}

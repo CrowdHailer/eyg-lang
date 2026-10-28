@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": 268,
+  "seed": 1847,
+  "generated_objects": 100,
+  "generated_commits": 40,
+  "formats": [
+    "loose",
+    "packed",
+    "OFS_DELTA",
+    "REF_DELTA",
+    "pack-index-v2",
+    "packed-refs",
+    "worktree",
+    "first-parent",
+    "path-history",
+    "ref-freshness"
+  ],
+  "native_git_runtime_dependency": false
+}

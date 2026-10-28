@@ -1,0 +1,11 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "2a6cc4767f3da736369f49ffe594ae7de06b63578c7f5d7a4721e9c41b49c0e0",
+  "seed": 20261028,
+  "checked": 1318,
+  "parsed_trees": 1017,
+  "captured_contexts": 301,
+  "failed": 0,
+  "failures": [],
+  "passed": true
+}

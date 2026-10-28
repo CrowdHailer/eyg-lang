@@ -1,0 +1,658 @@
+[
+  {
+    "name": "multiple performs in let block",
+    "source": {
+      "0": "l",
+      "l": "a",
+      "t": {
+        "0": "a",
+        "a": {
+          "0": "v",
+          "l": "a"
+        },
+        "f": {
+          "0": "p",
+          "l": "Bar"
+        }
+      },
+      "v": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 1
+        },
+        "f": {
+          "0": "p",
+          "l": "Foo"
+        }
+      }
+    },
+    "effects": [
+      {
+        "label": "Foo",
+        "lift": {
+          "integer": 1
+        },
+        "reply": {
+          "integer": 2
+        }
+      },
+      {
+        "label": "Bar",
+        "lift": {
+          "integer": 2
+        },
+        "reply": {
+          "integer": 34
+        }
+      }
+    ],
+    "value": {
+      "integer": 34
+    }
+  },
+  {
+    "name": "multiple performs in apply",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 41
+        },
+        "f": {
+          "0": "p",
+          "l": "Foo"
+        }
+      },
+      "f": {
+        "0": "p",
+        "l": "Bar"
+      }
+    },
+    "effects": [
+      {
+        "label": "Foo",
+        "lift": {
+          "integer": 41
+        },
+        "reply": {
+          "integer": 42
+        }
+      },
+      {
+        "label": "Bar",
+        "lift": {
+          "integer": 42
+        },
+        "reply": {
+          "integer": 43
+        }
+      }
+    ],
+    "value": {
+      "integer": 43
+    }
+  },
+  {
+    "name": "handle exec function with no effects",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "i",
+          "v": 15
+        },
+        "l": "_"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "i",
+              "v": 0
+            },
+            "l": "_kont"
+          },
+          "l": "value"
+        },
+        "f": {
+          "0": "h",
+          "l": "Fail"
+        }
+      }
+    },
+    "effects": [],
+    "value": {
+      "integer": 15
+    }
+  },
+  {
+    "name": "handle exec function with different effect check stack in exec and externally are mainained",
+    "source": {
+      "0": "l",
+      "l": "message",
+      "t": {
+        "0": "a",
+        "a": {
+          "0": "v",
+          "l": "message"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "really"
+          },
+          "f": {
+            "0": "b",
+            "l": "string_append"
+          }
+        }
+      },
+      "v": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "l",
+            "l": "_",
+            "t": {
+              "0": "s",
+              "v": "done"
+            },
+            "v": {
+              "0": "a",
+              "a": {
+                "0": "s",
+                "v": "hi"
+              },
+              "f": {
+                "0": "p",
+                "l": "Log"
+              }
+            }
+          },
+          "l": "_"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "f",
+            "b": {
+              "0": "f",
+              "b": {
+                "0": "i",
+                "v": 0
+              },
+              "l": "_kont"
+            },
+            "l": "value"
+          },
+          "f": {
+            "0": "h",
+            "l": "Fail"
+          }
+        }
+      }
+    },
+    "effects": [
+      {
+        "label": "Log",
+        "lift": {
+          "string": "hi"
+        },
+        "reply": {
+          "record": {}
+        }
+      }
+    ],
+    "value": {
+      "string": "reallydone"
+    }
+  },
+  {
+    "name": "handle raised effect with resumption",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "a",
+          "a": {
+            "0": "a",
+            "a": {
+              "0": "u"
+            },
+            "f": {
+              "0": "p",
+              "l": "Foo"
+            }
+          },
+          "f": {
+            "0": "t",
+            "l": "Tagged"
+          }
+        },
+        "l": "_"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "a",
+              "a": {
+                "0": "i",
+                "v": 1
+              },
+              "f": {
+                "0": "v",
+                "l": "kont"
+              }
+            },
+            "l": "kont"
+          },
+          "l": "value"
+        },
+        "f": {
+          "0": "h",
+          "l": "Foo"
+        }
+      }
+    },
+    "effects": [],
+    "value": {
+      "tagged": {
+        "label": "Tagged",
+        "value": {
+          "integer": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "early return from handler with value",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "a",
+          "a": {
+            "0": "s",
+            "v": "bang!!"
+          },
+          "f": {
+            "0": "p",
+            "l": "Fail"
+          }
+        },
+        "l": "_"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "a",
+              "a": {
+                "0": "v",
+                "l": "value"
+              },
+              "f": {
+                "0": "t",
+                "l": "Error"
+              }
+            },
+            "l": "_kont"
+          },
+          "l": "value"
+        },
+        "f": {
+          "0": "h",
+          "l": "Fail"
+        }
+      }
+    },
+    "effects": [],
+    "value": {
+      "tagged": {
+        "label": "Error",
+        "value": {
+          "string": "bang!!"
+        }
+      }
+    }
+  },
+  {
+    "name": "handler will be applied after resumption",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "l",
+          "l": "_",
+          "t": {
+            "0": "l",
+            "l": "_",
+            "t": {
+              "0": "ta"
+            },
+            "v": {
+              "0": "a",
+              "a": {
+                "0": "i",
+                "v": 2
+              },
+              "f": {
+                "0": "p",
+                "l": "Push"
+              }
+            }
+          },
+          "v": {
+            "0": "a",
+            "a": {
+              "0": "i",
+              "v": 1
+            },
+            "f": {
+              "0": "p",
+              "l": "Push"
+            }
+          }
+        },
+        "l": "_"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "a",
+              "a": {
+                "0": "a",
+                "a": {
+                  "0": "u"
+                },
+                "f": {
+                  "0": "v",
+                  "l": "kont"
+                }
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "v",
+                  "l": "value"
+                },
+                "f": {
+                  "0": "c"
+                }
+              }
+            },
+            "l": "kont"
+          },
+          "l": "value"
+        },
+        "f": {
+          "0": "h",
+          "l": "Push"
+        }
+      }
+    },
+    "effects": [],
+    "value": {
+      "list": [
+        {
+          "integer": 1
+        },
+        {
+          "integer": 2
+        }
+      ]
+    }
+  },
+  {
+    "name": "handler will still be applied after other effects",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "l",
+          "l": "_",
+          "t": {
+            "0": "a",
+            "a": {
+              "0": "u"
+            },
+            "f": {
+              "0": "p",
+              "l": "Foo"
+            }
+          },
+          "v": {
+            "0": "a",
+            "a": {
+              "0": "s",
+              "v": "another message"
+            },
+            "f": {
+              "0": "p",
+              "l": "Log"
+            }
+          }
+        },
+        "l": "_"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "a",
+              "a": {
+                "0": "i",
+                "v": 100
+              },
+              "f": {
+                "0": "v",
+                "l": "resume"
+              }
+            },
+            "l": "resume"
+          },
+          "l": "value"
+        },
+        "f": {
+          "0": "h",
+          "l": "Foo"
+        }
+      }
+    },
+    "effects": [
+      {
+        "label": "Log",
+        "lift": {
+          "string": "another message"
+        },
+        "reply": {
+          "record": {}
+        }
+      }
+    ],
+    "value": {
+      "integer": 100
+    }
+  },
+  {
+    "name": "handler does not effect code in rest of let statement",
+    "source": {
+      "0": "l",
+      "l": "message",
+      "t": {
+        "0": "a",
+        "a": {
+          "0": "v",
+          "l": "message"
+        },
+        "f": {
+          "0": "p",
+          "l": "Alert"
+        }
+      },
+      "v": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "s",
+            "v": "inside"
+          },
+          "l": "_"
+        },
+        "f": {
+          "0": "a",
+          "a": {
+            "0": "f",
+            "b": {
+              "0": "f",
+              "b": {
+                "0": "a",
+                "a": {
+                  "0": "u"
+                },
+                "f": {
+                  "0": "v",
+                  "l": "resume"
+                }
+              },
+              "l": "resume"
+            },
+            "l": "value"
+          },
+          "f": {
+            "0": "h",
+            "l": "Alert"
+          }
+        }
+      }
+    },
+    "effects": [
+      {
+        "label": "Alert",
+        "lift": {
+          "string": "inside"
+        },
+        "reply": {
+          "integer": 44
+        }
+      }
+    ],
+    "value": {
+      "integer": 44
+    }
+  },
+  {
+    "name": "multiple resumption",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "f",
+        "b": {
+          "0": "a",
+          "a": {
+            "0": "i",
+            "v": 2
+          },
+          "f": {
+            "0": "a",
+            "a": {
+              "0": "a",
+              "a": {
+                "0": "i",
+                "v": 0
+              },
+              "f": {
+                "0": "p",
+                "l": "Get"
+              }
+            },
+            "f": {
+              "0": "b",
+              "l": "int_multiply"
+            }
+          }
+        },
+        "l": "_"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "f",
+          "b": {
+            "0": "f",
+            "b": {
+              "0": "a",
+              "a": {
+                "0": "a",
+                "a": {
+                  "0": "i",
+                  "v": 2
+                },
+                "f": {
+                  "0": "v",
+                  "l": "resume"
+                }
+              },
+              "f": {
+                "0": "a",
+                "a": {
+                  "0": "a",
+                  "a": {
+                    "0": "i",
+                    "v": 1
+                  },
+                  "f": {
+                    "0": "v",
+                    "l": "resume"
+                  }
+                },
+                "f": {
+                  "0": "b",
+                  "l": "int_add"
+                }
+              }
+            },
+            "l": "resume"
+          },
+          "l": "value"
+        },
+        "f": {
+          "0": "h",
+          "l": "Get"
+        }
+      }
+    },
+    "effects": [],
+    "value": {
+      "integer": 6
+    }
+  }
+]

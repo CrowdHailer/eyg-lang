@@ -1,0 +1,39 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "2c20abee70f9daf556709cf74775bbc1d1b08128174e8b79b455195f361fa0ca",
+  "fixture": {
+    "cid": "baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+    "program": {
+      "0": "i",
+      "v": 42
+    },
+    "module_delay_ms": 100
+  },
+  "passed": false,
+  "failures": [],
+  "requests": [
+    {
+      "phase": "gleam",
+      "path": "/packages/pull?",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "gleam",
+      "path": "/packages/pull?since=1",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "gleam",
+      "path": "/modules/baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+      "user_agent": "Bun/1.3.13"
+    }
+  ],
+  "native_samples_ns": [],
+  "gleam_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l"
+  },
+  "error": "native did not pull and finish the fixture ledger"
+}

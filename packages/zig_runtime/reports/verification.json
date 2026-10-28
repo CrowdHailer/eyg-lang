@@ -1,0 +1,716 @@
+{
+  "passed": false,
+  "qualified": false,
+  "status": "complete",
+  "quick": false,
+  "performance_requested": true,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "git_reference": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+  "command": [
+    "/workspace/eyg-lang/packages/zig_runtime/tests/verify.py",
+    "--oracle-timeout",
+    "5"
+  ],
+  "artifacts": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462",
+  "stages": [
+    {
+      "name": "units",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build",
+        "test",
+        "-Doptimize=ReleaseFast"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/units.log",
+      "exit_code": 0,
+      "seconds": 196.332
+    },
+    {
+      "name": "build-main",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build",
+        "-Doptimize=ReleaseFast",
+        "--prefix",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/install"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-main.log",
+      "exit_code": 0,
+      "seconds": 157.228
+    },
+    {
+      "name": "build-inference-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "eyg_native",
+        "-Mroot=tests/inference_runner.zig",
+        "-Meyg_native=src/lib.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/inference-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-inference-runner.log",
+      "exit_code": 0,
+      "seconds": 16.579
+    },
+    {
+      "name": "build-pretty-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "eyg_interpreter",
+        "-Mroot=tests/pretty_runner.zig",
+        "-Meyg_interpreter=src/interpreter.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/pretty-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-pretty-runner.log",
+      "exit_code": 0,
+      "seconds": 17.171
+    },
+    {
+      "name": "build-evaluation-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "eyg_interpreter",
+        "-Mroot=tests/evaluation_runner.zig",
+        "-Meyg_interpreter=src/interpreter.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/evaluation-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-evaluation-runner.log",
+      "exit_code": 0,
+      "seconds": 10.532
+    },
+    {
+      "name": "build-computer-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "computer",
+        "-Mroot=tests/computer_runner.zig",
+        "-Mcomputer=src/computer.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/computer-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-computer-runner.log",
+      "exit_code": 0,
+      "seconds": 39.397
+    },
+    {
+      "name": "build-effect-cast-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "effect_cast",
+        "-Mroot=tests/effect_cast_runner.zig",
+        "-Meffect_cast=src/effect_cast.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/effect-cast-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-effect-cast-runner.log",
+      "exit_code": 0,
+      "seconds": 6.827
+    },
+    {
+      "name": "build-hub-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "hub",
+        "-Mroot=tests/hub_runner.zig",
+        "-Mhub=src/hub.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/hub-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-hub-runner.log",
+      "exit_code": 0,
+      "seconds": 120.906
+    },
+    {
+      "name": "build-patterns-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "patterns",
+        "-Mroot=tests/patterns_runner.zig",
+        "-Mpatterns=src/tui_patterns.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/patterns-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-patterns-runner.log",
+      "exit_code": 0,
+      "seconds": 6.126
+    },
+    {
+      "name": "build-source-runner",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "eyg_source",
+        "-Mroot=tests/source_runner.zig",
+        "-Meyg_source=src/source.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/source-runner"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-source-runner.log",
+      "exit_code": 0,
+      "seconds": 15.133
+    },
+    {
+      "name": "build-http-driver",
+      "command": [
+        "/workspace/eyg-lang/packages/zig_runtime/scripts/zig",
+        "build-exe",
+        "-OReleaseFast",
+        "--dep",
+        "http",
+        "-Mroot=http/driver.zig",
+        "-Mhttp=src/http.zig",
+        "-femit-bin=/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/http-driver"
+      ],
+      "passed": true,
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/build-http-driver.log",
+      "exit_code": 0,
+      "seconds": 110.219
+    },
+    {
+      "name": "differential",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/differential.json",
+        "--programs",
+        "5000",
+        "--syntax",
+        "1000",
+        "--traces",
+        "100",
+        "--edit-traces",
+        "100",
+        "--oracle-timeout",
+        "5.0",
+        "--no-shrink"
+      ],
+      "passed": false,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/differential.log",
+      "exit_code": 1,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/differential.json",
+      "report_sha256": "6c163ec6ab1eafb38b515dcf8b14248153ff368cc17a6ab11658d391fec445cf",
+      "report_passed": false,
+      "seconds": 122.997
+    },
+    {
+      "name": "input",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_input.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/input.json",
+        "--cases",
+        "1000"
+      ],
+      "passed": true,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/input.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/input.json",
+      "report_sha256": "e59249caa7c5005e8d933c42f02b57ed0028b6cf85880104f148041b4dffcf9d",
+      "report_passed": true,
+      "seconds": 4.015
+    },
+    {
+      "name": "inference",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_inference.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/inference-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/inference.json",
+        "--programs",
+        "1000",
+        "--scopes",
+        "300"
+      ],
+      "passed": true,
+      "binary_sha256": "2926be14143e6759784f70ce5fc3dba40b4be8b97ca8a3502f5054f46fd0107c",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/inference.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/inference.json",
+      "report_sha256": "389f0a6a8e32e63f877fa43c3c3f7c2fecaf8d0bfd4d19d457f97bdcb20a6bee",
+      "report_passed": true,
+      "seconds": 24.125
+    },
+    {
+      "name": "pretty",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_pretty.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/pretty-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pretty.json",
+        "--programs",
+        "1000",
+        "--unicode-records",
+        "300"
+      ],
+      "passed": true,
+      "binary_sha256": "380ca8462c458a5230fac1eeda531a8718f7f7fa1f4243f9c07b26ea6e0ae93f",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/pretty.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pretty.json",
+      "report_sha256": "602473be6699127a1b5a0fcd83eef0ce26a5ff5acd99c7258036a953fd011536",
+      "report_passed": true,
+      "seconds": 19.705
+    },
+    {
+      "name": "resume",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_resume.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/pretty-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/resume.json",
+        "--programs",
+        "300"
+      ],
+      "passed": true,
+      "binary_sha256": "380ca8462c458a5230fac1eeda531a8718f7f7fa1f4243f9c07b26ea6e0ae93f",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/resume.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/resume.json",
+      "report_sha256": "08c01a7ccb7c9b9f1023360fd9f67216141f7deb75dd7e53793c4b773a8000e7",
+      "report_passed": true,
+      "seconds": 7.87
+    },
+    {
+      "name": "source-metadata",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_source.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/source-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/source-metadata.json",
+        "--programs",
+        "1000",
+        "--contexts",
+        "300"
+      ],
+      "passed": true,
+      "binary_sha256": "db4b637f837e843ca40e251ced90ba4afd0d04d29ddfa98293234dea20f30fa9",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/source-metadata.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/source-metadata.json",
+      "report_sha256": "845745f512d0bd4b488edcf04c6be91fad88936d77d578b2ae0867d46e1e6581",
+      "report_passed": true,
+      "seconds": 8.878
+    },
+    {
+      "name": "patterns",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_patterns.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/patterns-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/patterns.json",
+        "--cases",
+        "2000"
+      ],
+      "passed": true,
+      "binary_sha256": "ce376713f63283e5c6b5b3d4a550b4eee7c683aabfaf569a7bc9687d3cecfd8b",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/patterns.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/patterns.json",
+      "report_sha256": "de149c80eb9db887981d16e67e3f3039a049f5d96029c9c956e94d50a041ad08",
+      "report_passed": true,
+      "seconds": 4.706
+    },
+    {
+      "name": "computer",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_computer.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/computer-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/computer.json",
+        "--cases",
+        "1000"
+      ],
+      "passed": true,
+      "binary_sha256": "a057fee71d2ec235d6d870f99473abaf5021149561117ae2681b1c467f200f6f",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/computer.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/computer.json",
+      "report_sha256": "da670194060b5d0c8a076403c053b7b5fc037311adf20fe1a641aafac395af1a",
+      "report_passed": true,
+      "seconds": 10.313
+    },
+    {
+      "name": "effect_cast",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_effect_cast.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/effect-cast-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/effect_cast.json",
+        "--cases",
+        "2000"
+      ],
+      "passed": true,
+      "binary_sha256": "80ba287d300f0d936c4ff328d8f4fb889e7650c7015782ec6f87e1c112e5d3fc",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/effect_cast.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/effect_cast.json",
+      "report_sha256": "62a44023e0368e6d28be29256259e321eef61de5e8dd832b24a126c33b4d12ba",
+      "report_passed": true,
+      "seconds": 3.384
+    },
+    {
+      "name": "hub",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/differential_hub.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/hub-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/hub.json",
+        "--cases",
+        "1000"
+      ],
+      "passed": true,
+      "binary_sha256": "6ea9f68ddf5da4f1de7b613894d693031af1b708e317fe932f34d4c08e106053",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/hub.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/hub.json",
+      "report_sha256": "ba57648062afda8d1073dfa59c15d634d5eb31fc5d3585aeedf8746e459fd586",
+      "report_passed": true,
+      "seconds": 5.357
+    },
+    {
+      "name": "malformed-ir",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/malformed_ir.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/evaluation-runner",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/malformed-ir.json",
+        "--cases",
+        "2000"
+      ],
+      "passed": true,
+      "binary_sha256": "50f1b85b133cc4176cf475c57cbdddcdb20b36da56cee5e9bb2b30ad37a3dae5",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/malformed-ir.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/malformed-ir.json",
+      "report_sha256": "36bd834005e030f9e7c8917a2a65fd9404e0447ec0a70334e376b492e40b259c",
+      "report_passed": true,
+      "seconds": 3.68
+    },
+    {
+      "name": "http",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/http/verify.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/http-driver",
+        "--bun",
+        "/workspace/tooling/bin/bun"
+      ],
+      "passed": false,
+      "binary_sha256": "c1a7f7e2b9f76748fda7486f4429ca89c55c1fb5d87d4c9f18c4a72f08be9e05",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/http.log",
+      "exit_code": 1,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/http.json",
+      "report_sha256": "8148df9d343b693923565ae2600419f7d338b19b1d99b127bac523d7a2307aff",
+      "report_passed": false,
+      "seconds": 17.728
+    },
+    {
+      "name": "git-read",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/git/verify_native.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--protocol",
+        "--objects",
+        "100"
+      ],
+      "passed": true,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/git-read.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/git-read.json",
+      "report_sha256": "e5ff255bdde1ce86854343132cfbe4dcb3f434b7d121355a11bc917d641cb11c",
+      "report_passed": true,
+      "seconds": 5.539
+    },
+    {
+      "name": "git-write",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/git/verify_writes.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--protocol"
+      ],
+      "passed": true,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/git-write.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/git-write.json",
+      "report_sha256": "cc579bde6fba03c6ec722bfc1e3080a8625ac2a72d9130053f22bec6a62b5079",
+      "report_passed": true,
+      "seconds": 0.201
+    },
+    {
+      "name": "pty",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/pty_parity.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--gleam",
+        "/workspace/tooling/bin/gleam",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty.json",
+        "--cast",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/parity.cast"
+      ],
+      "passed": true,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/pty.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty.json",
+      "report_sha256": "e0fe3845201d70b85e2261f6ceae7d666e2c2c1b8e0deddf96776683c906524a",
+      "report_passed": true,
+      "seconds": 2.357
+    },
+    {
+      "name": "pty-hub",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/pty_hub.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--gleam",
+        "/workspace/tooling/bin/gleam",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty-hub.json",
+        "--bun",
+        "/workspace/tooling/bin/bun"
+      ],
+      "passed": true,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/pty-hub.log",
+      "exit_code": 0,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty-hub.json",
+      "report_sha256": "9f616b8760362285056a4dd8f11bdec84060edc1e6dc26068c752c32774a2fbc",
+      "report_passed": true,
+      "seconds": 3.453
+    },
+    {
+      "name": "benchmark",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "/workspace/eyg-lang/packages/zig_runtime/tests/benchmark.py",
+        "--binary",
+        "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+        "--bun",
+        "/workspace/tooling/bin/bun",
+        "--report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/benchmark.json",
+        "--iterations",
+        "100",
+        "--oracle",
+        "--parity-report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/differential.json",
+        "--input-report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/input.json",
+        "--pty-report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty.json",
+        "--hub-report",
+        "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty-hub.json"
+      ],
+      "passed": false,
+      "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+      "log": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/logs/benchmark.log",
+      "exit_code": 1,
+      "report": "/workspace/eyg-lang/packages/zig_runtime/reports/verification-20261028T204149Z-67462/benchmark.json",
+      "report_sha256": "fefb330a10c467ea377b59d79c425b3ba68615bb853d5cf01d857a2fc4340294",
+      "report_passed": false,
+      "seconds": 48.434
+    }
+  ],
+  "known_oracle_gaps": [
+    {
+      "stage": "differential",
+      "peer_failures": [
+        {
+          "category": "generated-program-edit",
+          "name": "15",
+          "native_error": null,
+          "oracle_error": {
+            "kind": "timeout",
+            "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+          }
+        },
+        {
+          "category": "generated-program-edit",
+          "name": "22",
+          "native_error": null,
+          "oracle_error": {
+            "kind": "timeout",
+            "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+          }
+        },
+        {
+          "category": "generated-program-edit",
+          "name": "83",
+          "native_error": null,
+          "oracle_error": {
+            "kind": "timeout",
+            "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+          }
+        }
+      ]
+    },
+    {
+      "stage": "malformed-ir",
+      "oracle_crash_count": 56
+    },
+    {
+      "stage": "http",
+      "unsupported_count": 3
+    }
+  ],
+  "executables": {
+    "computer-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/computer-runner",
+      "sha256": "a057fee71d2ec235d6d870f99473abaf5021149561117ae2681b1c467f200f6f"
+    },
+    "effect-cast-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/effect-cast-runner",
+      "sha256": "80ba287d300f0d936c4ff328d8f4fb889e7650c7015782ec6f87e1c112e5d3fc"
+    },
+    "evaluation-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/evaluation-runner",
+      "sha256": "50f1b85b133cc4176cf475c57cbdddcdb20b36da56cee5e9bb2b30ad37a3dae5"
+    },
+    "eyg": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/eyg",
+      "sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd"
+    },
+    "http-driver": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/http-driver",
+      "sha256": "c1a7f7e2b9f76748fda7486f4429ca89c55c1fb5d87d4c9f18c4a72f08be9e05"
+    },
+    "hub-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/hub-runner",
+      "sha256": "6ea9f68ddf5da4f1de7b613894d693031af1b708e317fe932f34d4c08e106053"
+    },
+    "inference-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/inference-runner",
+      "sha256": "2926be14143e6759784f70ce5fc3dba40b4be8b97ca8a3502f5054f46fd0107c"
+    },
+    "patterns-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/patterns-runner",
+      "sha256": "ce376713f63283e5c6b5b3d4a550b4eee7c683aabfaf569a7bc9687d3cecfd8b"
+    },
+    "pretty-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/pretty-runner",
+      "sha256": "380ca8462c458a5230fac1eeda531a8718f7f7fa1f4243f9c07b26ea6e0ae93f"
+    },
+    "source-runner": {
+      "path": "/workspace/eyg-lang/packages/zig_runtime/work/verification/20261028T204149Z-67462/bin/source-runner",
+      "sha256": "db4b637f837e843ca40e251ced90ba4afd0d04d29ddfa98293234dea20f30fa9"
+    }
+  },
+  "source_manifest_sha256": "e0562f11e3b8e3d2e007658b4368ea4acf1b55084873378e10b166ce4728bc00",
+  "pins": {
+    "next-tui": {
+      "actual": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+      "expected": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+      "tracked_sources_clean": true
+    },
+    "real-world": {
+      "actual": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+      "expected": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+      "tracked_sources_clean": true
+    }
+  },
+  "oracle_build_manifest_sha256": "3bca43f3863511984c9fa027c18eb38b723b72d8eb94d3ffe403089b32cff11b",
+  "zig": "0.14.1",
+  "bun": "1.3.13",
+  "gleam": "gleam 1.19.2",
+  "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "build_info": {
+    "zig": "0.14.1",
+    "mode": "ReleaseFast",
+    "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+    "git_reference": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+    "protocol": 1
+  },
+  "release_fast_build": true,
+  "sources_unchanged": true,
+  "source_changes": [],
+  "binary_unchanged": true,
+  "oracle_build_unchanged": true,
+  "oracle_sources_unchanged": true,
+  "seconds": 991.179
+}
