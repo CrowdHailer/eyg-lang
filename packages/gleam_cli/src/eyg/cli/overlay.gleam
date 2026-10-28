@@ -26,6 +26,8 @@ import eyg/interpreter/value
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/http/response
+import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/pair
@@ -39,6 +41,7 @@ import loam/system
 import midas/continuation.{type Continuation as K}
 import overlay/agent
 import overlay/config as overlay_config
+import overlay/export
 import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/tool
@@ -208,6 +211,10 @@ fn outer_loop(
   use read <- system.then(input(session.styled, ">>>", "send a message"))
   case read {
     Ok("") -> system.Done(Nil)
+    Ok("/export" <> path) -> {
+      use Nil <- system.then(export(session, history, string.trim(path)))
+      outer_loop(session, eyg_state, history)
+    }
     Ok(text) -> {
       use #(result, eyg_state) <- system.then(
         inner_loop(session, eyg_state, [chat.UserMessage(text, []), ..history]),
@@ -731,3 +738,40 @@ pub const rule_mapping = [
   #("StandardOut", policy.PolicyField("standard_out")),
   #("WriteFile", policy.PolicyField("write_file")),
 ]
+
+/// Write the chat in the opencode session export format.
+fn export(
+  session: Session(harness_computer.Effect),
+  history: List(chat.Message(tool.Call)),
+  path: String,
+) -> system.Effect(Nil) {
+  use time <- system.then(system.now())
+  let path = case path {
+    "" -> "overlay-session-" <> int.to_string(time) <> ".json"
+    path -> path
+  }
+  let exported =
+    export.encode(
+      export.Session(
+        id: "ses_" <> int.to_string(time),
+        directory: session.cwd,
+        provider_id: provider.id(session.llm.provider),
+        model_id: session.llm.model,
+        time:,
+      ),
+      list.reverse(history),
+    )
+    |> json.to_string
+  use resolved <- system.then(source.resolve_filepath(source.Pipe, path))
+  let path = result.unwrap(resolved, path)
+  use result <- system.then(system.write_file(path, exported))
+  system.stdout(case result {
+    Ok(Nil) -> "exported session to " <> path
+    Error(reason) ->
+      terminal.style(
+        session.styled,
+        ansi.red,
+        "failed to export session: " <> string.inspect(reason),
+      )
+  })
+}
