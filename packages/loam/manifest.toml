@@ -23,6 +23,7 @@ packages = [
   { name = "gbor", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib", "ieee_float"], otp_app = "gbor", source = "hex", outer_checksum = "229405DE143C1D669194276B1F338471F6EFAA5796BA6D1CF42F33B01347B82F" },
   { name = "glam", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "48A043A12091F93D911C316DD8F7FFD03CD9FF6F50848FC56E359D3C168DF0FA" },
   { name = "glance", version = "7.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "glexer"], otp_app = "glance", source = "hex", outer_checksum = "EA52986965408D43003A1760E41457493EB96098DE193E6AD8646930EC190CB9" },
+  { name = "glasshouse", version = "0.1.0", build_tools = ["gleam"], requirements = ["dag_json", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "otel"], source = "local", path = "../glasshouse" },
   { name = "gleam_community_ansi", version = "1.5.0", build_tools = ["gleam"], requirements = ["gleam_community_colour", "gleam_regexp", "gleam_stdlib"], otp_app = "gleam_community_ansi", source = "hex", outer_checksum = "B5AA433AF84313E23FDF90CCFF752B9380FE9FFCE02B2949D49B7AACCC77B16D" },
   { name = "gleam_community_colour", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "gleam_community_colour", source = "hex", outer_checksum = "6DB4665555D7D2B27F0EA32EF47E8BEBC4303821765F9C73D483F38EE24894F0" },
   { name = "gleam_crypto", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_crypto", source = "hex", outer_checksum = "2DE9E4EF53CF6FEE049D4F765731F7178F7A11AEFAE00EEE63BF7536B354AD3F" },
@@ -68,6 +69,7 @@ eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_ir = { path = "../gleam_ir" }
 eyg_parser = { path = "../gleam_parser" }
 filepath = { version = ">= 1.1.2 and < 2.0.0" }
+glasshouse = { path = "../glasshouse" }
 gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_fetch = { version = ">= 1.4.1 and < 2.0.0" }
 gleam_http = { version = ">= 4.4.0 and < 5.0.0" }

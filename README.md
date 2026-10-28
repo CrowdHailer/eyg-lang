@@ -30,6 +30,7 @@ Projects in this repo introduce extra contraints, over regular programming langu
 - Write assertions and ordered effect expectations with [aok](./guides/writing_tests_with_aok.md).
 - File and import path resolution is explained in [`guides/file_resolution.md`](./guides/file_resolution.md).
 - Effect spans and named function profiles are explained in [`guides/tracing.md`](./guides/tracing.md).
+- Portable recording, replay and telemetry export are explained in [`guides/trajectories.md`](./guides/trajectories.md).
 - To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md).
 
 ## Packages

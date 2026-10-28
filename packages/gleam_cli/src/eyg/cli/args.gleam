@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/option.{type Option, None, Some}
 import loam/source
 
@@ -18,6 +19,10 @@ pub type Args {
   SignatoryShow(alias: String)
   Publish(package: String, file: String)
   Overlay(input: source.Input)
+  Record(input: source.Input, arguments: Option(List(String)))
+  Replay(path: String)
+  Inspect(path: String, step: Option(Int))
+  Upload(path: String)
   InvalidArguments(message: String)
   Help
   Version
@@ -25,6 +30,37 @@ pub type Args {
 
 pub fn parse(args) {
   case args {
+    ["record", "run", "-c", code] | ["record", "run", "--code", code] ->
+      Record(source.Code(code), None)
+    ["record", "run", "-"] | ["record", "run", "--stdin"] ->
+      Record(source.Stdin, None)
+    ["record", "run", file] -> Record(source.File(file), None)
+    ["record", "script", "-c", code, ..arguments]
+    | ["record", "script", "--code", code, ..arguments] ->
+      Record(source.Code(code), Some(arguments))
+    ["record", "script", "-", ..arguments]
+    | ["record", "script", "--stdin", ..arguments] ->
+      Record(source.Stdin, Some(arguments))
+    ["record", "script", file, ..arguments] ->
+      Record(source.File(file), Some(arguments))
+    ["record", "-c", code] | ["record", "--code", code] ->
+      Record(source.Code(code), None)
+    ["record", "-"] | ["record", "--stdin"] -> Record(source.Stdin, None)
+    ["record", "#" <> _ as code] | ["record", "@" <> _ as code] ->
+      Record(source.Code(code), None)
+    ["record", file, ..arguments] -> Record(source.File(file), Some(arguments))
+    ["record", ..] ->
+      InvalidArguments(
+        "usage: eyg record <file> | eyg record -c <code> | eyg record script <file> [args...]",
+      )
+    ["replay", path] -> Replay(path)
+    ["upload", path] -> Upload(path)
+    ["inspect", path] -> Inspect(path, None)
+    ["inspect", path, step] ->
+      case int.parse(step) {
+        Ok(step) if step >= 0 -> Inspect(path, Some(step))
+        _ -> InvalidArguments("inspect step must be a nonnegative integer")
+      }
     [] -> Shell(None)
     ["shell", "-c", code] | ["shell", "--code", code] ->
       Shell(Some(source.Code(code)))
@@ -151,6 +187,12 @@ commands:
   run -c, --code <code>  run inline EYG source
   run #<mod>, @<pkg>     run a module or package
   profile <file>         run with named function/effect spans
+  record run <file>      run a block and save a portable trajectory
+  record run -c <code>   record an inline block
+  record <file> [args]   record a script and its arguments
+  replay <trace>        replay EYG journals from a portable archive
+  inspect <trace> [step] show recorded effects and observed file changes
+  upload <trace>        send archived spans to Langfuse or an OTLP collector
   profile -c <code>, -   profile inline source or stdin
   compile <file>         compile a script to JavaScript
   compile -, --stdin     compile EYG source read from stdin
