@@ -8,6 +8,13 @@ import eyg/parser/token
 import gleeunit/should
 import multiformats/cid/v1
 
+pub fn block_bindings_keep_lexical_source_order_test() {
+  let code = "let first = 3 let add = (n) -> { !int_add(first, n) } add(2)"
+  let assert Ok(#(#([#(first, _, _), #(second, _, _)], _), [])) =
+    parser.block_from_string(code)
+  assert first == "first" && second == "add"
+}
+
 pub fn literal_test() {
   "x"
   |> parser.all_from_string()

@@ -25,6 +25,7 @@ pub fn all_from_string(src) {
   }
 }
 
+/// Return top-level bindings in source order, followed by the optional result.
 pub fn block_from_string(src) {
   let parsed =
     src
@@ -43,8 +44,8 @@ fn do_gather(exp, acc) {
   case exp {
     ir.Let(label, value, then) ->
       do_gather(then, [#(label, value, span), ..acc])
-    ir.Vacant -> #(acc, None)
-    _ -> #(acc, Some(#(exp, span)))
+    ir.Vacant -> #(list.reverse(acc), None)
+    _ -> #(list.reverse(acc), Some(#(exp, span)))
   }
 }
 

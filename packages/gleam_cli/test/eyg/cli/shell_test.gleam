@@ -223,3 +223,23 @@ pub fn frontend_recording_retains_bindings_test() {
     shell.handle_recorded("now", scope, defs, state)
     |> sandbox.run(sandbox.sandbox())
 }
+
+pub fn bindings_in_one_cell_are_visible_to_later_closures_test() {
+  let code = "let x = 3 let add = (n) -> { !int_add(x, n) } add(2)"
+  let assert #(sandbox.Returned(#(output, _)), _) =
+    shell.handle(code, [], [], state()) |> sandbox.run(sandbox.sandbox())
+  assert output == [Ok("5")]
+}
+
+pub fn same_cell_shadowing_agrees_with_later_calls_and_types_test() {
+  let sandbox =
+    with_lines(sandbox.sandbox(), [
+      "let x = 3 let x = 8 let add = (n) -> { !int_add(x, n) }", "add(2)",
+      "/t add(2)", "",
+    ])
+  let assert #(sandbox.Returned(Ok(0)), sandbox) =
+    sandbox.run(shell.execute(None, helpers.config), sandbox)
+  assert list.contains(sandbox.stdout, "10")
+  assert list.contains(sandbox.stdout, "Integer")
+  assert sandbox.stderr == []
+}
