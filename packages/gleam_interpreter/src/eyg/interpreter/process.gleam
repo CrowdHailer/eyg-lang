@@ -38,6 +38,16 @@ pub fn resume(
   Process(state.V(value), env, stack, location)
 }
 
+/// Resume a scheduler's captured control state, including pending calls.
+pub fn from_state(
+  control: state.Control(m),
+  env: state.Env(m),
+  stack: state.Stack(m),
+  location: m,
+) -> Process(m) {
+  Process(control, env, stack, location)
+}
+
 pub fn slice(process: Process(m), fuel: Int) -> Slice(m) {
   let Process(control, env, stack, location) = process
   case control, stack {

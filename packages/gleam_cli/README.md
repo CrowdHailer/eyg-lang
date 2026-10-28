@@ -2,6 +2,10 @@
 
 CLI for running EYG programs and interacting with the EYG hub.
 
+Use `eyg profile` for named function spans, `EYG_PROFILE_FILE` for local Chrome
+recordings, and `OTEL_EXPORTER_OTLP_ENDPOINT` for OTLP export. See the
+[tracing guide](../../guides/tracing.md) for runnable examples.
+
 ## Usage
 
 *The CLI supports running EYG IR files, saved as `.eyg.json` and textual code file, saved as `.eyg`.*

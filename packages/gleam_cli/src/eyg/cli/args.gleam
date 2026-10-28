@@ -5,6 +5,7 @@ pub type Args {
   Shell(Option(source.Input))
   Tui(Option(source.Input))
   Run(input: source.Input)
+  Profile(input: source.Input)
   Script(input: source.Input, arguments: List(String))
   Eval(input: source.Input)
   Check(input: source.Input)
@@ -43,6 +44,16 @@ pub fn parse(args) {
     ["run", "#" <> _ as code] | ["run", "@" <> _ as code] ->
       Run(source.Code(code))
     ["run", file] -> Run(source.File(file))
+    ["profile", "-c", code] | ["profile", "--code", code] ->
+      Profile(source.Code(code))
+    ["profile", "-"] | ["profile", "--stdin"] -> Profile(source.Stdin)
+    ["profile", "#" <> _ as code] | ["profile", "@" <> _ as code] ->
+      Profile(source.Code(code))
+    ["profile", file] -> Profile(source.File(file))
+    ["profile", ..] ->
+      InvalidArguments(
+        "usage: eyg profile <file> | eyg profile -c <code> | eyg profile -",
+      )
     ["eval", "-c", code] | ["eval", "--code", code] -> Eval(source.Code(code))
     ["eval", "-"] | ["eval", "--stdin"] -> Eval(source.Stdin)
     ["eval", "#" <> _ as code] | ["eval", "@" <> _ as code] ->
@@ -139,6 +150,8 @@ commands:
   run -, --stdin         run EYG source read from stdin
   run -c, --code <code>  run inline EYG source
   run #<mod>, @<pkg>     run a module or package
+  profile <file>         run with named function/effect spans
+  profile -c <code>, -   profile inline source or stdin
   compile <file>         compile a script to JavaScript
   compile -, --stdin     compile EYG source read from stdin
   compile -c, --code <code>
@@ -164,4 +177,7 @@ commands:
   version, --version, -V show the eyg version
 environment:
   EYG_ORIGIN             override the hub origin (default: https://eyg.run)
+  EYG_PROFILE_FILE       write a local Chrome trace JSON recording
+  OTEL_EXPORTER_OTLP_ENDPOINT
+                         export spans to an OTLP/HTTP base URL
 "

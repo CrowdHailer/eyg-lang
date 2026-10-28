@@ -17,6 +17,9 @@ pub type Options {
   )
 }
 
+@external(javascript, "./subprocess_ffi.mjs", "spawn")
+pub fn spawn(bun: Bun, options: Options) -> Result(Subprocess, String)
+
 @external(javascript, "./subprocess_ffi.mjs", "spawnWithInput")
 pub fn spawn_with_input(
   bun: Bun,

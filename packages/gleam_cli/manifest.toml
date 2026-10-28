@@ -46,12 +46,11 @@ packages = [
   { name = "global_value", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "global_value", source = "hex", outer_checksum = "23F74C91A7B819C43ABCCBF49DAD5BB8799D81F2A3736BA9A534BD47F309FF4F" },
   { name = "houdini", version = "1.2.1", build_tools = ["gleam"], requirements = [], otp_app = "houdini", source = "hex", outer_checksum = "6F8AC2F12974567FB744BEA66AC93CEB76AAEA19AD28564623F76CDA9BC26A85" },
   { name = "ieee_float", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "ieee_float", source = "hex", outer_checksum = "12F65F0688AC1EA3826DDFB674E665D0C6E53A8AA3D346848222C55DB32CFAB1" },
-  { name = "input", version = "1.0.1", build_tools = ["gleam"], requirements = [], otp_app = "input", source = "hex", outer_checksum = "FE84CDADC78A1367E4AFD561A529825A8FEC88D165CBDF511FD3226CABCDEE6F" },
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
   { name = "julienne", version = "1.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "julienne", source = "hex", outer_checksum = "7EF7095BB03C3C0807CD15E21C620436F4DB0F9A23A778206A478202A59F36FA" },
   { name = "justin", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "justin", source = "hex", outer_checksum = "8B1C62269E8607D0A0ED698B7903984CE0BF7B6B3C0DEA3C6C8302B39402837B" },
   { name = "kryptos", version = "1.6.0", build_tools = ["gleam"], requirements = ["bigi", "gleam_stdlib", "gleam_time"], otp_app = "kryptos", source = "hex", outer_checksum = "5288D42D5413497C60EEF0D9E268ED77E2619B294DACC3BC7D71FB26E94626D8" },
-  { name = "loam", version = "1.0.0", build_tools = ["gleam"], requirements = ["envoy", "eyg_hub", "eyg_interpreter", "eyg_ir", "eyg_parser", "filepath", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "gleam_time", "gleam_x", "kryptos", "midas", "multiformats", "ogre", "plinthx", "shellout", "simplifile", "touch_grass", "untethered"], source = "local", path = "../loam" },
+  { name = "loam", version = "1.0.0", build_tools = ["gleam"], requirements = ["envoy", "eyg_hub", "eyg_interpreter", "eyg_ir", "eyg_parser", "filepath", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "gleam_time", "gleam_x", "kryptos", "midas", "multiformats", "ogre", "otel", "plinthx", "shellout", "simplifile", "touch_grass", "untethered"], source = "local", path = "../loam" },
   { name = "lustre", version = "5.7.1", build_tools = ["gleam"], requirements = ["exception", "gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib", "houdini"], otp_app = "lustre", source = "hex", outer_checksum = "663A2D1A3458914CA537A42AC07E601DD3FD85415EBDAF4717F2DFF6E86F90F9" },
   { name = "midas", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib"], otp_app = "midas", source = "hex", outer_checksum = "9180B627852B541EAF1FC8D425867303420A42AED43AEE89891FF47B74BB6569" },
   { name = "morph", version = "0.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_hub", "eyg_interpreter", "eyg_ir", "gleam_json", "gleam_stdlib", "gleam_x", "lustre", "multiformats", "non_empty_list", "plinth"], source = "local", path = "../morph" },
@@ -59,6 +58,7 @@ packages = [
   { name = "non_empty_list", version = "2.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "non_empty_list", source = "hex", outer_checksum = "06F9D3AC751CF7853AD5D24B8139CEB30E42D8799DE8D49F966A6197DF0B01CC" },
   { name = "oas_generator_utils", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "oas_generator_utils", source = "hex", outer_checksum = "54FE8BD638AD149BA943ADD0A8A66E549B2288328AB3EBF764D52805A041EA96" },
   { name = "ogre", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "ogre", source = "hex", outer_checksum = "C4B6FE623E9AFC26BE0B2D5AB59E907ECD1B58012039E4B4BB67D5A28B25E392" },
+  { name = "otel", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_javascript", "gleam_json", "gleam_stdlib", "plinthx"], source = "local", path = "../otel" },
   { name = "overlay", version = "1.0.0", build_tools = ["gleam"], requirements = ["castor", "eyg_analysis", "eyg_interpreter", "gleam_http", "gleam_json", "gleam_stdlib", "oas_generator_utils", "ogre", "overlay_llm", "touch_grass"], source = "local", path = "../overlay" },
   { name = "overlay_llm", version = "0.2.0", build_tools = ["gleam"], requirements = ["castor", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "oas_generator_utils", "ogre"], source = "local", path = "../overlay_llm" },
   { name = "plinth", version = "0.11.0", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "D30FDE8FC11EB76538AB498ACFF5399D0AE27993C74D63BE05AFE8CE80C4C839" },
@@ -100,6 +100,7 @@ midas = { version = ">= 3.0.0 and < 4.0.0" }
 morph = { path = "../morph" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 ogre = { version = ">= 1.1.0 and < 2.0.0" }
+otel = { path = "../otel" }
 overlay = { path = "../overlay" }
 overlay_llm = { path = "../overlay_llm" }
 plinthx = { path = "../plinthx" }

@@ -41,6 +41,7 @@ gleam_community_ansi = ">= 1.5.0 and < 2.0.0"
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
 birdie = ">= 2.0.0 and < 3.0.0"
+otel = { path = "../otel" }
 
 [javascript]
 runtime = "bun"

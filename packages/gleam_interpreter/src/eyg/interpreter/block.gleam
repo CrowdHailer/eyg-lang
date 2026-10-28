@@ -7,6 +7,8 @@ import gleam/option.{type Option, Some}
 
 fn loop(c, env: state.Env(t), k) {
   case c {
+    state.Call(_, _, meta) ->
+      process.from_state(c, env, k, meta) |> process.bounded
     state.E(node) -> process.start(node, env.scope) |> process.bounded
     state.V(value) ->
       case k {

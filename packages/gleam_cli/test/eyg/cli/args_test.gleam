@@ -7,6 +7,14 @@ pub fn run_test() {
   assert args.Run(source.File(file)) == args.parse(["run", file])
 }
 
+pub fn profile_inputs_test() {
+  assert args.parse(["profile", "demo.eyg"])
+    == args.Profile(source.File("demo.eyg"))
+  assert args.parse(["profile", "-c", "42"]) == args.Profile(source.Code("42"))
+  assert args.parse(["profile", "-"]) == args.Profile(source.Stdin)
+  let assert args.InvalidArguments(_) = args.parse(["profile"])
+}
+
 pub fn run_code_test() {
   let code = "!print(\"hello\")"
   assert args.Run(source.Code(code)) == args.parse(["run", "-c", code])

@@ -18,6 +18,9 @@ pub type Reason(m) =
 pub type Control(m) {
   E(#(ir.Expression(m), m))
   V(Value(m))
+  /// Keep invocation explicit so alternate runners can observe every call,
+  /// including callbacks invoked by builtins and effect handlers.
+  Call(Value(m), Value(m), m)
 }
 
 pub type Debug(m) =
@@ -69,10 +72,17 @@ pub type Kontinue(m) {
   /// Restore the caller's environment when a closure or continuation returns,
   /// including after an effect resumes. The argument is used in stack traces.
   Trace(Value(m), Env(m))
+  /// Used only by the profiling runner. Unlike Trace, this is not tail-elided.
+  ProfileReturn(Int, Env(m))
 }
 
 pub fn step(c, env, k) {
   case c, k {
+    Call(f, arg, meta), k -> {
+      invoke(f, arg, meta, env, k)
+      |> result.map_error(fn(reason) { #(reason, meta, env, k) })
+      |> try
+    }
     E(exp), k -> try(eval(exp, env, k))
     V(value), Empty -> Break(Ok(value))
     V(value), Stack(k, meta, rest) -> try(apply(value, env, k, meta, rest))
@@ -140,11 +150,16 @@ pub fn apply(value, env, k, meta, rest) {
     CallWith(arg, env) -> call(value, arg, meta, env, rest)
     Delimit(_, _, env, _) -> Ok(#(V(value), env, rest))
     Trace(_, env) -> Ok(#(V(value), env, rest))
+    ProfileReturn(_, env) -> Ok(#(V(value), env, rest))
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, rest) })
 }
 
 pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
+  Ok(#(Call(f, arg, meta), env, k))
+}
+
+fn invoke(f, arg, meta, env: Env(m), k: Stack(m)) {
   case f {
     v.Closure(param, body, captured) -> {
       let k = trace(arg, meta, env, k)

@@ -185,6 +185,8 @@ pub fn run(
 ) -> #(Outcome(a), Sandbox(b)) {
   case effect {
     system.Done(value) -> #(Returned(value), sandbox)
+    system.SpanStart(_, _, resume) | system.SpanEnd(_, resume) ->
+      run(resume(Nil), sandbox)
     system.Exit(status) -> #(Exited(status), sandbox)
     system.Env(name, resume) ->
       run(

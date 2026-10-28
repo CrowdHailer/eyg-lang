@@ -1,6 +1,7 @@
 import envoy
 import filepath
 import gleam/crypto as gcrypto
+import gleam/dynamic.{type Dynamic}
 import gleam/fetch
 import gleam/fetchx
 import gleam/http/request.{type Request}
@@ -14,7 +15,10 @@ import gleam/time/timestamp
 import kryptos/eddsa
 import loam/internal/crypto
 import loam/internal/prompt
+import loam/internal/tracing
 import midas/effect
+import plinthx/javascript/promise as native_promise
+import plinthx/javascript/string as native_string
 import shellout
 import simplifile
 import untethered/keypair
@@ -26,6 +30,8 @@ pub type Metadata {
 // This exists for testing as the runner can be defined straight away.
 pub type Effect(a) {
   Done(a)
+  SpanStart(String, List(#(String, String)), fn(Nil) -> Effect(a))
+  SpanEnd(Option(String), fn(Nil) -> Effect(a))
   AppendFileBits(
     String,
     BitArray,
@@ -191,6 +197,10 @@ pub fn stdout(text) {
 pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
   case effect {
     Done(value) -> func(value)
+    SpanStart(name, attributes, resume) ->
+      SpanStart(name, attributes, fn(value) { then(resume(value), func) })
+    SpanEnd(error, resume) ->
+      SpanEnd(error, fn(value) { then(resume(value), func) })
     Exit(status) -> Exit(status)
     AppendFileBits(path, bytes, resume) ->
       AppendFileBits(path, bytes, fn(result) { then(resume(result), func) })
@@ -286,65 +296,157 @@ pub fn try(
   }
 }
 
+/// Trace a lazy workflow, ending the span before its caller resumes.
+/// The error callback describes operational failure, not application quality.
+pub fn span(
+  name: String,
+  attributes: List(#(String, String)),
+  work: fn() -> Effect(a),
+  error: fn(a) -> Option(String),
+) -> Effect(a) {
+  use Nil <- then(SpanStart(name, attributes, Done))
+  use value <- then(work())
+  use Nil <- map(SpanEnd(error(value), Done))
+  value
+}
+
 pub fn run(effect: Effect(a)) -> Promise(a) {
+  run_traced(effect, tracing.new())
+}
+
+/// Explicit per-run configuration, useful for hosts that do not have process env.
+pub fn run_with_environment(
+  effect: Effect(a),
+  env: List(#(String, String)),
+) -> Promise(a) {
+  run_traced(effect, tracing.configured(env))
+}
+
+fn run_traced(effect: Effect(a), trace: tracing.Context) -> Promise(a) {
+  use #(outcome, trace) <- promise.await(run_effect(fn() { effect }, trace))
+  let error = case outcome {
+    Ok(_) -> option.None
+    Error(reason) ->
+      option.Some(native_string.from(reason) |> result.unwrap("host exception"))
+  }
+  use Nil <- promise.await(tracing.finish(trace, error))
+  case outcome {
+    Ok(value) -> promise.resolve(value)
+    Error(reason) -> {
+      let assert Ok(constructor) = native_promise.get()
+      native_promise.reject(constructor, reason)
+    }
+  }
+}
+
+type Driver(a) {
+  Finished(a, tracing.Context)
+  NextEffect(fn() -> Effect(a), tracing.Context)
+}
+
+fn run_effect(
+  work: fn() -> Effect(a),
+  trace: tracing.Context,
+) -> Promise(#(Result(a, Dynamic), tracing.Context)) {
+  // Catch one step at a time, releasing its old context before driving the next.
+  // Otherwise pending exception handlers retain already-exported span batches.
+  use next <- promise.await(
+    promise.resolve(Nil)
+    |> promise.await(fn(_) { run_step(work(), trace) })
+    |> promise.map(Ok)
+    |> promise.rescue(Error),
+  )
+  case next {
+    Error(reason) -> promise.resolve(#(Error(reason), trace))
+    Ok(Finished(value, trace)) -> promise.resolve(#(Ok(value), trace))
+    Ok(NextEffect(work, trace)) -> run_effect(work, trace)
+  }
+}
+
+fn continue(
+  value: value,
+  resume: fn(value) -> Effect(a),
+  trace: tracing.Context,
+) -> Promise(Driver(a)) {
+  promise.resolve(NextEffect(fn() { resume(value) }, trace))
+}
+
+fn run_step(effect: Effect(a), trace: tracing.Context) -> Promise(Driver(a)) {
   case effect {
-    Done(value) -> promise.resolve(value)
+    Done(value) -> promise.resolve(Finished(value, trace))
+    SpanStart(name, attributes, resume) -> {
+      let trace = tracing.start_span(trace, name, attributes)
+      continue(Nil, resume, trace)
+    }
+    SpanEnd(error, resume) -> {
+      use trace <- promise.await(tracing.end_span(trace, error))
+      continue(Nil, resume, trace)
+    }
     Exit(status) -> {
+      let error = case status {
+        0 -> option.None
+        _ -> option.Some("process exited with status " <> int.to_string(status))
+      }
+      use Nil <- promise.await(tracing.finish(trace, error))
       shellout.exit(status)
       panic as "the process did not stop"
     }
     AppendFileBits(path, bytes, resume) ->
-      run(resume(simplifile.append_bits(path, bytes)))
-    DeleteFile(path, resume) -> run(resume(simplifile.delete(path)))
-    Env(name, resume) -> run(resume(envoy.get(name) |> option.from_result))
+      continue(simplifile.append_bits(path, bytes), resume, trace)
+    DeleteFile(path, resume) -> continue(simplifile.delete(path), resume, trace)
+    Env(name, resume) ->
+      continue(envoy.get(name) |> option.from_result, resume, trace)
     FileInfo(path, resume) -> {
       let result =
         simplifile.file_info(path)
         |> result.map(fn(info) {
           Metadata(simplifile.file_info_type(info), info.size)
         })
-      run(resume(result))
+      continue(result, resume, trace)
     }
     Now(resume) -> {
       let #(seconds, nanos) =
         timestamp.system_time() |> timestamp.to_unix_seconds_and_nanoseconds
-      run(resume(seconds * 1000 + nanos / 1_000_000))
+      continue(seconds * 1000 + nanos / 1_000_000, resume, trace)
     }
-    Random(max, resume) -> run(resume(int.random(max)))
+    Random(max, resume) -> continue(int.random(max), resume, trace)
     ReadFileRange(path, offset, limit, resume) -> {
       let result = case offset < 0 || limit < 0 {
         True -> Error(simplifile.Einval)
         False -> read_at_offset(path, offset, limit)
       }
-      run(resume(result))
+      continue(result, resume, trace)
     }
     WriteFileBits(path, bytes, resume) ->
-      run(resume(simplifile.write_bits(path, bytes)))
-    WriteStdout(text, resume) -> run(resume(io.print(text)))
-    WriteStderr(text, resume) -> run(resume(io.print_error(text)))
-    GenerateKey(resume) -> run(resume(crypto.generate_key()))
+      continue(simplifile.write_bits(path, bytes), resume, trace)
+    WriteStdout(text, resume) -> continue(io.print(text), resume, trace)
+    WriteStderr(text, resume) -> continue(io.print_error(text), resume, trace)
+    GenerateKey(resume) -> continue(crypto.generate_key(), resume, trace)
     Fetch(request, resume) -> {
       use response <- promise.await(do_fetch(request))
-      run(resume(response))
+      continue(response, resume, trace)
     }
-    CreateDirectory(path, resume) -> run(resume(do_create_directory(path)))
-    Cwd(resume) -> run(resume(do_cwd()))
-    Hash(algorithm, bytes, resume) -> run(resume(do_hash(algorithm, bytes)))
-    ReadDirectory(path, resume) -> run(resume(simplifile.read_directory(path)))
-    ReadFile(path, resume) -> run(resume(do_read_file(path)))
+    CreateDirectory(path, resume) ->
+      continue(do_create_directory(path), resume, trace)
+    Cwd(resume) -> continue(do_cwd(), resume, trace)
+    Hash(algorithm, bytes, resume) ->
+      continue(do_hash(algorithm, bytes), resume, trace)
+    ReadDirectory(path, resume) ->
+      continue(simplifile.read_directory(path), resume, trace)
+    ReadFile(path, resume) -> continue(do_read_file(path), resume, trace)
     WriteFile(path, contents, resume) ->
-      run(resume(do_write_file(path, contents)))
+      continue(do_write_file(path, contents), resume, trace)
     SetPermissions(path, permissions, resume) ->
-      run(resume(do_set_permissions(path, permissions)))
-    Stdin(resume) -> run(resume(read_stdin()))
+      continue(do_set_permissions(path, permissions), resume, trace)
+    Stdin(resume) -> continue(read_stdin(), resume, trace)
     Prompt(text, resume) -> {
       use value <- promise.await(prompt.read_line(text))
-      run(resume(value))
+      continue(value, resume, trace)
     }
-    Stdout(text, resume) -> run(resume(io.println(text)))
+    Stdout(text, resume) -> continue(io.println(text), resume, trace)
     Wait(duration, resume) -> {
       use response <- promise.await(promise.wait(duration))
-      run(resume(response))
+      continue(response, resume, trace)
     }
   }
 }
