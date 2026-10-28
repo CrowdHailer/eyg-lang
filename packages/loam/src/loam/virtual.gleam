@@ -1,6 +1,8 @@
 //// A sealed computer. No filesystem, environment, clock, randomness, terminal
 //// or subprocess operation falls through to the host. Only the broker can do IO.
 
+import gleam/http/response
+
 import filepath
 import glasshouse/bundle
 import glasshouse/sha256
@@ -295,6 +297,25 @@ fn step(effect, machine: Machine) {
       output(text, resume, machine)
     system.Hash(algorithm, bytes, resume) ->
       run(resume(system.do_hash(algorithm, bytes)), machine)
+    system.FetchStream(request, resume) -> {
+      let effect =
+        system.Fetch(request, fn(reply) {
+          let reply =
+            result.map(reply, fn(reply) {
+              response.set_body(reply, system.Chunks([reply.body]))
+            })
+          resume(reply)
+        })
+      run(effect, machine)
+    }
+    system.ReadChunk(system.Chunks(chunks), resume) ->
+      case chunks {
+        [] -> run(resume(Ok(#(option.None, system.Chunks([])))), machine)
+        [chunk, ..rest] ->
+          run(resume(Ok(#(option.Some(chunk), system.Chunks(rest)))), machine)
+      }
+    system.ReadChunk(system.Body(_), _) ->
+      stop("live readers are not available inside a sandbox", machine)
     system.Fetch(request, resume) ->
       case bit_array.byte_size(request.body) > machine.limits.response_bytes {
         True -> stop("external request body budget exhausted", machine)

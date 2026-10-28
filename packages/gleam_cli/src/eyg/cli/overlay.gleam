@@ -73,7 +73,6 @@ import touch_grass/harness/computer as harness_computer
 import touch_grass/http
 import touch_grass/interface
 
-// I don't need to implement streaming but if so that goes at the loam level
 // the tools module in overlay web should be reusable
 // policy is read as part of config, which can read files and effects. policy is pure
 
@@ -125,6 +124,17 @@ pub fn execute(
   input: source.Input,
   config: config.Config,
 ) -> system.Effect(Result(Int, String)) {
+  use initialized <- system.then(initialize(input, config))
+  use #(session, state) <- system.try(initialized)
+  use id <- system.then(traces.new_id(session.config.started))
+  let trace = start_trace(id, session)
+  use trace <- system.then(outer_loop(session, state, [], trace))
+  use Nil <- system.then(finish(session, trace))
+  Ok(0) |> system.Done
+}
+
+/// Prepare an agent without taking ownership of terminal input or output.
+pub fn initialize(input: source.Input, config: config.Config) {
   let state = execute.State(config.client.origin, cache.empty())
   use #(result, state) <- system.then(setup(
     input,
@@ -134,11 +144,7 @@ pub fn execute(
     state,
   ))
   use session <- system.try(result)
-  use id <- system.then(traces.new_id(session.config.started))
-  let trace = start_trace(id, session)
-  use trace <- system.then(outer_loop(session, state, [], trace))
-  use Nil <- system.then(finish(session, trace))
-  Ok(0) |> system.Done
+  system.Done(Ok(#(session, state)))
 }
 
 /// Policy fields of effects added after policies were first published.
@@ -389,7 +395,7 @@ pub fn to_archive(
   archive.new(session, recorder.store(recorder))
 }
 
-fn save(
+pub fn save(
   session: Session(_),
   trace: Trace,
 ) -> system.Effect(Result(String, String)) {
@@ -503,7 +509,12 @@ pub fn inner_loop(
   use #(completion, trace) <- system.then(generate(session, history, trace))
   case completion {
     Ok(#(completion, generation)) -> {
-      use Nil <- system.then(system.stdout(completion.content))
+      use Nil <- system.then(
+        system.stdout(case session.persist {
+          True -> ""
+          False -> completion.content
+        }),
+      )
       let history = [chat.from_completion(completion), ..history]
       case completion.tool_calls {
         [] -> system.Done(#(Ok(history), eyg_state, trace))
@@ -543,8 +554,24 @@ pub fn call_id(generation: String, index: Int) -> String {
   generation <> "/" <> int.to_string(index)
 }
 
+fn generate(session: Session(harness_computer.Effect), history, trace) {
+  case session.persist {
+    True -> {
+      use #(completion, trace) <- system.map(streamed_generation(
+        session,
+        list.reverse(history),
+        trace,
+        system.write_stdout,
+      ))
+      let id = "g" <> int.to_string(trace.generations)
+      #(result.map(completion, fn(completion) { #(completion, id) }), trace)
+    }
+    False -> buffered_generation(session, history, trace)
+  }
+}
+
 /// Request a completion, recording the exact request and response bodies.
-fn generate(
+fn buffered_generation(
   session: Session(harness_computer.Effect),
   history: List(chat.Message(tool.Call)),
   trace: Trace,
@@ -602,6 +629,32 @@ pub fn record_generation(
   ended: Int,
   source: trace.Source,
 ) -> #(trace.Generation, Result(chat.Completion(tool.Call), String), Recorder) {
+  let completion = case response {
+    Ok(response) -> provider.completion_response(llm, response)
+    Error(reason) -> Error(fetch_failure(request, reason))
+  }
+  record_completion(
+    recorder,
+    id,
+    request,
+    response,
+    completion,
+    started,
+    ended,
+    source,
+  )
+}
+
+fn record_completion(
+  recorder: Recorder,
+  id: String,
+  request: Request(BitArray),
+  response: Result(Response(BitArray), effect.FetchError),
+  completion: Result(chat.Completion(tool.Call), String),
+  started,
+  ended,
+  source,
+) {
   let key = cache_key(request)
   let #(recorder, request_cid) =
     recorder.store_binary(recorder, redact_bytes(recorder, request.body))
@@ -613,7 +666,7 @@ pub fn record_generation(
         response.status,
         Some(response_cid),
         usage.from_response(response.body),
-        provider.completion_response(llm, response),
+        completion,
         recorder,
       )
     }
@@ -677,7 +730,7 @@ fn redact_bytes(recorder, bytes: BitArray) -> BitArray {
   }
 }
 
-fn result_to_message(
+pub fn result_to_message(
   call_id: String,
   result: Result(tool.Return, String),
 ) -> chat.Message(a) {
@@ -1204,7 +1257,7 @@ pub const rule_mapping = [
 ]
 
 /// Write the chat in the opencode session export format.
-fn export(
+pub fn export(
   session: Session(harness_computer.Effect),
   history: List(chat.Message(tool.Call)),
   path: String,
@@ -1238,4 +1291,183 @@ fn export(
         "failed to export session: " <> string.inspect(reason),
       )
   })
+}
+
+/// Add a person's prompt to the same journal used by the line CLI.
+pub fn prompted(trace: Trace, text: String, at: Int) -> Trace {
+  add(trace, trace.Prompt(at:, text:))
+}
+
+fn fetch_failure(request, reason) {
+  "request to "
+  <> uri.to_string(request.to_uri(request))
+  <> " failed: "
+  <> effect.describe_fetch_error(reason)
+}
+
+/// Stream a generation to a frontend and retain its exact bytes and usage for replay/debugging.
+pub fn streamed_generation(
+  session: Session(harness_computer.Effect),
+  history,
+  trace: Trace,
+  on_delta: fn(String) -> system.Effect(Nil),
+) {
+  let request =
+    provider.stream_completion_request(
+      session.llm,
+      session.provider_context,
+      history,
+    )
+  let id = "g" <> int.to_string(trace.generations + 1)
+  use started <- system.then(system.now())
+  use response <- system.then(system.fetch_stream(request))
+  use #(response, completion) <- system.then(case response {
+    Ok(response) -> {
+      let write = case response.status {
+        200 -> on_delta
+        _ -> fn(_) { system.Done(Nil) }
+      }
+      use #(body, completion) <- system.map(read_stream(
+        session.llm.provider,
+        response.body,
+        <<>>,
+        <<>>,
+        chat.fresh(),
+        write,
+      ))
+      let completion = case response.status {
+        200 -> completion
+        status ->
+          Error(
+            "unexpected status: "
+            <> int.to_string(status)
+            <> " "
+            <> { bit_array.to_string(body) |> result.unwrap("") },
+          )
+      }
+      #(Ok(response.set_body(response, body)), completion)
+    }
+    Error(reason) ->
+      system.Done(#(Error(reason), Error(fetch_failure(request, reason))))
+  })
+  use ended <- system.map(system.now())
+  let #(generation, completed, recorder) =
+    record_completion(
+      trace.recorder,
+      id,
+      request,
+      response,
+      completion,
+      started,
+      ended,
+      trace.Live,
+    )
+  let trace =
+    Trace(..trace, recorder:, generations: trace.generations + 1)
+    |> add(trace.Generated(generation))
+  #(completed, trace)
+}
+
+fn read_stream(llm, reader, remaining, bytes, completion, on_delta) {
+  use chunk <- system.then(system.read_chunk(reader))
+  case chunk {
+    Ok(#(Some(bits), reader)) -> {
+      let #(parsed, remaining) =
+        provider.completion_chunk_parse(llm, remaining, bits)
+      let text =
+        list.map(parsed, fn(delta: chat.Completion(tool.Call)) { delta.content })
+        |> string.concat
+      use Nil <- system.then(on_delta(text))
+      read_stream(
+        llm,
+        reader,
+        remaining,
+        <<bytes:bits, bits:bits>>,
+        chat.append_chunks(completion, parsed),
+        on_delta,
+      )
+    }
+    Ok(#(None, _)) -> {
+      // Some services close the last JSON line without a newline.
+      let #(parsed, _) =
+        provider.completion_chunk_parse(llm, remaining, <<"\n">>)
+      let text =
+        list.map(parsed, fn(delta: chat.Completion(tool.Call)) { delta.content })
+        |> string.concat
+      use Nil <- system.map(on_delta(text))
+      #(bytes, Ok(chat.append_chunks(completion, parsed)))
+    }
+    Error(reason) ->
+      system.Done(#(bytes, Error(effect.describe_fetch_error(reason))))
+  }
+}
+
+/// Execute a frontend's tool call through the existing policy, pinning and recorder.
+/// The frontend receives summaries from the recorded journal; publishing that journal is separate.
+pub fn call_recorded(
+  session: Session(harness_computer.Effect),
+  call: tool.Call,
+  state: execute.State,
+  trace: Trace,
+  index: Int,
+  observe: fn(String, String, String, String) -> Nil,
+) {
+  let tool.Call(function: tool.FunctionCall(name:, arguments:), ..) = call
+  let id = call_id("g" <> int.to_string(trace.generations), index)
+  case agent.cast_tool_call(name, arguments) {
+    Ok(agent.Run(code)) -> {
+      use executed <- system.then(record_tool_run(
+        session,
+        code,
+        state,
+        trace.recorder,
+        id,
+      ))
+      let Executed(result:, state:, output:, run:, recorder:) = executed
+      list.each(run.journal, fn(entry) {
+        let store = recorder.store(recorder)
+        let decision = case entry.answer {
+          journal.Performed -> "performed"
+          journal.Gated -> "passed"
+          journal.Altered(_) -> "altered"
+          journal.Mocked -> "mocked"
+          journal.Cached -> "cached"
+          journal.Simulated -> "simulated"
+        }
+        observe(
+          entry.label,
+          recorded.summary(entry.lift, store, 160),
+          decision,
+          recorded.summary(entry.reply, store, 160),
+        )
+      })
+      let returned = case result {
+        Ok(Some(value)) ->
+          Ok(
+            tool.Return(
+              run_tool.report(output, agent.inspect_result(value)),
+              [],
+            ),
+          )
+        Ok(None) -> Ok(tool.Return(run_tool.report(output, ""), []))
+        Error(reason) -> Error(run_tool.report(output, reason))
+      }
+      use at <- system.map(system.now())
+      let trace =
+        Trace(..trace, recorder:)
+        |> add(trace.Execution(run))
+        |> add(trace.ToolResult(
+          at:,
+          call_id: id,
+          text: chat.text(result_to_message(call.id, returned)),
+        ))
+      #(returned, state, trace)
+    }
+    Error(reason) ->
+      system.Done(#(
+        Error(agent.describe_failure(reason, name, arguments)),
+        state,
+        trace,
+      ))
+  }
 }
