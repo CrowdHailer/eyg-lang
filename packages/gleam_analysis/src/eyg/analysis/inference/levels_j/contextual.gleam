@@ -46,6 +46,23 @@ pub fn with_effects(context: Context, effects) {
   })
 }
 
+/// Put a variable in scope, instantiating its generic type at each use.
+pub fn with_variable(
+  context: Context,
+  label: String,
+  type_: binding.Poly,
+) -> Context {
+  Context(..context, env: [#(label, type_), ..context.env])
+}
+
+/// Put variables in scope; the first occurrence of each label takes precedence.
+pub fn with_variables(
+  context: Context,
+  variables: List(#(String, binding.Poly)),
+) -> Context {
+  Context(..context, env: list.append(variables, context.env))
+}
+
 /// Require the expression's result to match this monotype. The caller must
 /// register its variables in the context's bindings, as with scope and effect
 /// types. Calling this again replaces the previous expectation.

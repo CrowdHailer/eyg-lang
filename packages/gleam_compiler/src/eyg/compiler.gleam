@@ -1,10 +1,12 @@
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/compiler/ir
 import eyg/compiler/js
 import eyg/ir/tree
 import gleam/dict
+import gleam/list
 import multiformats/cid/v1
 
 pub fn to_js(
@@ -23,6 +25,27 @@ pub fn to_js(
       |> monadic()
       |> tree.clear_annotation()
       |> js.render(handler)
+  }
+}
+
+/// Compile a checked, closed program to an ES module with deferred host effects.
+/// The default export contains program, run, runAsync and the Eff constructor.
+/// Inline references before compiling; refs supplies inference types, not code.
+pub fn to_module(program, refs) {
+  let analysis = j.check_with_references(j.unpure(), refs, program)
+  case j.all_errors(analysis) {
+    [] ->
+      case tree.list_references(program) {
+        [] ->
+          program |> ir.alpha |> tree.clear_annotation |> js.render_module |> Ok
+        references ->
+          Error(
+            list.map(references, fn(reference) {
+              #(program.1, error.MissingReference(reference))
+            }),
+          )
+      }
+    errors -> Error(errors)
   }
 }
 

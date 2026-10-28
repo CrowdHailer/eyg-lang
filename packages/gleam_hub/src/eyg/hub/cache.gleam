@@ -804,3 +804,70 @@ fn set_status(
   let fetching_modules = dict.insert(cache.fetching_modules, cid, status)
   Cache(..cache, fetching_modules:)
 }
+
+/// Fetch and pull until every reference in `source` is in the cache, or has
+/// failed. `meta` annotates the modules fetched, as for `update`.
+///
+/// A failed request is not retried within this call. Failed statuses remain
+/// inspectable in the returned cache; `fetch` and `pull` explicitly queue retries.
+/// Finish any already-dispatched cache actions before calling this helper.
+pub fn load(
+  cache: Cache(meta),
+  source: ir.Node(a),
+  origin: origin.Origin,
+  fetch: effect.Fetch(t),
+  hash: effect.Hash(t),
+  meta: fn(Nil) -> meta,
+) -> K(t, Cache(meta)) {
+  let references = ir.list_references(source)
+  do_load(prepare(cache, source), references, origin, fetch, hash, meta)
+}
+
+fn do_load(cache, references, origin, fetch, hash, meta) {
+  let #(cache, actions) = flush(fetch_released(cache, references))
+  case actions {
+    [] -> continuation.return(cache)
+    _ -> {
+      use cache <- continuation.then(complete_all(
+        actions,
+        cache,
+        origin,
+        fetch,
+        hash,
+        meta,
+      ))
+      do_load(cache, references, origin, fetch, hash, meta)
+    }
+  }
+}
+
+fn complete_all(actions, cache, origin, fetch, hash, meta) {
+  case actions {
+    [] -> continuation.return(cache)
+    [action, ..rest] -> {
+      use message <- continuation.then(compute(action, origin, fetch, hash))
+      let #(cache, _resolved) = update(cache, message, meta)
+      complete_all(rest, cache, origin, fetch, hash, meta)
+    }
+  }
+}
+
+// `prepare` pulls for a package reference, once pulled the reference names a
+// module that nothing has asked for yet.
+fn fetch_released(cache: Cache(meta), references) {
+  use cache, reference <- list.fold(references, cache)
+  let module = case reference {
+    ir.Package(package: name) ->
+      package(cache, name) |> result.map(fn(entry) { entry.module })
+    ir.Version(package: name, version:) -> unbound_release(cache, name, version)
+    _ -> Error(Nil)
+  }
+  case module {
+    Ok(cid) ->
+      case get_module(cache, cid) {
+        Error(NotRequested) -> fetch(cache, cid)
+        _ -> cache
+      }
+    Error(Nil) -> cache
+  }
+}
