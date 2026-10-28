@@ -1,0 +1,67 @@
+// Tests for examples/pong.eyg, run with `eyg script test/pong_test.eyg` from packages/eyg_pi.
+let aok = @aok
+let {assert} = aok
+let pong = import "../examples/pong.eyg"
+let {step, initial} = pong
+
+// A state with the ball at (bx, by) moving (dx, dy), both paddles at the top of the field.
+let ball = (bx, by, dx, dy) -> {
+  {bx: bx, by: by, dx: dx, dy: dy, left: 0, right: 0, player: 0, cpu: 0, tick: 1}
+}
+
+let tests = [
+  {name: "paddle moves with the player and stops at the edge",
+    test: (_) -> {
+      let _ = assert.equal(step(initial, 1).left, !int_add(initial.left, 1))
+      let _ = assert.equal(step(initial, -1).left, !int_subtract(initial.left, 1))
+      assert.equal(step(ball(30, 10, 1, 1), -1).left, 0)
+    }},
+  {name: "ball bounces off the top wall",
+    test: (_) -> {
+      let next = step(ball(30, 0, 1, -1), 0)
+      let _ = assert.equal(next.by, 1)
+      assert.equal(next.dy, 1)
+    }},
+  {name: "ball bounces off the player's paddle",
+    test: (_) -> {
+      let next = step(ball(2, 1, -1, 1), 0)
+      let _ = assert.equal(next.dx, 1)
+      assert.equal(next.bx, 2)
+    }},
+  {name: "a missed ball scores for the computer and is served again",
+    test: (_) -> {
+      let next = step(ball(0, 15, -1, 1), 0)
+      let _ = assert.equal(next.cpu, 1)
+      let _ = assert.equal(next.player, 0)
+      assert.equal(next.bx, 30)
+    }},
+  {name: "the serve stays inside the field for every score",
+    test: (_) -> {
+      !list_fold([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], {}, (cpu, _) -> {
+        let next = step({bx: 0, by: 10, dx: -1, dy: 1, left: 0, right: 0, player: 4, cpu: cpu, tick: 1}, 0)
+        let _ = assert.equal(!int_compare(next.by, 0), Gt({}))
+        let _ = assert.equal(!int_compare(next.by, 19), Lt({}))
+        {}
+      })
+    }},
+  {name: "play draws, reads keys and stops on q",
+    test: (_) -> {
+      let score = handle StandardOut((_, resume) -> { resume({}) }, (_) -> {
+        handle Sleep((_, resume) -> { resume({}) }, (_) -> {
+          handle ReadKey((_, resume) -> { resume(Some("q")) }, (_) -> { pong.play({}) })
+        })
+      })
+      assert.equal(score, {you: 0, computer: 0})
+    }}
+]
+
+{
+  tests: tests,
+  script: (_) -> {
+    let counts = aok.all(tests)
+    match !equal(counts.failed, 0) {
+      True(_) -> { 0 }
+      False(_) -> { 1 }
+    }
+  }
+}

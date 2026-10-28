@@ -1,0 +1,1 @@
+console=serial0,115200 console=tty1 ip=dhcp eyg.data=/dev/mmcblk0p1 eyg.ntp=216.239.35.0 quiet

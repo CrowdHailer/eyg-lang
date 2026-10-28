@@ -44,6 +44,7 @@ Projects in this repo introduce extra contraints, over regular programming langu
 - The [JavaScript host bundle](./guides/embedding_javascript.md) exposes a retained typed shell without a Gleam toolchain.
 - Harness integrations cover [Pi](./guides/pi_extension.md), the [OpenCode plugin](./guides/opencode_plugin.md)
   and its [native tool dispatcher](./guides/opencode_dispatcher.md).
+- To boot the CLI on a Raspberry Pi image see [`./guides/embedding_pi.md`](./guides/embedding_pi.md).
 
 ## Packages
 

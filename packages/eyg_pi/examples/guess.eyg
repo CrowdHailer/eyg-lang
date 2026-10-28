@@ -1,0 +1,26 @@
+let print = (text) -> { perform StandardOut(!string_append(text, "\n")) }
+let game = !fix((self, state) -> {
+  let {secret, tries} = state
+  match perform Prompt("guess 1-100> ") {
+    Ok(line) -> {
+      match !int_parse(line) {
+        Ok(guess) -> {
+          let tries = !int_add(tries, 1)
+          match !int_compare(guess, secret) {
+            Lt(_) -> { let _ = print("higher") self({secret, tries}) }
+            Gt(_) -> { let _ = print("lower") self({secret, tries}) }
+            Eq(_) -> { let _ = print(!string_append("correct in ", !int_to_string(tries))) tries }
+          }
+        }
+        Error(_) -> {
+          match !equal(line, "") {
+            True(_) -> { tries }
+            False(_) -> { let _ = print("not a number") self(state) }
+          }
+        }
+      }
+    }
+    Error(_) -> { tries }
+  }
+})
+game({secret: 42, tries: 0})
