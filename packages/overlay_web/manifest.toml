@@ -10,11 +10,11 @@ packages = [
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
   { name = "castor", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "non_empty_list", "oas_generator_utils"], otp_app = "castor", source = "hex", outer_checksum = "D3659680ABFE81634E27479479431ED66FC43F2547FDB41F0E9ACDE798CD4B13" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
-  { name = "eyg_analysis", version = "3.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "9113AD7B98C520621C590CF2FCFEC34E43A8AE7A5FEE48717CAAD12492917355" },
+  { name = "eyg_analysis", version = "3.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_analysis" },
   { name = "eyg_hub", version = "0.1.0", build_tools = ["gleam"], requirements = ["dag_json", "eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "multiformats", "ogre", "untethered"], source = "local", path = "../gleam_hub" },
-  { name = "eyg_interpreter", version = "9.0.1", build_tools = ["gleam"], requirements = ["eyg_ir", "glam", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], otp_app = "eyg_interpreter", source = "hex", outer_checksum = "ABBE304282988D59D82D25E071F0789A169F2906F60FB908E4B1E44962BC0071" },
-  { name = "eyg_ir", version = "3.2.0", build_tools = ["gleam"], requirements = ["dag_json", "filepath", "gbor", "gleam_json", "gleam_stdlib", "gleb128", "midas", "multiformats"], otp_app = "eyg_ir", source = "hex", outer_checksum = "BAD26EC286D1EE6F24EB86EDB02927A5CEAF7A182FE2CD55E05772CC44E35537" },
-  { name = "eyg_parser", version = "0.6.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], otp_app = "eyg_parser", source = "hex", outer_checksum = "BB877378EE091425BD2EC287A95AE25E83F8CEE5C70F72EFF04CCFC54E5CBF8B" },
+  { name = "eyg_interpreter", version = "9.0.1", build_tools = ["gleam"], requirements = ["eyg_ir", "glam", "gleam_javascript", "gleam_json", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_interpreter" },
+  { name = "eyg_ir", version = "3.2.0", build_tools = ["gleam"], requirements = ["dag_json", "filepath", "gbor", "gleam_json", "gleam_stdlib", "gleb128", "midas", "multiformats"], source = "local", path = "../gleam_ir" },
+  { name = "eyg_parser", version = "0.6.0", build_tools = ["gleam"], requirements = ["eyg_ir", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_parser" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
   { name = "gbor", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib", "ieee_float"], otp_app = "gbor", source = "hex", outer_checksum = "229405DE143C1D669194276B1F338471F6EFAA5796BA6D1CF42F33B01347B82F" },
   { name = "glam", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "48A043A12091F93D911C316DD8F7FFD03CD9FF6F50848FC56E359D3C168DF0FA" },
@@ -50,11 +50,11 @@ packages = [
 
 [requirements]
 castor = { version = ">= 2.1.0 and < 3.0.0" }
-eyg_analysis = { version = ">= 2.0.0 and < 4.0.0" }
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = { version = ">= 9.0.0 and < 10.0.0" }
-eyg_ir = { version = ">= 3.0.0 and < 4.0.0" }
-eyg_parser = { version = ">= 0.6.0 and < 1.0.0" }
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
 gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_fetch = { version = ">= 1.4.0 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
@@ -68,8 +68,8 @@ multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 oas_generator_utils = { version = ">= 1.1.0 and < 2.0.0" }
 ogre = { version = ">= 1.1.0 and < 2.0.0" }
 overlay = { path = "../overlay" }
-overlay_llm = { version = ">= 0.2.0 and < 1.0.0" }
+overlay_llm = { path = "../overlay_llm" }
 pal = { path = "../pal" }
 spotless = { version = ">= 7.0.0 and < 8.0.0" }
-touch_grass = { version = ">= 0.4.4 and < 1.0.0" }
+touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }

@@ -15,8 +15,8 @@ version = "1.0.0"
 [dependencies]
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 castor = ">= 2.1.0 and < 3.0.0"
-eyg_analysis = ">= 2.1.0 and < 4.0.0"
-eyg_interpreter = ">= 9.0.0 and < 10.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
+eyg_interpreter = { path = "../gleam_interpreter" }
 gleam_http = ">= 4.4.0 and < 5.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 oas_generator_utils = ">= 1.1.0 and < 2.0.0"

@@ -5,11 +5,11 @@ target = "javascript"
 [dependencies]
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 castor = ">= 2.1.0 and < 3.0.0"
-eyg_analysis = ">= 2.0.0 and < 4.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_interpreter = ">= 9.0.0 and < 10.0.0"
-eyg_ir = ">= 3.0.0 and < 4.0.0"
-eyg_parser = ">= 0.6.0 and < 1.0.0"
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
 gleam_fetch = ">= 1.4.0 and < 2.0.0"
 gleam_http = ">= 4.3.0 and < 5.0.0"
 gleam_javascript = ">= 1.0.1 and < 2.0.0"
@@ -20,10 +20,10 @@ multiformats = ">= 4.0.0 and < 5.0.0"
 oas_generator_utils = ">= 1.1.0 and < 2.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 overlay = { path = "../overlay" }
-overlay_llm = ">= 0.2.0 and < 1.0.0"
+overlay_llm = { path = "../overlay_llm" }
 pal = { path = "../pal" }
 spotless = ">= 7.0.0 and < 8.0.0"
-touch_grass = ">= 0.4.4 and < 1.0.0"
+touch_grass = { path = "../touch_grass" }
 untethered = { path = "../untethered" }
 
 [dev_dependencies]
