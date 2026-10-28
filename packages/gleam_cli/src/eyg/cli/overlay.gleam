@@ -94,6 +94,7 @@ pub type Session(eff) {
     secrets: List(Secret),
     /// Standalone sessions save each turn; sandbox runners persist externally.
     persist: Bool,
+    interrupt: terminal.Interrupt,
   )
 }
 
@@ -306,6 +307,7 @@ pub fn setup(
               store: recorder.store(recorder),
               secrets: recorder.secrets(recorder),
               persist: True,
+              interrupt: terminal.interrupt(),
             )
 
           system.Done(#(Ok(session), state))
@@ -447,12 +449,14 @@ pub fn outer_loop(
     Ok(text) -> {
       use at <- system.then(system.now())
       let trace = add(trace, trace.Prompt(at:, text:))
+      terminal.start_turn(session.interrupt)
       use #(result, eyg_state, trace) <- system.then(inner_loop(
         session,
         eyg_state,
         [chat.UserMessage(text, []), ..history],
         trace,
       ))
+      terminal.end_turn(session.interrupt)
       // A failed completion is reported and the session continues from the
       // history before the failed message, so the user can try again.
       use history <- system.then(case result {
@@ -506,7 +510,9 @@ pub fn inner_loop(
 ) -> system.Effect(
   #(Result(List(chat.Message(tool.Call)), String), execute.State, Trace),
 ) {
+  use <- stopped(session.interrupt, eyg_state, trace)
   use #(completion, trace) <- system.then(generate(session, history, trace))
+  use <- stopped(session.interrupt, eyg_state, trace)
   case completion {
     Ok(#(completion, generation)) -> {
       use Nil <- system.then(
@@ -524,13 +530,14 @@ pub fn inner_loop(
               let #(history, eyg_state, trace, index) = acc
               let tool.Call(id:, function:) = call
               let call_id = call_id(generation, index)
-              use #(result, eyg_state, trace) <- system.then(execute_call(
-                session,
-                function,
-                eyg_state,
-                trace,
-                call_id,
-              ))
+              use #(result, eyg_state, trace) <- system.then(
+                case terminal.interrupted(session.interrupt) {
+                  True ->
+                    system.Done(#(Error(stopped_message), eyg_state, trace))
+                  False ->
+                    execute_call(session, function, eyg_state, trace, call_id)
+                },
+              )
               let message = result_to_message(id, result)
               use at <- system.then(system.now())
               let trace =
@@ -588,17 +595,32 @@ fn buffered_generation(
   use started <- system.then(system.now())
   use #(response, source) <- system.then(complete(session, request))
   use ended <- system.then(system.now())
-  let #(generation, result, recorder) =
-    record_generation(
-      session.llm,
-      trace.recorder,
-      id,
-      request,
-      response,
-      started,
-      ended,
-      source,
-    )
+  let #(generation, result, recorder) = case
+    terminal.interrupted(session.interrupt)
+  {
+    True ->
+      record_completion(
+        trace.recorder,
+        id,
+        request,
+        response,
+        Error(stopped_message),
+        started,
+        ended,
+        source,
+      )
+    False ->
+      record_generation(
+        session.llm,
+        trace.recorder,
+        id,
+        request,
+        response,
+        started,
+        ended,
+        source,
+      )
+  }
   let trace =
     Trace(..trace, recorder:, generations: trace.generations + 1)
     |> add(trace.Generated(generation))
@@ -1329,6 +1351,7 @@ pub fn streamed_generation(
       }
       use #(body, completion) <- system.map(read_stream(
         session.llm.provider,
+        session.interrupt,
         response.body,
         <<>>,
         <<>>,
@@ -1368,10 +1391,46 @@ pub fn streamed_generation(
   #(completed, trace)
 }
 
-fn read_stream(llm, reader, remaining, bytes, completion, on_delta) {
+pub const stopped_message = "Stopped, send a message to continue."
+
+fn stopped(interrupt, runtime, trace, then) {
+  case terminal.interrupted(interrupt) {
+    True -> system.Done(#(Error(stopped_message), runtime, trace))
+    False -> then()
+  }
+}
+
+fn read_stream(llm, interrupt, reader, remaining, bytes, completion, on_delta) {
+  case terminal.interrupted(interrupt) {
+    True -> system.Done(#(bytes, Error(stopped_message)))
+    False ->
+      read_stream_chunk(
+        llm,
+        interrupt,
+        reader,
+        remaining,
+        bytes,
+        completion,
+        on_delta,
+      )
+  }
+}
+
+fn read_stream_chunk(
+  llm,
+  interrupt,
+  reader,
+  remaining,
+  bytes,
+  completion,
+  on_delta,
+) {
   use chunk <- system.then(system.read_chunk(reader))
-  case chunk {
-    Ok(#(Some(bits), reader)) -> {
+  case chunk, terminal.interrupted(interrupt) {
+    Ok(#(Some(bits), _)), True ->
+      system.Done(#(<<bytes:bits, bits:bits>>, Error(stopped_message)))
+    _, True -> system.Done(#(bytes, Error(stopped_message)))
+    Ok(#(Some(bits), reader)), False -> {
       let #(parsed, remaining) =
         provider.completion_chunk_parse(llm, remaining, bits)
       let text =
@@ -1380,6 +1439,7 @@ fn read_stream(llm, reader, remaining, bytes, completion, on_delta) {
       use Nil <- system.then(on_delta(text))
       read_stream(
         llm,
+        interrupt,
         reader,
         remaining,
         <<bytes:bits, bits:bits>>,
@@ -1387,7 +1447,7 @@ fn read_stream(llm, reader, remaining, bytes, completion, on_delta) {
         on_delta,
       )
     }
-    Ok(#(None, _)) -> {
+    Ok(#(None, _)), False -> {
       // Some services close the last JSON line without a newline.
       let #(parsed, _) =
         provider.completion_chunk_parse(llm, remaining, <<"\n">>)
@@ -1397,7 +1457,7 @@ fn read_stream(llm, reader, remaining, bytes, completion, on_delta) {
       use Nil <- system.map(on_delta(text))
       #(bytes, Ok(chat.append_chunks(completion, parsed)))
     }
-    Error(reason) ->
+    Error(reason), False ->
       system.Done(#(bytes, Error(effect.describe_fetch_error(reason))))
   }
 }

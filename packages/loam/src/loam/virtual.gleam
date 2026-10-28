@@ -48,6 +48,7 @@ pub type Machine {
     clock: Int,
     seed: Int,
     prompts: List(String),
+    keys: List(String),
     output: List(String),
     broker: broker.Broker,
     limits: Limits,
@@ -75,6 +76,7 @@ pub fn fork(environment: environment.Environment) -> Machine {
     environment.variables,
     environment.clock,
     int.max(1, environment.seed % 2_147_483_647),
+    [],
     [],
     [],
     broker.new(broker.Offline),
@@ -107,6 +109,10 @@ pub fn with_file(machine: Machine, path: String, layer: Layer) -> Machine {
 
 pub fn with_prompts(machine: Machine, prompts: List(String)) -> Machine {
   Machine(..machine, prompts:)
+}
+
+pub fn with_keys(machine: Machine, keys: List(String)) -> Machine {
+  Machine(..machine, keys:)
 }
 
 pub fn with_broker(machine: Machine, mode: broker.Mode) -> Machine {
@@ -293,6 +299,16 @@ fn step(effect, machine: Machine) {
         [] -> run(resume(Ok("")), machine)
       }
     system.Stdout(text, resume) -> output(text <> "\n", resume, machine)
+    system.ReadKey(milliseconds, resume) ->
+      case machine.keys {
+        [key, ..keys] ->
+          run(resume(option.Some(key)), Machine(..machine, keys:))
+        [] ->
+          run(
+            resume(option.None),
+            Machine(..machine, clock: machine.clock + int.max(0, milliseconds)),
+          )
+      }
     system.WriteStdout(text, resume) | system.WriteStderr(text, resume) ->
       output(text, resume, machine)
     system.Hash(algorithm, bytes, resume) ->

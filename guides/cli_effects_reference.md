@@ -36,6 +36,25 @@ exist and the destination must be absent. Writes to a mount do not change the
 artifact. These effects are implemented by the sealed runtime; an ordinary host
 run returns an error. See the [sandbox guide](sandbox.md).
 
+## Terminal input
+
+`perform Prompt("word> ")` returns `Ok(String)` for one line or `Error({})` on
+end of input. It uses the existing prompt effect, now exposed by the computer
+harness as well as the interactive frontends.
+
+`perform ReadKey(50)` waits up to 50 milliseconds and returns `Some(String)` or
+`None({})`. Zero polls queued keys. Names follow `KeyboardEvent.key`, including
+`ArrowUp`, `Enter`, `Escape`, `Backspace`, Unicode characters and a space.
+Ctrl+C restores the terminal and interrupts the program. Line input and a
+finished run restore normal terminal mode too.
+
+`ReadKey` is needed for timed keyboard input: line/stream input cannot poll one
+key while an animation or interactive program continues. Its general use is
+terminal games, shortcuts and other event loops. Decoding and input ownership
+are Gleam; native stream/TTY/timer bindings are in `plinthx`. In-memory and
+sealed runtimes consume configured key queues and advance virtual time after
+an empty timed read. Recorded runs retain the key replies as EYG observations.
+
 ## File system
 
 Relative filesystem paths are resolved from directory of the source expression that performs the effect.

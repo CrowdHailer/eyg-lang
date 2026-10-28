@@ -1,6 +1,7 @@
 //// https://nodejs.org/api/tty.html
 
 import plinthx/node/process.{type Process}
+import plinthx/node/stream.{type Stream}
 
 pub type ReadStream
 
@@ -71,3 +72,9 @@ pub fn on_resize(
   stream: WriteStream,
   callback: fn(ResizeEvent) -> Nil,
 ) -> fn() -> Nil
+
+@external(javascript, "./process_ffi.mjs", "isStreamTTY")
+pub fn is_tty(stream: Stream) -> Result(Bool, Nil)
+
+@external(javascript, "./process_ffi.mjs", "setStreamRawMode")
+pub fn set_stream_raw_mode(stream: Stream, mode: Bool) -> Result(Nil, String)

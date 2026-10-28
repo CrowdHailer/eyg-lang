@@ -28,6 +28,7 @@ import touch_grass/paste
 import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
+import touch_grass/read_key
 import touch_grass/sleep
 import touch_grass/standard_error
 import touch_grass/standard_in
@@ -155,6 +156,10 @@ pub fn prompt() -> Interface(String, a) {
 
 pub fn random() -> Interface(Int, a) {
   Interface(random.label, random.lift(), random.lower(), random.decode)
+}
+
+pub fn read_key() -> Interface(Int, a) {
+  Interface(read_key.label, read_key.lift(), read_key.lower(), read_key.decode)
 }
 
 pub fn read_directory() -> Interface(String, a) {

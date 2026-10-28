@@ -33,7 +33,9 @@ import touch_grass/harness/computer
 import touch_grass/interface
 import touch_grass/mount
 import touch_grass/now
+import touch_grass/prompt
 import touch_grass/random
+import touch_grass/read_key
 import touch_grass/sleep
 import touch_grass/standard_error
 import touch_grass/standard_in
@@ -91,9 +93,12 @@ pub fn extrinsic(
     computer.MakeDirectory(path) ->
       system.map(make_directory(origin, path), make_directory.encode)
     computer.Now -> system.map(system.now(), now.encode)
+    computer.Prompt(text) -> system.map(system.prompt(text), prompt.encode)
     computer.Random(max) -> system.map(system.random(max), random.encode)
     computer.ReadDirectory(path) ->
       system.map(read_directory(origin, path), read_directory.encode)
+    computer.ReadKey(milliseconds) ->
+      system.map(system.read_key(milliseconds), read_key.encode)
     computer.ReadFile(input) ->
       system.map(read_file(origin, input), read_file.encode)
     computer.Sign(request) -> system.Done(sign(request) |> sign.encode)
