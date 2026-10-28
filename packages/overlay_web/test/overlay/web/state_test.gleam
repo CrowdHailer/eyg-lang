@@ -2,6 +2,8 @@ import eyg/hub/cache
 import eyg/hub/publisher
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import glasshouse/journal
+import glasshouse/session
 import gleam/bit_array
 import gleam/dict
 import gleam/fetch
@@ -10,6 +12,7 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import multiformats/cid/v1
 import oas/generator/utils
@@ -29,8 +32,11 @@ pub fn init_loads_provider_settings_test() {
   let config =
     state.Config(origin: origin.https("eyg.test"), context: context.Default)
   let #(state, actions) = state.init(config)
-  let assert [system.GetSessionStorageItem("overlay.llm.provider", _), _] =
-    actions
+  let assert [
+    system.GetSessionStorageItem("overlay.llm.provider", _),
+    _,
+    system.GetSessionStorageItem("overlay.history", _),
+  ] = actions
   assert True == state.provider_setup.restoring
 }
 
@@ -120,7 +126,8 @@ pub fn submit_prompt_test() {
   assert "" == state.input
   let assert [llm_message, _message] = state.history
   assert chat.AssistantMessage("", "Hi there", []) == llm_message
-  assert [] == actions
+  // The finished conversation is saved for the tab
+  let assert [system.SetSessionStorageItem("overlay.history", _, _)] = actions
 }
 
 pub fn cant_submit_if_busy_test() {
@@ -160,7 +167,7 @@ pub fn interrupted_stream_test() {
 pub fn streamed_completion_while_not_streaming_test() {
   let state = init_default()
   let #(s2, actions) =
-    state.update(state, state.LlmStreamedCompletion([], <<>>))
+    state.update(state, state.LlmStreamedCompletion([], <<>>, <<>>))
   assert s2 == state
   assert [] == actions
 }
@@ -206,11 +213,19 @@ pub fn denied_error_from_provider_test() {
   let assert [system.FetchStreamResponse(_request, resume)] = actions
   let response =
     Ok(response.new(401) |> response.set_body(new_reader([], Ok(Nil))))
-  let assert system.Done(message) = resume(response)
+  let assert system.ReadChunk(_, read) = resume(response)
+  let assert system.ReadChunk(_, read) =
+    read(Ok(Some(<<"{\"error\":\"unauthorized\"}":utf8>>)))
+  let assert system.Done(message) = read(Ok(None))
   let #(state, actions) = state.update(state, message)
   assert [] == actions
   assert state.Waiting == state.status
-  assert Some("Provider rejected the API token (401).") == state.input_error
+  assert Some(
+      "Provider rejected the API token (401). {\"error\":\"unauthorized\"}",
+    )
+    == state.input_error
+  // The prompt can be sent again
+  assert "hello" == state.input
 }
 
 pub fn stream_finished_while_not_streaming_test() {
@@ -524,13 +539,15 @@ pub fn invalid_source_code_test() {
     chat.ToolResultMessage(tool_call_id:, text:, images:),
   ]) = state.status
   assert id == tool_call_id
-  assert "invalid character '$' at position 0" == text
+  let expected =
+    "error: invalid character '$' at position 0\nhint: remove or replace this character — EYG does not use it\n\n 1 | $\n     ^"
+  assert expected == text
   assert [] == images
   let assert [system.FetchStreamResponse(request:, resume: _)] = actions
   assert "eyg.test" == request.host
   let assert Ok([_system, _agent_message, message]) =
     json.parse_bits(request.body, helpers.ollama_messages_decoder())
-  let assert #("tool", "invalid character '$' at position 0") = message
+  assert #("tool", expected) == message
 }
 
 pub fn malformed_tool_arguments_test() {
@@ -660,7 +677,8 @@ pub fn reference_context_test() {
     )
   let #(state, actions) = state.init(config)
   assert context.Fetching([cid], ir.Content(cid)) == state.context
-  let assert [_settings, _pull, system.Fetch(request:, resume: _)] = actions
+  let assert [_settings, _pull, system.Fetch(request:, resume: _), _history] =
+    actions
   assert "/modules/" <> v1.to_string(cid) == request.path
 
   let message = state.CacheMessage(cache.FetchModuleCompleted(cid, Ok(source)))
@@ -728,4 +746,153 @@ pub fn package_context_test() {
   let assert state.Asking([chat.ToolResultMessage("abc", response, [])]) =
     state.status
   assert "hi" == response
+}
+
+pub fn service_effects_are_not_offered_test() {
+  let assert Error(_) =
+    list.find(tools.effects(), fn(effect) { effect.name == "GitHub" })
+  let assert Ok(_) =
+    list.find(tools.effects(), fn(effect) { effect.name == "Fetch" })
+}
+
+pub fn rejected_token_is_shown_in_settings_test() {
+  let #(state, actions) = submit_first_prompt("hello")
+  let assert [system.FetchStreamResponse(_request, resume)] = actions
+  let response =
+    Ok(response.new(401) |> response.set_body(new_reader([], Ok(Nil))))
+  let assert system.ReadChunk(_, read) = resume(response)
+  let assert system.Done(message) = read(Ok(None))
+  let #(state, _actions) = state.update(state, message)
+  let assert Some(_) = state.provider_setup.error
+}
+
+pub fn stop_while_executing_test() {
+  let status =
+    chat_completion("")
+    |> with_code("abc", "perform Alert(\"Hello World\")")
+    |> streaming
+  let state = State(..init_default(), status:)
+  let #(state, _actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  let assert state.Executing(_) = state.status
+  let #(state, actions) = state.update(state, state.UserClickedStop)
+  let assert [system.SetSessionStorageItem("overlay.history", _, _)] = actions
+  assert state.Waiting == state.status
+  let assert [chat.ToolResultMessage("abc", "stopped by the user", []), ..] =
+    state.history
+}
+
+pub fn step_limit_test() {
+  let status =
+    chat_completion("")
+    |> with_code("abc", "5")
+    |> streaming
+  let state = State(..init_default(), status:, steps: state.max_steps)
+  let #(state, actions) = state.update(state, state.LlmStreamFinished(Ok(Nil)))
+  assert state.Waiting == state.status
+  let assert [] =
+    list.filter(actions, fn(action) {
+      case action {
+        system.FetchStreamResponse(..) -> True
+        _ -> False
+      }
+    })
+  let assert Some(
+    "Stopped after 25 rounds of tool calls, send a message to continue.",
+  ) = state.input_error
+}
+
+/// A policy that passes every gated browser effect, except for the overridden fields.
+fn with_policy(overrides) {
+  let fields =
+    [
+      "alert", "copy", "download", "fetch", "now", "paste", "print", "prompt",
+      "visit",
+    ]
+    |> list.map(fn(field) {
+      let gate =
+        list.key_find(overrides, field)
+        |> result.unwrap("(lift) -> { Pass(lift) }")
+      field <> ": " <> gate
+    })
+  let code = "{" <> string.join(fields, ", ") <> "}"
+  let state = init_default()
+  let #(state, _) = state.update(state, state.UserUpdatedPolicy(code))
+  let #(state, _) = state.update(state, state.UserAppliedPolicy)
+  assert None == state.policy_error
+  state
+}
+
+pub fn policy_requires_every_gated_effect_test() {
+  let state = init_default()
+  let #(state, _) = state.update(state, state.UserUpdatedPolicy("{}"))
+  let #(state, _) = state.update(state, state.UserAppliedPolicy)
+  let assert Some(reason) = state.policy_error
+  assert string.contains(reason, "missing row 'alert'")
+  assert None == state.policy
+}
+
+pub fn policy_mocks_effect_test() {
+  let state = with_policy([#("now", "(_) -> { Mock(7) }")])
+  let status =
+    chat_completion("") |> with_code("abc", "perform Now({})") |> streaming
+  let #(state, _) =
+    state.update(State(..state, status:), state.LlmStreamFinished(Ok(Nil)))
+  assert state.Asking([chat.ToolResultMessage("abc", "7", [])]) == state.status
+  let assert [session.ToolResult(..), session.Execution(run), ..] =
+    state.trace.events
+  let assert [entry] = run.journal
+  assert entry.answer == journal.Mocked
+}
+
+pub fn modified_policy_requests_are_recorded_as_hashes_test() {
+  let state = with_policy([#("print", "(_) -> { Pass(\"replaced\") }")])
+  let status =
+    chat_completion("")
+    |> with_code("abc", "perform Print(\"before\")")
+    |> streaming
+  let #(state, _) =
+    state.update(State(..state, status:), state.LlmStreamFinished(Ok(Nil)))
+  let assert [session.ToolResult(text:, ..), session.Execution(run), ..] =
+    state.trace.events
+  assert string.contains(text, "replaced")
+  let assert [entry] = run.journal
+  let assert journal.Altered(sent) = entry.answer
+  assert string.starts_with(sent, "baguqeera")
+}
+
+pub fn invalid_policy_is_reported_test() {
+  let state = init_default()
+  let #(state, _) =
+    state.update(state, state.UserUpdatedPolicy("{alert: (_) -> { Mock(1) }}"))
+  let #(state, _) = state.update(state, state.UserAppliedPolicy)
+  let assert Some(_) = state.policy_error
+  assert None == state.policy
+}
+
+pub fn history_is_restored_test() {
+  let history = [
+    chat.AssistantMessage("", "Hi", []),
+    chat.UserMessage("hello", []),
+  ]
+  let stored = chat.history_to_json(history) |> json.to_string
+  let #(state, _) =
+    state.update(init_default(), state.HistoryLoaded(Ok(Some(stored))))
+  assert history == state.history
+  let #(state, actions) = state.update(state, state.UserClickedNewChat)
+  assert [] == state.history
+  let assert [system.SetSessionStorageItem("overlay.history", "[]", _)] =
+    actions
+}
+
+pub fn export_downloads_the_chat_test() {
+  let history = [
+    chat.AssistantMessage("", "Hi", []),
+    chat.UserMessage("hello", []),
+  ]
+  let state = State(..init_default(), history:)
+  let assert [system.Download(input, _)] =
+    state.update(state, state.UserClickedExport).1
+  assert string.starts_with(input.name, "overlay-session-")
+  let assert Ok(content) = bit_array.to_string(input.content)
+  assert string.contains(content, "\"text\":\"hello\"")
 }

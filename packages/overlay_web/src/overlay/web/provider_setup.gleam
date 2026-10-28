@@ -275,3 +275,11 @@ pub fn active_label(state: State) {
     _, _, _ -> "Set up LLM"
   }
 }
+
+/// The provider rejected the token, it stays configured so it can be corrected.
+pub fn token_rejected(state: State) -> State {
+  State(
+    ..state,
+    error: Some("The provider rejected the API token, check it in settings."),
+  )
+}

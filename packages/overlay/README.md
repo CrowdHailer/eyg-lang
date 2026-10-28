@@ -80,12 +80,13 @@ Instead because the configuration is fully scriptable it is expected to be imple
 The [overlay EYG package](../../eyg_packages/overlay/) has `policy` helpers, i.e. `read_only(roots)` and `allow_all`, and `skills` helpers to load `.agents/skills/*/SKILL.md` files.
 It is not yet published so import it by path.
 
-NOTE: in `overlay_web` The llm configuration is provided through the UI.
-The policy is provided through the UI but is still an textarea input that accepts a program
+NOTE: in `overlay_web` the llm configuration and the policy are provided through the UI.
+The policy is written in EYG, it is type checked against the browser effects when applied, without a policy every effect is allowed.
 
 ### Exporting chats
 
 Type `/export [path]` at the prompt to save the chat as JSON in the opencode session export format.
+In the web overlay use the Export button.
 Tool results are recorded in the state of the tool parts of the assistant message that called them.
 Overlay does not record when each message was sent so all timestamps are the export time.
 
@@ -179,5 +180,3 @@ Limit published reference loading to only trusted publisher, i.e. signatories or
 This is potentially not an overlay specific capability
 
 Publish the `overlay` EYG package so configs can use `@overlay.policy` and `@overlay.skills` rather than importing by path.
-
-Add an export button to the web overlay, downloading the chat with `overlay/export`.

@@ -108,13 +108,13 @@ pub fn init_default() {
 pub fn init(context) {
   let config = state.Config(origin: origin.https("eyg.test"), context:)
   let #(state, actions) = state.init(config)
-  let assert [_settings, _pull] = actions
+  let assert [_settings, _pull, _history] = actions
 
   state.update(
     state,
     state.ProviderSetupMessage(provider_setup.SessionSettingsLoaded(
       "ollama",
-      "qwen3.5:397b",
+      "kimi-k2.6",
       "test-key",
     )),
   )

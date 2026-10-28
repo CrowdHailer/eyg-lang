@@ -1,24 +1,45 @@
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug as analysis_debug
 import eyg/hub/cache
+import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state as istate
+import eyg/ir/tree as ir
+import eyg/parser
 import eyg/parser/parser as _
+import glasshouse/archive
+import glasshouse/run as glasshouse_run
+import glasshouse/session
+import glasshouse/sha256
+import glasshouse/usage
+import gleam/bit_array
+import gleam/http/request.{type Request}
 import gleam/http/response.{Response}
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/set
 import gleam/string
 import midas/continuation
+import oas/generator/utils
 import ogre/origin
 import overlay/agent
+import overlay/export
 import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
+import overlay/policy
 import overlay/web/context
 import overlay/web/provider_setup
 import overlay/web/tools
+import overlay/web/trace
 import pal/system
+import touch_grass/download
 import touch_grass/harness/browser as harness
+import touch_grass/now
 
 pub type Config {
   Config(origin: origin.Origin, context: context.Source)
@@ -39,6 +60,18 @@ pub type State {
     cache: cache.Cache(tools.Meta),
     counter: Int,
     expanded: set.Set(Int),
+    /// Rounds of tool calls since the last prompt.
+    steps: Int,
+    /// The policy as written by the user, applied with `UserAppliedPolicy`.
+    policy_source: String,
+    policy: Option(policy.Policy(harness.Effect, tools.Meta)),
+    policy_error: Option(String),
+    /// The session recorded so far, it can be downloaded and opened in the Glasshouse debugger.
+    trace: trace.Trace,
+    /// The completion request in flight and when it was sent.
+    asked: Option(#(Request(BitArray), Int)),
+    /// The body of the streaming response so far.
+    streamed: BitArray,
   )
 }
 
@@ -55,6 +88,7 @@ pub type AgentStatus {
 
 pub fn new(config: Config) -> State {
   let Config(origin:, context:) = config
+  let started = trace.now()
   let llm =
     provider.Llm(
       provider: provider.Ollama(ollama.Config(origin:, api_key: None)),
@@ -75,6 +109,13 @@ pub fn new(config: Config) -> State {
     cache:,
     counter: 0,
     expanded: set.new(),
+    steps: 0,
+    policy_source: "",
+    policy: None,
+    policy_error: None,
+    trace: trace.new_session(started),
+    asked: None,
+    streamed: <<>>,
   )
 }
 
@@ -84,7 +125,20 @@ pub fn init(config) {
   let #(state, effects) = flush(state)
   let provider_effects =
     list.map(provider_effects, system.map(_, ProviderSetupMessage))
-  #(state, list.append(provider_effects, effects))
+  #(state, list.flatten([provider_effects, effects, [load_history()]]))
+}
+
+const history_key = "overlay.history"
+
+fn load_history() {
+  use stored <- system.GetSessionStorageItem(history_key)
+  system.Done(HistoryLoaded(stored))
+}
+
+fn save_history(history) {
+  let encoded = chat.history_to_json(history) |> json.to_string
+  use _ <- system.SetSessionStorageItem(history_key, encoded)
+  system.Done(Ignore)
 }
 
 pub type Effect(t) {
@@ -118,17 +172,42 @@ pub type Message {
   LlmStreamedCompletion(
     completions: List(chat.Completion(tool.Call)),
     remaining: BitArray,
+    chunk: BitArray,
   )
   LlmStreamFinished(Result(Nil, String))
+  /// The provider rejected the API token.
+  LlmTokenRejected(reason: String)
   UserClickedExpand(Int)
   UserClickedShrink(Int)
+  UserClickedDownloadTrace
   // run messages
   EffectHandled(task_id: Int, value: istate.Value(tools.Meta))
   CacheMessage(cache.ActionCompleted)
+  UserClickedStop
+  UserClickedNewChat
+  UserClickedExport
+  HistoryLoaded(Result(Option(String), String))
+  UserUpdatedPolicy(String)
+  UserAppliedPolicy
   Ignore
 }
 
+/// The most rounds of tool calls for one prompt, an agent that keeps failing is stopped.
+pub const max_steps = 25
+
+/// The history is saved for the tab whenever the agent finishes, so a reload keeps the conversation.
 pub fn update(
+  state: State,
+  message: Message,
+) -> #(State, List(system.Effect(Message))) {
+  let #(next, effects) = do_update(state, message)
+  case next.status, next.history != state.history {
+    Waiting, True -> #(next, [save_history(next.history), ..effects])
+    _, _ -> #(next, effects)
+  }
+}
+
+fn do_update(
   state: State,
   message: Message,
 ) -> #(State, List(system.Effect(Message))) {
@@ -179,9 +258,20 @@ pub fn update(
           case string.trim(state.input) {
             "" -> #(State(..state, input_error: Some("")), [])
             input -> {
+              let at = trace.now()
+              let recorded =
+                state.trace
+                |> trace.configure(
+                  context.describe(state.context_source),
+                  context.module(state.context).value,
+                  at,
+                )
+                |> trace.prompt(at, input)
               let message = chat.UserMessage(text: input, images: [])
-              let action = fetch_completion(state, [message])
-              let state = State(..state, status: Asking([message]), input: "")
+              let state = State(..state, trace: recorded)
+              let #(state, action) = ask(state, [message])
+              let state =
+                State(..state, status: Asking([message]), input: "", steps: 0)
               #(state, [action])
             }
           }
@@ -202,6 +292,7 @@ pub fn update(
               ..state,
               status: Streaming(reader, chat.fresh(), <<>>),
               history:,
+              streamed: <<>>,
             )
           let action = stream_next_chunk(state.llm.provider, reader, <<>>)
           #(state, [action])
@@ -209,12 +300,16 @@ pub fn update(
         _ -> #(state, [])
       }
     }
-    LlmStreamedCompletion(new, remaining) -> {
+    LlmStreamedCompletion(new, remaining, chunk) -> {
       case state.status {
         Streaming(reader:, completion:, remaining: _) -> {
           let completion = chat.append_chunks(completion, new)
           let state =
-            State(..state, status: Streaming(reader:, completion:, remaining:))
+            State(
+              ..state,
+              status: Streaming(reader:, completion:, remaining:),
+              streamed: <<state.streamed:bits, chunk:bits>>,
+            )
           let action = stream_next_chunk(state.llm.provider, reader, remaining)
           #(state, [action])
         }
@@ -227,7 +322,8 @@ pub fn update(
           let message = chat.from_completion(completion)
           let history = [message, ..state.history]
 
-          let state = State(..state, history:)
+          let state =
+            State(..record_generation(state, Ok(completion)), history:)
           case completion.tool_calls {
             [] -> #(State(..state, status: Waiting), [])
             calls -> {
@@ -241,8 +337,19 @@ pub fn update(
       }
     }
     LlmStreamFinished(Error(reason)) -> {
-      let state = State(..state, status: Waiting, input_error: Some(reason))
+      let state = record_generation(state, Error(reason))
+      // A prompt that was never answered is returned to the input to try again.
+      let input = case state.status, state.input {
+        Asking([chat.UserMessage(text:, ..)]), "" -> text
+        _, input -> input
+      }
+      let state =
+        State(..state, status: Waiting, input:, input_error: Some(reason))
       #(state, [])
+    }
+    LlmTokenRejected(reason) -> {
+      let provider_setup = provider_setup.token_rejected(state.provider_setup)
+      update(State(..state, provider_setup:), LlmStreamFinished(Error(reason)))
     }
     UserClickedExpand(index) -> {
       let expanded = set.insert(state.expanded, index)
@@ -295,8 +402,69 @@ pub fn update(
       }
     }
 
+    UserClickedStop -> #(stop(state, "Stopped."), [])
+    UserClickedNewChat ->
+      case state.status {
+        Waiting -> #(
+          State(
+            ..state,
+            history: [],
+            steps: 0,
+            input_error: None,
+            expanded: set.new(),
+            trace: trace.new_session(trace.now()),
+            asked: None,
+            streamed: <<>>,
+          ),
+          [],
+        )
+        _ -> #(state, [])
+      }
+    HistoryLoaded(Ok(Some(stored))) ->
+      case state.history, json.parse(stored, chat.history_decoder()) {
+        [], Ok(history) -> #(State(..state, history:), [])
+        _, _ -> #(state, [])
+      }
+    HistoryLoaded(_) -> #(state, [])
+    UserClickedExport -> #(state, [export_history(state)])
+    UserUpdatedPolicy(policy_source) -> #(State(..state, policy_source:), [])
+    UserAppliedPolicy ->
+      case load_policy(state.policy_source, state.cache) {
+        Ok(policy) -> #(State(..state, policy:, policy_error: None), [])
+        Error(reason) -> #(State(..state, policy_error: Some(reason)), [])
+      }
+    UserClickedDownloadTrace -> {
+      let archive = trace.archive(state.trace, agent(state), trace.now())
+      let input =
+        download.Input(name: state.trace.id <> ".json", content: <<
+          archive.to_string(archive):utf8,
+        >>)
+      #(state, [system.Download(input, fn() { system.Done(Ignore) })])
+    }
     Ignore -> #(state, [])
   }
+}
+
+/// Stop the agent, responses that arrive later are ignored as the status is waiting.
+/// Tool calls without results are given one, so the history is valid for the next request.
+fn stop(state: State, reason: String) -> State {
+  let state = record_generation(state, Error(reason))
+  let history = case state.status {
+    Waiting -> state.history
+    Asking(messages) -> list.append(messages, state.history)
+    Streaming(completion:, ..) -> [
+      chat.from_completion(chat.Completion(..completion, tool_calls: [])),
+      ..state.history
+    ]
+    Executing(calls) ->
+      list.fold(calls, state.history, fn(history, progress: tools.Progress) {
+        [
+          chat.ToolResultMessage(progress.id, "stopped by the user", []),
+          ..history
+        ]
+      })
+  }
+  State(..state, status: Waiting, history:, input_error: Some(reason))
 }
 
 pub fn can_save_provider(state: State) {
@@ -309,8 +477,15 @@ pub fn can_save_provider(state: State) {
 // cache state doesn't update during the eval but needs to resume later if everything fetched at the beginning
 
 fn current_context(state: State) {
-  let State(cache:, counter:, context:, ..) = state
-  tools.Context(cache:, counter:, effects: [], context: context.module(context))
+  let State(cache:, counter:, context:, trace:, ..) = state
+  tools.Context(
+    cache:,
+    counter:,
+    effects: [],
+    context: context.module(context),
+    policy: state.policy,
+    trace:,
+  )
 }
 
 /// If a stream message is completed, and effect is handled or a cache message received then resolve calls sees what stage tool calls are in.
@@ -318,7 +493,8 @@ fn current_context(state: State) {
 fn run_effects_if_any_remain_to_do(return, state: State) {
   let #(ctx, calls) = return
 
-  let tools.Context(cache:, counter:, effects: inner, context: _) = ctx
+  let tools.Context(cache:, counter:, effects: inner, context: _, trace:, ..) =
+    ctx
   let effects =
     list.map(
       inner,
@@ -328,36 +504,67 @@ fn run_effects_if_any_remain_to_do(return, state: State) {
       }),
     )
 
-  let state = State(..state, cache:, counter:)
+  let state = State(..state, cache:, counter:, trace:)
   let #(state, cache_effects) = flush(state)
   let effects = list.append(cache_effects, effects)
 
   // I think here we do the switch on pulling. 
-  let #(status, effects) = case tools.all_returns(calls) {
-    Error(Nil) -> #(Executing(calls), effects)
-    Ok(messages) -> #(Asking(messages), [
-      fetch_completion(state, messages),
-      ..effects
-    ])
+  case tools.all_returns(calls) {
+    Error(Nil) -> #(State(..state, status: Executing(calls)), effects)
+    Ok(messages) -> {
+      let state = record_tool_calls(state, calls, messages)
+      case state.steps >= max_steps {
+        True -> {
+          let reason =
+            "Stopped after "
+            <> int.to_string(max_steps)
+            <> " rounds of tool calls, send a message to continue."
+          #(stop(State(..state, status: Asking(messages)), reason), effects)
+        }
+        False -> {
+          let state =
+            State(..state, status: Asking(messages), steps: state.steps + 1)
+          let #(state, action) = ask(state, messages)
+          #(state, [action, ..effects])
+        }
+      }
+    }
   }
-
-  #(State(..state, status:), effects)
 }
 
-fn fetch_completion(state, messages) {
-  use response <- system.FetchStreamResponse(completion_request(state, messages))
+fn fetch_completion(request) {
+  use response <- system.FetchStreamResponse(request)
 
   case response {
-    Ok(Response(200, body:, ..)) -> LlmStartedStreaming(body)
-    Ok(Response(status: 401, body: _, ..)) ->
-      LlmStreamFinished(Error("Provider rejected the API token (401)."))
-    Ok(Response(status:, body: _, ..)) ->
-      LlmStreamFinished(Error(
-        "Provider returned HTTP " <> int.to_string(status) <> ".",
-      ))
-    Error(reason) -> LlmStreamFinished(Error(string.inspect(reason)))
+    Ok(Response(200, body:, ..)) -> system.Done(LlmStartedStreaming(body))
+    Ok(Response(status:, body:, ..)) -> read_error(body, status, <<>>)
+    Error(reason) ->
+      system.Done(LlmStreamFinished(Error(string.inspect(reason))))
   }
-  |> system.Done
+}
+
+/// Read the body of a failed response, it explains the failure.
+fn read_error(reader, status, acc) {
+  use chunk <- system.ReadChunk(reader)
+  case chunk {
+    Ok(Some(bits)) -> read_error(reader, status, <<acc:bits, bits:bits>>)
+    _ ->
+      case status {
+        401 -> system.Done(LlmTokenRejected(http_error(status, acc)))
+        _ -> system.Done(LlmStreamFinished(Error(http_error(status, acc))))
+      }
+  }
+}
+
+fn http_error(status, body) {
+  let summary = case status {
+    401 -> "Provider rejected the API token (401)."
+    _ -> "Provider returned HTTP " <> int.to_string(status) <> "."
+  }
+  case bit_array.to_string(body) {
+    Ok("") | Error(Nil) -> summary
+    Ok(body) -> summary <> " " <> body
+  }
 }
 
 fn stream_next_chunk(provider, reader, remaining) {
@@ -366,7 +573,7 @@ fn stream_next_chunk(provider, reader, remaining) {
     Ok(Some(chunk)) -> {
       let #(completions, remaining) =
         provider.completion_chunk_parse(provider, remaining, chunk)
-      LlmStreamedCompletion(completions, remaining)
+      LlmStreamedCompletion(completions, remaining, chunk)
     }
     Ok(None) -> LlmStreamFinished(Ok(Nil))
     Error(reason) -> LlmStreamFinished(Error(string.inspect(reason)))
@@ -374,17 +581,188 @@ fn stream_next_chunk(provider, reader, remaining) {
   |> system.Done
 }
 
+fn system_prompt(state: State) {
+  agent.system_prompt(
+    state.origin,
+    tools.effects(),
+    context.instructions(state.context_source, state.context),
+    option.is_some(state.policy),
+  )
+}
+
 fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
   let context =
-    provider.Context(
-      system_prompt: agent.system_prompt(
-        state.origin,
-        harness.effects(),
-        context.readme(state.context),
-        False,
-      ),
-      tools: agent.tools(),
-    )
+    provider.Context(system_prompt: system_prompt(state), tools: agent.tools())
   let history = list.append(messages, state.history) |> list.reverse
   provider.stream_completion_request(state.llm, context, history)
+}
+
+/// Parse, type check and evaluate a policy written by the user.
+/// An empty policy removes the policy so every effect is performed.
+pub fn load_policy(
+  source: String,
+  cache: cache.Cache(tools.Meta),
+) -> Result(Option(policy.Policy(harness.Effect, tools.Meta)), String) {
+  case string.trim(source) {
+    "" -> Ok(None)
+    code -> {
+      use source <- result.try(
+        parser.all_from_string(code)
+        |> result.map_error(fn(reason) { parser.format_error(reason, code) }),
+      )
+      let source = ir.map_annotation(source, fn(_) { [] })
+      // Each gate must accept its browser effect's input and decide Pass or Mock.
+      let analysis =
+        infer.pure()
+        |> infer.with_expected_type(policy.type_(tools.policy_rules()))
+        |> infer.check(source)
+        |> cache.infer_sync(cache)
+      use Nil <- result.try(case infer.all_errors(analysis) {
+        [] -> Ok(Nil)
+        errors ->
+          list.map(errors, fn(error) { analysis_debug.reason(error.1) })
+          |> string.join("\n")
+          |> Error
+      })
+      use value <- result.try(
+        expression.execute(source, [])
+        |> cache.static_loop(cache, expression.resume)
+        |> result.map_error(fn(debug) { simple_debug.describe(debug.0) }),
+      )
+      policy.decode_policy(tools.policy_rules(), value)
+      |> result.map(Some)
+      |> result.map_error(simple_debug.describe)
+    }
+  }
+}
+
+/// Download the chat in the opencode session export format.
+fn export_history(state: State) {
+  let time = now.sync()
+  let session =
+    export.Session(
+      id: "ses_" <> int.to_string(time),
+      directory: "browser",
+      provider_id: provider.id(state.llm.provider),
+      model_id: state.llm.model,
+      time:,
+    )
+  let content =
+    export.encode(session, list.reverse(state.history)) |> json.to_string
+  let input =
+    download.Input(
+      name: "overlay-session-" <> int.to_string(time) <> ".json",
+      content: <<content:utf8>>,
+    )
+  use <- system.Download(input)
+  system.Done(Ignore)
+}
+
+// Every call has finished, each is recorded as a run with the result the model reads.
+fn record_tool_calls(state: State, calls: tools.Calls, messages) {
+  let generation = "g" <> int.to_string(state.trace.generations)
+  let recorded =
+    list.zip(calls, messages)
+    |> list.index_fold(state.trace, fn(recorded, pair, index) {
+      let #(progress, message) = pair
+      let result = chat.text(message)
+      let #(recorded, outcome) = case progress.call {
+        tools.Successful(value) -> trace.returned(recorded, value)
+        // Programs that did not parse or type check never ran.
+        tools.UnknownTool(..)
+        | tools.BadArguments(..)
+        | tools.InvalidCode(..)
+        | tools.Errored(..) -> #(recorded, glasshouse_run.Rejected(result))
+        _ -> #(recorded, glasshouse_run.Failed(result))
+      }
+      trace.tool_call(
+        recorded,
+        trace.call_id(generation, index),
+        progress.code,
+        progress.program,
+        list.reverse(progress.journal),
+        outcome,
+        progress.started,
+        trace.now(),
+        result,
+      )
+    })
+  State(..state, trace: recorded)
+}
+
+fn record_generation(state: State, result) {
+  case state.asked {
+    Some(#(request, started)) -> {
+      let id = trace.next_generation(state.trace)
+      let key =
+        sha256.hash(<<request.path:utf8, "\n":utf8, request.body:bits>>)
+        |> bit_array.base16_encode
+        |> string.lowercase
+      let #(recorded, request_cid) = trace.store_body(state.trace, request.body)
+      let #(recorded, response, status) = case result, state.streamed {
+        Error(_), <<>> -> #(recorded, None, 0)
+        _, body -> {
+          let #(recorded, cid) = trace.store_body(recorded, body)
+          #(recorded, Some(cid), 200)
+        }
+      }
+      let #(thinking, content, calls, error) = case result {
+        Ok(chat.Completion(thinking:, content:, tool_calls:)) -> #(
+          thinking,
+          content,
+          tool_calls,
+          None,
+        )
+        Error(reason) -> #("", "", [], Some(reason))
+      }
+      let generation =
+        session.Generation(
+          id:,
+          started:,
+          ended: trace.now(),
+          key:,
+          request: request_cid,
+          response:,
+          status:,
+          thinking:,
+          content:,
+          tool_calls: list.index_map(calls, fn(call, index) {
+            let tool.Call(function: tool.FunctionCall(name:, arguments:), ..) =
+              call
+            session.ToolCall(
+              id: trace.call_id(id, index),
+              name:,
+              arguments: json.to_string(utils.fields_to_json(arguments)),
+            )
+          }),
+          usage: usage.from_response(state.streamed),
+          source: session.Live,
+          error:,
+        )
+      State(..state, trace: trace.generated(recorded, generation), asked: None)
+    }
+    None -> state
+  }
+}
+
+/// The agent the session is recorded for.
+pub fn agent(state: State) -> session.Agent {
+  let provider = case state.llm.provider {
+    provider.Ollama(_) -> "ollama"
+    provider.Mistral(_) -> "mistral"
+  }
+  session.Agent(
+    provider:,
+    model: state.llm.model,
+    system_prompt: system_prompt(state),
+  )
+}
+
+/// Ask for a completion, the request is kept to record the generation.
+fn ask(state: State, messages) -> #(State, system.Effect(Message)) {
+  let request = completion_request(state, messages)
+  #(
+    State(..state, asked: Some(#(request, trace.now()))),
+    fetch_completion(request),
+  )
 }
