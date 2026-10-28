@@ -1,0 +1,41 @@
+let policy = import "../../eyg_packages/overlay/policy.eyg"
+{
+  script: (_) -> {
+    let checked = match perform TypeCheck("!int_add(20, 22)") {
+      Ok(type_) -> { type_ }
+      Error(reason) -> { !never(perform Abort(reason)) }
+    }
+    let _ = perform StandardOut(!string_append("Type: ", !string_append(checked, "\n")))
+    let cwd = match perform CWD({}) {
+      Ok(cwd) -> { cwd }
+      Error(_) -> { !never(perform Abort("no working directory")) }
+    }
+    let origin = match perform Env("EYG_AGENT_MODEL_ORIGIN") {
+      Some(origin) -> { origin }
+      None(_) -> { "http://localhost:11434" }
+    }
+    let model = match perform Env("EYG_AGENT_MODEL") {
+      Some(model) -> { model }
+      None(_) -> { "qwen3:0.6b" }
+    }
+    let multiplier = 2
+    let context = {
+      readme: "Use context.twice(integer) to double a number.",
+      twice: (number) -> { !int_multiply(number, multiplier) }
+    }
+    match perform Overlay({
+      llm: {provider: Ollama({origin, api_key: None({})}), model},
+      policy: policy.read_only([cwd]),
+      context
+    }) {
+      Ok(_) -> {
+        let _ = perform StandardOut("\nScript resumed after the agent.\n")
+        0
+      }
+      Error(reason) -> {
+        let _ = perform StandardError(reason)
+        1
+      }
+    }
+  }
+}

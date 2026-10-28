@@ -401,3 +401,9 @@ let request = {
 }
 perform GitHub(request)
 ```
+
+## Agents and type checking
+
+The [script agent guide](./script_agents.md) covers Overlay(config) and
+TypeCheck(source). They are handled by the CLI's run and script commands;
+the computer runtime, agent tool programs and sealed sandboxes do not expose them.

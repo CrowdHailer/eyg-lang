@@ -16,6 +16,7 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error as type_error
 import eyg/analysis/type_/isomorphic as t
+import eyg/cli/captured
 import eyg/cli/check
 import eyg/cli/internal/config
 import eyg/cli/internal/terminal
@@ -26,8 +27,10 @@ import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/cast
 import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value
+import eyg/ir/dag_json as ir_json
 import glasshouse/archive
 import glasshouse/cohort
 import glasshouse/journal
@@ -284,30 +287,15 @@ pub fn setup(
               ended:,
             )
           let session =
-            Session(
-              llm: user_config.llm,
-              provider_context: provider.Context(
-                system_prompt: agent.system_prompt(
-                  config.client.origin,
-                  // use the agent harness because the prompt should talk about effects that can't be used
-                  list.map(agent_harness, pair.first),
-                  user_config.readme,
-                  True,
-                ),
-                tools: agent.tools(),
-              ),
-              cwd:,
-              policy: user_config.policy,
-              context: cache.Module(
-                value: user_config.context,
-                type_: context_poly,
-              ),
-              styled: config.styled,
-              config: config_run,
-              store: recorder.store(recorder),
-              secrets: recorder.secrets(recorder),
-              persist: True,
-              interrupt: terminal.interrupt(),
+            new_session(
+              user_config,
+              context_poly,
+              agent_harness,
+              config.client.origin,
+              cwd,
+              config.styled,
+              config_run,
+              recorder,
             )
 
           system.Done(#(Ok(session), state))
@@ -334,6 +322,179 @@ pub fn setup(
         state,
       )
       |> system.Done
+  }
+}
+
+fn new_session(
+  user_config: overlay_config.Config(eff, source.Location),
+  context_type,
+  rules,
+  origin,
+  cwd,
+  styled,
+  config_run,
+  recorder: Recorder,
+) {
+  Session(
+    llm: user_config.llm,
+    provider_context: provider.Context(
+      system_prompt: agent.system_prompt(
+        origin,
+        list.map(rules, pair.first),
+        user_config.readme,
+        True,
+      ),
+      tools: agent.tools(),
+    ),
+    cwd:,
+    policy: user_config.policy,
+    context: cache.Module(value: user_config.context, type_: context_type),
+    styled:,
+    config: config_run,
+    store: recorder.store(recorder),
+    secrets: recorder.secrets(recorder),
+    persist: True,
+    interrupt: terminal.interrupt(),
+  )
+}
+
+/// Open an agent from an evaluated script config, retaining normal trajectories.
+/// The archive starts with a closed context snapshot rather than the caller's
+/// earlier IO or credentials. The caller resumes when the conversation ends.
+pub fn start(user_config, context_type, meta, cwd, styled, state) {
+  let fields = cast.field("policy", cast.as_record, user_config)
+  let rules =
+    list.filter(rule_mapping, fn(rule) {
+      case rule.1, fields {
+        policy.PolicyField(field), Ok(fields) ->
+          !list.contains(optional_fields, field) || dict.has_key(fields, field)
+        _, _ -> True
+      }
+    })
+  let rules = policy.match_rules(computer.effects(), rules)
+  case overlay_config.cast(user_config, rules) {
+    Error(reason) ->
+      system.Done(Error(
+        "error: invalid overlay config: " <> simple_debug.describe(reason),
+      ))
+    Ok(user_config) -> {
+      let secrets = provider_secrets(user_config.llm.provider)
+      let recorder =
+        list.fold(secrets, recorder.new(traces.sha256), recorder.add_secret)
+      let context = secret.redact(user_config.context, secrets)
+      let snapshot = value.Record(dict.from_list([#("context", context)]))
+      case captured.program(snapshot, meta, cwd) {
+        Error(reason) ->
+          system.Done(Error("error: invalid context: " <> reason))
+        Ok(source) -> {
+          use started <- system.then(system.now())
+          use #(pinned, state, recorder) <- system.then(pin.pin(
+            source,
+            cwd,
+            state,
+            recorder,
+            pin.allow,
+          ))
+          case pinned {
+            Error(reason) -> system.Done(Error(reason))
+            Ok(pinned) -> {
+              use context <- system.try(snapshot_context(pinned, recorder, meta))
+              let #(context, recorder) = recorder.encode(recorder, context)
+              let config_run =
+                run.Run(
+                  id: "config",
+                  kind: run.Config,
+                  code: ir_json.to_string(source),
+                  origin: run.Inline,
+                  program: Some(pinned.program),
+                  lock: recorder.lock_secrets(recorder, pinned.lock),
+                  cwd:,
+                  journal: [],
+                  outcome: run.Returned(context),
+                  started:,
+                  ended: started,
+                )
+              let session =
+                new_session(
+                  user_config,
+                  context_type,
+                  rules,
+                  state.origin,
+                  cwd,
+                  styled,
+                  config_run,
+                  recorder,
+                )
+              use id <- system.then(traces.new_id(started))
+              use trace <- system.then(outer_loop(
+                session,
+                state,
+                [],
+                start_trace(id, session),
+              ))
+              use Nil <- system.map(finish(session, trace))
+              Ok(Nil)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+fn snapshot_context(pinned: pin.Pinned, recorder, meta) {
+  let store = recorder.store(recorder)
+  use program <- result.try(store.get_node(store, pinned.program))
+  use snapshot <- result.try(recorded.decode(program, store, meta))
+  cast.field("context", Ok, snapshot)
+  |> result.map_error(simple_debug.describe)
+}
+
+fn optional_secret(name, value) {
+  case value {
+    Some(value) if value != "" -> [secret.Secret("overlay:" <> name, value)]
+    _ -> []
+  }
+}
+
+fn provider_secrets(provider) {
+  case provider {
+    provider.Ollama(config) -> optional_secret("api_key", config.api_key)
+    provider.Mistral(config) -> optional_secret("api_key", Some(config.api_key))
+    provider.OpenAI(config) -> {
+      let headers =
+        config.headers
+        |> list.filter(fn(header) {
+          list.contains(
+            ["authorization", "cookie", "x-api-key", "api-key"],
+            string.lowercase(header.0),
+          )
+        })
+        |> list.flat_map(fn(header) {
+          let value = case string.split_once(header.1, " ") {
+            Ok(#(scheme, token)) ->
+              case string.lowercase(scheme) {
+                "bearer" -> token
+                _ -> header.1
+              }
+            Error(_) -> header.1
+          }
+          optional_secret("header:" <> string.lowercase(header.0), Some(value))
+        })
+      list.append(optional_secret("api_key", config.api_key), headers)
+    }
+    provider.Bedrock(config) -> [
+      secret.Secret("overlay:access_key_id", config.credentials.access_key_id),
+      secret.Secret(
+        "overlay:secret_access_key",
+        config.credentials.secret_access_key,
+      ),
+      ..optional_secret("session_token", config.credentials.session_token)
+    ]
+    provider.Codex(config) -> [
+      secret.Secret("overlay:access_token", config.access_token),
+      secret.Secret("overlay:account_id", config.account_id),
+    ]
   }
 }
 
