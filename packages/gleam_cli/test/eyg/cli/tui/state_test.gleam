@@ -1,0 +1,20 @@
+import etui/backend
+import eyg/cli/tui/helpers as h
+import eyg/cli/tui/state
+import eyg/interpreter/value
+import gleam/option.{None}
+import loam/system
+import morph/repl/history
+
+pub fn exit_in_program_stops_run_test() {
+  let #(state, effects) =
+    state.init([], h.execute_state())
+    |> h.with_code("let x = perform Sleep(200) let x = perform Exit(9) 10")
+    |> state.update(state.Input(backend.KeyPress("enter")))
+  let assert [system.Wait(200, _resume)] = effects
+  let message = state.Task(state.EffectHandled(state.counter - 1, value.unit()))
+  let #(state, effects) = state.update(state, message)
+  assert [] == effects
+  let assert [history.Entry(value: None, effects:, buffer: _)] = state.history
+  assert [#("Sleep", #(value.Integer(200), value.unit()))] == effects
+}

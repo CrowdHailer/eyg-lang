@@ -138,8 +138,8 @@ pub fn repl_context(
 }
 
 pub fn update(
-  event: Event,
   state: State,
+  event: Event,
 ) -> #(State, List(system.Effect(Message))) {
   // A message stays until the next input from the user.
   let state = case event {
@@ -446,6 +446,26 @@ fn perform(effect, origin, label, lift, env, k, state, occured) {
     harness.StandardIn -> {
       let mode = FreeInput(input.state_new(), ReplyStandardIn(env, k, occured))
       #(State(..state, mode:), [])
+    }
+    harness.Exit(status) -> {
+      let entry =
+        history.Entry(value: None, effects: occured, buffer: state.buffer)
+      let history = [entry, ..state.history]
+      let buffer =
+        buffer.empty(
+          repl_context(state.scope),
+          cache.types(state.execute_state.cache),
+        )
+      #(
+        State(
+          ..state,
+          mode: Navigating,
+          history:,
+          buffer:,
+          message: Some("exited with status: " <> int.to_string(status)),
+        ),
+        [],
+      )
     }
     _ ->
       after_perform(

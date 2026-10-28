@@ -188,7 +188,7 @@ fn dispatch(events, state, draw, finish, guard) {
   use <- bool.guard(events == [], Nil)
   case
     apply_until(events, #(mutable_reference.get(state), []), fn(acc, event) {
-      let #(next, effects) = state.update(event, acc.0)
+      let #(next, effects) = state.update(acc.0, event)
       case next.quit {
         True -> Stop(0)
         False -> Continue(#(next, list.append(acc.1, effects)))
