@@ -13,6 +13,7 @@ import loam/execute
 import loam/ir
 import loam/sandbox
 import loam/source
+import loam/system
 import multiformats/cid/v1
 
 pub fn interactive_session_retains_modules_and_types_test() {
@@ -207,4 +208,18 @@ pub fn type_of_of_a_pure_expression_has_no_effects_test() {
 
 fn state() -> execute.State {
   execute.State(origin: helpers.config.client.origin, cache: cache.empty())
+}
+
+pub fn frontend_initialization_does_not_take_terminal_input_test() {
+  let assert system.Done(Ok(#([], _))) = shell.initialize(None, helpers.config)
+}
+
+pub fn frontend_recording_retains_bindings_test() {
+  let assert #(sandbox.Returned(#([], records, #("", scope, defs, state))), _) =
+    shell.handle_recorded("let now = perform Now({})", [], [], state())
+    |> sandbox.run(sandbox.sandbox() |> sandbox.with_now(7))
+  assert records == [#("Now", v.unit(), v.Integer(7))]
+  let assert #(sandbox.Returned(#([Ok("7")], [], _)), _) =
+    shell.handle_recorded("now", scope, defs, state)
+    |> sandbox.run(sandbox.sandbox())
 }

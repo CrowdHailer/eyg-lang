@@ -19,11 +19,17 @@ import loam/source
 import loam/system
 
 pub fn execute(input, config: config.Config) {
-  let state = execute.State(config.client.origin, cache.empty())
-  use initial <- system.then(read_input(input, state))
+  use initial <- system.then(initialize(input, config))
   use #(scope, state) <- system.try(initial)
   use Nil <- system.then(system.stdout("type /help for shell commands"))
   loop("", scope, [], state)
+}
+
+/// Prepare a shell without taking ownership of terminal input or output.
+/// Frontends can then call `handle` while retaining the returned scope and cache.
+pub fn initialize(input, config: config.Config) {
+  let state = execute.State(config.client.origin, cache.empty())
+  read_input(input, state)
 }
 
 pub fn read_input(input, state) {
@@ -85,8 +91,27 @@ fn loop(buffer, scope, defs, state: execute.State) -> system.Effect(_) {
 }
 
 pub fn handle(code, scope, defs, state) {
+  use #(results, _, next) <- system.map(handle_recorded(
+    code,
+    scope,
+    defs,
+    state,
+  ))
+  #(results, next)
+}
+
+/// Also return the EYG effects performed, as `execute.block_recorded` does.
+pub fn handle_recorded(code, scope, defs, state) {
   case code {
-    "/" <> command -> handle_meta(command, scope, defs, state)
+    "/" <> command -> {
+      use #(results, next) <- system.map(handle_meta(
+        command,
+        scope,
+        defs,
+        state,
+      ))
+      #(results, [], next)
+    }
     _ -> {
       case parser.block_from_string(code) {
         Ok(#(#(assignments, tail), _)) -> {
@@ -100,38 +125,45 @@ pub fn handle(code, scope, defs, state) {
             tree.map_annotation(source, fn(span) {
               source.Location(source.Repl, source.Text(code, span))
             })
-          use cwd <- system.then(system.cwd())
-          let cwd = result.unwrap(cwd, "")
-          use #(result, state) <- system.map(execute.block(
-            located,
-            scope,
-            state,
-          ))
-          case result {
-            Ok(#(Some(value), scope)) -> #(
-              [Ok(simple_debug.inspect(value))],
-              #("", scope, list.append(defs, assignments), state),
-            )
-            Ok(#(None, scope)) -> #(
-              [],
-              #("", scope, list.append(defs, assignments), state),
-            )
-            Error(#(reason, location, _env, k)) -> #(
-              [
-                Error(execute.render_error(reason, location, k, cwd)),
-              ],
-              #("", scope, defs, state),
-            )
-          }
+          evaluate(located, assignments, scope, defs, state)
         }
-        Error(UnexpectEnd) -> system.Done(#([], #(code, scope, defs, state)))
+        Error(UnexpectEnd) ->
+          system.Done(#([], [], #(code, scope, defs, state)))
         Error(reason) ->
           system.Done(#(
             [Error(parser.format_error(reason, code))],
+            [],
             #("", scope, defs, state),
           ))
       }
     }
+  }
+}
+
+fn evaluate(code, assignments, scope, defs, state) {
+  use cwd <- system.then(system.cwd())
+  let cwd = result.unwrap(cwd, "")
+  use #(result, state, records) <- system.map(execute.block_recorded(
+    code,
+    scope,
+    state,
+  ))
+  case result {
+    Ok(#(Some(value), scope)) -> #(
+      [Ok(simple_debug.inspect(value))],
+      records,
+      #("", scope, list.append(defs, assignments), state),
+    )
+    Ok(#(None, scope)) -> #(
+      [],
+      records,
+      #("", scope, list.append(defs, assignments), state),
+    )
+    Error(#(reason, location, _env, k)) -> #(
+      [Error(execute.render_error(reason, location, k, cwd))],
+      records,
+      #("", scope, defs, state),
+    )
   }
 }
 
