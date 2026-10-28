@@ -259,11 +259,67 @@ pub fn multiply(a, b) {
 }
 
 pub fn get_annotation(node: Node(a)) {
-  fold(node, [], fn(acc, node) { return([node.1, ..acc]) })(list.reverse)
+  walk([node], [], fn(acc, node) { [node.1, ..acc] }) |> list.reverse
 }
 
 pub fn map_annotation(in: Node(a), f: fn(a) -> b) -> Node(b) {
-  rewrite_meta(in, fn(m) { return(f(m)) })(fn(x) { x })
+  rewrite_pure(in, fn(node) { #(node.0, f(node.1)) })
+}
+
+type RewriteStep(a) {
+  Visit(Node(a))
+  LambdaReady(String, a)
+  ApplyReady(a)
+  LetReady(String, a)
+}
+
+/// Rewrite in post order with explicit work stacks, including deep trees.
+/// The callback sees transformed children and the original annotation.
+pub fn rewrite_pure(
+  node: Node(a),
+  f: fn(#(Expression(b), a)) -> Node(b),
+) -> Node(b) {
+  rewrite_loop([Visit(node)], [], f)
+}
+
+fn rewrite_loop(work, values, f) {
+  case work, values {
+    [], [value] -> value
+    [Visit(#(Lambda(label, body), meta)), ..rest], _ ->
+      rewrite_loop([Visit(body), LambdaReady(label, meta), ..rest], values, f)
+    [Visit(#(Apply(function, argument), meta)), ..rest], _ ->
+      rewrite_loop(
+        [Visit(function), Visit(argument), ApplyReady(meta), ..rest],
+        values,
+        f,
+      )
+    [Visit(#(Let(label, definition, body), meta)), ..rest], _ ->
+      rewrite_loop(
+        [Visit(definition), Visit(body), LetReady(label, meta), ..rest],
+        values,
+        f,
+      )
+    [Visit(#(leaf, meta)), ..rest], _ -> {
+      // There are no children in this branch; the shallow conversion changes
+      // the phantom metadata type without another recursive traversal.
+      let leaf =
+        map_children(leaf, fn(_) { panic as "unexpected leaf child" })(fn(x) {
+          x
+        })
+      rewrite_loop(rest, [f(#(leaf, meta)), ..values], f)
+    }
+    [LambdaReady(label, meta), ..rest], [body, ..values] ->
+      rewrite_loop(rest, [f(#(Lambda(label, body), meta)), ..values], f)
+    [ApplyReady(meta), ..rest], [argument, function, ..values] ->
+      rewrite_loop(rest, [f(#(Apply(function, argument), meta)), ..values], f)
+    [LetReady(label, meta), ..rest], [body, definition, ..values] ->
+      rewrite_loop(
+        rest,
+        [f(#(Let(label, definition, body), meta)), ..values],
+        f,
+      )
+    _, _ -> panic as "invalid tree rewrite stack"
+  }
 }
 
 pub fn clear_annotation(source) {
@@ -272,24 +328,31 @@ pub fn clear_annotation(source) {
 
 pub fn list_builtins(node: Node(a)) {
   {
-    use acc, #(exp, _meta) <- fold(node, [])
+    use acc, #(exp, _meta) <- walk([node], [])
     case exp {
       Builtin(i) -> utils.push_new(acc, i)
       _ -> acc
     }
-    |> return
-  }(list.reverse)
+  }
+  |> list.reverse
 }
 
 pub fn list_references(node: Node(a)) -> List(Reference) {
   {
-    use acc, #(exp, _meta) <- fold(node, [])
+    use acc, #(exp, _meta) <- walk([node], [])
     case exp {
       Reference(reference) -> utils.push_new(acc, reference)
       _ -> acc
     }
-    |> return
-  }(list.reverse)
+  }
+  |> list.reverse
+}
+
+fn walk(nodes: List(Node(a)), acc: b, f: fn(b, Node(a)) -> b) -> b {
+  case nodes {
+    [] -> acc
+    [node, ..rest] -> walk(list.append(children(node), rest), f(acc, node), f)
+  }
 }
 
 /// The variables that are free in this expressions.

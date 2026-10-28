@@ -1,0 +1,22 @@
+name = "glasshouse"
+version = "0.1.0"
+target = "javascript"
+
+description = "Reproducible tracing, replay and evaluation for EYG programs and Overlay agents."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/glasshouse", tag_prefix = "glasshouse-" }
+links = [{ title = "Website", href = "https://eyg.run/glasshouse" }]
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+dag_json = ">= 3.0.0 and < 4.0.0"
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
+gleam_http = ">= 4.4.0 and < 5.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+otel = { path = "../otel" }
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+gleam_crypto = ">= 1.6.0 and < 2.0.0"
