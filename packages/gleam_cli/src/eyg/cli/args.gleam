@@ -20,6 +20,7 @@ pub type Args {
   Publish(package: String, file: String)
   Overlay(input: source.Input)
   Record(input: source.Input, arguments: Option(List(String)))
+  RecordShell
   Replay(path: String)
   Inspect(path: String, step: Option(Int))
   Upload(path: String)
@@ -30,6 +31,7 @@ pub type Args {
 
 pub fn parse(args) {
   case args {
+    ["record", "shell"] -> RecordShell
     ["record", "run", "-c", code] | ["record", "run", "--code", code] ->
       Record(source.Code(code), None)
     ["record", "run", "-"] | ["record", "run", "--stdin"] ->
@@ -190,6 +192,7 @@ commands:
   record run <file>      run a block and save a portable trajectory
   record run -c <code>   record an inline block
   record <file> [args]   record a script and its arguments
+  record shell          record successive shell inputs
   replay <trace>        replay EYG journals from a portable archive
   inspect <trace> [step] show recorded effects and observed file changes
   upload <trace>        send archived spans to Langfuse or an OTLP collector

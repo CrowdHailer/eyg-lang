@@ -4,6 +4,10 @@ import eyg/hub/cache
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/parser
+import glasshouse/archive
+import glasshouse/rerun
+import glasshouse/run
+import glasshouse/session
 import gleam/dict
 import gleam/http/response
 import gleam/list
@@ -12,6 +16,7 @@ import gleam/string
 import loam/execute
 import loam/ir
 import loam/sandbox
+import loam/sandbox/fs
 import loam/source
 import loam/system
 import multiformats/cid/v1
@@ -242,4 +247,39 @@ pub fn same_cell_shadowing_agrees_with_later_calls_and_types_test() {
   assert list.contains(sandbox.stdout, "10")
   assert list.contains(sandbox.stdout, "Integer")
   assert sandbox.stderr == []
+}
+
+pub fn recorded_shell_sessions_replay_test() {
+  let sandbox =
+    sandbox.sandbox()
+    |> sandbox.with_cwd("/work")
+    |> sandbox.with_directory("/work")
+    |> sandbox.with_env("EYG_TRACE_DIR", "/traces")
+    |> sandbox.with_random_values([3])
+    |> with_lines([
+      "let n = 2 let x = !int_add(n, 3)",
+      "perform WriteFile({path: \"a.txt\", contents: !string_to_binary(!int_to_string(x))})",
+      "/scope",
+      "!int_add(x, 1)",
+      "",
+    ])
+  let assert #(sandbox.Returned(Ok(0)), sandbox) =
+    sandbox.run(shell.record(helpers.config), sandbox)
+  assert list.contains(sandbox.stdout, "6")
+  assert fs.read(sandbox.file_system, "/work/a.txt") == Ok("5")
+  let assert Ok(fs.Directory(children:, ..)) =
+    fs.inspect(sandbox.file_system, "/traces")
+  let assert [name] = dict.keys(children)
+  let assert Ok(text) = fs.read(sandbox.file_system, "/traces/" <> name)
+  let assert Ok(archive) = archive.from_string(text)
+  let runs = session.runs(archive.session)
+  assert list.map(runs, fn(run) { run.code })
+    == [
+      "let n = 2 let x = !int_add(n, 3)",
+      "perform WriteFile({path: \"a.txt\", contents: !string_to_binary(!int_to_string(x))})",
+      "!int_add(x, 1)",
+    ]
+  assert list.all(runs, fn(r) { r.kind == run.Cell })
+  let reports = rerun.session(archive.session, archive.store)
+  assert list.all(reports, fn(report) { report.problem == None })
 }
