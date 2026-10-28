@@ -1,8 +1,11 @@
+import eyg/interpreter/break
 import eyg/interpreter/builtin
+import eyg/interpreter/process
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/list
+import gleam/option.{None, Some}
 
 /// Resume the interpretation loop with a value from a previous break position.
 /// This can be used to resume after any break but is normally used to implement
@@ -12,13 +15,18 @@ pub fn resume(
   env: state.Env(m),
   k: state.Stack(m),
 ) -> Result(state.Value(m), state.Debug(m)) {
-  loop(state.step(state.V(value), env, k))
+  case k {
+    state.Empty -> Ok(value)
+    state.Stack(_, meta, _) -> finish(process.resume(value, env, k, meta), meta)
+  }
 }
 
-fn loop(next) {
-  case next {
-    state.Loop(c, e, k) -> loop(state.step(c, e, k))
-    state.Break(result) -> result
+fn finish(task, meta) {
+  case process.bounded(task) {
+    Ok(#(Some(value), _)) -> Ok(value)
+    Ok(#(None, scope)) ->
+      Error(#(break.Vacant, meta, builtin.default(scope), state.Empty))
+    Error(debug) -> Error(debug)
   }
 }
 
@@ -27,7 +35,7 @@ pub fn execute(
   exp: ir.Node(t),
   scope: state.Scope(t),
 ) -> Result(state.Value(t), state.Debug(t)) {
-  loop(state.step(state.E(exp), builtin.default(scope), state.Empty))
+  finish(process.start(exp, scope), exp.1)
 }
 
 /// Call an evaluated function with a list of args
@@ -43,7 +51,7 @@ pub fn call(
       let #(value, meta) = arg
       state.Stack(state.CallWith(value, env), meta, k)
     })
-  loop(state.step(state.V(f), env, k))
+  resume(f, env, k)
 }
 
 pub fn call_field(

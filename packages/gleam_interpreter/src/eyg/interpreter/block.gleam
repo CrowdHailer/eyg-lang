@@ -1,17 +1,18 @@
 import eyg/interpreter/builtin
+import eyg/interpreter/process
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, Some}
 
 fn loop(c, env: state.Env(t), k) {
-  case c, k {
-    state.E(#(ir.Vacant, _)), state.Empty -> Ok(#(None, env.scope))
-    _, _ ->
-      case state.step(c, env, k) {
-        state.Loop(c, env, k) -> loop(c, env, k)
-        state.Break(Ok(value)) -> Ok(#(Some(value), env.scope))
-        state.Break(Error(reason)) -> Error(reason)
+  case c {
+    state.E(node) -> process.start(node, env.scope) |> process.bounded
+    state.V(value) ->
+      case k {
+        state.Stack(_, meta, _) ->
+          process.resume(value, env, k, meta) |> process.bounded
+        state.Empty -> Ok(#(Some(value), env.scope))
       }
   }
 }
