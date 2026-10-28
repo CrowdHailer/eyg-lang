@@ -14,6 +14,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import morph/buffer as morph_buffer
 import morph/lustre/frame
 import morph/lustre/render
 import morph/projection
@@ -33,7 +34,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     | state.PickRelease(..)
     | state.Running(..) -> False
   }
-  let errors = info.block_errors(state)
+  let errors = morph_buffer.block_errors(state.buffer)
   let input_lines =
     render.projection(state.buffer.projection, render.Statements, errors)
     |> code(active)

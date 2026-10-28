@@ -57,6 +57,50 @@ pub type FetchStatus(meta) {
   )
 }
 
+/// Whether a reference is queued or waiting on a fetch that is still in progress.
+/// Failed dependencies are errors, rather than references that are still loading.
+pub fn reference_in_progress(cache: Cache(_), reference: ir.Reference) -> Bool {
+  let pulling = case cache.cursor_status {
+    ReadyToPull | Pulling -> True
+    _ -> False
+  }
+  case reference {
+    ir.Content(cid) -> module_in_progress(cache, cid)
+    ir.Pinned(release) ->
+      case unbound_release(cache, release.package, release.version) {
+        Ok(cid) if cid != release.module -> False
+        Ok(cid) -> module_in_progress(cache, cid)
+        Error(_) ->
+          case get_module(cache, release.module) {
+            Error(Failed(_)) | Error(Invalid(_)) -> False
+            _ -> pulling || module_in_progress(cache, release.module)
+          }
+      }
+    ir.Package(name) ->
+      case package(cache, name) {
+        Ok(entry) -> module_in_progress(cache, entry.module)
+        Error(_) -> pulling
+      }
+    ir.Version(name, version) ->
+      case unbound_release(cache, name, version) {
+        Ok(cid) -> module_in_progress(cache, cid)
+        Error(_) -> pulling
+      }
+    ir.Relative(_) -> False
+  }
+}
+
+fn module_in_progress(cache: Cache(_), cid) -> Bool {
+  case get_module(cache, cid) {
+    Error(Requested) -> True
+    // NotRequested also represents an absent module; only queued entries count.
+    Error(NotRequested) -> dict.has_key(cache.fetching_modules, cid)
+    Error(DependsOn(dep, ..)) ->
+      reference_in_progress(cache, dep_to_reference(dep))
+    _ -> False
+  }
+}
+
 /// A dependency for modules in a cache is the references that are fully specified
 pub type Dependency {
   Content(cid: v1.Cid)

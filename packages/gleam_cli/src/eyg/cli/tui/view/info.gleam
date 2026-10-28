@@ -1,6 +1,5 @@
 import etui/span
 import etui/style
-import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic
@@ -13,20 +12,6 @@ import gleam/list
 import gleam/option.{None}
 import morph/buffer
 import morph/projection
-
-pub fn block_errors(state: state.State) {
-  // TODO move to block errors
-  infer.all_errors(state.buffer.analysis)
-  |> list.filter(fn(error) {
-    let #(path, reason) = error
-    let is_vacant = reason == error.Todo
-    let last = case path {
-      [] | [_] -> True
-      _ -> False
-    }
-    !{ last && is_vacant }
-  })
-}
 
 fn focus_type(state: state.State) {
   case state.buffer.projection.0 {
@@ -52,6 +37,18 @@ fn focus_type(state: state.State) {
   }
 }
 
+fn split(rest, errors, loading, cache: cache.Cache(_)) {
+  case rest {
+    [] -> #(list.reverse(loading), list.reverse(errors))
+    [#(_, error.MissingReference(reference)) as error, ..rest] ->
+      case cache.reference_in_progress(cache, reference) {
+        True -> split(rest, errors, [reference, ..loading], cache)
+        False -> split(rest, [error, ..errors], loading, cache)
+      }
+    [error, ..rest] -> split(rest, [error, ..errors], loading, cache)
+  }
+}
+
 pub fn status(state: state.State) -> List(span.Line) {
   case state.mode {
     state.Navigating
@@ -60,28 +57,63 @@ pub fn status(state: state.State) -> List(span.Line) {
     | state.PickRelease(..) ->
       case state.message {
         None -> {
-          let count = list.length(block_errors(state))
-          let infer = case count {
-            0 ->
+          let #(loading, errors) =
+            split(
+              buffer.block_errors(state.buffer),
+              [],
+              [],
+              state.execute_state.cache,
+            )
+
+          let infer = case list.length(loading), list.length(errors) {
+            0, 0 ->
               span.span_styled(
                 "✔  ",
                 style.default_style() |> style.with_fg(style.Indexed(2)),
               )
-            n if n < 10 ->
+            0, n if n < 10 ->
               span.span_styled(
                 "!" <> int.to_string(n) <> " ",
                 style.default_style() |> style.with_fg(style.Indexed(1)),
               )
-            _ ->
+            0, _ ->
               span.span_styled(
                 "!9+",
                 style.default_style() |> style.with_fg(style.Indexed(1)),
+              )
+            n, _ if n < 10 ->
+              span.span_styled(
+                "◌" <> int.to_string(n) <> " ",
+                style.default_style() |> style.with_fg(style.Indexed(3)),
+              )
+            _, _ ->
+              span.span_styled(
+                "◌9+",
+                style.default_style() |> style.with_fg(style.Indexed(3)),
               )
           }
           let space = span.span_plain("· ")
           let focus = case focus_type(state) {
             Ok(isomorphic.Var(-1)) -> span.span_plain("")
             Ok(type_) -> span.span_plain(debug.mono(type_))
+            Error(error.MissingReference(reference) as reason) ->
+              case
+                cache.reference_in_progress(
+                  state.execute_state.cache,
+                  reference,
+                )
+              {
+                True ->
+                  span.span_styled(
+                    "loading " <> tree.reference_to_string(reference),
+                    style.default_style() |> style.with_fg(style.Indexed(3)),
+                  )
+                False ->
+                  span.span_styled(
+                    debug.reason(reason),
+                    style.default_style() |> style.with_fg(style.Indexed(1)),
+                  )
+              }
             Error(reason) ->
               span.span_styled(
                 debug.reason(reason),
