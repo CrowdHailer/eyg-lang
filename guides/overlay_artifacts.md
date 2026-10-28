@@ -116,33 +116,38 @@ state and are omitted from portable workspace files. Hub administrators can
 
 ## Reproduce the checks
 
-Use an existing local hub, or start an isolated database:
+Start an isolated database:
 
 ```sh
 docker run --rm -d --name eyg-artifact-db -p 127.0.0.1:15432:5432 -e POSTGRES_PASSWORD=postgres postgres:17
 ```
 
-In `packages/hub`, migrate and start the hub:
+Export its connection settings in the terminal running the check:
 
 ```sh
 export POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=15432 POSTGRES_PASSWORD=postgres
-export SECRET_KEY_BASE=artifact-local-development PORT=7812
-gleam dev migrate
-gleam run
+export SECRET_KEY_BASE=artifact-local-development
 ```
 
 In `packages/overlay_puppet`, regenerate the preview and viewer bundles with
-`gleam run --runtime bun -m bundle`. Install the browser recording dependencies
-with `bun install` in `packages/tracing`; use `bunx playwright install
-chromium` if Chromium is not installed.
+`gleam run --runtime bun -m bundle`. Run `bun install --frozen-lockfile` in both
+`packages/overlay_public` and `packages/tracing`. In `packages/tracing`, use
+`bunx playwright install chromium` if Chromium is not installed.
 
-Start Overlay in `packages/overlay_public`:
+Run this in `packages/tracing`:
 
 ```sh
-EYG_HUB=http://127.0.0.1:7812 EYG_OLLAMA=http://127.0.0.1:7201 bun run dev -- --port 5280
+gleam run -m tracing/artifact_check
 ```
 
-With the hub listening on 7812, run these in `packages/tracing`:
+The Gleam check migrates the database, starts the hub on 7812 and Overlay on
+5280, runs both browser workflows, and stops its process groups even on a failed
+check. Keep those ports and 7201 free. It saves fresh videos, screenshots and a
+replayable trajectory under `.recordings/artifact-check`; server logs are in
+`.recordings`. CI runs the same check against PostgreSQL 17.
+
+With an existing hub on 7812 and Overlay on 5280 configured to use it and the
+scripted model on 7201, run the workflows individually:
 
 ```sh
 gleam run --runtime bun -m tracing/artifact_demo
@@ -154,5 +159,4 @@ and save videos, screenshots and a replayable trajectory under `recordings`.
 Set `CHROME_BIN` for an existing Chromium executable. Use
 `DEMO_OUTPUT_DIR=.recordings/recheck` to keep a separate validation run.
 Run `eyg script entry.eyg` at the repository root to check the EYG libraries.
-Stop the local hub/Overlay processes after testing, and remove this temporary
-database with `docker stop eyg-artifact-db`.
+Remove the temporary database with `docker stop eyg-artifact-db`.

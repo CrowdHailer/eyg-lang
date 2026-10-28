@@ -2,23 +2,28 @@
 
 ## Running tests
 
-To test all the packages on the BEAM environment.
+To test the BEAM packages.
 ```sh
 # Erlang-target Gleam packages
-for pkg in packages/{gleam_analysis,gleam_hub,gleam_ir,gleam_parser,intelligence,overlay_llm,topological,touch_grass,untethered}; do
-  ( cd "$pkg" && gleam format --check src test && gleam build --warnings-as-errors && gleam test )
+for pkg in packages/{eyg_tui,gleam_analysis,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_sha256,html_parser,intelligence,overlay_llm,topological,touch_grass,untethered}; do
+  ( cd "$pkg" && gleam format --check src test && gleam build --target erlang --warnings-as-errors && gleam test --target erlang )
 done
 ```
-To test all the packages on the JavaScript environment.
+To test the core JavaScript packages. The [CI matrix](./.github/workflows/test.yml) also covers the native SDKs, browser tooling and application examples.
 ```sh
 for pkg in packages/{glasshouse,gleam_analysis,gleam_cli,gleam_compiler,gleam_compiled_runtime,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,loam,morph,otel,overlay_llm,overlay_web,plinthx,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
 done
 ```
-Test all the eyg packages.
+Build the current CLI before testing EYG packages; these packages use the language features in this checkout.
 ```sh
-eyg script entry.eyg
+(cd packages/gleam_cli && gleam run --runtime bun -m compile)
+packages/gleam_cli/dist/eyg script entry.eyg
 ```
+
+For `embed_js`, `opencode_plugin` and `pi_extension`, install their pinned JavaScript dependencies and run `gleam run -m build` before the Gleam tests. Test those bundles with both `gleam test --runtime bun` and `gleam test --runtime node`. Run `gleam run -m generate -- --check` from `packages/gleam_compiled_runtime` to verify the compiler's generated runtime.
+
+The artifact integration check owns its hub and Vite process groups and cleans them up on failure. With a local PostgreSQL instance configured through `POSTGRES_HOST`, `POSTGRES_PORT` and `POSTGRES_PASSWORD`, install browser dependencies from `packages/tracing`, regenerate bundles from `packages/overlay_puppet` with `gleam run -m bundle`, then run `gleam run -m tracing/artifact_check` from `packages/tracing`. `CHROME_BIN` selects an existing Chromium binary. The check uses local scripted model responses.
 
 ## Writing EYG packages
 
