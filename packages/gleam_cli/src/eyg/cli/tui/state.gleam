@@ -301,8 +301,11 @@ fn command_key_press(
     "R" -> edit(state, m.create_empty_record())
     "r" -> edit(state, m.create_record())
     "t" -> edit(state, m.insert_tag())
-    // "y" -> copy(state)
-    // "Y" -> paste(state)
+    "y" -> #(fail(state, "Copy is not supported"), [])
+    "Y" -> #(
+      fail(state, "Use your terminal's native paste shortcut to paste"),
+      [],
+    )
     // TODO mode is authenticating
     // you won't see much on the front page
     // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
@@ -496,16 +499,15 @@ fn fail(state, message) {
 }
 
 pub fn paste(state: State, text: String) -> State {
-  case source.parse(text, source.Repl) {
-    Ok(source) ->
-      State(
-        ..state,
-        buffer: buffer.from_source(
-          source,
-          repl_context(state.scope),
-          cache.types(state.execute_state.cache),
-        ),
-      )
-    Error(reason) -> fail(state, reason)
+  case buffer.set_expression(state.buffer), source.parse(text, source.Repl) {
+    Ok(rebuild), Ok(source) -> {
+      let expression = e.from_annotated(source) |> e.open_all
+      let context = repl_context(state.scope)
+      let refs = cache.types(state.execute_state.cache)
+      State(..state, buffer: rebuild(expression, context, refs))
+    }
+
+    Error(Nil), _ -> fail(state, "Select an expression to paste into")
+    _, Error(reason) -> fail(state, reason)
   }
 }
