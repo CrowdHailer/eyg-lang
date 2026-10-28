@@ -72,3 +72,19 @@ pub fn edits_are_checked_before_returning_to_the_view_test() {
   let assert #(redone, []) = h.key(undone, "Z")
   assert Ok(t.Integer) == buffer.target_type(redone.buffer)
 }
+
+pub fn prompt_input_is_owned_by_the_tui_and_recorded_test() {
+  let assert #(state, []) =
+    state.init([], h.execute_state())
+    |> h.with_code("perform Prompt(\"Name\")")
+    |> state.update(state.Input(backend.KeyPress("enter")))
+  let assert state.FreeInput(_, state.ReplyPrompt("Name", ..)) = state.mode
+  let assert #(state, []) =
+    state.update(state, state.Input(backend.Paste("Ada")))
+  let assert #(state, []) =
+    state.update(state, state.Input(backend.KeyPress("enter")))
+  let assert [history.Entry(history.Success(Some(reply)), effects:, ..)] =
+    state.history
+  assert reply == value.ok(value.String("Ada"))
+  assert [#("Prompt", #(value.String("Name"), reply))] == effects
+}

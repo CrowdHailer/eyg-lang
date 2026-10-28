@@ -34,6 +34,7 @@ import multiformats/cid/v1
 import touch_grass/abort
 import touch_grass/harness/computer as harness
 import touch_grass/interface
+import touch_grass/prompt
 import touch_grass/standard_in
 
 /// Note the buffer is a morph buffer not an etui buffer
@@ -90,6 +91,12 @@ pub type InputKind {
   // PickRelease(m.Rebuild(ir.Release))
   EnterText(m.Rebuild(String))
   EnterInteger(m.Rebuild(Int))
+  ReplyPrompt(
+    text: String,
+    env: istate.Env(source.Location),
+    k: istate.Stack(source.Location),
+    occured: List(history.EffectRecord(source.Location)),
+  )
   ReplyStandardIn(
     // active: Active,
     env: istate.Env(source.Location),
@@ -127,6 +134,7 @@ pub fn input_widget(kind: InputKind) -> input.InputWidget {
         }
       })
     ReplyStandardIn(..) -> input.input_new("Standard input")
+    ReplyPrompt(text:, ..) -> input.input_new(text)
     PickCid(_) ->
       input.input_new("Enter a content reference")
       |> input.with_validator(fn(value) {
@@ -345,6 +353,17 @@ fn input_key_pressed(
   key: String,
 ) -> #(State, _) {
   case key, kind {
+    "esc", ReplyPrompt(text:, env:, k:, occured:) -> {
+      after_perform(
+        system.Done(prompt.encode(Error(Nil))),
+        "Prompt",
+        value.String(text),
+        env,
+        k,
+        state,
+        occured,
+      )
+    }
     "esc", ReplyStandardIn(env:, k:, occured:) -> {
       let reply = system.Done(standard_in.encode(Error("Cancelled")))
       after_perform(reply, "StandardIn", value.unit(), env, k, state, occured)
@@ -385,6 +404,17 @@ fn submit_input(
         Error(_) -> #(state, [])
       }
 
+    ReplyPrompt(text:, env:, k:, occured:) -> {
+      after_perform(
+        system.Done(prompt.encode(Ok(value))),
+        "Prompt",
+        value.String(text),
+        env,
+        k,
+        state,
+        occured,
+      )
+    }
     ReplyStandardIn(env:, k:, occured:) -> {
       let reply =
         system.Done(standard_in.encode(Ok(bit_array.from_string(value))))
@@ -736,6 +766,15 @@ fn perform(effect, origin, label, lift, env, k, state, occured) {
     harness.StandardOut(_) | harness.StandardError(_) ->
       system.Done(value.unit())
       |> after_perform(label, lift, env, k, state, occured)
+    harness.Prompt(text) -> {
+      #(
+        State(
+          ..state,
+          mode: FreeInput(input.state_new(), ReplyPrompt(text, env, k, occured)),
+        ),
+        [],
+      )
+    }
     harness.StandardIn -> {
       let mode = FreeInput(input.state_new(), ReplyStandardIn(env, k, occured))
       #(State(..state, mode:), [])

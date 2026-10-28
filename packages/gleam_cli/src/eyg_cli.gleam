@@ -21,6 +21,7 @@ import eyg/cli/share
 import eyg/cli/shell
 import eyg/cli/signatory
 import eyg/cli/tui
+import eyg/cli/tui/overlay as tui_overlay
 import eyg/cli/upload
 import eyg/cli/version
 import gleam/javascript/promise
@@ -35,19 +36,8 @@ pub fn main() -> promise.Promise(Nil) {
 /// Run CLI arguments, including output and process exit, through system effects.
 pub fn start(arguments: List(String)) -> promise.Promise(Nil) {
   case args.parse(arguments) {
-    args.Tui(input) -> {
-      // The TUI owns its asynchronous event loop. Configuration and final status
-      // must not create separate recordings or overwrite the loop's trace file.
-      use loaded <- promise.await(
-        system.run_with_environment(config.load(), []),
-      )
-      let running = case loaded {
-        Ok(config) -> tui.execute(input, config)
-        Error(_) -> promise.resolve(Error("failed to load config"))
-      }
-      use result <- promise.await(running)
-      system.run_with_environment(finish(result), [])
-    }
+    args.Tui(input) -> run_tui(tui.execute(input, _))
+    args.TuiOverlay(input) -> run_tui(tui_overlay.execute(input, _))
     parsed ->
       {
         use result <- system.then(execute(parsed))
@@ -55,6 +45,16 @@ pub fn start(arguments: List(String)) -> promise.Promise(Nil) {
       }
       |> system.run
   }
+}
+
+fn run_tui(run) {
+  use loaded <- promise.await(system.run_with_environment(config.load(), []))
+  let running = case loaded {
+    Ok(config) -> run(config)
+    Error(_) -> promise.resolve(Error("failed to load config"))
+  }
+  use result <- promise.await(running)
+  system.run_with_environment(finish(result), [])
 }
 
 fn finish(result) {
@@ -95,7 +95,7 @@ fn with_config(parsed: args.Args) {
     args.Help | args.Version | args.InvalidArguments(_) ->
       panic as "handled above"
     args.Shell(input) -> shell.execute(input, config)
-    args.Tui(_) -> panic as "handled above"
+    args.Tui(_) | args.TuiOverlay(_) -> panic as "handled above"
     args.Profile(input:) -> profile.execute(input, config)
     args.Run(input:) -> run.execute(input, config)
     args.Script(input:, arguments:) -> script.execute(input, arguments, config)

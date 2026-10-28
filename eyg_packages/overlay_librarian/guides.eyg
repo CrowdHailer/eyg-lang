@@ -1,6 +1,8 @@
 // The guides published on eyg.run.
 
 let index = [
+  {slug: "embedding-eyg-on-raspberry-pi", title: "Embedding EYG on Raspberry Pi", summary: "Build a Pi image, check HDMI and serial input, and reuse content-addressed packages from the SD card.", keywords: "embedding eyg on raspberry pi"},
+  {slug: "tui-shell", title: "TUI shell", summary: "Use the structural terminal editor and recorded Overlay sessions on their supported runtimes.", keywords: "tui shell"},
   {slug: "trajectories", title: "Saving and replaying trajectories", summary: "Save portable execution journals and export their observability to OpenTelemetry backends.", keywords: "trajectories"},
   {slug: "viewing-execution-performance", title: "Viewing execution performance", summary: "Capture real effect and function spans, inspect them offline and export charts or slides.", keywords: "viewing execution performance"},
   {slug: "eyg-as-an-opencode-plugin", title: "EYG as an OpenCode plugin", summary: "Add an EYG tool with computer effects, policy-aware subagents and prompt guidance.", keywords: "eyg as an opencode plugin"},
