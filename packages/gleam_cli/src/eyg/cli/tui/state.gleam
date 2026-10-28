@@ -27,6 +27,7 @@ import morph/manipulation as m
 import morph/picker
 import morph/projection
 import morph/repl/history
+import multiformats/cid/v1
 import touch_grass/harness/computer as harness
 import touch_grass/interface
 import touch_grass/standard_in
@@ -70,7 +71,7 @@ pub type Active {
 
 pub type InputKind {
   // PickSingle(m.Rebuild(String))
-  // PickCid(m.Rebuild(v1.Cid))
+  PickCid(m.Rebuild(v1.Cid))
   // PickRelease(m.Rebuild(ir.Release))
   EnterText(m.Rebuild(String))
   EnterInteger(m.Rebuild(Int))
@@ -105,6 +106,14 @@ pub fn input_widget(kind: InputKind) -> input.InputWidget {
         }
       })
     ReplyStandardIn(..) -> input.input_new("Standard input")
+    PickCid(_) ->
+      input.input_new("Enter a content reference")
+      |> input.with_validator(fn(value) {
+        case v1.from_string(value) {
+          Ok(_) -> Ok(Nil)
+          Error(_) -> Error("Enter a valid cid")
+        }
+      })
   }
 }
 
@@ -260,7 +269,7 @@ fn input_key_pressed(
                 occured,
               )
             }
-            EnterText(_) | EnterInteger(_) -> #(
+            EnterText(_) | EnterInteger(_) | PickCid(_) -> #(
               State(..state, mode: Navigating),
               [],
             )
@@ -310,6 +319,14 @@ fn submit_input(
             mode: Navigating,
             buffer: rebuild(value, context, refs),
           ),
+          [],
+        )
+        Error(_) -> #(state, [])
+      }
+    PickCid(rebuild) ->
+      case v1.from_string(value) {
+        Ok(#(cid, _)) -> #(
+          State(..state, mode: Navigating, buffer: rebuild(cid, context, refs)),
           [],
         )
         Error(_) -> #(state, [])
@@ -443,10 +460,10 @@ fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
         ),
       )
 
-    // Content identifiers need parsing before their rebuild callbacks can run.
+    Ok(m.UserInput(m.PickCid(_, rebuild))) ->
+      State(..state, mode: FreeInput(input.state_new(), PickCid(rebuild)))
     Ok(m.UserInput(_)) ->
       fail(state, command.fail_message(command.ActionFailed(name)))
-
     Error(Nil) -> fail(state, command.fail_message(command.ActionFailed(name)))
   }
   #(state, [])
