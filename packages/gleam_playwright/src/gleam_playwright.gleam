@@ -61,6 +61,12 @@ pub fn press(locator: Locator, key: String) -> Promise(Result(Nil, String))
 @external(javascript, "./playwright_ffi.mjs", "click")
 pub fn click(locator: Locator) -> Promise(Result(Nil, String))
 
+@external(javascript, "./playwright_ffi.mjs", "hover")
+pub fn hover(locator: Locator) -> Promise(Result(Nil, String))
+
+@external(javascript, "./playwright_ffi.mjs", "doubleClick")
+pub fn double_click(locator: Locator) -> Promise(Result(Nil, String))
+
 @external(javascript, "./playwright_ffi.mjs", "contains")
 pub fn contains(locator: Locator, text: String) -> Promise(Result(Nil, String))
 

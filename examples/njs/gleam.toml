@@ -1,0 +1,24 @@
+name = "njs"
+version = "1.0.0"
+target = "javascript"
+
+[javascript]
+runtime = "bun"
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+eyg_compiler = { path = "../../packages/gleam_compiler" }
+eyg_analysis = { path = "../../packages/gleam_analysis" }
+eyg_ir = { path = "../../packages/gleam_ir" }
+eyg_parser = { path = "../../packages/gleam_parser" }
+simplifile = ">= 2.2.0 and < 3.0.0"
+argv = ">= 1.0.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_http = ">= 4.4.0 and < 5.0.0"
+plinthx = { path = "../../packages/plinthx" }
+example_tools = { path = "../../packages/example_tools" }
+loam = { path = "../../packages/loam" }
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"

@@ -1,0 +1,50 @@
+// Play every bridge the numbers force, until nothing more is forced.
+// Paste into the shell, then call `solve({})`.
+let {islands, neighbours, missing, between, connect, map, each, sum} = hashi
+
+let smaller = (a, b) -> {
+  match !int_compare(a, b) {
+    Lt(_) -> { a }
+    | (_) -> { b }
+  }
+}
+
+let repeat = !fix((repeat, times, f) -> {
+  match !int_compare(times, 0) {
+    Gt(_) -> {
+      let _ = f({})
+      repeat(!int_subtract(times, 1), f)
+    }
+    | (_) -> { {} }
+  }
+})
+
+// How many more bridges could go from an island to a neighbour.
+let room = (island, other) -> {
+  smaller(!int_subtract(2, between(island, other)), missing(other))
+}
+
+// Whatever the other neighbours cannot take has to go to this one.
+let force = (island) -> {
+  let island = match hashi.at(island.x, island.y) {
+    Ok(island) -> { island }
+    Error(_) -> { island }
+  }
+  let options = map(neighbours(island), (other) -> { {other, room: room(island, other)} })
+  let total = sum(map(options, (option) -> { option.room }))
+  each(options, (option) -> {
+    let needed = !int_subtract(missing(island), !int_subtract(total, option.room))
+    repeat(smaller(needed, option.room), (_) -> { connect(island, option.other) })
+  })
+}
+
+let built = (_) -> { sum(map(islands({}), (island) -> { island.bridges })) }
+
+let solve = !fix((solve, _) -> {
+  let before = built({})
+  let _ = each(islands({}), force)
+  match !equal(built({}), before) {
+    True(_) -> { perform IsSolved({}) }
+    False(_) -> { solve({}) }
+  }
+})

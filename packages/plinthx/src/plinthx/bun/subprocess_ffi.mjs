@@ -30,6 +30,11 @@ export function writeInput(process, text) {
 export const stdout = process => process.stdout instanceof globalThis.ReadableStream ? Result$Ok(process.stdout) : Result$Error(undefined);
 export const stderr = process => process.stderr instanceof globalThis.ReadableStream ? Result$Ok(process.stderr) : Result$Error(undefined);
 
+export function kill(process, signal) {
+  try { process.kill(signal); return Result$Ok(undefined); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
 export async function readableStreamToText(bun, stream) {
   try { return Result$Ok(await bun.readableStreamToText(stream)); }
   catch (error) { return Result$Error(String(error)); }

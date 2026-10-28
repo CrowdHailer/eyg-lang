@@ -1,0 +1,37 @@
+#!/usr/bin/env eyg
+// Download the stylesheet of the original hashi project, at the commit gleam.toml depends on.
+// It is not in the Gleam package and the project has no licence, so it is fetched, not copied in.
+let commit = "6ad02b9ad90490a9cf05ade95beb97814f19c511"
+let expect = (result, doing) -> {
+  match result {
+    Ok(value) -> { value }
+    Error(reason) -> { !never(perform Abort(!string_append(doing, reason))) }
+  }
+}
+{
+  script: (_) -> {
+    let request = {
+      method: GET({}),
+      scheme: HTTPS({}),
+      host: "raw.githubusercontent.com",
+      port: None({}),
+      path: !string_append("/giacomocavalieri/hashi/", !string_append(commit, "/backend/priv/static/styles-9.css")),
+      query: None({}),
+      headers: [],
+      body: !string_to_binary("")
+    }
+    let response = expect(perform Fetch(request), "fetch stylesheet: ")
+    match !equal(response.status, 200) {
+      True(_) -> {
+        let _ = expect(perform MakeDirectory("../vendor"), "make vendor: ")
+        let _ = expect(perform WriteFile({path: "../vendor/hashi.css", contents: response.body}), "write stylesheet: ")
+        let _ = perform StandardOut("vendor/hashi.css written\n")
+        0
+      }
+      False(_) -> {
+        let _ = perform StandardError(!string_append("unexpected status ", !int_to_string(response.status)))
+        1
+      }
+    }
+  }
+}

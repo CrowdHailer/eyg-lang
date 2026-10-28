@@ -1,0 +1,161 @@
+// Helpers for playing hashi from EYG, in scope as `hashi` in the shell and for the agent.
+// This module is pure: it defines functions that perform the game effects when called.
+
+let readme = "You are playing hashiwokakero (hashi) on a 7 by 7 grid.
+Every island shows a target, the number of bridges it must end up with.
+Bridges run horizontally or vertically between two islands, at most two between any pair, and bridges cannot cross.
+The puzzle is solved when every island has its target and all islands are connected.
+Coordinates start at {x: 0, y: 0} in the top left corner, x grows to the right and y grows downwards.
+
+The game effects are:
+- ListIslands({}) returns a list of {x, y, target, bridges}, bridges is how many are built now.
+- ListBridges({}) returns a list of {from: {x, y}, to: {x, y}, count}.
+- AddBridge({from: {x, y}, to: {x, y}}) adds one bridge, a second call makes it double.
+  It returns Ok({}) or Error with one of NoIsland({x, y}), NotReachable({}), Full({}), AlreadySolved({}).
+- RemoveBridge({from: {x, y}, to: {x, y}}) removes one bridge, or returns Error(NoBridge({})).
+- Undo({}) and Redo({}) step through the history, they return True({}) if anything changed.
+- IsSolved({}) returns True({}) or False({}).
+- Print(\"text\") shows a line of text to the player.
+
+The variable `hashi` is a record of helpers, prefer them to raw effects:
+- hashi.islands({}) and hashi.bridges({}) list the board.
+- hashi.connect(a, b) and hashi.disconnect(a, b) take any two records with x and y fields, such as islands.
+- hashi.missing(island) is how many more bridges an island needs.
+- hashi.unfinished({}) lists the islands that still need bridges.
+- hashi.with_target(n) lists the islands with target n.
+- hashi.at(x, y) returns Ok(island) for the island at a position, or Error({}).
+- hashi.neighbours(island) lists the nearest island in each direction.
+- hashi.between(a, b) is the number of bridges between two islands.
+- hashi.map, hashi.filter, hashi.each and hashi.sum work on lists."
+
+let reverse = (items) -> { !list_fold(items, [], (item, acc) -> { [item, ..acc] }) }
+
+let map = (items, f) -> {
+  reverse(!list_fold(items, [], (item, acc) -> { [f(item), ..acc] }))
+}
+
+let filter = (items, keep) -> {
+  reverse(!list_fold(items, [], (item, acc) -> {
+    match keep(item) {
+      True(_) -> { [item, ..acc] }
+      False(_) -> { acc }
+    }
+  }))
+}
+
+let append = (first, second) -> {
+  !list_fold(reverse(first), second, (item, acc) -> { [item, ..acc] })
+}
+
+let each = (items, f) -> {
+  !list_fold(items, {}, (item, _) -> {
+    let _ = f(item)
+    {}
+  })
+}
+
+let sum = (numbers) -> { !list_fold(numbers, 0, (n, total) -> { !int_add(n, total) }) }
+
+let greater = (a, b) -> {
+  match !int_compare(a, b) {
+    Gt(_) -> { True({}) }
+    | (_) -> { False({}) }
+  }
+}
+
+let both = (a, b) -> {
+  match a {
+    True(_) -> { b }
+    False(_) -> { False({}) }
+  }
+}
+
+let point = (p) -> { {x: p.x, y: p.y} }
+
+let islands = (_) -> { perform ListIslands({}) }
+
+let bridges = (_) -> { perform ListBridges({}) }
+
+let connect = (a, b) -> { perform AddBridge({from: point(a), to: point(b)}) }
+
+let disconnect = (a, b) -> { perform RemoveBridge({from: point(a), to: point(b)}) }
+
+let missing = (island) -> { !int_subtract(island.target, island.bridges) }
+
+let unfinished = (_) -> { filter(islands({}), (island) -> { greater(missing(island), 0) }) }
+
+let with_target = (n) -> { filter(islands({}), (island) -> { !equal(island.target, n) }) }
+
+let at = (x, y) -> {
+  match !list_pop(filter(islands({}), (island) -> { both(!equal(island.x, x), !equal(island.y, y)) })) {
+    Ok({head}) -> { Ok(head) }
+    Error(_) -> { Error({}) }
+  }
+}
+
+let same = (a, b) -> { both(!equal(a.x, b.x), !equal(a.y, b.y)) }
+
+let between = (a, b) -> {
+  sum(map(bridges({}), (bridge) -> {
+    match same(bridge.from, a) {
+      True(_) -> {
+        match same(bridge.to, b) {
+          True(_) -> { bridge.count }
+          False(_) -> { 0 }
+        }
+      }
+      False(_) -> {
+        match both(same(bridge.from, b), same(bridge.to, a)) {
+          True(_) -> { bridge.count }
+          False(_) -> { 0 }
+        }
+      }
+    }
+  }))
+}
+
+let nearest = (candidates, distance) -> {
+  !list_fold(candidates, [], (candidate, best) -> {
+    match !list_pop(best) {
+      Ok({head}) -> {
+        match greater(distance(head), distance(candidate)) {
+          True(_) -> { [candidate] }
+          False(_) -> { best }
+        }
+      }
+      Error(_) -> { [candidate] }
+    }
+  })
+}
+
+let neighbours = (island) -> {
+  let all = islands({})
+  let column = filter(all, (other) -> { !equal(other.x, island.x) })
+  let row = filter(all, (other) -> { !equal(other.y, island.y) })
+  let up = (other) -> { !int_subtract(other.y, island.y) }
+  let down = (other) -> { !int_subtract(island.y, other.y) }
+  let right = (other) -> { !int_subtract(other.x, island.x) }
+  let left = (other) -> { !int_subtract(island.x, other.x) }
+  let look = (line, distance) -> {
+    nearest(filter(line, (other) -> { greater(distance(other), 0) }), distance)
+  }
+  append(append(look(column, up), look(row, right)), append(look(column, down), look(row, left)))
+}
+
+{
+  readme,
+  islands,
+  bridges,
+  connect,
+  disconnect,
+  missing,
+  unfinished,
+  with_target,
+  at,
+  neighbours,
+  between,
+  map,
+  filter,
+  each,
+  sum
+}

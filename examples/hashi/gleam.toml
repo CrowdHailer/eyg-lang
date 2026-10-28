@@ -1,0 +1,31 @@
+name = "hashi"
+version = "1.0.0"
+target = "javascript"
+gleam = ">= 1.18.1"
+
+[javascript]
+runtime = "bun"
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+eyg_analysis = { path = "../../packages/gleam_analysis" }
+eyg_embed = { path = "../../packages/gleam_embed" }
+eyg_interpreter = { path = "../../packages/gleam_interpreter" }
+eyg_ir = { path = "../../packages/gleam_ir" }
+eyg_parser = { path = "../../packages/gleam_parser" }
+frontend = { git = "https://github.com/giacomocavalieri/hashi", ref = "6ad02b9ad90490a9cf05ade95beb97814f19c511", path = "frontend" }
+shared = { git = "https://github.com/giacomocavalieri/hashi", ref = "6ad02b9ad90490a9cf05ade95beb97814f19c511", path = "shared" }
+gleam_fetch = ">= 1.4.0 and < 2.0.0"
+gleam_http = ">= 4.3.0 and < 5.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+lustre = ">= 5.7.1 and < 6.0.0"
+overlay_llm = { path = "../../packages/overlay_llm" }
+touch_grass = { path = "../../packages/touch_grass" }
+ogre = ">= 1.1.0 and < 2.0.0"
+plinthx = { path = "../../packages/plinthx" }
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+simplifile = ">= 2.2.0 and < 3.0.0"
+example_tools = { path = "../../packages/example_tools" }

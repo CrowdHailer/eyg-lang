@@ -1,0 +1,13 @@
+{
+  "name": "todomvc-eyg",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "gleam run -m dev",
+    "build": "gleam run -m build"
+  },
+  "dependencies": {
+    "todomvc-app-css": "2.4.3"
+  }
+}

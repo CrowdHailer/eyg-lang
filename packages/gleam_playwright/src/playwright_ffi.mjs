@@ -16,6 +16,8 @@ export const content = page => page.content();
 export const onConsole = (page, handler) => { page.on("console", message => handler(message.text())); };
 export const press = (locator, key) => done(() => locator.press(key));
 export const click = locator => done(() => locator.click());
+export const hover = locator => done(() => locator.hover());
+export const doubleClick = locator => done(() => locator.dblclick());
 export const contains = (locator, text) => done(() => expect(locator).toContainText(text, { timeout: 15000 }));
 export const count = (locator, expected) => done(() => expect(locator).toHaveCount(expected, { timeout: 15000 }));
 export const attribute = (locator, name) => result(() => locator.getAttribute(name).then(value => { if(value === null) throw new Error('Missing attribute '+name); return value; }));

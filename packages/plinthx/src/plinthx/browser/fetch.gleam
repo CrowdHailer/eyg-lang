@@ -65,6 +65,22 @@ pub type RequestInit {
   )
 }
 
+pub type RequestBitsInit {
+  RequestBitsInit(
+    method: String,
+    headers: List(#(String, String)),
+    body: BitArray,
+    signal: Option(AbortSignal),
+  )
+}
+
+@external(javascript, "./fetch_ffi.mjs", "sendBits")
+pub fn send_bits(
+  fetch: Fetch,
+  url: String,
+  init: RequestBitsInit,
+) -> Promise(Result(Response, String))
+
 @external(javascript, "./fetch_ffi.mjs", "get")
 pub fn get() -> Result(Fetch, Nil)
 
