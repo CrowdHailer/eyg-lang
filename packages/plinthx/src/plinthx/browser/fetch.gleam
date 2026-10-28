@@ -31,8 +31,24 @@ pub fn new_response_bits(
   headers: List(#(String, String)),
 ) -> Result(Response, String)
 
+@external(javascript, "./fetch_ffi.mjs", "newEmptyResponse")
+pub fn new_empty_response(
+  constructor: ResponseConstructor,
+  status: Int,
+  headers: List(#(String, String)),
+) -> Result(Response, String)
+
 @external(javascript, "./fetch_ffi.mjs", "requestUrl")
 pub fn request_url(request: Request) -> String
+
+@external(javascript, "./fetch_ffi.mjs", "requestMethod")
+pub fn request_method(request: Request) -> String
+
+@external(javascript, "./fetch_ffi.mjs", "requestHeaders")
+pub fn request_headers(request: Request) -> List(#(String, String))
+
+@external(javascript, "./fetch_ffi.mjs", "requestBytes")
+pub fn request_bytes(request: Request) -> Promise(Result(BitArray, String))
 
 @external(javascript, "./fetch_ffi.mjs", "requestHeader")
 pub fn request_header(request: Request, name: String) -> Option(String)

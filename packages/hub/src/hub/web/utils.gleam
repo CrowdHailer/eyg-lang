@@ -1,5 +1,6 @@
 import gleam/http/request.{type Request}
 import gleam/json
+import gleam/list
 import gleam/result
 import gleam/string
 import pog
@@ -53,4 +54,14 @@ pub fn content_type(request: Request(wisp.Connection)) -> Result(String, Nil) {
     [media_type, ..] -> media_type |> string.trim |> string.lowercase
     [] -> value
   }
+}
+
+/// The client address added by the proxy in front of the hub.
+pub fn client_ip(request: Request(wisp.Connection)) -> String {
+  request.get_header(request, "x-forwarded-for")
+  |> result.unwrap("0.0.0.0")
+  |> string.split(",")
+  |> list.last
+  |> result.map(string.trim)
+  |> result.unwrap("0.0.0.0")
 }

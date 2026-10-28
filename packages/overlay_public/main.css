@@ -61,13 +61,28 @@ pre {
 
 .layout {
   display: grid;
-  /* A single centred column until there is an output panel */
-  grid-template-columns: minmax(0, 52rem);
-  justify-content: center;
+  grid-template-columns: minmax(20rem, 30rem) minmax(0, 1fr);
   min-height: 100%;
   background: var(--color-base-100);
   color: var(--color-base-content);
 }
+
+.artifact-workspace { display: flex; flex-direction: column; position: sticky; top: 0; height: 100dvh; padding: 64px 12px 12px; background: #f1f1ef radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px) 0 0 / 16px 16px; }
+.workspace-heading { font-size: 11px; letter-spacing: 2px; color: #555; margin-bottom: 8px; }
+.artifact-canvas { position: relative; flex: 1; min-height: 0; }
+.artifact-empty { display: grid; place-content: center; gap: 4px; flex: 1; min-height: 0; border: 1px dashed rgba(0, 0, 0, 0.18); color: #666; font-size: 13px; text-align: center; }
+.artifact-panel { position: absolute; display: flex; flex-direction: column; padding: 4px; min-width: 0; min-height: 0; transition: left 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.5s cubic-bezier(0.2, 0.7, 0.2, 1), height 0.5s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.artifact-heading { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #000; color: white; font-size: 12px; }
+.artifact-heading span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artifact-heading button { color: inherit; background: transparent; border: 0; cursor: pointer; font: inherit; }
+.artifact-share { color: inherit; }
+.artifact-preview { width: 100%; flex: 1; min-height: 0; border: 0; background: white; }
+.artifact-inspector { overflow: auto; flex: 1; padding: 16px; background: white; font-size: 12px; }
+.artifact-inspector pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 8px; margin-block: 8px; }
+.artifact-revision { margin-bottom: 16px; }
+.artifact-revision button { margin: 0 8px 8px 0; }
+.diff-added { background: #e5f7e9; }
+.diff-removed { background: #ffe8e8; }
 
 .hstack {
   align-items: center;
@@ -453,6 +468,9 @@ pre {
     display: block;
   }
 
+  .artifact-workspace { position: relative; height: 80dvh; padding-top: 12px; }
+  .artifact-workspace.empty { height: auto; min-height: 220px; }
+
   .hero>h1 {
     font-size: 400%;
   }
@@ -624,3 +642,133 @@ pre {
     max-height: none;
   }
 }
+
+.activity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 10px 10px;
+  color: oklch(64% 0 0);
+}
+
+.activity-label::after {
+  content: "…";
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.2; }
+  to { opacity: 1; }
+}
+
+.stop {
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.policy {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-content);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  max-width: min(22rem, calc(100vw - 20px));
+
+  &[open] {
+    width: 22rem;
+  }
+
+  & summary {
+    cursor: pointer;
+  }
+
+  & pre {
+    max-height: 12rem;
+    overflow: auto;
+  }
+
+  & .policy-source {
+    display: block;
+    width: 100%;
+    font-family: monospace;
+    margin: 5px 0;
+  }
+
+  & button {
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-field);
+    padding: 2px 10px;
+    cursor: pointer;
+  }
+}
+
+.chat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  margin: 0 10px 10px;
+}
+
+.chat-action {
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.tool-images {
+  display: flex;
+  gap: 6px;
+  margin: 0 10px 10px;
+  overflow-x: auto;
+
+  & img {
+    border: 1px solid var(--color-base-300);
+    height: 8rem;
+  }
+}
+
+.artifact-storage { color: #555; font-size: 12px; margin-bottom: 8px; }
+.artifact-storage:empty { display: none; }
+.artifact-storage button { cursor: pointer; text-decoration: underline; background: none; border: 0; color: inherit; font: inherit; }
+
+.artifact-empty { overflow: auto; }
+.artifact-library { list-style: none; margin: 12px 0 0; padding: 0; min-width: 240px; max-width: 100%; text-align: left; }
+.artifact-library li { display: flex; align-items: center; gap: 16px; justify-content: space-between; padding: 12px; margin-bottom: 8px; background: white; border: 1px solid rgba(0, 0, 0, 0.12); }
+.artifact-library strong { display: block; color: #111; overflow-wrap: anywhere; }
+.artifact-library span { font-size: 11px; }
+.artifact-library-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.artifact-library button { cursor: pointer; background: #111; color: white; border: 1px solid #111; padding: 5px 8px; font: inherit; }
+.artifact-library button:focus-visible { outline: 2px solid #4165dc; outline-offset: 3px; }
+
+.artifact-transfer { margin-bottom: 8px; font-size: 12px; }
+.artifact-transfer label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.artifact-transfer input { max-width: 100%; min-width: 0; font: inherit; }
+.artifact-transfer button { cursor: pointer; background: white; border: 1px solid #aaa; padding: 5px 8px; font: inherit; }
+.artifact-transfer [role="alert"] { margin: 6px 0; color: #a22622; }
+
+.workspace-and-trace { min-width: 0; overflow-y: auto; max-height: 100dvh; }
+.workspace-and-trace .trace { max-height: none; padding-top: 1rem; }
+
+/* Keep both outputs reachable while previews use absolute canvas coordinates. */
+.workspace-and-trace {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+.workspace-and-trace .artifact-workspace {
+  position: relative;
+  height: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace-and-trace .trace {
+  flex: 0 0 13rem;
+  max-height: 35dvh;
+  overflow: auto;
+}
+.artifact-heading .artifact-version { flex: none; }

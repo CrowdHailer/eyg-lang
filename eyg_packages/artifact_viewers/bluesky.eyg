@@ -1,0 +1,19 @@
+let c = import "./common.eyg"
+
+let script = import "./runtime.eyg".bluesky
+
+let render = ({title, feed, retrieved_at}) -> {
+  // JSON cannot end the data script when every < is escaped.
+  let safe_json = !string_replace(feed, "<", "\\u003c")
+  [c.page(title, c.concat([
+    "<small>Bluesky · retrieved ", c.escape(retrieved_at), "</small>",
+    "<main id=\"posts\"></main>",
+    "<script id=\"feed\" type=\"application/json\">", safe_json, "</script>",
+    "<script>", script, "</script>"
+  ]))]
+}
+
+{
+  readme: "Bluesky lexicon viewer bundle constructor. render({title: String, feed: String, retrieved_at: String}) returns a self-contained HTML bundle. feed is the UTF-8 JSON response from public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=<handle-or-DID>&limit=5; the calling EYG program performs Fetch and checks status before passing JSON. The viewer understands feed[].post records whose $type is app.bsky.feed.post, rendering author, handle, createdAt, text, like/repost counts, and repost/attachment notices. Unsupported record types are skipped; empty and malformed feeds have visible states. This example deliberately renders text only: avatars, attachments, rich facets, pagination and links are not fetched. All remote text is inserted via textContent; embedded JSON escapes < to prevent script termination. retrieved_at is supplied by the caller, not fabricated by the viewer. Pure: no network or platform effects. Example: perform Artifact({name: \"operator-posts\", bundle: viewer.render({title: \"Bus company updates\", feed: json, retrieved_at: timestamp})}). Its shared CID selects this application; the platform knows no Bluesky lexicons.",
+  render
+}

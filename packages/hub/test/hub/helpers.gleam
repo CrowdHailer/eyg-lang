@@ -7,6 +7,7 @@ import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/int
 import gleam/list
+import gleam/result
 import gleam/string
 import hub/cid
 import hub/config
@@ -44,7 +45,13 @@ pub fn start_db() {
   let assert Ok(postgres_host) = envoy.get("POSTGRES_HOST")
   let assert Ok(postgres_password) = envoy.get("POSTGRES_PASSWORD")
   let postgres =
-    config.Postgres(host: postgres_host, password: postgres_password)
+    config.Postgres(
+      host: postgres_host,
+      port: envoy.get("POSTGRES_PORT")
+        |> result.try(int.parse)
+        |> result.unwrap(5432),
+      password: postgres_password,
+    )
   let assert Ok(_started) = pool.start(test_pool_name(), postgres)
   Nil
 }

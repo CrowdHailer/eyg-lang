@@ -1,0 +1,6 @@
+{
+  "name": "eyg-trajectory-checks",
+  "private": true,
+  "type": "module",
+  "dependencies": { "eyg-gleam-playwright": "file:../gleam_playwright" }
+}

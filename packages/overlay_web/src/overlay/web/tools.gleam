@@ -19,6 +19,7 @@ import gleam/dict
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import multiformats/cid/v1
 import overlay/agent
@@ -26,9 +27,13 @@ import overlay/llm/chat
 import overlay/llm/tool
 import overlay/policy
 import overlay/tools/run
+import overlay/web/artifact
+import overlay/web/puppet
 import overlay/web/trace
+import overlay/web/workspace
 import pal/platform/browser
 import pal/system
+import touch_grass as tg
 import touch_grass/harness/browser as harness
 import touch_grass/interface
 
@@ -40,7 +45,9 @@ pub type Context {
     context: cache.Module(Meta),
     /// The session so far, effects are recorded into it and the `Trace` effect reads it.
     trace: trace.Trace,
-    policy: Option(policy.Policy(harness.Effect, Meta)),
+    policy: Option(policy.Policy(Nil, Meta)),
+    artifacts: artifact.Store,
+    workspace: Option(workspace.Workspace),
   )
 }
 
@@ -66,6 +73,7 @@ pub type Call {
     lift: state.Value(Meta),
     started: Int,
     answer: journal.Answer,
+    screenshot: Bool,
   )
 }
 
@@ -75,6 +83,7 @@ pub type Progress {
   Progress(
     id: String,
     output: List(String),
+    images: List(BitArray),
     call: Call,
     code: String,
     program: Option(String),
@@ -108,7 +117,7 @@ fn run_code(ctx: Context, id: String, code: String) -> #(Context, Progress) {
   case parser.all_from_string(code) {
     Ok(source) -> {
       let source = ir.map_annotation(source, fn(_) { [] })
-      case check_single(source, ctx.cache, ctx.context) {
+      case check_single(source, ctx) {
         [] -> start(ctx, pending, source)
         errors -> {
           let references = missing_references(errors)
@@ -143,6 +152,7 @@ fn waiting(id, code) {
   Progress(
     id:,
     output: [],
+    images: [],
     call: Aborted("not started"),
     code:,
     program: None,
@@ -172,20 +182,23 @@ pub fn effects() {
   let effects =
     harness.effects()
     |> list.filter(fn(effect) { !list.contains(services, effect.name) })
-  list.append(effects, [trace.interface()])
+  list.flatten([
+    list.map(effects, tg.map(_, fn(_) { Nil })),
+    [tg.map(trace.interface(), fn(_) { Nil })],
+    list.map(workspace_effects(), tg.map(_, fn(_) { Nil })),
+  ])
 }
 
 fn check_single(
   source: #(ir.Expression(a), a),
-  cache: cache.Cache(b),
-  context: cache.Module(_),
+  ctx: Context,
 ) -> List(#(a, error.Reason)) {
   let analysis =
     infer.pure()
-    |> with_scope([#("context", context.type_)])
-    |> infer.with_effects(interface.types(effects()))
+    |> with_scope([#("context", ctx.context.type_)])
+    |> infer.with_effects(interface.types(session_effects(ctx.workspace)))
     |> infer.check(source)
-    |> cache.infer_sync(cache)
+    |> cache.infer_sync(ctx.cache)
   infer.all_errors(analysis)
 }
 
@@ -344,7 +357,162 @@ fn finish(ctx, progress, call) {
   #(ctx, Progress(..progress, call:))
 }
 
+type WorkspaceEffect {
+  ArtifactEffect(artifact.Effect)
+  PuppetEffect(puppet.Request)
+}
+
+fn workspace_effects() {
+  [
+    tg.map(puppet.effect(), PuppetEffect),
+    ..list.map(artifact.effects(), tg.map(_, ArtifactEffect))
+  ]
+}
+
+pub fn session_effects(files: Option(workspace.Workspace)) {
+  case files {
+    None -> effects()
+    Some(_) ->
+      list.append(
+        effects(),
+        list.map(workspace.effects(), tg.map(_, fn(_) { Nil })),
+      )
+  }
+}
+
 fn perform(
+  label,
+  lift,
+  sent,
+  answer,
+  env,
+  k,
+  ctx: Context,
+  progress: Progress,
+) {
+  let started = trace.now()
+  case ctx.workspace, interface.cast(workspace.effects(), label, sent) {
+    Some(files), Ok(effect) -> {
+      let #(files, value) = workspace.perform(files, effect)
+      let ctx = Context(..ctx, workspace: Some(files))
+      resume_recorded(
+        ctx,
+        progress,
+        label,
+        lift,
+        value,
+        answer,
+        started,
+        env,
+        k,
+      )
+    }
+    Some(_), Error(break.UnhandledEffect(..)) | None, _ ->
+      artifact_perform(
+        label,
+        lift,
+        sent,
+        answer,
+        env,
+        k,
+        ctx,
+        progress,
+        started,
+      )
+    Some(_), Error(reason) -> finish(ctx, progress, Exception(reason))
+  }
+}
+
+fn resume_recorded(ctx, progress, label, lift, value, answer, started, env, k) {
+  let #(ctx, progress) =
+    record_answer(ctx, progress, label, lift, value, answer, started)
+  loop(expression.resume(value, env, k), ctx, progress)
+}
+
+fn artifact_perform(
+  label,
+  lift,
+  sent,
+  answer,
+  env,
+  k,
+  ctx: Context,
+  progress: Progress,
+  started,
+) {
+  case interface.cast(workspace_effects(), label, sent) {
+    Ok(ArtifactEffect(effect)) -> {
+      let #(artifacts, value) = artifact.perform(ctx.artifacts, effect)
+      let ctx = Context(..ctx, artifacts:)
+      resume_recorded(
+        ctx,
+        progress,
+        label,
+        lift,
+        value,
+        answer,
+        started,
+        env,
+        k,
+      )
+    }
+    Ok(PuppetEffect(request)) ->
+      case puppet.frame_selector(ctx.artifacts, request.page) {
+        Ok(selector) -> {
+          let id = ctx.counter
+          let effect =
+            system.RequestFrame(
+              selector:,
+              message: puppet.to_json(request),
+              timeout: request.timeout + 5000,
+              resume: fn(reply) {
+                let reply = result.try(reply, puppet.reply)
+                system.Done(#(id, puppet.to_value(reply)))
+              },
+            )
+          let ctx =
+            Context(..ctx, counter: id + 1, effects: [effect, ..ctx.effects])
+          finish(
+            ctx,
+            progress,
+            Handling(
+              id,
+              env,
+              k,
+              label,
+              lift,
+              started,
+              answer,
+              request.action == puppet.Screenshot,
+            ),
+          )
+        }
+        Error(reason) ->
+          resume_recorded(
+            ctx,
+            progress,
+            label,
+            lift,
+            puppet.to_value(Error(reason)),
+            answer,
+            started,
+            env,
+            k,
+          )
+      }
+    Error(break.UnhandledEffect(..)) ->
+      browser_perform(label, lift, sent, answer, env, k, ctx, progress)
+    Error(reason) -> finish(ctx, progress, Exception(reason))
+  }
+}
+
+fn attached(images) {
+  list.take(images, 3)
+  |> list.reverse
+  |> list.map(bit_array.base64_encode(_, True))
+}
+
+fn browser_perform(
   label,
   lift,
   sent,
@@ -381,7 +549,7 @@ fn perform(
           finish(
             ctx,
             progress,
-            Handling(id, env, k, label, lift, started, answer),
+            Handling(id, env, k, label, lift, started, answer, False),
           )
         }
         browser.Spotless(..) ->
@@ -444,7 +612,7 @@ fn do_all_returns(
 ) -> Result(List(chat.Message(a)), Nil) {
   case calls {
     [] -> Ok(list.reverse(acc))
-    [Progress(id:, output:, call:, ..), ..calls] -> {
+    [Progress(id:, output:, images:, call:, ..), ..calls] -> {
       let message = case call {
         UnknownTool(name:) -> Ok("unknown tool: " <> name)
         BadArguments(reasons) -> Ok(string.inspect(reasons))
@@ -465,7 +633,7 @@ fn do_all_returns(
             chat.ToolResultMessage(
               tool_call_id: id,
               text: agent.tool_result_text(run.report(output, text)),
-              images: [],
+              images: attached(images),
             )
           do_all_returns(calls, [message, ..acc])
         }
@@ -522,7 +690,7 @@ pub fn pulled(ctx: Context, progress: Progress) -> #(Context, Progress) {
   case progress.call {
     Pulling(source) -> {
       // TODO move to cache.infer_sync that will gather need to pull and to fetch references
-      case check_single(source, ctx.cache, ctx.context) {
+      case check_single(source, ctx) {
         [] -> start(ctx, progress, source)
         errors -> {
           // Don't check for needs pull here as we've aready done that.
@@ -555,7 +723,7 @@ pub fn check_fetching(
       let cids = list.filter(cids, still_fetching(_, ctx.cache))
       case cids {
         [] ->
-          case check_single(source, ctx.cache, ctx.context) {
+          case check_single(source, ctx) {
             [] -> start(ctx, progress, source)
             errors -> #(ctx, Progress(..progress, call: Errored(errors)))
           }
@@ -596,12 +764,19 @@ fn apply_effect(
   value: state.Value(Meta),
 ) {
   case progress.call {
-    Handling(task_id:, env:, k:, label:, lift:, started:, answer:)
+    Handling(task_id:, env:, k:, label:, lift:, started:, answer:, screenshot:)
       if task_id == finished_id
     -> {
       let #(ctx, progress) =
         record_answer(ctx, progress, label, lift, value, answer, started)
-      loop(expression.resume(value, env, k), ctx, progress)
+      let images = case screenshot, value {
+        True, v.Tagged("Ok", v.Tagged("Image", v.Binary(image))) -> [
+          image,
+          ..progress.images
+        ]
+        _, _ -> progress.images
+      }
+      loop(expression.resume(value, env, k), ctx, Progress(..progress, images:))
     }
     _ -> #(ctx, progress)
   }
@@ -616,8 +791,21 @@ type Outcome {
 /// The rules for a policy entered in the browser.
 /// Effects that do no IO, and aborting, need no gate.
 pub fn policy_rules() {
-  policy.match_rules(effects(), [
+  policy_rules_for(None)
+}
+
+pub fn policy_rules_for(files: Option(workspace.Workspace)) {
+  policy.match_rules(session_effects(files), [
     #("Abort", policy.Unchecked),
+    #("WriteFile", policy.PolicyField("write_file")),
+    #("ReadFile", policy.PolicyField("read_file")),
+    #("ReadDirectory", policy.PolicyField("read_directory")),
+    #("MakeDirectory", policy.PolicyField("make_directory")),
+    #("DeleteFile", policy.PolicyField("delete_file")),
+    #("AppendFile", policy.PolicyField("append_file")),
+    #("Puppet", policy.PolicyField("puppet")),
+    #("Show", policy.PolicyField("show")),
+    #("Artifact", policy.PolicyField("artifact")),
     #("Alert", policy.PolicyField("alert")),
     #("Copy", policy.PolicyField("copy")),
     #("DecodeJSON", policy.Unchecked),

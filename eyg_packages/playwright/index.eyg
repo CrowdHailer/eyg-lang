@@ -1,0 +1,132 @@
+// Drive artifacts shown in Overlay with the Playwright API.
+// Every action performs Puppet, and aborts with the reason when it fails.
+
+let reverse = (items) -> { !list_fold(items, [], (item, acc) -> { [item, ..acc] }) }
+let append = (items, item) -> { reverse([item, ..reverse(items)]) }
+
+let default_timeout = 5000
+
+// A page is a locator for the whole document of a shown artifact.
+let page = (name) -> { {page: Artifact(name), locator: [], timeout: default_timeout} }
+// A page for a pinned version shown with Revision.
+let revision = (name, version) -> {
+  {page: Revision({name, version}), locator: [], timeout: default_timeout}
+}
+
+let narrow = (parent, step) -> { {locator: append(parent.locator, step), ..parent} }
+
+let locator = (parent, css) -> { narrow(parent, Css(css)) }
+let get_by_text = (parent, text) -> { narrow(parent, Text(text)) }
+// An empty name matches any accessible name.
+let get_by_role = (parent, role, name) -> { narrow(parent, Role({role, name})) }
+let get_by_label = (parent, text) -> { narrow(parent, Label(text)) }
+let get_by_placeholder = (parent, text) -> { narrow(parent, Placeholder(text)) }
+let get_by_test_id = (parent, id) -> { narrow(parent, TestId(id)) }
+let filter = (parent, text) -> { narrow(parent, HasText(text)) }
+// A negative index counts from the end.
+let nth = (parent, index) -> { narrow(parent, Nth(index)) }
+let first = (parent) -> { nth(parent, 0) }
+let last = (parent) -> { nth(parent, -1) }
+let with_timeout = (parent, timeout) -> { {timeout, ..parent} }
+
+let unexpected = (_) -> { !never(perform Abort("unexpected reply from artifact")) }
+
+let run = (target, action) -> {
+  let request = {page: target.page, locator: target.locator, action, timeout: target.timeout}
+  match perform Puppet(request) {
+    Ok(reply) -> { reply }
+    Error(reason) -> { !never(perform Abort(reason)) }
+  }
+}
+
+let done = (target, action) -> {
+  match run(target, action) {
+    Done(_) -> { {} }
+    | unexpected
+  }
+}
+let text = (target, action) -> {
+  match run(target, action) {
+    Text(value) -> { value }
+    | unexpected
+  }
+}
+let flag = (target, action) -> {
+  match run(target, action) {
+    Flag(value) -> { value }
+    | unexpected
+  }
+}
+
+let click = (target) -> { done(target, Click({})) }
+let fill = (target, value) -> { done(target, Fill(value)) }
+let press = (target, key) -> { done(target, Press(key)) }
+let set_checked = (target, checked) -> { done(target, SetChecked(checked)) }
+let check = (target) -> { set_checked(target, True({})) }
+let uncheck = (target) -> { set_checked(target, False({})) }
+let select_option = (target, value) -> { done(target, SelectOption(value)) }
+let hover = (target) -> { done(target, Hover({})) }
+let focus = (target) -> { done(target, Focus({})) }
+let scroll_into_view_if_needed = (target) -> { done(target, ScrollIntoView({})) }
+
+let text_content = (target) -> { text(target, TextContent({})) }
+let inner_text = (target) -> { text(target, InnerText({})) }
+let inner_html = (target) -> { text(target, InnerHtml({})) }
+let input_value = (target) -> { text(target, InputValue({})) }
+let get_attribute = (target, name) -> {
+  match run(target, GetAttribute(name)) {
+    Text(value) -> { Some(value) }
+    Missing(_) -> { None({}) }
+    | unexpected
+  }
+}
+let count = (target) -> {
+  match run(target, Count({})) {
+    Count(value) -> { value }
+    | unexpected
+  }
+}
+let all_text_contents = (target) -> {
+  match run(target, AllTextContents({})) {
+    Texts(values) -> { values }
+    | unexpected
+  }
+}
+let is_visible = (target) -> { flag(target, IsVisible({})) }
+let is_checked = (target) -> { flag(target, IsChecked({})) }
+let is_enabled = (target) -> { flag(target, IsEnabled({})) }
+// A PNG of the element, or of the visible document for a page.
+let screenshot = (target) -> {
+  match run(target, Screenshot({})) {
+    Image(png) -> { png }
+    | unexpected
+  }
+}
+
+// Assertions retry until they pass or the timeout is reached.
+let expect = (target) -> {
+  let assert = (condition) -> { done(target, Expect(condition)) }
+  {
+    to_have_text: (value) -> { assert(ToHaveText(value)) },
+    to_contain_text: (value) -> { assert(ToContainText(value)) },
+    to_have_count: (value) -> { assert(ToHaveCount(value)) },
+    to_be_visible: (_) -> { assert(ToBeVisible({})) },
+    to_be_hidden: (_) -> { assert(ToBeHidden({})) },
+    to_have_value: (value) -> { assert(ToHaveValue(value)) },
+    to_have_attribute: (name, value) -> { assert(ToHaveAttribute({name, value})) },
+    to_be_checked: (_) -> { assert(ToBeChecked(True({}))) },
+    not_to_be_checked: (_) -> { assert(ToBeChecked(False({}))) }
+  }
+}
+let wait_for = (target) -> { expect(target).to_be_visible({}) }
+
+{
+  readme: "Playwright for artifacts shown in Overlay. Functions take a locator first, where Playwright uses methods: page(name) is the whole document of Artifact(name), revision(name, version) of a pinned version. Narrow with locator(l, css), get_by_text(l, text), get_by_role(l, role, name), get_by_label(l, text), get_by_placeholder(l, text), get_by_test_id(l, id), filter(l, has_text), first(l), last(l), nth(l, index) and with_timeout(l, ms), the default timeout is 5000. Actions wait for one visible element: click, fill(l, value), press(l, key), check, uncheck, select_option(l, value), hover, focus, scroll_into_view_if_needed. Queries: text_content, inner_text, inner_html, input_value, get_attribute(l, name) -> Some or None, count, all_text_contents, is_visible, is_checked, is_enabled. screenshot(l) returns PNG bytes and shows the image to you with the tool result. expect(l).to_have_text(text), to_contain_text, to_have_count(n), to_be_visible({}), to_be_hidden({}), to_have_value, to_have_attribute(name, value), to_be_checked({}) retry until the timeout. Failures abort with the reason. Example: let board = page(\"departures\") let _ = fill(get_by_placeholder(board, \"Route\"), \"214\") let _ = expect(locator(board, \"li\")).to_have_count(2) screenshot(board)",
+  page, revision,
+  locator, get_by_text, get_by_role, get_by_label, get_by_placeholder, get_by_test_id,
+  filter, nth, first, last, with_timeout,
+  click, fill, press, check, uncheck, set_checked, select_option, hover, focus, scroll_into_view_if_needed,
+  text_content, inner_text, inner_html, input_value, get_attribute, count, all_text_contents,
+  is_visible, is_checked, is_enabled, screenshot,
+  expect, wait_for
+}
