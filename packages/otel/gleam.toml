@@ -1,0 +1,15 @@
+name = "otel"
+version = "0.1.0"
+description = "Minimal OTLP/HTTP JSON trace export for EYG hosts"
+target = "javascript"
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.1 and < 2.0.0"
+gleam_crypto = ">= 1.6.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+plinthx = { path = "../plinthx" }
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
