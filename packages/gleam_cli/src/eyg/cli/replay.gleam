@@ -7,7 +7,6 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/terminal
 import eyg/cli/internal/traces
-import eyg/hub/cache
 import glasshouse/archive
 import glasshouse/lock
 import glasshouse/recorder
@@ -24,7 +23,6 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam_community/ansi
-import loam/execute
 import loam/pin
 import loam/secrets
 import loam/source
@@ -183,7 +181,7 @@ fn recover_secret_modules(
         case source.parse(code, source.Disk(path)) {
           Error(_) -> system.Done(store)
           Ok(parsed) -> {
-            let state = execute.State(config.client.origin, cache.empty())
+            let state = config.state(config)
             let recorder = recorder.new(traces.sha256)
             use #(pinned, _, recorder) <- system.map(pin.pin(
               parsed,

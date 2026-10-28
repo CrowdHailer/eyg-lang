@@ -6,7 +6,6 @@ import eyg/cli/internal/config
 import eyg/cli/shell
 import eyg/cli/tui/state
 import eyg/cli/tui/view
-import eyg/hub/cache
 import gleam/bool
 import gleam/io
 import gleam/javascript/promise
@@ -14,7 +13,6 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import javascript/mutable_reference
-import loam/execute
 import loam/source
 import loam/system
 import plinthx/node/process
@@ -32,7 +30,7 @@ pub fn execute(
   input: Option(source.Input),
   config: config.Config,
 ) -> promise.Promise(Result(Int, String)) {
-  let state = execute.State(config.client.origin, cache.ready())
+  let state = config.state(config)
   use #(scope, state) <- promise.try_await(
     system.run(shell.read_input(input, state)),
   )

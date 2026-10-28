@@ -32,7 +32,7 @@ pub const config: config.Config =
   )
 
 pub fn state() {
-  execute.State(eyg_origin, cache.empty())
+  execute.State(eyg_origin, cache.empty(), None)
 }
 
 pub fn vacant_cid_response() {

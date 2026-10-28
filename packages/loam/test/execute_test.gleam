@@ -7,7 +7,7 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import gleam/dict
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import loam/execute
 import loam/sandbox
 import loam/source
@@ -188,7 +188,7 @@ pub fn release_with_unbound_cid_test() {
 pub fn recorded_blocks_return_each_effect_in_order_test() {
   let assert Ok(program) =
     source.parse("let first = perform Now({}) perform Now({})", source.Inline)
-  let state = execute.State(origin.https("unused.invalid"), cache.ready())
+  let state = execute.State(origin.https("unused.invalid"), cache.ready(), None)
   let workflow = execute.block_recorded(program, [], state)
   let sandbox = sandbox.sandbox() |> sandbox.with_now(7)
   let assert #(sandbox.Returned(#(Ok(#(Some(v.Integer(7)), _)), _, records)), _) =

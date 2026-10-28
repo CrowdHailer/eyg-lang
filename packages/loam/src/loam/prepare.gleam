@@ -7,6 +7,7 @@ import glasshouse/lock
 import glasshouse/recorder
 import glasshouse/store
 import gleam/dict
+import gleam/option
 import gleam/result
 import loam/broker
 import loam/environment
@@ -55,7 +56,7 @@ pub fn prepare(
     pin.pin(
       node,
       environment.cwd,
-      execute.State(origin, cache.empty()),
+      execute.State(origin, cache.empty(), option.None),
       recorder,
       pin.allow,
     )

@@ -14,6 +14,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import loam/hub_store
 import loam/platform/computer
 import loam/source
 import loam/system
@@ -42,7 +43,11 @@ pub type Debug =
   state.Debug(source.Location)
 
 pub type State {
-  State(origin: origin.Origin, cache: Cache(source.Location))
+  State(
+    origin: origin.Origin,
+    cache: Cache(source.Location),
+    store: Option(String),
+  )
 }
 
 pub fn block(source: ir.Node(source.Location), scope, state) {
@@ -172,12 +177,16 @@ fn do_effect(
   action: cache.Action,
   state: State,
 ) -> system.Effect(cache.ActionCompleted) {
-  cache.compute(
-    action,
-    state.origin,
-    fn(request) { system.Fetch(request, _) },
-    fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
-  )(system.Done)
+  case state.store {
+    Some(store) -> hub_store.compute(action, state.origin, store)
+    None ->
+      cache.compute(
+        action,
+        state.origin,
+        fn(request) { system.Fetch(request, _) },
+        fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
+      )(system.Done)
+  }
 }
 
 /// Send queued cache actions without waiting for all of them to complete.

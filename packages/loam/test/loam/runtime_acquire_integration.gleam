@@ -106,7 +106,7 @@ let _ = perform Mount({root: second.root, path: \"second\"})
       ..environment.new(),
       files: fs.directory([#("workspace", fs.directory([]))]),
     )
-  let state = execute.State(environment.hub, cache.empty())
+  let state = execute.State(environment.hub, cache.empty(), option.None)
   let base = virtual.fork(environment)
   let machine = virtual.with_broker(base, broker.Live(["git:file:" <> repo]))
   // Simulate a push between the two identical requests. This is trusted test

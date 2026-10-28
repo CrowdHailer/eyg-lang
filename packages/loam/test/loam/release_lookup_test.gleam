@@ -19,7 +19,8 @@ pub fn known_release_metadata_does_not_contact_the_hub_test() {
       packages: dict.from_list([#("demo", cache.Entry(2, cid, 1, 0, cid))]),
       releases: dict.from_list([#(#("demo", 2), cid)]),
     )
-  let runtime = execute.State(origin.Origin(http.Https, "eyg.run", None), cache)
+  let runtime =
+    execute.State(origin.Origin(http.Https, "eyg.run", None), cache, None)
   let assert #(sandbox.Returned(#(Ok(release), _)), _) =
     execute.latest_release("demo", runtime) |> sandbox.run(sandbox.sandbox())
   assert release == ir.Release("demo", 2, cid)

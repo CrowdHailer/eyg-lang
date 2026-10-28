@@ -50,7 +50,7 @@ pub fn recorded_blocks_retain_runtime_spans_and_effect_order_test() {
   let #(server, env, received) = capture()
   let assert Ok(program) =
     source.parse("let first = perform Now({}) perform Now({})", source.Inline)
-  let state = execute.State(origin.https("unused.invalid"), cache.ready())
+  let state = execute.State(origin.https("unused.invalid"), cache.ready(), None)
   let workflow = execute.block_recorded(program, [], state)
   use #(outcome, _, records) <- promise.await(system.run_with_environment(
     workflow,

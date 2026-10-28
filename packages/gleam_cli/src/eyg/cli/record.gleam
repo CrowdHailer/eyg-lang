@@ -6,7 +6,6 @@
 import eyg/cli/internal/config
 import eyg/cli/internal/traces
 import eyg/cli/script
-import eyg/hub/cache
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import glasshouse/archive
@@ -41,7 +40,7 @@ pub fn execute(
   use started <- system.then(system.now())
   use id <- system.then(traces.new_id(started))
 
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = config.state(config)
   let recorder = recorder.new(traces.sha256)
   use #(pinned, _state, recorder) <- system.then(pin.pin(
     source,

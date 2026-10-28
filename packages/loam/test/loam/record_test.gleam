@@ -21,7 +21,7 @@ import multiformats/cid/v1
 import ogre/origin
 
 fn state() {
-  execute.State(origin.Origin(http.Https, "eyg.run", None), cache.empty())
+  execute.State(origin.Origin(http.Https, "eyg.run", None), cache.empty(), None)
 }
 
 fn parse(code, path) {

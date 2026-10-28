@@ -135,7 +135,7 @@ pub fn execute(
 
 /// Prepare an agent without taking ownership of terminal input or output.
 pub fn initialize(input: source.Input, config: config.Config) {
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = config.state(config)
   use #(result, state) <- system.then(setup(
     input,
     config,

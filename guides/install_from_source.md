@@ -29,18 +29,29 @@ curl -fsSL https://bun.sh/install | bash
 ```sh
 git clone https://github.com/CrowdHailer/eyg-lang.git
 cd eyg-lang/packages/gleam_cli
-./bin/install
+gleam run -m install
 ```
 
-The script runs `./bin/compile` an uses sudo to move that executable to `/usr/local/bin/eyg`.
+The Gleam installer compiles with Bun and uses `sudo install` to place the
+executable at `/usr/local/bin/eyg`.
 
 If `sudo` isn't available, for example inside a sandbox or a dev container,
 compile first and copy by hand:
 
 ```sh
-./bin/compile
+gleam run -m compile
 cp dist/eyg "$HOME/.local/bin/eyg"   # or anywhere on your $PATH
 ```
+
+Cross-compile by passing a Bun target and output path, for example:
+
+```sh
+gleam run -m compile -- bun-linux-arm64 dist/eyg-linux-arm64
+```
+
+The build reads an exact `gleam_cli-*` tag for the version, otherwise it reports
+`dev`. Compilation and version selection are Gleam; the Bun API bindings are
+in `plinthx`. The Pi builder uses this same cross-compilation entrypoint.
 
 ## Verify
 
