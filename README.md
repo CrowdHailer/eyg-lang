@@ -34,6 +34,7 @@ Projects in this repo introduce extra contraints, over regular programming langu
 - File and import path resolution is explained in [`guides/file_resolution.md`](./guides/file_resolution.md).
 - Start agents and invoke the type checker from EYG with the [script agent guide](./guides/script_agents.md).
 - Effect spans and named function profiles are explained in [`guides/tracing.md`](./guides/tracing.md).
+- The [performance viewer](./guides/trace_performance.md) compares elapsed clocks and exports measured charts.
 - Portable recording, replay and telemetry export are explained in [`guides/trajectories.md`](./guides/trajectories.md).
 - Updating JSON while retaining unknown fields is covered in [`guides/json_documents.md`](./guides/json_documents.md).
 - Model-written pure programs can be checked with the [evaluation guide](./guides/pure_model_evals.md).

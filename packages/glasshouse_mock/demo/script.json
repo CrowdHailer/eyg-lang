@@ -1,0 +1,33 @@
+{
+  "rules": [
+    {
+      "prompt": "website",
+      "steps": [
+        {"code": "perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"newsletter.example.com\", port: None({}), path: \"/signups\", query: None({}), headers: [], body: !string_to_binary(\"\")})"},
+        {"text": "The website replied {{result}}"}
+      ]
+    },
+    {
+      "prompt": "blog",
+      "steps": [
+        {"code": "perform ReadFile({path: \"signups.md\", offset: 0, limit: 10000})"},
+        {"text": "The immutable signup snapshot is {{result}}"}
+      ]
+    },
+    {
+      "prompt": "report",
+      "system": "include the total",
+      "steps": [
+        {"code": "let bytes = match perform ReadFile({path: \"signups.md\", offset: 0, limit: 10000}) { Ok(bytes) -> { bytes } Error(reason) -> { !string_to_binary(reason) } }\nlet report = !binary_concat(bytes, !string_to_binary(\"\\nTotal signups: 7\\n\"))\nperform WriteFile({path: \"reports/signups.md\", contents: report})"},
+        {"text": "I wrote the report with its total in this sandbox's private filesystem."}
+      ]
+    },
+    {
+      "prompt": "report",
+      "steps": [
+        {"code": "let bytes = match perform ReadFile({path: \"signups.md\", offset: 0, limit: 10000}) { Ok(bytes) -> { bytes } Error(reason) -> { !string_to_binary(reason) } }\nperform WriteFile({path: \"reports/signups.md\", contents: bytes})"},
+        {"text": "I wrote the report in this sandbox's private filesystem."}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+// Each wait becomes a child span. Their widths reveal elapsed time.
+// No tracing calls are needed in the program.
+let _ = perform StandardOut("Starting three stages\n")
+let _ = perform Sleep(40)
+let _ = perform Sleep(120)
+let _ = perform Sleep(65)
+perform StandardOut("Three stages complete\n")

@@ -4,6 +4,8 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+glasshouse = { path = "../glasshouse" }
+plinthx = { path = "../plinthx" }
 argv = ">= 1.0.2 and < 2.0.0"
 eyg_analysis = ">= 2.0.0 and < 4.0.0"
 eyg_hub = { path = "../gleam_hub" }

@@ -39,6 +39,7 @@ pub fn header() {
           // header_link("/editor", "Editor"),
           header_link("/documentation", "Documentation"),
           header_link("/guides", "Guides"),
+          header_link("/glasshouse", "Glasshouse"),
           header_link("/roadmap", "Roadmap"),
           header_link("/news", "News"),
         ]),

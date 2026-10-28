@@ -1,0 +1,10 @@
+// Local, deliberately delayed HTTP fixtures represent plan / tool / answer.
+// These are real HTTP calls, not real model inference.
+let http = import "./http.eyg"
+let port = http.port({})
+let plan = http.require_ok(http.get(port, "/plan"))
+let _ = perform StandardOut(plan)
+let tool = http.require_ok(http.get(port, "/tool"))
+let _ = perform StandardOut(tool)
+let answer = http.require_ok(http.get(port, "/answer"))
+perform StandardOut(answer)

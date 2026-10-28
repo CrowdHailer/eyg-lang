@@ -1,0 +1,5 @@
+// Abort terminates evaluation. The root and evaluation spans become errors.
+// Abort itself has no computer-harness implementation, so it has no effect span.
+let _ = perform StandardOut("Beginning a task that will fail\n")
+let _ = perform Sleep(50)
+perform Abort("demo: task could not be completed")

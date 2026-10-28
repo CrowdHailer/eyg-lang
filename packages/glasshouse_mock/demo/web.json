@@ -1,0 +1,37 @@
+{
+  "rules": [
+    {
+      "prompt": "dice",
+      "steps": [
+        {
+          "code": "let roll = perform Random(6)\n!int_add(roll, 1)"
+        },
+        {
+          "text": "You rolled a {{result}}."
+        }
+      ]
+    },
+    {
+      "prompt": "greet",
+      "steps": [
+        {
+          "code": "let _ = perform Print(\"Hello from the browser!\\n\")\n\"greeted\""
+        },
+        {
+          "text": "I printed a greeting."
+        }
+      ]
+    },
+    {
+      "prompt": "so far",
+      "steps": [
+        {
+          "code": "let calls = perform Trace({})\n!list_fold(calls, \"\", (call, text) -> {\n  !string_append(text, !string_append(call.call, !string_append(\" returned \", !string_append(call.result, \"\\n\"))))\n})"
+        },
+        {
+          "text": "Here is everything I have run so far:\n\n{{result}}"
+        }
+      ]
+    }
+  ]
+}
