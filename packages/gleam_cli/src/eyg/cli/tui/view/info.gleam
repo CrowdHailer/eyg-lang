@@ -66,12 +66,12 @@ pub fn status(state: state.State) -> List(span.Line) {
               )
             n if n < 10 ->
               span.span_styled(
-                "✗" <> int.to_string(n) <> " ",
+                "!" <> int.to_string(n) <> " ",
                 style.default_style() |> style.with_fg(style.Indexed(1)),
               )
             _ ->
               span.span_styled(
-                "✗9+",
+                "!9+",
                 style.default_style() |> style.with_fg(style.Indexed(1)),
               )
           }

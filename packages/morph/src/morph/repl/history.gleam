@@ -4,10 +4,16 @@ import morph/buffer
 
 pub type Entry(meta) {
   Entry(
-    value: Option(state.Value(meta)),
+    outcome: Outcome(meta),
     effects: List(EffectRecord(meta)),
     buffer: buffer.Buffer,
   )
+}
+
+pub type Outcome(meta) {
+  Success(Option(state.Value(meta)))
+  Aborted(String)
+  Exception(state.Debug(meta))
 }
 
 pub type EffectRecord(meta) =

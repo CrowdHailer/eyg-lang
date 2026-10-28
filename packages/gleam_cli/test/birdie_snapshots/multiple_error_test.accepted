@@ -13,4 +13,4 @@ test_name: multiple_error_test
 [36mlet [0m[33mbar[0m = [33m[4m[58:2::255:0:0munknown[0m                                                               
 [36mlet [0m[33mbaz[0m = [4m[58:2::255:0:0m{}.foo[0m                                                                
 [2m...[0m                                                                             
-[31m✗3 [0m· [31mcode incomplete[0m                                                            
+[31m!3 [0m· [31mcode incomplete[0m                                                            

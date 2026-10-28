@@ -15,8 +15,8 @@ pub fn execute_expression_test() {
   let state = with_source(ir.add(ir.integer(7), ir.integer(21)))
   let assert #(state, []) = command(state, "Enter")
   assert state.Editing == state.mode
-  let assert [history.Entry(value:, effects:, ..)] = state.previous
-  assert Some(v.Integer(28)) == value
+  let assert [history.Entry(outcome:, effects:, ..)] = state.previous
+  assert history.Success(Some(v.Integer(28))) == outcome
   assert [] == effects
 }
 
@@ -25,8 +25,8 @@ pub fn execute_sync_effect_test() {
   let state = with_source(source)
   let assert #(state, []) = command(state, "Enter")
   assert state.Editing == state.mode
-  let assert [history.Entry(value:, effects:, ..)] = state.previous
-  assert Some(v.Integer(0)) == value
+  let assert [history.Entry(outcome:, effects:, ..)] = state.previous
+  assert history.Success(Some(v.Integer(0))) == outcome
   // TODO keep list of effects
   assert [] == effects
 }
@@ -41,8 +41,8 @@ pub fn execute_async_effect_test() {
   let assert #(state, []) = state.update(state, message)
 
   assert state.Editing == state.mode
-  let assert [history.Entry(value:, effects:, ..)] = state.previous
-  assert Some(v.unit()) == value
+  let assert [history.Entry(outcome:, effects:, ..)] = state.previous
+  assert history.Success(Some(v.unit())) == outcome
   // TODO keep list of effects
   assert [] == effects
 }

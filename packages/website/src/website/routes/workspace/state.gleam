@@ -522,7 +522,12 @@ fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
 }
 
 fn complete(state: State, value, scope) {
-  let entry = history.Entry(value:, effects: [], buffer: state.repl)
+  let entry =
+    history.Entry(
+      outcome: history.Success(value),
+      effects: [],
+      buffer: state.repl,
+    )
   let previous = [entry, ..state.previous]
   let repl = buffer.empty(repl_context(scope), cache.types(state.cache))
   #(State(..state, mode: Editing, previous:, scope:, repl:), [])

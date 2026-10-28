@@ -120,9 +120,9 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
         ])
       }),
     )
-  case entry.value {
-    None -> lines
-    Some(value) -> {
+  case entry.outcome {
+    history.Success(None) -> lines
+    history.Success(Some(value)) -> {
       let value_lines =
         simple_debug.render(value, int.max(1, width - 2))
         |> string.split("\n")
@@ -137,6 +137,24 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
         })
       list.append(lines, value_lines)
     }
+    history.Aborted(message) ->
+      list.append(lines, [
+        span.line_new([
+          span.span_styled(
+            "■ " <> message,
+            style.default_style() |> style.with_fg(style.Indexed(3)),
+          ),
+        ]),
+      ])
+    history.Exception(#(reason, _, _, _)) ->
+      list.append(lines, [
+        span.line_new([
+          span.span_styled(
+            "✘ " <> simple_debug.describe(reason),
+            style.default_style() |> style.with_fg(style.Indexed(1)),
+          ),
+        ]),
+      ])
   }
 }
 

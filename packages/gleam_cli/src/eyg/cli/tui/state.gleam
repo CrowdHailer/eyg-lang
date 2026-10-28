@@ -148,10 +148,10 @@ pub fn update(
   }
   case state.mode, event {
     _, Input(backend.KeyPress("ctrl+q")) -> #(State(..state, quit: True), [])
-    Running(..), Input(backend.KeyPress("esc")) -> #(
-      State(..state, mode: Navigating),
-      [],
-    )
+    Running(active: _, env: _, k: _, occured:), Input(backend.KeyPress("esc"))
+    ->
+      history.Aborted("Cancelled")
+      |> finish_run(state.scope, occured, state)
     Running(..), Input(_) -> #(state, [])
     Running(Handling(task_id:, label:, lift:), env, k, occured),
       Task(EffectHandled(id, value))
@@ -206,7 +206,25 @@ fn input_key_pressed(
     True -> #(state, [])
     False ->
       case code {
-        keys.Escape -> #(State(..state, mode: Navigating), [])
+        keys.Escape ->
+          case kind {
+            ReplyStandardIn(env:, k:, occured:) -> {
+              let reply = system.Done(standard_in.encode(Error("Cancelled")))
+              after_perform(
+                reply,
+                "StandardIn",
+                value.unit(),
+                env,
+                k,
+                state,
+                occured,
+              )
+            }
+            EnterText(_) | EnterInteger(_) -> #(
+              State(..state, mode: Navigating),
+              [],
+            )
+          }
         keys.Enter -> submit_input(state, input.value, kind)
         _ -> {
           let edited = case code {
@@ -410,73 +428,37 @@ fn loop(
   occured: List(history.EffectRecord(source.Location)),
 ) -> #(State, List(system.Effect(Message))) {
   case return {
-    Ok(#(value, scope)) -> {
-      let entry = history.Entry(value:, effects: occured, buffer: state.buffer)
-      let history = [entry, ..state.history]
-      let buffer =
-        buffer.empty(
-          repl_context(scope),
-          cache.types(state.execute_state.cache),
-        )
-      #(State(..state, mode: Navigating, history:, scope:, buffer:), [])
-    }
+    Ok(#(value, scope)) ->
+      finish_run(history.Success(value), scope, occured, state)
     Error(#(break.UnhandledEffect(label, lift), location, env, k)) ->
       case computer.cast(label, lift) {
         Ok(effect) ->
           perform(effect, location.origin, label, lift, env, k, state, occured)
-        Error(reason) -> evaluation_failed(state, reason, location, k)
+        Error(reason) ->
+          history.Exception(#(reason, location, env, k))
+          |> finish_run(state.scope, occured, state)
       }
-    Error(#(reason, location, _, stack)) ->
-      evaluation_failed(state, reason, location, stack)
+    Error(debug) ->
+      history.Exception(debug)
+      |> finish_run(state.scope, occured, state)
   }
 }
 
 fn perform(effect, origin, label, lift, env, k, state, occured) {
   case effect {
     harness.StandardOut(_) | harness.StandardError(_) ->
-      after_perform(
-        system.Done(value.unit()),
-        label,
-        lift,
-        env,
-        k,
-        state,
-        occured,
-      )
+      system.Done(value.unit())
+      |> after_perform(label, lift, env, k, state, occured)
     harness.StandardIn -> {
       let mode = FreeInput(input.state_new(), ReplyStandardIn(env, k, occured))
       #(State(..state, mode:), [])
     }
-    harness.Exit(status) -> {
-      let entry =
-        history.Entry(value: None, effects: occured, buffer: state.buffer)
-      let history = [entry, ..state.history]
-      let buffer =
-        buffer.empty(
-          repl_context(state.scope),
-          cache.types(state.execute_state.cache),
-        )
-      #(
-        State(
-          ..state,
-          mode: Navigating,
-          history:,
-          buffer:,
-          message: Some("exited with status: " <> int.to_string(status)),
-        ),
-        [],
-      )
-    }
+    harness.Exit(status) ->
+      history.Aborted("Exited with status " <> int.to_string(status))
+      |> finish_run(state.scope, occured, state)
     _ ->
-      after_perform(
-        computer.extrinsic(effect, origin),
-        label,
-        lift,
-        env,
-        k,
-        state,
-        occured,
-      )
+      computer.extrinsic(effect, origin)
+      |> after_perform(label, lift, env, k, state, occured)
   }
 }
 
@@ -501,14 +483,12 @@ fn after_perform(reply, label, lift, env, k, state, occured) {
   }
 }
 
-fn evaluation_failed(state, reason, location, stack) {
-  #(
-    fail(
-      State(..state, mode: Navigating),
-      execute.render_error(reason, location, stack, "/repl"),
-    ),
-    [],
-  )
+fn finish_run(outcome, scope, occured, state: State) {
+  let entry = history.Entry(outcome:, effects: occured, buffer: state.buffer)
+  let history = [entry, ..state.history]
+  let buffer =
+    buffer.empty(repl_context(scope), cache.types(state.execute_state.cache))
+  #(State(..state, mode: Navigating, history:, scope:, buffer:), [])
 }
 
 fn fail(state, message) {

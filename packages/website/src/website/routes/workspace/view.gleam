@@ -237,13 +237,13 @@ pub fn render_previous(
             ]),
             editor_view.render_effects_history(effects),
             case value {
-              Some(value) ->
+              history.Success(Some(value)) ->
                 h.div([a.class(" max-h-60 overflow-auto")], [
                   // would need to be flex to show inline
                   // h.span([a.class("font-bold")], [element.text("> ")]),
                   output.render(value),
                 ])
-              None -> element.none()
+              _ -> element.none()
             },
           ])
       }
