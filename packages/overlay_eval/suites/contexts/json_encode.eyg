@@ -1,0 +1,21 @@
+{
+  description: "Find the json package and encode a record as JSON text.",
+  tags: ["libraries"],
+  prompts: [
+    "Run a program that makes JSON text for a person named Ada whose languages are EYG and Gleam: an object with a name field then a languages list."
+  ],
+  checks: [
+    Computes("{\"name\":\"Ada\",\"languages\":[\"EYG\",\"Gleam\"]}"),
+    References("json")
+  ],
+  reference: [
+    [
+      Run("let e = @json.encode
+e.object([
+  e.field(\"name\", e.string(\"Ada\")),
+  e.field(\"languages\", e.array([e.string(\"EYG\"), e.string(\"Gleam\")]))
+])"),
+      Say("The JSON is {\"name\":\"Ada\",\"languages\":[\"EYG\",\"Gleam\"]}.")
+    ]
+  ]
+}

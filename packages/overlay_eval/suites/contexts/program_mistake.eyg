@@ -1,0 +1,13 @@
+{
+  description: "A mistake in a person's program is fixed, not blamed on Overlay.",
+  tags: ["source", "no-pull-request", "values"],
+  prompts: ["This program fails, fix it and tell me what it returns: !int_add(1, \"2\")"],
+  checks: [Computes(3), NeverSays("pull request")],
+  reference: [
+    [
+      Run("!int_add(1, \"2\")"),
+      Run("!int_add(1, 2)"),
+      Say("\"2\" is a string, !int_add needs two integers. With !int_add(1, 2) it returns 3.")
+    ]
+  ]
+}

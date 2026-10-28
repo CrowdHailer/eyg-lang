@@ -1,0 +1,26 @@
+{
+  add: {
+    description: "Add two numbers",
+    tags: ["arithmetic"],
+    prompts: ["What is two plus three?"],
+    checks: [Computes(5), Says("5")],
+    reference: [[Run("!int_add(2, 3)"), Say("It is 5.")]]
+  },
+  greet: import "./greet.eyg",
+  note: import "./note.eyg",
+  project: import "./project.eyg",
+  quiet: import "./quiet.eyg",
+  fact: {
+    description: "Fetch a fact",
+    prompts: ["Tell me a cat fact"],
+    routes: [{url: "https://catfact.ninja/fact", status: 200, body: "Cats sleep a lot"}],
+    checks: [Fetches("catfact.ninja/fact"), Says("sleep")],
+    reference: [
+      [
+        Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"catfact.ninja\", port: None({}), path: \"/fact\", query: None({}), headers: [], body: !string_to_binary(\"\")}) { Ok({body}) -> { !string_from_binary(body) } Error(reason) -> { Error({}) } }"),
+        Say("Cats sleep a lot.")
+      ]
+    ],
+    max_model_calls: 4
+  }
+}

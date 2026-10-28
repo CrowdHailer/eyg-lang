@@ -1,0 +1,13 @@
+{
+  description: "Compute a value with builtins, a regression check of writing EYG.",
+  tags: ["values"],
+  prompts: ["Run a program that counts the words in \"the quick brown fox\"."],
+  checks: [Computes(4), Says("4")],
+  reference: [
+    [
+      Run("let {head, tail} = !string_split(\"the quick brown fox\", \" \")
+!list_fold([head, ..tail], 0, (_, count) -> { !int_add(count, 1) })"),
+      Say("There are 4 words.")
+    ]
+  ]
+}

@@ -1,0 +1,136 @@
+let {assert} = @aok
+let workspace = import "./workspace.eyg"
+let note = {name: "Parsing JSON", description: "Use the JSON package", date: "2026-10-14", body: "Decode fields.\n"}
+let text = "---\nname: Parsing JSON\ndescription: Use the JSON package\ndate: 2026-10-14\n---\n\nDecode fields.\n\n"
+let without_io = (f) -> {
+  handle MakeDirectory((_, _) -> { perform Abort("unexpected directory creation") }, (_) -> {
+    handle WriteFile((_, _) -> { perform Abort("unexpected write") }, f)
+  })
+}
+[
+  {name: "workspace frontmatter requires closed name and description fields",
+   test: (_) -> {
+     let _ = assert.equal(workspace.frontmatter(text), Ok({name: note.name, description: note.description, date: note.date}))
+     let _ = assert.equal(workspace.frontmatter("plain text"), Error("the note has no frontmatter"))
+     let _ = assert.equal(workspace.frontmatter("---\nname: a\n"), Error("the frontmatter is not closed"))
+     let _ = assert.equal(workspace.frontmatter("---\ndescription: a\n---"), Error("the note has no name"))
+     let _ = assert.equal(workspace.frontmatter("---\nname: a\n---"), Error("the note has no description"))
+     assert.equal(workspace.frontmatter("---\nignored\nname: a\ndescription: b\n---"), Ok({name: "a", description: "b", date: ""}))
+   }},
+  {name: "workspace notes index reads only markdown and omits invalid notes",
+   test: (_) -> {
+     let found = handle ReadDirectory((path, resume) -> {
+       let _ = assert.equal(path, "notes")
+       resume(Ok([{name: "valid.md"}, {name: "invalid.md"}, {name: "binary.md"}, {name: "missing.md"}, {name: "other.txt"}]))
+     }, (_) -> {
+       handle ReadFile(({path, offset, limit}, resume) -> {
+         let _ = assert.equal(offset, 0)
+         let _ = assert.equal(limit, 1000000)
+         match !equal(path, "notes/valid.md") {
+           True(_) -> { resume(Ok(!string_to_binary(text))) }
+           False(_) -> {
+             match !equal(path, "notes/invalid.md") {
+               True(_) -> { resume(Ok(!string_to_binary("no frontmatter"))) }
+               False(_) -> {
+                 match !equal(path, "notes/binary.md") {
+                   True(_) -> { resume(Ok(!binary_from_integers([255]))) }
+                   False(_) -> {
+                     let _ = assert.equal(path, "notes/missing.md")
+                     resume(Error("missing"))
+                   }
+                 }
+               }
+             }
+           }
+         }
+       }, (_) -> { workspace.notes({}) })
+     })
+     assert.equal(found, [{path: "notes/valid.md", name: note.name, description: note.description, date: note.date}])
+   }},
+  {name: "workspace missing notes directory has an empty index",
+   test: (_) -> {
+     assert.equal(handle ReadDirectory((_, resume) -> { resume(Error("missing")) }, (_) -> { workspace.notes({}) }), [])
+   }},
+  {name: "workspace note writes portable path and frontmatter",
+   test: (_) -> {
+     let result = handle MakeDirectory((path, resume) -> {
+       let _ = assert.equal(path, "notes")
+       resume(Ok({}))
+     }, (_) -> {
+       handle WriteFile(({path, contents}, resume) -> {
+         let _ = assert.equal(path, "notes/parsing-json.md")
+         let _ = assert.equal(!string_from_binary(contents), Ok(text))
+         resume(Ok({}))
+       }, (_) -> { workspace.write_note(note) })
+     })
+     assert.equal(result, Ok("notes/parsing-json.md"))
+   }},
+  {name: "workspace note creation failure prevents a write",
+   test: (_) -> {
+     let result = handle MakeDirectory((_, resume) -> { resume(Error("read only")) }, (_) -> {
+       handle WriteFile((_, _) -> { perform Abort("unexpected write") }, (_) -> { workspace.write_note(note) })
+     })
+     assert.equal(result, Error("read only"))
+   }},
+  {name: "workspace failed note write is returned",
+   test: (_) -> {
+     let result = handle MakeDirectory((_, resume) -> { resume(Ok({})) }, (_) -> {
+       handle WriteFile((_, resume) -> { resume(Error("full")) }, (_) -> { workspace.write_note(note) })
+     })
+     assert.equal(result, Error("full"))
+   }},
+  {name: "workspace note names cannot escape notes or inject metadata",
+   test: (_) -> {
+     !list_fold(["../outside", "/tmp/file", "a\\b", "a\nname: forged", "a\rdescription: forged", ""], {}, (name, _) -> {
+       let result = without_io((_) -> { workspace.write_note({name, ..note}) })
+       let _ = assert.error(result)
+       {}
+     })
+   }},
+  {name: "workspace explicit root controls native write paths",
+   test: (_) -> {
+     let result = handle MakeDirectory((path, resume) -> {
+       let _ = assert.equal(path, "/project/notes")
+       resume(Ok({}))
+     }, (_) -> {
+       handle WriteFile(({path, contents}, resume) -> {
+         let _ = assert.equal(path, "/project/notes/parsing-json.md")
+         let _ = assert.equal(!string_from_binary(contents), Ok(text))
+         resume(Ok({}))
+       }, (_) -> { workspace.at("/project").write_note(note) })
+     })
+     assert.equal(result, Ok("notes/parsing-json.md"))
+   }},
+  {name: "workspace explicit root keeps listed paths relative",
+   test: (_) -> {
+     let result = handle ReadDirectory((path, resume) -> {
+       let _ = assert.equal(path, "/project/notes")
+       resume(Ok([{name: "json.md"}]))
+     }, (_) -> {
+       handle ReadFile(({path}, resume) -> {
+         let _ = assert.equal(path, "/project/notes/json.md")
+         resume(Ok(!string_to_binary(text)))
+       }, (_) -> { workspace.at("/project").notes({}) })
+     })
+     assert.equal(result, [{path: "notes/json.md", name: note.name, description: note.description, date: note.date}])
+   }},
+  {name: "workspace note names cannot escape notes or inject metadata with explicit root",
+   test: (_) -> {
+     !list_fold(["../outside", "/tmp/file", "a\\b", "a\nname: forged", "a\rdescription: forged", ""], {}, (name, _) -> {
+       let result = without_io((_) -> { workspace.at("/project").write_note({name, ..note}) })
+       let _ = assert.error(result)
+       {}
+     })
+   }},
+  {name: "workspace description and date cannot inject metadata",
+   test: (_) -> {
+     let _ = !list_fold(["", "first\nname: forged", "first\rdate: forged"], {}, (field, _) -> {
+       let _ = assert.error(without_io((_) -> { workspace.write_note({description: field, ..note}) }))
+       let _ = assert.error(without_io((_) -> { workspace.write_note({date: field, ..note}) }))
+       {}
+     })
+     let nul = assert.ok(!string_from_binary(!binary_from_integers([0])))
+     let _ = assert.error(without_io((_) -> { workspace.write_note({name: nul, ..note}) }))
+     {}
+   }}
+]

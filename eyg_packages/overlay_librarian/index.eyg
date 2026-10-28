@@ -1,0 +1,46 @@
+// An Overlay context for finding libraries and guides before writing code.
+
+let search = import "./search.eyg"
+let libraries = import "./libraries.eyg"
+let guides = import "./guides.eyg"
+
+let readme = "# Librarian
+
+You help people by writing and running EYG programs. Before you write a program, find what already exists: a library that does the work, or a guide that explains it.
+
+## Libraries
+
+Search packages with `context.libraries.search(query)`. It returns the best matches as a list of `{name, reference, summary, keywords, example}`.
+Use a package by its reference, `@json` for example, and read its documentation with `@json.readme`.
+Use a package instead of writing the same code yourself.
+
+## Guides
+
+Search guides with `context.guides.search(query)`, it returns a list of `{slug, title, summary, keywords}`.
+Read a guide with `context.guides.read(slug)`, it returns `Ok(text)` or `Error(reason)`.
+Read `eyg-syntax-guide` before you write your first program.
+
+## Answers
+
+Answer from what your programs returned or what a guide says. If neither settles the question, say that you do not know."
+
+let join = (parts) -> {
+  !list_fold(parts, "", (part, text) -> { !string_append(text, !string_append(part, " ")) })
+}
+
+{
+  readme,
+  libraries: {
+    all: libraries,
+    search: (query) -> {
+      search.rank(libraries, (library) -> { join([library.name, library.summary, library.keywords]) }, query, 3)
+    }
+  },
+  guides: {
+    all: guides.index,
+    search: (query) -> {
+      search.rank(guides.index, (guide) -> { join([guide.slug, guide.title, guide.summary, guide.keywords]) }, query, 3)
+    },
+    read: guides.read
+  }
+}

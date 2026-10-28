@@ -1,0 +1,15 @@
+{
+  fibonacci: {
+    description: "Sum the first 20 Fibonacci numbers, starting with 1, 1.",
+    tags: ["arithmetic"],
+    prompts: ["Calculate the sum of the first 20 Fibonacci numbers, starting with 1, 1. Use an EYG program to calculate the sum and return it as an integer."],
+    checks: [Computes(17710)],
+    reference: [[Run("let sum = !fix((self, n, a, b, total) -> {
+      match !int_compare(n, 0) {
+        Eq(_) -> { total }
+        | (_) -> { self(!int_subtract(n, 1), b, !int_add(a, b), !int_add(total, a)) }
+      }
+    })
+    sum(20, 1, 1, 0)"), Say("The sum is 17710.")]]
+  }
+}

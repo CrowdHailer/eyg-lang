@@ -1,0 +1,32 @@
+{
+  description: "Keep a concise note of what was learnt, in the workspace's notes.",
+  tags: ["notes", "workspace", "libraries"],
+  prompts: [
+    "Run a program that gets the id from {\"id\": 42}.",
+    "Keep a note of anything you learnt that will help next time."
+  ],
+  workspace: [
+    {path: "README.md", contents: "# Project\n\nNotes are kept in notes/.\n"}
+  ],
+  checks: [
+    Computes(42),
+    References("json"),
+    AnyFileContains({directory: "notes", text: "@json"}),
+    Judged("A note in notes/ starts with frontmatter that has a name, a description and a date, and says in a few lines how to decode a JSON field with @json, without repeating a whole guide.")
+  ],
+  reference: [
+    [
+      Run("let {decode: d, parse} = @json
+match parse(\"{\\\"id\\\": 42}\", d.object(d.field(\"id\", d.integer))) {
+  Ok(id) -> { id }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}"),
+      Say("The id is 42.")
+    ],
+    [
+      Run("let _ = perform MakeDirectory(\"notes\")
+perform WriteFile({path: \"notes/json.md\", contents: !string_to_binary(\"---\\nname: json\\ndescription: Decode JSON fields with the json package\\ndate: 2026-09-17\\n---\\n\\nParse JSON with @json: parse(text, d.object(d.field(label, d.integer))) where d is @json.decode.\\n\")})"),
+      Say("I wrote notes/json.md on decoding JSON fields with @json.")
+    ]
+  ]
+}

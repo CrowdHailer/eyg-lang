@@ -1,0 +1,55 @@
+{
+  description: "Find the http package and build a request without sending it.",
+  tags: ["libraries"],
+  prompts: [
+    "Build a GET request to https://api.github.com/users/crowdhailer with the header accept: application/vnd.github+json. Do not send it, run a program that returns the request."
+  ],
+  checks: [
+    Satisfies({
+      description: "is a GET request to api.github.com/users/crowdhailer with the accept header",
+      check: (request) -> {
+        let accept = !list_fold(request.headers, False({}), (header, found) -> {
+          match found {
+            True(_) -> { True({}) }
+            False(_) -> {
+              match !equal(header.key, "accept") {
+                True(_) -> { !equal(header.value, "application/vnd.github+json") }
+                False(_) -> { False({}) }
+              }
+            }
+          }
+        })
+        let get = match request.method {
+          GET(_) -> { True({}) }
+          | (_) -> { False({}) }
+        }
+        match !equal(request.host, "api.github.com") {
+          True(_) -> {
+            match !equal(request.path, "/users/crowdhailer") {
+              True(_) -> {
+                match get {
+                  True(_) -> { accept }
+                  False(_) -> { False({}) }
+                }
+              }
+              False(_) -> { False({}) }
+            }
+          }
+          False(_) -> { False({}) }
+        }
+      }
+    }),
+    References("http")
+  ],
+  reference: [
+    [
+      Run("let http = @http
+let operation = http.prepend_header(
+  http.operation.get(\"/users/crowdhailer\"),
+  {key: \"accept\", value: \"application/vnd.github+json\"}
+)
+http.operation.to_request(operation, http.origin.https(\"api.github.com\"))"),
+      Say("The request is ready and has not been sent.")
+    ]
+  ]
+}

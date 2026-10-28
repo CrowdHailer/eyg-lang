@@ -1,0 +1,82 @@
+// Overlay's own source code, read from GitHub.
+
+let json = import "../json/index.eyg"
+let {form_value} = import "../http/index.eyg"
+
+let repository = {
+  owner: "CrowdHailer",
+  name: "eyg-lang",
+  branch: "main",
+  url: "https://github.com/CrowdHailer/eyg-lang"
+}
+
+// The parts of the repository that explain how Overlay and EYG behave.
+let map = [
+  {path: "packages/overlay_web/src/overlay/web/state.gleam", about: "Overlay sessions: the system prompt, sending prompts, streaming replies and running tool calls."},
+  {path: "packages/overlay_web/src/overlay/web/tools.gleam", about: "Running a program for the agent: parsing, type checking, effects and the result sent back."},
+  {path: "packages/overlay_web/src/overlay/web/context.gleam", about: "Loading the context module and its readme."},
+  {path: "packages/overlay_web/src/overlay/web/workspace.gleam", about: "The workspace file system and its file effects."},
+  {path: "packages/touch_grass/src/touch_grass/harness/browser.gleam", about: "The effects programs can perform in the browser, in Overlay."},
+  {path: "packages/touch_grass/src/touch_grass/harness/computer.gleam", about: "The effects programs can perform on a computer, with the eyg CLI."},
+  {path: "packages/pal/src/pal/platform/browser.gleam", about: "How the browser performs each effect."},
+  {path: "packages/gleam_interpreter/src/eyg/interpreter/builtin.gleam", about: "The builtin functions of EYG."},
+  {path: "packages/gleam_parser/src/eyg/parser/parser.gleam", about: "The EYG parser."},
+  {path: "packages/gleam_analysis/src/eyg/analysis/inference/levels_j/contextual.gleam", about: "Type inference for EYG programs."},
+  {path: "eyg_packages", about: "The packages, each directory is published under its name."},
+  {path: "guides", about: "The guides published on eyg.run."}
+]
+
+let get = (host, path, query) -> {
+  let request = {
+    method: GET({}),
+    scheme: HTTPS({}),
+    host,
+    port: None({}),
+    path,
+    query,
+    headers: [{key: "user-agent", value: "overlay"}],
+    body: !string_to_binary("")
+  }
+  match perform Fetch(request) {
+    Ok({status, body}) -> {
+      match !int_compare(status, 200) {
+        Eq(_) -> {
+          match !string_from_binary(body) {
+            Ok(text) -> { Ok(text) }
+            Error(_) -> { Error("the response is not text") }
+          }
+        }
+        | (_) -> { Error(!string_append("not found: ", path)) }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+// Select an explicit branch or commit. The default below follows main.
+let at = (repository) -> {
+  let prefix = !string_append(repository.owner, !string_append("/", repository.name))
+  let raw = !string_append("/", !string_append(prefix, !string_append("/", !string_append(repository.branch, "/"))))
+  let api = !string_append("/repos/", !string_append(prefix, "/contents/"))
+  {
+    repository,
+    map,
+    read: (path) -> { get("raw.githubusercontent.com", !string_append(raw, path), None({})) },
+    list: (path) -> {
+      match get("api.github.com", !string_append(api, path), Some(!string_append("ref=", form_value(repository.branch)))) {
+        Ok(text) -> {
+          let d = json.decode
+          let entry = d.object((entry) -> {
+            {path: d.field("path", d.string)(entry), type: d.field("type", d.string)(entry)}
+          })
+          json.parse(text, d.list(entry))
+        }
+        Error(reason) -> { Error(reason) }
+      }
+    }
+  }
+}
+
+let selected = at(repository)
+
+{repository, map, read: selected.read, list: selected.list, at}

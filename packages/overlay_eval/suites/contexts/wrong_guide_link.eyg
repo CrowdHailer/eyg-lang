@@ -1,0 +1,25 @@
+{
+  description: "Recover from a broken guide link by searching the guides, without blaming Overlay.",
+  tags: ["guides", "no-pull-request"],
+  prompts: [
+    "Read the guide at https://eyg.run/guides/syntax.md and tell me how to write a comment in EYG."
+  ],
+  checks: [
+    Fetches("/guides/eyg-syntax-guide"),
+    Says("//"),
+    NeverSays("pull request")
+  ],
+  reference: [
+    [
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"eyg.run\", port: None({}), path: \"/guides/syntax.md\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({status}) -> { status }
+  Error(reason) -> { 0 }
+}"),
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"eyg.run\", port: None({}), path: \"/guides/eyg-syntax-guide.md\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({body}) -> { !string_from_binary(body) }
+  Error(reason) -> { Error({}) }
+}"),
+      Say("That link is not found, the syntax guide is at /guides/eyg-syntax-guide.md. Lines that begin with // are comments.")
+    ]
+  ]
+}

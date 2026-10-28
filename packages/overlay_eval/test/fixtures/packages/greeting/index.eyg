@@ -1,0 +1,6 @@
+#!/usr/bin/env eyg
+let words = import "./words.eyg"
+{
+  readme: "Greetings in several languages.",
+  hello: (name) -> { !string_append(words.hello, name) }
+}

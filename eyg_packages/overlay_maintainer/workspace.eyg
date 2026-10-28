@@ -1,0 +1,182 @@
+// Notes kept in a workspace: one topic per file in `notes/`, starting with
+// frontmatter that has a name, description and date.
+
+let reverse = (items) -> {
+  !list_fold(items, [], (item, acc) -> { [item, ..acc] })
+}
+
+let concat = (parts) -> {
+  !list_fold(parts, "", (part, text) -> { !string_append(text, part) })
+}
+
+let trim_start = !fix((self, text) -> {
+  match !string_starts_with(text, " ") {
+    True(_) -> {
+      match !string_split_once(text, " ") {
+        Ok({post}) -> { self(post) }
+        Error(_) -> { text }
+      }
+    }
+    False(_) -> { text }
+  }
+})
+
+let lookup = (fields, key) -> {
+  !list_fold(fields, Error({}), (field, found) -> {
+    match found {
+      Ok(value) -> { Ok(value) }
+      Error(_) -> {
+        match !equal(field.key, key) {
+          True(_) -> { Ok(field.value) }
+          False(_) -> { Error({}) }
+        }
+      }
+    }
+  })
+}
+
+// The name, description and date of a note, the date may be missing.
+let frontmatter = (text) -> {
+  let {head, tail} = !string_split(text, "\n")
+  let collect = !fix((self, lines, fields) -> {
+    match !list_pop(lines) {
+      Ok({head, tail}) -> {
+        match !equal(head, "---") {
+          True(_) -> { Ok(fields) }
+          False(_) -> {
+            match !string_split_once(head, ":") {
+              Ok({pre, post}) -> { self(tail, [{key: pre, value: trim_start(post)}, ..fields]) }
+              Error(_) -> { self(tail, fields) }
+            }
+          }
+        }
+      }
+      Error(_) -> { Error("the frontmatter is not closed") }
+    }
+  })
+  match !equal(head, "---") {
+    True(_) -> {
+      match collect(tail, []) {
+        Ok(fields) -> {
+          match lookup(fields, "name") {
+            Ok(name) -> {
+              match lookup(fields, "description") {
+                Ok(description) -> {
+                  let date = match lookup(fields, "date") {
+                    Ok(date) -> { date }
+                    Error(_) -> { "" }
+                  }
+                  Ok({name, description, date})
+                }
+                Error(_) -> { Error("the note has no description") }
+              }
+            }
+            Error(_) -> { Error("the note has no name") }
+          }
+        }
+        Error(reason) -> { Error(reason) }
+      }
+    }
+    False(_) -> { Error("the note has no frontmatter") }
+  }
+}
+
+// Explicit roots keep local imports from writing beside the helper module.
+// The empty root retains relative paths for the browser's virtual workspace.
+let at = (root) -> {
+let resolve = (path) -> {
+  match !equal(root, "") {
+    True(_) -> { path }
+    False(_) -> { concat([root, "/", path]) }
+  }
+}
+
+// Every note in notes/, returning workspace-relative metadata paths.
+let notes = (_) -> {
+  match perform ReadDirectory(resolve("notes")) {
+    Ok(entries) -> {
+      reverse(!list_fold(entries, [], (entry, found) -> {
+        match !string_ends_with(entry.name, ".md") {
+          True(_) -> {
+            let path = concat(["notes/", entry.name])
+            match perform ReadFile({path: resolve(path), offset: 0, limit: 1000000}) {
+              Ok(bytes) -> {
+                match !string_from_binary(bytes) {
+                  Ok(text) -> {
+                    match frontmatter(text) {
+                      Ok({name, description, date}) -> { [{path, name, description, date}, ..found] }
+                      Error(_) -> { found }
+                    }
+                  }
+                  Error(_) -> { found }
+                }
+              }
+              Error(_) -> { found }
+            }
+          }
+          False(_) -> { found }
+        }
+      }))
+    }
+    Error(_) -> { [] }
+  }
+}
+
+// Metadata is one nonempty line. NUL is invalid in a native file path.
+let single_line = (text) -> {
+  match !equal(text, "") {
+    True(_) -> { False({}) }
+    False(_) -> {
+      !binary_fold(!string_to_binary(text), True({}), (byte, valid) -> {
+        match !int_compare(byte, 32) {
+          Lt(_) -> { False({}) }
+          | (_) -> { valid }
+        }
+      })
+    }
+  }
+}
+
+// Validate before any effect, so a name cannot escape notes/ or add metadata.
+let valid_note = ({name, description, date}) -> {
+  let safe = !list_fold([name, description, date], True({}), (field, valid) -> {
+    match single_line(field) {
+      True(_) -> { valid }
+      False(_) -> { False({}) }
+    }
+  })
+  !list_fold(["/", "\\"], safe, (separator, valid) -> {
+    match !string_split_once(name, separator) {
+      Ok(_) -> { False({}) }
+      Error(_) -> { valid }
+    }
+  })
+}
+
+let save = ({name, description, date, body}) -> {
+  let path = concat(["notes/", !string_replace(!string_lowercase(name), " ", "-"), ".md"])
+  let text = concat(["---\nname: ", name, "\ndescription: ", description, "\ndate: ", date, "\n---\n\n", body, "\n"])
+  match perform MakeDirectory(resolve("notes")) {
+    Ok(_) -> {
+      match perform WriteFile({path: resolve(path), contents: !string_to_binary(text)}) {
+        Ok(_) -> { Ok(path) }
+        Error(reason) -> { Error(reason) }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+// Write a note to notes/<name>.md, returning its path.
+let write_note = (note) -> {
+  match valid_note({name: note.name, description: note.description, date: note.date}) {
+    True(_) -> { save(note) }
+    False(_) -> { Error("note name, description and date must be nonempty single lines; names cannot contain path separators") }
+  }
+}
+
+{notes, write_note}
+}
+
+let relative = at("")
+{frontmatter, notes: relative.notes, write_note: relative.write_note, at}

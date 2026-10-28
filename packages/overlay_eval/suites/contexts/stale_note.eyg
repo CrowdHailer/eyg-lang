@@ -1,0 +1,28 @@
+{
+  description: "A note in the workspace is wrong, correct it while doing the task.",
+  tags: ["notes", "workspace", "libraries"],
+  prompts: ["Run a program that gets the id from {\"id\": 42}."],
+  workspace: [
+    {path: "notes/json.md", contents: "---\nname: json\ndescription: Working with JSON\ndate: 2026-01-10\n---\n\nEYG cannot parse JSON, split the text on commas and colons instead.\n"}
+  ],
+  checks: [
+    Computes(42),
+    References("json"),
+    NoFileContains({directory: "notes", text: "cannot parse JSON"})
+  ],
+  reference: [
+    [
+      Run("match perform ReadDirectory(\"notes\") {
+  Ok(entries) -> { entries }
+  Error(reason) -> { [] }
+}"),
+      Run("let {decode: d, parse} = @json
+match parse(\"{\\\"id\\\": 42}\", d.object(d.field(\"id\", d.integer))) {
+  Ok(id) -> { id }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}"),
+      Run("perform WriteFile({path: \"notes/json.md\", contents: !string_to_binary(\"---\\nname: json\\ndescription: Working with JSON\\ndate: 2026-09-17\\n---\\n\\nParse JSON with the json package, @json.parse(text, decoder).\\n\")})"),
+      Say("The id is 42. notes/json.md said JSON cannot be parsed, which is wrong, so I corrected it to use @json.")
+    ]
+  ]
+}

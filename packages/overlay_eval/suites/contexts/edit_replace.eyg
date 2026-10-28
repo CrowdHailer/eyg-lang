@@ -1,0 +1,19 @@
+{
+  description: "Find the edit package and replace text in a workspace file.",
+  tags: ["libraries", "workspace"],
+  prompts: ["In docs/README.md, rename every \"Overlay App\" to \"Overlay\"."],
+  workspace: [
+    {path: "docs/README.md", contents: "# Overlay App\n\nOverlay App is an agent that writes EYG programs.\nStart Overlay App from eyg.run.\n"}
+  ],
+  checks: [
+    FileContains({path: "docs/README.md", text: "Overlay is an agent that writes EYG programs."}),
+    NoFileContains({directory: "docs", text: "Overlay App"}),
+    References("edit")
+  ],
+  reference: [
+    [
+      Run("@edit.replace_all({path: \"docs/README.md\", find: \"Overlay App\", replace: \"Overlay\"})"),
+      Say("Renamed every Overlay App to Overlay in docs/README.md.")
+    ]
+  ]
+}

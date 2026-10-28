@@ -1,0 +1,32 @@
+let {assert} = @aok
+let search = import "./search.eyg"
+[
+  {name: "catalogue words split lowercase text on punctuation",
+   test: (_) -> { assert.equal(search.words("Parse JSON, then @http!"), ["parse", "json", "then", "http"]) }},
+  {name: "catalogue stopwords use whole words",
+   test: (_) -> { assert.equal(search.words("how do I read a file with data and binary"), ["read", "file", "data", "binary"]) }},
+  {name: "catalogue score matches prefixes only",
+   test: (_) -> { assert.equal(search.score("Parse JSON files", ["json", "file", "par", "arse"]), 3) }},
+  {name: "catalogue rank keeps stable ties",
+   test: (_) -> {
+     let items = [{name: "a", text: "one"}, {name: "b", text: "one two"}, {name: "c", text: "one"}]
+     let found = search.rank(items, (item) -> { item.text }, "one two", 3)
+     assert.equal(search.map(found, (item) -> { item.name }), ["b", "a", "c"])
+   }},
+  {name: "catalogue rank omits nonmatches and limits results",
+   test: (_) -> {
+     let found = search.rank([{text: "one"}, {text: "two"}, {text: "one two"}], (item) -> { item.text }, "two", 1)
+     assert.equal(found, [{text: "two"}])
+   }},
+  {name: "catalogue empty queries and nonpositive limits return no items",
+   test: (_) -> {
+     let items = [{text: "one"}]
+     let text = (item) -> { item.text }
+     let _ = assert.equal(search.rank(items, text, "", 3), [])
+     let _ = assert.equal(search.rank(items, text, "how do I", 3), [])
+     let _ = assert.equal(search.rank(items, text, "one", 0), [])
+     assert.equal(search.rank(items, text, "one", -1), [])
+   }},
+  {name: "catalogue scores count matching query words rather than occurrences",
+   test: (_) -> { assert.equal(search.score("one one one two", ["one", "two"]), 2) }}
+]

@@ -1,0 +1,40 @@
+name = "overlay_eval"
+version = "0.1.0"
+target = "javascript"
+description = "Evals for Overlay programs and sessions"
+licences = ["Apache-2.0"]
+
+[javascript]
+runtime = "bun"
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+argv = ">= 1.0.2 and < 2.0.0"
+envoy = ">= 1.1.0 and < 2.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
+eyg_hub = { path = "../gleam_hub" }
+eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
+gleam_fetch = ">= 1.4.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.1 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+gleam_crypto = ">= 1.6.0 and < 2.0.0"
+gleam_time = ">= 1.11.0 and < 2.0.0"
+filepath = ">= 1.1.2 and < 2.0.0"
+javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
+midas = ">= 3.1.0 and < 4.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+gleam_http = ">= 4.4.0 and < 5.0.0"
+ogre = ">= 1.3.0 and < 2.0.0"
+oas_generator_utils = ">= 1.1.0 and < 2.0.0"
+overlay_llm = { path = "../overlay_llm" }
+overlay = { path = "../overlay" }
+overlay_web = { path = "../overlay_web" }
+pal = { path = "../pal" }
+untethered = { path = "../untethered" }
+plinthx = { path = "../plinthx" }
+simplifile = ">= 2.7.0 and < 3.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

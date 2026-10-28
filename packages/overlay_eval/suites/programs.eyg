@@ -1,0 +1,19 @@
+// Outcome checks only: an agent may use any valid EYG program or guide.
+{
+  fibonacci: import "./fibonacci.eyg".fibonacci,
+  count_words: import "./contexts/count_words.eyg",
+  record_update: {
+    description: "Update an existing field while preserving the other fields.",
+    tags: ["values"],
+    prompts: ["Run a program that changes the age in {name: \"Ada\", age: 36} to 37 and returns the whole record, keeping its name."],
+    checks: [Computes({age: 37, name: "Ada"})],
+    reference: [[Run("let person = {name: \"Ada\", age: 36}\n{age: 37, ..person}"), Say("The record keeps Ada's name and has age 37.")]]
+  },
+  list_second: {
+    description: "Extract a list item without assuming pattern matching on lists.",
+    tags: ["values"],
+    prompts: ["Use builtins to return the second item of [\"a\", \"b\", \"c\"]. Run the program."],
+    checks: [Computes("b")],
+    reference: [[Run("match !list_pop([\"a\", \"b\", \"c\"]) { Ok({tail}) -> { match !list_pop(tail) { Ok({head}) -> { head } Error(_) -> { \"\" } } } Error(_) -> { \"\" } }"), Say("The second item is b.")]]
+  }
+}
