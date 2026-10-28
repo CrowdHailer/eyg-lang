@@ -10,6 +10,7 @@
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/isomorphic as t
 import eyg/cli/check
 import eyg/cli/internal/config
 import eyg/cli/internal/terminal
@@ -164,6 +165,7 @@ pub fn setup(
                   // use the agent harness because the prompt should talk about effects that can't be used
                   list.map(agent_harness, pair.first),
                   user_config.readme,
+                  True,
                 ),
                 tools: agent.tools(),
               ),
@@ -437,6 +439,8 @@ fn type_check(session: Session(_), source, eyg_state) {
     |> infer.with_effects(interface.types(
       dict.values(session.policy) |> list.map(fn(i) { i.interface }),
     ))
+    // Aborting ends the program, it is not an effect of the platform so is never gated.
+    |> infer.with_effect("Abort", t.String, t.Never)
   // this is an infer context
   let context =
     infer.Context(..base, env: [#("context", session.context.type_), ..base.env])

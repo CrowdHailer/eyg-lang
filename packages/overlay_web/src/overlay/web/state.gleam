@@ -381,6 +381,7 @@ fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
         state.origin,
         harness.effects(),
         context.readme(state.context),
+        False,
       ),
       tools: agent.tools(),
     )

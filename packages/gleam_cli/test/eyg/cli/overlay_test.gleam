@@ -354,3 +354,21 @@ pub fn invalid_filesystem_paths_return_an_effect_error_test() {
     |> sandbox.run(sandbox)
   assert reason == "invalid relative path outside filesystem"
 }
+
+pub fn agent_code_can_abort_test() {
+  let input =
+    source.Code(
+      "{
+  llm: {provider: Mistral({api_key: \"misty_secret\"}), model: \"le-chonk\"},
+  policy: {},
+  context: {}
+}",
+    )
+  let assert #(sandbox.Returned(#(Ok(session), state)), _) =
+    overlay.setup(input, helpers.config, [], [], helpers.state())
+    |> sandbox.run(sandbox.sandbox())
+  let code = "!int_add(1, !never(perform Abort(\"stop\")))"
+  let assert system.Done(#(Error(reason), _, _)) =
+    overlay.check_and_execute(session, code, state)
+  assert string.contains(reason, "stop")
+}
