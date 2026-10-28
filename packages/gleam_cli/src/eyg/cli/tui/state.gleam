@@ -1,5 +1,6 @@
 import etui/backend
 import etui/keys
+import etui/style
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/cli/etui/widgets/combobox
@@ -109,12 +110,21 @@ pub fn input_widget(kind: InputKind) -> input.InputWidget {
     PickCid(_) ->
       input.input_new("Enter a content reference")
       |> input.with_validator(fn(value) {
-        case v1.from_string(value) {
+        case parse_content_reference(value) {
           Ok(_) -> Ok(Nil)
           Error(_) -> Error("Enter a valid cid")
         }
       })
   }
+  |> input.with_error_color(style.Indexed(1))
+}
+
+fn parse_content_reference(value: String) {
+  let cid = case value {
+    "#" <> cid -> cid
+    cid -> cid
+  }
+  v1.from_string(cid)
 }
 
 pub fn init(
@@ -324,7 +334,7 @@ fn submit_input(
         Error(_) -> #(state, [])
       }
     PickCid(rebuild) ->
-      case v1.from_string(value) {
+      case parse_content_reference(value) {
         Ok(#(cid, _)) -> #(
           State(..state, mode: Navigating, buffer: rebuild(cid, context, refs)),
           [],

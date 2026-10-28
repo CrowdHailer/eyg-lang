@@ -81,13 +81,17 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     state.FreeInput(editing, kind) -> {
       let widget = state.input_widget(kind)
       let title = case input.validate(widget, editing.value) {
-        Ok(_) -> "Enter: apply | Esc: cancel"
-        Error(message) -> message
+        Ok(_) -> span.span_plain("Enter: apply | Esc: cancel")
+        Error(message) ->
+          span.span_styled(
+            message,
+            style.default_style() |> style.with_fg(widget.error_fg),
+          )
       }
       let border =
         block.block_new()
         |> block.with_border(block.Rounded)
-        |> block.with_title(title, block.Top)
+        |> block.with_title_styled([title], block.Top)
       let area = geometry.centered_rect(50, 3, code_area)
       let inner = block.inner(area, border)
       let buf = buf |> clear.render(area) |> block.render(area, border)
