@@ -1,0 +1,30 @@
+{
+  "baseline_sha256": {
+    "main.zig": "0bdf99e00997866a5ecaf40a376053cae23215f5aa97cd07a8700fb0fe96284e",
+    "tui.zig": "b79e6041fb05933daed8c7fd75d26cc2e38b7ec7422c156900cb7fb382cf069f",
+    "inference.zig": "5c62453576ccb0c95d3ae5a545f25d3c92988c4b00fb8dfe46fddeaa9b677ec2"
+  },
+  "variant_sha256": {
+    "main.zig": "ce285a1134e8de3cbf97a2a0b70fd625f7dde3b3f209ea107e56063c4923b21b",
+    "tui.zig": "62417cfb2600e633b870a929d2b2bb29b6bbf98ba5f1c54119c8797b2c0f984b",
+    "inference.zig": "50da2ad7de9b437c1fa90c499fcc7ceece5118f4b4b4fc9fdae2d5e636ffd109"
+  },
+  "flags": [
+    "no_cell_reserve",
+    "no_cell_intern",
+    "retained_frames",
+    "dead_annotation_walks",
+    "no_analysis_cache",
+    "no_history_cache",
+    "no_scope_cache",
+    "full_analysis_projection",
+    "no_type_text_cache",
+    "no_scope_text_cache",
+    "repeat_casefold",
+    "no_ansi_style_runs"
+  ],
+  "notes": [
+    "Runtime flags disable one optimization at a time in the same executable. Added legacy annotation fields remain present for both walk states, isolating traversal rather than Node-size reduction.",
+    "All normal bench_tui requests retain the final timer boundary including frame output reset and paired clock reads."
+  ]
+}

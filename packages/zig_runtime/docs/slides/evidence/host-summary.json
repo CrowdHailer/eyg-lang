@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "kind": "controlled host mechanism probes",
+  "rows": [
+    {
+      "name": "1ms cooperative execution slices",
+      "before": 117.756543,
+      "after": 1.007926,
+      "metric": "caller-blocking p50",
+      "unit": "ms",
+      "notes": "Same 690,038-step program and result. Slicing improves responsiveness; total completion is not claimed faster."
+    },
+    {
+      "name": "Clock checks every128 VMsteps",
+      "before": 127.6156915,
+      "after": 81.1040745,
+      "metric": "total-evaluation p50",
+      "unit": "ms",
+      "notes": "Scratch runtime control; fixed phase order, not randomized. Same 690,038 steps and result."
+    },
+    {
+      "name": "git worker dispatch",
+      "before": 22.337698,
+      "after": 0.0619115,
+      "metric": "synchronous-call versus worker-start p50",
+      "unit": "ms",
+      "notes": "Controlled 20 ms IO fixture delay. Completion remains about 22 ms. This measures host dispatch, not TUI frame latency."
+    },
+    {
+      "name": "hub worker dispatch",
+      "before": 21.90927,
+      "after": 0.0723835,
+      "metric": "synchronous-call versus worker-start p50",
+      "unit": "ms",
+      "notes": "Controlled local HTTP response delay of 20 ms. Completion remains about 22 ms. This measures host dispatch, not TUI frame latency."
+    },
+    {
+      "name": "Immutable verified hub module cache",
+      "before": 18.953384,
+      "after": 0.00055,
+      "metric": "warm-lookup p50",
+      "unit": "ms",
+      "notes": "Cold control clears the module source/value map before each lookup. The fixture adds 2 ms per GET and runs the same pure sum(1500) module. Timed GET requests: 20 to 0."
+    },
+    {
+      "name": "Refresh ledger only on a miss",
+      "before": 2.0869325,
+      "after": 8.1e-05,
+      "metric": "known-name lookup p50",
+      "unit": "ms",
+      "notes": "Fixture adds 2 ms per GET. Forced always-refresh control performs 20 GETs; known-name cache path performs zero. A new release correctly uses two incremental GETs, advances cursor 5 to 6, and adds zero GETs on repeat."
+    },
+    {
+      "name": "SIGWINCH self-pipe wakeup",
+      "before": 97.039399,
+      "after": 0.150886,
+      "metric": "actualsignal-to-select-return p50",
+      "unit": "ms",
+      "notes": "Python OS mechanism probe using actual SIGWINCH, select and a self-pipe; periodic control is 100 ms. This is not native TUI or physical display timing. All outliers are retained."
+    }
+  ],
+  "raw": "results.json"
+}

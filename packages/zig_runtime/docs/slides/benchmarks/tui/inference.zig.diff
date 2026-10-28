@@ -1,0 +1,28 @@
+--- canonical/inference.zig
++++ ablation/inference.zig
+@@ -1,6 +1,8 @@
+ //! Level-based Hindley–Milner inference with open record, union and effect rows.
+ //! This follows next-tui's contextual checker, including best-effort bindings
+ //! retained on errors. Runtime values and type variables live in separate graphs.
++pub var bench_no_type_text_cache: bool = false;
++pub var bench_no_scope_text_cache: bool = false;
+ const std = @import("std");
+ const runtime = @import("interpreter.zig");
+ const pretty = @import("pretty.zig");
+@@ -682,14 +684,14 @@
+     }
+     fn render(c: *Checker, ty: T) ![]const u8 {
+         const resolved = resolve(ty);
+-        if (c.rendered_types.get(resolved)) |text| return text;
++        if (!bench_no_type_text_cache) if (c.rendered_types.get(resolved)) |text| return text;
+         const text = try pretty.renderDocument(c.allocator, try c.typeDoc(resolved), 80);
+         try c.rendered_types.put(resolved, text);
+         return text;
+     }
+     fn renderScope(c: *Checker, env: ?*const Env) anyerror![]const ScopeItem {
+         const key = if (env) |e| @intFromPtr(e) else 0;
+-        if (c.rendered_scopes.get(key)) |items| return items;
++        if (!bench_no_scope_text_cache) if (c.rendered_scopes.get(key)) |items| return items;
+         var items = std.ArrayList(ScopeItem).init(c.allocator);
+         var cursor = env;
+         var seen = std.StringHashMap(void).init(c.allocator);

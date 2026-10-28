@@ -1,0 +1,167 @@
+--- canonical/tui.zig
++++ ablation/tui.zig
+@@ -1,6 +1,18 @@
+ //! Native structural EYG editor and styled terminal buffer.
+ //! The adapter deliberately exposes cells, rather than stripping ANSI: callers
+ //! can compare the actual terminal contract with a pinned reference runtime.
++pub var bench_no_cell_reserve: bool = false;
++pub var bench_no_cell_intern: bool = false;
++pub var bench_retained_frames: bool = false;
++pub var bench_dead_annotation_walks: bool = false;
++pub var bench_no_analysis_cache: bool = false;
++pub var bench_no_history_cache: bool = false;
++pub var bench_no_scope_cache: bool = false;
++pub var bench_full_analysis_projection: bool = false;
++pub var bench_no_type_text_cache: bool = false;
++pub var bench_no_scope_text_cache: bool = false;
++pub var bench_repeat_casefold: bool = false;
++pub var bench_no_ansi_style_runs: bool = false;
+ const std = @import("std");
+ const parser = @import("parser.zig");
+ const interpreter = @import("interpreter.zig");
+@@ -81,16 +93,16 @@
+     /// Returned symbols are owned by a; buffers and analysis caches may be reset.
+     pub fn json(self: Buffer, a: Allocator) !J {
+         var cells = std.ArrayList(J).init(a);
+-        try cells.ensureTotalCapacity(self.cells.len);
++        if (!bench_no_cell_reserve) try cells.ensureTotalCapacity(self.cells.len);
+         // Most terminal cells are identical blanks. Share immutable JSON cell
+         // objects within this frame instead of allocating a map for each cell.
+         var interned = std.HashMap(Cell, J, CellContext, 80).init(a);
+         defer interned.deinit();
+         for (self.cells) |cell| {
+-            if (interned.get(cell)) |encoded| {
++            if (!bench_no_cell_intern) if (interned.get(cell)) |encoded| {
+                 try cells.append(encoded);
+                 continue;
+-            }
++            };
+             const encoded = try object(a, &.{
+                 .{ "symbol", .{ .string = try a.dupe(u8, cell.symbol) } },
+                 .{ "width", jint(cell.width) },
+@@ -101,7 +113,7 @@
+                 .{ "underline_color", try colorJson(a, cell.style.underline_color) },
+                 .{ "link", .{ .string = "" } },
+             });
+-            try interned.put(cell, encoded);
++            if (!bench_no_cell_intern) try interned.put(cell, encoded);
+             try cells.append(encoded);
+         }
+         return object(a, &.{ .{ "width", jint(self.width) }, .{ "height", jint(self.height) }, .{ "cells", .{ .array = cells } } });
+@@ -115,7 +127,7 @@
+             var current: ?Style = null;
+             for (self.cells[y * self.width .. (y + 1) * self.width]) |cell| {
+                 if (cell.width == 0) continue;
+-                if (current == null or !std.meta.eql(current.?, cell.style)) {
++                if (bench_no_ansi_style_runs or current == null or !std.meta.eql(current.?, cell.style)) {
+                     try w.writeAll("\x1b[0m");
+                     try ansiColor(w, cell.style.fg, 38);
+                     try ansiColor(w, cell.style.bg, 48);
+@@ -190,6 +202,9 @@
+     parent: ?*Node = null,
+     open: bool = true,
+     spread: bool = false,
++    ty: []const u8 = "0",
++    problem: ?[]const u8 = null,
++    loading: bool = false,
+     reference_ir: J = .null,
+     destructured: bool = false,
+     fn create(a: Allocator, kind: Kind, text: []const u8) !*Node {
+@@ -858,7 +873,7 @@
+     fn matches(self: *Tui) ![]const Choice {
+         var out = std.ArrayList(Choice).init(self.temp());
+         const query = try unicode.changeCase(self.temp(), self.input_value, false);
+-        for (self.choices) |c| if (std.mem.startsWith(u8, try unicode.changeCase(self.temp(), c.name, false), query)) try out.append(c);
++        for (self.choices) |c| if (std.mem.startsWith(u8, try unicode.changeCase(self.temp(), c.name, false), if (bench_repeat_casefold) try unicode.changeCase(self.temp(), self.input_value, false) else query)) try out.append(c);
+         return out.toOwnedSlice();
+     }
+     fn completion(self: *Tui) ![]const u8 {
+@@ -878,13 +893,13 @@
+         return shared;
+     }
+     fn pickerInfo(self: *Tui) !?inference.Info {
+-        const analysis = try inference.analyzeWithOptions(self.allocator, try self.toIR(self.root), self.engine.scope, .{ .reference_resolver = resolveReference, .reference_context = self, .scope_cache = &self.scope_cache, .reference_loading = referenceLoading, .native_effects = !self.sandboxed, .collect_paths = true });
++        const analysis = try inference.analyzeWithOptions(self.allocator, try self.toIR(self.root), self.engine.scope, .{ .reference_resolver = resolveReference, .reference_context = self, .scope_cache = if (bench_no_scope_cache) null else &self.scope_cache, .reference_loading = referenceLoading, .native_effects = !self.sandboxed, .collect_paths = true });
+         return analysis.infoAtPath(try projectionPath(self.allocator, self.selected));
+     }
+     fn forwardInfo(self: *Tui) !?inference.Info {
+         const desired = try projectionPath(self.allocator, self.selected);
+         std.mem.reverse(usize, desired);
+-        const analysis = try inference.analyzeWithOptions(self.allocator, try self.toIR(self.root), self.engine.scope, .{ .reference_resolver = resolveReference, .reference_context = self, .scope_cache = &self.scope_cache, .reference_loading = referenceLoading, .native_effects = !self.sandboxed, .collect_paths = true });
++        const analysis = try inference.analyzeWithOptions(self.allocator, try self.toIR(self.root), self.engine.scope, .{ .reference_resolver = resolveReference, .reference_context = self, .scope_cache = if (bench_no_scope_cache) null else &self.scope_cache, .reference_loading = referenceLoading, .native_effects = !self.sandboxed, .collect_paths = true });
+         return analysis.infoAtPath(desired);
+     }
+     fn toChoices(self: *Tui, items: []const inference.ScopeItem) ![]Choice {
+@@ -1724,7 +1739,7 @@
+             n.spread = true;
+         }
+     }
+-    fn toIR(self: *Tui, n: *Node) Error!J {
++    pub fn toIR(self: *Tui, n: *Node) Error!J {
+         var ir = try self.toIRInner(n);
+         if (ir == .object) try ir.object.put("_native_node", jint(@intFromPtr(n)));
+         try annotateMetadata(&ir, try nodePath(self.temp(), n), self.temp());
+@@ -2029,17 +2044,23 @@
+         const scope_id: usize = if (self.engine.scope) |scope_| @intFromPtr(scope_) else 0;
+         hash.update(std.mem.asBytes(&scope_id));
+         const key = hash.final();
+-        if (self.cached_analysis == null or key != self.analysis_hash) {
++        if (bench_no_analysis_cache or self.cached_analysis == null or key != self.analysis_hash) {
+             self.cached_analysis = null;
+             if (self.analysis_arena == null) self.analysis_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+             _ = self.analysis_arena.?.reset(.retain_capacity);
+-            self.cached_analysis = try inference.analyzeWithOptions(self.analysis_arena.?.allocator(), try self.toIR(self.root), self.engine.scope, .{ .reference_resolver = resolveReference, .reference_context = self, .scope_cache = &self.scope_cache, .collect_scope = false, .collect_effects = false, .reference_loading = referenceLoading, .native_effects = !self.sandboxed, .collect_paths = true });
++            self.cached_analysis = try inference.analyzeWithOptions(self.analysis_arena.?.allocator(), try self.toIR(self.root), self.engine.scope, .{ .reference_resolver = resolveReference, .reference_context = self, .scope_cache = if (bench_no_scope_cache) null else &self.scope_cache, .collect_scope = bench_full_analysis_projection, .collect_effects = bench_full_analysis_projection, .reference_loading = referenceLoading, .native_effects = !self.sandboxed, .collect_paths = true });
+             self.analysis_hash = key;
+         }
+         const analysis = &self.cached_analysis.?;
+         self.analysis_errors = analysis.error_count;
+         self.analysis_loading = analysis.loading_count;
+-    }
++        if (bench_dead_annotation_walks) applyInfo(self.root, analysis);
++    }
++    fn applyInfo(n: *Node, analysis: *const inference.Analysis) void {
++        if (analysis.info.get(@intFromPtr(n))) |info| { n.ty = info.type_text; n.problem = info.problem; n.loading = info.loading; } else { n.ty = ""; n.problem = null; n.loading = false; }
++        for (n.children.items) |c| applyInfo(c, analysis);
++    }
++    fn clearAnnotations(n: *Node) void { n.problem = null; n.ty = "0"; for (n.children.items) |c| clearAnnotations(c); }
+     fn parseSource(self: *Tui, text: []const u8) !J {
+         return parseModule(self.allocator, text);
+     }
+@@ -2383,6 +2404,7 @@
+         while (reverse > 0) {
+             reverse -= 1;
+             const h = &self.history.items[reverse];
++            if (bench_dead_annotation_walks) clearAnnotations(h.root);
+             if (self.mode == .history and self.history_selected == reverse) try lines.append(try self.plainLine("◆ selected history", .{}));
+             const code = try self.renderNode(h.root, null, false, true, false);
+             if (!(self.mode == .history and h.code) and code.items.len > 1) {
+@@ -2509,6 +2531,11 @@
+     /// Resetting output_allocator never affects editor state or earlier frames
+     /// allocated elsewhere; the render buffer and temporary layout do not escape.
+     pub fn frameAlloc(self: *Tui, output_allocator: Allocator, width: usize, height: usize) Error!J {
++        if (bench_retained_frames) {
++            const b = try self.buffer(width, height);
++            defer b.deinit();
++            return b.json(self.allocator);
++        }
+         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+         defer arena.deinit();
+         const previous_scratch = self.scratch;
+@@ -2525,6 +2552,7 @@
+         defer arena.deinit();
+         self.scratch = arena.allocator();
+         defer self.scratch = null;
++        defer if (bench_dead_annotation_walks) clearAnnotations(self.root);
+         const b = try self.buffer(width, height);
+         return b.ansi(output_allocator);
+     }
+@@ -2885,7 +2913,7 @@
+ fn renderHistory(entry: *History, width: usize) ![]const u8 {
+     if (entry.render_cache == null) entry.render_cache = .{ .width = 0, .arena = std.heap.ArenaAllocator.init(std.heap.page_allocator), .text = "" };
+     const cache = &entry.render_cache.?;
+-    if (cache.width != width) {
++    if (bench_no_history_cache or cache.width != width) {
+         _ = cache.arena.reset(.retain_capacity);
+         var printer = interpreter.Engine.init(cache.arena.allocator());
+         cache.text = try printer.render(entry.value.?, width);

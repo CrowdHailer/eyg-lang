@@ -1,0 +1,363 @@
+{
+  "kind": "controlled source ablation, not historical release comparison",
+  "sourceUnchanged": true,
+  "samplesPerSide": 100,
+  "cases": [
+    {
+      "name": "decoded-object-cache",
+      "mechanism": "Remember decoded immutable objects under OID and pack-offset keys; re-use parent/tree/delta bases within a request.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+        "action": "query",
+        "limit": 20,
+        "path": "README.md",
+        "scan_limit": 200
+      },
+      "workload": null,
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 48.4662095,
+        "p95_ms": 476.125081,
+        "p99_ms": 1665.515638,
+        "max_ms": 1899.855438,
+        "min_ms": 37.558636
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 26.89852,
+        "p95_ms": 330.547375,
+        "p99_ms": 818.554797,
+        "max_ms": 1086.880723,
+        "min_ms": 20.763855
+      },
+      "median_speedup": 1.8018169587025605,
+      "result_equality": true
+    },
+    {
+      "name": "lazy-index-load",
+      "mechanism": "Load and SHA-check pack indexes once per Repository instead of on every packed-object lookup.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+        "action": "history",
+        "limit": 20
+      },
+      "workload": null,
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 12.472882,
+        "p95_ms": 15.255059,
+        "p99_ms": 16.484489,
+        "max_ms": 20.407376,
+        "min_ms": 10.440925
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 1.8465285,
+        "p95_ms": 2.684365,
+        "p99_ms": 3.234214,
+        "max_ms": 3.631857,
+        "min_ms": 1.461704
+      },
+      "median_speedup": 6.754773619795199,
+      "result_equality": true
+    },
+    {
+      "name": "binary-index-search",
+      "mechanism": "Use first-byte fanout and binary search instead of scanning the complete sorted object-ID table.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+        "action": "history",
+        "limit": 20
+      },
+      "workload": null,
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 1.750192,
+        "p95_ms": 2.444946,
+        "p99_ms": 2.626721,
+        "max_ms": 4.391411,
+        "min_ms": 1.379811
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 1.8178495,
+        "p95_ms": 2.895468,
+        "p99_ms": 5.129106,
+        "max_ms": 16.836164,
+        "min_ms": 1.437756
+      },
+      "median_speedup": 0.9627815724018958,
+      "result_equality": true
+    },
+    {
+      "name": "fanout-bounds",
+      "mechanism": "Use first OID byte to bound binary search to its 1/256 index bucket instead of searching the complete table.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+        "action": "history",
+        "limit": 20
+      },
+      "workload": null,
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 1.6927595,
+        "p95_ms": 2.585313,
+        "p99_ms": 3.106534,
+        "max_ms": 3.545459,
+        "min_ms": 1.347243
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 1.8406145,
+        "p95_ms": 2.613644,
+        "p99_ms": 2.772956,
+        "max_ms": 4.468446,
+        "min_ms": 1.400732
+      },
+      "median_speedup": 0.9196708490561168,
+      "result_equality": true
+    },
+    {
+      "name": "cheap-filters-first",
+      "mechanism": "Reject by timestamp/message/author before loading current and parent path trees.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+        "action": "query",
+        "limit": 20,
+        "path": "dark/git/read.eyg",
+        "author": "__absent_slide_probe__",
+        "scan_limit": 100
+      },
+      "workload": null,
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 7.957413,
+        "p95_ms": 10.352716,
+        "p99_ms": 11.651426,
+        "max_ms": 13.694511,
+        "min_ms": 6.65284
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 5.726229,
+        "p95_ms": 8.347487,
+        "p99_ms": 10.926772,
+        "max_ms": 11.473528,
+        "min_ms": 4.502362
+      },
+      "median_speedup": 1.3896428172886555,
+      "result_equality": true
+    },
+    {
+      "name": "stop-at-result-limit",
+      "mechanism": "Stop traversal once 20 matching records exist instead of scanning the remaining 430-commit first-parent history.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+        "action": "history",
+        "limit": 20
+      },
+      "workload": null,
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 22.0547645,
+        "p95_ms": 29.356112,
+        "p99_ms": 43.75806,
+        "max_ms": 48.885179,
+        "min_ms": 18.165338
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 1.8860005,
+        "p95_ms": 2.600238,
+        "p99_ms": 2.836306,
+        "max_ms": 2.900627,
+        "min_ms": 1.443649
+      },
+      "median_speedup": 11.693933538193654,
+      "result_equality": true
+    },
+    {
+      "name": "stream-packed-objects",
+      "mechanism": "Seek to object offset and let buffered zlib decode only that stream instead of reading the entire pack into each object call.",
+      "request": {
+        "repo": "/workspace/eyg-lang",
+        "ref": "321279a62d9dd3a144e5bed803646ddf7d2fa994",
+        "action": "history",
+        "limit": 3
+      },
+      "workload": "Three packed commit records at pinned first-parent ancestor20, including any delta bases. Same object checksums and output.",
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 14.6218585,
+        "p95_ms": 31.592978,
+        "p99_ms": 59.121404,
+        "max_ms": 101.636031,
+        "min_ms": 9.932142
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 1.015679,
+        "p95_ms": 2.453024,
+        "p99_ms": 35.996126,
+        "max_ms": 40.542576,
+        "min_ms": 0.678856
+      },
+      "median_speedup": 14.396141399005,
+      "result_equality": true
+    },
+    {
+      "name": "delta-output-preallocation",
+      "mechanism": "Read delta target length and reserve output capacity once, avoiding successive reallocations and copies.",
+      "request": null,
+      "workload": "1MiB base and target, 64 indexed 16KiB copy operations; includes allocation, delta application and equality check.",
+      "kernel": true,
+      "before": {
+        "samples": 100,
+        "p50_ms": 1.0739595,
+        "p95_ms": 2.546777,
+        "p99_ms": 8.768704,
+        "max_ms": 34.89482,
+        "min_ms": 0.642001
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 0.3762485,
+        "p95_ms": 0.848973,
+        "p99_ms": 1.448356,
+        "max_ms": 1.541439,
+        "min_ms": 0.303913
+      },
+      "median_speedup": 2.85438878826095,
+      "result_equality": true
+    },
+    {
+      "name": "incremental-object-hash",
+      "mechanism": "Feed kind/size/NUL/body incrementally to SHA-1 instead of constructing an extra full header-plus-body buffer.",
+      "request": null,
+      "workload": "SHA-1 over blob 1048576 NUL plus 1MiB body; allocation and copy included in concatenate baseline.",
+      "kernel": true,
+      "before": {
+        "samples": 100,
+        "p50_ms": 1.962677,
+        "p95_ms": 2.785597,
+        "p99_ms": 4.24345,
+        "max_ms": 4.451695,
+        "min_ms": 1.581239
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 1.623071,
+        "p95_ms": 2.346555,
+        "p99_ms": 3.803226,
+        "max_ms": 4.309881,
+        "min_ms": 1.303049
+      },
+      "median_speedup": 1.2092366877357799,
+      "result_equality": true
+    },
+    {
+      "name": "fast-write-compression-kernel",
+      "mechanism": "Zig .fast is deflate level 4 (shorter match search), while .default is level 6. Trade compression work against encoded bytes.",
+      "request": null,
+      "workload": "Compress 1MiB repeated realistic source phrase, output allocated in arena. Excludes filesystem and fsync.",
+      "kernel": true,
+      "before": {
+        "samples": 100,
+        "p50_ms": 2.6318565,
+        "p95_ms": 3.792274,
+        "p99_ms": 4.128493,
+        "max_ms": 8.888425,
+        "min_ms": 2.146039
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 2.5659275,
+        "p95_ms": 3.667561,
+        "p99_ms": 5.502988,
+        "max_ms": 9.673995,
+        "min_ms": 2.150965
+      },
+      "median_speedup": 1.025694022921536,
+      "result_equality": true,
+      "encoded_bytes": {
+        "before_default": 3124,
+        "after_fast": 3124
+      }
+    },
+    {
+      "name": "fast-write-compression-end-to-end",
+      "mechanism": "Reduce zlib search level from default6 to fast4; measure full immutable-object write including fsync.",
+      "request": {
+        "repo": "/workspace/eyg-lang/packages/zig_runtime/work/slides/git/write-fixture",
+        "action": "write_blob",
+        "text": "<1MiB fixture from source phrase>"
+      },
+      "workload": "1MiB text fixture, OS cache warm, target object removed before each timed request. Timer excludes test setup and JSON parse.",
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 6.8521105,
+        "p95_ms": 14.75803,
+        "p99_ms": 34.428598,
+        "max_ms": 43.743449,
+        "min_ms": 4.439086
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 5.6593355,
+        "p95_ms": 11.51205,
+        "p99_ms": 13.116939,
+        "max_ms": 13.759876,
+        "min_ms": 4.348747
+      },
+      "median_speedup": 1.2107623766076423,
+      "result_equality": true,
+      "encoded_bytes": {
+        "before_default": 3137,
+        "after_fast": 3137
+      }
+    },
+    {
+      "name": "existing-object-write-reuse",
+      "mechanism": "If the content-addressed object exists, read and verify it instead of compressing, syncing and renaming another copy.",
+      "request": {
+        "repo": "/workspace/eyg-lang/packages/zig_runtime/work/slides/git/write-fixture",
+        "action": "write_blob",
+        "text": "<1MiB fixture from source phrase>"
+      },
+      "workload": "Same1MiB body. Before removes target before each request. After keeps identical valid object; both compute the requested object SHA first.",
+      "kernel": false,
+      "before": {
+        "samples": 100,
+        "p50_ms": 5.3918925,
+        "p95_ms": 7.113465,
+        "p99_ms": 9.744943,
+        "max_ms": 11.241518,
+        "min_ms": 4.383952
+      },
+      "after": {
+        "samples": 100,
+        "p50_ms": 4.9585965,
+        "p95_ms": 7.62515,
+        "p99_ms": 11.164627,
+        "max_ms": 11.231586,
+        "min_ms": 4.08228
+      },
+      "median_speedup": 1.0873827906747404,
+      "result_equality": true
+    }
+  ]
+}
