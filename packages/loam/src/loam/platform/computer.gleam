@@ -13,6 +13,7 @@ import loam/source
 import loam/system
 import midas/effect as host_effect
 import simplifile
+import touch_grass/acquire
 import touch_grass/cryptography/create_key
 import touch_grass/cryptography/hash
 import touch_grass/cryptography/sign
@@ -30,6 +31,7 @@ import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
 import touch_grass/interface
+import touch_grass/mount
 import touch_grass/now
 import touch_grass/random
 import touch_grass/sleep
@@ -53,6 +55,15 @@ pub fn extrinsic(
   origin: source.Origin,
 ) -> system.Effect(v.Value(a, b)) {
   case effect {
+    computer.Acquire(input) -> system.map(system.acquire(input), acquire.encode)
+    computer.Mount(input) -> {
+      use path <- system.then(source.resolve_filepath(origin, input.path))
+      case path {
+        Ok(path) ->
+          system.map(system.mount(mount.Input(..input, path:)), mount.encode)
+        Error(reason) -> system.Done(mount.encode(Error(reason)))
+      }
+    }
     computer.AppendFile(input) ->
       system.map(append_file(origin, input), append_file.encode)
     computer.CreateKey(request) ->

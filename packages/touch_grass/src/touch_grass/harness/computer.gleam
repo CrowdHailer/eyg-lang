@@ -7,6 +7,7 @@
 
 import gleam/http/request.{type Request}
 import touch_grass as tg
+import touch_grass/acquire
 import touch_grass/cryptography/create_key
 import touch_grass/cryptography/hash
 import touch_grass/cryptography/sign
@@ -14,6 +15,7 @@ import touch_grass/file_system/append_file
 import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 import touch_grass/interface
+import touch_grass/mount
 
 /// The case effect requested before any processing.
 /// 
@@ -21,6 +23,8 @@ import touch_grass/interface
 /// 
 /// Should CreateKey end up in an assumption of workspace platform.
 pub type Effect {
+  Acquire(acquire.Input)
+  Mount(mount.Input)
   AppendFile(append_file.Input)
   CreateKey(create_key.Algorithm)
   Cwd
@@ -48,6 +52,8 @@ pub type Effect {
 /// The complete computer harness.
 pub fn effects() -> interface.Harness(Effect, meta) {
   [
+    tg.acquire() |> tg.map(Acquire),
+    tg.mount() |> tg.map(Mount),
     tg.append_file() |> tg.map(AppendFile),
     tg.create_key() |> tg.map(CreateKey),
     tg.cwd() |> tg.replace(Cwd),

@@ -10,6 +10,7 @@ import filepath
 import gleam/dict.{type Dict}
 import gleam/http/request
 import gleam/http/response
+import gleam/int
 import gleam/list
 import gleam/option
 import gleam/result
@@ -33,6 +34,8 @@ pub type Sandbox(a) {
     network_state: a,
     network: fn(request.Request(BitArray), a) ->
       #(Result(response.Response(BitArray), effect.FetchError), a),
+    /// Answers commands, with the program, arguments and directory.
+    commands: fn(String, List(String), String) -> Result(String, #(Int, String)),
   )
 }
 
@@ -50,7 +53,18 @@ pub fn sandbox() -> Sandbox(Nil) {
     file_system: fs.directory([]),
     network_state: Nil,
     network: fn(_, _) { #(Error(effect.NetworkError("None provided")), Nil) },
+    commands: fn(program, _, _) {
+      Error(#(127, program <> ": command not found"))
+    },
   )
+}
+
+/// Answer commands, i.e. a fake git.
+pub fn with_commands(
+  sandbox: Sandbox(a),
+  commands: fn(String, List(String), String) -> Result(String, #(Int, String)),
+) -> Sandbox(a) {
+  Sandbox(..sandbox, commands:)
 }
 
 pub type Outcome(a) {
@@ -187,6 +201,17 @@ pub fn run(
     system.Done(value) -> #(Returned(value), sandbox)
     system.SpanStart(_, _, resume) | system.SpanEnd(_, resume) ->
       run(resume(Nil), sandbox)
+    system.Acquire(_, resume) ->
+      run(resume(Error("Acquire requires the virtual runtime")), sandbox)
+    system.Mount(_, resume) ->
+      run(resume(Error("Mount requires the virtual runtime")), sandbox)
+    system.TemporaryDirectory(resume) -> {
+      let names =
+        fs.read_directory(sandbox.file_system, "/tmp") |> result.unwrap([])
+      let path = "/tmp/eyg-acquire-" <> int.to_string(list.length(names))
+      let sandbox = with_directory(sandbox, path)
+      run(resume(Ok(path)), sandbox)
+    }
     system.Exit(status) -> #(Exited(status), sandbox)
     system.Env(name, resume) ->
       run(
@@ -242,6 +267,8 @@ pub fn run(
     system.WriteStderr(text, resume) -> {
       run(resume(Nil), Sandbox(..sandbox, stderr: [text, ..sandbox.stderr]))
     }
+    system.Command(program, arguments, directory, resume) ->
+      run(resume(sandbox.commands(program, arguments, directory)), sandbox)
     system.CreateDirectory(path, resume) -> {
       let #(outcome, sandbox) =
         mutate_file_system(sandbox, path, fs.create_directory)

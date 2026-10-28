@@ -143,7 +143,7 @@ pub fn execute(
 
 /// Policy fields of effects added after policies were first published.
 /// A policy without one of them is still valid, the agent can not use that effect.
-pub const optional_fields = []
+pub const optional_fields = ["acquire", "mount"]
 
 /// Type check a configuration against the policy the rules describe,
 /// optional fields the policy does not have are removed from the rules.
@@ -1102,6 +1102,7 @@ fn resolve_policy_input(label, lift, origin) {
     "ReadFile", value.Record(fields)
     | "WriteFile", value.Record(fields)
     | "AppendFile", value.Record(fields)
+    | "Mount", value.Record(fields)
     | "Commit", value.Record(fields)
     ->
       case dict.get(fields, "path") {
@@ -1176,6 +1177,8 @@ fn decide_resolved(policy, label, lift, meta, state) {
 // Only deterministic computations over supplied values bypass policy.
 // Randomness and process termination are observable effects, even without file IO.
 pub const rule_mapping = [
+  #("Acquire", policy.PolicyField("acquire")),
+  #("Mount", policy.PolicyField("mount")),
   #("AppendFile", policy.PolicyField("append_file")),
   #("CreateKey", policy.PolicyField("create_key")),
   #("CWD", policy.PolicyField("cwd")),

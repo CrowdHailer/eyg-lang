@@ -8,6 +8,34 @@ EYG separates the **declaration** of an effect (in your script:
 The CLI in this repository ([`packages/gleam_cli`](../packages/gleam_cli/))
 implements the effects below.
 
+## Immutable inputs in sandboxes
+
+### `Acquire`
+
+```eyg
+perform Acquire({
+  source: Git({url: "https://example.com/team/project.git", ref: Some("master")}),
+  expected: None({})
+})
+```
+
+The sandbox returns `Result({root: String, resolved: String}, String)`.
+`root` identifies retained immutable contents; `resolved` is the exact commit.
+`Http({url: "https://example.com/input"})` acquires a binary instead. An optional
+`expected: Some(cid)` checks the artifact's EYG CID. Live authority grants are
+explicit. Repeated acquisitions retain separate ordered observations.
+
+### `Mount`
+
+```eyg
+perform Mount({root: "<artifact-cid>", path: "repo"})
+```
+
+Mount a retained tree or binary into the private filesystem. The parent must
+exist and the destination must be absent. Writes to a mount do not change the
+artifact. These effects are implemented by the sealed runtime; an ordinary host
+run returns an error. See the [sandbox guide](sandbox.md).
+
 ## File system
 
 Relative filesystem paths are resolved from directory of the source expression that performs the effect.

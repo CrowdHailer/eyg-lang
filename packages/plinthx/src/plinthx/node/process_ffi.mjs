@@ -63,3 +63,4 @@ export function onError(stream, callback) {
 }
 
 export const env = process => toList(Object.entries(process.env));
+export const heapBytes = process => process.memoryUsage().heapUsed;

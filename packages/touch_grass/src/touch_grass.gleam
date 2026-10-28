@@ -2,6 +2,7 @@ import eyg/interpreter/cast
 import gleam/http/request.{type Request}
 import gleam/uri
 import touch_grass/abort
+import touch_grass/acquire
 import touch_grass/copy
 import touch_grass/cryptography/create_key
 import touch_grass/cryptography/hash
@@ -21,6 +22,7 @@ import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/interface.{type Interface, Interface}
+import touch_grass/mount
 import touch_grass/now
 import touch_grass/paste
 import touch_grass/print
@@ -34,6 +36,14 @@ import touch_grass/visit
 
 pub fn abort() -> Interface(String, a) {
   Interface(abort.label, abort.lift(), abort.lower(), abort.decode)
+}
+
+pub fn acquire() -> Interface(acquire.Input, a) {
+  Interface(acquire.label, acquire.lift(), acquire.lower(), acquire.decode)
+}
+
+pub fn mount() -> Interface(mount.Input, a) {
+  Interface(mount.label, mount.lift(), mount.lower(), mount.decode)
 }
 
 /// alert is the same interface as Print but shown to the user in a browser context

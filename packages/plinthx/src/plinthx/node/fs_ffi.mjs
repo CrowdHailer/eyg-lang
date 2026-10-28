@@ -1,5 +1,11 @@
-import { read as nativeRead } from "node:fs";
+import { read as nativeRead, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Result$Ok, Result$Error, toBitArray } from "../../gleam.mjs";
+export function temporaryDirectory(prefix) {
+  try { return Result$Ok(mkdtempSync(join(tmpdir(), prefix))); }
+  catch (error) { return Result$Error(String(error)); }
+}
 
 export function read(fd, length) {
   return new Promise(resolve => {

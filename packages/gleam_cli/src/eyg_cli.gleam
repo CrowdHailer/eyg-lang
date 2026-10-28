@@ -3,7 +3,9 @@ import eyg/cli/args
 import eyg/cli/check
 import eyg/cli/compile
 import eyg/cli/eval
+import eyg/cli/evaluate
 import eyg/cli/fetch
+import eyg/cli/fetch_package
 import eyg/cli/inspect
 import eyg/cli/internal/config
 import eyg/cli/overlay
@@ -13,6 +15,7 @@ import eyg/cli/publish
 import eyg/cli/record
 import eyg/cli/replay
 import eyg/cli/run
+import eyg/cli/sandbox
 import eyg/cli/script
 import eyg/cli/share
 import eyg/cli/shell
@@ -102,6 +105,8 @@ fn with_config(parsed: args.Args) {
     args.Parse(input:) -> parse.execute(input, config)
     args.Share(input:) -> share.execute(input, config)
     args.Fetch(cid:) -> fetch.execute(cid, config)
+    args.FetchPackage(reference, output) ->
+      fetch_package.execute(reference, output, config)
     args.Publish(package:, file:) -> publish.execute(package, file, config)
     args.SignatoryInitial(name:) -> signatory.initial(name, config)
     args.SignatoryList -> signatory.list(config)
@@ -117,6 +122,35 @@ fn with_config(parsed: args.Args) {
     args.Replay(path) -> replay.execute(path, config)
     args.Inspect(path, step) -> inspect.execute(path, step, config)
     args.Upload(path) -> upload.execute(path, config)
+    args.Evaluate(path, variants) -> evaluate.execute(path, variants, config)
+    args.SandboxPrepare(directory, entry, output) ->
+      sandbox.prepare(directory, entry, output, config)
+    args.SandboxPackage(path, output) -> sandbox.package(path, output, config)
+    args.SandboxRun(environment, entry, output, hosts) ->
+      sandbox.execute(
+        environment,
+        entry,
+        output,
+        sandbox.Block,
+        [],
+        hosts,
+        config,
+      )
+    args.SandboxOverlay(environment, entry, output, prompt, hosts) ->
+      sandbox.execute(
+        environment,
+        entry,
+        output,
+        sandbox.Agent,
+        [prompt],
+        hosts,
+        config,
+      )
+    args.SandboxStart(config_path, output, prompt, authorities) ->
+      sandbox.start(config_path, output, prompt, authorities, config)
+    args.SandboxReplay(path) -> sandbox.replay(path, config)
+    args.SandboxExport(path, output) -> sandbox.export(path, output)
+    args.SandboxSnapshot(path, output) -> sandbox.snapshot(path, output)
     args.Overlay(input:) -> overlay.execute(input, config)
   }
 }

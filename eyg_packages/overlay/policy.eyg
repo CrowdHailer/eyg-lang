@@ -7,6 +7,7 @@
 //   Mock(value)  - resume the agent's program with value, the effect is not performed.
 //
 // The CLI requires a field for every effect it gates, a missing field is a configuration error.
+// Acquire and Mount are optional; omitting a field keeps that effect unavailable.
 // Start from `deny_all`, `allow_all`, `read_only` or `read_write` and overwrite the fields to change.
 // File paths given to a policy are absolute.
 
@@ -94,6 +95,8 @@ let hide_secrets = (read_file) -> {
 // Exit has no return value: its policy can transform the status with Pass, not Mock.
 // Deterministic host helpers DecodeJSON, EYGParse, Hash and Sign have no policy gate.
 let deny_all = {
+  acquire: refuse("acquire"),
+  mount: refuse("mount"),
   append_file: refuse("append_file"),
   create_key: refuse("create_key"),
   cwd: (_) -> { Mock(Error({})) },
@@ -117,6 +120,8 @@ let deny_all = {
 // Allow every effect except StandardIn, which would read the input meant for the chat.
 // Reading secret files is still denied.
 let allow_all = {
+  acquire: pass,
+  mount: pass,
   append_file: pass,
   create_key: pass,
   cwd: pass,
@@ -144,6 +149,7 @@ let read_only = (roots) -> {
 // Read and write files and directories under the absolute roots.
 let read_write = (roots) -> {
   {
+    mount: under("mount", roots, request_path),
     append_file: under("append_file", roots, request_path),
     delete_file: under("delete_file", roots, path),
     make_directory: under("make_directory", roots, path),
