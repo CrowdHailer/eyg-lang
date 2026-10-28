@@ -10,6 +10,7 @@ import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/tree as ir
 import gleam/bit_array
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -48,6 +49,7 @@ pub type Mode {
   Navigating
   FreeInput(input: input.InputState, kind: InputKind)
   PickSingle(box: combobox.Combobox, rebuild: m.Rebuild(String))
+  PickRelease(box: combobox.Combobox, rebuild: m.Rebuild(ir.Release))
   Running(
     active: Active,
     env: istate.Env(source.Location),
@@ -87,6 +89,7 @@ pub type Event {
 
 pub type Message {
   EffectHandled(task_id: Int, value: istate.Value(source.Location))
+  CacheUpdated(cache.ActionCompleted)
 }
 
 /// Use the same configuration for rendering and editing the input.
@@ -141,6 +144,18 @@ pub fn update(
   state: State,
   event: Event,
 ) -> #(State, List(system.Effect(Message))) {
+  let #(next, effects) = transition(state, event)
+  // Browsing choices does not load modules. Only an edit to the draft does.
+  let cache = case buffer.source(next.buffer) == buffer.source(state.buffer) {
+    True -> next.execute_state.cache
+    False -> cache.prepare(next.execute_state.cache, buffer.source(next.buffer))
+  }
+  let #(execute_state, loads) =
+    execute.flush(execute.State(..next.execute_state, cache:), CacheUpdated)
+  #(State(..next, execute_state:), list.append(effects, loads))
+}
+
+fn transition(state: State, event: Event) {
   // A message stays until the next input from the user.
   let state = case event {
     Input(_) -> State(..state, message: None)
@@ -148,6 +163,7 @@ pub fn update(
   }
   case state.mode, event {
     _, Input(backend.KeyPress("ctrl+q")) -> #(State(..state, quit: True), [])
+    _, Task(CacheUpdated(completed)) -> cache_updated(state, completed)
     Running(active: _, env: _, k: _, occured:), Input(backend.KeyPress("esc"))
     ->
       history.Aborted("Cancelled")
@@ -167,6 +183,30 @@ pub fn update(
           State(..state, mode: PickSingle(box, rebuild)),
           [],
         )
+      }
+    PickRelease(box, rebuild), Input(event) ->
+      case combobox.update(event, box) {
+        combobox.Cancelled -> #(State(..state, mode: Navigating), [])
+        combobox.Updated(box) -> #(
+          State(..state, mode: PickRelease(box, rebuild)),
+          [],
+        )
+        combobox.Selected(name) ->
+          case cache.package(state.execute_state.cache, name) {
+            Ok(cache.Entry(version:, module:, ..)) -> #(
+              State(
+                ..state,
+                mode: Navigating,
+                buffer: rebuild(
+                  ir.Release(name, version, module),
+                  repl_context(state.scope),
+                  cache.types(state.execute_state.cache),
+                ),
+              ),
+              [],
+            )
+            Error(_) -> #(fail(state, "Choose a published package"), [])
+          }
       }
     FreeInput(input:, kind:), Input(backend.KeyPress(key:)) ->
       input_key_pressed(state, input, kind, key)
@@ -326,15 +366,7 @@ fn command_key_press(
     "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> edit(state, m.create_empty_list())
     "l" -> edit(state, m.create_list())
-    // "@" ->
-    //   edit(
-    //     state,
-    //     m.choose_release(
-    //       list.map(dict.to_list(state.cache.packages), fn(entry) {
-    //         #(entry.0, entry.1.version)
-    //       }),
-    //     ),
-    //   )
+    "@" -> edit(state, m.choose_release(packages(state)))
     "#" -> edit(state, m.insert_reference())
     "Z" -> edit(state, m.redo())
     "z" -> edit(state, m.undo())
@@ -399,7 +431,19 @@ fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
         ),
       )
 
-    // Reference pickers need parsing before their rebuild callbacks can run.
+    Ok(m.UserInput(m.PickRelease(picker.Typing(value, choices), rebuild))) ->
+      State(
+        ..state,
+        mode: PickRelease(
+          combobox.Combobox(
+            ..combobox.new(choices),
+            input: input.state_from_string(value),
+          ),
+          rebuild,
+        ),
+      )
+
+    // Content identifiers need parsing before their rebuild callbacks can run.
     Ok(m.UserInput(_)) ->
       fail(state, command.fail_message(command.ActionFailed(name)))
 
@@ -430,6 +474,8 @@ fn loop(
   state: State,
   occured: List(history.EffectRecord(source.Location)),
 ) -> #(State, List(system.Effect(Message))) {
+  let return =
+    cache.static_loop(return, state.execute_state.cache, block.resume)
   case return {
     Ok(#(value, scope)) ->
       finish_run(history.Success(value), scope, occured, state)
@@ -444,6 +490,44 @@ fn loop(
     Error(debug) ->
       history.Exception(debug)
       |> finish_run(state.scope, occured, state)
+  }
+}
+
+fn packages(state: State) {
+  state.execute_state.cache.packages
+  |> dict.to_list
+  |> list.map(fn(entry) { #(entry.0, entry.1.version) })
+  |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
+}
+
+fn cache_updated(state: State, completed) {
+  let cache = execute.apply(state.execute_state.cache, completed)
+  let state =
+    State(
+      ..state,
+      execute_state: execute.State(..state.execute_state, cache:),
+      buffer: buffer.reanalyse(
+        state.buffer,
+        repl_context(state.scope),
+        cache.types(cache),
+      ),
+    )
+
+  case state.mode {
+    PickRelease(box, rebuild) -> {
+      let items =
+        list.map(packages(state), fn(entry) {
+          #(entry.0, int.to_string(entry.1))
+        })
+      #(
+        State(
+          ..state,
+          mode: PickRelease(combobox.Combobox(..box, items:), rebuild),
+        ),
+        [],
+      )
+    }
+    _ -> #(state, [])
   }
 }
 

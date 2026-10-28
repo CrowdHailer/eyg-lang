@@ -32,7 +32,7 @@ pub fn execute(
   input: Option(source.Input),
   config: config.Config,
 ) -> promise.Promise(Result(Int, String)) {
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = execute.State(config.client.origin, cache.ready())
   use #(scope, state) <- promise.try_await(
     system.run(shell.read_input(input, state)),
   )
@@ -145,7 +145,7 @@ pub fn execute(
       tty.set_raw_mode(stdin, True)
       backend.op_to_ansi(backend.EnableBracketedPaste) |> io.print
       subscribe(tty.on_text(stdin, on_text))
-      draw()
+      dispatch([state.Input(backend.Tick)])
     })
   })
   |> promise.map(fn(result) {

@@ -5,10 +5,49 @@ import etui/geometry
 import eyg/cli/tui/helpers as h
 import eyg/cli/tui/state
 import eyg/cli/tui/view
+import eyg/hub/cache
 import eyg/interpreter/value
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/string
+import loam/execute
+import loam/system
+import multiformats/cid/v1
+
+pub fn inserted_module_before_loading_test() {
+  let assert Ok(#(cid, <<>>)) =
+    v1.from_string(
+      "baguqeera2rxu3p44bxjutnjlpeffcmkgdmh5mmyeqgpatyaae6ezybzg4azq",
+    )
+  // Startup has fetched the release metadata, but not its module.
+  let cache =
+    cache.Cache(
+      ..cache.empty(),
+      packages: dict.from_list([
+        #(
+          "demo",
+          cache.Entry(version: 1, module: cid, cursor: 1, sequence: 1, cid:),
+        ),
+      ]),
+      releases: dict.from_list([#(#("demo", 1), cid)]),
+    )
+  let state = state.init([], execute.State(..h.execute_state(), cache:))
+  let assert #(state, []) =
+    state.update(state, state.Input(backend.KeyPress("@")))
+  let assert #(state, []) =
+    state.update(state, state.Input(backend.KeyPress("tab")))
+  let #(state, effects) =
+    state.update(state, state.Input(backend.KeyPress("enter")))
+  let assert [system.Fetch(_, _)] = effects
+  assert state.Navigating == state.mode
+  assert Error(cache.Requested)
+    == cache.get_module(state.execute_state.cache, cid)
+
+  view.render(state, screen())
+  |> buffer_coloured_text
+  |> birdie.snap("inserted_module_before_loading_test")
+}
 
 pub fn multiple_error_test() {
   let #(state, _) =

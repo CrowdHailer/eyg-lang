@@ -64,6 +64,17 @@ Lines beginning with `/` are shell commands rather than EYG source:
 | `/type <expr>`, `/t <expr>` | infer and show the type of an expression |
 
 
+### Structural TUI
+
+Run `eyg tui` and press `@` on an expression to choose a published package.
+Type its name, use Tab to complete, and Enter to insert its latest release pinned
+to a version and module CID. Esc cancels the picker.
+
+The package list is fetched at startup. Module contents are fetched only when a
+reference is inserted into the draft; its type is updated when the module arrives.
+If you press Enter to run while references are loading, the draft is kept so you
+can run it once they are ready.
+
 ### Evaluate an expression
 
 To evaluate a file, without running any effects, pass in the file to the CLI `eval` command.

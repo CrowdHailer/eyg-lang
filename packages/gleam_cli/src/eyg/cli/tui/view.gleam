@@ -28,7 +28,10 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     ])
   let active = case state.mode {
     state.Navigating -> True
-    state.FreeInput(..) | state.PickSingle(..) | state.Running(..) -> False
+    state.FreeInput(..)
+    | state.PickSingle(..)
+    | state.PickRelease(..)
+    | state.Running(..) -> False
   }
   let errors = info.block_errors(state)
   let input_lines =
@@ -60,7 +63,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
 
   case state.mode {
     state.Navigating | state.Running(..) -> buf
-    state.PickSingle(box, _) -> {
+    state.PickSingle(box, _) | state.PickRelease(box, _) -> {
       let border =
         block.block_new()
         |> block.with_border(block.Rounded)

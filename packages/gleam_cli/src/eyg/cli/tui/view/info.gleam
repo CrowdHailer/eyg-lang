@@ -54,7 +54,10 @@ fn focus_type(state: state.State) {
 
 pub fn status(state: state.State) -> List(span.Line) {
   case state.mode {
-    state.Navigating | state.FreeInput(..) | state.PickSingle(..) ->
+    state.Navigating
+    | state.FreeInput(..)
+    | state.PickSingle(..)
+    | state.PickRelease(..) ->
       case state.message {
         None -> {
           let count = list.length(block_errors(state))

@@ -1,0 +1,16 @@
+---
+version: 2.0.2
+title: inserted_module_before_loading_test
+file: ./test/eyg/cli/tui/view_test.gleam
+test_name: inserted_module_before_loading_test
+---
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+[7;4m[58:2::255:0:0m@demo:1[0m                                                                         
+[31m!1 [0m· [31mmissing reference @demo:1:baguqeera2rxu3p44bxjutnjlpeffcmkgdmh5mmyeqgpatyaa[0m

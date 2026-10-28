@@ -123,7 +123,18 @@ fn do_effect(
   )(system.Done)
 }
 
-fn apply(
+/// Send queued cache actions without waiting for all of them to complete.
+pub fn flush(
+  state: State,
+  wrap: fn(cache.ActionCompleted) -> message,
+) -> #(State, List(system.Effect(message))) {
+  let #(cache, actions) = cache.flush(state.cache)
+  let effects =
+    list.map(actions, fn(action) { system.map(do_effect(action, state), wrap) })
+  #(State(..state, cache:), effects)
+}
+
+pub fn apply(
   cache: Cache(source.Location),
   update: cache.ActionCompleted,
 ) -> Cache(source.Location) {
