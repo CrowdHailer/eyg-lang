@@ -3,6 +3,7 @@ import etui/style
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/cli/etui/widgets/combobox
+import eyg/cli/tui/references
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -14,6 +15,7 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/set
 import gleam/string
 import loam/execute
 import loam/platform/computer
@@ -43,6 +45,8 @@ pub type State {
     execute_state: execute.State,
     message: Option(String),
     counter: Int,
+    imports: dict.Dict(references.FileKey, references.File),
+    dependencies: set.Set(references.Dependency),
   )
 }
 
@@ -94,6 +98,11 @@ pub type Event {
 pub type Message {
   EffectHandled(task_id: Int, value: istate.Value(source.Location))
   CacheUpdated(cache.ActionCompleted)
+  ImportRead(
+    task_id: Int,
+    key: references.FileKey,
+    result: Result(ir.Node(source.Location), String),
+  )
 }
 
 /// Use the same configuration for rendering and editing the input.
@@ -148,6 +157,8 @@ pub fn init(
     execute_state:,
     message: None,
     counter: 0,
+    imports: dict.new(),
+    dependencies: set.new(),
   )
 }
 
@@ -168,22 +179,16 @@ pub fn update(
   event: Event,
 ) -> #(State, List(system.Effect(Message))) {
   let #(next, effects) = transition(state, event)
-  let next = case next.buffer.analysis {
-    Some(_) -> next
-    None ->
-      State(
-        ..next,
-        buffer: check_buffer(next.buffer, next.scope, next.execute_state.cache),
-      )
+  let retry = case event {
+    Input(_) -> True
+    Task(_) -> False
   }
-  // Browsing choices does not load modules. Only an edit to the draft does.
-  let cache = case buffer.source(next.buffer) == buffer.source(state.buffer) {
-    True -> next.execute_state.cache
-    False -> cache.prepare(next.execute_state.cache, buffer.source(next.buffer))
+  let #(next, reads) = case next.buffer.analysis {
+    Some(_) -> #(next, [])
+    None -> check_buffer(next, retry)
   }
-  let #(execute_state, loads) =
-    execute.flush(execute.State(..next.execute_state, cache:), CacheUpdated)
-  #(State(..next, execute_state:), list.append(effects, loads))
+  let #(execute_state, loads) = execute.flush(next.execute_state, CacheUpdated)
+  #(State(..next, execute_state:), list.flatten([effects, loads, reads]))
 }
 
 fn transition(state: State, event: Event) {
@@ -195,6 +200,24 @@ fn transition(state: State, event: Event) {
   case state.mode, event {
     _, Input(backend.KeyPress("ctrl+q")) -> #(State(..state, quit: True), [])
     _, Task(CacheUpdated(completed)) -> cache_updated(state, completed)
+    _, Task(ImportRead(id, key, result)) ->
+      case dict.get(state.imports, key) {
+        Ok(references.Reading(current)) if current == id -> {
+          let file = case result {
+            Ok(module) -> references.Read(module, False)
+            Error(reason) -> references.Unreadable(reason)
+          }
+          #(
+            State(
+              ..state,
+              imports: dict.insert(state.imports, key, file),
+              buffer: buffer.invalidate(state.buffer),
+            ),
+            [],
+          )
+        }
+        _ -> #(state, [])
+      }
     Running(active: _, env: _, k: _, occured:), Input(backend.KeyPress("esc"))
     ->
       history.Aborted("Cancelled")
@@ -538,9 +561,36 @@ fn packages(state: State) {
   |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
 }
 
-fn check_buffer(buffer, scope, cache) {
-  buffer.check(buffer, repl_context(scope))
-  |> cache.infer_sync(cache)
+fn check_buffer(state: State, retry) {
+  let #(buffer, tracked) =
+    buffer.check(state.buffer, repl_context(state.scope))
+    |> references.check(
+      state.execute_state.cache,
+      state.imports,
+      state.counter,
+      state.dependencies,
+      retry,
+    )
+  let reads =
+    list.map(tracked.reads, fn(read) {
+      let #(key, id) = read
+      references.read(key) |> system.map(ImportRead(id, key, _))
+    })
+  #(
+    State(
+      ..state,
+      buffer:,
+      execute_state: execute.State(..state.execute_state, cache: tracked.cache),
+      imports: tracked.files,
+      counter: tracked.counter,
+      dependencies: tracked.dependencies,
+    ),
+    reads,
+  )
+}
+
+pub fn reference_loading(state: State, reference) {
+  references.loading(state.imports, state.execute_state.cache, reference)
 }
 
 fn cache_updated(state: State, completed) {
@@ -549,7 +599,7 @@ fn cache_updated(state: State, completed) {
     State(
       ..state,
       execute_state: execute.State(..state.execute_state, cache:),
-      buffer: check_buffer(state.buffer, state.scope, cache),
+      buffer: buffer.invalidate(state.buffer),
     )
 
   case state.mode {
@@ -613,7 +663,17 @@ fn finish_run(outcome, scope, occured, state: State) {
   let entry = history.Entry(outcome:, effects: occured, buffer: state.buffer)
   let history = [entry, ..state.history]
   let buffer = buffer.empty()
-  #(State(..state, mode: Navigating, history:, scope:, buffer:), [])
+  #(
+    State(
+      ..state,
+      mode: Navigating,
+      history:,
+      scope:,
+      buffer:,
+      imports: dict.new(),
+    ),
+    [],
+  )
 }
 
 fn fail(state, message) {

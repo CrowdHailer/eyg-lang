@@ -37,15 +37,15 @@ fn focus_type(state: state.State) {
   }
 }
 
-fn split(rest, errors, loading, cache: cache.Cache(_)) {
+fn split(rest, errors, loading, state) {
   case rest {
     [] -> #(list.reverse(loading), list.reverse(errors))
     [#(_, error.MissingReference(reference)) as error, ..rest] ->
-      case cache.reference_in_progress(cache, reference) {
-        True -> split(rest, errors, [reference, ..loading], cache)
-        False -> split(rest, [error, ..errors], loading, cache)
+      case state.reference_loading(state, reference) {
+        True -> split(rest, errors, [reference, ..loading], state)
+        False -> split(rest, [error, ..errors], loading, state)
       }
-    [error, ..rest] -> split(rest, [error, ..errors], loading, cache)
+    [error, ..rest] -> split(rest, [error, ..errors], loading, state)
   }
 }
 
@@ -59,12 +59,7 @@ pub fn status(state: state.State) -> List(span.Line) {
         None if state.buffer.analysis == None -> span.line_plain("unchecked")
         None -> {
           let #(loading, errors) =
-            split(
-              buffer.block_errors(state.buffer),
-              [],
-              [],
-              state.execute_state.cache,
-            )
+            split(buffer.block_errors(state.buffer), [], [], state)
 
           let infer = case list.length(loading), list.length(errors) {
             0, 0 ->
@@ -98,12 +93,7 @@ pub fn status(state: state.State) -> List(span.Line) {
             Ok(isomorphic.Var(-1)) -> span.span_plain("")
             Ok(type_) -> span.span_plain(debug.mono(type_))
             Error(error.MissingReference(reference) as reason) ->
-              case
-                cache.reference_in_progress(
-                  state.execute_state.cache,
-                  reference,
-                )
-              {
+              case state.reference_loading(state, reference) {
                 True ->
                   span.span_styled(
                     "loading " <> tree.reference_to_string(reference),

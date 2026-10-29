@@ -1,8 +1,10 @@
 import etui/backend
 import etui/buffer as etui_buffer
 import etui/geometry
+import etui/span
 import eyg/cli/tui/state.{State}
 import eyg/cli/tui/view
+import eyg/cli/tui/view/info
 import eyg/hub/cache
 import eyg/interpreter/builtin
 import eyg/interpreter/state as istate
@@ -15,6 +17,7 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import loam/execute
+import loam/sandbox
 import morph/buffer
 import ogre/origin
 
@@ -59,6 +62,29 @@ pub fn block_from_string(src) {
 
 pub fn key(state, key) {
   state.update(state, state.Input(backend.KeyPress(key)))
+}
+
+pub fn paste(state, text) {
+  state.update(state, state.Input(backend.Paste(text)))
+}
+
+pub fn status_text(state) {
+  info.status(state)
+  |> list.flat_map(fn(line: span.Line) { line.spans })
+  |> list.map(fn(span) { span.content })
+  |> string.concat
+}
+
+pub fn drain(state, effects, sandbox) {
+  case effects {
+    [] -> #(state, sandbox)
+    [effect, ..rest] -> {
+      let assert #(sandbox.Returned(message), sandbox) =
+        sandbox.run(effect, sandbox)
+      let #(state, effects) = state.update(state, state.Task(message))
+      drain(state, list.append(rest, effects), sandbox)
+    }
+  }
 }
 
 /// The characters on screen, one trimmed row per line.
