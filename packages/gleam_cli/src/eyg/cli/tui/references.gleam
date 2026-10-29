@@ -3,6 +3,9 @@
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
+import eyg/interpreter/break
+import eyg/interpreter/expression
+import eyg/interpreter/state as istate
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
@@ -32,6 +35,7 @@ pub type Tracking {
     previous: set.Set(Dependency),
     dependencies: set.Set(Dependency),
     reads: List(#(FileKey, Int)),
+    values: dict.Dict(FileKey, istate.Value(source.Location)),
   )
 }
 
@@ -43,7 +47,8 @@ pub fn check(
   previous,
   retry: Bool,
 ) {
-  let tracking = Tracking(cache, files, counter, previous, set.new(), [])
+  let tracking =
+    Tracking(cache, files, counter, previous, set.new(), [], dict.new())
   let #(checked, tracking, _) =
     loop(step, source.Repl, [], tracking, retry, False)
   #(checked, tracking)
@@ -161,12 +166,26 @@ fn file(key, visiting, tracking: Tracking, retry) {
               retry,
               False,
             )
-          let answer = case infer.all_errors(analysis) {
-            [] -> Ok(infer.poly_type(analysis))
-            _ -> Error(Nil)
+          let #(answer, values) = case infer.all_errors(analysis) {
+            [] ->
+              case
+                static_loop(
+                  expression.execute(module, []),
+                  tracking.cache,
+                  tracking.values,
+                  expression.resume,
+                )
+              {
+                Ok(value) -> #(
+                  Ok(infer.poly_type(analysis)),
+                  dict.insert(tracking.values, key, value),
+                )
+                Error(_) -> #(Error(Nil), tracking.values)
+              }
+            _ -> #(Error(Nil), tracking.values)
           }
           let files = dict.insert(tracking.files, key, Read(module, loading))
-          #(answer, Tracking(..tracking, files:), loading)
+          #(answer, Tracking(..tracking, files:, values:), loading)
         }
       }
     }
@@ -181,6 +200,29 @@ fn file(key, visiting, tracking: Tracking, retry) {
         )
       #(Error(Nil), tracking, True)
     }
+  }
+}
+
+/// Resume using only values prepared by checking. This never reads files or
+/// starts requests, and works for both module expressions and REPL blocks.
+pub fn static_loop(
+  return: Result(a, istate.Debug(source.Location)),
+  cache: cache.Cache(source.Location),
+  values: dict.Dict(FileKey, istate.Value(source.Location)),
+  resume: fn(
+    istate.Value(source.Location),
+    istate.Env(source.Location),
+    istate.Stack(source.Location),
+  ) -> Result(a, istate.Debug(source.Location)),
+) -> Result(a, istate.Debug(source.Location)) {
+  let return = cache.static_loop(return, cache, resume)
+  case return {
+    Error(#(break.UndefinedReference(ir.Relative(path)), location, env, k)) ->
+      case dict.get(values, #(location.origin, path)) {
+        Ok(value) -> static_loop(resume(value, env, k), cache, values, resume)
+        Error(Nil) -> return
+      }
+    _ -> return
   }
 }
 

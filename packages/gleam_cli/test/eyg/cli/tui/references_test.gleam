@@ -26,8 +26,8 @@ fn init() {
 }
 
 pub fn inserting_an_import_checks_and_queues_it_test() {
-  let assert #(state, []) = h.key(init(), "q")
-  let assert #(state, []) = h.paste(state, "lib/answer.eyg")
+  let assert #(state, [_listing]) = h.key(init(), "q")
+  let assert #(state, [_listing]) = h.paste(state, "lib/answer.eyg")
   let assert #(state, [read]) = h.key(state, "enter")
   let assert Some(_) = state.buffer.analysis
   assert "◌1 · loading lib/answer.eyg" == h.status_text(state)
@@ -154,9 +154,9 @@ pub fn a_new_release_dependency_discovered_in_a_file_is_queued_test() {
 
 pub fn finishing_a_picker_uses_types_loaded_while_it_was_open_test() {
   let assert #(state, [read]) = h.paste(init(), "import \"lib/answer.eyg\"")
-  let assert #(state, []) = h.key(state, "q")
+  let assert #(state, [_listing]) = h.key(state, "q")
   let #(state, _) = h.drain(state, [read], project())
-  let assert #(state, []) = h.paste(state, "lib/answer.eyg")
+  let assert #(state, [_listing]) = h.paste(state, "lib/answer.eyg")
   let assert #(state, []) = h.key(state, "enter")
   assert "✔  · Integer" == h.status_text(state)
 }

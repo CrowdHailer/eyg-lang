@@ -3,6 +3,7 @@ import etui/style
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/cli/etui/widgets/combobox
+import eyg/cli/tui/files
 import eyg/cli/tui/references
 import eyg/hub/cache
 import eyg/interpreter/block
@@ -46,6 +47,7 @@ pub type State {
     message: Option(String),
     counter: Int,
     imports: dict.Dict(references.FileKey, references.File),
+    import_values: dict.Dict(references.FileKey, execute.Value),
     dependencies: set.Set(references.Dependency),
   )
 }
@@ -55,6 +57,12 @@ pub type Mode {
   FreeInput(input: input.InputState, kind: InputKind)
   PickSingle(box: combobox.Combobox, rebuild: m.Rebuild(String))
   PickRelease(box: combobox.Combobox, rebuild: m.Rebuild(ir.Release))
+  PickImport(
+    box: combobox.Combobox,
+    rebuild: m.Rebuild(ir.Reference),
+    listed: String,
+    entries: List(files.Entry),
+  )
   // Browsing history, newest first.
   History(selected: Int)
   Running(
@@ -81,7 +89,6 @@ pub type InputKind {
   // PickRelease(m.Rebuild(ir.Release))
   EnterText(m.Rebuild(String))
   EnterInteger(m.Rebuild(Int))
-  EnterImport(m.Rebuild(ir.Reference))
   ReplyStandardIn(
     // active: Active,
     env: istate.Env(source.Location),
@@ -98,6 +105,7 @@ pub type Event {
 pub type Message {
   EffectHandled(task_id: Int, value: istate.Value(source.Location))
   CacheUpdated(cache.ActionCompleted)
+  DirectoryListed(directory: String, entries: List(files.Entry))
   ImportRead(
     task_id: Int,
     key: references.FileKey,
@@ -109,7 +117,6 @@ pub type Message {
 pub fn input_widget(kind: InputKind) -> input.InputWidget {
   case kind {
     EnterText(_) -> input.input_new("Enter text")
-    EnterImport(_) -> input.input_new("Enter a file path")
     EnterInteger(_) ->
       input.input_new("Enter an integer")
       |> input.with_validator(fn(value) {
@@ -158,6 +165,7 @@ pub fn init(
     message: None,
     counter: 0,
     imports: dict.new(),
+    import_values: dict.new(),
     dependencies: set.new(),
   )
 }
@@ -227,6 +235,38 @@ fn transition(state: State, event: Event) {
       Task(EffectHandled(id, value))
       if id == task_id
     -> after_perform(system.Done(value), label, lift, env, k, state, occured)
+    PickImport(box, rebuild, listed, entries), Input(event) ->
+      case combobox.update(event, box) {
+        combobox.Cancelled -> #(State(..state, mode: Navigating), [])
+        combobox.Selected(path) -> #(import_file(state, rebuild, path), [])
+        combobox.Updated(box) -> {
+          let directory = files.directory(box.input.value)
+          case directory == listed {
+            True -> {
+              let items = files.choices(listed, box.input.value, entries)
+              let box = combobox.Combobox(..box, items:)
+              #(
+                State(..state, mode: PickImport(box, rebuild, listed, entries)),
+                [],
+              )
+            }
+            False -> {
+              let box = combobox.Combobox(..box, items: [])
+              #(State(..state, mode: PickImport(box, rebuild, directory, [])), [
+                list_directory(directory),
+              ])
+            }
+          }
+        }
+      }
+    PickImport(box, rebuild, listed, _),
+      Task(DirectoryListed(directory, entries))
+      if directory == listed
+    -> {
+      let items = files.choices(listed, box.input.value, entries)
+      let box = combobox.Combobox(..box, items:)
+      #(State(..state, mode: PickImport(box, rebuild, listed, entries)), [])
+    }
     Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
     History(selected:), Input(backend.KeyPress(key:)) -> #(
       history_key_press(state, selected, key),
@@ -320,7 +360,6 @@ fn submit_input(
       State(..state, mode: Navigating, buffer: rebuild(value)),
       [],
     )
-    EnterImport(rebuild) -> #(import_file(state, rebuild, value), [])
     EnterInteger(rebuild) ->
       case int.parse(value) {
         Ok(value) -> #(
@@ -473,6 +512,26 @@ fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
 }
 
 fn confirm(state: State) -> #(State, List(system.Effect(Message))) {
+  case state.buffer.analysis {
+    None -> #(fail(state, "Program has not been checked"), [])
+    Some(analysis) -> confirm_checked(state, infer.missing_references(analysis))
+  }
+}
+
+fn confirm_checked(state: State, missing) {
+  case missing {
+    [] -> run(state)
+    _ -> {
+      let message = case list.any(missing, reference_loading(state, _)) {
+        True -> "References are still loading"
+        False -> "Resolve missing references before running"
+      }
+      #(fail(state, message), [])
+    }
+  }
+}
+
+fn run(state: State) -> #(State, List(system.Effect(Message))) {
   let expression = projection.rebuild(state.buffer.projection)
   case expression {
     e.Vacant -> #(fail(state, "write a program"), [])
@@ -495,7 +554,12 @@ fn loop(
   occured: List(history.EffectRecord(source.Location)),
 ) -> #(State, List(system.Effect(Message))) {
   let return =
-    cache.static_loop(return, state.execute_state.cache, block.resume)
+    references.static_loop(
+      return,
+      state.execute_state.cache,
+      state.import_values,
+      block.resume,
+    )
   case return {
     Ok(#(value, scope)) ->
       finish_run(history.Success(value), scope, occured, state)
@@ -532,15 +596,19 @@ fn history_key_press(state: State, selected, key) {
   }
 }
 
-/// Insert a path relative to the working directory.
+/// Choose an import relative to the working directory.
 fn import_input(state: State) {
   case buffer.insert_explicit_reference(state.buffer) {
     Error(_) -> #(fail(state, "Select an expression to import into"), [])
     Ok(rebuild) -> {
-      let mode = FreeInput(input.state_new(), EnterImport(rebuild))
-      #(State(..state, mode:), [])
+      let mode = PickImport(combobox.new([]), rebuild, "", [])
+      #(State(..state, mode:), [list_directory("")])
     }
   }
+}
+
+fn list_directory(directory) {
+  files.list(directory) |> system.map(DirectoryListed(directory, _))
 }
 
 fn import_file(state: State, rebuild, path) {
@@ -582,6 +650,7 @@ fn check_buffer(state: State, retry) {
       buffer:,
       execute_state: execute.State(..state.execute_state, cache: tracked.cache),
       imports: tracked.files,
+      import_values: dict.merge(state.import_values, tracked.values),
       counter: tracked.counter,
       dependencies: tracked.dependencies,
     ),

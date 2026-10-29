@@ -33,6 +33,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     | state.FreeInput(..)
     | state.PickSingle(..)
     | state.PickRelease(..)
+    | state.PickImport(..)
     | state.Running(..) -> False
   }
   let errors = morph_buffer.block_errors(state.buffer)
@@ -102,9 +103,12 @@ pub fn render(state: state.State, screen: geometry.Rect) {
 
   case state.mode {
     state.Navigating | state.History(..) | state.Running(..) -> buf
-    state.PickSingle(box, _) | state.PickRelease(box, _) -> {
+    state.PickSingle(box, _)
+    | state.PickRelease(box, _)
+    | state.PickImport(box:, ..) -> {
       let title = case state.mode {
         state.PickRelease(..) -> "Choose a package"
+        state.PickImport(..) -> "Import a file"
         _ -> "Choose a value"
       }
       let border =
@@ -123,7 +127,6 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       let title = case kind {
         state.EnterText(_) -> "Text"
         state.EnterInteger(_) -> "Integer"
-        state.EnterImport(_) -> "Import a file"
         state.PickCid(_) -> "Content reference"
         state.ReplyStandardIn(..) -> "Standard input"
       }

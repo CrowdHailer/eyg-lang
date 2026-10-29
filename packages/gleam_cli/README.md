@@ -75,6 +75,10 @@ reference is inserted into the draft; its type is updated when the module arrive
 If you press Enter to run while references are loading, the draft is kept so you
 can run it once they are ready.
 
+Press `q` to import a file relative to the working directory. Type a path, use
+Tab to complete file or directory names, and Enter to insert it. Hidden entries
+appear when their name starts with a dot. Esc cancels the picker.
+
 ### Evaluate an expression
 
 To evaluate a file, without running any effects, pass in the file to the CLI `eval` command.

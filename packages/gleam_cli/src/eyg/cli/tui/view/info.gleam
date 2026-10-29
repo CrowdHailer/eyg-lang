@@ -54,7 +54,8 @@ pub fn status(state: state.State) -> List(span.Line) {
     state.Navigating
     | state.FreeInput(..)
     | state.PickSingle(..)
-    | state.PickRelease(..) ->
+    | state.PickRelease(..)
+    | state.PickImport(..) ->
       case state.message {
         None if state.buffer.analysis == None -> span.line_plain("unchecked")
         None -> {
