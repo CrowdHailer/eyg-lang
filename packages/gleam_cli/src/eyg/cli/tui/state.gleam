@@ -578,7 +578,7 @@ fn loop(
 }
 
 /// Nothing has been written in the draft yet.
-fn empty_draft(state: State) {
+pub fn empty_draft(state: State) {
   projection.rebuild(state.buffer.projection) == e.Vacant
 }
 

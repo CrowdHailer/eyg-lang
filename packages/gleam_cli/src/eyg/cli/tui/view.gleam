@@ -37,16 +37,19 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     | state.Running(..) -> False
   }
   let errors = morph_buffer.block_errors(state.buffer)
-  let input_lines =
-    render.projection(state.buffer.projection, render.Statements, errors)
-    |> code(active)
-    |> list.index_map(fn(line, index) {
-      let prefix = case index {
-        0 -> "> "
-        _ -> "  "
-      }
-      span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
-    })
+  let input_lines = case state.empty_draft(state) {
+    True -> empty_lines(state, active)
+    False ->
+      render.projection(state.buffer.projection, render.Statements, errors)
+      |> code(active)
+      |> list.index_map(fn(line, index) {
+        let prefix = case index {
+          0 -> "> "
+          _ -> "  "
+        }
+        span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
+      })
+  }
   let selected = case state.mode {
     state.History(selected:) -> Some(selected)
     _ -> None
@@ -166,6 +169,43 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       }
     }
   }
+}
+
+/// A prompt in place of the empty draft, after a welcome in a new session.
+fn empty_lines(state: state.State, active: Bool) -> List(span.Line) {
+  let prompt =
+    span.line_new([
+      span.span_plain("> "),
+      span.span_styled(
+        "Write EYG…",
+        focus_style(style.default_style(), True, active),
+      ),
+    ])
+  case state.history {
+    [] -> [
+      span.line_new([
+        span.span_styled(
+          "EYG shell",
+          style.default_style() |> style.add_modifier(style.bold()),
+        ),
+      ]),
+      dim("Paste a program or build one with keys, then press Enter to run it."),
+      dim("Try pasting  !int_add(20, 22)  or press n for an integer."),
+      dim("q imports a file · @ adds a package · # a content reference"),
+      span.line_plain(""),
+      prompt,
+    ]
+    _ -> [prompt]
+  }
+}
+
+fn dim(text: String) -> span.Line {
+  span.line_new([
+    span.span_styled(
+      text,
+      style.default_style() |> style.add_modifier(style.dim()),
+    ),
+  ])
 }
 
 fn dialog_area(area: geometry.Rect, height: Int) -> geometry.Rect {

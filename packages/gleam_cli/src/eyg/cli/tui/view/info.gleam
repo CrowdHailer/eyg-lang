@@ -49,6 +49,25 @@ fn split(rest, errors, loading, state) {
   }
 }
 
+/// Keys to get started while the draft is empty.
+fn empty_status(state: state.State) -> span.Line {
+  case state.mode {
+    state.Navigating -> {
+      let hints = case state.history {
+        [] -> "Ctrl+Q quit"
+        _ -> "↑ history · Ctrl+Q quit"
+      }
+      span.line_new([
+        span.span_styled(
+          hints,
+          style.default_style() |> style.add_modifier(style.dim()),
+        ),
+      ])
+    }
+    _ -> span.line_plain("")
+  }
+}
+
 pub fn status(state: state.State) -> List(span.Line) {
   case state.mode {
     state.Navigating
@@ -56,9 +75,11 @@ pub fn status(state: state.State) -> List(span.Line) {
     | state.PickSingle(..)
     | state.PickRelease(..)
     | state.PickImport(..) ->
-      case state.message {
-        None if state.buffer.analysis == None -> span.line_plain("unchecked")
-        None -> {
+      case state.message, state.empty_draft(state) {
+        None, True -> empty_status(state)
+        None, False if state.buffer.analysis == None ->
+          span.line_plain("unchecked")
+        None, False -> {
           let #(loading, errors) =
             split(buffer.block_errors(state.buffer), [], [], state)
 
@@ -114,7 +135,7 @@ pub fn status(state: state.State) -> List(span.Line) {
           }
           span.line_new([infer, space, focus])
         }
-        option.Some(message) ->
+        option.Some(message), _ ->
           span.line_new([
             span.span_styled(
               "! " <> message,
