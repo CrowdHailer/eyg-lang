@@ -1,5 +1,4 @@
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -69,7 +68,7 @@ pub type Mode {
 }
 
 pub type Rebuild(t) =
-  fn(t, infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> Buffer
+  m.Rebuild(t)
 
 pub type Target {
   Repl
@@ -112,8 +111,8 @@ pub fn relative_cid(name) {
 }
 
 /// replaces buffer in the tree
-fn replace_buffer(state: State, gen) {
-  let buffer = gen(ctx(state, state.focused), cache.types(state.cache))
+fn replace_buffer(state: State, buffer) {
+  let buffer = check_buffer(buffer, ctx(state, state.focused), state.cache)
   let state = set_buffer(state, buffer)
 
   case state.focused {
@@ -129,6 +128,10 @@ fn replace_buffer(state: State, gen) {
       #(state, actions)
     }
   }
+}
+
+fn check_buffer(buffer, context, cache) {
+  buffer.check(buffer, context) |> cache.infer_sync(cache)
 }
 
 fn set_buffer(state, buffer) {
@@ -156,7 +159,7 @@ pub fn init(config: config.Config) -> #(State, List(system.Effect(Message))) {
       previous: [],
       after: None,
       scope:,
-      repl: buffer.empty(repl_context(scope), cache.types(cache)),
+      repl: check_buffer(buffer.empty(), repl_context(scope), cache),
       modules:,
       mounted_directory: None,
       flush_counter: 0,
@@ -186,7 +189,7 @@ fn active(state) {
     Module(path) ->
       case dict.get(modules, path) {
         Ok(buffer) -> buffer
-        _ -> buffer.empty(ctx(state, focused), cache.types(state.cache))
+        _ -> check_buffer(buffer.empty(), ctx(state, focused), state.cache)
       }
   }
 }
@@ -279,8 +282,15 @@ pub fn update(state: State, message) -> #(State, List(system.Effect(Message))) {
     }
     CacheMessage(message) -> {
       let #(cache, _done) = cache.update(state.cache, message, fn(_) { [] })
-      let state = State(..state, cache:)
-      // reanalyse modules
+      let state =
+        State(
+          ..state,
+          cache:,
+          repl: check_buffer(state.repl, repl_context(state.scope), cache),
+          modules: dict.map_values(state.modules, fn(_, buffer) {
+            check_buffer(buffer, infer.pure(), cache)
+          }),
+        )
       case state.mode {
         RunningShell(occured: _, status:) -> {
           let output = restart(status, state)
@@ -421,6 +431,7 @@ fn move_up(state) {
     Error(Nil) ->
       case state.focused == Repl, state.previous, state.after {
         True, [history.Entry(buffer: repl, ..), ..], None -> {
+          let repl = check_buffer(repl, repl_context(state.scope), state.cache)
           #(State(..state, repl:, after: Some(state.repl.projection)), [])
         }
         _, _, _ -> fail(state, "move above")
@@ -438,11 +449,8 @@ fn move_down(state) {
       case state.focused == Repl, state.after {
         True, Some(projection) -> {
           let repl =
-            buffer.from_projection(
-              projection,
-              ctx(state, Repl),
-              cache.types(state.cache),
-            )
+            buffer.from_projection(projection)
+            |> check_buffer(ctx(state, Repl), state.cache)
           #(State(..state, repl:, after: None), [])
         }
         _, _ -> fail(state, "move below")
@@ -529,7 +537,7 @@ fn complete(state: State, value, scope) {
       buffer: state.repl,
     )
   let previous = [entry, ..state.previous]
-  let repl = buffer.empty(repl_context(scope), cache.types(state.cache))
+  let repl = check_buffer(buffer.empty(), repl_context(scope), state.cache)
   #(State(..state, mode: Editing, previous:, scope:, repl:), [])
 }
 
@@ -596,7 +604,8 @@ fn loaded_files(state: State, result) {
       use source <- result.map(code)
 
       let buffer =
-        buffer.from_source(source, infer.pure(), cache.types(state.cache))
+        buffer.from_source(source)
+        |> check_buffer(infer.pure(), state.cache)
       #(name, buffer)
     })
   let modules = dict.from_list(modules)
@@ -642,7 +651,7 @@ fn input_message(state, message) {
         }
         input.Confirmed(value) ->
           State(..state, mode: Editing)
-          |> replace_buffer(fn(context, refs) { rebuild(value, context, refs) })
+          |> replace_buffer(rebuild(value))
         input.Cancelled -> {
           let state = State(..state, mode: Editing)
           #(state, [])
@@ -657,7 +666,7 @@ fn input_message(state, message) {
         }
         input.Confirmed(value) ->
           State(..state, mode: Editing)
-          |> replace_buffer(fn(context, refs) { rebuild(value, context, refs) })
+          |> replace_buffer(rebuild(value))
         input.Cancelled -> {
           let state = State(..state, mode: Editing)
           #(state, [])
@@ -677,9 +686,7 @@ fn clipboard_read_complete(state, return) {
           case json.parse(text, dag_json.decoder(Nil)) {
             Ok(expression) ->
               State(..state, mode: Editing)
-              |> replace_buffer(fn(context, refs) {
-                rebuild(e.from_annotated(expression), context, refs)
-              })
+              |> replace_buffer(rebuild(e.from_annotated(expression)))
 
             Error(_) -> fail(state, "paste")
           }
@@ -715,7 +722,7 @@ fn picker_message(state, message) {
         )
         picker.Decided(label) -> {
           State(..state, mode: Editing)
-          |> replace_buffer(fn(context, refs) { rebuild(label, context, refs) })
+          |> replace_buffer(rebuild(label))
         }
         picker.Dismissed -> #(State(..state, mode: Editing), [])
       }
@@ -729,9 +736,7 @@ fn picker_message(state, message) {
           case v1.from_string(text) {
             Ok(#(cid, _)) ->
               State(..state, mode: Editing)
-              |> replace_buffer(fn(context, refs) {
-                rebuild(cid, context, refs)
-              })
+              |> replace_buffer(rebuild(cid))
             Error(_) -> {
               echo "need error message for bad cid"
               #(state, [])
@@ -751,9 +756,7 @@ fn picker_message(state, message) {
           case cache.package(state.cache, text) {
             Ok(cache.Entry(version:, module:, ..)) ->
               State(..state, mode: Editing)
-              |> replace_buffer(fn(context, refs) {
-                rebuild(ir.Release(text, version, module), context, refs)
-              })
+              |> replace_buffer(rebuild(ir.Release(text, version, module)))
             Error(_) -> {
               echo "need error message for bad cid"
               #(state, [])

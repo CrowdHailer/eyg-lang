@@ -26,11 +26,9 @@ pub fn with_code(state, code) {
 pub fn with_source(state, source) {
   State(
     ..state,
-    buffer: buffer.from_source(
-      source,
-      state.repl_context(state.scope),
-      cache.types(state.execute_state.cache),
-    ),
+    buffer: buffer.from_source(source)
+      |> buffer.check(state.repl_context(state.scope))
+      |> cache.infer_sync(state.execute_state.cache),
   )
 }
 

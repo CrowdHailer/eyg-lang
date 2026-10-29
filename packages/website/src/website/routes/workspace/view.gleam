@@ -1,7 +1,5 @@
-import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
-import eyg/hub/cache
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
@@ -108,14 +106,14 @@ pub fn render(state: state.State) {
               ),
               ui.render_projection(
                 state.repl.projection,
-                contextual.all_errors(state.repl.analysis),
+                buffer.errors(state.repl),
               ),
               h.div(
                 [
                   a.class("cover bg-red-300 px-2"),
                   a.styles([#("max-height", "25vh"), #("overflow-y", "scroll")]),
                 ],
-                list.map(contextual.all_errors(state.repl.analysis), fn(error) {
+                list.map(buffer.errors(state.repl), fn(error) {
                   let #(reversed, reason) = error
                   case reversed, reason {
                     // Vacant node at root or end of block are ignored.
@@ -139,17 +137,10 @@ pub fn render(state: state.State) {
                 let buffer = case dict.get(state.modules, with_ex) {
                   Ok(buffer) -> buffer
                   Error(Nil) ->
-                    buffer.from_projection(
-                      projection.all(editable.Vacant),
-                      contextual.pure(),
-                      cache.types(state.cache),
-                    )
+                    buffer.from_projection(projection.all(editable.Vacant))
                 }
                 [
-                  ui.render_projection(
-                    buffer.projection,
-                    contextual.all_errors(buffer.analysis),
-                  ),
+                  ui.render_projection(buffer.projection, buffer.errors(buffer)),
                   h.div(
                     [
                       a.class("cover bg-red-300 px-2"),
@@ -158,7 +149,7 @@ pub fn render(state: state.State) {
                         #("overflow-y", "scroll"),
                       ]),
                     ],
-                    list.map(contextual.all_errors(buffer.analysis), fn(error) {
+                    list.map(buffer.errors(buffer), fn(error) {
                       let #(_path, reason) = error
 
                       h.div(

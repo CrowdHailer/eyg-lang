@@ -1,5 +1,3 @@
-import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -73,14 +71,10 @@ pub fn set_example(state: State, id, buffer) {
 fn continue(
   state: State,
   id: String,
-  gen: fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer,
+  buffer: buffer.Buffer,
 ) -> #(State, List(system.Effect(Message))) {
   let State(cache:, origin:, ..) = state
-  let buffer =
-    gen(
-      infer.pure() |> infer.with_effects(interface.types(harness.effects())),
-      cache.types(state.cache),
-    )
+  let buffer = doc.check_buffer(buffer, state.cache)
   let state = set_example(state, id, buffer)
   let cache = cache.prepare(cache, buffer.source(buffer))
   let #(cache, effects) = flush_cache(cache, origin)
@@ -127,10 +121,7 @@ pub fn update(state: State, message) {
           let state = State(..state, mode:)
           #(state, [])
         }
-        input.Confirmed(value) ->
-          continue(state, id, fn(context, refs) {
-            rebuild(value, context, refs)
-          })
+        input.Confirmed(value) -> continue(state, id, rebuild(value))
         input.Cancelled -> {
           let state = State(..state, mode: doc.Navigating(id:, failure: None))
           #(state, [])
@@ -143,10 +134,7 @@ pub fn update(state: State, message) {
           let state = State(..state, mode:)
           #(state, [])
         }
-        input.Confirmed(value) ->
-          continue(state, id, fn(context, refs) {
-            rebuild(value, context, refs)
-          })
+        input.Confirmed(value) -> continue(state, id, rebuild(value))
         input.Cancelled -> {
           let state = State(..state, mode: doc.Navigating(id:, failure: None))
           #(state, [])
@@ -161,10 +149,7 @@ pub fn update(state: State, message) {
           let mode = doc.Manipulating(id, m.PickSingle(picker, rebuild))
           #(State(..state, mode:), [])
         }
-        picker.Decided(label) ->
-          continue(state, id, fn(context, refs) {
-            rebuild(label, context, refs)
-          })
+        picker.Decided(label) -> continue(state, id, rebuild(label))
         picker.Dismissed -> #(
           State(..state, mode: doc.Navigating(id:, failure: None)),
           [],
@@ -178,10 +163,7 @@ pub fn update(state: State, message) {
         }
         picker.Decided(text) -> {
           case v1.from_string(text) {
-            Ok(#(cid, _)) ->
-              continue(state, id, fn(context, refs) {
-                rebuild(cid, context, refs)
-              })
+            Ok(#(cid, _)) -> continue(state, id, rebuild(cid))
             Error(_) -> {
               echo "need error message for bad cid"
               #(state, [])
@@ -204,9 +186,7 @@ pub fn update(state: State, message) {
         picker.Decided(text) -> {
           case cache.package(state.cache, text) {
             Ok(cache.Entry(version:, module:, ..)) ->
-              continue(state, id, fn(context, refs) {
-                rebuild(ir.Release(text, version, module), context, refs)
-              })
+              continue(state, id, rebuild(ir.Release(text, version, module)))
             Error(_) -> {
               echo "need error message for bad cid"
               #(state, [])
@@ -224,9 +204,7 @@ pub fn update(state: State, message) {
         Ok(text) ->
           case json.parse(text, dag_json.decoder(Nil)) {
             Ok(expression) ->
-              continue(state, id, fn(context, refs) {
-                rebuild(e.from_annotated(expression), context, refs)
-              })
+              continue(state, id, rebuild(e.from_annotated(expression)))
             Error(_) -> action_failed(state, id, "paste")
           }
         Error(_) -> action_failed(state, id, "paste")

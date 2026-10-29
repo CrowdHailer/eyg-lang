@@ -1,9 +1,11 @@
 import etui/backend
+import eyg/analysis/type_/isomorphic as t
 import eyg/cli/tui/helpers as h
 import eyg/cli/tui/state
 import eyg/interpreter/value
 import gleam/option.{Some}
 import loam/system
+import morph/buffer
 import morph/repl/history
 
 pub fn exit_in_program_stops_run_test() {
@@ -57,4 +59,16 @@ pub fn cancel_standard_in_returns_error_to_program_test() {
       #("StandardIn", #(value.unit(), value.error(value.String("Cancelled")))),
     ]
     == effects
+}
+
+pub fn edits_are_checked_before_returning_to_the_view_test() {
+  let initial = state.init([], h.execute_state())
+  let assert #(edited, []) =
+    state.update(initial, state.Input(backend.Paste("42")))
+  assert Ok(t.Integer) == buffer.target_type(edited.buffer)
+  let assert #(undone, []) = h.key(edited, "z")
+  let assert Some(_) = undone.buffer.analysis
+  assert buffer.source(initial.buffer) == buffer.source(undone.buffer)
+  let assert #(redone, []) = h.key(undone, "Z")
+  assert Ok(t.Integer) == buffer.target_type(redone.buffer)
 }

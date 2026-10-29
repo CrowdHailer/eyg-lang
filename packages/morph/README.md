@@ -17,15 +17,17 @@ It introduces the ability to have multi argument functions, patterns and other c
 
 - `Projection` as an inverted view of program focusing on a specific node and it's surrounding context.
 
+## Buffers and analysis
+
+`morph/buffer` combines a projection, undo/redo history, and optional analysis.
+New buffers and code edits clear analysis.
+Navigation keeps analysis.
+
+
 ### Non goals
 
-- inference, loading, running, undo, redo, no mapping from text to position, suggestions, autocomplete
-- key bindins to given transforms
-
-## Questions
-
-How to link to type information.
-The tree could be enhanced with meta data or we need to map to a plain AST concept of a path
+- Loading modules or running programs.
+- Binding keys to transformations.
 
 ## Morph/Lustre
 

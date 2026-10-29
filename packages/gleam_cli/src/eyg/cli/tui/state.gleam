@@ -134,9 +134,10 @@ pub fn init(
   scope: istate.Scope(source.Location),
   execute_state: execute.State,
 ) -> State {
-  // I think cache types should turn into a lookup
   let buffer =
-    buffer.empty(repl_context(scope), cache.types(execute_state.cache))
+    buffer.empty()
+    |> buffer.check(repl_context(scope))
+    |> cache.infer_sync(execute_state.cache)
 
   State(
     quit: False,
@@ -167,6 +168,14 @@ pub fn update(
   event: Event,
 ) -> #(State, List(system.Effect(Message))) {
   let #(next, effects) = transition(state, event)
+  let next = case next.buffer.analysis {
+    Some(_) -> next
+    None ->
+      State(
+        ..next,
+        buffer: check_buffer(next.buffer, next.scope, next.execute_state.cache),
+      )
+  }
   // Browsing choices does not load modules. Only an edit to the draft does.
   let cache = case buffer.source(next.buffer) == buffer.source(state.buffer) {
     True -> next.execute_state.cache
@@ -224,11 +233,7 @@ fn transition(state: State, event: Event) {
               State(
                 ..state,
                 mode: Navigating,
-                buffer: rebuild(
-                  ir.Release(name, version, module),
-                  repl_context(state.scope),
-                  cache.types(state.execute_state.cache),
-                ),
+                buffer: rebuild(ir.Release(name, version, module)),
               ),
               [],
             )
@@ -287,22 +292,16 @@ fn submit_input(
   value: String,
   kind: InputKind,
 ) -> #(State, List(_)) {
-  let context = repl_context(state.scope)
-  let refs = cache.types(state.execute_state.cache)
   case kind {
     EnterText(rebuild) -> #(
-      State(..state, mode: Navigating, buffer: rebuild(value, context, refs)),
+      State(..state, mode: Navigating, buffer: rebuild(value)),
       [],
     )
     EnterImport(rebuild) -> #(import_file(state, rebuild, value), [])
     EnterInteger(rebuild) ->
       case int.parse(value) {
         Ok(value) -> #(
-          State(
-            ..state,
-            mode: Navigating,
-            buffer: rebuild(value, context, refs),
-          ),
+          State(..state, mode: Navigating, buffer: rebuild(value)),
           [],
         )
         Error(_) -> #(state, [])
@@ -310,7 +309,7 @@ fn submit_input(
     PickCid(rebuild) ->
       case parse_content_reference(value) {
         Ok(#(cid, _)) -> #(
-          State(..state, mode: Navigating, buffer: rebuild(cid, context, refs)),
+          State(..state, mode: Navigating, buffer: rebuild(cid)),
           [],
         )
         Error(_) -> #(state, [])
@@ -403,14 +402,7 @@ fn navigate(state: State, name, func) {
 fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
   let m.Operation(name:, apply:) = operation
   let state = case apply(state.buffer) {
-    Ok(m.Resolved(gen)) ->
-      State(
-        ..state,
-        buffer: gen(
-          repl_context(state.scope),
-          cache.types(state.execute_state.cache),
-        ),
-      )
+    Ok(m.Resolved(buffer)) -> State(..state, buffer:)
     Ok(m.UserInput(m.EnterText(value, rebuild))) ->
       State(
         ..state,
@@ -533,9 +525,7 @@ fn import_file(state: State, rebuild, path) {
   case path == "" || string.ends_with(path, "/") {
     True -> fail(state, "Choose a file to import")
     False -> {
-      let context = repl_context(state.scope)
-      let refs = cache.types(state.execute_state.cache)
-      let buffer = rebuild(ir.Relative(path), context, refs)
+      let buffer = rebuild(ir.Relative(path))
       State(..state, mode: Navigating, buffer:)
     }
   }
@@ -548,17 +538,18 @@ fn packages(state: State) {
   |> list.sort(fn(a, b) { string.compare(a.0, b.0) })
 }
 
+fn check_buffer(buffer, scope, cache) {
+  buffer.check(buffer, repl_context(scope))
+  |> cache.infer_sync(cache)
+}
+
 fn cache_updated(state: State, completed) {
   let cache = execute.apply(state.execute_state.cache, completed)
   let state =
     State(
       ..state,
       execute_state: execute.State(..state.execute_state, cache:),
-      buffer: buffer.reanalyse(
-        state.buffer,
-        repl_context(state.scope),
-        cache.types(cache),
-      ),
+      buffer: check_buffer(state.buffer, state.scope, cache),
     )
 
   case state.mode {
@@ -621,8 +612,7 @@ fn after_perform(reply, label, lift, env, k, state, occured) {
 fn finish_run(outcome, scope, occured, state: State) {
   let entry = history.Entry(outcome:, effects: occured, buffer: state.buffer)
   let history = [entry, ..state.history]
-  let buffer =
-    buffer.empty(repl_context(scope), cache.types(state.execute_state.cache))
+  let buffer = buffer.empty()
   #(State(..state, mode: Navigating, history:, scope:, buffer:), [])
 }
 
@@ -634,9 +624,7 @@ pub fn paste(state: State, text: String) -> State {
   case buffer.set_expression(state.buffer), source.parse(text, source.Repl) {
     Ok(rebuild), Ok(source) -> {
       let expression = e.from_annotated(source) |> e.open_all
-      let context = repl_context(state.scope)
-      let refs = cache.types(state.execute_state.cache)
-      State(..state, buffer: rebuild(expression, context, refs))
+      State(..state, buffer: rebuild(expression))
     }
 
     Error(Nil), _ -> fail(state, "Select an expression to paste into")

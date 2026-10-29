@@ -3,6 +3,7 @@ import gleam/dynamic/decode
 import gleam/dynamicx
 import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import lustre/attribute as a
 import lustre/element
@@ -43,6 +44,10 @@ pub const embed_area_styles = [
 
 /// render a code projection with errors and focus
 pub fn code(projection, analysis, user_clicked_code) {
+  let errors = case analysis {
+    None -> []
+    Some(analysis) -> infer.all_errors(analysis)
+  }
   h.pre(
     [
       a.class("language-eyg"),
@@ -50,7 +55,7 @@ pub fn code(projection, analysis, user_clicked_code) {
       event.on("click", code_path_click_decoder(user_clicked_code)),
     ],
     [
-      render_projection(projection, infer.all_errors(analysis)),
+      render_projection(projection, errors),
     ],
   )
 }

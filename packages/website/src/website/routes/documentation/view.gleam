@@ -1,4 +1,3 @@
-import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/hub/cache
 import eyg/interpreter/break
@@ -554,8 +553,9 @@ fn render_default(
   buffer: buffer.Buffer,
   cache: cache.Cache(List(Int)),
 ) -> element.Element(m) {
-  case infer.all_errors(buffer.analysis) {
-    [] -> {
+  case buffer.analysis, buffer.errors(buffer) {
+    None, _ -> render_blocked()
+    Some(_), [] -> {
       let return =
         buffer.source(buffer)
         |> expression.execute([])
@@ -583,7 +583,7 @@ fn render_default(
         Error(#(reason, _, _, _)) -> render_exception(reason)
       }
     }
-    errors -> {
+    Some(_), errors -> {
       let errors =
         list.map(errors, fn(error) {
           let #(_, reason) = error

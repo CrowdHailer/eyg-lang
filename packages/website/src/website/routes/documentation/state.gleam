@@ -1,5 +1,4 @@
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/expression
@@ -43,7 +42,7 @@ pub type State {
 }
 
 pub type Rebuild(t) =
-  fn(t, infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer
+  m.Rebuild(t)
 
 pub type Mode {
   Navigating(id: String, failure: Option(command.Failure))
@@ -96,14 +95,10 @@ pub fn set_example(state: State, id, snippet) {
 fn continue(
   state: State,
   id: String,
-  gen: fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer,
+  buffer: buffer.Buffer,
 ) -> #(State, List(system.Effect(Message))) {
   let State(cache:, ..) = state
-  let buffer =
-    gen(
-      infer.pure() |> infer.with_effects(interface.types(harness.effects())),
-      cache.types(state.cache),
-    )
+  let buffer = check_buffer(buffer, state.cache)
   let state = set_example(state, id, buffer)
   let cache = cache.prepare(cache, buffer.source(buffer))
   let #(cache, effects) = flush_cache(cache, state.origin)
@@ -154,7 +149,10 @@ pub fn init_collection(
   let missing_references =
     list.flat_map(examples, fn(example) {
       let #(_key, buffer) = example
-      infer.missing_references(buffer.analysis)
+      case buffer.analysis {
+        None -> []
+        Some(analysis) -> infer.missing_references(analysis)
+      }
     })
   let missing_cids =
     list.filter_map(missing_references, fn(ref) {
@@ -172,11 +170,15 @@ pub fn init_collection(
 fn buffer(editable: e.Expression, cache: cache.Cache(Meta)) -> buffer.Buffer {
   let projection = navigation.first(editable)
   // keep evaluation on example, if it runs don't print type errors. but show them in the code
-  buffer.from_projection(
-    projection,
+  buffer.from_projection(projection) |> check_buffer(cache)
+}
+
+pub fn check_buffer(buffer, cache) {
+  buffer.check(
+    buffer,
     infer.pure() |> infer.with_effects(interface.types(harness.effects())),
-    cache.types(cache),
   )
+  |> cache.infer_sync(cache)
 }
 
 pub fn update(state: State, message) {
@@ -199,10 +201,7 @@ pub fn update(state: State, message) {
               let state = State(..state, mode:)
               #(state, [])
             }
-            input.Confirmed(value) ->
-              continue(state, id, fn(context, refs) {
-                rebuild(value, context, refs)
-              })
+            input.Confirmed(value) -> continue(state, id, rebuild(value))
             input.Cancelled -> {
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
@@ -215,10 +214,7 @@ pub fn update(state: State, message) {
               let state = State(..state, mode:)
               #(state, [])
             }
-            input.Confirmed(value) ->
-              continue(state, id, fn(context, refs) {
-                rebuild(value, context, refs)
-              })
+            input.Confirmed(value) -> continue(state, id, rebuild(value))
             input.Cancelled -> {
               let state = State(..state, mode: Navigating(id:, failure: None))
               #(state, [])
@@ -236,10 +232,7 @@ pub fn update(state: State, message) {
               let mode = Manipulating(id, m.PickSingle(picker, rebuild))
               #(State(..state, mode:), [])
             }
-            picker.Decided(label) ->
-              continue(state, id, fn(context, refs) {
-                rebuild(label, context, refs)
-              })
+            picker.Decided(label) -> continue(state, id, rebuild(label))
             picker.Dismissed -> #(
               State(..state, mode: Navigating(id:, failure: None)),
               [],
@@ -253,10 +246,7 @@ pub fn update(state: State, message) {
             }
             picker.Decided(text) -> {
               case v1.from_string(text) {
-                Ok(#(cid, _)) ->
-                  continue(state, id, fn(context, refs) {
-                    rebuild(cid, context, refs)
-                  })
+                Ok(#(cid, _)) -> continue(state, id, rebuild(cid))
                 Error(_) -> {
                   echo "need error message for bad cid"
                   #(state, [])
@@ -278,9 +268,11 @@ pub fn update(state: State, message) {
             picker.Decided(text) -> {
               case cache.package(state.cache, text) {
                 Ok(cache.Entry(version:, module:, ..)) ->
-                  continue(state, id, fn(context, refs) {
-                    rebuild(ir.Release(text, version, module), context, refs)
-                  })
+                  continue(
+                    state,
+                    id,
+                    rebuild(ir.Release(text, version, module)),
+                  )
                 Error(_) -> {
                   echo "need error message for bad cid"
                   #(state, [])
@@ -303,9 +295,7 @@ pub fn update(state: State, message) {
             Ok(text) ->
               case json.parse(text, dag_json.decoder(Nil)) {
                 Ok(expression) ->
-                  continue(state, id, fn(context, refs) {
-                    rebuild(e.from_annotated(expression), context, refs)
-                  })
+                  continue(state, id, rebuild(e.from_annotated(expression)))
                 Error(_) -> action_failed(state, id, "paste")
               }
             Error(_) -> action_failed(state, id, "paste")
@@ -392,31 +382,8 @@ pub fn reanalyse_examples(
   _done: List(#(v1.Cid, Result(a, b))),
   cache: cache.Cache(Meta),
 ) -> Dict(String, buffer.Buffer) {
-  // reanalyse everything
-  // filtering for just cid's doesn't catch the missing releases that should be reevaluated
-  // let ok =
-  //   list.filter_map(done, fn(result) {
-  //     let #(cid, result) = result
-  //     case result {
-  //       Ok(_value) -> Ok(cid)
-  //       Error(_) -> Error(Nil)
-  //     }
-  //   })
-
-  dict.map_values(examples, fn(_k, buffer) {
-    let update = !list.is_empty(infer.all_errors(buffer.analysis))
-    // list.any(ok, list.contains(infer.missing_references(buffer.analysis), _))
-    case update {
-      True ->
-        buffer.reanalyse(
-          buffer,
-          infer.pure()
-            |> infer.with_effects(interface.types(harness.effects())),
-          cache.types(cache),
-        )
-      False -> buffer
-    }
-  })
+  // Named releases can change even when the previous analysis had no errors.
+  dict.map_values(examples, fn(_k, buffer) { check_buffer(buffer, cache) })
 }
 
 fn user_pressed_key(state, key) {

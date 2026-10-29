@@ -3,11 +3,10 @@
 //// Async IO and key bindings remain with the frontend.
 //// State management also remains with the top level application.
 //// 
-//// Optional improvements
+//// Edits return buffers with invalidated analysis. The caller drives
+//// `buffer.check` after applying an edit, using its current scope and cache.
 //// 
-//// - Instead of returning a `Rebuild` function a new buffer with no analysis could be returned
-////   This would not require re analysis on every keypress.
-////   However if fast enough analysis on every keypress is fine.
+//// Optional improvements
 //// - This module/package could depend on the sans-io implementation of a cache
 ////   That approach could allow better shared search functionality when the amount of packages grows.
 
@@ -19,6 +18,7 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/listx
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import morph/buffer.{type Buffer}
@@ -37,7 +37,7 @@ pub type Operation {
 /// has been initiated. `Resolved` means no further input is needed;
 /// the other variants carry the choices the user must pick from.
 pub type Continue {
-  Resolved(fn(infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer)
+  Resolved(buffer.Buffer)
   UserInput(UserInput)
 }
 
@@ -50,7 +50,7 @@ pub type UserInput {
 }
 
 pub type Rebuild(t) =
-  fn(t, infer.Context, dict.Dict(v1.Cid, binding.Poly)) -> buffer.Buffer
+  fn(t) -> buffer.Buffer
 
 // CORE
 
@@ -131,7 +131,7 @@ pub fn call_function() {
 fn do_call_function(buffer) {
   use rebuild <- result.map(buffer.call_many(buffer))
   let arity = buffer.target_arity(buffer) |> result.unwrap(1)
-  Resolved(fn(context, refs) { rebuild(arity, context, refs) })
+  Resolved(rebuild(arity))
 }
 
 pub fn call_with() {
@@ -161,11 +161,10 @@ fn do_create_record(buffer) {
   let hints = buffer.fields(buffer)
   case hints {
     [] -> {
-      let rebuild = fn(label, context, refs) { rebuild([label], context, refs) }
+      let rebuild = fn(label) { rebuild([label]) }
       UserInput(PickSingle(picker.new("", []), rebuild))
     }
-    _ ->
-      Resolved(fn(context, refs) { rebuild(listx.keys(hints), context, refs) })
+    _ -> Resolved(rebuild(listx.keys(hints)))
   }
 }
 
@@ -213,11 +212,10 @@ fn do_insert_case(buffer) {
   let hints = listx.value_map(buffer.variants(buffer), debug.mono)
   case hints {
     [] -> {
-      let rebuild = fn(label, context, refs) { rebuild([label], context, refs) }
+      let rebuild = fn(label) { rebuild([label]) }
       UserInput(PickSingle(picker.new("", []), rebuild))
     }
-    _ ->
-      Resolved(fn(context, refs) { rebuild(listx.keys(hints), context, refs) })
+    _ -> Resolved(rebuild(listx.keys(hints)))
   }
 }
 
@@ -341,16 +339,20 @@ fn do_choose_module(buffer, modules: dict.Dict(_, buffer.Buffer)) {
       #(name, ir.Relative("/" <> name <> ".eyg.json"))
     })
     |> dict.from_list
-  let rebuild = fn(name, context, refs) {
+  let rebuild = fn(name) {
     case dict.get(choices, name) {
-      Ok(reference) -> insert(reference, context, refs)
+      Ok(reference) -> insert(reference)
       Error(Nil) -> buffer
     }
   }
   let hints =
     list.map(dict.to_list(modules), fn(module) {
       let #(#(name, _ext), buffer) = module
-      #(name, poly(infer.poly_type(buffer.analysis)))
+      let hint = case buffer.analysis {
+        None -> "unchecked"
+        Some(analysis) -> poly(infer.poly_type(analysis))
+      }
+      #(name, hint)
     })
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }

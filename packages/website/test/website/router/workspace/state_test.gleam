@@ -55,11 +55,9 @@ fn with_source(source) {
   let assert #(state, [_pull]) = state.init(config())
   State(
     ..state,
-    repl: buffer.from_source(
-      source,
-      repl_context(state),
-      cache.types(state.cache),
-    ),
+    repl: buffer.from_source(source)
+      |> buffer.check(repl_context(state))
+      |> cache.infer_sync(state.cache),
   )
 }
 

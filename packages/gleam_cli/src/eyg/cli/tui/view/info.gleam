@@ -56,6 +56,7 @@ pub fn status(state: state.State) -> List(span.Line) {
     | state.PickSingle(..)
     | state.PickRelease(..) ->
       case state.message {
+        None if state.buffer.analysis == None -> span.line_plain("unchecked")
         None -> {
           let #(loading, errors) =
             split(

@@ -7,7 +7,7 @@ import eyg/ir/tree as ir
 import gleam/crypto
 import gleam/dict
 import gleam/http/response
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import midas/continuation
 import morph/editable
 import morph/manipulation
@@ -20,7 +20,7 @@ import website/routes/documentation/state.{State}
 pub fn analyse_web_effect_test() {
   let source = ir.call(ir.perform("Alert"), [ir.string("hi")])
   let state = with_source(source)
-  let assert [] = infer.all_errors(default(state).analysis)
+  let assert [] = errors(state)
 }
 
 pub fn analyse_reference_test() {
@@ -29,7 +29,7 @@ pub fn analyse_reference_test() {
 
   let source = ir.get(ir.reference(cid), "count")
   let state = with_source(source)
-  let assert [#([1], reason)] = infer.all_errors(default(state).analysis)
+  let assert [#([1], reason)] = errors(state)
   assert error.MissingReference(ir.Content(cid)) == reason
   let assert #(_context, [_pull, effect]) =
     state.flush_cache(state.cache, origin.https("eyg.test"))
@@ -39,7 +39,7 @@ pub fn analyse_reference_test() {
   let assert system.Done(message) = resume(crypto.hash(crypto.Sha256, bytes))
   let #(state, _effects) = state.update(state, message)
 
-  let assert [] = infer.all_errors(default(state).analysis)
+  let assert [] = errors(state)
 }
 
 pub fn insert_reference_test() {
@@ -47,27 +47,28 @@ pub fn insert_reference_test() {
   let cid = cid_from_tree(lib)
 
   let state = with_source(ir.vacant())
-  let assert [#([], reason)] = infer.all_errors(default(state).analysis)
+  let assert [#([], reason)] = errors(state)
   assert error.Todo == reason
   let assert #(state, []) = state.update(state, state.UserPressedKey("#"))
   let assert state.Manipulating(input: manipulation.PickCid(..), ..) =
     state.mode
   let message = state.PickerMessage(picker.Decided(v1.to_string(cid)))
   let assert #(state, [_pull, effect]) = state.update(state, message)
-  let assert [#([], reason)] = infer.all_errors(default(state).analysis)
+  let assert [#([], reason)] = errors(state)
   assert error.MissingReference(ir.Content(cid)) == reason
   let assert system.Fetch(_request, resume:) = effect
   let assert system.Hash(_algorithm, bytes, resume:) =
     resume(Ok(module_response(lib)))
   let assert system.Done(message) = resume(crypto.hash(crypto.Sha256, bytes))
   let assert #(state, []) = state.update(state, message)
-  let assert [] = infer.all_errors(default(state).analysis)
+  let assert [] = errors(state)
 }
 
-fn default(state) {
+fn errors(state) {
   let State(examples:, ..) = state
   let assert Ok(buffer) = dict.get(examples, "default")
-  buffer
+  let assert Some(analysis) = buffer.analysis
+  infer.all_errors(analysis)
 }
 
 fn with_source(source) {

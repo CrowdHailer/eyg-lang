@@ -29,7 +29,10 @@ pub fn init(config) {
   let config.Config(origin:) = config
 
   let cache = cache.ready()
-  let buffer = buffer.from_source(ir.vacant(), infer.pure(), cache.types(cache))
+  let buffer =
+    buffer.from_source(ir.vacant())
+    |> buffer.check(infer.pure())
+    |> cache.infer_sync(cache)
   let state =
     State(
       previous: [],
