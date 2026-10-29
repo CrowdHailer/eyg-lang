@@ -82,14 +82,16 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   case state.mode {
     state.Navigating | state.Running(..) -> buf
     state.PickSingle(box, _) | state.PickRelease(box, _) -> {
+      let title = case state.mode {
+        state.PickRelease(..) -> "Choose a package"
+        _ -> "Choose a value"
+      }
       let border =
         block.block_new()
         |> block.with_border(block.Rounded)
-        |> block.with_title(
-          "↑↓ pick · Tab fill · Enter apply · Esc cancel",
-          block.Top,
-        )
-      let area = geometry.centered_rect(50, 12, code_area)
+        |> block.with_title(title, block.Top)
+        |> block.with_padding(0, 0, 1, 1)
+      let area = dialog_area(code_area, 12)
       buf
       |> clear.render(area)
       |> block.render(area, border)
@@ -97,8 +99,18 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     }
     state.FreeInput(editing, kind) -> {
       let widget = state.input_widget(kind)
-      let title = case input.validate(widget, editing.value) {
-        Ok(_) -> span.span_plain("Enter: apply | Esc: cancel")
+      let title = case kind {
+        state.EnterText(_) -> "Text"
+        state.EnterInteger(_) -> "Integer"
+        state.PickCid(_) -> "Content reference"
+        state.ReplyStandardIn(..) -> "Standard input"
+      }
+      let message = case input.validate(widget, editing.value) {
+        Ok(_) ->
+          span.span_styled(
+            "Enter apply · Esc cancel",
+            style.default_style() |> style.add_modifier(style.dim()),
+          )
         Error(message) ->
           span.span_styled(
             message,
@@ -108,16 +120,35 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       let border =
         block.block_new()
         |> block.with_border(block.Rounded)
-        |> block.with_title_styled([title], block.Top)
-      let area = geometry.centered_rect(50, 3, code_area)
+        |> block.with_title(title, block.Top)
+        |> block.with_padding(0, 0, 1, 1)
+      let area = dialog_area(code_area, 5)
       let inner = block.inner(area, border)
       let buf = buf |> clear.render(area) |> block.render(area, border)
       case inner.size.width > 0 && inner.size.height > 0 {
-        True -> input.render(buf, inner, widget, editing)
+        True -> {
+          let assert [field, _, feedback] =
+            geometry.split_v(inner, [
+              geometry.Length(1),
+              geometry.Fill,
+              geometry.Length(1),
+            ])
+          buf
+          |> input.render(field, widget, editing)
+          |> paragraph.render_styled(feedback, [span.line_new([message])])
+        }
         False -> buf
       }
     }
   }
+}
+
+fn dialog_area(area: geometry.Rect, height: Int) -> geometry.Rect {
+  let margin = case area.size.width >= 40 {
+    True -> 4
+    False -> 0
+  }
+  geometry.centered_rect(int.min(72, area.size.width - margin), height, area)
 }
 
 fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
