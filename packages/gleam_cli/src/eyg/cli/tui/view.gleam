@@ -13,6 +13,7 @@ import eyg/interpreter/simple_debug
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/set
 import gleam/string
 import morph/buffer as morph_buffer
 import morph/lustre/frame
@@ -50,15 +51,24 @@ pub fn render(state: state.State, screen: geometry.Rect) {
         span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
       })
   }
-  let selected = case state.mode {
-    state.History(selected:) -> Some(selected)
-    _ -> None
+  let #(selected, open_code, open_effects) = case state.mode {
+    state.History(selected:, code:, effects:) -> #(
+      Some(selected),
+      code,
+      effects,
+    )
+    _ -> #(None, set.new(), set.new())
   }
   let groups =
     state.history
     |> list.index_map(fn(entry, i) {
       let lines =
-        history_lines(entry, code_area.size.width)
+        history_lines(
+          entry,
+          code_area.size.width,
+          set.contains(open_code, i),
+          set.contains(open_effects, i),
+        )
         |> list.index_map(fn(line, index) {
           let prefix = case index {
             0 -> "· "
@@ -216,14 +226,30 @@ fn dialog_area(area: geometry.Rect, height: Int) -> geometry.Rect {
   geometry.centered_rect(int.min(72, area.size.width - margin), height, area)
 }
 
-fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
-  let lines =
+/// Show the first code line and an effect count until expanded.
+fn history_lines(
+  entry: history.Entry(a),
+  width: Int,
+  open_code: Bool,
+  open_effects: Bool,
+) -> List(span.Line) {
+  let source =
     entry.buffer.projection
     |> projection.rebuild
     |> render.statements([])
     |> list.flat_map(code(_, False))
-    |> list.append(
-      entry.effects
+  let source = case source, open_code {
+    [first, _, ..], False -> [
+      first,
+      dim("▸ " <> count(list.length(source) - 1, "more line")),
+    ]
+    _, _ -> source
+  }
+  let effects = case entry.effects, open_effects {
+    [], _ -> []
+    effects, False -> [dim("▸ " <> count(list.length(effects), "effect"))]
+    effects, True ->
+      effects
       |> list.reverse
       |> list.map(fn(effect) {
         let #(label, #(lift, reply)) = effect
@@ -239,8 +265,9 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
             style.default_style() |> style.with_fg(style.Indexed(7)),
           ),
         ])
-      }),
-    )
+      })
+  }
+  let lines = list.append(source, effects)
   case entry.outcome {
     history.Success(None) -> lines
     history.Success(Some(value)) -> {
@@ -276,6 +303,13 @@ fn history_lines(entry: history.Entry(a), width: Int) -> List(span.Line) {
           ),
         ]),
       ])
+  }
+}
+
+fn count(n: Int, noun: String) -> String {
+  case n {
+    1 -> "1 " <> noun
+    n -> int.to_string(n) <> " " <> noun <> "s"
   }
 }
 

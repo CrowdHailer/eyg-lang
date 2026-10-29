@@ -144,14 +144,14 @@ pub fn status(state: state.State) -> List(span.Line) {
           ])
       }
       |> list.wrap
-    state.History(selected:) -> [
+    state.History(selected:, ..) -> [
       span.line_new([
         span.span_styled(
           "history "
             <> int.to_string(selected + 1)
             <> "/"
             <> int.to_string(list.length(state.history))
-            <> " · ↑↓ select · Enter recall · Esc edit",
+            <> " · ↑↓ select · Enter recall · k code · K effects · Esc edit",
           style.default_style() |> style.with_fg(style.Indexed(6)),
         ),
       ]),

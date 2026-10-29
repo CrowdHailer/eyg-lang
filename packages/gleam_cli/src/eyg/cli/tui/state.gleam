@@ -63,8 +63,8 @@ pub type Mode {
     listed: String,
     entries: List(files.Entry),
   )
-  // Browsing history, newest first.
-  History(selected: Int)
+  // Browsing history, newest first. Expanded entries collapse on leaving.
+  History(selected: Int, code: set.Set(Int), effects: set.Set(Int))
   Running(
     active: Active,
     env: istate.Env(source.Location),
@@ -268,8 +268,8 @@ fn transition(state: State, event: Event) {
       #(State(..state, mode: PickImport(box, rebuild, listed, entries)), [])
     }
     Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
-    History(selected:), Input(backend.KeyPress(key:)) -> #(
-      history_key_press(state, selected, key),
+    History(selected:, code:, effects:), Input(backend.KeyPress(key:)) -> #(
+      history_key_press(state, selected, code, effects, key),
       [],
     )
     History(..), Input(_) -> #(state, [])
@@ -395,7 +395,7 @@ fn command_key_press(
     "left" -> navigate(state, "move left", buffer.previous)
     "up" ->
       case state.history != [] && empty_draft(state) {
-        True -> #(State(..state, mode: History(0)), [])
+        True -> #(State(..state, mode: History(0, set.new(), set.new())), [])
         False -> navigate(state, "move up", buffer.up)
       }
     "down" -> navigate(state, "move down", buffer.down)
@@ -583,15 +583,23 @@ pub fn empty_draft(state: State) {
 }
 
 /// Up and down select entries; moving past the newest returns to editing.
-fn history_key_press(state: State, selected, key) {
+fn history_key_press(state: State, selected, code, effects, key) {
+  let toggle = fn(open) {
+    case set.contains(open, selected) {
+      True -> set.delete(open, selected)
+      False -> set.insert(open, selected)
+    }
+  }
   case key {
     "up" -> {
       let selected = int.min(selected + 1, list.length(state.history) - 1)
-      State(..state, mode: History(selected))
+      State(..state, mode: History(selected, code, effects))
     }
     "down" if selected == 0 -> State(..state, mode: Navigating)
-    "down" -> State(..state, mode: History(selected - 1))
+    "down" -> State(..state, mode: History(selected - 1, code, effects))
     "esc" -> State(..state, mode: Navigating)
+    "k" -> State(..state, mode: History(selected, toggle(code), effects))
+    "K" -> State(..state, mode: History(selected, code, toggle(effects)))
     "enter" ->
       case list.drop(state.history, selected) {
         [] -> State(..state, mode: Navigating)
