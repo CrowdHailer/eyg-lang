@@ -123,6 +123,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       let title = case kind {
         state.EnterText(_) -> "Text"
         state.EnterInteger(_) -> "Integer"
+        state.EnterImport(_) -> "Import a file"
         state.PickCid(_) -> "Content reference"
         state.ReplyStandardIn(..) -> "Standard input"
       }

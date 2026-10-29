@@ -77,6 +77,7 @@ pub type InputKind {
   // PickRelease(m.Rebuild(ir.Release))
   EnterText(m.Rebuild(String))
   EnterInteger(m.Rebuild(Int))
+  EnterImport(m.Rebuild(ir.Reference))
   ReplyStandardIn(
     // active: Active,
     env: istate.Env(source.Location),
@@ -99,6 +100,7 @@ pub type Message {
 pub fn input_widget(kind: InputKind) -> input.InputWidget {
   case kind {
     EnterText(_) -> input.input_new("Enter text")
+    EnterImport(_) -> input.input_new("Enter a file path")
     EnterInteger(_) ->
       input.input_new("Enter an integer")
       |> input.with_validator(fn(value) {
@@ -292,6 +294,7 @@ fn submit_input(
       State(..state, mode: Navigating, buffer: rebuild(value, context, refs)),
       [],
     )
+    EnterImport(rebuild) -> #(import_file(state, rebuild, value), [])
     EnterInteger(rebuild) ->
       case int.parse(value) {
         Ok(value) -> #(
@@ -336,7 +339,7 @@ fn command_key_press(
       }
     "down" -> navigate(state, "move down", buffer.down)
     // "Q" -> link_filesystem(state)
-    // "q" -> edit(state, m.choose_module(state.modules))
+    "q" -> import_input(state)
     "w" -> edit(state, m.call_with())
     "E" -> edit(state, m.assign_before())
     "e" -> edit(state, m.assign())
@@ -511,6 +514,30 @@ fn history_key_press(state: State, selected, key) {
     "down" -> State(..state, mode: History(selected - 1))
     "esc" -> State(..state, mode: Navigating)
     _ -> state
+  }
+}
+
+/// Insert a path relative to the working directory.
+fn import_input(state: State) {
+  case buffer.insert_explicit_reference(state.buffer) {
+    Error(_) -> #(fail(state, "Select an expression to import into"), [])
+    Ok(rebuild) -> {
+      let mode = FreeInput(input.state_new(), EnterImport(rebuild))
+      #(State(..state, mode:), [])
+    }
+  }
+}
+
+fn import_file(state: State, rebuild, path) {
+  let path = string.trim(path)
+  case path == "" || string.ends_with(path, "/") {
+    True -> fail(state, "Choose a file to import")
+    False -> {
+      let context = repl_context(state.scope)
+      let refs = cache.types(state.execute_state.cache)
+      let buffer = rebuild(ir.Relative(path), context, refs)
+      State(..state, mode: Navigating, buffer:)
+    }
   }
 }
 
