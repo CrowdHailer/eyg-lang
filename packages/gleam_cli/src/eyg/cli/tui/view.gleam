@@ -38,10 +38,27 @@ pub fn render(state: state.State, screen: geometry.Rect) {
   let input_lines =
     render.projection(state.buffer.projection, render.Statements, errors)
     |> code(active)
+    |> list.index_map(fn(line, index) {
+      let prefix = case index {
+        0 -> "> "
+        _ -> "  "
+      }
+      span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
+    })
   let lines =
     state.history
     |> list.reverse
-    |> list.flat_map(history_lines(_, code_area.size.width))
+    |> list.flat_map(fn(entry) {
+      history_lines(entry, code_area.size.width)
+      |> list.index_map(fn(line, index) {
+        let prefix = case index {
+          0 -> "· "
+          _ -> "  "
+        }
+        span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
+      })
+    })
+    |> list.append([span.line_plain("")])
     |> list.append(input_lines)
   let line_count = list.length(lines)
   let visible_height = int.min(line_count, code_area.size.height)
