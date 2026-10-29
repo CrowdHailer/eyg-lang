@@ -592,6 +592,16 @@ fn history_key_press(state: State, selected, key) {
     "down" if selected == 0 -> State(..state, mode: Navigating)
     "down" -> State(..state, mode: History(selected - 1))
     "esc" -> State(..state, mode: Navigating)
+    "enter" ->
+      case list.drop(state.history, selected) {
+        [] -> State(..state, mode: Navigating)
+        [entry, ..] ->
+          State(
+            ..state,
+            mode: Navigating,
+            buffer: buffer.invalidate(entry.buffer),
+          )
+      }
     _ -> state
   }
 }

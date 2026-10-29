@@ -151,7 +151,7 @@ pub fn status(state: state.State) -> List(span.Line) {
             <> int.to_string(selected + 1)
             <> "/"
             <> int.to_string(list.length(state.history))
-            <> " · ↑↓ select · Esc edit",
+            <> " · ↑↓ select · Enter recall · Esc edit",
           style.default_style() |> style.with_fg(style.Indexed(6)),
         ),
       ]),
