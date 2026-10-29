@@ -51,6 +51,8 @@ pub type Mode {
   FreeInput(input: input.InputState, kind: InputKind)
   PickSingle(box: combobox.Combobox, rebuild: m.Rebuild(String))
   PickRelease(box: combobox.Combobox, rebuild: m.Rebuild(ir.Release))
+  // Browsing history, newest first.
+  History(selected: Int)
   Running(
     active: Active,
     env: istate.Env(source.Location),
@@ -192,6 +194,11 @@ fn transition(state: State, event: Event) {
       if id == task_id
     -> after_perform(system.Done(value), label, lift, env, k, state, occured)
     Navigating, Input(backend.KeyPress(key:)) -> command_key_press(state, key)
+    History(selected:), Input(backend.KeyPress(key:)) -> #(
+      history_key_press(state, selected, key),
+      [],
+    )
+    History(..), Input(_) -> #(state, [])
     PickSingle(box, rebuild), Input(event) ->
       case combobox.update(event, box) {
         combobox.Cancelled -> #(State(..state, mode: Navigating), [])
@@ -322,7 +329,11 @@ fn command_key_press(
     "esc" -> #(state, [])
     "right" -> navigate(state, "move right", buffer.next)
     "left" -> navigate(state, "move left", buffer.previous)
-    "up" -> navigate(state, "move up", buffer.up)
+    "up" ->
+      case state.history != [] && empty_draft(state) {
+        True -> #(State(..state, mode: History(0)), [])
+        False -> navigate(state, "move up", buffer.up)
+      }
     "down" -> navigate(state, "move down", buffer.down)
     // "Q" -> link_filesystem(state)
     // "q" -> edit(state, m.choose_module(state.modules))
@@ -481,6 +492,25 @@ fn loop(
     Error(debug) ->
       history.Exception(debug)
       |> finish_run(state.scope, occured, state)
+  }
+}
+
+/// Nothing has been written in the draft yet.
+fn empty_draft(state: State) {
+  projection.rebuild(state.buffer.projection) == e.Vacant
+}
+
+/// Up and down select entries; moving past the newest returns to editing.
+fn history_key_press(state: State, selected, key) {
+  case key {
+    "up" -> {
+      let selected = int.min(selected + 1, list.length(state.history) - 1)
+      State(..state, mode: History(selected))
+    }
+    "down" if selected == 0 -> State(..state, mode: Navigating)
+    "down" -> State(..state, mode: History(selected - 1))
+    "esc" -> State(..state, mode: Navigating)
+    _ -> state
   }
 }
 

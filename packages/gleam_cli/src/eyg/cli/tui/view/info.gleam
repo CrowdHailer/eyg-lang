@@ -131,6 +131,18 @@ pub fn status(state: state.State) -> List(span.Line) {
           ])
       }
       |> list.wrap
+    state.History(selected:) -> [
+      span.line_new([
+        span.span_styled(
+          "history "
+            <> int.to_string(selected + 1)
+            <> "/"
+            <> int.to_string(list.length(state.history))
+            <> " · ↑↓ select · Esc edit",
+          style.default_style() |> style.with_fg(style.Indexed(6)),
+        ),
+      ]),
+    ]
     state.Running(active:, env: _, k: _, occured:) -> {
       let display = case active {
         state.Handling(task_id: _, label:, lift:) ->

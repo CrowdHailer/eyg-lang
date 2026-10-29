@@ -29,7 +29,8 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     ])
   let active = case state.mode {
     state.Navigating -> True
-    state.FreeInput(..)
+    state.History(..)
+    | state.FreeInput(..)
     | state.PickSingle(..)
     | state.PickRelease(..)
     | state.Running(..) -> False
@@ -45,19 +46,30 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       }
       span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
     })
-  let lines =
+  let selected = case state.mode {
+    state.History(selected:) -> Some(selected)
+    _ -> None
+  }
+  let groups =
     state.history
-    |> list.reverse
-    |> list.flat_map(fn(entry) {
-      history_lines(entry, code_area.size.width)
-      |> list.index_map(fn(line, index) {
-        let prefix = case index {
-          0 -> "· "
-          _ -> "  "
-        }
-        span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
-      })
+    |> list.index_map(fn(entry, i) {
+      let lines =
+        history_lines(entry, code_area.size.width)
+        |> list.index_map(fn(line, index) {
+          let prefix = case index {
+            0 -> "· "
+            _ -> "  "
+          }
+          span.Line(..line, spans: [span.span_plain(prefix), ..line.spans])
+        })
+      case selected == Some(i) {
+        True -> [span.line_plain("◆ selected history"), ..lines]
+        False -> lines
+      }
     })
+    |> list.reverse
+  let lines =
+    list.flatten(groups)
     |> list.append([span.line_plain("")])
     |> list.append(input_lines)
   let line_count = list.length(lines)
@@ -69,8 +81,17 @@ pub fn render(state: state.State, screen: geometry.Rect) {
       code_area.size.width,
       visible_height,
     )
-  // Like a shell, keep the end of the program visible as it grows upward.
-  let lines = list.drop(lines, int.max(0, line_count - visible_height))
+  // Like a shell, keep the end of the program visible as it grows upward,
+  // or while browsing, the end of the selected entry.
+  let end = case selected {
+    Some(selected) ->
+      list.take(groups, list.length(groups) - selected)
+      |> list.map(list.length)
+      |> int.sum
+      |> int.max(visible_height)
+    None -> line_count
+  }
+  let lines = list.take(lines, end) |> list.drop(end - visible_height)
 
   let buf =
     buffer.buffer_new(screen)
@@ -80,7 +101,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     |> paragraph.render_styled(status_line, status_lines)
 
   case state.mode {
-    state.Navigating | state.Running(..) -> buf
+    state.Navigating | state.History(..) | state.Running(..) -> buf
     state.PickSingle(box, _) | state.PickRelease(box, _) -> {
       let title = case state.mode {
         state.PickRelease(..) -> "Choose a package"
