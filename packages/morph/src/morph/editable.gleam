@@ -343,7 +343,8 @@ pub fn to_annotated(source, rev) {
       let tail =
         tail
         |> option.map(to_annotated(_, [len, ..rev]))
-        |> option.unwrap(#(ir.Tail, [len, ..rev]))
+        // If no tail then the empty list is at the current path position
+        |> option.unwrap(#(ir.Tail, rev))
       let assert #(0, exp) =
         list.fold_right(items, #(len, tail), fn(acc, item) {
           let #(i, acc) = acc

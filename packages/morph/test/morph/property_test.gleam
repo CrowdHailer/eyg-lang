@@ -1,3 +1,4 @@
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/parser
 import gleam/io
 import gleam/list
@@ -61,6 +62,20 @@ fn do_walk_leaves(current, seen) {
   }
 }
 
+fn check(editable) {
+  let source = editable.to_annotated(editable, [])
+  infer.pure()
+  |> infer.check(source)
+  |> check_loop
+}
+
+fn check_loop(step) {
+  case step {
+    infer.Done(analysis) -> analysis
+    infer.Lookup(reference: _, resume:) -> check_loop(resume(Error(Nil)))
+  }
+}
+
 pub fn left_right_returns_to_starting_projection_test() {
   use program <- predefined
   use leaf <- list.each(walk_leaves(program))
@@ -71,6 +86,29 @@ pub fn following_path_gets_same_projection_test() {
   use program <- predefined
   use leaf <- list.each(walk_leaves(program))
   assert leaf == projection.focus_at(program, projection.path(leaf))
+}
+
+pub fn every_expression_has_a_type_test() {
+  use program <- predefined
+  let analysis = check(program)
+  use leaf <- list.each(walk_leaves(program))
+  let #(focus, _zoom) = leaf
+  case focus {
+    projection.Exp(exp) -> {
+      case infer.info_at(analysis, list.reverse(projection.path(leaf))) {
+        Ok(_) -> Nil
+        Error(Nil) -> {
+          echo exp
+          panic as "should have a type"
+        }
+      }
+    }
+    projection.Assign(..) -> Nil
+    projection.FnParam(..) -> Nil
+    projection.Label(..) -> Nil
+    projection.Select(..) -> Nil
+    projection.Match(..) -> Nil
+  }
 }
 
 pub fn insert_before_then_deleting_results_in_no_change_test() {
