@@ -26,11 +26,11 @@ fn focus_type(state: state.State) {
         Error(_) -> Ok(isomorphic.Var(-1))
       }
     }
-    projection.Assign(..) -> Ok(isomorphic.Var(-1))
-    projection.FnParam(..) -> Ok(isomorphic.Var(-1))
-    projection.Label(..) -> Ok(isomorphic.Var(-1))
-    projection.Select(..) -> Ok(isomorphic.Var(-1))
-    projection.Match(..) -> Ok(isomorphic.Var(-1))
+    _ ->
+      case buffer.selection_type(state.buffer) {
+        Ok(type_) -> Ok(type_)
+        Error(_) -> Ok(isomorphic.Var(-1))
+      }
   }
 }
 

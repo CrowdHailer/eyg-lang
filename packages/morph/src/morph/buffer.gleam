@@ -115,6 +115,62 @@ pub fn target_type(buffer) {
   info.type_
 }
 
+/// Return the type under the selection
+/// This approach is a bit heavy and doesn't handle match/select
+pub fn selection_type(buffer: Buffer) -> Result(iso.Type(Int), Nil) {
+  case buffer.projection {
+    #(p.Exp(_), _) -> target_type(buffer)
+    #(p.Assign(pattern, value, pre, post, tail), zoom) -> {
+      let definition = #(p.Exp(value), [
+        p.BlockValue(p.assigned_pattern(pattern), pre, post, tail),
+        ..zoom
+      ])
+      use type_ <- result.try(target_type(
+        Buffer(..buffer, projection: definition),
+      ))
+      pattern_type(pattern, type_)
+    }
+    #(p.FnParam(pattern, pre, post, body), zoom) -> {
+      let params =
+        list.append(list.reverse(pre), [p.assigned_pattern(pattern), ..post])
+      let function = #(p.Exp(e.Function(params, body)), zoom)
+      use type_ <- result.try(target_type(
+        Buffer(..buffer, projection: function),
+      ))
+      use argument <- result.try(argument_type(type_, list.length(pre)))
+      pattern_type(pattern, argument)
+    }
+    _ -> Error(Nil)
+  }
+}
+
+fn pattern_type(pattern: p.AssignFocus, type_: iso.Type(Int)) {
+  case pattern {
+    p.AssignStatement(_) | p.AssignPattern(_) -> Ok(type_)
+    p.AssignField(label, _, _, _) | p.AssignBind(label, _, _, _) ->
+      case type_ {
+        iso.Record(rows) -> row_type(rows, label)
+        _ -> Error(Nil)
+      }
+  }
+}
+
+fn argument_type(type_: iso.Type(Int), index: Int) {
+  case type_ {
+    iso.Fun(argument, _, _) if index == 0 -> Ok(argument)
+    iso.Fun(_, _, returned) if index > 0 -> argument_type(returned, index - 1)
+    _ -> Error(Nil)
+  }
+}
+
+fn row_type(rows: iso.Type(Int), label: String) {
+  case rows {
+    iso.RowExtend(field, value, _) if field == label -> Ok(value)
+    iso.RowExtend(_, _, rest) -> row_type(rest, label)
+    _ -> Error(Nil)
+  }
+}
+
 /// Diagnostics available so far. An unchecked buffer has no diagnostics;
 /// callers must inspect `analysis` before treating the code as checked.
 pub fn errors(buffer: Buffer) {
