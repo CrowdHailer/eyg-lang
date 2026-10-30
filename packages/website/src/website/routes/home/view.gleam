@@ -170,6 +170,48 @@ pub fn view() {
           ]),
         ]),
       ]),
+      feature(
+        "A powerful shell",
+        [
+          "Bring static typing and structural editing to the shell.",
+          "Use the information from a sound type system in the shell.
+          Every edit is check with helpful diagnostics so you need to remember less.",
+          "The structural editor means you can never make a syntax error.
+          Additionally every published package is one expression away from you.",
+        ],
+        action(
+          "Stay up to date join the mailing list.",
+          "#" <> components.signup,
+          Useful,
+        ),
+        [
+          h.div(
+            [a.attribute("style", "padding:56.25% 0 0 0;position:relative;")],
+            [
+              h.iframe([
+                a.src(
+                  "https://player.vimeo.com/video/1241343282?badge=0&autopause=0&player_id=0&app_id=58479",
+                ),
+                a.attribute("frameborder", "0"),
+                a.attribute(
+                  "allow",
+                  "autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share",
+                ),
+                a.attribute("referrerpolicy", "strict-origin-when-cross-origin"),
+                a.attribute(
+                  "style",
+                  "position:absolute;top:0;left:0;width:100%;height:100%;",
+                ),
+                a.attribute(
+                  "title",
+                  "30/10/2026, Statically typed structurally edited shell",
+                ),
+              ]),
+            ],
+          ),
+        ],
+        False,
+      ),
       h.div([a.class("home-merits grid max-w-2xl gap-6 mx-auto")], [
         h.div(
           [
@@ -337,20 +379,6 @@ pub fn view() {
       //   [hot_example(s, examples.hot_reload_key)],
       //   True,
       // ),
-      feature(
-        "Iterate fast with a shell",
-        [
-          "EYG already has a prototyped strongly typed shell environment.",
-          "We need to get it ready and bring it to you.",
-        ],
-        action(
-          "Stay up to date join the mailing list.",
-          "#" <> components.signup,
-          Useful,
-        ),
-        [],
-        False,
-      ),
       feature(
         "An ecosystem of runtimes",
         [
