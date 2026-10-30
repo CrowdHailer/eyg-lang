@@ -110,6 +110,17 @@ pub fn shows_required_types_in_vacant_position_test() {
   |> birdie.snap("shows_required_types_in_vacant_position_test")
 }
 
+pub fn variable_selection_uses_resolved_types_test() {
+  let #(state, _) =
+    state.init([], h.execute_state())
+    |> h.with_code("(x) -> { !int_add(x, todo) }")
+    |> state.update(state.Input(backend.KeyPress(" ")))
+  let #(state, _) = state.update(state, state.Input(backend.KeyPress("v")))
+  let buffer = view.render(state, screen())
+  buffer_coloured_text(buffer)
+  |> birdie.snap("variable_selection_uses_resolved_types_test")
+}
+
 fn screen() {
   geometry.rect_new(0, 0, 80, 10)
 }

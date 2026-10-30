@@ -1,0 +1,16 @@
+---
+version: 2.0.2
+title: variable_selection_uses_resolved_types_test
+file: ./test/eyg/cli/tui/view_test.gleam
+test_name: variable_selection_uses_resolved_types_test
+---
+    ╭Choose a value────────────────────────────────────────────────────────╮    
+    │ [2mx[0m                                                                    │    
+    │ [38;2;111;220;255m[48;2;40;48;80m› x[0m[38;2;210;169;255m[48;2;40;48;80m : Integer[0m                                                        │    
+    │                                                                      │    
+    │                                                                      │    
+    │                                                                      │    
+    │                                                                      │    
+    │                                                                      │    
+> ([33mx[0m╰──────────────────────────────────────────────────────────────────────╯    
+[31m!1 [0m· [33mneeds: Integer[0m                                                             

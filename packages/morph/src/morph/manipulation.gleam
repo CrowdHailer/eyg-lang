@@ -111,9 +111,18 @@ fn do_insert_variable(buffer) {
     |> result.unwrap([])
     |> listx.key_unique()
     |> listx.key_filter_fn(fn(var) {
-      string.starts_with(var, "_") || string.starts_with(var, "$")
+      !string.starts_with(var, "_") || !string.starts_with(var, "$")
     })
-  let hints = listx.value_map(scope, poly)
+
+  let hints = case buffer.analysis {
+    None -> []
+    Some(analysis) ->
+      listx.value_map(scope, fn(scheme) {
+        let #(type_, bindings) =
+          binding.instantiate(scheme, 0, analysis.bindings)
+        binding.resolve(type_, bindings) |> debug.mono
+      })
+  }
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }
 
