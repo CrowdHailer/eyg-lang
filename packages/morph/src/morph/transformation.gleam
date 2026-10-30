@@ -156,6 +156,12 @@ pub fn delete(zip) {
     -> Ok(#(p.Exp(original), zoom))
     p.Exp(e.Vacant), [p.RecordValue(_label, [], [], p.Record), ..zoom] ->
       Ok(#(p.Exp(e.Record([], None)), zoom))
+    p.Exp(e.Vacant),
+      [p.Body(args), p.CaseMatch(top, label, pre, post, otherwise), ..zoom]
+    -> {
+      let branch = e.Function(args, e.Vacant)
+      delete(#(p.Match(top, label, branch, pre, post, otherwise), zoom))
+    }
     p.Match(top, _, _, pre, [#(label, branch), ..post], otherwise), zoom ->
       Ok(#(p.Match(top, label, branch, pre, post, otherwise), zoom))
     p.Match(top, _, _, [#(label, branch), ..pre], [], otherwise), zoom ->

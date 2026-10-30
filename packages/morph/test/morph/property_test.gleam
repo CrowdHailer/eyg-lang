@@ -41,8 +41,16 @@ const record_select =
 let b = {}.foo
 {x: {y: 1}}.x.y"
 
+const ordinary_match = "match Ok(1) { Ok(x) -> { x } }"
+
 fn predefined(then) {
-  [lists, record_construction, record_override, record_select]
+  [
+    lists,
+    record_construction,
+    record_override,
+    record_select,
+    ordinary_match,
+  ]
   |> list.each(fn(code) {
     case parser.all_from_string(code) {
       Ok(source) -> then(editable.open_all(editable.from_annotated(source)))
