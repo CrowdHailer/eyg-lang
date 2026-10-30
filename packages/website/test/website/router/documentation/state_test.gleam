@@ -29,7 +29,7 @@ pub fn analyse_reference_test() {
 
   let source = ir.get(ir.reference(cid), "count")
   let state = with_source(source)
-  let assert [#([1], reason)] = errors(state)
+  let assert [#([0], reason)] = errors(state)
   assert error.MissingReference(ir.Content(cid)) == reason
   let assert #(_context, [_pull, effect]) =
     state.flush_cache(state.cache, origin.https("eyg.test"))

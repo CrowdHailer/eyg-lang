@@ -383,8 +383,8 @@ pub fn to_annotated(source, rev) {
     Select(from, label) -> {
       #(
         ir.Apply(
-          #(ir.Select(label), [0, ..rev]),
-          to_annotated(from, [1, ..rev]),
+          #(ir.Select(label), [1, ..rev]),
+          to_annotated(from, [0, ..rev]),
         ),
         rev,
       )

@@ -36,8 +36,13 @@ const record_override =
   "let a = {..todo}
 {x: 5, y, nested: {x, ..another}, ..original}"
 
+const record_select =
+  "let a = {x: [1]}.x
+let b = {}.foo
+{x: {y: 1}}.x.y"
+
 fn predefined(then) {
-  [lists, record_construction, record_override]
+  [lists, record_construction, record_override, record_select]
   |> list.each(fn(code) {
     case parser.all_from_string(code) {
       Ok(source) -> then(editable.open_all(editable.from_annotated(source)))
