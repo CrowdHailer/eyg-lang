@@ -184,7 +184,8 @@ pub fn do_focus_at(ast, path, acc) {
     }
     e.List(items, tail), [i, ..rest] -> {
       case i == list.length(items), tail {
-        True, Some(tail) -> do_focus_at(tail, rest, [ListTail(items), ..acc])
+        True, Some(tail) ->
+          do_focus_at(tail, rest, [ListTail(list.reverse(items)), ..acc])
         False, _ -> {
           let assert Ok(#(pre, value, post)) = listx.split_around(items, i)
           do_focus_at(value, rest, [ListItem(pre, post, tail), ..acc])
@@ -379,6 +380,7 @@ pub fn text(scope) {
 
 // does Field and Field split have the same kind
 
+/// OverwriteTail and ListTail store items reversed
 pub type Break {
   BlockValue(
     pattern: e.Pattern,
@@ -495,7 +497,7 @@ fn unbreak(exp, break) {
     Body(args) -> e.Function(args, exp)
     ListItem(pre, post, tail) ->
       e.List(listx.gather_around(pre, exp, post), tail)
-    ListTail(items) -> e.List(items, Some(exp))
+    ListTail(items) -> e.List(list.reverse(items), Some(exp))
     RecordValue(label, pre, post, Record) ->
       e.Record(listx.gather_around(pre, #(label, exp), post), None)
     RecordValue(label, pre, post, Overwrite(original)) ->

@@ -263,7 +263,7 @@ pub fn list_test() {
   let path = [2]
   p.focus_at(source, path)
   |> should_equal(
-    #(p.Exp(e.Variable("tail")), [p.ListTail([e.Integer(1), e.Integer(2)])]),
+    #(p.Exp(e.Variable("tail")), [p.ListTail([e.Integer(2), e.Integer(1)])]),
   )
   |> p.path
   |> should_equal(path)

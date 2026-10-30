@@ -489,7 +489,7 @@ fn render_break(break, inner, rev, kind, errors) {
     }
     t.ListTail(items) ->
       render_list(
-        list.index_map(items, fn(item, i) {
+        list.index_map(list.reverse(items), fn(item, i) {
           expression(item, [i, ..rev], errors)
         }),
         Some(inner),

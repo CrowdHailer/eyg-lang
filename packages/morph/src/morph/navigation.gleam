@@ -50,7 +50,7 @@ fn do_last(projection) {
         e.Binary(_) -> projection
         e.String(_) -> projection
         e.List(items, Some(tail)) ->
-          do_last(#(p.Exp(tail), [p.ListTail(items), ..zoom]))
+          do_last(#(p.Exp(tail), [p.ListTail(list.reverse(items)), ..zoom]))
         e.List(items, None) ->
           case list.reverse(items) {
             [item, ..pre] ->
@@ -188,15 +188,15 @@ pub fn zoom_next(exp, zoom) {
           do_first(#(p.Exp(next), zoom))
         }
         p.ListItem(pre, [], Some(tail)) -> {
-          let zoom = [p.ListTail(list.reverse([exp, ..pre])), ..rest]
+          let zoom = [p.ListTail([exp, ..pre]), ..rest]
           do_first(#(p.Exp(tail), zoom))
         }
         p.ListItem(pre, [], None) -> {
           let exp = e.List(list.reverse([exp, ..pre]), None)
           zoom_next(exp, rest)
         }
-        p.ListTail(items) -> {
-          let exp = e.List(items, Some(exp))
+        p.ListTail(pre) -> {
+          let exp = e.List(list.reverse(pre), Some(exp))
           zoom_next(exp, rest)
         }
         // TODO renambe labelled
@@ -281,8 +281,8 @@ pub fn zoom_previous(exp, zoom) {
           let assert [pattern, ..pre] = list.reverse(params)
           #(p.FnParam(pattern_last(pattern), pre, [], exp), rest)
         }
-        p.ListTail(items) ->
-          case list.reverse(items) {
+        p.ListTail(pre) ->
+          case pre {
             [item, ..pre] ->
               do_last(#(p.Exp(item), [p.ListItem(pre, [], Some(exp)), ..rest]))
             [] -> {
@@ -679,8 +679,8 @@ pub fn move_left(zip) {
       p.Exp(next),
       [p.ListItem(pre, [exp, ..post], tail), ..rest],
     )
-    #(p.Exp(exp), [p.ListTail(items), ..rest]) -> {
-      let assert [next, ..pre] = list.reverse(items)
+    #(p.Exp(exp), [p.ListTail(pre), ..rest]) -> {
+      let assert [next, ..pre] = pre
       #(p.Exp(next), [p.ListItem(pre, [], Some(exp)), ..rest])
     }
     #(p.Label(l, v, [next, ..pre], post, for), zoom) -> #(p.Exp(next.1), [

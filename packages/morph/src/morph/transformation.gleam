@@ -26,8 +26,8 @@ pub fn delete(zip) {
       Ok(#(p.Exp(tail), zoom))
     p.Exp(e.Vacant), [p.ListItem([], [], None), ..zoom] ->
       Ok(#(p.Exp(e.List([], None)), zoom))
-    p.Exp(e.Vacant), [p.ListTail(elements), ..zoom] ->
-      case list.reverse(elements) {
+    p.Exp(e.Vacant), [p.ListTail(pre), ..zoom] ->
+      case pre {
         [exp, ..pre] -> Ok(#(p.Exp(exp), [p.ListItem(pre, [], None), ..zoom]))
         [] -> Ok(#(p.Exp(e.List([], None)), zoom))
       }
@@ -371,8 +371,8 @@ pub fn make_extensible(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
     p.Exp(exp), [p.ListItem(pre, post, None), ..rest] -> {
-      let elements = listx.gather_around(pre, exp, post)
-      Ok(#(p.Exp(e.Vacant), [p.ListTail(elements), ..rest]))
+      let items = listx.gather_around(pre, exp, post)
+      Ok(#(p.Exp(e.Vacant), [p.ListTail(list.reverse(items)), ..rest]))
     }
     p.Match(top:, label:, branch:, pre:, post:, otherwise: None), zoom -> {
       let matches = listx.gather_around(pre, #(label, branch), post)

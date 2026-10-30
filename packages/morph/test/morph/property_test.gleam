@@ -1,8 +1,11 @@
 import eyg/parser
 import gleam/io
 import gleam/list
+import morph/action
 import morph/editable
 import morph/navigation
+import morph/projection
+import morph/transformation
 
 const lists =
   "let a = []
@@ -20,12 +23,12 @@ let end =
 
 const record_construction =
   "let a = {}
-let b = {foo: 1, bar: \"\", a}
-let nested = {x: {y: {}}, z: {foo: 1, bar: \"\", a}}
+let b = {foo: 1, bar: \"\", compact}
+let nested = {x: {y: {}}, z: {foo: 1, bar: \"\", compact}}
 let end = 
   let d = 5
   {}
-{foo: 1, bar: \"\", a}
+{foo: 1, bar: \"\", compact}
 "
 
 const record_override =
@@ -62,4 +65,26 @@ pub fn left_right_returns_to_starting_projection_test() {
   use program <- predefined
   use leaf <- list.each(walk_leaves(program))
   assert leaf == navigation.previous(navigation.next(leaf))
+}
+
+pub fn insert_before_then_deleting_results_in_no_change_test() {
+  use program <- predefined
+  use leaf <- list.each(walk_leaves(program))
+  case action.extend_before(leaf) {
+    Ok(action.Updated(inserted)) -> {
+      let assert Ok(restored) = transformation.delete(inserted)
+      // I'd like this property to hold on positions but currently deleting moves to an item before the tail
+      // also extend_before doesn't work on a overwrite and xtend doesn't work on a record
+      // assert leaf == restored
+      // delete and move right could be the same
+      assert projection.rebuild(restored) == program
+    }
+    Ok(action.Choose(rebuild:, ..)) -> {
+      let modified = rebuild("field")
+      // only delete once because even though field gets name focus is on the vacant value node
+      let assert Ok(restored) = transformation.delete(modified)
+      assert projection.rebuild(restored) == program
+    }
+    Error(Nil) -> Nil
+  }
 }
