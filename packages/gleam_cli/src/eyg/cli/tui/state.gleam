@@ -31,6 +31,7 @@ import morph/picker
 import morph/projection
 import morph/repl/history
 import multiformats/cid/v1
+import touch_grass/abort
 import touch_grass/harness/computer as harness
 import touch_grass/interface
 import touch_grass/standard_in
@@ -179,7 +180,14 @@ pub fn repl_context(
       source.Location(origin: source.Inline, source: source.Json),
     )
   infer.Context(..infer.pure(), env:, level: 0, bindings:)
-  |> infer.with_effects(interface.types(computer.effects()))
+  |> infer.with_effects(effect_types())
+}
+
+fn effect_types() {
+  [
+    #(abort.label, #(abort.lift(), abort.lower())),
+    ..interface.types(computer.effects())
+  ]
 }
 
 pub fn update(
@@ -421,13 +429,13 @@ fn command_key_press(
     // ])
     "i" -> edit(state, m.insert())
     "o" -> edit(state, m.overwrite())
-    "p" -> edit(state, m.perform(interface.types(computer.effects())))
+    "p" -> edit(state, m.perform(effect_types()))
     "a" -> navigate(state, "increase selection", buffer.increase)
     "s" -> edit(state, m.insert_string())
     "d" -> edit(state, m.delete())
     "f" -> edit(state, m.insert_function())
     "g" -> edit(state, m.select_field())
-    "h" -> edit(state, m.insert_handle(interface.types(computer.effects())))
+    "h" -> edit(state, m.insert_handle(effect_types()))
     "j" -> edit(state, m.insert_builtin())
     "k" -> navigate(state, "toggle", buffer.toggle_open)
     "L" -> edit(state, m.create_empty_list())
@@ -569,6 +577,15 @@ fn loop(
   case return {
     Ok(#(value, scope)) ->
       finish_run(history.Success(value), scope, occured, state)
+    Error(#(break.UnhandledEffect("Abort", lift), location, env, k)) ->
+      case abort.decode(lift) {
+        Ok(message) ->
+          history.Aborted(message)
+          |> finish_run(state.scope, occured, state)
+        Error(reason) ->
+          history.Exception(#(reason, location, env, k))
+          |> finish_run(state.scope, occured, state)
+      }
     Error(#(break.UnhandledEffect(label, lift), location, env, k)) ->
       case computer.cast(label, lift) {
         Ok(effect) ->

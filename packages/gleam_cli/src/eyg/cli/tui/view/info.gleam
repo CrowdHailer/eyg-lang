@@ -187,7 +187,7 @@ pub fn status(state: state.State) -> List(span.Line) {
   }
 }
 
-fn show_effect(effect) {
+pub fn show_effect(effect) {
   let #(label, #(lift, reply)) = effect
   case label, lift {
     "StandardOut", value.String(line) ->

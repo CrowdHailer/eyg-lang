@@ -252,21 +252,7 @@ fn history_lines(
     effects, True ->
       effects
       |> list.reverse
-      |> list.map(fn(effect) {
-        let #(label, #(lift, reply)) = effect
-        span.line_new([
-          span.span_styled(
-            "✔ "
-              // TODO extract helpers to print effects
-              <> label
-              <> "("
-              <> simple_debug.inspect(lift)
-              <> ") -> "
-              <> simple_debug.inspect(reply),
-            style.default_style() |> style.with_fg(style.Indexed(7)),
-          ),
-        ])
-      })
+      |> list.map(info.show_effect)
   }
   let lines = list.append(source, effects)
   case entry.outcome {
