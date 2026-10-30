@@ -58,7 +58,9 @@ fn do_last(projection) {
             [] -> projection
           }
         e.Record(fields, Some(original)) ->
-          do_last(#(p.Exp(original), [p.OverwriteTail(fields), ..zoom]))
+          do_last(
+            #(p.Exp(original), [p.OverwriteTail(list.reverse(fields)), ..zoom]),
+          )
         e.Record(fields, None) ->
           case list.reverse(fields) {
             [#(l, value), ..pre] ->
@@ -298,7 +300,7 @@ pub fn zoom_previous(exp, zoom) {
           zoom_previous(exp, rest)
         }
         p.OverwriteTail(fields) -> {
-          case list.reverse(fields) {
+          case fields {
             [#(label, value), ..pre] -> #(p.Exp(value), [
               p.RecordValue(label, pre, [], p.Overwrite(exp)),
               ..rest
