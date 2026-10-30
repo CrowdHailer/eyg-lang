@@ -20,6 +20,16 @@ pub fn key_reject(in, rejected) {
   })
 }
 
+pub fn key_filter_fn(
+  in: List(#(a, b)),
+  predicate: fn(a) -> Bool,
+) -> List(#(a, b)) {
+  list.filter(in, fn(keyword) {
+    let #(key, _value) = keyword
+    predicate(key)
+  })
+}
+
 pub fn key_unique(list: List(#(a, b))) -> List(#(a, b)) {
   case list {
     [] -> []

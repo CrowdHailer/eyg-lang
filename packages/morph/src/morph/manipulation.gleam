@@ -110,6 +110,9 @@ fn do_insert_variable(buffer) {
     buffer.target_scope(buffer)
     |> result.unwrap([])
     |> listx.key_unique()
+    |> listx.key_filter_fn(fn(var) {
+      string.starts_with(var, "_") || string.starts_with(var, "$")
+    })
   let hints = listx.value_map(scope, poly)
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }
