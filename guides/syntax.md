@@ -235,11 +235,13 @@ person.name
 
 ### Record Update (Overwrite)
 
-`{..record}` passes a record through unchanged. Prepending field assignments with `..record` overwrites those fields in the existing record:
+Field assignments followed by `..record` overwrite those fields in the existing record:
 
 ```eyg
 {age: 31, ..person}
 ```
+
+At least one field is required; `{..record}` is invalid. Use `record` directly to pass it through unchanged.
 
 Only fields already in the record can be overwritten, `{new_field: 1, ..person}` fails with a missing field.
 To add fields build a new record listing every field.

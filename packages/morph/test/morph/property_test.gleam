@@ -33,7 +33,7 @@ let end =
 "
 
 const record_override =
-  "let a = {..todo}
+  "let a = {x: todo, ..todo}
 {x: 5, y, nested: {x, ..another}, ..original}"
 
 const record_select =

@@ -549,6 +549,7 @@ fn do_record(rest, start, acc) {
         _ -> Error(UnexpectedToken(token, start))
       }
     }
+    t.DotDot if acc == [] -> Error(UnexpectedToken(token, kstart))
     t.DotDot -> {
       use #(value, rest) <- try(expression(rest))
       use #(#(token, start), rest) <- try(pop(rest))

@@ -478,10 +478,12 @@ pub fn overwrite_test() -> Nil {
     ),
     #(0, 10),
   ))
+}
+
+pub fn overwrite_requires_a_field_test() -> Nil {
   "{..x}"
   |> parser.all_from_string()
-  |> should.be_ok()
-  |> should.equal(#(ir.Variable("x"), #(3, 4)))
+  |> should.equal(Error(UnexpectedToken(token.DotDot, 1)))
 }
 
 pub fn overwrite_sugar_test() -> Nil {
