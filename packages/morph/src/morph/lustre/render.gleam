@@ -425,19 +425,17 @@ pub fn do_render_field(field, rev) {
 }
 
 pub fn render_case(top, branches, otherwise, rev) {
-  let spans = case top {
-    frame.Inline(spans) -> spans
-    _ -> [frame.span(frame.Plain, None, "some big case")]
-  }
-  list.append(branches, case otherwise {
-    Some(otherwise) -> [otherwise]
-    None -> []
-  })
-  |> frame.Multiline([frame.span(frame.Plain, None, " {")], _, [
-    frame.span(frame.Plain, None, "}"),
-  ])
-  |> frame.prepend_spans(spans, _)
+  let branches =
+    list.append(branches, case otherwise {
+      Some(otherwise) -> [otherwise]
+      None -> []
+    })
+    |> frame.Multiline([frame.span(frame.Plain, None, " {")], _, [
+      frame.span(frame.Plain, None, "}"),
+    ])
+  top
   |> frame.prepend_spans([frame.span(frame.Keyword, exp_key(rev), "match ")], _)
+  |> frame.join(branches)
 }
 
 pub fn render_branch(field, rev, errors) {
