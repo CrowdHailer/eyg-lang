@@ -10,6 +10,7 @@ import eyg/cli/etui/widgets/combobox
 import eyg/cli/tui/state
 import eyg/cli/tui/view/info
 import eyg/interpreter/simple_debug
+import eyg/interpreter/value
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -272,7 +273,7 @@ fn history_lines(
     history.Success(None) -> lines
     history.Success(Some(value)) -> {
       let value_lines =
-        simple_debug.render(value, int.max(1, width - 2))
+        render_value(value, int.max(1, width - 2))
         |> string.split("\n")
         |> list.index_map(fn(line, index) {
           let prefix = case index {
@@ -303,6 +304,13 @@ fn history_lines(
           ),
         ]),
       ])
+  }
+}
+
+fn render_value(value, width) {
+  case value {
+    value.String(string) -> string
+    _ -> simple_debug.render(value, int.max(1, width - 2))
   }
 }
 
