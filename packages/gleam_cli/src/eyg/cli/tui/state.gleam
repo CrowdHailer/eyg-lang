@@ -485,6 +485,12 @@ fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
           combobox.Combobox(
             ..combobox.new(choices),
             input: input.state_from_string(value),
+            validate: fn(value) {
+              case value {
+                "" -> Error("Name cannot be empty")
+                _ -> Ok(Nil)
+              }
+            },
           ),
           rebuild,
         ),

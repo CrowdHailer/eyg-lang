@@ -11,6 +11,7 @@ import etui/widgets/list as select
 import etui/widgets/paragraph
 import gleam/int
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/string
 
 pub type Combobox {
@@ -18,6 +19,8 @@ pub type Combobox {
     items: List(#(String, String)),
     input: input.InputState,
     selection: select.ListState,
+    validate: fn(String) -> Result(Nil, String),
+    error: Option(String),
   )
 }
 
@@ -28,7 +31,13 @@ pub type Action {
 }
 
 pub fn new(items: List(#(String, String))) -> Combobox {
-  Combobox(items, input.state_new(), select.state_new())
+  Combobox(
+    items,
+    input.state_new(),
+    select.state_new(),
+    fn(_) { Ok(Nil) },
+    None,
+  )
 }
 
 fn matches(box: Combobox) -> List(#(String, String)) {
@@ -41,7 +50,11 @@ fn matches(box: Combobox) -> List(#(String, String)) {
 pub fn update(event: backend.InputEvent, box: Combobox) -> Action {
   case event {
     backend.KeyPress("esc") -> Cancelled
-    backend.KeyPress("enter") -> Selected(box.input.value)
+    backend.KeyPress("enter") ->
+      case box.validate(box.input.value) {
+        Ok(Nil) -> Selected(box.input.value)
+        Error(message) -> Updated(Combobox(..box, error: Some(message)))
+      }
     backend.KeyPress("tab") ->
       with_input(box, input.state_from_string(completion(box)))
     backend.KeyPress("up") ->
@@ -115,7 +128,11 @@ fn with_input(box: Combobox, edited: input.InputState) -> Action {
     True -> box.selection
     False -> select.state_new()
   }
-  Updated(Combobox(..box, input: edited, selection:))
+  let error = case edited.value == box.input.value {
+    True -> box.error
+    False -> None
+  }
+  Updated(Combobox(..box, input: edited, selection:, error:))
 }
 
 /// Field editing shared by every text input in the TUI.
@@ -167,6 +184,24 @@ pub fn render(buf, area: geometry.Rect, box: Combobox) {
       let assert [input_area, list_area] =
         geometry.split_v(area, [geometry.Length(1), geometry.Fill])
       let buf = render_input(buf, input_area, box)
+      let #(buf, list_area) = case box.error {
+        None -> #(buf, list_area)
+        Some(message) -> {
+          let assert [error_area, list_area] =
+            geometry.split_v(list_area, [geometry.Length(1), geometry.Fill])
+          let buf =
+            paragraph.render_styled(buf, error_area, [
+              span.line_new([
+                span.span_styled(
+                  message,
+                  style.default_style()
+                    |> style.with_fg(style.Rgb(255, 100, 100)),
+                ),
+              ]),
+            ])
+          #(buf, list_area)
+        }
+      }
       case matches(box) {
         [] ->
           paragraph.render_styled(buf, list_area, [
