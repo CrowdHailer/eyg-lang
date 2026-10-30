@@ -301,10 +301,13 @@ pub fn zoom_previous(exp, zoom) {
         }
         p.OverwriteTail(fields) -> {
           case fields {
-            [#(label, value), ..pre] -> #(p.Exp(value), [
-              p.RecordValue(label, pre, [], p.Overwrite(exp)),
-              ..rest
-            ])
+            [#(label, value), ..pre] ->
+              do_last(
+                #(p.Exp(value), [
+                  p.RecordValue(label, pre, [], p.Overwrite(exp)),
+                  ..rest
+                ]),
+              )
             [] -> {
               let exp = e.Record([], Some(exp))
               zoom_previous(exp, rest)

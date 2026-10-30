@@ -30,7 +30,7 @@ let end =
 
 const record_override =
   "let a = {..todo}
-{x: 5, y, ..original}"
+{x: 5, y, nested: {x, ..another}, ..original}"
 
 fn predefined(then) {
   [lists, record_construction, record_override]
