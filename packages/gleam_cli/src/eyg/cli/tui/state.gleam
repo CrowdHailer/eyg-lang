@@ -478,14 +478,15 @@ fn edit(state: State, operation: m.Operation) -> #(State, List(_)) {
         ..state,
         mode: FreeInput(input.state_from_string(value), EnterText(rebuild)),
       )
-    Ok(m.UserInput(m.EnterInteger(value, rebuild))) ->
-      State(
-        ..state,
-        mode: FreeInput(
-          input.state_from_string(int.to_string(value)),
-          EnterInteger(rebuild),
-        ),
-      )
+    Ok(m.UserInput(m.EnterInteger(value, rebuild))) -> {
+      let value = case value {
+        0 -> ""
+        n -> int.to_string(n)
+      }
+      let mode =
+        FreeInput(input.state_from_string(value), EnterInteger(rebuild))
+      State(..state, mode:)
+    }
     Ok(m.UserInput(m.PickSingle(picker.Typing(value, choices), rebuild))) ->
       State(
         ..state,
