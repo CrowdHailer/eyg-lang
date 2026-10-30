@@ -18,7 +18,7 @@ pub type Combobox {
   Combobox(
     items: List(#(String, String)),
     input: input.InputState,
-    selection: select.ListState,
+    selection: Option(select.ListState),
     validate: fn(String) -> Result(Nil, String),
     error: Option(String),
   )
@@ -31,13 +31,7 @@ pub type Action {
 }
 
 pub fn new(items: List(#(String, String))) -> Combobox {
-  Combobox(
-    items,
-    input.state_new(),
-    select.state_new(),
-    fn(_) { Ok(Nil) },
-    None,
-  )
+  Combobox(items, input.state_new(), None, fn(_) { Ok(Nil) }, None)
 }
 
 fn matches(box: Combobox) -> List(#(String, String)) {
@@ -50,25 +44,38 @@ fn matches(box: Combobox) -> List(#(String, String)) {
 pub fn update(event: backend.InputEvent, box: Combobox) -> Action {
   case event {
     backend.KeyPress("esc") -> Cancelled
-    backend.KeyPress("enter") ->
-      case box.validate(box.input.value) {
-        Ok(Nil) -> Selected(box.input.value)
+    backend.KeyPress("enter") -> {
+      let to_validate = case box.selection {
+        Some(selection) ->
+          case list.first(list.drop(matches(box), selection.selected)) {
+            Ok(#(selected, _)) -> selected
+
+            Error(Nil) -> box.input.value
+          }
+        None -> box.input.value
+      }
+      case box.validate(to_validate) {
+        Ok(Nil) -> Selected(to_validate)
         Error(message) -> Updated(Combobox(..box, error: Some(message)))
       }
+    }
     backend.KeyPress("tab") ->
       with_input(box, input.state_from_string(completion(box)))
-    backend.KeyPress("up") ->
-      Updated(Combobox(..box, selection: select.select_prev(box.selection)))
-    backend.KeyPress("down") ->
-      Updated(
-        Combobox(
-          ..box,
-          selection: select.select_next(
-            box.selection,
-            list.length(matches(box)),
-          ),
-        ),
-      )
+    backend.KeyPress("up") -> {
+      let selection = case box.selection {
+        Some(selection) -> Some(select.select_prev(selection))
+        None -> Some(select.state_new())
+      }
+      Updated(Combobox(..box, selection:))
+    }
+    backend.KeyPress("down") -> {
+      let selection = case box.selection {
+        Some(selection) ->
+          Some(select.select_next(selection, list.length(matches(box))))
+        None -> Some(select.state_new())
+      }
+      Updated(Combobox(..box, selection:))
+    }
     backend.KeyPress(key) ->
       with_input(box, edit_input(input.input_new(""), box.input, key))
     backend.Paste(text) -> {
@@ -87,8 +94,14 @@ pub fn update(event: backend.InputEvent, box: Combobox) -> Action {
 }
 
 fn completion(box: Combobox) -> String {
+  // All the items that match the current prefix
   let items = matches(box)
-  case list.first(list.drop(items, box.selection.selected)) {
+  // tab completion finds the common prefix from the current cursor onwards
+  let from = case box.selection {
+    Some(selection) -> selection.selected
+    None -> 0
+  }
+  case list.first(list.drop(items, from)) {
     Error(_) -> box.input.value
     Ok(#(selected, _)) -> {
       let shared: String =
@@ -126,7 +139,7 @@ fn common_prefix(left: String, right: String) -> String {
 fn with_input(box: Combobox, edited: input.InputState) -> Action {
   let selection = case edited.value == box.input.value {
     True -> box.selection
-    False -> select.state_new()
+    False -> None
   }
   let error = case edited.value == box.input.value {
     True -> box.error
@@ -209,13 +222,24 @@ pub fn render(buf, area: geometry.Rect, box: Combobox) {
           ])
         items -> {
           let start =
-            int.max(0, box.selection.selected - list_area.size.height + 1)
+            int.max(
+              0,
+              case box.selection {
+                Some(selection) -> selection.selected
+                None -> 0
+              }
+                - list_area.size.height
+                + 1,
+            )
           let lines =
             items
             |> list.index_map(fn(item, i) {
               let #(item, hint) = item
               let hint = " : " <> hint |> string.replace("\n", " ")
-              let selected = i == box.selection.selected
+              let selected = case box.selection {
+                Some(selection) -> selection.selected == i
+                None -> False
+              }
               let base =
                 style.default_style() |> style.with_fg(style.Rgb(111, 220, 255))
               let base = case selected {
