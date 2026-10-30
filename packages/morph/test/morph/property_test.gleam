@@ -67,6 +67,12 @@ pub fn left_right_returns_to_starting_projection_test() {
   assert leaf == navigation.previous(navigation.next(leaf))
 }
 
+pub fn following_path_gets_same_projection_test() {
+  use program <- predefined
+  use leaf <- list.each(walk_leaves(program))
+  assert leaf == projection.focus_at(program, projection.path(leaf))
+}
+
 pub fn insert_before_then_deleting_results_in_no_change_test() {
   use program <- predefined
   use leaf <- list.each(walk_leaves(program))

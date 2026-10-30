@@ -30,7 +30,7 @@ pub fn path_to_zoom(zoom, acc) {
         // label is first value so exp is one higher than list of pre 
         RecordValue(pre: pre, ..) -> [list.length(pre) * 2 + 1, ..acc]
         SelectValue(..) -> [0, ..acc]
-        OverwriteTail(fields: fields) -> [list.length(fields) + 1, ..acc]
+        OverwriteTail(fields: fields) -> [list.length(fields) * 2, ..acc]
         CaseTop(_branches, _otherwise) -> [0, ..acc]
         CaseMatch(pre: pre, ..) -> [list.length(pre) + 1, 0, ..acc]
         CaseTail(branches: branches, ..) -> [list.length(branches) + 1, ..acc]
@@ -197,7 +197,10 @@ pub fn do_focus_at(ast, path, acc) {
       let field_index = i / 2
       case field_index == list.length(fields), original {
         True, Some(original) ->
-          do_focus_at(original, rest, [OverwriteTail(fields), ..acc])
+          do_focus_at(original, rest, [
+            OverwriteTail(list.reverse(fields)),
+            ..acc
+          ])
         False, _ -> {
           let assert Ok(#(pre, #(label, value), post)) =
             listx.split_around(fields, field_index)
