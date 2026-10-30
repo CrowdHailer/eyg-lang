@@ -9,6 +9,7 @@ import morph/lustre/frame
 import morph/lustre/highlight
 import morph/projection as t
 import multiformats/cid/v1
+import non_empty_list
 
 pub fn do_let(rev, pattern, value) {
   let assignment =
@@ -63,7 +64,9 @@ pub fn pattern(p, rev) {
   case p {
     e.Bind(x) -> [frame.span(frame.Variable, exp_key(rev), x)]
     e.Destructure(fields) -> {
-      list.index_map(fields, fn(f, i) { do_field(f, i, rev) })
+      list.index_map(non_empty_list.to_list(fields), fn(f, i) {
+        do_field(f, i, rev)
+      })
       |> do_destructured(rev)
     }
   }

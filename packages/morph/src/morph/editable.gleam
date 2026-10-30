@@ -2,10 +2,11 @@ import eyg/ir/tree as ir
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import non_empty_list.{type NonEmptyList, NonEmptyList}
 
 pub type Pattern {
   Bind(String)
-  Destructure(List(#(String, String)))
+  Destructure(NonEmptyList(#(String, String)))
 }
 
 pub type Expression {
@@ -184,7 +185,7 @@ fn gather_destructure(node, var) -> #(Pattern, _) {
   let #(ds, rest) = do_gather_destructure(node, var, [])
   let p = case ds {
     [] -> Bind(var)
-    _ -> Destructure(ds)
+    [first, ..rest] -> Destructure(NonEmptyList(first, rest))
   }
   case is_free(var, rest) {
     True -> #(Bind(var), node)
@@ -274,7 +275,7 @@ fn pattern_to_annotated(p, exp, rev) {
     Bind(label) -> #(label, exp)
     Destructure(ds) -> {
       let exp =
-        list.fold_right(ds, exp, fn(acc, d) {
+        list.fold_right(non_empty_list.to_list(ds), exp, fn(acc, d) {
           let #(label, var) = d
           #(
             ir.Let(

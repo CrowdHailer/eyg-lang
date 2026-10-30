@@ -2,6 +2,7 @@ import gleam/option.{None, Some}
 import gleeunit/should
 import morph/editable as e
 import morph/projection as p
+import non_empty_list.{NonEmptyList}
 
 fn should_equal(given, expected) {
   should.equal(given, expected)
@@ -10,7 +11,10 @@ fn should_equal(given, expected) {
 
 pub fn block_test() {
   let first = #(e.Bind("i"), e.Integer(10))
-  let second = #(e.Destructure([#("foo", "y")]), e.Record([], None))
+  let second = #(
+    e.Destructure(NonEmptyList(#("foo", "y"), [])),
+    e.Record([], None),
+  )
   let source = e.Block([first, second], e.Vacant, False)
 
   let path = [0]
@@ -91,7 +95,10 @@ pub fn block_test() {
 
 pub fn function_test() {
   let source =
-    e.Function([e.Bind("x"), e.Destructure([#("foo", "y")])], e.String("body"))
+    e.Function(
+      [e.Bind("x"), e.Destructure(NonEmptyList(#("foo", "y"), []))],
+      e.String("body"),
+    )
 
   let path = [0]
   p.focus_at(source, path)
@@ -100,7 +107,7 @@ pub fn function_test() {
       p.FnParam(
         p.AssignPattern(e.Bind("x")),
         [],
-        [e.Destructure([#("foo", "y")])],
+        [e.Destructure(NonEmptyList(#("foo", "y"), []))],
         e.String("body"),
       ),
       [],
@@ -114,7 +121,7 @@ pub fn function_test() {
   |> should_equal(
     #(
       p.FnParam(
-        p.AssignPattern(e.Destructure([#("foo", "y")])),
+        p.AssignPattern(e.Destructure(NonEmptyList(#("foo", "y"), []))),
         [e.Bind("x")],
         [],
         e.String("body"),
@@ -129,7 +136,7 @@ pub fn function_test() {
   p.focus_at(source, path)
   |> should_equal(
     #(p.Exp(e.String("body")), [
-      p.Body([e.Bind("x"), e.Destructure([#("foo", "y")])]),
+      p.Body([e.Bind("x"), e.Destructure(NonEmptyList(#("foo", "y"), []))]),
     ]),
   )
   |> p.path
@@ -139,7 +146,7 @@ pub fn function_test() {
 pub fn function_destructure_test() {
   let source =
     e.Function(
-      [e.Destructure([#("foo", "x"), #("bar", "y")])],
+      [e.Destructure(NonEmptyList(#("foo", "x"), [#("bar", "y")]))],
       e.String("body"),
     )
 

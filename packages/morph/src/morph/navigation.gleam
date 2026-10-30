@@ -6,6 +6,7 @@ import gleam/result.{try}
 import gleam/string
 import morph/editable as e
 import morph/projection as p
+import non_empty_list.{NonEmptyList}
 
 fn do_first(projection) {
   case projection {
@@ -20,7 +21,7 @@ fn do_first(projection) {
     )
     #(
       p.FnParam(
-        p.AssignPattern(e.Destructure([#(l, b), ..ppost])),
+        p.AssignPattern(e.Destructure(NonEmptyList(#(l, b), ppost))),
         pre,
         post,
         body,
@@ -101,9 +102,9 @@ fn pattern_next(pattern) {
       Ok(p.AssignBind(field, var, pre, post))
     p.AssignBind(field, var, pre, [next, ..post]) ->
       Ok(p.AssignField(next.0, next.1, [#(field, var), ..pre], post))
-    p.AssignPattern(e.Destructure([#(field, var), ..post])) ->
+    p.AssignPattern(e.Destructure(NonEmptyList(#(field, var), post))) ->
       Ok(p.AssignField(field, var, [], post))
-    p.AssignStatement(e.Destructure([#(field, var), ..post])) ->
+    p.AssignStatement(e.Destructure(NonEmptyList(#(field, var), post))) ->
       Ok(p.AssignField(field, var, [], post))
     _ -> Error(Nil)
   }
@@ -115,17 +116,10 @@ fn pattern_previous(pattern) {
       Ok(p.AssignField(field, var, pre, post))
     p.AssignField(field, var, [next, ..pre], post) ->
       Ok(p.AssignBind(next.0, next.1, pre, [#(field, var), ..post]))
-    p.AssignPattern(e.Destructure(parts)) -> {
-      case list.reverse(parts) {
-        [#(field, var), ..pre] -> Ok(p.AssignField(field, var, pre, []))
-        _ -> Error(Nil)
-      }
-    }
-    p.AssignStatement(e.Destructure(parts)) -> {
-      case list.reverse(parts) {
-        [#(field, var), ..pre] -> Ok(p.AssignField(field, var, pre, []))
-        _ -> Error(Nil)
-      }
+    p.AssignPattern(e.Destructure(parts))
+    | p.AssignStatement(e.Destructure(parts)) -> {
+      let NonEmptyList(#(field, var), pre) = non_empty_list.reverse(parts)
+      Ok(p.AssignField(field, var, pre, []))
     }
     _ -> Error(Nil)
   }
@@ -134,8 +128,7 @@ fn pattern_previous(pattern) {
 fn pattern_first(pattern) {
   case pattern {
     e.Bind(_label) -> p.AssignPattern(pattern)
-    e.Destructure(bindings) -> {
-      let assert [#(label, var), ..post] = bindings
+    e.Destructure(NonEmptyList(#(label, var), post)) -> {
       p.AssignField(label, var, [], post)
     }
   }
@@ -145,7 +138,7 @@ fn pattern_last(pattern) {
   case pattern {
     e.Bind(_label) -> p.AssignPattern(pattern)
     e.Destructure(bindings) -> {
-      let assert [#(label, var), ..pre] = list.reverse(bindings)
+      let NonEmptyList(#(label, var), pre) = non_empty_list.reverse(bindings)
       p.AssignBind(label, var, pre, [])
     }
   }
@@ -560,7 +553,9 @@ pub fn move_right(zip) {
         )
         p.AssignBind(label, var, pre_p, []) -> {
           let pattern =
-            e.Destructure(listx.gather_around(pre_p, #(label, var), []))
+            e.Destructure(
+              non_empty_list.reverse(NonEmptyList(#(label, var), pre_p)),
+            )
           #(p.Exp(value), [p.BlockValue(pattern, pre, post, then), ..zoom])
         }
       }
@@ -596,7 +591,8 @@ pub fn move_right(zip) {
     }
     // TODO movebind to right into body
     #(p.FnParam(p.AssignBind(l, x, pre_p, []), pre, [], body), rest) -> {
-      let pattern = e.Destructure(listx.gather_around(pre_p, #(l, x), []))
+      let pattern =
+        e.Destructure(non_empty_list.reverse(NonEmptyList(#(l, x), pre_p)))
       #(p.Exp(body), [p.Body(listx.gather_around(pre, pattern, [])), ..rest])
     }
 
@@ -643,7 +639,8 @@ pub fn move_left(zip) {
       let detail = case pattern {
         e.Bind(_label) -> p.AssignPattern(pattern)
         e.Destructure(bindings) -> {
-          let assert [#(label, var), ..pre] = list.reverse(bindings)
+          let NonEmptyList(#(label, var), pre) =
+            non_empty_list.reverse(bindings)
           p.AssignBind(label, var, pre, [])
         }
       }
@@ -756,7 +753,7 @@ pub fn decrease(zip) {
 fn decrease_assign(detail) {
   case detail {
     p.AssignStatement(pattern) -> p.AssignPattern(pattern)
-    p.AssignPattern(e.Destructure([#(label, var), ..rest])) ->
+    p.AssignPattern(e.Destructure(NonEmptyList(#(label, var), rest))) ->
       p.AssignField(label, var, [], rest)
     _ -> panic as "can't decrease into assign"
   }

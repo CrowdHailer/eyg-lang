@@ -43,6 +43,12 @@ let b = {}.foo
 
 const ordinary_match = "match Ok(1) { Ok(x) -> { x } }"
 
+const destructuring =
+  "let one = ({a: x}) -> { x }
+let many = ({a: x, b: y}, z) -> { z }
+let {a: x, b: y} = {a: 1, b: 2}
+x"
+
 fn predefined(then) {
   [
     lists,
@@ -50,6 +56,7 @@ fn predefined(then) {
     record_override,
     record_select,
     ordinary_match,
+    destructuring,
   ]
   |> list.each(fn(code) {
     case parser.all_from_string(code) {

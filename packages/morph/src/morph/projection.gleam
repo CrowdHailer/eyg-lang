@@ -3,6 +3,7 @@ import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import morph/editable as e
+import non_empty_list
 
 /// return a projection with everything selected
 pub fn all(source) {
@@ -101,7 +102,7 @@ pub fn focus_in_block(assigns, then, path, acc) {
             e.Destructure(fields) -> {
               let assert Ok(detail) = {
                 let assert Ok(#(pre, #(label, var), post)) =
-                  listx.split_around(fields, i / 2)
+                  listx.split_around(non_empty_list.to_list(fields), i / 2)
 
                 case i % 2 {
                   0 -> Ok(AssignField(label, var, pre, post))
@@ -157,7 +158,7 @@ pub fn do_focus_at(ast, path, acc) {
                 e.Destructure(fields) -> {
                   let assert Ok(detail) = {
                     let assert Ok(#(pre, #(label, var), post)) =
-                      listx.split_around(fields, i / 2)
+                      listx.split_around(non_empty_list.to_list(fields), i / 2)
 
                     case i % 2 {
                       0 -> Ok(AssignField(label, var, pre, post))
@@ -283,7 +284,11 @@ pub fn assigned_pattern(focus) {
   case focus {
     AssignStatement(p) | AssignPattern(p) -> p
     AssignField(l, v, pre, post) | AssignBind(l, v, pre, post) ->
-      e.Destructure(listx.gather_around(pre, #(l, v), post))
+      e.Destructure(list.fold(
+        pre,
+        non_empty_list.new(#(l, v), post),
+        non_empty_list.prepend,
+      ))
   }
 }
 

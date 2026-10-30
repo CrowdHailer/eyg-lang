@@ -48,7 +48,7 @@ packages = [
   { name = "midas", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib"], otp_app = "midas", source = "hex", outer_checksum = "9180B627852B541EAF1FC8D425867303420A42AED43AEE89891FF47B74BB6569" },
   { name = "midas_browser", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth", "snag"], otp_app = "midas_browser", source = "hex", outer_checksum = "4F6B72E0652915D064992DA03C6DEDB6055C9711A10A5793D908A8BE418997F8" },
   { name = "midas_node", version = "1.5.0", build_tools = ["gleam"], requirements = ["conversation", "filepath", "gleam_crypto", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "midas", "plinth", "shellout", "simplifile", "snag"], otp_app = "midas_node", source = "hex", outer_checksum = "F4EA0B347AE3489F1B0D6E17D27D99655363B5926684E488106AAE99359C22CB" },
-  { name = "morph", version = "0.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_hub", "eyg_interpreter", "eyg_ir", "gleam_json", "gleam_stdlib", "gleam_x", "lustre", "multiformats", "plinth"], source = "local", path = "../morph" },
+  { name = "morph", version = "0.0.0", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_hub", "eyg_interpreter", "eyg_ir", "gleam_json", "gleam_stdlib", "gleam_x", "lustre", "multiformats", "non_empty_list", "plinth"], source = "local", path = "../morph" },
   { name = "multiformats", version = "4.1.0", build_tools = ["gleam"], requirements = ["base32", "gleam_javascript", "gleam_stdlib", "gleb128"], otp_app = "multiformats", source = "hex", outer_checksum = "754EEAB5F6205C9DF2E4C3A2B084B28368B36FC231F09337A61233811439894E" },
   { name = "mysig", version = "0.6.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "simplifile", "snag"], otp_app = "mysig", source = "hex", outer_checksum = "20DB393EDFFE0B8AD24C2DB5E0A1ED392E421DA42298F002BEA52AED02B71450" },
   { name = "non_empty_list", version = "2.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "non_empty_list", source = "hex", outer_checksum = "06F9D3AC751CF7853AD5D24B8139CEB30E42D8799DE8D49F966A6197DF0B01CC" },
@@ -91,6 +91,7 @@ midas_node = { version = ">= 1.4.0 and < 2.0.0" }
 morph = { path = "../morph" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }
 mysig = { version = ">= 0.5.0 and < 1.0.0" }
+non_empty_list = { version = ">= 2.3.0 and < 3.0.0" }
 ogre = { version = ">= 1.1.0 and < 2.0.0" }
 pal = { path = "../pal" }
 pamphlet = { git = "https://github.com/crowdhailer/pamphlet", ref = "750623b" }

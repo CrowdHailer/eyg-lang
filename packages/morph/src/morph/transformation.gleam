@@ -6,6 +6,7 @@ import gleam/result.{try}
 import morph/editable as e
 import morph/projection as p
 import multiformats/cid/v1
+import non_empty_list
 
 pub type MaybeString {
   NeedString(fn(String) -> p.Projection)
@@ -104,17 +105,9 @@ pub fn delete(zip) {
         p.Assign(p.AssignBind(l, x, pre_p, []), value, pre, post, then),
         zoom,
       ))
-    p.Assign(p.AssignField(_, _, [], []), value, pre, post, then), _ ->
-      Ok(#(
-        p.Assign(p.AssignPattern(e.Destructure([])), value, pre, post, then),
-        zoom,
-      ))
-    p.Assign(p.AssignBind(_, _, [], []), value, pre, post, then), _ ->
-      Ok(#(
-        p.Assign(p.AssignPattern(e.Destructure([])), value, pre, post, then),
-        zoom,
-      ))
-    p.Assign(p.AssignPattern(e.Destructure([])), value, pre, post, then), _ ->
+    p.Assign(p.AssignField(_, _, [], []), value, pre, post, then), _
+    | p.Assign(p.AssignBind(_, _, [], []), value, pre, post, then), _
+    ->
       Ok(#(p.Assign(p.AssignPattern(e.Bind("_")), value, pre, post, then), zoom))
 
     p.FnParam(p.AssignPattern(_), pre, [pattern, ..post], body), _ ->
@@ -133,12 +126,9 @@ pub fn delete(zip) {
     -> Ok(#(p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body), zoom))
     p.FnParam(p.AssignBind(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ ->
       Ok(#(p.FnParam(p.AssignBind(l, x, pre_p, []), pre, post, body), zoom))
-    p.FnParam(p.AssignField(_, _, [], []), pre, post, body), _ ->
-      Ok(#(p.FnParam(p.AssignPattern(e.Destructure([])), pre, post, body), zoom))
-    p.FnParam(p.AssignBind(_, _, [], []), pre, post, body), _ ->
-      Ok(#(p.FnParam(p.AssignPattern(e.Destructure([])), pre, post, body), zoom))
-    p.FnParam(p.AssignPattern(e.Destructure([])), pre, post, body), _ ->
-      Ok(#(p.FnParam(p.AssignPattern(e.Bind("_")), pre, post, body), zoom))
+    p.FnParam(p.AssignField(_, _, [], []), pre, post, body), _
+    | p.FnParam(p.AssignBind(_, _, [], []), pre, post, body), _
+    -> Ok(#(p.FnParam(p.AssignPattern(e.Bind("_")), pre, post, body), zoom))
     p.Label(_, _, pre, [#(l, v), ..post], for), _ ->
       Ok(#(p.Label(l, v, pre, post, for), zoom))
     p.Exp(e.Vacant),
@@ -368,7 +358,12 @@ pub fn extend(zip) {
       Ok(
         NeedString(fn(new) {
           #(
-            p.FnParam(p.AssignBind(new, new, [], fields), pre, post, body),
+            p.FnParam(
+              p.AssignBind(new, new, [], non_empty_list.to_list(fields)),
+              pre,
+              post,
+              body,
+            ),
             zoom,
           )
         }),
@@ -475,7 +470,7 @@ pub fn record(zip) {
     //   let detail = case detail {
     //     p.AssignPattern(e.Bind(var)) -> p.AssignField(var, var, [], [])
     //     p.AssignPattern(e.Destructure(fields)) ->
-    //       p.AssignField("f", "f", list.reverse(fields), [])
+    //       p.AssignField("f", "f", non_empty_list.to_list(non_empty_list.reverse(fields)), [])
     //     _ -> panic as "cant build as record"
     //   }
     //   Ok(NoString(#(p.Assign(detail, value, pre, post, then), zoom)))
@@ -484,7 +479,7 @@ pub fn record(zip) {
     //   Ok(
     //     NoString(#(
     //       p.FnParam(
-    //         p.AssignPattern(e.Destructure([#(label, label)])),
+    //         p.AssignPattern(e.Destructure(non_empty_list.NonEmptyList(#(label, label), []))),
     //         pre,
     //         post,
     //         body,

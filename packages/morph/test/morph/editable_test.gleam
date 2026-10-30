@@ -1,6 +1,7 @@
 import eyg/ir/tree as ir
 import gleeunit/should
 import morph/editable as et
+import non_empty_list.{NonEmptyList}
 
 fn should_equal(given, expected) {
   should.equal(given, expected)
@@ -31,7 +32,7 @@ pub fn destructure_test() {
   source
   |> et.from_annotated
   |> should_equal(et.Function(
-    [et.Destructure([#("foo", "a")])],
+    [et.Destructure(NonEmptyList(#("foo", "a"), []))],
     et.Variable("a"),
   ))
   |> et.to_annotated([])

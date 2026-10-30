@@ -24,6 +24,7 @@ lustre = ">= 5.6.0 and < 6.0.0"
 midas_browser = ">= 1.1.2 and < 2.0.0"
 morph = { path = "../morph" }
 multiformats = ">= 4.0.0 and < 5.0.0"
+non_empty_list = ">= 2.3.0 and < 3.0.0"
 mysig = ">= 0.5.0 and < 1.0.0"
 ogre = ">= 1.1.0 and < 2.0.0"
 pal = { path = "../pal" }

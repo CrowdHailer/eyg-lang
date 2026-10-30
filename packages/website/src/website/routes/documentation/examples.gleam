@@ -2,6 +2,7 @@ import eyg/ir/dag_json
 import gleam/json
 import gleam/option.{None, Some}
 import morph/editable as e
+import non_empty_list.{NonEmptyList}
 
 fn from_source(source) {
   let assert Ok(source) = json.parse(source, dag_json.decoder(Nil))
@@ -175,7 +176,7 @@ pub const fix_example =
                   #(
                     "Ok",
                     e.Function(
-                      [e.Destructure([#("tail", "rest")])],
+                      [e.Destructure(NonEmptyList(#("tail", "rest"), []))],
                       e.Block(
                         [
                           #(
