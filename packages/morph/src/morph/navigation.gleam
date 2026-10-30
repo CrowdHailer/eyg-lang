@@ -166,7 +166,7 @@ pub fn zoom_next(exp, zoom) {
         p.BlockValue(pattern, pre, [], then) -> {
           let assignments = list.reverse([#(pattern, exp), ..pre])
           let zoom = [p.BlockTail(assignments), ..rest]
-          #(p.Exp(then), zoom)
+          do_first(#(p.Exp(then), zoom))
         }
         p.BlockTail(assignments) ->
           zoom_next(e.Block(assignments, exp, True), rest)
