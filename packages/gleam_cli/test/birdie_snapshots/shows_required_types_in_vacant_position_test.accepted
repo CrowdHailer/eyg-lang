@@ -1,0 +1,16 @@
+---
+version: 2.0.2
+title: shows_required_types_in_vacant_position_test
+file: ./test/eyg/cli/tui/view_test.gleam
+test_name: shows_required_types_in_vacant_position_test
+---
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+> [32m!int_add[0m([35m2[0m, [7;1mVacant[0m)                                                           
+[32m✔  [0m· [33mneeds: Integer[0m                                                             

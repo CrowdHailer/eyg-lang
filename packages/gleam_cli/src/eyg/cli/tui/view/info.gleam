@@ -21,11 +21,7 @@ fn focus_type(state: state.State) {
         Ok(info) ->
           case info.status {
             Ok(Nil) -> Ok(info.type_)
-
-            Error(reason) -> {
-              debug.reason(reason)
-              Error(reason)
-            }
+            Error(reason) -> Error(#(reason, info.type_))
           }
         Error(_) -> Ok(isomorphic.Var(-1))
       }
@@ -115,7 +111,7 @@ pub fn status(state: state.State) -> List(span.Line) {
           let focus = case focus_type(state) {
             Ok(isomorphic.Var(-1)) -> span.span_plain("")
             Ok(type_) -> span.span_plain(debug.mono(type_))
-            Error(error.MissingReference(reference) as reason) ->
+            Error(#(error.MissingReference(reference) as reason, _)) ->
               case state.reference_loading(state, reference) {
                 True ->
                   span.span_styled(
@@ -128,7 +124,12 @@ pub fn status(state: state.State) -> List(span.Line) {
                     style.default_style() |> style.with_fg(style.Indexed(1)),
                   )
               }
-            Error(reason) ->
+            Error(#(error.Todo, type_)) ->
+              span.span_styled(
+                "needs: " <> debug.mono(type_),
+                style.default_style() |> style.with_fg(style.Indexed(3)),
+              )
+            Error(#(reason, _)) ->
               span.span_styled(
                 debug.reason(reason),
                 style.default_style() |> style.with_fg(style.Indexed(1)),

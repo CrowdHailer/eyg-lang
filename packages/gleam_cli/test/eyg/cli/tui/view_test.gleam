@@ -100,6 +100,16 @@ perform Sleep(200)",
   |> birdie.snap("standard_out_and_error_are_shown_when_running_test")
 }
 
+pub fn shows_required_types_in_vacant_position_test() {
+  let #(state, _) =
+    state.init([], h.execute_state())
+    |> h.with_code("!int_add(2, todo)")
+    |> state.update(state.Input(backend.KeyPress(" ")))
+  let buffer = view.render(state, screen())
+  buffer_coloured_text(buffer)
+  |> birdie.snap("shows_required_types_in_vacant_position_test")
+}
+
 fn screen() {
   geometry.rect_new(0, 0, 80, 10)
 }
