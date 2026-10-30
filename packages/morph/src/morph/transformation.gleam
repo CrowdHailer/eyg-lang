@@ -149,7 +149,12 @@ pub fn delete(zip) {
     p.Exp(e.Vacant), [p.RecordValue(_label, [#(l, v), ..pre], [], for), ..zoom]
     -> Ok(#(p.Exp(v), [p.RecordValue(l, pre, [], for), ..zoom]))
     p.Label(_, _, [], [], p.Record), _ -> Ok(#(p.Exp(e.Record([], None)), zoom))
-    p.Exp(e.Vacant), [p.RecordValue(_label, [], [], _for), ..zoom] ->
+    p.Label(_, _, [], [], p.Overwrite(original)), _ ->
+      Ok(#(p.Exp(original), zoom))
+    p.Exp(e.Vacant),
+      [p.RecordValue(_label, [], [], p.Overwrite(original)), ..zoom]
+    -> Ok(#(p.Exp(original), zoom))
+    p.Exp(e.Vacant), [p.RecordValue(_label, [], [], p.Record), ..zoom] ->
       Ok(#(p.Exp(e.Record([], None)), zoom))
     p.Match(top, _, _, pre, [#(label, branch), ..post], otherwise), zoom ->
       Ok(#(p.Match(top, label, branch, pre, post, otherwise), zoom))
