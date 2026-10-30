@@ -74,6 +74,32 @@ pub fn in_progress_effects_test() {
   |> birdie.snap("in_progress_effects_test")
 }
 
+pub fn standard_out_and_error_are_shown_when_running_test() {
+  let #(state, _) =
+    state.init([], h.execute_state())
+    |> h.with_code(
+      "let _ = perform StandardOut(\"Hello\")
+let x = perform StandardError(\"Bad\")
+perform Sleep(200)",
+    )
+    |> h.with_run(
+      state.Handling(task_id: 1, label: "Sleep", lift: value.Integer(5000)),
+      [
+        #("Sleep", #(value.Integer(100), value.unit())),
+        #("Sleep", #(value.Integer(100), value.unit())),
+        #("Sleep", #(value.Integer(100), value.unit())),
+        #("Sleep", #(value.Integer(100), value.unit())),
+        #("StandardError", #(value.String("Bad"), value.unit())),
+        #("StandardOut", #(value.String("Hello"), value.unit())),
+      ],
+    )
+    |> state.update(state.Input(backend.KeyPress(" ")))
+
+  let buffer = view.render(state, screen())
+  buffer_coloured_text(buffer)
+  |> birdie.snap("standard_out_and_error_are_shown_when_running_test")
+}
+
 fn screen() {
   geometry.rect_new(0, 0, 80, 10)
 }

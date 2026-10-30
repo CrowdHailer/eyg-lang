@@ -6,6 +6,7 @@ import eyg/analysis/type_/isomorphic
 import eyg/cli/tui/state
 import eyg/hub/cache
 import eyg/interpreter/simple_debug
+import eyg/interpreter/value
 import eyg/ir/tree
 import gleam/int
 import gleam/list
@@ -172,25 +173,51 @@ pub fn status(state: state.State) -> List(span.Line) {
             style.default_style() |> style.with_fg(style.Indexed(3)),
           ),
         ])
-      let effects =
-        list.take(occured, 5)
-        |> list.map(fn(effect) {
-          let #(label, #(lift, reply)) = effect
-          let message =
-            "✔ "
-            <> label
-            <> "("
-            <> simple_debug.inspect(lift)
-            <> ") -> "
-            <> simple_debug.inspect(reply)
-          span.line_new([
-            span.span_styled(
-              message,
-              style.default_style() |> style.with_fg(style.Indexed(7)),
-            ),
-          ])
+      let previous =
+        list.drop(occured, 5)
+        |> list.filter(fn(effect) {
+          list.contains(["StandardOut", "StandardError"], effect.0)
         })
+      let recent = list.take(occured, 5)
+      let effects =
+        list.append(recent, previous)
+        |> list.map(show_effect)
       list.reverse([last, ..effects])
     }
   }
+}
+
+fn show_effect(effect) {
+  let #(label, #(lift, reply)) = effect
+  case label, lift {
+    "StandardOut", value.String(line) ->
+      span.line_new([
+        span.span_styled(
+          "✎ " <> line,
+          style.default_style() |> style.with_fg(style.Indexed(7)),
+        ),
+      ])
+    "StandardError", value.String(line) ->
+      span.line_new([
+        span.span_styled(
+          "! " <> line,
+          style.default_style() |> style.with_fg(style.Indexed(7)),
+        ),
+      ])
+    _, _ ->
+      span.line_new([
+        span.span_styled(
+          "✔ " <> debug_effect(label, lift, reply),
+          style.default_style() |> style.with_fg(style.Indexed(7)),
+        ),
+      ])
+  }
+}
+
+fn debug_effect(label, lift, reply) {
+  label
+  <> "("
+  <> simple_debug.inspect(lift)
+  <> ") -> "
+  <> simple_debug.inspect(reply)
 }
