@@ -111,7 +111,7 @@ fn do_insert_variable(buffer) {
     |> result.unwrap([])
     |> listx.key_unique()
     |> listx.key_filter_fn(fn(var) {
-      !string.starts_with(var, "_") || !string.starts_with(var, "$")
+      !string.starts_with(var, "_") && !string.starts_with(var, "$")
     })
 
   let hints = case buffer.analysis {
