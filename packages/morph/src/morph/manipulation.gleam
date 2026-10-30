@@ -106,7 +106,10 @@ pub fn insert_variable() {
 
 fn do_insert_variable(buffer) {
   use rebuild <- result.map(buffer.insert_variable(buffer))
-  let scope = buffer.target_scope(buffer) |> result.unwrap([])
+  let scope =
+    buffer.target_scope(buffer)
+    |> result.unwrap([])
+    |> listx.key_unique()
   let hints = listx.value_map(scope, poly)
   UserInput(PickSingle(picker.new("", hints), rebuild))
 }

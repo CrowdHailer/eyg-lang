@@ -152,17 +152,13 @@ pub fn variants(buffer) {
 }
 
 pub fn target_scope(buffer) {
-  let Buffer(projection:, analysis:, ..) = buffer
-  let path = p.path(projection)
-  use analysis <- result.try(option.to_result(analysis, Nil))
-  infer.scope_at(analysis, path)
+  use info <- result.map(target_info(buffer))
+  info.scope
 }
 
 pub fn target_arity(buffer) {
-  let Buffer(projection:, analysis:, ..) = buffer
-  let path = p.path(projection)
-  use analysis <- result.try(option.to_result(analysis, Nil))
-  infer.arity_at(analysis, path)
+  use type_ <- result.try(target_type(buffer))
+  infer.count_args(type_)
 }
 
 // ------------------------- Navigations
