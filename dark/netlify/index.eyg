@@ -1,0 +1,166 @@
+let {string, integer, list, result, equal, fix} = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja
+let json = @json:1:baguqeeraxtawxsrbnchzs5pvkq5ro33o6ze3ni7654aibhm4ygqple2lajka
+let http = @http:3:baguqeeraqt2dscwwimthggq3gu5ji3j4vxk6diirk7plmtkiaihllacfln5q
+let spotless = import "../../eyg_packages/spotless/index.eyg"
+let decode = json.decode
+let abort = (reason) -> { !never(perform Abort(reason)) }
+
+let readme = "# Netlify API v1
+
+let netlify = import \"./dark/netlify/index.eyg\"
+let config = netlify.connect({})
+let forms = netlify.list_site_forms(config, \"SITE_ID\")
+let submissions = netlify.list_form_submissions(config, \"FORM_ID\", [])
+
+connect uses Spotless device authorization; it prints a URL and code and waits
+for browser approval. Authentication failures perform Abort. The token is held
+in memory, not cached. from_token(token) supports an existing access token;
+from_token_at(origin, token) supports a custom @http origin.
+
+Operations: get_current_user(config), list_sites(config, query),
+list_site_forms(config, site_id), list_form_submissions(config, form_id, query),
+list_site_submissions(config, site_id, query).
+Query is a list of {key, value} strings. List sites/submissions accept page and
+per_page; sites also accepts name and filter. Each operation fetches one page.
+Identifiers and query values are supplied unescaped.
+
+Returns Ok(Success({status, headers, body, raw_body})). body contains decoded
+records: user {id}, site {id, name}, form {id, name}, submission {id, created_at,
+data}. data is a lossless list of @json flat events for the arbitrary JSON
+object, usable with json.decode.object/field; raw_body is the original JSON
+binary including every API field. Headers retain Link and rate-limit metadata.
+
+HTTP 4xx returns Ok(BadRequest/Unauthorized/Denied/NotFound/RateLimited/Rejected(
+{message, response})). Non-JSON 4xx still returns an application error with a
+fallback message and the original response. Error(Transport(reason)) means
+Fetch failed; Error(Server(response)) is HTTP 5xx; Error(Protocol({reason,
+response})) means unexpected status or malformed success JSON. No retries.
+See README.md for runnable examples and pagination.
+"
+
+// Preserve one arbitrary JSON subtree without imposing a schema on form data.
+let object_events = (parsed) -> {
+  let {head, tail} = result.expect(list.pop(parsed), "Expected submission data")
+  match head.term {
+    Object(_) -> {
+      fix((self, remaining, reversed) -> {
+        match list.pop(remaining) {
+          Error(_) -> { {value: list.reverse(reversed), rest: []} }
+          Ok({head: event, tail}) -> {
+            match integer.compare(event.depth, head.depth) {
+              Gt(_) -> { self(tail, [event, ..reversed]) }
+              | (_) -> { {value: list.reverse(reversed), rest: remaining} }
+            }
+          }
+        }
+      })(tail, [head])
+    }
+    | (_) -> { abort("Expected submission data object") }
+  }
+}
+let user_decoder = decode.object((fields) -> {
+  {id: decode.field("id", decode.string, fields)}
+})
+let named_decoder = decode.object((fields) -> {
+  {id: decode.field("id", decode.string, fields), name: decode.field("name", decode.string, fields)}
+})
+let submission_decoder = decode.object((fields) -> {
+  {
+    id: decode.field("id", decode.string, fields),
+    created_at: decode.field("created_at", decode.string, fields),
+    data: decode.field("data", object_events, fields)
+  }
+})
+
+let from_token_at = (origin, token) -> { {origin, token} }
+let from_token = from_token_at(http.origin.https("api.netlify.com"))
+let connect = (_) -> { from_token(spotless.connect("netlify")) }
+
+// Form encoding is correct for queries. In path segments space must be %20.
+let path_segment = (value) -> {
+  string.replace(http.form_value(value), "+", "%20")
+}
+let with_query = (operation, fields) -> {
+  match list.pop(fields) {
+    Error(_) -> { operation }
+    Ok(_) -> {
+      let query = result.expect(string.from_binary(http.content.form(fields).bytes), "Invalid query")
+      {query: Some(query), ..operation}
+    }
+  }
+}
+let application_error = (response) -> {
+  let message = result.unwrap("Netlify rejected the request", json.parse_bytes(response.body,
+    decode.object(decode.field("message", decode.string))))
+  let details = {message, response}
+  let outcomes = [
+    {status: 400, outcome: BadRequest(details)},
+    {status: 401, outcome: Unauthorized(details)},
+    {status: 403, outcome: Denied(details)},
+    {status: 404, outcome: NotFound(details)},
+    {status: 429, outcome: RateLimited(details)}
+  ]
+  Ok(list.fold(outcomes, Rejected(details), (entry, outcome) -> {
+    match equal(response.status, entry.status) {
+      True(_) -> { entry.outcome }
+      False(_) -> { outcome }
+    }
+  }))
+}
+let send = (config, operation, decoder) -> {
+  let operation = http.prepend_header(operation, {key: "accept", value: "application/json"})
+  let operation = http.prepend_header(operation, {key: "user-agent", value: "eyg-netlify/1.0"})
+  let operation = http.prepend_header(operation, {
+    key: "authorization", value: string.append("Bearer ", config.token)
+  })
+  match http.dispatch(operation, config.origin) {
+    Error(reason) -> { Error(Transport(reason)) }
+    Ok(response) -> {
+      match equal(response.status, 200) {
+        True(_) -> {
+          match json.parse_bytes(response.body, decoder) {
+            Ok(body) -> { Ok(Success({status: response.status, headers: response.headers, body, raw_body: response.body})) }
+            Error(reason) -> { Error(Protocol({reason, response})) }
+          }
+        }
+        False(_) -> {
+          match integer.compare(response.status, 400) {
+            Lt(_) -> { Error(Protocol({reason: "Unexpected HTTP status", response})) }
+            | (_) -> {
+              match integer.compare(response.status, 500) {
+                Lt(_) -> { application_error(response) }
+                | (_) -> {
+                  match integer.compare(response.status, 600) {
+                    Lt(_) -> { Error(Server(response)) }
+                    | (_) -> { Error(Protocol({reason: "Unexpected HTTP status", response})) }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+let get_current_user = (config) -> {
+  send(config, http.operation.get("/api/v1/user"), user_decoder)
+}
+let list_sites = (config, query) -> {
+  send(config, with_query(http.operation.get("/api/v1/sites"), query), decode.list(named_decoder))
+}
+let list_site_forms = (config, site_id) -> {
+  let path = string.concat(["/api/v1/sites/", path_segment(site_id), "/forms"])
+  send(config, http.operation.get(path), decode.list(named_decoder))
+}
+let list_form_submissions = (config, form_id, query) -> {
+  let path = string.concat(["/api/v1/forms/", path_segment(form_id), "/submissions"])
+  send(config, with_query(http.operation.get(path), query), decode.list(submission_decoder))
+}
+let list_site_submissions = (config, site_id, query) -> {
+  let path = string.concat(["/api/v1/sites/", path_segment(site_id), "/submissions"])
+  send(config, with_query(http.operation.get(path), query), decode.list(submission_decoder))
+}
+
+{readme, from_token, from_token_at, connect, get_current_user, list_sites,
+ list_site_forms, list_form_submissions, list_site_submissions}
