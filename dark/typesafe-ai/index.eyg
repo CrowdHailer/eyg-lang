@@ -1,0 +1,520 @@
+let http = @http:2:baguqeeracu6coc4hrbqkbivnpdn7m4uem4t5y5rt7hx6bysq3i2ntmgyfl3a
+let json = @json:1:baguqeeraxtawxsrbnchzs5pvkq5ro33o6ze3ni7654aibhm4ygqple2lajka
+let {string, integer, list, result, equal} = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja
+
+let readme = "# TypeSafe System One
+
+```eyg
+let typesafe = import \"./dark/typesafe-ai/index.eyg\"
+let token = match perform Env(\"TYPESAFE_AI_TOKEN\") {
+  Some(token) -> { token }
+  None(_) -> { !never(perform Abort(\"Set TYPESAFE_AI_TOKEN\")) }
+}
+let config = typesafe.from_token(token)
+let bundle = typesafe.and(
+  typesafe.noul(\"Is this about billing?\", None({}), None({})),
+  (billing) -> {
+    typesafe.and(typesafe.choice(\"What is the tone?\", [
+      typesafe.option(\"angry\", Angry({}), \"Upset or hostile\"),
+      typesafe.option(\"calm\", Calm({}), \"Neutral or polite\")
+    ], Calm({})), (tone) -> {
+      typesafe.return({billing, tone})
+    })
+  }
+)
+typesafe.evaluate(config, \"Please refund the extra charge.\", bundle)
+```
+
+The public API follows the Gleam Jev library: each question carries its answer
+decoder. and(question, callback) combines questions; return(value) determines
+the typed result. One request evaluates the whole bundle. Access results as
+body.answer.billing and body.answer.tone.choice; choice labels and probability
+keys are mapped to application values such as Calm({}).
+
+Configuration is {origin, token, model}. from_token(token) uses api.typesafe.ai
+and jev-latest; from_token_at(origin, token) overrides the origin. Set the model
+with {model: \"jev-preview\", ..config}.
+
+Operations:
+- list_models(config): GET /v1/models (models_v1_v1_models_get).
+- evaluate(config, state, bundle): POST /v1/systemone
+  (systemone_v1_systemone_post). State is ordinary text.
+- evaluate_request(config, request, bundle): the same endpoint with structured
+  state, image assets, and feature flags. request(model, encoded_state) supplies
+  defaults. Set assets to [{key, value: image(format, data_base64)}] and images
+  to True({}) for images. Reference asset keys in state or instructions. Images
+  must be PNG/JPEG, 280-1568 pixels per side. long_context is also opt-in.
+
+Question builders take ordinary text:
+- noul(instructions, true_criteria, false_criteria): criteria are Some(text) or
+  None({}); the answer is a decimal probability string.
+- choice(instructions, options, zero): options come from option(label, value,
+  rubric); the answer is {choice, confidence, probabilities}.
+- score(instructions, levels): ordered descriptions; the answer is
+  {score, confidence, probabilities, legend}.
+- box(instructions): the answer is {box: {top, bottom, left, right}, confidence}.
+
+Callbacks run with placeholders during question collection and with actual
+answers during decoding, as in Gleam. Keep callbacks pure and subsequent
+questions fixed. zero supplies the choice's placeholder application value.
+Result projections can depend on answers. Changed questions, missing answers,
+wrong answer types, and unknown choice labels produce Protocol errors.
+
+Results: Ok(Success({status, headers, body})), or Ok of an application outcome:
+BadRequest, TooManyTokens, Unauthorized, Denied, NotFound, PayloadTooLarge,
+UnsupportedMediaType, InvalidRequest, RateLimited, Overloaded, or Rejected.
+Error(Transport(reason)), Error(Protocol({reason, response})), and
+Error(Server(response)) represent network, protocol, and server failures.
+Application details retain the raw response; retry outcomes include retry_after
+as Some(seconds) / None({}). No automatic retries are performed.
+
+Successful evaluation bodies are {model, answer, usage}; answer has the type
+built by return. Model discovery returns {models: [{name, description,
+release_date}]}. Usage contains integer input_tokens and output_tokens.
+Probabilities, scores, confidence, and coordinates are decimal STRINGS because
+EYG has no float type. Box confidence is Some(number) / None({}). Probabilities
+and score legends are lists of {key, value}. Score legend values and application
+error detail are encoded JSON, preserving structured content. Unknown JSON
+fields are ignored; required fields are checked.
+
+encode exposes the published JSON encoder convention: values are JSON strings,
+objects are lists of {key, value}. Use it for structured request state. Local
+adapters extend @json:1's flat decoder protocol for decimals and dictionaries
+and complete its control-character escaping; parsing uses the published package.
+
+From the repository root:
+  eyg check dark/typesafe-ai/index.eyg
+  eyg check dark/typesafe-ai/test.eyg
+  eyg script dark/typesafe-ai/test.eyg
+  eyg script dark/typesafe-ai/live_test.eyg
+Live tests use TYPESAFE_AI_TOKEN and make billable requests to both endpoints.
+"
+
+let decode = json.decode
+let abort = (reason) -> { !never(perform Abort(reason)) }
+let take = (parsed) -> { result.expect(!list_pop(parsed), "Unexpected end of JSON") }
+
+// Extend the published @json:1 codecs without rounding JSON numbers to integers.
+let hex_digit = (number) -> {
+  match integer.compare(number, 10) {
+    Lt(_) -> { integer.add(number, 48) }
+    | (_) -> { integer.add(number, 55) }
+  }
+}
+// @json:1 leaves some C0 controls raw. Complete escaping in both keys and values.
+let encode_string = (text) -> {
+  let bytes = !binary_fold(string.to_binary(json.encode.string(text)), string.to_binary(""), (byte, acc) -> {
+    let escaped = match integer.compare(byte, 32) {
+      Lt(_) -> {
+        let high = result.expect(integer.divide(byte, 16), "Cannot encode JSON")
+        let low = integer.subtract(byte, integer.multiply(high, 16))
+        !binary_from_integers([92, 117, 48, 48, hex_digit(high), hex_digit(low)])
+      }
+      | (_) -> { !binary_from_integers([byte]) }
+    }
+    !binary_concat(acc, escaped)
+  })
+  result.expect(string.from_binary(bytes), "Cannot encode JSON")
+}
+let encode_object = (fields) -> {
+  string.concat(["{", string.join(list.map(fields, ({key, value}) -> {
+    string.concat([encode_string(key), ":", value])
+  }), ","), "}"])
+}
+let encode = {string: encode_string, object: encode_object, ..json.encode}
+let number_decoder = (parsed) -> {
+  let {head, tail} = take(parsed)
+  let value = match head.term {
+    Integer(value) -> { integer.to_string(value) }
+    Number({sign, integer: whole, decimal, exponent}) -> {
+      let sign = match sign { Positive(_) -> { "" } Negative(_) -> { "-" } }
+      let fraction = match integer.compare(decimal.size, 0) {
+        Eq(_) -> { "" }
+        | (_) -> {
+          let digits = integer.to_string(decimal.numerator)
+          let pad = !fix((self, text) -> {
+            match integer.compare(string.length(text), decimal.size) {
+              Lt(_) -> { self(string.append("0", text)) }
+              | (_) -> { text }
+            }
+          })
+          string.append(".", pad(digits))
+        }
+      }
+      let exponent = match equal(exponent, 0) {
+        True(_) -> { "" }
+        False(_) -> { string.append("e", integer.to_string(exponent)) }
+      }
+      string.concat([sign, integer.to_string(whole), fraction, exponent])
+    }
+    | (_) -> { abort("Expected number") }
+  }
+  {value, rest: tail}
+}
+let nullable = (decoder, parsed) -> {
+  let {head, tail} = take(parsed)
+  match head.term {
+    Null(_) -> { {value: None({}), rest: tail} }
+    | (_) -> {
+      let decoded = decoder(parsed)
+      {value: Some(decoded.value), rest: decoded.rest}
+    }
+  }
+}
+let dictionary = (decoder, parsed) -> {
+  let {head, tail} = take(parsed)
+  match head.term {
+    Object(_) -> {
+      let collect = !fix((self, rest, entries) -> {
+        match !list_pop(rest) {
+          Error(_) -> { {value: list.reverse(entries), rest} }
+          Ok({head: field, tail}) -> {
+            match integer.compare(field.depth, head.depth) {
+              Gt(_) -> { match field.term {
+                Field(key) -> {
+                  let decoded = decoder(tail)
+                  self(decoded.rest, [{key, value: decoded.value}, ..entries])
+                }
+                | (_) -> { abort("Expected object field") }
+              } }
+              | (_) -> { {value: list.reverse(entries), rest} }
+            }
+          }
+        }
+      })
+      collect(tail, [])
+    }
+    | (_) -> { abort("Expected object") }
+  }
+}
+// Preserve structured legends and error details as encoded JSON.
+let json_value = !fix((self, parsed) -> {
+  let {head, tail} = take(parsed)
+  match head.term {
+    String(text) -> { {value: encode.string(text), rest: tail} }
+    True(_) -> { {value: "true", rest: tail} }
+    False(_) -> { {value: "false", rest: tail} }
+    Null(_) -> { {value: "null", rest: tail} }
+    Array(_) -> {
+      let decoded = decode.list(self, parsed)
+      {value: encode.array(decoded.value), rest: decoded.rest}
+    }
+    Object(_) -> {
+      let decoded = dictionary(self, parsed)
+      {value: encode.object(decoded.value), rest: decoded.rest}
+    }
+    | (_) -> { number_decoder(parsed) }
+  }
+})
+let typed_answer = (kind, body) -> {
+  decode.object((fields) -> {
+    match equal(decode.field("type", decode.string, fields), kind) {
+      True(_) -> { body(fields) }
+      False(_) -> { abort(string.append("Expected TypeSafe answer type: ", kind)) }
+    }
+  })
+}
+let noul_decoder = typed_answer("noul", decode.field("noul", number_decoder))
+let choice_decoder = typed_answer("choice", (fields) -> {
+  {
+    choice: decode.field("choice", decode.string, fields),
+    confidence: decode.field("confidence", number_decoder, fields),
+    probabilities: decode.field("probabilities", dictionary(number_decoder), fields)
+  }
+})
+let score_decoder = typed_answer("score", (fields) -> {
+  {
+    score: decode.field("score", number_decoder, fields),
+    confidence: decode.field("confidence", number_decoder, fields),
+    probabilities: decode.field("probabilities", dictionary(number_decoder), fields),
+    legend: decode.field("legend", dictionary(json_value), fields)
+  }
+})
+let box_decoder = typed_answer("box", (fields) -> {
+  {
+    box: decode.field("box", decode.object((fields) -> {
+      {
+        top: decode.field("top", number_decoder, fields),
+        bottom: decode.field("bottom", number_decoder, fields),
+        left: decode.field("left", number_decoder, fields),
+        right: decode.field("right", number_decoder, fields)
+      }
+    }), fields),
+    confidence: decode.field("confidence", nullable(number_decoder), fields)
+  }
+})
+let usage_decoder = decode.object((fields) -> {
+  {
+    input_tokens: decode.field("input_tokens", decode.integer, fields),
+    output_tokens: decode.field("output_tokens", decode.integer, fields)
+  }
+})
+
+let from_token_at = (origin, token) -> { {origin, token, model: "jev-latest"} }
+let from_token = from_token_at(http.origin.https("api.typesafe.ai"))
+let request = (model, state) -> {
+  {model, state, assets: [], images: False({}), long_context: False({})}
+}
+let question = (kind, instructions, criteria) -> {
+  encode.object([
+    {key: "type", value: encode.string(kind)},
+    {key: "instructions", value: encode.string(instructions)},
+    ..criteria
+  ])
+}
+let criterion = (key, description) -> {
+  match description {
+    None(_) -> { [] }
+    Some(description) -> { [{key, value: encode.string(description)}] }
+  }
+}
+let noul = (instructions, true_criteria, false_criteria) -> {
+  let criteria = list.append(criterion("true", true_criteria), criterion("false", false_criteria))
+  {
+    question: question("noul", instructions, [{key: "criteria", value: encode.object(criteria)}]),
+    decode: noul_decoder,
+    zero: "0"
+  }
+}
+let option = (label, value, rubric) -> { {label, value, rubric} }
+let choice = (instructions, options, zero) -> {
+  let lookup = (label) -> {
+    let find = !fix((self, remaining) -> {
+      match !list_pop(remaining) {
+        Error(_) -> { abort("Unknown TypeSafe choice label") }
+        Ok({head, tail}) -> { match equal(head.label, label) {
+          True(_) -> { head.value }
+          False(_) -> { self(tail) }
+        } }
+      }
+    })
+    find(options)
+  }
+  let criteria = list.map(options, ({label, rubric}) -> {
+    {key: label, value: encode.string(rubric)}
+  })
+  {
+    question: question("choice", instructions, [{key: "criteria", value: encode.object(criteria)}]),
+    decode: (parsed) -> {
+      let decoded = choice_decoder(parsed)
+      {
+        value: {
+          choice: lookup(decoded.value.choice),
+          confidence: decoded.value.confidence,
+          probabilities: list.map(decoded.value.probabilities, ({key, value}) -> {
+            {key: lookup(key), value}
+          })
+        },
+        rest: decoded.rest
+      }
+    },
+    zero: {choice: zero, confidence: "0", probabilities: []}
+  }
+}
+let score = (instructions, levels) -> {
+  {
+    question: question("score", instructions, [{key: "criteria", value: encode.array(list.map(levels, encode.string))}]),
+    decode: score_decoder,
+    zero: {score: "0", confidence: "0", probabilities: [], legend: []}
+  }
+}
+let box = (instructions) -> {
+  {
+    question: question("box", instructions, []),
+    decode: box_decoder,
+    zero: {box: {top: "0", bottom: "0", left: "0", right: "0"}, confidence: None({})}
+  }
+}
+let return = (value) -> { {questions: [], decode: (_) -> { value }} }
+// As in Gleam, then runs with a placeholder during collection and again while
+// decoding. It must be pure; subsequent wire questions must remain fixed.
+let and = (question, then) -> {
+  let remaining = then(question.zero)
+  let key = integer.to_string(list.length(remaining.questions))
+  {
+    questions: [{key, value: question.question}, ..remaining.questions],
+    decode: (fields) -> {
+      let answer = decode.field(key, question.decode, fields)
+      let next = then(answer)
+      match equal(next.questions, remaining.questions) {
+        True(_) -> { next.decode(fields) }
+        False(_) -> { abort("Bundle questions must not depend on earlier answers") }
+      }
+    }
+  }
+}
+let image = (format, data_base64) -> {
+  encode.object([
+    {key: "type", value: encode.string("image")},
+    {key: "format", value: encode.string(format)},
+    {key: "data_base64", value: encode.string(data_base64)}
+  ])
+}
+
+let models_decoder = decode.object((fields) -> {
+  {models: decode.field("models", decode.list(decode.object((fields) -> {
+    {
+      name: decode.field("name", decode.string, fields),
+      description: decode.field("description", decode.string, fields),
+      release_date: decode.field("release_date", decode.string, fields)
+    }
+  })), fields)}
+})
+let location_segment = (parsed) -> {
+  match !list_pop(parsed) {
+    Ok({head, tail}) -> { match head.term {
+      Integer(value) -> { {value: integer.to_string(value), rest: tail} }
+      | (_) -> { decode.string(parsed) }
+    } }
+    Error(_) -> { abort("Expected validation location") }
+  }
+}
+let problems_decoder = decode.object(decode.field("detail", decode.list(decode.object((fields) -> {
+  {
+    location: decode.field("loc", decode.list(location_segment), fields),
+    message: decode.field("msg", decode.string, fields),
+    type: decode.field("type", decode.string, fields)
+  }
+}))))
+let retry_after = (headers) -> {
+  !list_fold(headers, None({}), ({key, value}, previous) -> {
+    match equal(string.lowercase(key), "retry-after") {
+      False(_) -> { previous }
+      True(_) -> { match integer.parse(value) {
+        Error(_) -> { None({}) }
+        Ok(seconds) -> { match integer.compare(seconds, 0) {
+          Lt(_) -> { None({}) }
+          | (_) -> { Some(seconds) }
+        } }
+      } }
+    }
+  })
+}
+let application_error = (response) -> {
+  match json.parse_bytes(response.body, decode.object(decode.field("detail", json_value))) {
+    Error(reason) -> { Error(Protocol({reason, response})) }
+    Ok(detail) -> {
+      let details = {detail, response}
+      match equal(response.status, 422) {
+        True(_) -> { match json.parse_bytes(response.body, problems_decoder) {
+          Ok(problems) -> { Ok(InvalidRequest({problems, response})) }
+          Error(reason) -> { Error(Protocol({reason, response})) }
+        } }
+        False(_) -> {
+          let too_many = json.parse_bytes(response.body, decode.object(
+            decode.field("detail", decode.object(decode.field("error_type", decode.string)))
+          ))
+          let bad_request = match equal(too_many, Ok("max_tokens_exceeded")) {
+            True(_) -> { TooManyTokens(details) }
+            False(_) -> { BadRequest(details) }
+          }
+          let outcomes = [
+            {status: 400, outcome: bad_request},
+            {status: 401, outcome: Unauthorized(details)},
+            {status: 403, outcome: Denied(details)},
+            {status: 404, outcome: NotFound(details)},
+            {status: 413, outcome: PayloadTooLarge(details)},
+            {status: 415, outcome: UnsupportedMediaType(details)}
+          ]
+          Ok(!list_fold(outcomes, Rejected(details), (entry, outcome) -> {
+            match equal(response.status, entry.status) {
+              True(_) -> { entry.outcome }
+              False(_) -> { outcome }
+            }
+          }))
+        }
+      }
+    }
+  }
+}
+let send = (config, operation, decoder) -> {
+  let operation = http.prepend_header(operation, {key: "accept", value: "application/json"})
+  let operation = http.prepend_header(operation, {
+    key: "authorization", value: string.append("Bearer ", config.token)
+  })
+  match http.dispatch(operation, config.origin) {
+    Error(reason) -> { Error(Transport(reason)) }
+    Ok(response) -> { match equal(response.status, 200) {
+      True(_) -> { match json.parse_bytes(response.body, decoder) {
+        Ok(body) -> { Ok(Success({status: response.status, headers: response.headers, body})) }
+        Error(reason) -> { Error(Protocol({reason, response})) }
+      } }
+      False(_) -> { match equal(response.status, 429) {
+        True(_) -> { Ok(RateLimited({retry_after: retry_after(response.headers), response})) }
+        False(_) -> { match equal(response.status, 529) {
+          True(_) -> { Ok(Overloaded({retry_after: retry_after(response.headers), response})) }
+          False(_) -> { match integer.compare(response.status, 500) {
+            Lt(_) -> { match integer.compare(response.status, 400) {
+              Lt(_) -> { Error(Protocol({reason: "Unexpected HTTP status", response})) }
+              | (_) -> { application_error(response) }
+            } }
+            | (_) -> { match integer.compare(response.status, 600) {
+              Lt(_) -> { Error(Server(response)) }
+              | (_) -> { Error(Protocol({reason: "Unexpected HTTP status", response})) }
+            } }
+          } }
+        } }
+      } }
+    } }
+  }
+}
+let list_models = (config) -> {
+  send(config, http.operation.get("/v1/models"), models_decoder)
+}
+let systemone_operation = (request, questions) -> {
+  let assets = match !list_pop(request.assets) {
+    Error(_) -> { [] }
+    Ok(_) -> { [{key: "assets", value: encode.object(request.assets)}] }
+  }
+  let body = encode.object([
+    {key: "model", value: encode.string(request.model)},
+    {key: "state", value: request.state},
+    {key: "questions", value: encode.object(questions)},
+    ..assets
+  ])
+  let operation = http.set_content(http.operation.post("/v1/systemone"), {
+    content_type: "application/json", bytes: string.to_binary(body)
+  })
+  let operation = match request.images {
+    True(_) -> { http.prepend_header(operation, {key: "typesafe-danger-zone-images", value: "true"}) }
+    False(_) -> { operation }
+  }
+  let operation = match request.long_context {
+    True(_) -> { http.prepend_header(operation, {key: "typesafe-danger-zone-long-context", value: "true"}) }
+    False(_) -> { operation }
+  }
+  operation
+}
+// Decode with the bundle inside send so that
+// missing/mismatched answers produce Protocol failures with the raw response.
+let evaluate_request = (config, request, bundle) -> {
+  let operation = systemone_operation(request, bundle.questions)
+  send(config, operation, decode.object((fields) -> {
+    {
+      model: decode.field("model", decode.string, fields),
+      answer: decode.field("answers", decode.object(bundle.decode), fields),
+      usage: decode.field("usage", usage_decoder, fields)
+    }
+  }))
+}
+let evaluate = (config, state, bundle) -> {
+  evaluate_request(config, request(config.model, encode.string(state)), bundle)
+}
+{
+  readme,
+  from_token,
+  from_token_at,
+  list_models,
+  evaluate,
+  evaluate_request,
+  and,
+  return,
+  noul,
+  option,
+  choice,
+  score,
+  box,
+  request,
+  encode,
+  image
+}
