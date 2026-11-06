@@ -1,0 +1,13 @@
+name = "unixfs"
+version = "0.1.0"
+description = "Encode files and directories as UnixFS blocks with CIDv1."
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = "packages/unixfs", tag_prefix = "unixfs-" }
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+gleam_crypto = ">= 1.5.1 and < 2.0.0"
+multiformats = ">= 4.0.0 and < 5.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
