@@ -2,6 +2,7 @@
 ////
 //// There is no authentication: this is served on the local machine only.
 
+import cloud/fs
 import cloud/sessions.{type Sessions}
 import cloud/web/script
 import cloud/web/sidebar as session_list
@@ -9,6 +10,9 @@ import cloud/web/style
 import cloud/web/terminal
 import gleam/http/response
 import gleam/int
+import gleam/json
+import gleam/list
+import gleam/result
 import howdy/controller.{type Controller}
 import howdy/form
 import howdy/ui/live
@@ -16,6 +20,8 @@ import howdy/ui/page
 import howdy/ui/sidebar
 import lustre/attribute
 import lustre/element/html
+import multiformats/cid/v1
+import simplifile
 
 pub fn controller(registry: Sessions) -> Controller {
   controller.new("/")
@@ -46,6 +52,7 @@ pub fn controller(registry: Sessions) -> Controller {
       Error(Nil) -> controller.status(ctx, 400)
     }
   })
+  |> controller.post("/uploads", fn(ctx) { upload(ctx, registry) })
   |> controller.get("/live/terminal/:id", fn(ctx) {
     let assert Ok(id) = controller.param(ctx, "id")
     case sessions.get(registry, id) {
@@ -101,6 +108,46 @@ fn session_page(session: sessions.Session) {
       ],
     ),
   ])
+}
+
+/// Write uploaded files into the block store as one directory, keeping the
+/// relative path sent with each file, and answer with its CID. The upload
+/// is not part of any session until it is mounted.
+fn upload(ctx, registry) {
+  let limits =
+    form.limits()
+    |> form.accept_files(max_files: 10_000, max_file_size: 50_000_000)
+    |> form.max_total_file_size(500_000_000)
+  use fields <- form.read_with(ctx, limits)
+  let store = sessions.store(registry)
+  let files = list.zip(form.all(fields, "path"), form.all_files(fields, "file"))
+  let written =
+    list.try_fold(files, fs.empty(store), fn(root, file) {
+      let #(path, uploaded) = file
+      let path = case fs.segments(path) {
+        [] -> uploaded.file_name
+        _ -> path
+      }
+      use contents <- result.try(
+        simplifile.read_bits(uploaded.path)
+        |> result.replace_error("could not read " <> path),
+      )
+      fs.write_file(store, root, path, contents)
+    })
+  case files, written {
+    [], _ -> problem(ctx, "no files")
+    _, Ok(root) ->
+      controller.json(
+        ctx,
+        json.object([#("upload", json.string(v1.to_string(root)))]),
+      )
+    _, Error(reason) -> problem(ctx, reason)
+  }
+}
+
+fn problem(ctx, reason) {
+  controller.json(ctx, json.object([#("error", json.string(reason))]))
+  |> controller.with_status(400)
 }
 
 fn redirect(ctx, location) {

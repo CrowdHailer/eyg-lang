@@ -54,6 +54,14 @@ html, body { height: 100%; margin: 0; }
   padding: 8px 16px; border-bottom: 1px solid #262a31; font-size: 12px; color: var(--term-muted);
 }
 .terminal-title { color: var(--term-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mount-button {
+  flex: none; cursor: pointer; color: var(--term-accent); border: 1px solid #2f343c;
+  border-radius: 4px; padding: 1px 8px; background: #1f2329;
+}
+.mount-button:hover, .mount-button:focus-within { border-color: var(--term-accent); }
+.mount-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.terminal-scroll.dropping, .terminal-scroll.uploading { box-shadow: inset 0 0 0 2px var(--term-accent); }
+.terminal-scroll.uploading { cursor: progress; }
 .terminal-root { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .terminal-root code { font-family: var(--term-font); }
 .terminal a { color: var(--ansi-4); }

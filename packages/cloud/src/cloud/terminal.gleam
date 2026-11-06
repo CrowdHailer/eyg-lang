@@ -47,6 +47,12 @@ pub fn code_lines(expression: e.Expression) -> List(Line) {
 pub fn command_lines(command: sessions.Command) -> List(Line) {
   case command {
     sessions.Code(source) -> code_lines(source)
+    sessions.Mount(..) ->
+      prompted([
+        span.line_new([
+          span.span_styled(sessions.describe(command), info_style()),
+        ]),
+      ])
   }
 }
 

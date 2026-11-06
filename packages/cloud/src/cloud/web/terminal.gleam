@@ -25,6 +25,7 @@ import gleam/erlang/process
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import lustre
 import lustre/attribute
@@ -51,6 +52,8 @@ pub type Model {
     /// recalled command is unchanged.
     recall: Option(Recall),
     help: Bool,
+    /// Dropped files waiting to be placed in the tree.
+    mounting: Option(Mounting),
     /// Counts runs, so late messages from an earlier run are ignored.
     runs: Int,
   )
@@ -60,6 +63,11 @@ pub type Running {
   Running(id: Int, source: e.Expression, worker: Option(process.Pid))
 }
 
+/// `upload` is a directory, in the block store, of everything dropped.
+pub type Mounting {
+  Mounting(upload: v1.Cid, names: List(String), box: combobox.Combobox)
+}
+
 pub type Recall {
   Recall(index: Int, shown: projection.Projection)
 }
@@ -67,6 +75,8 @@ pub type Recall {
 pub type Msg {
   KeyPressed(key: String)
   Pasted(text: String)
+  /// Files were dropped and uploaded to the block store.
+  Dropped(upload: String)
   WorkerStarted(id: Int, worker: process.Pid)
   Finished(id: Int, output: List(shell.Output), snapshot: shell.Snapshot)
   TimedOut(id: Int)
@@ -85,6 +95,7 @@ pub fn new(sessions: Sessions, session: Session) -> Model {
     running: None,
     recall: None,
     help: False,
+    mounting: None,
     runs: 0,
   )
   |> set_editor(editor.new())
@@ -109,10 +120,20 @@ fn listen(sessions) -> Effect(Msg) {
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     KeyPressed(key) -> key_pressed(model, key)
+    Dropped(upload) -> #(dropped(model, upload), effect.none())
     Pasted(text) ->
-      case model.running {
-        Some(_) -> #(model, effect.none())
-        None -> #(
+      case model.running, model.mounting {
+        Some(_), _ -> #(model, effect.none())
+        None, Some(mounting) -> #(
+          Model(
+            ..model,
+            mounting: Some(
+              Mounting(..mounting, box: combobox.paste(mounting.box, text)),
+            ),
+          ),
+          effect.none(),
+        )
+        None, None -> #(
           set_editor(model, editor.paste(model.editor, text)),
           effect.none(),
         )
@@ -157,7 +178,77 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
+/// Ask where to put the dropped files, offering the existing directories.
+fn dropped(model: Model, upload: String) -> Model {
+  let store = sessions.store(model.sessions)
+  case model.running, v1.from_string(upload) {
+    None, Ok(#(upload, _)) ->
+      case fs.links(store, upload, "/") {
+        Ok(links) -> {
+          let root = sessions.current(model.session).root
+          let directories =
+            fs.directories(store, root)
+            |> list.map(fn(directory) { #(directory, "directory") })
+          let box =
+            combobox.Combobox(
+              ..combobox.new(directories, "/"),
+              validate: fn(directory) {
+                case string.starts_with(directory, "/") {
+                  True -> Ok(Nil)
+                  False -> Error("Start the directory with /")
+                }
+              },
+            )
+          let names = list.map(links, fn(link) { link.name })
+          Model(..model, mounting: Some(Mounting(upload, names, box)))
+        }
+        Error(_) -> model
+      }
+    _, _ -> model
+  }
+}
+
+fn mount_key(model: Model, mounting: Mounting, key: String) {
+  case combobox.update(mounting.box, key) {
+    combobox.Cancelled -> #(Model(..model, mounting: None), effect.none())
+    combobox.Updated(box) -> #(
+      Model(..model, mounting: Some(Mounting(..mounting, box:))),
+      effect.none(),
+    )
+    combobox.Selected(directory) -> {
+      let store = sessions.store(model.sessions)
+      let snapshot = sessions.current(model.session)
+      let grafted = {
+        use links <- result.try(fs.links(store, mounting.upload, "/"))
+        fs.graft(store, snapshot.root, directory, links)
+      }
+      case grafted {
+        Ok(root) -> {
+          let command = sessions.Mount(directory, mounting.names)
+          let snapshot = shell.Snapshot(..snapshot, root:)
+          let model = Model(..model, mounting: None)
+          record_step(model, command, [], snapshot)
+        }
+        Error(reason) -> {
+          let box = combobox.Combobox(..mounting.box, error: Some(reason))
+          #(
+            Model(..model, mounting: Some(Mounting(..mounting, box:))),
+            effect.none(),
+          )
+        }
+      }
+    }
+  }
+}
+
 fn key_pressed(model: Model, key: String) -> #(Model, Effect(Msg)) {
+  case model.mounting {
+    Some(mounting) if model.running == None -> mount_key(model, mounting, key)
+    _ -> editing_key(model, key)
+  }
+}
+
+fn editing_key(model: Model, key: String) -> #(Model, Effect(Msg)) {
   case model.running, model.editor.mode, key {
     Some(running), _, "esc" -> {
       stop(running)
@@ -208,6 +299,7 @@ fn recall(model: Model, key: String) -> #(Model, Effect(Msg)) {
     |> list.filter_map(fn(step) {
       case step.command {
         sessions.Code(source) -> Ok(source)
+        sessions.Mount(..) -> Error(Nil)
       }
     })
     |> list.reverse
@@ -332,6 +424,15 @@ pub fn view(model: Model) -> Element(Msg) {
           None -> []
         }
       ]),
+      html.label([attribute.class("mount-button")], [
+        html.text("mount folder"),
+        html.input([
+          attribute.type_("file"),
+          attribute.attribute("webkitdirectory", ""),
+          attribute.attribute("multiple", ""),
+          attribute.attribute("data-eyg-mount", ""),
+        ]),
+      ]),
       html.span([attribute.class("terminal-root")], [
         html.text("root "),
         html.code([attribute.title("CID of the file system root")], [
@@ -349,6 +450,7 @@ pub fn view(model: Model) -> Element(Msg) {
         attribute.aria_label("EYG shell, press ? for keys"),
         on_key(),
         on_paste(),
+        on_drop(),
       ],
       [
         html.pre(
@@ -371,6 +473,10 @@ fn current(model: Model) -> Element(Msg) {
       html.div(
         [attribute.class("step editing")],
         list.flatten([
+          case model.mounting {
+            Some(mounting) -> [lines(mount_lines(mounting))]
+            None -> []
+          },
           [lines(draft_lines(model.editor))],
           [lines(dialog_lines(model.editor))],
           [lines([status_line(model.editor)])],
@@ -403,6 +509,20 @@ fn draft_lines(edited: Editor) -> List(Line) {
       ])
     False -> terminal.prompted(code.editing(edited.buffer, active))
   }
+}
+
+fn mount_lines(mounting: Mounting) -> List(Line) {
+  [
+    span.line_new([
+      span.span_styled(
+        "mount "
+          <> string.join(mounting.names, ", ")
+          <> " · choose a directory · tab completes · enter to mount · esc to cancel",
+        terminal.info_style(),
+      ),
+    ]),
+    ..combobox.lines(mounting.box, 8)
+  ]
 }
 
 fn dialog_lines(edited: Editor) -> List(Line) {
@@ -585,6 +705,14 @@ fn on_key() {
   |> server_component.include([
     "detail.key", "detail.ctrl", "detail.alt", "detail.shift",
   ])
+}
+
+fn on_drop() {
+  event.on("eyg-drop", {
+    use upload <- decode.subfield(["detail", "upload"], decode.string)
+    decode.success(Dropped(upload))
+  })
+  |> server_component.include(["detail.upload"])
 }
 
 fn on_paste() {

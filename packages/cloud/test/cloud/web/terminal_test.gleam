@@ -1,12 +1,14 @@
 import cloud/editor
+import cloud/fs
 import cloud/sessions
 import cloud/shell
-import cloud/web/terminal.{Finished, KeyPressed, Pasted}
+import cloud/web/terminal.{Dropped, Finished, KeyPressed, Pasted}
 import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{None, Some}
 import morph/buffer
 import morph/editable as e
+import multiformats/cid/v1
 
 fn setup() {
   let assert Ok(registry) = sessions.start()
@@ -149,4 +151,56 @@ pub fn import_a_file_from_the_file_system_test() {
 pub fn import_needs_an_existing_file_test() {
   let model = setup() |> keys(["q", "x", "enter"])
   let assert editor.Importing(..) = model.editor.mode
+}
+
+fn upload(model: terminal.Model, files) {
+  let store = sessions.store(model.sessions)
+  let root =
+    list.fold(files, fs.empty(store), fn(root, file) {
+      let #(path, contents) = file
+      let assert Ok(root) = fs.write_file(store, root, path, contents)
+      root
+    })
+  let #(model, _) = terminal.update(model, Dropped(v1.to_string(root)))
+  model
+}
+
+pub fn mount_dropped_files_test() {
+  let model = setup() |> upload([#("project/a.txt", <<"a">>)])
+  let assert Some(mounting) = model.mounting
+  assert mounting.names == ["project"]
+  let model = keys(model, ["backspace", "/", "w", "enter"])
+  assert model.mounting == None
+  let assert Ok(last) = list.last(model.session.steps)
+  assert last.command == sessions.Mount("/w", ["project"])
+  let store = sessions.store(model.sessions)
+  assert fs.read_file(store, last.snapshot.root, "/w/project/a.txt")
+    == Ok(<<"a">>)
+  // Mounted files can be imported.
+  assert model.editor.files == ["w/project/a.txt"]
+}
+
+pub fn mount_does_not_replace_test() {
+  let model =
+    setup()
+    |> upload([#("a.txt", <<"a">>)])
+    |> keys(["enter"])
+    |> upload([#("a.txt", <<"b">>)])
+    |> keys(["enter"])
+  let assert Some(mounting) = model.mounting
+  assert mounting.box.error == Some("a.txt already exists in /")
+  let model = keys(model, ["esc"])
+  assert model.mounting == None
+  assert sessions.commands(model.session) == 1
+}
+
+pub fn recall_skips_mounts_test() {
+  let model =
+    setup()
+    |> paste("1")
+    |> keys(["enter"])
+    |> finish
+    |> upload([#("a.txt", <<"a">>)])
+    |> keys(["enter", "up"])
+  assert editor.expression(model.editor) == e.Integer(1)
 }

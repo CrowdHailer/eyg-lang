@@ -86,3 +86,8 @@ pub fn fork_title_test() {
   let fork = run(registry, fork, "x")
   assert sessions.title(fork) == "x"
 }
+
+pub fn describe_mount_test() {
+  assert sessions.describe(sessions.Mount("/data", ["a", "b"]))
+    == "mount a, b in /data"
+}

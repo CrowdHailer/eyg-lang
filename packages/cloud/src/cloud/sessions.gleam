@@ -29,6 +29,8 @@ pub type Step {
 pub type Command {
   /// Code that was run. The first step of a session is `Code(Vacant)`.
   Code(source: e.Expression)
+  /// Dropped files and directories, placed in `directory`.
+  Mount(directory: String, names: List(String))
 }
 
 /// A short description of a command, on one line.
@@ -39,6 +41,8 @@ pub fn describe(command: Command) -> String {
         [line, ..] -> line
         [] -> ""
       }
+    Mount(directory:, names:) ->
+      "mount " <> string.join(names, ", ") <> " in " <> directory
   }
 }
 
