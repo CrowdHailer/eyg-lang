@@ -32,7 +32,7 @@ jobs:
           "gleam_parser",
           "intelligence",
           # "gleam_x",
-          # "morph",
+          "morph",
           overlay_llm,
           "topological",
           "touch_grass",
