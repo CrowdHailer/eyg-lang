@@ -9,6 +9,7 @@ import cloud/editor/combobox.{type Combobox}
 import cloud/shell
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/ir/tree as ir
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -23,7 +24,13 @@ import touch_grass/harness/computer
 import touch_grass/interface
 
 pub type Editor {
-  Editor(buffer: Buffer, mode: Mode, message: Option(String))
+  Editor(
+    buffer: Buffer,
+    mode: Mode,
+    message: Option(String),
+    /// Files that can be imported, from the session's file system.
+    files: List(String),
+  )
 }
 
 pub type Mode {
@@ -32,6 +39,7 @@ pub type Mode {
   EnterInteger(input: input.InputState, rebuild: m.Rebuild(Int))
   EnterCid(input: input.InputState, rebuild: m.Rebuild(Cid))
   Picking(box: Combobox, rebuild: m.Rebuild(String))
+  Importing(box: Combobox, rebuild: m.Rebuild(ir.Reference))
 }
 
 pub type Outcome {
@@ -41,13 +49,18 @@ pub type Outcome {
 }
 
 pub fn new() -> Editor {
-  Editor(buffer.empty(), Navigating, None)
+  Editor(buffer.empty(), Navigating, None, [])
+}
+
+/// Set the files offered when importing.
+pub fn with_files(editor: Editor, files: List(String)) -> Editor {
+  Editor(..editor, files:)
 }
 
 /// Edit a copy of an earlier command.
 pub fn from_expression(expression: e.Expression) -> Editor {
   let buffer = buffer.from_projection(projection.all(expression))
-  Editor(buffer, Navigating, None)
+  Editor(buffer, Navigating, None, [])
 }
 
 pub fn expression(editor: Editor) -> e.Expression {
@@ -123,6 +136,20 @@ pub fn key(editor: Editor, key: String) -> Outcome {
           Error(_) -> Error("Enter a valid cid")
         }
       })
+    Importing(box, rebuild) ->
+      case combobox.update(box, key) {
+        combobox.Cancelled -> Edited(Editor(..editor, mode: Navigating))
+        combobox.Selected(path) ->
+          Edited(
+            Editor(
+              ..editor,
+              mode: Navigating,
+              buffer: rebuild(ir.Relative(path)),
+            ),
+          )
+        combobox.Updated(box) ->
+          Edited(Editor(..editor, mode: Importing(box, rebuild)))
+      }
     Picking(box, rebuild) ->
       case combobox.update(box, key) {
         combobox.Cancelled -> Edited(Editor(..editor, mode: Navigating))
@@ -179,6 +206,8 @@ pub fn paste(editor: Editor, text: String) -> Editor {
       )
     Picking(box, rebuild) ->
       Editor(..editor, mode: Picking(combobox.paste(box, text), rebuild))
+    Importing(box, rebuild) ->
+      Editor(..editor, mode: Importing(combobox.paste(box, text), rebuild))
   }
 }
 
@@ -208,6 +237,7 @@ pub const bindings = [
   #("m", "match on a tag"),
   #("i", "edit the selected name or value"),
   #("< / >", "insert before / after"),
+  #("q", "import a file from the file system"),
   #("#", "insert a content reference"),
   #("k", "collapse or expand"),
   #("d", "delete"),
@@ -257,8 +287,27 @@ fn command(editor: Editor, key: String) -> Outcome {
     "v" -> edit(editor, m.insert_variable())
     "<" -> edit(editor, m.insert_before())
     ">" -> edit(editor, m.insert_after())
+    "q" -> import_file(editor)
     "@" -> Edited(fail(editor, "Packages are not available here"))
     _ -> Edited(fail(editor, "No action for " <> key <> ", press ? for help"))
+  }
+}
+
+/// Choose a file to import in place of the selection.
+fn import_file(editor: Editor) -> Outcome {
+  case buffer.insert_explicit_reference(editor.buffer) {
+    Error(_) -> Edited(fail(editor, "Select an expression to import into"))
+    Ok(rebuild) -> {
+      let items = list.map(editor.files, fn(path) { #(path, "file") })
+      let box =
+        combobox.Combobox(..combobox.new(items, ""), validate: fn(path) {
+          case list.contains(editor.files, path) {
+            True -> Ok(Nil)
+            False -> Error("Choose a file")
+          }
+        })
+      Edited(Editor(..editor, mode: Importing(box, rebuild)))
+    }
   }
 }
 

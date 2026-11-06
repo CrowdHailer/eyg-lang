@@ -9,6 +9,8 @@
 import cloud/code
 import cloud/editor.{type Editor}
 import cloud/editor/combobox
+import cloud/fs
+import cloud/modules
 import cloud/sessions.{type Session, type Sessions, Step}
 import cloud/shell
 import cloud/terminal
@@ -184,10 +186,16 @@ fn edit(model: Model, key: String) -> #(Model, Effect(Msg)) {
   }
 }
 
-/// Type check the draft against the current scope.
+/// Type check the draft against the current scope and file system,
+/// which also answers its imports.
 fn set_editor(model: Model, edited: Editor) -> Model {
-  let scope = sessions.current(model.session).scope
-  let edited = editor.check(edited, scope, editor.without_references)
+  let snapshot = sessions.current(model.session)
+  let store = sessions.store(model.sessions)
+  let edited = editor.with_files(edited, fs.files(store, snapshot.root))
+  let edited =
+    editor.check(edited, snapshot.scope, fn(step) {
+      modules.drive(step, store, snapshot.root)
+    })
   Model(..model, editor: edited, recall: None)
 }
 
@@ -414,6 +422,12 @@ fn dialog_lines(edited: Editor) -> List(Line) {
     editor.EnterCid(editing, _) -> [
       title("content reference · enter to apply · esc to cancel"),
       combobox.input_line(editing),
+    ]
+    editor.Importing(box, _) -> [
+      title(
+        "import a file · tab completes · ↑↓ select · enter to apply · esc to cancel",
+      ),
+      ..combobox.lines(box, 8)
     ]
     editor.Picking(box, _) -> [
       title(

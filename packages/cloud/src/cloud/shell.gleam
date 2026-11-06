@@ -5,6 +5,7 @@
 //// A failed command keeps the scope and root it started with.
 
 import cloud/fs
+import cloud/modules
 import cloud/store.{type Store}
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -140,6 +141,20 @@ fn loop(store, result, root, output) {
             Unsupported -> #(Error(debug.0), root, output)
           }
         Error(reason) -> #(Error(reason), root, output)
+      }
+    // Imports are read from the file system as it is at this point.
+    Error(#(
+      break.UndefinedReference(ir.Relative(location)) as reason,
+      _,
+      env,
+      k,
+    )) ->
+      case modules.value(store, root, location) {
+        Ok(value) -> loop(store, block.resume(value, env, k), root, output)
+        Error(message) -> #(Error(reason), root, [
+          Stderr(message <> "\n"),
+          ..output
+        ])
       }
     Error(#(reason, _meta, _env, _k)) -> #(Error(reason), root, output)
   }

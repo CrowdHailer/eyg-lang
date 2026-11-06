@@ -2,8 +2,10 @@ import cloud/editor
 import cloud/sessions
 import cloud/shell
 import cloud/web/terminal.{Finished, KeyPressed, Pasted}
+import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{None, Some}
+import morph/buffer
 import morph/editable as e
 
 fn setup() {
@@ -124,4 +126,27 @@ pub fn key_name_test() {
   assert name(" ", False, False, False) == Ok(" ")
   assert name("Tab", False, False, True) == Ok("backtab")
   assert name("Shift", False, False, True) == Error(Nil)
+}
+
+pub fn import_a_file_from_the_file_system_test() {
+  let model =
+    setup()
+    |> paste(
+      "perform WriteFile({path: \"lib.eyg\", contents: !string_to_binary(\"!int_add(40, 2)\")})",
+    )
+    |> keys(["enter"])
+    |> finish
+  assert model.editor.files == ["lib.eyg"]
+  let model = keys(model, ["q", "l", "tab", "enter"])
+  assert editor.expression(model.editor) == e.Reference(ir.Relative("lib.eyg"))
+  // The import is type checked from the file.
+  assert buffer.block_errors(model.editor.buffer) == []
+  let model = keys(model, ["enter"]) |> finish
+  let assert Ok(last) = list.last(model.session.steps)
+  assert last.output == [shell.Result("42")]
+}
+
+pub fn import_needs_an_existing_file_test() {
+  let model = setup() |> keys(["q", "x", "enter"])
+  let assert editor.Importing(..) = model.editor.mode
 }
