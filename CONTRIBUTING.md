@@ -5,7 +5,7 @@
 To test all the packages on the BEAM environment.
 ```sh
 # Erlang-target Gleam packages
-for pkg in packages/{gleam_analysis,gleam_hub,gleam_ir,gleam_parser,intelligence,overlay_llm,topological,touch_grass,unixfs,untethered}; do
+for pkg in packages/{cloud,gleam_analysis,gleam_hub,gleam_ir,gleam_parser,intelligence,overlay_llm,topological,touch_grass,unixfs,untethered}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --warnings-as-errors && gleam test )
 done
 ```
