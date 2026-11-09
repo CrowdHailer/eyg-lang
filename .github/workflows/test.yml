@@ -36,6 +36,7 @@ jobs:
           overlay_llm,
           "topological",
           "touch_grass",
+          "unixfs",
           "untethered"
           # "website"
         ]
@@ -128,6 +129,7 @@ jobs:
           "pal",
           "topological",
           "touch_grass",
+          "unixfs",
           "untethered",
           "website"
         ]
