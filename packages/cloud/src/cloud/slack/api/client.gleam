@@ -1,6 +1,6 @@
-import cloud/slack/operations
-import cloud/slack/pagination
-import cloud/slack/schema
+import cloud/slack/api/operations
+import cloud/slack/api/pagination
+import cloud/slack/api/schema
 import gleam/http
 import gleam/http/request
 import gleam/json

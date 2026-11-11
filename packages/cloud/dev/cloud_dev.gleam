@@ -1,6 +1,6 @@
 import argv
-import cloud/slack/client
-import cloud/slack/schema
+import cloud/slack/api/client
+import cloud/slack/api/schema
 import cloud/system
 import envoy
 import gleam/io
