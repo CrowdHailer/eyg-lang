@@ -5,7 +5,7 @@ import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
-import gleam/option
+import gleam/option.{None, Some}
 import gleam/result
 import midas/continuation.{type Continuation as K}
 import midas/effect
@@ -67,6 +67,44 @@ fn channels_page(
   case response {
     Ok(response) ->
       case operations.conversations_list_response(response) {
+        Ok(Ok(page)) -> Ok(page)
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
+/// Fetch every page of available channel history (thread replies are separate).
+pub fn conversations_history(
+  context: Context(t),
+  channel: String,
+) -> K(t, Result(List(schema.Message), Failure)) {
+  use pages <- continuation.try_then(
+    pagination.fetch_all(history_page(context, channel, _)),
+  )
+  continuation.done(list.flat_map(pages, fn(page) { page.messages }))
+}
+
+fn history_page(
+  context: Context(t),
+  channel: String,
+  cursor: option.Option(String),
+) -> K(t, Result(pagination.Page(schema.History), Failure)) {
+  let request =
+    operations.conversations_history_request(
+      base_request(context.token),
+      channel,
+      oldest: None,
+      latest: None,
+      cursor: cursor,
+      limit: Some(100),
+      inclusive: None,
+    )
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.conversations_history_response(response) {
         Ok(Ok(page)) -> Ok(page)
         Ok(Error(reason)) -> Error(ApiFailure(reason))
         Error(reason) -> Error(InvalidResponse(reason))

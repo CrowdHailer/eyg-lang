@@ -4,6 +4,7 @@ import cloud/slack/schema
 import envoy
 import gleam/httpc
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/string
 import midas/continuation
@@ -15,6 +16,17 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["slack", "messages", channel] -> {
+      let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
+      let context = client.Context(token, fetch)
+      case client.conversations_history(context, channel)(identity) {
+        Ok(messages) ->
+          list.each(messages, fn(message) {
+            io.println(json.to_string(message.data))
+          })
+        Error(reason) -> io.println_error(string.inspect(reason))
+      }
+    }
     ["slack", "channels"] -> {
       let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
       let context = client.Context(token, fetch)
@@ -41,7 +53,10 @@ fn do_main(args) {
         Error(reason) -> io.println_error(string.inspect(reason))
       }
     }
-    _ -> io.println("Usage: gleam dev slack | gleam dev slack channels")
+    _ ->
+      io.println(
+        "Usage: gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id>",
+      )
   }
 }
 
