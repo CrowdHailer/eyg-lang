@@ -90,6 +90,46 @@ pub fn make_directory_all(
   })
 }
 
+/// Delete a file, or a directory and everything in it.
+/// The root cannot be deleted.
+pub fn delete(root: Option(Entry), path: List(String)) -> Effect(Entry) {
+  case list.reverse(path) {
+    [] -> Done(Error(simplifile.Ebusy))
+    [name, ..parent] ->
+      update(root, list.reverse(parent), Reject, fn(entry) {
+        case entry {
+          Some(Directory(links)) ->
+            case link_by_name(links, name) {
+              Ok(_) ->
+                Ok(
+                  Directory(list.filter(links, fn(link) { link.name != name })),
+                )
+              Error(Nil) -> Error(simplifile.Enoent)
+            }
+          Some(File(_)) -> Error(simplifile.Enotdir)
+          None -> Error(simplifile.Enoent)
+        }
+      })
+  }
+}
+
+/// Read the contents of a directory.
+pub fn read_directory(
+  root: v1.Cid,
+  path: List(String),
+) -> Effect(List(unixfs.Link)) {
+  use entry <- then(Get(root, Done))
+  case entry, path {
+    Directory(links), [] -> Done(Ok(links))
+    File(_), _ -> Done(Error(simplifile.Enotdir))
+    Directory(links), [name, ..rest] ->
+      case link_by_name(links, name) {
+        Ok(link) -> read_directory(link.cid, rest)
+        Error(_) -> Done(Error(simplifile.Enoent))
+      }
+  }
+}
+
 /// Read the complete contents of a file. Reading a directory returns Eisdir.
 pub fn read(root: v1.Cid, path: List(String)) -> Effect(BitArray) {
   use entry <- then(Get(root, Done))
