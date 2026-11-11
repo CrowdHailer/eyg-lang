@@ -1,11 +1,10 @@
-import cloud/slack/api/client
-import cloud/slack/channel
-import cloud/system
+import cloud/slack/slack
 import envoy
 import gleam/erlang/process
 
 pub fn main() -> Nil {
   let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
-  let assert Ok(_) = channel.start(client.Context(token, system.fetch))
+
+  let assert Ok(_) = slack.start_channel(token)
   process.sleep_forever()
 }

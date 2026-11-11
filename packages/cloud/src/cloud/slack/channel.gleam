@@ -1,12 +1,13 @@
 //// One actor owns all cached channel histories and performs polling serially.
 
-import cloud/slack/api/client
+import cloud/beam/execute
 import cloud/slack/api/schema
+import cloud/slack/client
+import cloud/slack/command
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/io
-import gleam/json
 import gleam/list
 import gleam/option
 import gleam/otp/actor
@@ -20,8 +21,9 @@ pub type Message {
 
 pub opaque type State {
   State(
-    context: client.Context(State),
+    bot_token: String,
     subject: Subject(Message),
+    bot_user: String,
     conversations: Dict(String, Conversation),
   )
 }
@@ -32,12 +34,13 @@ pub type Conversation {
 }
 
 pub fn start(
-  context: client.Context(State),
+  bot_token: String,
+  bot_user: String,
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
     // Load in the message handler: full histories can exceed the init timeout.
     process.send(subject, Poll)
-    actor.initialised(State(context, subject, dict.new()))
+    actor.initialised(State(bot_token, subject, bot_user, dict.new()))
     |> actor.returning(subject)
     |> Ok
   })
@@ -60,8 +63,7 @@ fn handle_message(
 }
 
 fn poll(state: State) -> State {
-  use channels <- client.conversations_list(state.context)()
-  case channels {
+  case client.conversations_list(state.bot_token) {
     Error(reason) -> {
       io.println_error("Slack channels: " <> string.inspect(reason))
       state
@@ -83,11 +85,8 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
     list.first(previous)
     |> result.map(fn(message) { message.ts })
     |> option.from_result
-  use messages <- client.conversations_history_since(
-    state.context,
-    channel.id,
-    oldest,
-  )()
+  let messages =
+    client.conversations_history_since(state.bot_token, channel.id, oldest)
   case messages {
     Error(reason) -> {
       io.println_error("Slack " <> channel.id <> ": " <> string.inspect(reason))
@@ -112,9 +111,16 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
         }
         True ->
           list.each(fresh, fn(message) {
-            io.println(
-              "Slack " <> channel.id <> ": " <> json.to_string(message.data),
-            )
+            case command.source(message.data, state.bot_user) {
+              Error(Nil) -> Nil
+              Ok(code) ->
+                case execute.block(code) {
+                  Ok(value) ->
+                    io.println("Slack " <> channel.id <> ": " <> value)
+                  Error(reason) ->
+                    io.println_error("Slack " <> channel.id <> ": " <> reason)
+                }
+            }
           })
       }
       let messages = list.append(list.reverse(fresh), previous)
