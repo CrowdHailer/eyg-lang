@@ -114,7 +114,12 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
             case command.source(message.data, state.bot_user) {
               Error(Nil) -> Nil
               Ok(code) ->
-                case execute.block(code) {
+                case
+                  execute.block(code, fn(text) {
+                    // TODO keep the output state of effects in workspace state
+                    io.println("Slack " <> channel.id <> ": " <> text)
+                  })
+                {
                   Ok(value) ->
                     io.println("Slack " <> channel.id <> ": " <> value)
                   Error(reason) ->

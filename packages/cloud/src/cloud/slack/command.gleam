@@ -5,6 +5,7 @@ import gleam/result
 import gleam/string
 
 /// Only a leading mention addressed to this bot starts a command.
+/// TODO properly parse the messages so this can work on the parsed messages
 pub fn source(data: json.Json, bot_user: String) -> Result(String, Nil) {
   let decoder = {
     use text <- decode.field("text", decode.string)
