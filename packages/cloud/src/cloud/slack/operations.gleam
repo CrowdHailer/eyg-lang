@@ -1,3 +1,4 @@
+import cloud/slack/pagination
 import cloud/slack/schema
 import gleam/dynamic/decode
 import gleam/http
@@ -50,8 +51,11 @@ pub fn conversations_list_request(
 
 pub fn conversations_list_response(
   response: response.Response(BitArray),
-) -> Result(Result(schema.Channels, Failure), json.DecodeError) {
-  decode_response(response, schema.channels_decoder())
+) -> Result(
+  Result(pagination.Page(List(schema.Channel)), Failure),
+  json.DecodeError,
+) {
+  decode_response(response, pagination.decoder(schema.channels_decoder()))
 }
 
 pub fn conversations_history_request(
@@ -120,14 +124,14 @@ fn message_request(
 
 pub fn conversations_history_response(
   response: response.Response(BitArray),
-) -> Result(Result(schema.History, Failure), json.DecodeError) {
-  decode_response(response, schema.history_decoder())
+) -> Result(Result(pagination.Page(schema.History), Failure), json.DecodeError) {
+  decode_response(response, pagination.decoder(schema.history_decoder()))
 }
 
 pub fn conversations_replies_response(
   response: response.Response(BitArray),
-) -> Result(Result(schema.History, Failure), json.DecodeError) {
-  decode_response(response, schema.history_decoder())
+) -> Result(Result(pagination.Page(schema.History), Failure), json.DecodeError) {
+  decode_response(response, pagination.decoder(schema.history_decoder()))
 }
 
 fn decode_response(

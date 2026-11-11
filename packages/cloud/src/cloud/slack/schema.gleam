@@ -25,39 +25,19 @@ pub fn channel_decoder() -> decode.Decoder(Channel) {
   decode.success(Channel(id, name, is_member, is_private, is_archived))
 }
 
-pub type Channels {
-  Channels(channels: List(Channel), next_cursor: String)
-}
-
-pub fn channels_decoder() -> decode.Decoder(Channels) {
-  use channels <- decode.field("channels", decode.list(channel_decoder()))
-  use next_cursor <- decode.optional_field(
-    "response_metadata",
-    "",
-    decode.optional_field("next_cursor", "", decode.string, decode.success),
-  )
-  decode.success(Channels(channels, next_cursor))
+pub fn channels_decoder() -> decode.Decoder(List(Channel)) {
+  decode.field("channels", decode.list(channel_decoder()), decode.success)
 }
 
 pub type History {
-  History(
-    messages: List(Message),
-    has_more: Bool,
-    next_cursor: String,
-    is_limited: Bool,
-  )
+  History(messages: List(Message), has_more: Bool, is_limited: Bool)
 }
 
 pub fn history_decoder() -> decode.Decoder(History) {
   use messages <- decode.field("messages", decode.list(message_decoder()))
   use has_more <- decode.field("has_more", decode.bool)
   use is_limited <- decode.optional_field("is_limited", False, decode.bool)
-  use next_cursor <- decode.optional_field(
-    "response_metadata",
-    "",
-    decode.optional_field("next_cursor", "", decode.string, decode.success),
-  )
-  decode.success(History(messages, has_more, next_cursor, is_limited))
+  decode.success(History(messages, has_more, is_limited))
 }
 
 pub type Identity {

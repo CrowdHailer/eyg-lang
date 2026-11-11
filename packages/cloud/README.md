@@ -54,5 +54,9 @@ Polling only newer messages misses edits and deletions of older messages.
 
 #### Notes
 
+Cursor-paginated Slack operations return `pagination.Page(payload, next_cursor)`.
+https://docs.slack.dev/apis/web-api/pagination/
+Not all operations with pagination support this pagination, some use legacy instead.
+
 A slash command triggers an HTTP endpoint.
-Editing the slash command message does not rerun the command. 
+Editing the slash command message does not rerun the command.
