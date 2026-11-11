@@ -1,14 +1,12 @@
 import argv
 import cloud/slack/client
 import cloud/slack/schema
+import cloud/system
 import envoy
-import gleam/httpc
 import gleam/io
 import gleam/json
 import gleam/list
 import gleam/string
-import midas/continuation
-import midas/effect
 
 pub fn main() {
   do_main(argv.load().arguments)
@@ -18,7 +16,7 @@ fn do_main(args) {
   case args {
     ["slack", "messages", channel] -> {
       let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
-      let context = client.Context(token, fetch)
+      let context = client.Context(token, system.fetch)
       case client.conversations_history(context, channel)(identity) {
         Ok(messages) ->
           list.each(messages, fn(message) {
@@ -29,7 +27,7 @@ fn do_main(args) {
     }
     ["slack", "channels"] -> {
       let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
-      let context = client.Context(token, fetch)
+      let context = client.Context(token, system.fetch)
       case client.conversations_list(context)(identity) {
         Ok(channels) -> {
           let #(yes, no) =
@@ -47,7 +45,7 @@ fn do_main(args) {
     // check that slack access is available from the env variables.
     ["slack"] -> {
       let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
-      let context = client.Context(token, fetch)
+      let context = client.Context(token, system.fetch)
       case client.auth_test(context)(identity) {
         Ok(schema.Identity(team:, ..)) -> io.println("access to team: " <> team)
         Error(reason) -> io.println_error(string.inspect(reason))
@@ -62,16 +60,4 @@ fn do_main(args) {
 
 fn identity(x) {
   x
-}
-
-fn fetch(request) {
-  case httpc.send_bits(request) {
-    Ok(response) -> continuation.done(response)
-    Error(httpc.InvalidUtf8Response) ->
-      continuation.fail(effect.UnableToReadBody)
-    Error(httpc.FailedToConnect(..)) ->
-      continuation.fail(effect.NetworkError("Failed to connect"))
-    Error(httpc.ResponseTimeout) ->
-      continuation.fail(effect.NetworkError("response timeout"))
-  }
 }

@@ -80,8 +80,17 @@ pub fn conversations_history(
   context: Context(t),
   channel: String,
 ) -> K(t, Result(List(schema.Message), Failure)) {
+  conversations_history_since(context, channel, None)
+}
+
+/// Fetch every page newer than `oldest`, excluding the boundary message.
+pub fn conversations_history_since(
+  context: Context(t),
+  channel: String,
+  oldest: option.Option(String),
+) -> K(t, Result(List(schema.Message), Failure)) {
   use pages <- continuation.try_then(
-    pagination.fetch_all(history_page(context, channel, _)),
+    pagination.fetch_all(history_page(context, channel, oldest, _)),
   )
   continuation.done(list.flat_map(pages, fn(page) { page.messages }))
 }
@@ -89,17 +98,18 @@ pub fn conversations_history(
 fn history_page(
   context: Context(t),
   channel: String,
+  oldest: option.Option(String),
   cursor: option.Option(String),
 ) -> K(t, Result(pagination.Page(schema.History), Failure)) {
   let request =
     operations.conversations_history_request(
       base_request(context.token),
       channel,
-      oldest: None,
+      oldest: oldest,
       latest: None,
       cursor: cursor,
       limit: Some(100),
-      inclusive: None,
+      inclusive: Some(False),
     )
   use response <- continuation.map(context.fetch(request))
   case response {
