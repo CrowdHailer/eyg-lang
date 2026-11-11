@@ -34,6 +34,52 @@ pub fn auth_test_response(
   decode_response(response, schema.identity_decoder())
 }
 
+/// https://docs.slack.dev/reference/methods/chat.postMessage/
+/// Post text in a thread without broadcasting it to the channel.
+pub fn chat_post_message_request(
+  base: request.Request(BitArray),
+  channel: String,
+  thread_ts: String,
+  text: String,
+  color color: Option(String),
+) -> request.Request(BitArray) {
+  let content = case color {
+    None -> [#("text", json.string(text))]
+    Some(color) -> [
+      #(
+        "attachments",
+        json.preprocessed_array([
+          json.object([
+            #("color", json.string(color)),
+            #("text", json.string(text)),
+            #("fallback", json.string(text)),
+          ]),
+        ]),
+      ),
+    ]
+  }
+  let body =
+    json.object([
+      #("channel", json.string(channel)),
+      #("thread_ts", json.string(thread_ts)),
+      #("mrkdwn", json.bool(False)),
+      #("unfurl_links", json.bool(False)),
+      #("unfurl_media", json.bool(False)),
+      ..content
+    ])
+    |> json.to_string
+  base
+  |> utils.set_method(http.Post)
+  |> utils.append_path("/chat.postMessage")
+  |> utils.set_body("application/json; charset=utf-8", <<body:utf8>>)
+}
+
+pub fn chat_post_message_response(
+  response: response.Response(BitArray),
+) -> Result(Result(Nil, Failure), json.DecodeError) {
+  decode_response(response, decode.success(Nil))
+}
+
 /// https://docs.slack.dev/reference/methods/conversations.list/
 /// Note the channels field on the returned object is infact a list of conversations.
 /// Discover public channels and private channels accessible to the bot.

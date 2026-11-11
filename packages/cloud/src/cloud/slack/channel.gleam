@@ -113,18 +113,27 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           list.each(fresh, fn(message) {
             case command.source(message.data, state.bot_user) {
               Error(Nil) -> Nil
-              Ok(code) ->
+              Ok(code) -> {
+                let ts = option.unwrap(message.thread_ts, message.ts)
                 case
-                  execute.block(code, fn(text) {
-                    // TODO keep the output state of effects in workspace state
-                    io.println("Slack " <> channel.id <> ": " <> text)
-                  })
+                  execute.block(code, print_output(
+                    state.bot_token,
+                    channel.id,
+                    ts,
+                    _,
+                  ))
                 {
                   Ok(value) ->
-                    io.println("Slack " <> channel.id <> ": " <> value)
+                    print_output(
+                      state.bot_token,
+                      channel.id,
+                      ts,
+                      execute.StandardOut(value),
+                    )
                   Error(reason) ->
                     io.println_error("Slack " <> channel.id <> ": " <> reason)
                 }
+              }
             }
           })
       }
@@ -138,5 +147,33 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
         ),
       )
     }
+  }
+}
+
+fn print_output(
+  token: String,
+  channel: String,
+  thread_ts: String,
+  output: execute.Output,
+) {
+  let #(text, color) = case output {
+    execute.StandardOut(text) -> #(text, option.None)
+    execute.StandardError(text) -> #(text, option.Some("warning"))
+  }
+  case string.trim(text) {
+    "" -> Nil
+    _ ->
+      case client.chat_post_message(token, channel, thread_ts, text, color:) {
+        Ok(Nil) -> Nil
+        Error(reason) ->
+          io.println_error(
+            "Slack "
+            <> channel
+            <> " thread "
+            <> thread_ts
+            <> ": "
+            <> string.inspect(reason),
+          )
+      }
   }
 }

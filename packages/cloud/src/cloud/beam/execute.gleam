@@ -21,9 +21,15 @@ import touch_grass/interface
 import touch_grass/now
 import touch_grass/random
 import touch_grass/sleep
+import touch_grass/standard_error
 import touch_grass/standard_out
 
-pub fn block(code: String, emit: fn(String) -> Nil) -> Result(String, String) {
+pub type Output {
+  StandardOut(String)
+  StandardError(String)
+}
+
+pub fn block(code: String, emit: fn(Output) -> Nil) -> Result(String, String) {
   use source <- result.try(
     parser.all_from_string(code)
     |> result.map_error(parser.format_error(_, code)),
@@ -42,9 +48,13 @@ fn loop(returned, emit) {
         |> result.map_error(simple_debug.describe),
       )
       use value <- result.try(case effect {
-        computer.StandardOut(text) | computer.StandardError(text) -> {
-          emit(text)
+        computer.StandardOut(text) -> {
+          emit(StandardOut(text))
           Ok(standard_out.encode(Nil))
+        }
+        computer.StandardError(text) -> {
+          emit(StandardError(text))
+          Ok(standard_error.encode(Nil))
         }
         computer.AppendFile(_) -> Error("Unhandled effect: " <> label)
         computer.CreateKey(_) -> Error("Unhandled effect: " <> label)

@@ -46,6 +46,33 @@ pub fn auth_test(
   }
 }
 
+/// Post text as a reply to a thread's parent message.
+pub fn chat_post_message(
+  context: Context(t),
+  channel: String,
+  thread_ts: String,
+  text: String,
+  color color: option.Option(String),
+) -> K(t, Result(Nil, Failure)) {
+  let request =
+    operations.chat_post_message_request(
+      base_request(context.token),
+      channel,
+      thread_ts,
+      text,
+      color:,
+    )
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.chat_post_message_response(response) {
+        Ok(result) -> result.map_error(result, ApiFailure)
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
 /// Fetch every page of public and accessible private workspace channels.
 pub fn conversations_list(
   context: Context(t),
