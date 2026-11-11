@@ -25,6 +25,7 @@ pub opaque type State {
     subject: Subject(Message),
     bot_user: String,
     conversations: Dict(String, Conversation),
+    execute_state: execute.State,
   )
 }
 
@@ -36,11 +37,18 @@ pub type Conversation {
 pub fn start(
   bot_token: String,
   bot_user: String,
+  execute_state: execute.State,
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
     // Load in the message handler: full histories can exceed the init timeout.
     process.send(subject, Poll)
-    actor.initialised(State(bot_token, subject, bot_user, dict.new()))
+    actor.initialised(State(
+      bot_token,
+      subject,
+      bot_user,
+      dict.new(),
+      execute_state,
+    ))
     |> actor.returning(subject)
     |> Ok
   })
@@ -103,26 +111,27 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
             False -> #([message, ..fresh], set.insert(known, message.ts))
           }
         })
-      // History is newest-first; `fresh` is reversed for chronological logging.
-      case loaded {
+      // History is newest-first; process `fresh` in chronological order.
+      let execute_state = case loaded {
         False -> {
           let count = list.length(fresh)
           io.println("Loaded " <> int.to_string(count) <> " Slack messages")
+          state.execute_state
         }
         True ->
-          list.each(fresh, fn(message) {
+          list.fold(fresh, state.execute_state, fn(execute_state, message) {
             case command.source(message.data, state.bot_user) {
-              Error(Nil) -> Nil
+              Error(Nil) -> execute_state
               Ok(code) -> {
                 let ts = option.unwrap(message.thread_ts, message.ts)
-                case
-                  execute.block(code, print_output(
+                let #(outcome, session) =
+                  execute.block(code, execute_state, print_output(
                     state.bot_token,
                     channel.id,
                     ts,
                     _,
                   ))
-                {
+                case outcome {
                   Ok(value) ->
                     print_output(
                       state.bot_token,
@@ -133,6 +142,7 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
                   Error(reason) ->
                     io.println_error("Slack " <> channel.id <> ": " <> reason)
                 }
+                session
               }
             }
           })
@@ -145,6 +155,7 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           channel.id,
           Conversation(messages),
         ),
+        execute_state:,
       )
     }
   }
