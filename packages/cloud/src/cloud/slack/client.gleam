@@ -3,6 +3,8 @@ import cloud/slack/schema
 import gleam/http
 import gleam/http/request
 import gleam/json
+import gleam/list
+import gleam/option.{None, Some}
 import midas/continuation.{type Continuation as K}
 import midas/effect
 
@@ -39,5 +41,41 @@ pub fn auth_test(
         Error(reason) -> Error(InvalidResponse(reason))
       }
     Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
+/// Fetch every page of public and accessible private workspace channels.
+pub fn conversations_list(
+  context: Context(t),
+) -> K(t, Result(List(schema.Channel), Failure)) {
+  list_channels(context, None, [])
+}
+
+fn list_channels(
+  context: Context(t),
+  cursor: option.Option(String),
+  acc: List(schema.Channel),
+) -> K(t, Result(List(schema.Channel), Failure)) {
+  let request =
+    operations.conversations_list_request(
+      base_request(context.token),
+      cursor: cursor,
+    )
+  use response <- continuation.then(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.conversations_list_response(response) {
+        Ok(Ok(page)) -> {
+          let acc =
+            list.fold(page.channels, acc, fn(acc, channel) { [channel, ..acc] })
+          case page.next_cursor {
+            "" -> continuation.done(list.reverse(acc))
+            cursor -> list_channels(context, Some(cursor), acc)
+          }
+        }
+        Ok(Error(reason)) -> continuation.fail(ApiFailure(reason))
+        Error(reason) -> continuation.fail(InvalidResponse(reason))
+      }
+    Error(reason) -> continuation.fail(RequestFailed(reason))
   }
 }

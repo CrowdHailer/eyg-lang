@@ -4,6 +4,7 @@ import cloud/slack/schema
 import envoy
 import gleam/httpc
 import gleam/io
+import gleam/list
 import gleam/string
 import midas/continuation
 import midas/effect
@@ -14,6 +15,23 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["slack", "channels"] -> {
+      let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
+      let context = client.Context(token, fetch)
+      case client.conversations_list(context)(identity) {
+        Ok(channels) -> {
+          let #(yes, no) =
+            list.partition(channels, fn(channel) { channel.is_member })
+          list.each(yes, fn(channel) {
+            io.println(channel.name <> " - " <> "joined")
+          })
+          list.each(no, fn(channel) {
+            io.println(channel.name <> " - " <> "not joined")
+          })
+        }
+        Error(reason) -> io.println_error(string.inspect(reason))
+      }
+    }
     // check that slack access is available from the env variables.
     ["slack"] -> {
       let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
@@ -23,7 +41,7 @@ fn do_main(args) {
         Error(reason) -> io.println_error(string.inspect(reason))
       }
     }
-    _ -> io.println("unknown args")
+    _ -> io.println("Usage: gleam dev slack | gleam dev slack channels")
   }
 }
 

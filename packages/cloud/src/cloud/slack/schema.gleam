@@ -9,6 +9,39 @@ pub type Identity {
   Identity(team: String, team_id: String, user_id: String, bot_id: String)
 }
 
+pub type Channel {
+  Channel(
+    id: String,
+    name: String,
+    is_member: Bool,
+    is_private: Bool,
+    is_archived: Bool,
+  )
+}
+
+pub type Channels {
+  Channels(channels: List(Channel), next_cursor: String)
+}
+
+pub fn channel_decoder() -> decode.Decoder(Channel) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  use is_private <- decode.field("is_private", decode.bool)
+  use is_member <- decode.optional_field("is_member", is_private, decode.bool)
+  use is_archived <- decode.field("is_archived", decode.bool)
+  decode.success(Channel(id, name, is_member, is_private, is_archived))
+}
+
+pub fn channels_decoder() -> decode.Decoder(Channels) {
+  use channels <- decode.field("channels", decode.list(channel_decoder()))
+  use next_cursor <- decode.optional_field(
+    "response_metadata",
+    "",
+    decode.optional_field("next_cursor", "", decode.string, decode.success),
+  )
+  decode.success(Channels(channels, next_cursor))
+}
+
 pub type ApiError {
   ApiError(error: String, needed: Option(String), provided: Option(String))
 }

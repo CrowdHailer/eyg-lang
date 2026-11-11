@@ -33,6 +33,27 @@ pub fn auth_test_response(
   decode_response(response, schema.identity_decoder())
 }
 
+/// https://docs.slack.dev/reference/methods/conversations.list/
+/// Note the channels field on the returned object is infact a list of conversations.
+/// But here we have hard coded to public_channel
+pub fn conversations_list_request(
+  base: request.Request(BitArray),
+  cursor cursor: Option(String),
+) -> request.Request(BitArray) {
+  message_request(base, "/conversations.list", [
+    #("types", Some("public_channel")),
+    #("exclude_archived", Some("false")),
+    #("limit", Some("200")),
+    #("cursor", cursor),
+  ])
+}
+
+pub fn conversations_list_response(
+  response: response.Response(BitArray),
+) -> Result(Result(schema.Channels, Failure), json.DecodeError) {
+  decode_response(response, schema.channels_decoder())
+}
+
 pub fn conversations_history_request(
   base: request.Request(BitArray),
   channel: String,
