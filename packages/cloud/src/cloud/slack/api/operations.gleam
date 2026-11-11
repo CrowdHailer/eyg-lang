@@ -36,13 +36,13 @@ pub fn auth_test_response(
 
 /// https://docs.slack.dev/reference/methods/conversations.list/
 /// Note the channels field on the returned object is infact a list of conversations.
-/// But here we have hard coded to public_channel
+/// Discover public channels and private channels accessible to the bot.
 pub fn conversations_list_request(
   base: request.Request(BitArray),
   cursor cursor: Option(String),
 ) -> request.Request(BitArray) {
   message_request(base, "/conversations.list", [
-    #("types", Some("public_channel")),
+    #("types", Some("public_channel,private_channel")),
     #("exclude_archived", Some("false")),
     #("limit", Some("200")),
     #("cursor", cursor),

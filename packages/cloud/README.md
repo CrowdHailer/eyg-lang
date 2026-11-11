@@ -18,7 +18,9 @@ Connections that can start a session/chat etc
 
 ### Slack
 
-With `SLACK_BOT_TOKEN` exported, `gleam run` polls joined public channels.
+With `SLACK_BOT_TOKEN` exported, `gleam run` polls joined public and private channels.
+The bot needs `channels:read` and `channels:history` for public channels, and
+`groups:read` and `groups:history` for private channels.
 New human messages starting with the bot's mention, such as `@bot !int_add(2, 3)`,
 are parsed and evaluated as EYG. Results and errors are logged with the channel ID.
 Code fences are accepted. Initial history is cached without running its commands.

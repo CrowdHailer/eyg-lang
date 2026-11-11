@@ -46,7 +46,7 @@ pub fn auth_test(
   }
 }
 
-/// Fetch every page of public workspace channels.
+/// Fetch every page of public and accessible private workspace channels.
 pub fn conversations_list(
   context: Context(t),
 ) -> K(t, Result(List(schema.Channel), Failure)) {
