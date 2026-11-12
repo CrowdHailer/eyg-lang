@@ -1,9 +1,11 @@
 import cloud/discord/api/operations
+import cloud/discord/api/pagination
 import cloud/discord/api/schema
 import gleam/http
 import gleam/http/request
 import gleam/json
 import gleam/list
+import gleam/option
 import midas/continuation.{type Continuation as K}
 import midas/effect
 
@@ -24,6 +26,7 @@ pub type Failure {
   RequestFailed(effect.FetchError)
   InvalidResponse(json.DecodeError)
   ApiFailure(operations.Failure)
+  NonAdvancingCursor
 }
 
 pub fn current_user(
@@ -60,6 +63,46 @@ pub fn guild_channels(
               channel.kind == 0 || channel.kind == 5
             }),
           )
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
+/// Fetch all available history, newest-first. Threads use their own channel ID.
+pub fn channel_messages(
+  context: Context(t),
+  channel: String,
+) -> K(t, Result(List(schema.Message), Failure)) {
+  use pages <- continuation.try_then(
+    pagination.fetch_all(history_page(context, channel, _)),
+  )
+  // `after` pages move forwards, but each page is newest-first.
+  continuation.done(pages |> list.reverse |> list.flatten)
+}
+
+fn history_page(
+  context: Context(t),
+  channel: String,
+  cursor: option.Option(String),
+) -> K(t, Result(pagination.Page(List(schema.Message)), Failure)) {
+  let after = option.unwrap(cursor, "0")
+  let request =
+    operations.channel_messages_request(
+      base_request(context.token),
+      channel,
+      after: after,
+    )
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.channel_messages_response(response) {
+        Ok(Ok(page)) ->
+          case page.next_cursor == option.Some(after) {
+            True -> Error(NonAdvancingCursor)
+            False -> Ok(page)
+          }
         Ok(Error(reason)) -> Error(ApiFailure(reason))
         Error(reason) -> Error(InvalidResponse(reason))
       }

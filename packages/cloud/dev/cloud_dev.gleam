@@ -15,6 +15,17 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["discord", "messages", channel] -> {
+      let assert Ok(token) = envoy.get("DISCORD_BOT_TOKEN")
+      let context = discord.Context(token, system.fetch)
+      case discord.channel_messages(context, channel)(identity) {
+        Ok(messages) ->
+          list.each(messages, fn(message) {
+            io.println(json.to_string(message.data))
+          })
+        Error(reason) -> io.println_error(string.inspect(reason))
+      }
+    }
     ["discord", "channels"] -> {
       let assert Ok(token) = envoy.get("DISCORD_BOT_TOKEN")
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
@@ -74,7 +85,7 @@ fn do_main(args) {
     }
     _ ->
       io.println(
-        "Usage: gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels",
+        "Usage: gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
       )
   }
 }
