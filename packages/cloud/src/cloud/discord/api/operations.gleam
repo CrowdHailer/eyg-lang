@@ -1,3 +1,4 @@
+import cloud/discord/api/pagination
 import cloud/discord/api/schema
 import gleam/dynamic/decode
 import gleam/http
@@ -45,6 +46,7 @@ pub fn guild_channels_response(
 }
 
 /// Discord returns up to 100 messages after the exclusive snowflake boundary.
+/// https://docs.discord.com/developers/resources/message#get-channel-messages
 pub fn channel_messages_request(
   base: request.Request(BitArray),
   channel: String,
@@ -58,8 +60,11 @@ pub fn channel_messages_request(
 
 pub fn channel_messages_response(
   response: response.Response(BitArray),
-) -> Result(Result(List(schema.Message), Failure), json.DecodeError) {
-  decode_response(response, decode.list(schema.message_decoder()))
+) -> Result(
+  Result(pagination.Page(List(schema.Message)), Failure),
+  json.DecodeError,
+) {
+  decode_response(response, pagination.decoder())
 }
 
 fn decode_response(
