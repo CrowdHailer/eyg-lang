@@ -3,6 +3,7 @@ import cloud/discord/api/schema
 import gleam/http
 import gleam/http/request
 import gleam/json
+import gleam/list
 import midas/continuation.{type Continuation as K}
 import midas/effect
 
@@ -34,6 +35,31 @@ pub fn current_user(
     Ok(response) ->
       case operations.current_user_response(response) {
         Ok(Ok(identity)) -> Ok(identity)
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
+/// Discover text and announcement channels in a guild (server).
+pub fn guild_channels(
+  context: Context(t),
+  guild: String,
+) -> K(t, Result(List(schema.Channel), Failure)) {
+  let request =
+    operations.guild_channels_request(base_request(context.token), guild)
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.guild_channels_response(response) {
+        Ok(Ok(channels)) ->
+          Ok(
+            list.filter(channels, fn(channel) {
+              // TODO parse this better and return an enum of channel kinds
+              channel.kind == 0 || channel.kind == 5
+            }),
+          )
         Ok(Error(reason)) -> Error(ApiFailure(reason))
         Error(reason) -> Error(InvalidResponse(reason))
       }

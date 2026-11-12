@@ -72,6 +72,8 @@ Editing the slash command message does not rerun the command.
 
 ### Discord
 
+*Guilds in Discord represent an isolated collection of users and channels, and are often referred to as “servers” in the UI.
+
 #### Tokens
 
 Discord uses a bot token from the application's **Bot** page in the
@@ -91,6 +93,13 @@ It is not loaded automatically. From `packages/cloud`, check authentication:
 
 ```sh
 (set -a; source .env; set +a; gleam dev discord)
+```
+
+Set `DISCORD_GUILD_ID` to the server ID and list its text and announcement
+channels with:
+
+```sh
+(set -a; source .env; set +a; gleam dev discord channels)
 ```
 
 #### Storage

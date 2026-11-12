@@ -4,6 +4,17 @@ import cloud/jsonx
 import gleam/dynamic/decode
 import gleam/json
 
+pub type Channel {
+  Channel(id: String, name: String, kind: Int)
+}
+
+pub fn channel_decoder() -> decode.Decoder(Channel) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  use kind <- decode.field("type", decode.int)
+  decode.success(Channel(id, name, kind))
+}
+
 pub type Identity {
   Identity(id: String, username: String)
 }

@@ -28,6 +28,22 @@ pub fn current_user_response(
   decode_response(response, schema.identity_decoder())
 }
 
+/// Guild channel discovery is not paginated and does not include threads.
+pub fn guild_channels_request(
+  base: request.Request(BitArray),
+  guild: String,
+) -> request.Request(BitArray) {
+  base
+  |> utils.set_method(http.Get)
+  |> utils.append_path("/guilds/" <> guild <> "/channels")
+}
+
+pub fn guild_channels_response(
+  response: response.Response(BitArray),
+) -> Result(Result(List(schema.Channel), Failure), json.DecodeError) {
+  decode_response(response, decode.list(schema.channel_decoder()))
+}
+
 /// Discord returns up to 100 messages after the exclusive snowflake boundary.
 pub fn channel_messages_request(
   base: request.Request(BitArray),
