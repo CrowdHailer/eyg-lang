@@ -75,9 +75,19 @@ pub fn channel_messages(
   context: Context(t),
   channel: String,
 ) -> K(t, Result(List(schema.Message), Failure)) {
-  use pages <- continuation.try_then(
-    pagination.fetch_all(history_page(context, channel, _)),
-  )
+  channel_messages_since(context, channel, option.None)
+}
+
+/// Fetch every page newer than `after`, excluding the boundary message.
+pub fn channel_messages_since(
+  context: Context(t),
+  channel: String,
+  after: option.Option(String),
+) -> K(t, Result(List(schema.Message), Failure)) {
+  use pages <- continuation.try_then(pagination.fetch_all(
+    history_page(context, channel, _),
+    after,
+  ))
   // `after` pages move forwards, but each page is newest-first.
   continuation.done(pages |> list.reverse |> list.flatten)
 }

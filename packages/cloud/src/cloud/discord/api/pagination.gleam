@@ -23,8 +23,9 @@ pub fn decoder() -> decode.Decoder(Page(List(schema.Message))) {
 /// Return page payloads in fetch order, stopping at the first short page.
 pub fn fetch_all(
   fetch_page: fn(Option(String)) -> K(t, Result(Page(a), error)),
+  after: Option(String),
 ) -> K(t, Result(List(a), error)) {
-  fetch_pages(fetch_page, None, [])
+  fetch_pages(fetch_page, after, [])
 }
 
 fn fetch_pages(
