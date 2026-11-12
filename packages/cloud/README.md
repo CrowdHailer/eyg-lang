@@ -14,7 +14,9 @@ Data sources that are cached/pulled
 
 ## Channels
 
-Connections that can start a session/chat etc
+This [article](https://weli.dev/blog/the-valley-of-webhooks/) discusses the reliability problems of webhooks.
+Channels are connections that can start a session/chat etc.
+Most of their complexity is in solving the problem described in the article
 
 ### Slack
 
@@ -67,3 +69,36 @@ Not all operations with pagination support this pagination, some use legacy inst
 
 A slash command triggers an HTTP endpoint.
 Editing the slash command message does not rerun the command.
+
+### Discord
+
+#### Tokens
+
+Discord uses a bot token from the application's **Bot** page in the
+[Developer Portal](https://discord.com/developers/applications).
+Use the bot token, not the application ID, public key, or OAuth2 client secret.
+There is one bot token per application, shared across its server installs.
+Resetting it invalidates the previous token.
+
+#### Setup
+
+On the bot page choose "Reset Token" and copy the token.
+Enable "Message Content Intent".
+enable "Developer Mode" to copy server and channel IDs from the ui.
+
+Set `DISCORD_BOT_TOKEN` in the local, gitignored `packages/cloud/.env` file.
+It is not loaded automatically. From `packages/cloud`, check authentication:
+
+```sh
+(set -a; source .env; set +a; gleam dev discord)
+```
+
+#### Storage
+
+Messages retain the complete Discord object, including attachment metadata and
+URLs; attachments are not downloaded. Message IDs (snowflakes) remain strings
+to avoid losing precision. Ordering and cursor positions are per channel.
+
+#### Notes
+
+Rate limits return HTTP 429 with a `retry_after` delay in seconds https://discord.com/developers/docs/topics/rate-limits

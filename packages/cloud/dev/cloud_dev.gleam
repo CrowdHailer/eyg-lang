@@ -1,4 +1,5 @@
 import argv
+import cloud/discord/api/client as discord
 import cloud/slack/api/client
 import cloud/slack/api/schema
 import cloud/system
@@ -14,6 +15,14 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["discord"] -> {
+      let assert Ok(token) = envoy.get("DISCORD_BOT_TOKEN")
+      let context = discord.Context(token, system.fetch)
+      case discord.current_user(context)(identity) {
+        Ok(user) -> io.println("access as bot: " <> user.username)
+        Error(reason) -> io.println_error(string.inspect(reason))
+      }
+    }
     ["slack", "messages", channel] -> {
       let assert Ok(token) = envoy.get("SLACK_BOT_TOKEN")
       let context = client.Context(token, system.fetch)
@@ -53,7 +62,7 @@ fn do_main(args) {
     }
     _ ->
       io.println(
-        "Usage: gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id>",
+        "Usage: gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord",
       )
   }
 }
