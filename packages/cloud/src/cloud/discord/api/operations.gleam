@@ -29,6 +29,44 @@ pub fn current_user_response(
   decode_response(response, schema.identity_decoder())
 }
 
+/// Reply to a message without pinging its author or mentions in program output.
+pub fn create_message_request(
+  base: request.Request(BitArray),
+  channel: String,
+  message: String,
+  text: String,
+) -> request.Request(BitArray) {
+  let body =
+    json.object([
+      #("content", json.string(text)),
+      #(
+        "message_reference",
+        json.object([
+          #("message_id", json.string(message)),
+          #("fail_if_not_exists", json.bool(False)),
+        ]),
+      ),
+      #(
+        "allowed_mentions",
+        json.object([
+          #("parse", json.preprocessed_array([])),
+          #("replied_user", json.bool(False)),
+        ]),
+      ),
+    ])
+    |> json.to_string
+  base
+  |> utils.set_method(http.Post)
+  |> utils.append_path("/channels/" <> channel <> "/messages")
+  |> utils.set_body("application/json; charset=utf-8", <<body:utf8>>)
+}
+
+pub fn create_message_response(
+  response: response.Response(BitArray),
+) -> Result(Result(Nil, Failure), json.DecodeError) {
+  decode_response(response, decode.success(Nil))
+}
+
 /// Guild channel discovery is not paginated and does not include threads.
 pub fn guild_channels_request(
   base: request.Request(BitArray),

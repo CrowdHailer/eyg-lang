@@ -45,6 +45,31 @@ pub fn current_user(
   }
 }
 
+pub fn create_message(
+  context: Context(t),
+  channel: String,
+  message: String,
+  text: String,
+) -> K(t, Result(Nil, Failure)) {
+  let request =
+    operations.create_message_request(
+      base_request(context.token),
+      channel,
+      message,
+      text,
+    )
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.create_message_response(response) {
+        Ok(Ok(Nil)) -> Ok(Nil)
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
 /// Discover text and announcement channels in a guild (server).
 pub fn guild_channels(
   context: Context(t),
