@@ -15,9 +15,13 @@ let platform = import "./platform.eyg"
 let reject_all = platform.reject_all
 let pass = policy.pass
 
-// Every effect available on the cloud, each performed unchanged.
+// Every channel effect available on the cloud, each performed unchanged.
 // Start from this record and overwrite the fields to restrict.
 // File paths given to gates are absolute paths in the workspace's shared file system.
+// Raw database access is denied, `with_databases` allows it for trusted channels,
+// every channel can call the workspace's dataclips, which run with their own shell.
+let no_database = policy.deny("raw database access is not in this shell, use a dataclip")
+
 let everything = {
   add_trigger: pass,
   append_file: pass,
@@ -25,6 +29,7 @@ let everything = {
   cancel_schedule: pass,
   cron: pass,
   cwd: pass,
+  dataclip: pass,
   delegate: pass,
   delete_file: pass,
   delete_trigger: pass,
@@ -41,6 +46,8 @@ let everything = {
   read_file: pass,
   share_artifact: pass,
   sleep: pass,
+  sqlite: no_database,
+  sqlite_query: no_database,
   standard_error: pass,
   standard_out: pass,
   start_trigger: pass,
@@ -124,6 +131,7 @@ let admin = {
   connections: pass,
   cron: pass,
   cwd: pass,
+  dataclip: pass,
   delegate: pass,
   delete_file: pass,
   delete_secret: pass,
@@ -146,6 +154,8 @@ let admin = {
   share_artifact: pass,
   shells: pass,
   sleep: pass,
+  sqlite: pass,
+  sqlite_query: pass,
   standard_error: pass,
   standard_out: pass,
   start_trigger: pass,
@@ -179,6 +189,36 @@ let bind_to = (channels) -> {
   }
 }
 
+// Gates that allow only the named databases.
+let only_databases = (names) -> {
+  (input) -> {
+    match includes(names, input.database) {
+      True(_) -> { Pass(input) }
+      False(_) -> { Mock(Error(!string_append("database ", !string_append(input.database, " is not allowed")))) }
+    }
+  }
+}
+
+// Raw SQL on the named databases of the workspace, the whole shell of a dataclip that only queries.
+let databases = (names) -> {
+  {sqlite: only_databases(names), sqlite_query: only_databases(names), ..reject_all}
+}
+
+// A shell, such as `everything`, with raw SQL on the named databases, for trusted channels.
+let with_databases = (names, shell) -> {
+  {sqlite: only_databases(names), sqlite_query: only_databases(names), ..shell}
+}
+
+// A dataclip gate that allows only the named dataclips.
+let dataclips = (names) -> {
+  (input) -> {
+    match includes(names, input.name) {
+      True(_) -> { Pass(input) }
+      False(_) -> { Mock(Error(!string_append("dataclip ", !string_append(input.name, " is not allowed")))) }
+    }
+  }
+}
+
 // Computation without access to anything outside the shell.
 let pure = {
   now: pass,
@@ -197,6 +237,9 @@ let pure = {
   configure,
   admin,
   bind_to,
+  databases,
+  with_databases,
+  dataclips,
   pure,
   writes_under,
   offline,

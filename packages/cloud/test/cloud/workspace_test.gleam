@@ -633,3 +633,54 @@ pub fn webhook_requests_run_triggers_for_each_line_test() {
   assert process.receive(posts, 200) == Error(Nil)
   stop(workspace)
 }
+
+pub fn dataclips_query_databases_channels_cannot_test() {
+  let _ = simplifile.delete("test/fixtures/.data/databases/notes.sqlite")
+  let #(workspace, posts, _seen) =
+    start_file("test/fixtures/database_workspace.eyg", [
+      chat.Completion("", "", []),
+    ])
+  let run = fn(conversation, code) {
+    let event =
+      channel.Incoming(
+        conversation,
+        native_message("m1", "```eyg\n" <> code <> "\n```", False),
+      )
+    process.send(workspace, workspace.Inbound(event))
+    let assert Ok(#(_, output)) = process.receive(posts, 1000)
+    output
+  }
+  let notes = channel.Conversation("chat", "C2", None)
+  // #general is trusted with the notes database.
+  assert run(
+      general,
+      "perform SQLite({database: \"notes\", sql: \"CREATE TABLE notes (author TEXT, body TEXT)\", parameters: []})",
+    )
+    == "Ok([])"
+  assert run(
+      general,
+      "perform SQLite({database: \"notes\", sql: \"INSERT INTO notes VALUES (?, ?), (?, ?)\", parameters: [Text(\"alice\"), Text(\"a\"), Text(\"alice\"), Text(\"b\")]})",
+    )
+    == "Ok([])"
+  // #notes has no raw access, it calls the dataclip.
+  assert run(
+      notes,
+      "perform SQLite({database: \"notes\", sql: \"SELECT * FROM notes\", parameters: []})",
+    )
+    == "Error(\"raw database access is not in this shell, use a dataclip\")"
+  assert run(
+      notes,
+      "perform Dataclip({name: \"count_notes\", input: {author: \"alice\"}})",
+    )
+    == "Ok(Ok([[Integer(2)]]))"
+  // A dataclip's own shell limits it.
+  assert run(notes, "perform Dataclip({name: \"peek_users\", input: {}})")
+    == "Ok(Error(\"database users is not allowed\"))"
+  let missing = run(notes, "perform Dataclip({name: \"missing\", input: {}})")
+  assert string.contains(missing, "no dataclip named missing")
+  assert string.contains(
+    missing,
+    "count_notes - How many notes an author wrote",
+  )
+  stop(workspace)
+}

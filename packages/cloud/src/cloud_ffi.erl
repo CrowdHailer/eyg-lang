@@ -1,5 +1,5 @@
 -module(cloud_ffi).
--export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0, set_tracer/1, get_tracer/0, is_null/1]).
+-export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0, set_tracer/1, get_tracer/0, is_null/1, tuple_values/1]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -86,3 +86,8 @@ get_tracer() ->
 %% JSON null, as decoded by gleam_json.
 is_null(null) -> true;
 is_null(_) -> false.
+
+%% The values of a database row, which sqlight gives as a tuple.
+tuple_values(Row) when is_tuple(Row) -> tuple_to_list(Row);
+tuple_values(Row) when is_list(Row) -> Row;
+tuple_values(Row) -> [Row].

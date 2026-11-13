@@ -12,6 +12,7 @@ import gleam/dict
 import gleam/list
 import gleam/option.{Some}
 import gleam/string
+import simplifile
 
 fn load() {
   let assert Ok(workspace) =
@@ -172,4 +173,27 @@ pub fn channels_can_choose_a_model_test() {
     )
   let assert Ok(config.Channel(llm:, ..)) = config.channel(workspace, random)
   assert llm.model == "small"
+}
+
+pub fn dataclip_policies_are_checked_when_workspace_source_is_loaded_test() {
+  let file = "test/fixtures/database_workspace.eyg"
+  let assert Ok(source) = simplifile.read(file)
+  let state = test_helpers.state()
+  let secret = fn(_) { Error("no secrets") }
+  let assert Ok(_) = config.load_source(file, source, state, secret)
+  list.each(
+    [
+      "{}",
+      "{sqlite: (_) -> { Mock(42) }, ..cloud.reject_all}",
+      "{sqlite: (input) -> { let _ = perform Leak(input) Pass(input) }, ..cloud.reject_all}",
+    ],
+    fn(policy) {
+      let candidate =
+        string.replace(source, "shell: notes", "shell: " <> policy)
+      assert candidate != source
+      let assert Error(reason) =
+        config.load_source(file, candidate, state, secret)
+      assert string.contains(reason, "dataclip count_notes")
+    },
+  )
 }

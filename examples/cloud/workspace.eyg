@@ -1,8 +1,8 @@
 // An example EYG cloud workspace, see README.md.
 let cloud = import "../../eyg_packages/cloud/index.eyg"
 let shell = cloud.shell
-let triggers = cloud.triggers
 let secrets = cloud.secrets
+let triggers = cloud.triggers
 
 // The model's key is only read here, agents never see it.
 let api_key = match perform Secret("OLLAMA_API_KEY") {
@@ -63,6 +63,86 @@ let summarise_links = {
     }
   }
 }
+
+// Every message with a link in #links is saved in the links database.
+// #links is trusted with that database, other channels read it with the recent_links dataclip.
+let sql = (statement, parameters) -> {
+  perform SQLite({database: "links", sql: statement, parameters})
+}
+
+let save_links = {
+  name: "save-links",
+  pattern: triggers.contains("http"),
+  script: (event) -> {
+    // Project the fields this query stores from each platform's native payload.
+    let row = match event {
+      ChatPosted(message) -> { Some({id: message.id, author: message.author.name, text: message.text}) }
+      SlackMessage(event) -> {
+        let author = match event.message.user { Some(user) -> { user } None(_) -> { "" } }
+        Some({id: event.message.ts, author, text: event.message.text})
+      }
+      DiscordMessage(event) -> { Some({id: event.message.id, author: event.message.author.username, text: event.message.content}) }
+      WhatsAppMessage(event) -> {
+        let message = event.message
+        let text = match message.content {
+          Text(text) -> { text }
+          Button(button) -> { button.text }
+          Interactive(reply) -> { reply.title }
+          Media(media) -> { media.caption }
+          | (_) -> { "" }
+        }
+        Some({id: message.id, author: message.from, text})
+      }
+      | (_) -> { None({}) }
+    }
+    match row {
+      Some(row) -> {
+        let _ = sql("CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY, author TEXT, text TEXT)", [])
+        sql("INSERT OR IGNORE INTO links VALUES (?, ?, ?)", [Text(row.id), Text(row.author), Text(row.text)])
+      }
+      None(_) -> { Ok([]) }
+    }
+  }
+}
+
+let column = match {
+  Text(value) -> { value }
+  | (_) -> { "" }
+}
+
+// A row of `SELECT author, text`.
+let link = (row) -> {
+  match !list_pop(row) {
+    Ok(first) -> {
+      match !list_pop(first.tail) {
+        Ok(second) -> { {author: column(first.head), text: column(second.head)} }
+        Error(_) -> { {author: column(first.head), text: ""} }
+      }
+    }
+    Error(_) -> { {author: "", text: ""} }
+  }
+}
+
+// Named queries any channel can call with the Dataclip effect, each runs with its own shell.
+let dataclips = [
+  {
+    name: "recent_links",
+    description: "Messages with links shared in #links, oldest first, `{limit}` at most 50",
+    shell: shell.databases(["links"]),
+    clip: (input) -> {
+      let limit = match !int_compare(input.limit, 50) {
+        Gt(_) -> { 50 }
+        | (_) -> { input.limit }
+      }
+      match sql("SELECT author, text FROM links ORDER BY rowid DESC LIMIT ?", [Integer(limit)]) {
+        Ok(rows) -> {
+          Ok(!list_fold(rows, [], (row, links) -> { [link(row), ..links] }))
+        }
+        Error(reason) -> { Error(reason) }
+      }
+    }
+  }
+]
 
 // GitHub events go to #dev. GitHub is not a chat, nothing posted on GitHub runs code,
 // its events only reach these triggers.
@@ -234,6 +314,7 @@ let sentry = match perform Secret("SENTRY_CLIENT_SECRET") {
   },
   readme: "This is the example workspace of the EYG team. Be brief, friendly and helpful.",
   files: "./files",
+  dataclips,
   connections: [
     {name: "chat", source: ExampleChat({origin: "http://localhost:8080"})},
     {name: "github", source: github, channel: "dev"},
@@ -267,16 +348,16 @@ let sentry = match perform Secret("SENTRY_CLIENT_SECRET") {
       config: (info) -> { {
         handle: cloud.handlers.for_channel(info),
         channel_shell: online(shell.writes_under(["/channels/general", "/skills"], shell.everything)),
-        readme: "The team's main channel, answer questions when people ask you."
+        readme: "The team's main channel, answer questions when people ask you. The recent_links dataclip returns links shared in #links."
       } }
     },
     {
       name: "links",
       config: (info) -> { {
         handle: cloud.handlers.for_channel(info),
-        channel_shell: online(shell.writes_under(["/channels/links"], shell.everything)),
-        readme: "People share links here. Only post when someone asks you something.",
-        triggers: [summarise_links]
+        channel_shell: online(shell.with_databases(["links"], shell.writes_under(["/channels/links"], shell.everything))),
+        readme: "People share links here, they are saved in the links database. Only post when someone asks you something.",
+        triggers: [summarise_links, save_links]
       } }
     },
     {
@@ -315,9 +396,10 @@ let sentry = match perform Secret("SENTRY_CLIENT_SECRET") {
       } }
     }
   ], (info) -> {
+    let name = info.name
     {
       handle: cloud.handlers.for_channel(info),
-      channel_shell: shell.writes_under([!string_append("/channels/", info.name)], shell.offline),
+      channel_shell: shell.writes_under([!string_append("/channels/", name)], shell.offline),
       readme: "This channel has no network access."
     }
   })

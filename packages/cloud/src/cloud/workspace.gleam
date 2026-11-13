@@ -25,6 +25,8 @@ import cloud/connections/sentry
 import cloud/connections/webhook as webhooks
 import cloud/cron
 import cloud/data
+import cloud/database
+import cloud/dataclip
 import cloud/files
 import cloud/handler
 import cloud/invocation
@@ -149,6 +151,8 @@ type State {
     self: Subject(Message),
     load: config.Loader,
     platforms: Dict(String, channel.Outbound),
+    /// The directory of the workspace's databases.
+    data: String,
     /// Plugins that answer webhook requests, by connection name.
     listeners: Dict(String, webhook.Listener),
     sessions: Dict(String, Subject(session.Message)),
@@ -182,10 +186,10 @@ pub fn start_with(
   complete: agent.Completer,
 ) -> Result(Subject(Message), String) {
   // Only Gleam data, not EYG values, leaves this process.
-  use #(seed, crons, connections) <- result.try(
+  use #(seed, crons, connections, data) <- result.try(
     load()
     |> result.map(fn(config) {
-      #(config.files, config.crons, config.connections)
+      #(config.files, config.crons, config.connections, config.data)
     }),
   )
   use schedules <- result.try(
@@ -209,6 +213,7 @@ pub fn start_with(
       self:,
       load:,
       platforms: dict.new(),
+      data:,
       listeners: dict.new(),
       sessions: dict.new(),
       files:,
@@ -997,6 +1002,7 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
   let config.ChannelInfo(name:, ..) = info
   let key = trigger_key(info)
   let self = state.self
+  let load = state.load
   let triggers =
     execute.Triggers(
       add: fn(t) { process.call(self, 5000, AddTrigger(info, t, _)) },
@@ -1032,6 +1038,12 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
     ..host,
     events: fn(connection) {
       process.call(self, 5000, ReadEvents(connection, _))
+    },
+    database: database.path(state.data, _),
+    dataclip: fn(name, input, trace) {
+      // The configuration is loaded in the calling process, see `cloud/dataclip`.
+      use workspace <- result.try(load())
+      dataclip.run(workspace, name, input, trace)
     },
     api: state.api,
   )

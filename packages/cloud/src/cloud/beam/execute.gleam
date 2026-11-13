@@ -5,6 +5,7 @@
 //// Effects that need the cloud's services, such as posting to a channel, are implemented by a `Host`.
 
 import cloud/artifacts
+import cloud/database
 import cloud/files
 import cloud/operation
 import cloud/system
@@ -55,6 +56,8 @@ import touch_grass/interface
 import touch_grass/now
 import touch_grass/random
 import touch_grass/sleep
+import touch_grass/sqlite
+import touch_grass/sqlite_query
 import touch_grass/standard_error
 import touch_grass/standard_out
 
@@ -92,6 +95,10 @@ pub type Effect {
   Delegate(task: String)
   /// Read the logged events of a connection, newest first.
   Events(connection: String)
+  /// Run a dataclip of the workspace with an input, it runs with its own policy, see `cloud/dataclip`.
+  Dataclip(name: String, input: Value)
+  Sqlite(sqlite.Input)
+  SqliteQuery(sqlite_query.Input)
   /// An operation of the configuration API, see `cloud/operation`.
   Operate(operation.Operation)
   /// Run the rest of a web shell's programs as a channel of a workspace.
@@ -121,6 +128,11 @@ pub type Host {
     artifacts: Artifacts,
     /// The logged events of a connection, newest first.
     events: fn(String) -> Result(List(Value), String),
+    /// The file of a named database, for the `SQLite` and `SQLiteQuery` effects, see `cloud/database`.
+    database: fn(String) -> Result(String, String),
+    /// Run a dataclip of the workspace, its spans are children of the given span.
+    dataclip: fn(String, Value, Option(tracing.Context)) ->
+      Result(Value, String),
     /// Perform an operation of the configuration API.
     api: fn(operation.Operation) -> Result(Value, String),
     /// Bind a web shell to a channel, `None` unbinds it. Only web shells can bind.
@@ -140,6 +152,14 @@ fn no_bind(_channel) {
 
 fn no_events(_connection) {
   Error("Events are not available")
+}
+
+pub fn no_database(_name) {
+  Error("There are no databases here")
+}
+
+pub fn no_dataclip(_name, _input, _trace) {
+  Error("Dataclips are not available")
 }
 
 /// The artifacts of the program's channel.
@@ -265,6 +285,8 @@ pub fn channel_host(
     schedules:,
     artifacts:,
     events: no_events,
+    database: no_database,
+    dataclip: no_dataclip,
     api: no_api,
     bind: no_bind,
     trace: option.None,
@@ -284,6 +306,8 @@ pub fn configuration_host(
     schedules: no_schedules(),
     artifacts: no_artifacts(),
     events: no_events,
+    database: no_database,
+    dataclip: no_dataclip,
     api: no_api,
     bind: no_bind,
     trace: option.None,
@@ -313,6 +337,9 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
     list_triggers(),
     delegate_interface(),
     events(),
+    dataclip(),
+    touch_grass.sqlite() |> touch_grass.map(Sqlite),
+    touch_grass.sqlite_query() |> touch_grass.map(SqliteQuery),
     cron(),
     timeout(),
     cancel_schedule(),
@@ -486,6 +513,19 @@ fn delegate_interface() -> interface.Interface(Effect, Meta) {
   )
 }
 
+fn dataclip() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Dataclip",
+    lift_type: t.record([#("name", t.String), #("input", t.Var(0))]),
+    lower_type: t.result(t.Var(1), t.String),
+    decode: fn(value) {
+      use name <- result.try(cast.field("name", cast.as_string, value))
+      use input <- result.map(cast.field("input", Ok, value))
+      Dataclip(name, input)
+    },
+  )
+}
+
 fn events() -> interface.Interface(Effect, Meta) {
   interface.Interface(
     name: "Events",
@@ -528,6 +568,7 @@ pub const rules = [
   #("CancelSchedule", policy.PolicyField("cancel_schedule")),
   #("Cron", policy.PolicyField("cron")),
   #("CWD", policy.PolicyField("cwd")),
+  #("Dataclip", policy.PolicyField("dataclip")),
   #("DecodeJSON", policy.Unchecked),
   #("Delegate", policy.PolicyField("delegate")),
   #("DeleteFile", policy.PolicyField("delete_file")),
@@ -545,6 +586,8 @@ pub const rules = [
   #("ReadDirectory", policy.PolicyField("read_directory")),
   #("ReadFile", policy.PolicyField("read_file")),
   #("ShareArtifact", policy.PolicyField("share_artifact")),
+  #("SQLite", policy.PolicyField("sqlite")),
+  #("SQLiteQuery", policy.PolicyField("sqlite_query")),
   #("Sleep", policy.PolicyField("sleep")),
   #("StartTrigger", policy.PolicyField("start_trigger")),
   #("StandardError", policy.PolicyField("standard_error")),
@@ -896,6 +939,22 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
     Bind(workspace, channel) ->
       Ok(#(result_unit(host.bind(option.Some(#(workspace, channel)))), []))
     Unbind -> Ok(#(result_unit(host.bind(option.None)), []))
+    Sqlite(sqlite.Input(database: name, sql:, parameters:)) ->
+      host.database(name)
+      |> result.try(database.run(_, sql, parameters))
+      |> sqlite.encode
+      |> no_output
+    SqliteQuery(sqlite_query.Input(database: name, plan:)) ->
+      host.database(name)
+      |> result.try(fn(path) { result.try(plan, database.resolve(path, _)) })
+      |> sqlite_query.encode
+      |> no_output
+    Dataclip(name, input) ->
+      case host.dataclip(name, input, host.trace) {
+        Ok(value) -> v.ok(value)
+        Error(reason) -> v.error(v.String(reason))
+      }
+      |> no_output
     Events(connection) ->
       case host.events(connection) {
         Ok(events) -> v.ok(v.LinkedList(events))

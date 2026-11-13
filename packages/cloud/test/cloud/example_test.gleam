@@ -2,6 +2,7 @@
 
 import cloud/beam/execute
 import cloud/config
+import cloud/database
 import cloud/execute_test
 import cloud/plugins/chat_input
 import cloud/plugins/discord
@@ -16,6 +17,9 @@ import gleam/dict
 import gleam/erlang/process
 import gleam/list
 import gleam/option
+import overlay/policy
+import simplifile
+import touch_grass/sqlite
 
 fn load() {
   let assert Ok(workspace) =
@@ -42,9 +46,24 @@ pub fn example_workspace_test() {
   let assert [config.Cron(name: "standup", ..)] = workspace.crons
 }
 
-pub fn links_summarises_with_books_test() {
-  let assert [trigger] = channel("links").triggers
-  assert trigger.name == "summarise-links"
+pub fn links_summarises_and_saves_links_test() {
+  let names = list.map(channel("links").triggers, fn(t) { t.name })
+  assert names == ["summarise-links", "save-links"]
+  assert list.contains(dict.keys(channel("links").shell), "SQLite")
+}
+
+pub fn recent_links_dataclip_test() {
+  let assert [dataclip] = load().dataclips
+  assert dataclip.name == "recent_links"
+  assert dict.size(dataclip.shell) == list.length(execute.harness())
+  let assert #(policy.Unavailable, _) =
+    execute.decide(
+      dataclip.shell,
+      "Post",
+      v.String("hello"),
+      #(0, 0),
+      test_helpers.state(),
+    )
 }
 
 pub fn other_channels_are_offline_test() {
@@ -78,7 +97,7 @@ pub fn named_factories_check_handlers_for_each_native_platform_test() {
 pub fn link_summaries_project_each_platforms_native_reaction_test() {
   let workspace = load()
   let channel = channel("links")
-  let assert [trigger] = channel.triggers
+  let assert [trigger, _save] = channel.triggers
   let assert trigger.Function(script) = trigger.script
   let tasks = process.new_subject()
   let host =
@@ -140,4 +159,72 @@ pub fn link_summaries_project_each_platforms_native_reaction_test() {
         )
     },
   )
+}
+
+pub fn saved_links_keep_each_platforms_native_fields_test() {
+  let workspace = load()
+  let channel = channel("links")
+  let assert [_, trigger] = channel.triggers
+  let assert trigger.Function(script) = trigger.script
+  let assert Ok(path) = database.path("build/example_database_test", "links")
+  let _ = simplifile.delete(path)
+  let host =
+    execute.Host(
+      ..execute.configuration_host(fn(_) { Error("no secrets") }),
+      database: database.path("build/example_database_test", _),
+    )
+  let examples = [
+    "ChatPosted({id: \"chat\", author: {name: \"Alice\"}, text: \"https://chat.test\"})",
+    "SlackMessage({message: {ts: \"slack\", user: Some(\"U1\"), text: \"https://slack.test\"}})",
+    "DiscordMessage({message: {id: \"discord\", author: {username: \"Bob\"}, content: \"https://discord.test\"}})",
+    "WhatsAppMessage({message: {id: \"whatsapp\", from: \"123\", content: Text(\"https://whatsapp.test\")}})",
+  ]
+  list.each(examples, fn(code) {
+    let event = capture.capture(execute_test.evaluate(code), #(0, 0))
+    let #(matched, _) =
+      execute.run_expression(
+        #(ir.Apply(trigger.pattern, event), #(0, 0)),
+        [],
+        channel.shell,
+        host,
+        workspace.state,
+      )
+    assert matched.result == Ok(option.Some(v.true()))
+    let #(run, _) =
+      execute.run_expression(
+        #(ir.Apply(script, event), #(0, 0)),
+        [],
+        channel.shell,
+        host,
+        workspace.state,
+      )
+    let assert Ok(option.Some(v.Tagged("Ok", _))) = run.result
+  })
+  assert database.run(
+      path,
+      "SELECT id, author, text FROM links ORDER BY id",
+      [],
+    )
+    == Ok([
+      [
+        sqlite.Text("chat"),
+        sqlite.Text("Alice"),
+        sqlite.Text("https://chat.test"),
+      ],
+      [
+        sqlite.Text("discord"),
+        sqlite.Text("Bob"),
+        sqlite.Text("https://discord.test"),
+      ],
+      [
+        sqlite.Text("slack"),
+        sqlite.Text("U1"),
+        sqlite.Text("https://slack.test"),
+      ],
+      [
+        sqlite.Text("whatsapp"),
+        sqlite.Text("123"),
+        sqlite.Text("https://whatsapp.test"),
+      ],
+    ])
 }

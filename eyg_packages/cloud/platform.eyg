@@ -2,6 +2,9 @@
 let reject = (_) -> { Reject({}) }
 {
   reject_all: {
+    dataclip: reject,
+    sqlite: reject,
+    sqlite_query: reject,
     traces: reject,
     bind: reject,
     unbind: reject,

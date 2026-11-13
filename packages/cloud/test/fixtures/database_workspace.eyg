@@ -1,0 +1,41 @@
+let cloud = import "../../../../eyg_packages/cloud/index.eyg"
+let shell = cloud.shell
+let notes = shell.databases(["notes"])
+
+{
+  llm: {
+    provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
+    model: "test-model"
+  },
+  readme: "A workspace with a database.",
+  dataclips: [
+    {
+      name: "count_notes",
+      description: "How many notes an author wrote, `{author}`",
+      shell: notes,
+      clip: (input) -> {
+        perform SQLite({database: "notes", sql: "SELECT count(*) FROM notes WHERE author = ?", parameters: [Text(input.author)]})
+      }
+    },
+    {
+      name: "peek_users",
+      shell: notes,
+      clip: (_) -> {
+        perform SQLite({database: "users", sql: "SELECT 1", parameters: []})
+      }
+    }
+  ],
+  channel: (info) -> {
+    let name = info.name
+    match !equal(name, "general") {
+      // A trusted channel with raw access to the notes database.
+      True(_) -> { {handle: cloud.handlers.for_channel(info), channel_shell: shell.with_databases(["notes"], shell.everything)} }
+      False(_) -> {
+        match !equal(name, "notes") {
+          True(_) -> { {handle: cloud.handlers.for_channel(info), channel_shell: shell.everything} }
+          False(_) -> { {handle: cloud.handlers.for_channel(info), channel_shell: {post: shell.pass, dataclip: shell.dataclips(["peek_users"]), ..cloud.reject_all}} }
+        }
+      }
+    }
+  }
+}

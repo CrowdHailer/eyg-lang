@@ -57,6 +57,9 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.dataclip({name: "x", input: {}}))
+  let _ = expect_reject(s.sqlite({database: "x", sql: "SELECT 1", parameters: []}))
+  let _ = expect_reject(s.sqlite_query({database: "x", query: {}}))
   let _ = expect_reject(s.traces({workspace: "x", limit: 10}))
   let _ = expect_reject(s.bind({}))
   let _ = expect_reject(s.unbind({}))
@@ -149,8 +152,43 @@ let test_bind_to = (_) -> {
   {}
 }
 
+let query = (database) -> {
+  {database, sql: "SELECT 1", parameters: []}
+}
+
+let test_databases = (_) -> {
+  let d = shell.databases(["errors"])
+  let _ = assert.equal_string("errors", expect_pass(d.sqlite(query("errors"))).database)
+  let _ = assert.equal_string(
+    "database users is not allowed",
+    assert.error(expect_mock(d.sqlite(query("users"))))
+  )
+  let _ = assert.error(expect_mock(d.sqlite_query({database: "users", query: {}})))
+  let _ = assert.equal_string(
+    "raw database access is not in this shell, use a dataclip",
+    assert.error(expect_mock(shell.everything.sqlite(query("errors"))))
+  )
+  let trusted = shell.with_databases(["errors"], shell.everything)
+  let _ = assert.equal_string("errors", expect_pass(trusted.sqlite(query("errors"))).database)
+  let _ = assert.equal_string("hi", expect_pass(trusted.post("hi")))
+  {}
+}
+
+let test_dataclips = (_) -> {
+  let gate = shell.dataclips(["recent_errors"])
+  let _ = assert.equal_string("recent_errors", expect_pass(gate({name: "recent_errors", input: {}})).name)
+  let _ = assert.equal_string(
+    "dataclip all_users is not allowed",
+    assert.error(expect_mock(gate({name: "all_users", input: {}})))
+  )
+  let _ = assert.equal_string("recent_errors", expect_pass(shell.everything.dataclip({name: "recent_errors", input: {}})).name)
+  {}
+}
+
 [
   {name: "cloud defaults reject every gate", test: test_defaults_reject_every_gate},
+  {name: "cloud shell databases allows named databases", test: test_databases},
+  {name: "cloud shell dataclips allows named dataclips", test: test_dataclips},
   {name: "cloud shell admin has channel and api effects", test: test_admin_has_channel_and_api_effects},
   {name: "cloud shell configure includes observe", test: test_configure_includes_observe},
   {name: "cloud shell bind to channels", test: test_bind_to},

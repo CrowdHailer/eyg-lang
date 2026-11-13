@@ -11,6 +11,8 @@
 ////   the message is sent to the named channel's session on the cron schedule, see `cloud/cron`.
 //// - `connections` optional, a list of `{name, source, channel}` records, the chats
 ////   and other services the workspace is connected to, see `cloud/connection`.
+//// - `dataclips` optional, a list of `{name, description, shell, clip}` records,
+////   named functions any channel with the `dataclip` effect can call, see `cloud/dataclip`.
 ////
 //// The channel configuration is a record with:
 ////
@@ -27,9 +29,11 @@
 import cloud/beam/execute
 import cloud/connection
 import cloud/handler
+import cloud/secrets
 import cloud/tracing
 import cloud/trigger
 import eyg/analysis/type_/binding
+import eyg/interpreter/break
 import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
@@ -51,7 +55,21 @@ pub type Workspace {
     files: Option(String),
     crons: List(Cron),
     connections: List(connection.Connection),
+    dataclips: List(Dataclip),
+    /// The directory of the workspace's secrets and databases.
+    data: String,
     state: execute.State,
+  )
+}
+
+/// A named function that runs with its own policy, the `shell`,
+/// so channels without that access can call it, see `cloud/dataclip`.
+pub type Dataclip {
+  Dataclip(
+    name: String,
+    description: String,
+    shell: execute.Policy,
+    clip: execute.Value,
   )
 }
 
@@ -135,13 +153,14 @@ pub fn load_source(
     Error(reason) -> Some(reason)
   })
   case result {
-    Ok(Some(value)) -> decode(value, filepath.directory_name(file), state)
+    Ok(Some(value)) -> decode(value, file, state)
     Ok(None) -> Error(file <> " has no value")
     Error(reason) -> Error(file <> ": " <> reason)
   }
 }
 
-fn decode(value, directory, state) {
+fn decode(value, file, state) {
+  let directory = filepath.directory_name(file)
   use llm <- result.try(field("llm", overlay.cast_llm, value))
   use readme <- result.try(optional_string("readme", value))
   use channel <- result.try(field("channel", Ok, value))
@@ -159,7 +178,43 @@ fn decode(value, directory, state) {
     Ok(_) -> field("connections", cast.as_list_of(_, connection.decode), value)
     Error(_) -> Ok([])
   })
-  Ok(Workspace(llm:, readme:, channel:, files:, crons:, connections:, state:))
+  use dataclips <- result.try(case cast.field("dataclips", Ok, value) {
+    Ok(_) ->
+      field("dataclips", cast.as_list_of(_, decode_dataclip(_, state)), value)
+    Error(_) -> Ok([])
+  })
+  let data = secrets.data_directory(file)
+  Ok(Workspace(
+    llm:,
+    readme:,
+    channel:,
+    files:,
+    crons:,
+    connections:,
+    dataclips:,
+    data:,
+    state:,
+  ))
+}
+
+fn decode_dataclip(value, state) {
+  use name <- result.try(cast.field("name", cast.as_string, value))
+  use description <- result.try(case cast.field("description", Ok, value) {
+    Ok(_) -> cast.field("description", cast.as_string, value)
+    Error(_) -> Ok("")
+  })
+  use shell <- result.try(cast.field("shell", Ok, value))
+  use shell <- result.try(
+    execute.decode_policy(shell, state)
+    |> result.map_error(fn(reason) {
+      break.IncorrectTerm(
+        "a shell for dataclip " <> name <> ": " <> reason,
+        value,
+      )
+    }),
+  )
+  use clip <- result.try(cast.field("clip", Ok, value))
+  Ok(Dataclip(name:, description:, shell:, clip:))
 }
 
 fn decode_cron(value) {

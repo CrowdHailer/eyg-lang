@@ -13,6 +13,7 @@ packages = [
   { name = "castor", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "non_empty_list", "oas_generator_utils"], otp_app = "castor", source = "hex", outer_checksum = "D3659680ABFE81634E27479479431ED66FC43F2547FDB41F0E9ACDE798CD4B13" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
   { name = "envoy", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "9C6FBB6BFA02A52798BEEC5977A738CAD6E4A057F4B67FD0C8061AD2502C191A" },
+  { name = "esqlite", version = "0.10.1", build_tools = ["rebar3"], requirements = [], otp_app = "esqlite", source = "hex", outer_checksum = "578C49543B81D1FB91F62ADF7459EC2924ABF86C98A1B0C9900F89674B664959" },
   { name = "ewe", version = "8.0.0", build_tools = ["gleam"], requirements = ["alpacki", "gleam_erlang", "gleam_http", "gleam_otp", "gleam_stdlib", "logging", "tup", "websocks"], otp_app = "ewe", source = "hex", outer_checksum = "C4A08E94178DECC2B035608E97DFECF0A16255343EEDFE8D2053AD441F4563B0" },
   { name = "exception", version = "2.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "exception", source = "hex", outer_checksum = "6BDEA95248093599391C3B5DF1835C5C6A86C353C2F99CE539B450E3432FE117" },
   { name = "eyg_analysis", version = "3.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], source = "local", path = "../gleam_analysis" },
@@ -60,6 +61,7 @@ packages = [
   { name = "simplifile", version = "2.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "A2727627B063E87351934C7F7F008F2D1FDB16F6DE0B8C79F9E46459CFC9C164" },
   { name = "sketch", version = "4.2.1", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_otp", "gleam_stdlib", "murmur3a"], otp_app = "sketch", source = "hex", outer_checksum = "873D02A453424D655058A41B11441D4FD67668A7CA06B5E36FEF027D53859538" },
   { name = "splitter", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "8F1485306E0D59168A39E12ED8844F9F616EC59C3C63AFCFDAE04DBD68690CBC" },
+  { name = "sqlight", version = "1.2.0", build_tools = ["gleam"], requirements = ["esqlite", "gleam_stdlib"], otp_app = "sqlight", source = "hex", outer_checksum = "841768D0A81107EE2DB46B949354F284A68B2E8098315C28A1FE3C07D206C17A" },
   { name = "touch_grass", version = "0.4.4", build_tools = ["gleam"], requirements = ["eyg_analysis", "eyg_compiler", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_stdlib", "gleam_time", "julienne", "multiformats", "ogre"], source = "local", path = "../touch_grass" },
   { name = "tup", version = "1.0.0", build_tools = ["gleam"], requirements = ["exception", "gleam_erlang", "gleam_otp", "gleam_stdlib", "logging", "relay_supervisor"], otp_app = "tup", source = "hex", outer_checksum = "07E91C56E2845582BCB4025C3BB90D933E78689CCCD25AD9D910303505020EDA" },
   { name = "unixfs", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_stdlib", "gleam_x", "multiformats", "simplifile"], source = "local", path = "../unixfs" },
@@ -71,6 +73,7 @@ packages = [
 argv = { version = ">= 1.1.0 and < 2.0.0" }
 envoy = { version = ">= 1.2.0 and < 2.0.0" }
 eyg_analysis = { path = "../gleam_analysis" }
+eyg_compiler = { path = "../gleam_compiler" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_ir = { path = "../gleam_ir" }
@@ -95,5 +98,6 @@ otel = { path = "../otel" }
 overlay = { path = "../overlay" }
 overlay_llm = { path = "../overlay_llm" }
 simplifile = { version = ">= 2.4.0 and < 3.0.0" }
+sqlight = { version = ">= 1.2.0 and < 2.0.0" }
 touch_grass = { path = "../touch_grass" }
 unixfs = { path = "../unixfs" }

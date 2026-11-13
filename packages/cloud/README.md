@@ -54,6 +54,7 @@ and its output posted in the message's thread. The agent sees the program and it
 | `files` | Directory, relative to the workspace file, the shared file system starts with |
 | `crons` | `[{name, schedule, channel, message}]` messages sent to a channel's session on a schedule |
 | `connections` | `[{name, source, channel}]` chats and services, see [connections](../../guides/cloud/connections.md) |
+| `dataclips` | `[{name, description, shell, clip}]` named functions channels call with `Dataclip`, see [dataclips](../../guides/cloud/dataclips.md) |
 | `channel` | Function from `{platform, id, name}` to `{handle, channel_shell, readme, triggers, llm}`; `handle` and `channel_shell` are required |
 
 The configuration is trusted. It can read the workspace's secrets with the `Secret` effect.
@@ -67,8 +68,8 @@ It is a complete record with a typed gate for every checked effect. Missing or i
 Gates return `Pass(input)` to perform an effect, `Mock(reply)` to answer without performing it, or `Reject({})` to make it unavailable.
 Start with `cloud.reject_all` and overwrite the gates to allow. This platform value is available directly in configuration and programs; the cloud EYG package exports the same complete defaults.
 
-The [cloud EYG package](../../eyg_packages/cloud/) has helpers, `shell.everything`, `shell.offline`, `shell.read_only`
-and `shell.writes_under(roots, shell)`, and network secrets in `secrets`.
+The [cloud EYG package](../../eyg_packages/cloud/) has helpers, `shell.everything`, `shell.offline`, `shell.read_only`,
+`shell.writes_under(roots, shell)` and `shell.with_databases(names, shell)`, and network secrets in `secrets`.
 
 ### Effects
 
@@ -80,6 +81,8 @@ and `shell.writes_under(roots, shell)`, and network secrets in `secrets`.
 | `AddTrigger`, `StopTrigger`, `StartTrigger`, `DeleteTrigger`, `ListTriggers` | `add_trigger` ... | The channel's triggers |
 | `Delegate(task)` | `delegate` | Run a subagent with the channel shell, returns its final reply |
 | `Events(connection)` | `events` | The logged events of a connection, newest first |
+| `SQLite({database, sql, parameters})`, `SQLiteQuery({database, query})` | `sqlite`, `sqlite_query` | The workspace's named [databases](../../guides/cloud/dataclips.md), denied by `shell.everything` |
+| `Dataclip({name, input})` | `dataclip` | Run a [dataclip](../../guides/cloud/dataclips.md), it runs with its own shell |
 | `Workspaces`, `Connections`, `SetWorkspaceSource`, `SetSecret` ... | `workspaces` ... | The [configuration API](../../guides/cloud/api.md) |
 | `Bind({workspace, channel})`, `Unbind({})` | `bind`, `unbind` | Web shells only, run as a channel |
 | `Traces(limit)` | `traces` | The most recent [trace spans](../../guides/cloud/tracing.md) |
@@ -116,6 +119,12 @@ Secrets are stored per workspace with `gleam run -m cloud/secrets`, see [`cloud/
 Only the workspace configuration can read them.
 `secrets.load(name, hosts)` in the cloud EYG package gives channel shells network secrets:
 `Env` returns a hash placeholder and `Fetch` to one of the hosts gets the real value.
+
+### Databases and dataclips
+
+A workspace has named SQLite databases in its data directory, used with the same `SQLite` and `SQLiteQuery` effects as the CLI.
+Raw access is for trusted channels, other channels call dataclips, named functions with their own shell.
+See [dataclips](../../guides/cloud/dataclips.md).
 
 ### Artifacts
 
