@@ -1,0 +1,1 @@
+{"agree": true, "objections": [], "signoff": "A1 puts redaction before anything is addressed, A2 keeps content CIDs plain while every other digest is keyed and shreddable, and N2's per-stream chains under a Merkle checkpoint are the stream layout I wanted, so I agree to the final catalogue."}

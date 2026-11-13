@@ -1,0 +1,231 @@
+{
+  "position": "I care that everything large or shared is stored once in a content addressed block store and referenced by CID many times: file trees, module source, artifact bundles, effect results, model responses. Events should be small, signed or hash chained facts that point at blocks, not carry them, so the event log stays cheap to replay and audit while blocks can be deduplicated, pinned and garbage collected. Today files.gleam keeps blocks in an in-memory Dict that only grows, artifacts keep whole bundles inline per version, and connections, triggers, schedules and traces live in bounded in-memory lists, so nothing survives restart and there is no reachability story. The hub's untethered substrate (sequence, previous CID, signatory) already shows the stream shape I want for every aggregate.",
+  "events": [
+    {
+      "text": "BlockStored",
+      "why": "A block (raw file chunk or dag-pb directory) was written under its sha256 CID; idempotent, the basis for dedup and everything else",
+      "context_guess": "Block Store"
+    },
+    {
+      "text": "BlockPinned",
+      "why": "Some root (workspace head, release, session, artifact version, retention hold) now keeps a block reachable; GC must respect it",
+      "context_guess": "Block Store"
+    },
+    {
+      "text": "BlockUnpinned",
+      "why": "A root stopped referencing a block, making it a GC candidate rather than deleting it immediately",
+      "context_guess": "Block Store"
+    },
+    {
+      "text": "GarbageCollectionSweepCompleted",
+      "why": "Unreachable blocks past their grace period were removed; records the mark epoch and bytes reclaimed for audit",
+      "context_guess": "Block Store"
+    },
+    {
+      "text": "BlockFoundMissing",
+      "why": "A CID referenced by an event or tree could not be fetched; integrity failure that blocks replay and must be visible",
+      "context_guess": "Block Store"
+    },
+    {
+      "text": "FileSystemRootAdvanced",
+      "why": "The workspace MFS head moved from one root CID to the next; small event carrying previous root, new root, path, operation and who",
+      "context_guess": "Files"
+    },
+    {
+      "text": "FileWritten",
+      "why": "Domain level fact that a path now points at a content CID; file bytes live in blocks, never in the event",
+      "context_guess": "Files"
+    },
+    {
+      "text": "FileDeleted",
+      "why": "Path removed from the tree; old blocks stay until no root or retention hold references them",
+      "context_guess": "Files"
+    },
+    {
+      "text": "FileSystemSnapshotTagged",
+      "why": "A root CID was named (daily, before-migration, release) so it is pinned and can be restored or diffed",
+      "context_guess": "Files"
+    },
+    {
+      "text": "FileSystemRestored",
+      "why": "Workspace head was reset to an earlier root CID; cheap because history is just old roots",
+      "context_guess": "Files"
+    },
+    {
+      "text": "ModulePublished",
+      "why": "Module source stored on the hub under its CID; using software means referring to this hash",
+      "context_guess": "Packages"
+    },
+    {
+      "text": "ReleaseSigned",
+      "why": "Signed publisher entry mapping package@version to a module CID, hash chained via previous like untethered substrate",
+      "context_guess": "Packages"
+    },
+    {
+      "text": "PackageNameResolved",
+      "why": "An @name reference was resolved to a concrete release and CID at a point in time; must be recorded so replay uses the same code",
+      "context_guess": "Packages"
+    },
+    {
+      "text": "PackagePinned",
+      "why": "Workspace or program locked an @name to a version or CID; the cloud equivalent of installing software",
+      "context_guess": "Packages"
+    },
+    {
+      "text": "WorkspaceSourceChanged",
+      "why": "workspace.eyg replaced; store the source as a block and the event holds its CID so config history is replayable",
+      "context_guess": "Workspaces"
+    },
+    {
+      "text": "WorkspaceCreated",
+      "why": "Starts the workspace stream and its file system, secrets and database namespaces",
+      "context_guess": "Workspaces"
+    },
+    {
+      "text": "ProgramRunStarted",
+      "why": "Opens a run stream: program IR CID, resolved dependency CIDs and shell CID, so the run is fully reproducible",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "EffectRequested",
+      "why": "Program yielded an effect with its arguments; large arguments (file contents, prompts) referenced by CID",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "EffectResultRecorded",
+      "why": "Effect result persisted before resume; inline if small, otherwise a blob CID; this is the replay log",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "EffectDecisionMade",
+      "why": "Policy gate result pass, mock or unavailable recorded with the shell version so audit can explain why",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "ProgramRunCheckpointed",
+      "why": "Continuation snapshot stored as a block so long runs resume without replaying every effect",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "ProgramRunResumed",
+      "why": "Another machine took over the run lease and replayed recorded results",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "ProgramRunCompleted",
+      "why": "Run finished with a value or error; closes the stream and releases transient pins",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "ModelResponseReceived",
+      "why": "LLM response stored as a blob referenced by CID; often large and needed for replay and audit",
+      "context_guess": "Sessions and Agents"
+    },
+    {
+      "text": "SessionMessageAppended",
+      "why": "Chat history becomes a stream, not a 200 item in-memory list; long content referenced by CID",
+      "context_guess": "Sessions and Agents"
+    },
+    {
+      "text": "SessionReset",
+      "why": "/new marks a boundary; earlier messages leave the read model but remain in the log for audit",
+      "context_guess": "Sessions and Agents"
+    },
+    {
+      "text": "MessagePosted",
+      "why": "Inbound chat message from a channel plugin with its platform id for idempotent ingestion",
+      "context_guess": "Channels"
+    },
+    {
+      "text": "ConnectionEventIngested",
+      "why": "Event from GitHub, RSS, Sentry etc. persisted with source cursor and dedup key, replacing the 500 item ring buffer",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "ConnectionBackfillCompleted",
+      "why": "First poll finished; distinguishes historical from live events so replay does not refire triggers",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "TriggerAdded",
+      "why": "Runtime AddTrigger becomes durable; pattern and script captured IR stored by CID",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerMatched",
+      "why": "Links the source event position to the run it started; needed for exactly once on replay",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "ScheduleRegistered",
+      "why": "Cron or Timeout persisted with next due time so schedules survive restart",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "ScheduleFired",
+      "why": "Records the due time that fired so recovery does not double fire or silently skip",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "ArtifactVersionSaved",
+      "why": "Bundle stored as a directory of blocks, event carries only the bundle root CID; unchanged files dedupe across versions",
+      "context_guess": "Artifacts"
+    },
+    {
+      "text": "DatabaseSnapshotTaken",
+      "why": "SQLite file captured as blocks at a log position; SQLite writes are otherwise outside the event log",
+      "context_guess": "Databases"
+    },
+    {
+      "text": "SecretSet",
+      "why": "Audit that a secret changed, carrying only name and a keyed fingerprint, never the value or a plain CID of it",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "UserShellAssigned",
+      "why": "Which policy a user has, by shell CID, so past decisions can be explained",
+      "context_guess": "Users"
+    },
+    {
+      "text": "ProjectionRebuilt",
+      "why": "A read model was rebuilt from global position zero or a snapshot after a projector code change; records projector version and position",
+      "context_guess": "Event Store"
+    },
+    {
+      "text": "EventSchemaUpcasted",
+      "why": "An old event version was read through an upcaster; marks which versions are still live in the log",
+      "context_guess": "Event Store"
+    },
+    {
+      "text": "RetentionPolicyApplied",
+      "why": "Blob payloads older than the retention window were released while the small hash chained events remain",
+      "context_guess": "Event Store"
+    }
+  ],
+  "hotspots": [
+    {
+      "text": "Stream layout: one stream per aggregate (workspace, file system, run, session, connection, artifact) with per-stream sequence and previous CID like untethered substrate, plus a global position for projections. Who assigns global order across machines, and do we need it or only per-stream order plus causal links?"
+    },
+    {
+      "text": "Inline versus blob threshold: which effect results and payloads go into the event and which become a block referenced by CID? If the event only holds a CID, the audit log is useless when the block is GC'd or missing, so blob reachability must be tied to event retention."
+    },
+    {
+      "text": "Garbage collection of the block store: roots are workspace heads, tagged snapshots, release modules, in-flight runs, artifact versions and retention holds. Today the Dict only grows and every MFS write creates new directory blocks up to the root. Mark and sweep or reference counting, and how long a grace period for concurrent writers?"
+    },
+    {
+      "text": "Immutable audit versus right to erasure: secrets and personal data inside content addressed blocks cannot be edited, only made unreachable. Do we need crypto shredding (encrypt blobs per workspace or user key) and what does that do to cross-workspace dedup?"
+    },
+    {
+      "text": "@name resolution during durable replay: if a run resolves @package at start and the replay machine resolves it later it may get a different version. Resolution must be recorded as an event (or forbidden at runtime, pin only), and the hub must keep old releases' module blocks pinned forever."
+    },
+    {
+      "text": "SQLite databases are mutable files outside the event log. Either they are projections rebuilt from events, or every write is an event, or they are snapshotted as blocks; each has a different audit and replay cost."
+    },
+    {
+      "text": "Event schema evolution: events are written in dag-json with a tag like the hub's decoder_set. Do we version every event type and upcast on read, or rewrite the log? Rewriting breaks hash chains and signatures, so upcasting on read seems forced."
+    },
+    {
+      "text": "Large files are stored as a single raw block today (no chunking). Big uploads, model outputs and appends rewrite the whole block each time; we need chunked UnixFS files so appends and edits share blocks."
+    }
+  ]
+}

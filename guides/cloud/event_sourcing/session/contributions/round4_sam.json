@@ -1,0 +1,36 @@
+{
+  "agree": false,
+  "objections": [
+    {
+      "event_or_ruling": "H1 / H13 (input digest in decision events and the envelope), runs.EffectInputRewrittenByGate",
+      "issue": "Every decision event carries an 'input digest', and a gate rewrite carries 'digests only', but no ruling says the digests are keyed. A plain SHA-256 of a low-entropy input, such as a short chat reply, an email address, a file path or an Env name, can be confirmed by guessing. These digests sit in the immutable hash-chained ledger, so they outlive SubjectKeyShredded and defeat the erasure promise of H6. This is the same flaw O7 fixed for secret placeholders.",
+      "proposal": "Add to the H1/H13 ruling: 'Every digest in an event or envelope that is not a content CID (input digests, rewrite digests, fingerprints, subject digests) is a keyed HMAC: with the subject key when the payload carries personal data, otherwise with the workspace key. Shredding or rotating the key makes the digest uncheckable.' The hash chain is unaffected, because it hashes the stored event bytes.",
+      "blocking": true
+    },
+    {
+      "event_or_ruling": "secrets.SecretSet",
+      "issue": "The command text says the event gets 'a fresh opaque handle'. I wrote that in round 3, and it contradicts O7 and H10: the handle should live only in the vault. Anyone who can read the ledger and run a program in the workspace could use a recorded handle to trigger injection.",
+      "proposal": "Change the SecretSet command note to 'the event gets name, version and keyed fingerprint; the vault issues the opaque handle for that version'. Runs record the secret name and version, and replay asks the vault for the handle.",
+      "blocking": false
+    },
+    {
+      "event_or_ruling": "fleet.MachineJoined, fleet.RunLeaseAcquired",
+      "issue": "A machine replays runs, gets secrets injected for its Fetches and appends EffectResultRecorded. A rogue or compromised machine could invent results that every later replay trusts. Fleet is ruled 'coordination, not evidence', but which machine wrote a journal event is evidence.",
+      "proposal": "JoinFleet carries the machine id, its public key (attested where the platform allows) and the operator credential that admitted it, and MachineJoined and MachineDrained go to the ledger. Every runs.* event envelope names the machine id and lease epoch, and appends with a stale epoch are refused.",
+      "blocking": false
+    }
+  ],
+  "accepted_with_reservations": [
+    "configuration.CloudSourceChanged has no command. I assume SetCloudSource by an admin person, with PublishShellDefinitions held for a PrivilegeChange whenever a shell widens.",
+    "configuration.WorkspaceConfigurationApplied should list the secret names AND versions it read, so SecretRotated can find exactly which configurations to apply again.",
+    "Under O3, artifacts.ArtifactVisibilityChanged to 'anyone with the link' and connections.UnauthenticatedConnectionCreated widen exposure, so their commands go through PrivilegeChangeProposed/Approved. An agent with share_artifact must not be able to make channel content public alone.",
+    "access.PrivilegeChangeExpired has no command. It is driven by the proposal's expiry (default 7 days) and is fine as a timer-driven policy.",
+    "Runtime triggers (triggers.TriggerAdded): the script runs with the shell in force at match time, never one wider than when the trigger was added. If the channel shell has widened since, the trigger keeps running under the narrower shell until a person re-confirms it.",
+    "evidence.AuditTrailExported: exports are encrypted to the named recipient, and an export containing data of a subject who is later erased is listed in that subject's erasure record. We cannot recall exported copies, but we must know they exist.",
+    "files and content: a file's CID is a plain hash of its content, by design. Short personal files are therefore guessable after shredding. Acceptable, but the erasure UI should say so.",
+    "databases.DatabaseStatementExecuted: SQL parameters go only by CID into encrypted blocks, never inline, so they can be erased.",
+    "connections: WhatsApp verify_token and webhook bearer checks must use constant-time comparison. This is an implementation note, not a board change.",
+    "A cloud with one admin self-approving after 24 hours is acceptable only because it is flagged, and the admins view keeps warning until a second admin exists."
+  ],
+  "signoff": "Nearly there. Grants are slow and recorded, revocations are fast, denials and mocks sit beside passes, and secrets are recorded only by name and version. One blocking change: make every non-CID digest keyed. Otherwise our immutable ledger quietly keeps guessable fingerprints of data we promised to erase, and I sign once that line is added to H1/H13."
+}

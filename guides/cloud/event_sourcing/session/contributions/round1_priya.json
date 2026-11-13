@@ -1,0 +1,231 @@
+{
+  "position": "I care about what a team sees and says: a message posted in #links, the agent answering in the thread, someone adding a trigger from a product page card, connecting Sentry to #dev, a reminder that fires at 9am. Every one of those should become an event named the way the team would describe it, so the history of a workspace reads like a story people can follow and undo ('Alice added the regressions trigger to #dev from the product page', not 'TriggerAggregateMutated'). Today almost all of this disappears on restart: triggers added from the product page, reminders, artifacts and conversations, which users experience as the cloud forgetting what they did. I want durability and audit without making users learn new nouns like streams, projections or effect journals.",
+  "events": [
+    {
+      "text": "MessagePosted",
+      "why": "The heartbeat of a team workspace; someone said something in a channel and agents and triggers react to it.",
+      "context_guess": "Channels"
+    },
+    {
+      "text": "ReactionAdded",
+      "why": "A :books: or :eyes: reaction is how people ask for things without typing; it starts the summarise-links trigger.",
+      "context_guess": "Channels"
+    },
+    {
+      "text": "AgentReplied",
+      "why": "What people actually see: the agent answered in the thread. Must be linked to the message it answers.",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "AgentStayedQuiet",
+      "why": "Agents choose whether to post; people want to know the agent saw a message and decided not to answer.",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "ConversationRestarted",
+      "why": "Someone typed /new; the history before it must stay readable for audit even though the agent forgets it.",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "SubagentAsked",
+      "why": "Delegate hands a task to a subagent, e.g. triage a new issue; teams want to see who was asked what.",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "EffectAllowed",
+      "why": "The shell passed an effect; the plain-language line in a history view ('posted in #dev', 'fetched gleam.run').",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "EffectBlocked",
+      "why": "The shell said no; users need to see 'the agent tried to read secrets and was stopped' without reading spans.",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "EffectResultRecorded",
+      "why": "Durable execution: the result is kept before the program resumes, so a crash does not double-post or lose work.",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "ProgramResumedAfterRestart",
+      "why": "Users should see 'picked up where it left off' instead of silence after a crash or deploy.",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "TriggerAdded",
+      "why": "People add triggers from product page cards and agents add them via AddTrigger; today they vanish on restart, which feels like data loss.",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerStopped",
+      "why": "Pausing a noisy trigger is the most common 'undo' a team needs; resuming it should be visible too.",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerDeleted",
+      "why": "Removing a trigger; should be undoable by restoring the previous definition from history.",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerMatched",
+      "why": "A pattern said yes to an event; answers 'why did the bot post this?'.",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerScriptFailed",
+      "why": "A trigger ran but its script errored; today only visible in traces, people need it in the channel or admin page.",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerSavedToWorkspace",
+      "why": "The product page tells users to copy a runtime trigger into workspace.eyg to keep it; this promotion step should be an explicit event.",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "ChatConnected",
+      "why": "The workspace joined Slack, Discord, WhatsApp or the example chat; the moment a team starts using it.",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "ServiceConnected",
+      "why": "GitHub, Sentry, a webhook, a feed now sends events to a channel; product page cards check this.",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "ConnectionEventReceived",
+      "why": "A GitHub issue, Sentry alert or webhook line arrived; the input every trigger and Events read sees.",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "BackfillLogged",
+      "why": "First poll records old activity without running triggers; users ask why yesterday's issues did not post.",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "WebhookRejected",
+      "why": "A delivery with a bad signature was refused; teams setting up GitHub or Sentry need to see this to debug setup.",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "ReminderScheduled",
+      "why": "An agent or person asked to be reminded later (Timeout); users call these reminders, not timeouts.",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "RecurringScheduleSet",
+      "why": "A weekly summary or standup Cron was set up; must survive restarts.",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "ScheduleFired",
+      "why": "The 9am standup message arrived in #general; links what the agent did to why it woke up.",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "ScheduleCancelled",
+      "why": "Someone cancelled a reminder; history should show who.",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "FileWritten",
+      "why": "Agent or person changed a file in the shared file system; each change is a new root, which is natural history.",
+      "context_guess": "Files"
+    },
+    {
+      "text": "FileDeleted",
+      "why": "Deletion must be recoverable since the old root still exists; humans want 'restore this file'.",
+      "context_guess": "Files"
+    },
+    {
+      "text": "ArtifactPublished",
+      "why": "A new version of an HTML page was saved; teams share links to these, so versions must not vanish.",
+      "context_guess": "Artifacts"
+    },
+    {
+      "text": "ArtifactShared",
+      "why": "A channel allowed other channels to change its artifact; ownership changes need to be visible.",
+      "context_guess": "Artifacts"
+    },
+    {
+      "text": "DataclipAsked",
+      "why": "Someone in #general asked a question answered by a dataclip; shows which data left the database and to whom.",
+      "context_guess": "Databases and dataclips"
+    },
+    {
+      "text": "WorkspaceConfigurationChanged",
+      "why": "workspace.eyg was saved via the API, admin page or #founders agent; the source diff is the human readable record.",
+      "context_guess": "Configuration"
+    },
+    {
+      "text": "WorkspaceConfigurationRejected",
+      "why": "SetWorkspaceSource refused because the new source does not evaluate; people need to see their failed attempt and why.",
+      "context_guess": "Configuration"
+    },
+    {
+      "text": "WorkspaceConfigurationReverted",
+      "why": "Undo for configuration in user terms: go back to the version from before Tuesday.",
+      "context_guess": "Configuration"
+    },
+    {
+      "text": "SecretSaved",
+      "why": "A key was added or replaced; only the name and who did it are recorded, never the value.",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "SecretDeleted",
+      "why": "A key was removed; often explains why a connection stopped working.",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "PersonSignedIn",
+      "why": "Someone signed in; the first one became admin, which must be on record.",
+      "context_guess": "Users"
+    },
+    {
+      "text": "PersonInvited",
+      "why": "Teams invite people rather than waiting for them to sign in by name; missing from the system today.",
+      "context_guess": "Users"
+    },
+    {
+      "text": "ShellGiven",
+      "why": "An admin gave a person a shell (SetUserShell); 'who gave Bob admin?' is the classic audit question.",
+      "context_guess": "Users"
+    },
+    {
+      "text": "ChannelBound",
+      "why": "A person ran the web shell as #random; they acted with the channel's powers, so it belongs in that channel's history.",
+      "context_guess": "Users"
+    },
+    {
+      "text": "PackageVersionPinned",
+      "why": "A workspace started using a package by hash; teams want to know when @name moved under them.",
+      "context_guess": "Packages by hash"
+    }
+  ],
+  "hotspots": [
+    {
+      "text": "Undo means different things per thing: a trigger can be restored, a reverted configuration can be re-applied, but a posted Slack message or a fetched URL cannot be unsent. How do we show users what is undoable without exposing compensation machinery?"
+    },
+    {
+      "text": "Two sources of truth for triggers: workspace.eyg and runtime AddTrigger from product page cards and agents. If runtime triggers become durable events, does workspace.eyg still win on restart, and what does the admin page show when they disagree?"
+    },
+    {
+      "text": "Who is the actor? A post can come from a person, the channel agent, a subagent, a trigger script, a cron, or a person bound to a channel in the web shell. Every event needs 'on behalf of whom' in words users recognise, or the history is unreadable."
+    },
+    {
+      "text": "Conversation history is capped at 200 messages and reset by /new. If every message is an event, how do we keep agent context small while keeping a full human-readable history, and who may read another channel's history?"
+    },
+    {
+      "text": "Event volume vs readability: log drains with split produce thousands of WebhookRequest events and effect results are recorded per effect. A team's timeline must hide this noise by default while auditors can still get everything."
+    },
+    {
+      "text": "Secrets and personal data in an immutable log: secret values, message text from WhatsApp, request bodies. Immutable events conflict with deleting a person's messages or rotating a leaked key; we need a forgetting story users can trust."
+    },
+    {
+      "text": "Configuration changes apply at different times today (channel config next message, connections and crons on restart). With events, users will expect 'changed' to mean 'in effect now'; we need an event or view that says when a change took effect."
+    },
+    {
+      "text": "Vocabulary drift: code says Timeout/Cron/Delegate/Bind/channel_shell, users say reminder/schedule/ask a helper/act as channel/permissions. Which words do event names use, and do we rename effects to match?"
+    }
+  ]
+}

@@ -1,0 +1,231 @@
+{
+  "position": "I need a complete, tamper-evident record of who did what, when, why and under which policy, so that any past state of a workspace can be reconstructed and handed to a regulator. Today audit is the latest 2000 trace spans in memory, the policy decision is a bare string with no reference to the shell (gate) that made it, users.json and workspace.eyg are overwritten in place, and nothing distinguishes a person from an agent from a trigger beyond span names. Event sourcing is the chance to make the log itself the evidence: hash chained, attributed, policy pinned by CID, and append only, with retention and legal holds as explicit events rather than deletions.",
+  "events": [
+    {
+      "text": "AuditEventAppended",
+      "why": "Every event gets a sequence number and the hash of its predecessor, so any gap or rewrite is detectable",
+      "context_guess": "Audit Ledger"
+    },
+    {
+      "text": "AuditLogCheckpointSigned",
+      "why": "Periodic signed root over the hash chain (like hub publishing signatures) gives external evidence the log was not altered later",
+      "context_guess": "Audit Ledger"
+    },
+    {
+      "text": "AuditLogTamperDetected",
+      "why": "Verification of the chain failed; must be a first class alarm, not a silent repair",
+      "context_guess": "Audit Ledger"
+    },
+    {
+      "text": "ActorIdentified",
+      "why": "Each command is attributed to a person, an agent (on behalf of whom), a trigger, a scheduler or a connection; delegation chain recorded",
+      "context_guess": "Identity & Attribution"
+    },
+    {
+      "text": "UserSignedIn",
+      "why": "Sessions via cookie token today leave no trace of who authenticated when; needed to attribute web shell and API actions",
+      "context_guess": "Users"
+    },
+    {
+      "text": "UserRegistered",
+      "why": "First user silently becomes admin; who was granted admin and when must be on record",
+      "context_guess": "Users"
+    },
+    {
+      "text": "AdminRoleGranted",
+      "why": "Privilege escalation is the single most audited fact",
+      "context_guess": "Users"
+    },
+    {
+      "text": "UserShellAssigned",
+      "why": "SetUserShell rewrites users.json in place; the history of which policy a person had at each moment is lost",
+      "context_guess": "Users / Policies"
+    },
+    {
+      "text": "ShellDefinitionPublished",
+      "why": "A shell (policy) must be pinned by content id so a decision can later be re-evaluated against the exact gates in force",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "ChannelShellChanged",
+      "why": "Changing what agents in a channel may do is a policy change that needs who, why and the before/after CIDs",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "WorkspaceSourceChanged",
+      "why": "SetWorkspaceSource overwrites workspace.eyg; every configuration version must be kept with author and reason",
+      "context_guess": "Workspaces"
+    },
+    {
+      "text": "WorkspaceConfigurationEvaluated",
+      "why": "Records which config CID produced the running channels, triggers and crons at a point in time",
+      "context_guess": "Workspaces"
+    },
+    {
+      "text": "EffectRequested",
+      "why": "What a program attempted, before the gate decided; evidence of intent even when denied",
+      "context_guess": "Programs & Effects"
+    },
+    {
+      "text": "EffectPermitted",
+      "why": "Gate returned Pass, possibly with a modified input; both original and modified input must be recorded",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "EffectMocked",
+      "why": "Gate answered on the program's behalf; the program believed something that did not happen, which auditors must see",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "EffectDenied",
+      "why": "Effect unavailable under the shell; denied attempts by agents are key evidence that policy worked",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "PolicyGateFailed",
+      "why": "The gate itself crashed; must be distinguishable from a denial",
+      "context_guess": "Policies"
+    },
+    {
+      "text": "EffectResultRecorded",
+      "why": "Durable execution's replay log doubles as proof of what the world returned to the program",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "ProgramRunStarted",
+      "why": "Ties program CID, actor, shell CID and cause (message, trigger, cron, API) together",
+      "context_guess": "Programs & Effects"
+    },
+    {
+      "text": "ProgramRunResumedOnAnotherNode",
+      "why": "Replay after crash must show which node continued and that it replayed recorded results rather than re-performing effects",
+      "context_guess": "Durable Execution"
+    },
+    {
+      "text": "AgentTurnCompleted",
+      "why": "Which model, which prompt context and which tool calls the agent chose; needed to explain why an agent acted",
+      "context_guess": "Sessions & Agents"
+    },
+    {
+      "text": "SubagentDelegated",
+      "why": "Delegate effect creates a new actor; its authority must be traceable to the parent and the person who started it",
+      "context_guess": "Sessions & Agents"
+    },
+    {
+      "text": "SessionHistoryReset",
+      "why": "/new discards history; the reset must not erase what was said before from the record",
+      "context_guess": "Sessions & Agents"
+    },
+    {
+      "text": "MessagePosted",
+      "why": "Inbound and outbound channel messages are the conversation of record, including who authored them in Slack/Discord",
+      "context_guess": "Channels"
+    },
+    {
+      "text": "TriggerAdded",
+      "why": "Runtime AddTrigger by an agent creates standing automation; who added it, with which pattern and script CID",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "TriggerMatched",
+      "why": "Links the external event to the script run it caused; actor is the trigger, authority is the channel shell",
+      "context_guess": "Triggers"
+    },
+    {
+      "text": "ConnectionEventReceived",
+      "why": "External event with source signature verified or not; distinguishes backfill from live",
+      "context_guess": "Connections"
+    },
+    {
+      "text": "ScheduleFired",
+      "why": "Cron/Timeout actions are unattended; the creator of the schedule must remain attributable",
+      "context_guess": "Schedules"
+    },
+    {
+      "text": "FileTreeRootChanged",
+      "why": "Each MFS change yields a new root CID with previous root and author, so any past file state can be reconstructed",
+      "context_guess": "Files"
+    },
+    {
+      "text": "FileContentErased",
+      "why": "Immutable blocks conflict with right-to-erasure; an erasure must be an explicit attributed event leaving a tombstone",
+      "context_guess": "Files / Retention"
+    },
+    {
+      "text": "SecretSet",
+      "why": "Value never logged, but who set which secret name and a fingerprint/version must be",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "SecretDeleted",
+      "why": "Removal of credentials is a security relevant act",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "SecretInjectedForHost",
+      "why": "Evidence that a real secret was released only to an allowed host by a specific run",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "PackageVersionResolved",
+      "why": "An @name reference resolved to a specific CID at run time; without this the code that actually ran cannot be proven",
+      "context_guess": "Packages by Hash"
+    },
+    {
+      "text": "ArtifactShared",
+      "why": "Sharing exposes data outside the channel; who shared what version with whom",
+      "context_guess": "Artifacts"
+    },
+    {
+      "text": "DatabaseWriteCommitted",
+      "why": "SQLite writes mutate in place; need statement, actor and run so table state can be reconstructed",
+      "context_guess": "Databases & Dataclips"
+    },
+    {
+      "text": "DataclipInvoked",
+      "why": "Dataclips run under their own shell; evidence of which clip and which shell served a request",
+      "context_guess": "Databases & Dataclips"
+    },
+    {
+      "text": "RetentionPolicyApplied",
+      "why": "Events past retention are purged only by an explicit, attributed policy event, never silently",
+      "context_guess": "Retention & Holds"
+    },
+    {
+      "text": "LegalHoldPlaced",
+      "why": "Suspends retention purges for a scope (workspace, channel, user) until released",
+      "context_guess": "Retention & Holds"
+    },
+    {
+      "text": "AuditTrailExported",
+      "why": "Export to a regulator is itself auditable: scope, range, recipient, and the checkpoint hash it was verified against",
+      "context_guess": "Audit Ledger"
+    }
+  ],
+  "hotspots": [
+    {
+      "text": "Policy decisions are traced as a string (pass/mock/unavailable/failed) with no reference to the shell or gate that decided. Unless every decision records the shell CID and the evaluated input, we cannot prove later what an agent was allowed to do."
+    },
+    {
+      "text": "Immutability vs erasure: content addressed files, effect results and messages may contain personal data that must be erased on request, while the audit log must never change. Do we separate payload (erasable, crypto-shredded) from the hash-chained envelope?"
+    },
+    {
+      "text": "EffectMocked means the program, and perhaps a human reading its output, saw a fabricated result. How is that made visible in projections and exports so mocked outcomes are not mistaken for real ones?"
+    },
+    {
+      "text": "Attribution through delegation: a person posts, an agent runs code, delegates to a subagent, which adds a trigger that later fires on a GitHub event. Whose authority is that action under, and does the chain survive the in-memory session being reset or the node restarting?"
+    },
+    {
+      "text": "Who can rewrite history? Today the admin can SetWorkspaceSource, edit users.json and secrets files directly on disk. What stops an operator from editing or truncating the event store, and who holds the signing key for checkpoints?"
+    },
+    {
+      "text": "@name references resolve to the latest version at run time; replay and audit must use the resolved CID, otherwise replaying a run months later executes different code."
+    },
+    {
+      "text": "Tracing exports drop spans on failure with no retry and keep only 2000 in memory. Is tracing an audit source at all, or must audit be a separate durable stream with delivery guarantees?"
+    },
+    {
+      "text": "Clock and ordering: Now is an effect and nodes can disagree; what timestamp is authoritative for 'when' in the record, and how is ordering across workspaces established for regulators?"
+    }
+  ]
+}

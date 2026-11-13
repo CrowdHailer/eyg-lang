@@ -1,0 +1,869 @@
+{
+  "statement": "The runs context is one aggregate, the Run stream, and every other context either starts runs (turns, triggers, schedules, parents) or receives their internal effects as commands keyed by (run, step). That key is how internal effects become exactly-once without multi-stream transactions. Fleet, schedules and triggers are thin coordinators: they derive deterministic run ids from their cause (occurrence id, trigger definition CID + event id, parent run + step), so a duplicate delivery or a second machine can never start a second run.",
+  "stickies": [
+    {
+      "kind": "aggregate",
+      "text": "Run (one stream per run, id derived from its cause)",
+      "context": "runs",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "StartRun",
+      "context": "runs",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "command",
+      "text": "PinRunBasis (source CID, @name->CID map, interpreter version, shell CID)",
+      "context": "runs",
+      "for": "runs.RunBasisPinned"
+    },
+    {
+      "kind": "command",
+      "text": "DecideEffect (evaluate the pure gate of the shell in force)",
+      "context": "runs",
+      "for": "runs.EffectPassed"
+    },
+    {
+      "kind": "command",
+      "text": "DecideEffect",
+      "context": "runs",
+      "for": "runs.EffectInputRewrittenByGate"
+    },
+    {
+      "kind": "command",
+      "text": "DecideEffect",
+      "context": "runs",
+      "for": "runs.EffectMocked"
+    },
+    {
+      "kind": "command",
+      "text": "DecideEffect",
+      "context": "runs",
+      "for": "runs.EffectDenied"
+    },
+    {
+      "kind": "command",
+      "text": "DecideEffect",
+      "context": "runs",
+      "for": "runs.GateFailed"
+    },
+    {
+      "kind": "command",
+      "text": "RecordEffectResult",
+      "context": "runs",
+      "for": "runs.EffectResultRecorded"
+    },
+    {
+      "kind": "command",
+      "text": "FlushLocalResults (Now, Random, Flip, lazy pins)",
+      "context": "runs",
+      "for": "runs.LocalEffectResultsRecorded"
+    },
+    {
+      "kind": "command",
+      "text": "RecordEffectFailure",
+      "context": "runs",
+      "for": "runs.EffectFailed"
+    },
+    {
+      "kind": "command",
+      "text": "ScheduleEffectRetry (same idempotency key, backoff)",
+      "context": "runs",
+      "for": "runs.EffectRetryScheduled"
+    },
+    {
+      "kind": "command",
+      "text": "MarkEffectInDoubt",
+      "context": "runs",
+      "for": "runs.EffectOutcomeInDoubt"
+    },
+    {
+      "kind": "command",
+      "text": "ReconcileEffect (sent / not sent / retry)",
+      "context": "runs",
+      "for": "runs.EffectReconciled"
+    },
+    {
+      "kind": "command",
+      "text": "SuspendRun (wake_at, awaiting child, awaiting reconciliation)",
+      "context": "runs",
+      "for": "runs.RunSuspended"
+    },
+    {
+      "kind": "command",
+      "text": "AwaitChildRun (child id = hash(parent run, step))",
+      "context": "runs",
+      "for": "runs.ChildRunAwaited"
+    },
+    {
+      "kind": "command",
+      "text": "ResumeRun (replay journal, then go live)",
+      "context": "runs",
+      "for": "runs.RunResumed"
+    },
+    {
+      "kind": "command",
+      "text": "ResumeRun (shell CID in force differs from the last decision)",
+      "context": "runs",
+      "for": "runs.RunResumedUnderNewShell"
+    },
+    {
+      "kind": "command",
+      "text": "ResumeRun (replay asked for a different effect than recorded)",
+      "context": "runs",
+      "for": "runs.ReplayDiverged"
+    },
+    {
+      "kind": "command",
+      "text": "CheckpointRun (at a suspension point)",
+      "context": "runs",
+      "for": "runs.RunCheckpointed"
+    },
+    {
+      "kind": "command",
+      "text": "CompleteRun",
+      "context": "runs",
+      "for": "runs.RunCompleted"
+    },
+    {
+      "kind": "command",
+      "text": "FailRun",
+      "context": "runs",
+      "for": "runs.RunFailed"
+    },
+    {
+      "kind": "command",
+      "text": "CancelRun",
+      "context": "runs",
+      "for": "runs.RunCancelled"
+    },
+    {
+      "kind": "actor",
+      "text": "Runtime (interpreter on the machine holding the lease)",
+      "context": "runs",
+      "for": "runs.EffectPassed"
+    },
+    {
+      "kind": "actor",
+      "text": "Runtime (interpreter on the machine holding the lease)",
+      "context": "runs",
+      "for": "runs.EffectResultRecorded"
+    },
+    {
+      "kind": "actor",
+      "text": "Agent turn (session starting a turn run)",
+      "context": "runs",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "actor",
+      "text": "Trigger policy",
+      "context": "runs",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "actor",
+      "text": "Schedule policy",
+      "context": "runs",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "actor",
+      "text": "Person invoking code in a chat or bound web shell",
+      "context": "runs",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "actor",
+      "text": "Parent run (Delegate, Dataclip, agent run tool)",
+      "context": "runs",
+      "for": "runs.ChildRunAwaited"
+    },
+    {
+      "kind": "actor",
+      "text": "Reconciler (automatic for keyed effects)",
+      "context": "runs",
+      "for": "runs.EffectReconciled"
+    },
+    {
+      "kind": "actor",
+      "text": "Person in the channel or admin (unsafe effects)",
+      "context": "runs",
+      "for": "runs.EffectReconciled"
+    },
+    {
+      "kind": "actor",
+      "text": "Admin (person)",
+      "context": "runs",
+      "for": "runs.RunCancelled"
+    },
+    {
+      "kind": "actor",
+      "text": "Replayer on the new lease holder",
+      "context": "runs",
+      "for": "runs.ReplayDiverged"
+    },
+    {
+      "kind": "external",
+      "text": "Model provider (Complete effect of a turn run)",
+      "context": "runs",
+      "for": "runs.EffectResultRecorded"
+    },
+    {
+      "kind": "external",
+      "text": "HTTP services (Fetch)",
+      "context": "runs",
+      "for": "runs.EffectFailed"
+    },
+    {
+      "kind": "external",
+      "text": "Chat platform history (search for the run+step key of an in doubt Post)",
+      "context": "runs",
+      "for": "runs.EffectReconciled"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever EffectPassed for an internal effect (files, triggers, schedules, artifacts, databases), send the target aggregate's command carrying (run, step) as idempotency key, then RecordEffectResult with what it returns; a repeat returns the original result",
+      "context": "runs",
+      "for": "runs.EffectPassed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever EffectPassed for Post, post with run+step in the platform metadata, then record channels.MessagePosted and RecordEffectResult",
+      "context": "runs",
+      "for": "runs.EffectPassed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ChildRunAwaited, StartRun for the child with the derived id (a second start is a no-op)",
+      "context": "runs",
+      "for": "runs.ChildRunAwaited"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever a child's RunCompleted or RunFailed, ResumeRun of the parent with the child's outcome as the effect result",
+      "context": "runs",
+      "for": "runs.RunCompleted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever RunSuspended with wake_at (Sleep), the wake-up queue issues ResumeRun at wake_at on any machine",
+      "context": "runs",
+      "for": "runs.RunSuspended"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever EffectRetryScheduled, ResumeRun at the retry time and perform the effect again with the same key",
+      "context": "runs",
+      "for": "runs.EffectRetryScheduled"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ResumeRun finds a last EffectPassed with no result: internal or idempotent -> perform again; keyed -> ReconcileEffect via the platform; unsafe -> MarkEffectInDoubt",
+      "context": "runs",
+      "for": "runs.RunResumed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever EffectOutcomeInDoubt, post a notice to the run's channel and add it to the in doubt queue, the run stays suspended",
+      "context": "runs",
+      "for": "runs.EffectOutcomeInDoubt"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever channels.ConversationRestarted, CancelRun for the conversation's active turn run and its children",
+      "context": "runs",
+      "for": "channels.ConversationRestarted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever identity.PersonDeactivated, CancelRun for every live or suspended run whose on_behalf_of chain ends in that person",
+      "context": "runs",
+      "for": "identity.PersonDeactivated"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever access.ChannelShellChanged or access.PersonShellAssigned, live runs pick up the new shell at their next effect decision, recorded as RunResumedUnderNewShell",
+      "context": "runs",
+      "for": "access.ChannelShellChanged"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever RunStarted, pin the run's basis and payload blocks as a content root (content.ContentRootPinned)",
+      "context": "runs",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever RunCompleted, RunFailed or RunCancelled, release the run's content root once retention and holds allow (content.ContentRootReleased)",
+      "context": "runs",
+      "for": "runs.RunCompleted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever any decision or result is recorded, project a trace span (OTLP export is a view, never the record)",
+      "context": "runs",
+      "for": "runs.EffectResultRecorded"
+    },
+    {
+      "kind": "read_model",
+      "text": "Run timeline: every decision with shell CID, rewritten inputs, results, mocks clearly marked, actor chain (auditors, developers)",
+      "context": "runs",
+      "for": "runs.EffectPassed"
+    },
+    {
+      "kind": "read_model",
+      "text": "In doubt effects queue with the reconcile choices (people, operators)",
+      "context": "runs",
+      "for": "runs.EffectOutcomeInDoubt"
+    },
+    {
+      "kind": "read_model",
+      "text": "Live and suspended runs per workspace and channel, with reason and wake time (operators)",
+      "context": "runs",
+      "for": "runs.RunSuspended"
+    },
+    {
+      "kind": "read_model",
+      "text": "Run tree: parent, children, cause and on_behalf_of chain (auditors)",
+      "context": "runs",
+      "for": "runs.ChildRunAwaited"
+    },
+    {
+      "kind": "read_model",
+      "text": "Mocked and denied effects per shell CID (security reviewing what agents tried)",
+      "context": "runs",
+      "for": "runs.EffectDenied"
+    },
+    {
+      "kind": "read_model",
+      "text": "Trace spans projected from the journal (observability)",
+      "context": "runs",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "Machine (per machine)",
+      "context": "fleet",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "RunLease (per run, monotonically increasing epoch)",
+      "context": "fleet",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "Admission (per workspace: slots per workspace and channel, FIFO queue)",
+      "context": "fleet",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "JoinFleet",
+      "context": "fleet",
+      "for": "fleet.MachineJoined"
+    },
+    {
+      "kind": "command",
+      "text": "AcquireRunLease",
+      "context": "fleet",
+      "for": "fleet.RunLeaseAcquired"
+    },
+    {
+      "kind": "command",
+      "text": "ReleaseRunLease (suspension, drain, terminal run)",
+      "context": "fleet",
+      "for": "fleet.RunLeaseReleased"
+    },
+    {
+      "kind": "command",
+      "text": "AdmitRun (queue when over the limit)",
+      "context": "fleet",
+      "for": "fleet.RunThrottled"
+    },
+    {
+      "kind": "command",
+      "text": "ExpireRunLease",
+      "context": "fleet",
+      "for": "fleet.RunLeaseExpired"
+    },
+    {
+      "kind": "command",
+      "text": "DrainMachine",
+      "context": "fleet",
+      "for": "fleet.MachineDrained"
+    },
+    {
+      "kind": "actor",
+      "text": "Machine (worker node on start)",
+      "context": "fleet",
+      "for": "fleet.MachineJoined"
+    },
+    {
+      "kind": "actor",
+      "text": "Operator (deploy, scale down)",
+      "context": "fleet",
+      "for": "fleet.MachineDrained"
+    },
+    {
+      "kind": "actor",
+      "text": "Lease sweeper (clock)",
+      "context": "fleet",
+      "for": "fleet.RunLeaseExpired"
+    },
+    {
+      "kind": "actor",
+      "text": "Run starter (any policy that issues StartRun or ResumeRun)",
+      "context": "fleet",
+      "for": "fleet.RunThrottled"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever RunLeaseExpired, a live machine with free slots issues AcquireRunLease then ResumeRun (runs)",
+      "context": "fleet",
+      "for": "fleet.RunLeaseExpired"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever DrainMachine starts, suspend each of its runs at the next effect boundary and ReleaseRunLease, then MachineDrained",
+      "context": "fleet",
+      "for": "fleet.MachineDrained"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever RunSuspended or a run ends, ReleaseRunLease and free its admission slot; the next queued run is admitted",
+      "context": "fleet",
+      "for": "runs.RunSuspended"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ChildRunAwaited, the parent's slot is lent to the child (no new slot for a sequential child)",
+      "context": "fleet",
+      "for": "runs.ChildRunAwaited"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever the workspace admission queue passes its bound, pause ingestion: pollers stop advancing PollCursorAdvanced, webhooks answer 503 with Retry-After (connections)",
+      "context": "fleet",
+      "for": "fleet.RunThrottled"
+    },
+    {
+      "kind": "read_model",
+      "text": "Machine roster with leases held and slots used (operators)",
+      "context": "fleet",
+      "for": "fleet.RunLeaseAcquired"
+    },
+    {
+      "kind": "read_model",
+      "text": "Admission queue depth and wait time per workspace, channel and cause (operators, teams wondering why a trigger is slow)",
+      "context": "fleet",
+      "for": "fleet.RunThrottled"
+    },
+    {
+      "kind": "read_model",
+      "text": "Wake-up queue: suspended runs by wake_at and retry time (drives ResumeRun)",
+      "context": "fleet",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "ScheduleBook (per conversation, plus one per workspace for configured crons)",
+      "context": "schedules",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "SetReminder (Timeout effect, keyed by run+step)",
+      "context": "schedules",
+      "for": "schedules.ReminderSet"
+    },
+    {
+      "kind": "command",
+      "text": "SetRecurringSchedule (Cron effect or configured cron)",
+      "context": "schedules",
+      "for": "schedules.RecurringScheduleSet"
+    },
+    {
+      "kind": "command",
+      "text": "FireOccurrence (schedule id + due instant)",
+      "context": "schedules",
+      "for": "schedules.ScheduleOccurrenceFired"
+    },
+    {
+      "kind": "command",
+      "text": "RecordMissedOccurrences (catch up policy of the schedule)",
+      "context": "schedules",
+      "for": "schedules.CronOccurrenceMissed"
+    },
+    {
+      "kind": "command",
+      "text": "CancelSchedule",
+      "context": "schedules",
+      "for": "schedules.ScheduleCancelled"
+    },
+    {
+      "kind": "actor",
+      "text": "Agent program (Timeout, Cron, CancelSchedule effects)",
+      "context": "schedules",
+      "for": "schedules.ReminderSet"
+    },
+    {
+      "kind": "actor",
+      "text": "Configuration policy (configured crons)",
+      "context": "schedules",
+      "for": "schedules.RecurringScheduleSet"
+    },
+    {
+      "kind": "actor",
+      "text": "Scheduler (leased, one per workspace)",
+      "context": "schedules",
+      "for": "schedules.ScheduleOccurrenceFired"
+    },
+    {
+      "kind": "actor",
+      "text": "Scheduler on start after downtime",
+      "context": "schedules",
+      "for": "schedules.CronOccurrenceMissed"
+    },
+    {
+      "kind": "external",
+      "text": "Clock (UTC)",
+      "context": "schedules",
+      "for": "schedules.ScheduleOccurrenceFired"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ScheduleOccurrenceFired, queue its message in the target conversation (channels.InputQueued), idempotent on the occurrence id",
+      "context": "schedules",
+      "for": "schedules.ScheduleOccurrenceFired"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever configuration.WorkspaceConfigurationApplied, reconcile configured crons: SetRecurringSchedule for new or changed, CancelSchedule for removed",
+      "context": "schedules",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever records.ErasureRequested covers a conversation, CancelSchedule for reminders targeting it (their message text is personal data)",
+      "context": "schedules",
+      "for": "records.ErasureRequested"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever a reminder's occurrence fired, the reminder is done: no separate cancel event",
+      "context": "schedules",
+      "for": "schedules.ScheduleOccurrenceFired"
+    },
+    {
+      "kind": "read_model",
+      "text": "Upcoming reminders and schedules per channel with next due time and who set them (teams)",
+      "context": "schedules",
+      "for": "schedules.RecurringScheduleSet"
+    },
+    {
+      "kind": "read_model",
+      "text": "Missed and late occurrences after downtime (operators)",
+      "context": "schedules",
+      "for": "schedules.CronOccurrenceMissed"
+    },
+    {
+      "kind": "aggregate",
+      "text": "ChannelTriggers (per channel: runtime triggers, shadowing, state)",
+      "context": "triggers",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "AddTrigger (AddTrigger effect keyed by run+step, or a product page card)",
+      "context": "triggers",
+      "for": "triggers.TriggerAdded"
+    },
+    {
+      "kind": "command",
+      "text": "ReplaceTrigger (explicit, same name, new definition)",
+      "context": "triggers",
+      "for": "triggers.TriggerReplaced"
+    },
+    {
+      "kind": "command",
+      "text": "SaveTriggerToWorkspace",
+      "context": "triggers",
+      "for": "triggers.TriggerSavedToWorkspace"
+    },
+    {
+      "kind": "command",
+      "text": "ShadowTrigger",
+      "context": "triggers",
+      "for": "triggers.TriggerShadowedByConfiguration"
+    },
+    {
+      "kind": "command",
+      "text": "MatchEvent (pure patterns of active triggers)",
+      "context": "triggers",
+      "for": "triggers.TriggerMatched"
+    },
+    {
+      "kind": "command",
+      "text": "RecordTriggerScriptFailure",
+      "context": "triggers",
+      "for": "triggers.TriggerScriptFailed"
+    },
+    {
+      "kind": "command",
+      "text": "StopTrigger",
+      "context": "triggers",
+      "for": "triggers.TriggerStopped"
+    },
+    {
+      "kind": "command",
+      "text": "ResumeTrigger",
+      "context": "triggers",
+      "for": "triggers.TriggerResumed"
+    },
+    {
+      "kind": "command",
+      "text": "DeleteTrigger",
+      "context": "triggers",
+      "for": "triggers.TriggerDeleted"
+    },
+    {
+      "kind": "actor",
+      "text": "Agent program (AddTrigger, StopTrigger, StartTrigger, DeleteTrigger effects)",
+      "context": "triggers",
+      "for": "triggers.TriggerAdded"
+    },
+    {
+      "kind": "actor",
+      "text": "Person on the product page (trigger card)",
+      "context": "triggers",
+      "for": "triggers.TriggerAdded"
+    },
+    {
+      "kind": "actor",
+      "text": "Person promoting a runtime trigger into workspace.eyg",
+      "context": "triggers",
+      "for": "triggers.TriggerSavedToWorkspace"
+    },
+    {
+      "kind": "actor",
+      "text": "Matcher (policy on every delivery)",
+      "context": "triggers",
+      "for": "triggers.TriggerMatched"
+    },
+    {
+      "kind": "actor",
+      "text": "Circuit breaker (policy)",
+      "context": "triggers",
+      "for": "triggers.TriggerStopped"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever connections.ConnectionEventReceived or channels.MessageReceived, MatchEvent against active triggers of the channel",
+      "context": "triggers",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever TriggerMatched, StartRun with id = hash(trigger definition CID, event id), through admission; a duplicate delivery starts nothing",
+      "context": "triggers",
+      "for": "triggers.TriggerMatched"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever a run caused by a trigger ends in RunFailed, RecordTriggerScriptFailure",
+      "context": "triggers",
+      "for": "runs.RunFailed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever TriggerScriptFailed 5 times in a row, StopTrigger and post why to the channel",
+      "context": "triggers",
+      "for": "triggers.TriggerScriptFailed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever configuration.WorkspaceConfigurationApplied defines a trigger whose name a runtime trigger uses, ShadowTrigger",
+      "context": "triggers",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever TriggerSavedToWorkspace, propose the source change (configuration.WorkspaceSourceChanged); after it is applied the runtime copy is shadowed",
+      "context": "triggers",
+      "for": "triggers.TriggerSavedToWorkspace"
+    },
+    {
+      "kind": "read_model",
+      "text": "Triggers per channel: configured or runtime, active or stopped, shadowed, last match, consecutive failures (teams, product page)",
+      "context": "triggers",
+      "for": "triggers.TriggerAdded"
+    },
+    {
+      "kind": "read_model",
+      "text": "Match history: delivery -> trigger -> run -> outcome (auditors, debugging)",
+      "context": "triggers",
+      "for": "triggers.TriggerMatched"
+    }
+  ],
+  "event_changes": [
+    {
+      "change": "missing",
+      "id_or_context": "fleet",
+      "text": "RunLeaseReleased",
+      "why": "a run that suspends, ends or is drained hands back its lease at once. Without this event a drained machine's runs wait for RunLeaseExpired, and a suspended run blocks another machine from resuming it"
+    },
+    {
+      "change": "missing",
+      "id_or_context": "triggers",
+      "text": "TriggerReplaced",
+      "why": "O10: a product page card submitted again with a changed definition needs an explicit, attributed replacement that records the previous and new definition CIDs. Silently overwriting would lose which definition started which run"
+    }
+  ],
+  "hotspot_resolutions": [
+    {
+      "id": "O1",
+      "resolution": "Both, with one key shared by every internal effect. The SQLite file is the source for queries; rebuilding it on every read would be too slow. Each write statement runs in a SQLite transaction that also inserts (run_id, step, statement digest, db sequence) into a cloud-owned _eyg_applied table. After commit, DatabaseStatementExecuted is appended to the stream databases/<workspace>/<name> at expected version = db sequence - 1, and then the run records EffectResultRecorded. If a crash comes between commit and append, recovery reads _eyg_applied rows beyond the stream version and appends the missing events (an outbox), so the stream has no gaps. A repeated (run, step) returns the stored result, which makes writes exactly-once. To make the database a rebuildable projection as Avery and Dana want, the cloud connection disables the non-deterministic SQL functions (random(), datetime('now'), last_insert_rowid across runs) and programs pass Now as a parameter. Then DatabaseSnapshotTaken (block CID) plus the statements after it rebuilds the file byte for byte, and a periodic rebuild compared against the live file's hash proves it."
+    },
+    {
+      "id": "O5",
+      "resolution": "RunCheckpointed is not continue-as-new. The units that run long are already short runs: a turn is bounded by max_steps (16 completions), each cron occurrence and trigger match is its own run, and the conversation's history is a projection, not a run. So only programs that loop with Sleep grow their journal. Phase 1, now: no checkpoints. A run is capped (for example 10,000 steps or 16 MiB of journal) and fails with RunFailed('journal limit, use Cron'). Replay cost matters only on failover, never on the hot path. Phase 2, once interpreter closures capture only their free variables (eyg/interpreter/capture): CheckpointRun is allowed only at a suspension point. It writes the continuation as a block whose CID is pinned in the run's content root, and replay starts from the latest checkpoint. RunBasisPinned includes the interpreter version, and a resume on a different version replays from the start and fails with ReplayDiverged rather than loading a checkpoint it cannot read."
+    },
+    {
+      "id": "O6",
+      "resolution": "Admission is per workspace, with defaults of 32 concurrent live runs per workspace and 4 per channel. Model calls have a separate per-workspace concurrency limit that matches the provider's rate limit. A suspended run (Sleep, awaiting reconciliation, waiting on a retry) holds no slot and no lease. A child lends its parent's slot: the parent is suspended on ChildRunAwaited, so a sequential chain of Delegate uses one slot and cannot deadlock. Parallel children beyond the first take their own slots, and Delegate depth is capped at 4. Queue priority is human input, then schedule occurrences, then trigger matches, FIFO within each. Queued runs are RunThrottled and never dropped. When a workspace queue passes its bound (for example 1,000), ingestion is paused upstream: pollers stop advancing their cursor and webhooks answer 503 with Retry-After, so the backlog stays with the source."
+    },
+    {
+      "id": "O9",
+      "resolution": "A reminder belongs to its conversation (channel + thread), not to the agent's history, as in workspace.gleam today where schedules are keyed by session key. /new restarts the history only, and the reminder still fires into the same conversation and starts the new history. If the conversation is erased, a policy issues CancelSchedule (reason: erased) for every reminder targeting it, because the reminder text is personal data. If the channel is removed, the reminders are cancelled with reason channel_removed. Nothing is ever redirected to another conversation."
+    },
+    {
+      "id": "O10",
+      "resolution": "AddTrigger is idempotent on (channel, name, definition CID). Submitting the same card again with the same definition records no event and returns the existing trigger. With a different definition, AddTrigger is rejected with 'a trigger named X exists' (today's behaviour in workspace.gleam). The card then offers 'Replace', which issues ReplaceTrigger and records TriggerReplaced with both CIDs. Runs already started keep the definition CID they were started with, and new matches use the new one."
+    }
+  ],
+  "aggregate_notes": [
+    {
+      "aggregate": "Run",
+      "stream": "runs/<run_id>, where run_id is derived from the cause: turn = conversation + turn number, trigger = hash(definition CID, event id), occurrence = hash(schedule id, due instant), child = hash(parent run, step), invocation = message id",
+      "invariants": [
+        "appends are conditional on the expected version; that conditional append is the fence, and the lease only avoids wasted work",
+        "RunBasisPinned comes before the first effect decision, and replay never consults the hub or the current configuration for anything already recorded",
+        "steps are contiguous; every EffectPassed is followed by exactly one of EffectResultRecorded, EffectFailed or EffectOutcomeInDoubt before the next decision",
+        "buffered local results are flushed (LocalEffectResultsRecorded) before any EffectPassed of an effect that is visible outside the run or changes state",
+        "an unsafe effect is never performed twice without an EffectReconciled that says retry",
+        "replay must request the same effect label and input digest as recorded at each step, otherwise ReplayDiverged and the run fails",
+        "nothing is appended after RunCompleted, RunFailed or RunCancelled",
+        "EffectMocked results are never emitted as EffectResultRecorded"
+      ],
+      "emits": [
+        "RunStarted",
+        "RunBasisPinned",
+        "EffectInputRewrittenByGate",
+        "EffectPassed",
+        "EffectMocked",
+        "EffectDenied",
+        "GateFailed",
+        "EffectResultRecorded",
+        "LocalEffectResultsRecorded",
+        "EffectFailed",
+        "EffectRetryScheduled",
+        "EffectOutcomeInDoubt",
+        "EffectReconciled",
+        "RunSuspended",
+        "ChildRunAwaited",
+        "RunResumed",
+        "RunResumedUnderNewShell",
+        "ReplayDiverged",
+        "RunCheckpointed",
+        "RunCompleted",
+        "RunFailed",
+        "RunCancelled"
+      ]
+    },
+    {
+      "aggregate": "RunLease",
+      "stream": "fleet/leases/<run_id> (in the lease store, coordination not evidence)",
+      "invariants": [
+        "at most one holder at a time",
+        "the epoch increases on every acquisition",
+        "an acquisition only follows a release or an expiry",
+        "only a machine that has joined and is not draining can acquire"
+      ],
+      "emits": [
+        "RunLeaseAcquired",
+        "RunLeaseReleased",
+        "RunLeaseExpired"
+      ]
+    },
+    {
+      "aggregate": "Machine",
+      "stream": "fleet/machines/<machine_id>",
+      "invariants": [
+        "a draining machine takes no new leases",
+        "MachineDrained only after all its leases are released or expired"
+      ],
+      "emits": [
+        "MachineJoined",
+        "MachineDrained"
+      ]
+    },
+    {
+      "aggregate": "Admission",
+      "stream": "fleet/admission/<workspace>",
+      "invariants": [
+        "live runs do not exceed the workspace limit or any channel's limit",
+        "a sequential child uses its parent's slot",
+        "queued runs are admitted in priority order and never dropped",
+        "Delegate depth is at most 4"
+      ],
+      "emits": [
+        "RunThrottled"
+      ]
+    },
+    {
+      "aggregate": "ScheduleBook",
+      "stream": "schedules/<workspace>/<conversation> and schedules/<workspace>/configured",
+      "invariants": [
+        "names are unique per book, and setting an existing name replaces it (recorded on the new event)",
+        "each occurrence id (schedule id + due instant) fires at most once",
+        "a cancelled schedule never fires",
+        "a reminder fires once and is then done",
+        "missed occurrences follow the schedule's declared catch up policy (default: one late fire, the rest CronOccurrenceMissed)"
+      ],
+      "emits": [
+        "ReminderSet",
+        "RecurringScheduleSet",
+        "ScheduleOccurrenceFired",
+        "CronOccurrenceMissed",
+        "ScheduleCancelled"
+      ]
+    },
+    {
+      "aggregate": "ChannelTriggers",
+      "stream": "triggers/<workspace>/<channel>",
+      "invariants": [
+        "runtime trigger names are unique per channel",
+        "a configured trigger wins a name clash, and the runtime one is shadowed, not deleted",
+        "a stopped, shadowed or deleted trigger matches nothing",
+        "adding the same name with the same definition CID is a no-op, and with a different definition it needs ReplaceTrigger",
+        "each (definition CID, event id) produces at most one TriggerMatched"
+      ],
+      "emits": [
+        "TriggerAdded",
+        "TriggerReplaced",
+        "TriggerSavedToWorkspace",
+        "TriggerShadowedByConfiguration",
+        "TriggerMatched",
+        "TriggerScriptFailed",
+        "TriggerStopped",
+        "TriggerResumed",
+        "TriggerDeleted"
+      ]
+    }
+  ]
+}

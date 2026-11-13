@@ -1,0 +1,30 @@
+{
+  "agree": false,
+  "objections": [
+    {
+      "event_or_ruling": "secrets.SecretLeakRedacted",
+      "issue": "RedactPayload is described as scanning 'before EffectResultRecorded', but not relative to when the program resumes. If the program resumes with the raw value and the journal records the redacted one, a replay feeds the program a different value from the one it saw the first time. It then silently changes behaviour or hits ReplayDiverged, which breaks deterministic replay. Recording the raw value instead would put the secret in the log, against H10.",
+      "proposal": "Change the command note to: 'RedactPayload (scan external effect results and inbound messages for known values and replace them with the secret's opaque handle BEFORE the program resumes; the program and the journal see the same redacted value)'. This matches the O7 handle design: egress swaps the handle for the value, and redaction swaps the value back for the handle on the way in.",
+      "blocking": true
+    },
+    {
+      "event_or_ruling": "H7 / evidence.AuditLogCheckpointSigned",
+      "issue": "If every append extends one global hash chain, every run in every workspace contends on one chain head. That chain head is then the hot path for each EffectPassed and EffectResultRecorded.",
+      "proposal": "Hash chain per stream (each event includes the previous hash of its own stream). Global position is still assigned at commit. chain_head_hash in AuditLogCheckpointSigned becomes a Merkle root over all stream heads at global_position. Tamper evidence is the same, and appends to different streams never contend.",
+      "blocking": false
+    }
+  ],
+  "accepted_with_reservations": [
+    "RedactPayload scans only external effect results (Fetch, model completions) and inbound messages. Programs only ever hold handles, so internal effect results cannot contain a secret value unless an external result already carried one, and they are not scanned on the hot path.",
+    "secrets.SecretInjectedIntoRequest: appended in the same commit as the run's EffectResultRecorded for that Fetch, never as an extra synchronous write per request.",
+    "channels.AgentRanProgram, channels.SubagentDelegated and channels.MessagePosted are issued by the (run, step) keyed policy from the run journal, not written independently by the runtime, so a replay or retry never duplicates them.",
+    "channels.AgentTurnStarted allocates the turn number in the Conversation aggregate before runs.RunStarted, so the turn run id (conversation + turn number) is deterministic.",
+    "databases.DatabaseRestored moves the stream forward (a new sequence that records the restore), it never rewinds it. (run, step) deduplication consults the stream, not only the outbox table in the restored file, so a step applied after the restore point is not applied twice.",
+    "Whenever records.SubjectKeyShredded, suspended runs whose journal references that key are cancelled (RunCancelled, reason erased) rather than left to fail later with ReplayDiverged.",
+    "Whenever packages.SignatoryRevoked, runs whose RunBasisPinned includes a release signed after the compromised-since time are cancelled, and suspended ones are not resumed.",
+    "access.PrivilegeChangeExpired and configuration.CloudSourceChanged list no command. Expiry should be fired by the same durable wake-up queue as runs (not a session schedule), and CloudSourceChanged needs a SetCloudSource command with expected_previous_cid.",
+    "artifacts.ArtifactUnsharedForEditing adds a new effect (UnshareArtifact). That is acceptable because it is the general inverse of ShareArtifact, as AGENTS.md asks of any new effect.",
+    "The run journal cap from O5 must be visible in the run timeline read model before a run reaches it, so authors move long loops to Cron before they hit RunFailed."
+  ],
+  "signoff": "The journal shape is right: decisions are the fence, internal effects are exactly-once by (run, step), and every run id comes from its cause. I sign as soon as redaction happens before the program resumes, because a replay that feeds a program a different value from the one it saw is not a replay."
+}

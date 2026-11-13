@@ -1,0 +1,18 @@
+{
+  "agree": true,
+  "objections": [
+    {
+      "amendment": "A4",
+      "issue": "Pre-approving catalogue shells is a fair compromise. But a catalogue shell other than 'admin' can still carry gates for set_user_shell, set_workspace_source, set_secret, delete_secret or bind. One admin could then make someone admin in all but name without a second person.",
+      "proposal": "Treat any catalogue shell whose gates include configuration-API, secret or bind effects as admin-equivalent for A4, so assigning or inviting with it still needs PrivilegeChangeApproved. The shells view marks these shells.",
+      "blocking": false
+    },
+    {
+      "amendment": "A1",
+      "issue": "Replacing a leaked value with the secret's opaque handle puts injectable handles into journal blocks and messages, which contradicts N4 ('the handle exists only in the vault'). A program could also send a leaked secret back out through the injection path.",
+      "proposal": "Replace a leaked value with a non-injectable marker, 'eyg-redacted:<name>@<version>', rather than the injection handle. Replay stays exact because the program, journal and blocks still all see the same redacted value.",
+      "blocking": false
+    }
+  ],
+  "signoff": "I sign: A2 keeps erased data unguessable, N3 and N4 close the machine identity and handle gaps, and my two remaining notes on A4 and A1 are refinements for design, not reasons to hold the board."
+}

@@ -1,0 +1,22 @@
+{
+  "agree": false,
+  "objections": [
+    {
+      "event_or_ruling": "O3 ruling, as applied to access.PersonShellAssigned and identity.PersonInvited (policy: 'Whenever PersonSignedUp, AssignPersonShell to the invitation's shell, through a PrivilegeChange if it is wider than the default shell')",
+      "issue": "The first thing a new team does is invite people and give them a shell. Most clouds start with a single admin, so under this ruling inviting the first teammate with any shell wider than the default waits 24 hours for self approval. That puts the cost of four eyes on the most common and least risky action users take. The shells people can be given are already reviewed code in cloud.eyg, and an admin picking one by hand is a human decision, not an agent widening its own privilege.",
+      "proposal": "Amend O3 as follows. When a person who is an admin directly invites someone, or assigns them a shell named in the current cloud.eyg `shells` catalogue (other than admin), that command counts as the approval. It emits PersonInvited or PersonShellAssigned with no PrivilegeChangeProposed, and the shell CID and approving admin are in the envelope. Four eyes (PrivilegeChangeProposed, then Approved, Declined or Expired, with the sole admin's 24 hour self approval) still applies to: granting admin, a shell outside the catalogue, a widened channel shell, an artifact made visible to anyone with the link, and every change proposed by an agent, trigger, schedule or non-admin.",
+      "blocking": true
+    }
+  ],
+  "accepted_with_reservations": [
+    "Activity read model: it is on the board for channels. I accept it on the understanding that a workspace-level Activity is built the same way from every context, with each event tagged team-visible or internal, and that it is the default history people see in the admin page instead of trace trees.",
+    "configuration.CloudSourceChanged has no command. It should have SetCloudSource, or 'cloud.eyg changed on disk, detected at start', so the Activity can say who changed the shells people choose from.",
+    "artifacts.ArtifactVisibilityChanged defaults to workspace members. Today every artifact link works for anyone who can reach the cloud, so links already posted in Slack will stop working for outside viewers. The migration must record a visibility event for each existing artifact matching today's behaviour, attributed to the migration, rather than silently narrowing.",
+    "channels.MessageRetractedOnPlatform covers deletes and edits. Activity should say 'edited' or 'deleted', not 'retracted'.",
+    "access.PrivilegeChangeExpired has no command (a timer policy is fine), but the proposer must be told in the channel or Activity where they asked, or expiring proposals will look like the cloud ignoring them.",
+    "secrets.SecretLeakRedacted, runs.ReplayDiverged, fleet.RunThrottled and runs.EffectOutcomeInDoubt are internal names, but each must show up for the team as a plain sentence: 'a secret was removed from the agent's message', 'this run stopped because the program changed', 'busy, your request is queued', 'this may have posted, check and confirm'.",
+    "O9 as ruled (erasure of the conversation cancels its reminders) is fine. The cancelled reminder should still appear in the Activity as 'reminder cancelled, its conversation was erased' so nobody waits for it.",
+    "O10 as ruled with TriggerReplaced is what I asked for. Restoring an older trigger definition should be offered in the UI as a TriggerReplaced back to the earlier CID, so no separate restore event is needed."
+  ],
+  "signoff": "This board finally tells the story a team would tell: who said what in which channel, which trigger or reminder made the bot act, and what can and cannot be undone. I'll sign as soon as inviting your first teammate doesn't cost a day. Keep four eyes for agents and for widening what the cloud exposes, not for an admin choosing a shell from the catalogue they already reviewed."
+}

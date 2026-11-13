@@ -1,0 +1,691 @@
+{
+  "statement": "My contexts are where the cloud meets the outside world. Channels hold what people and agents say and the turns between them, connections hold what external services deliver, and artifacts hold what the cloud publishes back. Each has a small aggregate guarding identity and ordering (Channel, Conversation, Connection, Artifact) and a high volume partition kept away from it (DeliveryInbox), and almost every interesting rule is a cross-context policy into triggers, runs, configuration and records.",
+  "stickies": [
+    {
+      "kind": "aggregate",
+      "text": "Channel (one platform channel in a workspace: messages in and out, its name)",
+      "context": "channels",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "Conversation (one thread or DM: its input queue, agent turns and /new epochs)",
+      "context": "channels",
+      "for": null
+    },
+    {
+      "kind": "external",
+      "text": "Slack / Discord / WhatsApp / example chat",
+      "context": "channels",
+      "for": "channels.MessageReceived"
+    },
+    {
+      "kind": "command",
+      "text": "RecordInboundMessage",
+      "context": "channels",
+      "for": "channels.MessageReceived"
+    },
+    {
+      "kind": "actor",
+      "text": "Chat connection (on behalf of the platform author)",
+      "context": "channels",
+      "for": "channels.MessageReceived"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever connections.ConnectionEventReceived from a chat connection, RecordInboundMessage or RecordReaction in the Channel (deduplicated by platform message id)",
+      "context": "channels",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "command",
+      "text": "RecordReaction",
+      "context": "channels",
+      "for": "channels.ReactionAdded"
+    },
+    {
+      "kind": "actor",
+      "text": "Chat connection (on behalf of the person who reacted)",
+      "context": "channels",
+      "for": "channels.ReactionAdded"
+    },
+    {
+      "kind": "command",
+      "text": "RecordRetraction",
+      "context": "channels",
+      "for": "channels.MessageRetractedOnPlatform"
+    },
+    {
+      "kind": "external",
+      "text": "Slack / Discord / WhatsApp message deleted or edited event",
+      "context": "channels",
+      "for": "channels.MessageRetractedOnPlatform"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever MessageRetractedOnPlatform and the workspace erases retracted messages, RequestErasure of that message's payload (records)",
+      "context": "channels",
+      "for": "channels.MessageRetractedOnPlatform"
+    },
+    {
+      "kind": "command",
+      "text": "RecordChannelName",
+      "context": "channels",
+      "for": "channels.ChannelNamed"
+    },
+    {
+      "kind": "actor",
+      "text": "Chat connection (channel list or rename event from the platform)",
+      "context": "channels",
+      "for": "channels.ChannelNamed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ChannelNamed changes a channel's name, re-resolve its channel config and record access.ChannelShellChanged when the shell differs, and post a notice in the channel ('#dev is now #platform, it now runs with the platform shell')",
+      "context": "channels",
+      "for": "channels.ChannelNamed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever MessageReceived from a Person (not Bot, not Self) in a channel whose agent is listening, QueueInput in that message's Conversation",
+      "context": "channels",
+      "for": "channels.MessageReceived"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever MessageReceived or ReactionAdded, MatchTriggers of the channel (triggers)",
+      "context": "channels",
+      "for": "channels.MessageReceived"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever schedules.ScheduleOccurrenceFired, QueueInput in the schedule's Conversation with the schedule's message",
+      "context": "channels",
+      "for": "schedules.ScheduleOccurrenceFired"
+    },
+    {
+      "kind": "command",
+      "text": "QueueInput",
+      "context": "channels",
+      "for": "channels.InputQueued"
+    },
+    {
+      "kind": "actor",
+      "text": "Person posting / schedule / trigger script that observes",
+      "context": "channels",
+      "for": "channels.InputQueued"
+    },
+    {
+      "kind": "command",
+      "text": "StartAgentTurn",
+      "context": "channels",
+      "for": "channels.AgentTurnStarted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever InputQueued and no turn is in progress in the Conversation, StartAgentTurn, which starts a run (runs.RunStarted) as the channel agent",
+      "context": "channels",
+      "for": "channels.InputQueued"
+    },
+    {
+      "kind": "actor",
+      "text": "Channel agent",
+      "context": "channels",
+      "for": "channels.AgentTurnStarted"
+    },
+    {
+      "kind": "command",
+      "text": "RecordProgramRun (the agent's run tool)",
+      "context": "channels",
+      "for": "channels.AgentRanProgram"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever runs.RunStarted with a parent agent turn, record AgentRanProgram in that turn's Conversation, linking the run",
+      "context": "channels",
+      "for": "runs.RunStarted"
+    },
+    {
+      "kind": "command",
+      "text": "Delegate (effect)",
+      "context": "channels",
+      "for": "channels.SubagentDelegated"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever runs.EffectPassed for Delegate, record SubagentDelegated and start the child run with the subagent's task",
+      "context": "channels",
+      "for": "runs.EffectPassed"
+    },
+    {
+      "kind": "command",
+      "text": "Post (effect), recorded by RecordPostedMessage",
+      "context": "channels",
+      "for": "channels.MessagePosted"
+    },
+    {
+      "kind": "actor",
+      "text": "Agent, subagent, trigger script, schedule or bound person (from the run's actor chain)",
+      "context": "channels",
+      "for": "channels.MessagePosted"
+    },
+    {
+      "kind": "external",
+      "text": "Slack / Discord / WhatsApp / example chat (returns the platform message id)",
+      "context": "channels",
+      "for": "channels.MessagePosted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever runs.EffectResultRecorded for Post, record MessagePosted in the Channel with run, step and platform message id; an in-doubt Post is shown in the channel's Activity with Retry and 'It was posted' buttons",
+      "context": "channels",
+      "for": "runs.EffectResultRecorded"
+    },
+    {
+      "kind": "command",
+      "text": "CompleteAgentTurn (no post)",
+      "context": "channels",
+      "for": "channels.AgentStayedQuiet"
+    },
+    {
+      "kind": "command",
+      "text": "CompleteAgentTurn",
+      "context": "channels",
+      "for": "channels.AgentTurnCompleted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever runs.RunCompleted, RunFailed or RunCancelled for a turn's run, CompleteAgentTurn, then start the next queued input",
+      "context": "channels",
+      "for": "runs.RunCompleted"
+    },
+    {
+      "kind": "command",
+      "text": "RestartConversation (/new)",
+      "context": "channels",
+      "for": "channels.ConversationRestarted"
+    },
+    {
+      "kind": "actor",
+      "text": "Person in the conversation",
+      "context": "channels",
+      "for": "channels.ConversationRestarted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ConversationRestarted, cancel the turn in progress (runs.RunCancelled) and discard results that arrive for the old epoch, but keep reminders, which follow the thread (O9)",
+      "context": "channels",
+      "for": "channels.ConversationRestarted"
+    },
+    {
+      "kind": "command",
+      "text": "OpenChannelHistory",
+      "context": "channels",
+      "for": "channels.ChannelHistoryOpened"
+    },
+    {
+      "kind": "actor",
+      "text": "Admin or auditor who is not a member of the channel",
+      "context": "channels",
+      "for": "channels.ChannelHistoryOpened"
+    },
+    {
+      "kind": "read_model",
+      "text": "Channel Activity: team-visible events as sentences ('Bob added the regressions trigger from the product page', 'the agent was stopped from reading secrets'), with Undo only where it exists",
+      "context": "channels",
+      "for": "channels.MessagePosted"
+    },
+    {
+      "kind": "read_model",
+      "text": "Agent context: the current epoch's last 200 messages of a Conversation, the agent's history",
+      "context": "channels",
+      "for": "channels.ConversationRestarted"
+    },
+    {
+      "kind": "read_model",
+      "text": "Why did the bot post this? Each MessagePosted linked to its run, the trigger, schedule or message that caused it, and the shell that allowed it",
+      "context": "channels",
+      "for": "channels.MessagePosted"
+    },
+    {
+      "kind": "read_model",
+      "text": "Agents at work (operators): turns in progress, queue depth and oldest waiting input per Conversation",
+      "context": "channels",
+      "for": "channels.AgentTurnStarted"
+    },
+    {
+      "kind": "read_model",
+      "text": "Channel directory per workspace: platform id, current and past names, the config and shell that apply, members as reported by the platform",
+      "context": "channels",
+      "for": "channels.ChannelNamed"
+    },
+    {
+      "kind": "read_model",
+      "text": "Who read this channel (auditors): every ChannelHistoryOpened and every Bind into the channel",
+      "context": "channels",
+      "for": "channels.ChannelHistoryOpened"
+    },
+    {
+      "kind": "aggregate",
+      "text": "Connection (one named connection in a workspace: its lifecycle, secret mode and poll cursor)",
+      "context": "connections",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "DeliveryInbox (per connection, partitioned by day: deduplication and authentication of deliveries)",
+      "context": "connections",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "ConnectConnection",
+      "context": "connections",
+      "for": "connections.ChatConnected"
+    },
+    {
+      "kind": "command",
+      "text": "ConnectConnection",
+      "context": "connections",
+      "for": "connections.ServiceConnected"
+    },
+    {
+      "kind": "actor",
+      "text": "Configuration reconciler, on behalf of the person whose WorkspaceSourceChanged added the connection",
+      "context": "connections",
+      "for": "connections.ServiceConnected"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever configuration.WorkspaceConfigurationApplied, reconcile connections: ConnectConnection for each new or changed one, DisconnectConnection for each removed one",
+      "context": "connections",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "external",
+      "text": "Slack / Discord / WhatsApp / example chat",
+      "context": "connections",
+      "for": "connections.ChatConnected"
+    },
+    {
+      "kind": "external",
+      "text": "GitHub / Sentry / Bluesky / RSS feeds / Hacker News / Lobsters / log drains (Vercel, Netlify, Vector)",
+      "context": "connections",
+      "for": "connections.ServiceConnected"
+    },
+    {
+      "kind": "command",
+      "text": "AcknowledgeUnauthenticatedWebhook",
+      "context": "connections",
+      "for": "connections.UnauthenticatedConnectionCreated"
+    },
+    {
+      "kind": "actor",
+      "text": "Person who saved workspace.eyg with a webhook without a secret",
+      "context": "connections",
+      "for": "connections.UnauthenticatedConnectionCreated"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever UnauthenticatedConnectionCreated, flag the connection in the admin page and the product page cards, and post once in its channel ('anyone with the URL can send events to #dev')",
+      "context": "connections",
+      "for": "connections.UnauthenticatedConnectionCreated"
+    },
+    {
+      "kind": "command",
+      "text": "PollConnection (first poll)",
+      "context": "connections",
+      "for": "connections.ConnectionBackfilled"
+    },
+    {
+      "kind": "actor",
+      "text": "Poller",
+      "context": "connections",
+      "for": "connections.ConnectionBackfilled"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ServiceConnected for a polling source, PollConnection once as backfill: events are logged, not live, and run no triggers",
+      "context": "connections",
+      "for": "connections.ServiceConnected"
+    },
+    {
+      "kind": "command",
+      "text": "AcceptWebhookDelivery",
+      "context": "connections",
+      "for": "connections.WebhookDeliveryAuthenticated"
+    },
+    {
+      "kind": "actor",
+      "text": "External sender (GitHub, Sentry, log drain)",
+      "context": "connections",
+      "for": "connections.WebhookDeliveryAuthenticated"
+    },
+    {
+      "kind": "command",
+      "text": "AcceptWebhookDelivery (signature invalid or missing)",
+      "context": "connections",
+      "for": "connections.WebhookDeliveryRejected"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever WebhookDeliveryRejected happens 5 times in an hour for one connection, post one notice in its channel and show the reason on the connection, because 'my webhook does nothing' is the usual setup problem",
+      "context": "connections",
+      "for": "connections.WebhookDeliveryRejected"
+    },
+    {
+      "kind": "command",
+      "text": "AcceptWebhookDelivery (delivery id already seen)",
+      "context": "connections",
+      "for": "connections.WebhookReplayDetected"
+    },
+    {
+      "kind": "command",
+      "text": "RecordConnectionEvent",
+      "context": "connections",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "actor",
+      "text": "Poller or webhook listener",
+      "context": "connections",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever WebhookDeliveryAuthenticated, RecordConnectionEvent for each event in it (one for each array element with split)",
+      "context": "connections",
+      "for": "connections.WebhookDeliveryAuthenticated"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ConnectionEventReceived is live and the connection names a channel, MatchTriggers of that channel (triggers.TriggerMatched)",
+      "context": "connections",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "command",
+      "text": "AdvanceCursor (after a poll)",
+      "context": "connections",
+      "for": "connections.PollCursorAdvanced"
+    },
+    {
+      "kind": "actor",
+      "text": "Poller",
+      "context": "connections",
+      "for": "connections.PollCursorAdvanced"
+    },
+    {
+      "kind": "command",
+      "text": "DisconnectConnection",
+      "context": "connections",
+      "for": "connections.ServiceDisconnected"
+    },
+    {
+      "kind": "actor",
+      "text": "Configuration reconciler, on behalf of the person who removed the connection or deleted its secret",
+      "context": "connections",
+      "for": "connections.ServiceDisconnected"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever secrets.SecretDeleted or secrets.SecretRotated for a secret a connection read, re-apply the workspace configuration, which connects, reconnects or disconnects it",
+      "context": "connections",
+      "for": "secrets.SecretDeleted"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ServiceDisconnected, post once in the channel it fed ('github no longer sends events to #dev, the GITHUB_WEBHOOK_SECRET was deleted by Alice')",
+      "context": "connections",
+      "for": "connections.ServiceDisconnected"
+    },
+    {
+      "kind": "read_model",
+      "text": "Connections page per workspace: name, kind, channel, status (live, backfilling, unauthenticated, disconnected), last delivery and rejected count. It also gives the product page cards their '✓ github sends events to #dev'",
+      "context": "connections",
+      "for": "connections.ServiceConnected"
+    },
+    {
+      "kind": "read_model",
+      "text": "Connection event log: the latest events of a connection, newest first, which is the Events effect's answer",
+      "context": "connections",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "read_model",
+      "text": "Delivery debugger (team setting up a webhook): the last 50 deliveries with accepted, rejected or replayed and the reason, plus which triggers matched",
+      "context": "connections",
+      "for": "connections.WebhookDeliveryRejected"
+    },
+    {
+      "kind": "read_model",
+      "text": "Volume per connection per hour: received, matched, rejected, for operators and retention",
+      "context": "connections",
+      "for": "connections.ConnectionEventReceived"
+    },
+    {
+      "kind": "aggregate",
+      "text": "Artifact (one name in a workspace: owner channel, editors, visibility, numbered versions)",
+      "context": "artifacts",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "SaveArtifact (Artifact effect)",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVersionSaved"
+    },
+    {
+      "kind": "actor",
+      "text": "Agent, trigger script or person bound to a channel, acting as that channel",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVersionSaved"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ArtifactVersionSaved, pin the bundle's root (content.ContentRootPinned), so every published version stays viewable",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVersionSaved"
+    },
+    {
+      "kind": "command",
+      "text": "ShareArtifact (effect)",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactSharedForEditing"
+    },
+    {
+      "kind": "actor",
+      "text": "The owner channel's agent, or a person bound to it",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactSharedForEditing"
+    },
+    {
+      "kind": "command",
+      "text": "UnshareArtifact (new effect, the inverse of ShareArtifact)",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactUnsharedForEditing"
+    },
+    {
+      "kind": "command",
+      "text": "SetArtifactVisibility (workspace members, anyone with the link)",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVisibilityChanged"
+    },
+    {
+      "kind": "actor",
+      "text": "The owner channel's agent or a person bound to it; making an artifact public is a PrivilegeChangeProposed when the channel shell requires approval",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVisibilityChanged"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever access.PrivilegeChangeApproved for an artifact's visibility, SetArtifactVisibility",
+      "context": "artifacts",
+      "for": "access.PrivilegeChangeApproved"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever records.ErasureRequested covers content in an artifact version, hide that version with a note and keep the version number, never renumber",
+      "context": "artifacts",
+      "for": "records.ErasureRequested"
+    },
+    {
+      "kind": "read_model",
+      "text": "Artifact gallery per workspace: name, owner channel, editors, visibility, latest version, saved by and when",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVersionSaved"
+    },
+    {
+      "kind": "read_model",
+      "text": "Artifact version history: version, root CID, saved by (actor chain), the run that saved it, the paths that changed",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVersionSaved"
+    },
+    {
+      "kind": "read_model",
+      "text": "Served artifacts: name and version to root CID and visibility, read by the HTTP server for /artifacts/<name>/v/<n>/",
+      "context": "artifacts",
+      "for": "artifacts.ArtifactVisibilityChanged"
+    }
+  ],
+  "event_changes": [
+    {
+      "change": "rename",
+      "id_or_context": "artifacts.ArtifactShared",
+      "text": "ArtifactSharedForEditing",
+      "why": "In the code (cloud/artifacts.gleam), ShareArtifact lets other channels save new versions. It does not control viewing: every artifact is served to anyone who can reach /artifacts. Users read 'shared' as 'people can see it', so the event name must say what it really grants."
+    },
+    {
+      "change": "rename",
+      "id_or_context": "artifacts.ArtifactUnshared",
+      "text": "ArtifactUnsharedForEditing",
+      "why": "The pair to ArtifactSharedForEditing. There is no UnshareArtifact effect today, so it becomes a new command."
+    },
+    {
+      "change": "missing",
+      "id_or_context": "artifacts",
+      "text": "ArtifactVisibilityChanged",
+      "why": "Today every artifact is public to anyone who can reach the cloud, and names are global across workspaces. Teams share plans and reports, so who may view (workspace members, or anyone with the link) is a separate decision from who may edit, and it needs to be attributed and undoable. Default to workspace members, and scope names per workspace."
+    },
+    {
+      "change": "missing",
+      "id_or_context": "channels",
+      "text": "ChannelNamed",
+      "why": "Channel config, and so the channel shell, is chosen by channel name (cloud.channels.named), while platforms identify channels by id. Renaming #dev on Slack silently changes which shell its agent and triggers run with. The rename must be an event, and the policy that follows it records ChannelShellChanged."
+    },
+    {
+      "change": "missing",
+      "id_or_context": "channels",
+      "text": "ChannelHistoryOpened",
+      "why": "This is the resolution of O8. Admins and auditors who are not members of a channel can read its history only through a recorded, attributed opening, which members can see in their Activity view."
+    }
+  ],
+  "hotspot_resolutions": [
+    {
+      "id": "O8",
+      "resolution": "Reading a channel's history (message text and payloads) is separate from acting as the channel. 1) Members as the platform reports them (Slack and Discord channel members, WhatsApp chat participants) read the history of their channel; for a public Slack or Discord channel that means every workspace member. 2) The channel's own agent reads only its own Conversation (the 200-message context), and subagents see only their task. 3) Binding to a channel gives its effect powers, not its history: a bound person who is not a member sees the runs they start, not the earlier messages. 4) Admins and auditors see metadata for every channel (who, when, which effects, decisions) without payloads. Reading the text of a channel they are not in is the OpenChannelHistory command, it emits channels.ChannelHistoryOpened with a reason, and that shows in the channel's Activity. 5) The founders agent with shell.admin reads configuration, not chat text. A history gate in a shell can name channels, and widening it is a PrivilegeChangeProposed that an agent cannot approve. 6) Erased payloads (SubjectKeyShredded) show as 'message removed' to everyone."
+    },
+    {
+      "id": "O9",
+      "resolution": "A reminder belongs to the thread (the Conversation key, platform:channel:thread), not to an agent epoch, and it records its creator and its own message text, which must make sense on its own ('Remind alice her tea is ready'). After /new it still fires: it is queued as input in the new epoch, labelled 'reminder set by the agent for Alice on 13 Nov, before /new'. The Conversation's Upcoming list (part of channel Activity) shows pending reminders and schedules, and anyone whose channel shell allows CancelSchedule can cancel them. Names are unique per channel. If the thread root is retracted on the platform, the reminder posts at the top of the channel, noting that its thread is gone. If the reminder's text is erased (records.SubjectKeyShredded for its author or conversation), a policy cancels it with ScheduleCancelled, reason erased, because a reminder with no text is meaningless. Recurring schedules from workspace.eyg are never tied to a conversation, so they are unaffected."
+    },
+    {
+      "id": "O10",
+      "resolution": "Triggers are keyed by (channel, name), and each definition has a content CID of its pattern and script. Submitting a card again: if the CID is identical, it is a no-op that answers 'already installed', with no new event. If it differs and was added by the same person, it replaces: TriggerAdded with replaces set to the previous CID, so the old version is restorable from the trigger's history. If a different person added it, AddTrigger is rejected with 'regressions in #dev was added by Bob on 12 Nov', and the card offers 'Replace Bob's trigger', which resends with replace: True({}) and is recorded with both people in the Activity. If workspace.eyg defines the name, it is rejected at add time ('configured in workspace.eyg, edit it there'), and TriggerShadowedByConfiguration is only for a later configuration that adds the name. Before submit, each card reads ListTriggers and shows 'not installed', 'installed' or 'installed, differs', the same way it already shows connection readiness."
+    }
+  ],
+  "aggregate_notes": [
+    {
+      "aggregate": "Channel",
+      "stream": "channels/<workspace>/<platform>:<channel_id>",
+      "invariants": [
+        "A platform message id is recorded at most once (redeliveries are deduplicated)",
+        "A reaction or retraction refers to a message already recorded, or carries the full message as the plugin reports it",
+        "Messages from Self participants are recorded, never queued for an agent",
+        "MessagePosted refers to the run and step whose Post produced it, and to the platform's message id",
+        "The current name is the latest ChannelNamed. Config is resolved from the name in force when a message arrives"
+      ],
+      "emits": [
+        "MessageReceived",
+        "ReactionAdded",
+        "MessageRetractedOnPlatform",
+        "MessagePosted",
+        "ChannelNamed",
+        "ChannelHistoryOpened"
+      ]
+    },
+    {
+      "aggregate": "Conversation",
+      "stream": "conversations/<workspace>/<platform>:<channel_id>:<thread>",
+      "invariants": [
+        "At most one agent turn in progress",
+        "Inputs start turns in the order they were queued",
+        "Each turn is exactly one run, and AgentTurnCompleted closes it",
+        "ConversationRestarted increments the epoch, and results for an older epoch are discarded",
+        "Every turn ends in exactly one of MessagePosted (via its run) or AgentStayedQuiet"
+      ],
+      "emits": [
+        "InputQueued",
+        "AgentTurnStarted",
+        "AgentRanProgram",
+        "SubagentDelegated",
+        "AgentStayedQuiet",
+        "AgentTurnCompleted",
+        "ConversationRestarted"
+      ]
+    },
+    {
+      "aggregate": "Connection",
+      "stream": "connections/<workspace>/<connection_name>",
+      "invariants": [
+        "The name is unique in its workspace",
+        "A webhook with no secret exists only after an attributed UnauthenticatedConnectionCreated",
+        "Backfill happens once per connect, and its events are not live",
+        "The poll cursor only moves forward",
+        "No deliveries are accepted after ServiceDisconnected until it is connected again"
+      ],
+      "emits": [
+        "ChatConnected",
+        "ServiceConnected",
+        "UnauthenticatedConnectionCreated",
+        "ConnectionBackfilled",
+        "PollCursorAdvanced",
+        "ServiceDisconnected"
+      ]
+    },
+    {
+      "aggregate": "DeliveryInbox",
+      "stream": "deliveries/<workspace>/<connection_name>/<yyyy-mm-dd>",
+      "invariants": [
+        "A delivery id or source event id is recorded once within the replay window (WebhookReplayDetected otherwise)",
+        "A signature is verified before WebhookDeliveryAuthenticated",
+        "Credential headers and query parameters never reach the event, and bodies are blocks by CID",
+        "ConnectionEventReceived is live only when the Connection is not backfilling"
+      ],
+      "emits": [
+        "WebhookDeliveryAuthenticated",
+        "WebhookDeliveryRejected",
+        "WebhookReplayDetected",
+        "ConnectionEventReceived"
+      ]
+    },
+    {
+      "aggregate": "Artifact",
+      "stream": "artifacts/<workspace>/<name>",
+      "invariants": [
+        "The owner channel is fixed by the first save",
+        "Only the owner channel shares, unshares or changes visibility",
+        "A non-owner channel saves only while the artifact is shared for editing",
+        "Versions are numbered 1, 2, 3 with no gaps, and each is an immutable root CID",
+        "A bundle has valid paths and media types before a version is saved",
+        "Names are unique per workspace (today they are global across the cloud)"
+      ],
+      "emits": [
+        "ArtifactVersionSaved",
+        "ArtifactSharedForEditing",
+        "ArtifactUnsharedForEditing",
+        "ArtifactVisibilityChanged"
+      ]
+    }
+  ]
+}
