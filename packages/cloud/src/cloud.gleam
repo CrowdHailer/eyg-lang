@@ -2,6 +2,7 @@ import cloud/discord/discord
 import cloud/session
 import cloud/slack/slack
 import envoy
+import gleam/dict
 import gleam/erlang/process
 import gleam/result
 import ogre/origin
@@ -26,7 +27,11 @@ pub fn main() -> Nil {
     envoy.get("EYG_ORIGIN")
     |> result.unwrap("https://eyg.run")
     |> origin.from_string_strict
-  let assert Ok(sessions) = session.start(hub, llm)
+  let secrets = case discord_token {
+    Ok(token) -> dict.from_list([#("DISCORD_BOT_TOKEN", token)])
+    Error(_) -> dict.new()
+  }
+  let assert Ok(sessions) = session.start(hub, llm, secrets)
   case slack_token {
     Ok(token) -> {
       let assert Ok(_) = slack.start_channel(sessions.data, token)

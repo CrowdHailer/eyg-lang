@@ -12,7 +12,7 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser
 import gleam/crypto
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/erlang/process
 import gleam/httpc
 import gleam/int
@@ -25,6 +25,7 @@ import overlay/agent
 import overlay/policy
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
+import touch_grass/env
 import touch_grass/fetch
 import touch_grass/file_system/append_file
 import touch_grass/file_system/delete_file
@@ -45,9 +46,12 @@ pub type Output {
   StandardError(String)
 }
 
-/// same as loam/exectue.State
 pub type State {
-  State(origin: origin.Origin, cache: cache.Cache(Meta))
+  State(
+    origin: origin.Origin,
+    cache: cache.Cache(Meta),
+    secrets: Dict(String, String),
+  )
 }
 
 pub type Policy =
@@ -162,7 +166,8 @@ fn loop(returned, state: State, policy, files, emit, inspect, output) {
       let #(outcome, files, output) = case action {
         policy.Perform(interface, input) -> {
           let #(outcome, files) = case interface.decode(input) {
-            Ok(effect) -> perform_effect(effect, label, files, emit)
+            Ok(effect) ->
+              perform_effect(effect, label, state.secrets, files, emit)
             Error(reason) -> #(Error(simple_debug.describe(reason)), files)
           }
           let output = case label, input, outcome {
@@ -243,6 +248,7 @@ fn decide(policy, label, lift, meta, state) {
   }
 }
 
+/// TODO remove
 fn resolve_policy_input(label, lift) {
   case label, lift {
     "ReadFile", v.Record(fields)
@@ -280,7 +286,7 @@ fn pure_loop(returned, state: State) {
   }
 }
 
-fn perform_effect(effect, label, files, emit) {
+fn perform_effect(effect, label, secrets, files, emit) {
   case effect {
     computer.StandardOut(text) -> {
       emit(StandardOut(text))
@@ -301,7 +307,7 @@ fn perform_effect(effect, label, files, emit) {
       let #(outcome, files) = file_system.delete(files, path)
       #(Ok(delete_file.encode(outcome)), files)
     }
-    computer.Env(name:) -> #(get_env(name), files)
+    computer.Env(name:) -> #(get_env(name, secrets), files)
     computer.Fetch(request) -> #(fetch(request), files)
     computer.Flip -> #(flip(), files)
     computer.Hash(input) -> #(hash(input), files)
@@ -406,8 +412,8 @@ fn decode_json(bytes) {
   Ok(decode_json.sync(bytes))
 }
 
-fn get_env(_name) {
-  Ok(v.error(v.unit()))
+fn get_env(name, secrets) {
+  Ok(dict.get(secrets, name) |> option.from_result |> env.encode)
 }
 
 fn fetch(request) {

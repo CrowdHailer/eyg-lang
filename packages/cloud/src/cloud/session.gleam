@@ -42,17 +42,22 @@ pub type Session {
 pub fn start(
   hub: origin.Origin,
   llm: provider.Llm,
+  secrets: Dict(String, String),
 ) -> actor.StartResult(Subject(Message)) {
-  start_with_session(hub, overlay.setup(hub, llm))
+  start_with_session(hub, overlay.setup(hub, llm), secrets)
 }
 
 pub fn start_with_session(
   hub: origin.Origin,
   agent_session: overlay.Session,
+  secrets: Dict(String, String),
 ) -> actor.StartResult(Subject(Message)) {
   let assert Ok(code) = simplifile.read("policy.eyg")
   let #(policy, execute_state) =
-    execute.load_policy(code, execute.State(origin: hub, cache: cache.ready()))
+    execute.load_policy(
+      code,
+      execute.State(origin: hub, cache: cache.ready(), secrets:),
+    )
   let assert Ok(policy) = policy
   actor.new(State(
     execute_state:,

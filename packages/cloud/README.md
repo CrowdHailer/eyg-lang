@@ -21,6 +21,8 @@ Both direct code and agent tools use this policy.
 
 ## Secrets
 
+Secrets are per whole workspace.
+
 ## Connections
 
 Data sources that are cached/pulled

@@ -38,7 +38,7 @@ pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
       system_prompt: agent.system_prompt(
         hub,
         effects,
-        "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports are unavailable; use ReadFile to inspect files. Env returns Error because host credentials are not exposed. Respond using the chat platform's Markdown formatting.",
+        "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports are unavailable; use ReadFile to inspect files. Env reads configured workspace secrets and returns Some(value) or None({}) when missing. Respond using the chat platform's Markdown formatting.",
       ),
       tools: agent.tools(),
     )
