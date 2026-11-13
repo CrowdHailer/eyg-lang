@@ -14,6 +14,7 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/result
+import gleam/set
 import gleam/string
 import loam/execute
 import loam/source
@@ -45,6 +46,7 @@ type Pinning {
     lock: Lock,
     imports: Dict(String, ir.Node(source.Location)),
     recorder: Recorder,
+    fetched: set.Set(String),
     state: execute.State,
   )
 }
@@ -62,7 +64,13 @@ pub fn pin(
     _ -> cwd
   }
   let pinning =
-    Pinning(lock: lock.empty(), imports: dict.new(), recorder:, state:)
+    Pinning(
+      lock: lock.empty(),
+      imports: dict.new(),
+      recorder:,
+      state:,
+      fetched: set.new(),
+    )
   use result <- system.map(do_pin(
     source,
     directory,
@@ -343,44 +351,77 @@ fn pin_file(path, location, visited, gate, pinning: Pinning) {
   }
 }
 
-/// Fetch a hub module, and every module it refers to, into the store.
+/// Fetch a hub module and retain the immutable release metadata in its graph.
 fn fetch(cid: v1.Cid, pinning: Pinning) {
   let id = v1.to_string(cid)
-  case store.has(recorder.store(pinning.recorder), id) {
+  case set.contains(pinning.fetched, id) {
     True -> system.Done(Ok(pinning))
     False -> {
-      use fetched <- system.then(
-        client.fetch_module(
-          cid,
-          pinning.state.origin,
-          fn(request) { system.Fetch(request, _) },
-          fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
-        )(system.Done),
-      )
-      case fetched {
-        Ok(module) -> {
-          let #(recorder, _) = recorder.store_node(pinning.recorder, module)
-          let pinning = Pinning(..pinning, recorder:)
-          let dependencies =
-            ir.list_references(module)
-            |> list.filter_map(fn(reference) {
-              case reference {
-                ir.Content(cid:) -> Ok(cid)
-                ir.Pinned(release:) -> Ok(release.module)
-                _ -> Error(Nil)
-              }
-            })
-          system.fold(dependencies, Ok(pinning), fn(acc, dependency) {
-            case acc {
-              Ok(pinning) -> fetch(dependency, pinning)
-              Error(_) -> system.Done(acc)
-            }
-          })
-        }
+      let pinning = Pinning(..pinning, fetched: set.insert(pinning.fetched, id))
+      let loaded = case store.get_node(recorder.store(pinning.recorder), id) {
+        Ok(module) -> system.Done(Ok(module))
+        Error(_) ->
+          client.fetch_module(
+            cid,
+            pinning.state.origin,
+            fn(request) { system.Fetch(request, _) },
+            fn(algorithm, bytes) { system.Hash(algorithm, bytes, _) },
+          )(system.Done)
+      }
+      use loaded <- system.then(loaded)
+      case loaded {
         Error(reason) ->
           system.Done(
             Error(#("failed to fetch module #" <> id <> ": " <> reason, pinning)),
           )
+        Ok(module) -> {
+          let #(recorder, _) = recorder.store_node(pinning.recorder, module)
+          let references = ir.list_references(module)
+          let releases =
+            list.filter_map(references, fn(reference) {
+              case reference {
+                ir.Pinned(release) -> Ok(release)
+                _ -> Error(Nil)
+              }
+            })
+          let locked =
+            list.try_fold(releases, pinning.lock, fn(locked, release) {
+              let module = v1.to_string(release.module)
+              case
+                dict.get(locked.versions, #(release.package, release.version))
+              {
+                Ok(known) if known != module ->
+                  Error("conflicting immutable package release in module graph")
+                _ ->
+                  Ok(lock.add_version(
+                    locked,
+                    release.package,
+                    release.version,
+                    module,
+                  ))
+              }
+            })
+          case locked {
+            Error(reason) -> system.Done(Error(#(reason, pinning)))
+            Ok(locked) -> {
+              let pinning = Pinning(..pinning, recorder:, lock: locked)
+              let dependencies =
+                list.filter_map(references, fn(reference) {
+                  case reference {
+                    ir.Content(cid) -> Ok(cid)
+                    ir.Pinned(release) -> Ok(release.module)
+                    _ -> Error(Nil)
+                  }
+                })
+              system.fold(dependencies, Ok(pinning), fn(acc, dependency) {
+                case acc {
+                  Ok(pinning) -> fetch(dependency, pinning)
+                  Error(_) -> system.Done(acc)
+                }
+              })
+            }
+          }
+        }
       }
     }
   }

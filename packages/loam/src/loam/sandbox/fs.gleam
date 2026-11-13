@@ -178,6 +178,18 @@ pub fn write_bits(file_system: Entry, path: String, contents: BitArray) {
   |> update_result(file_system)
 }
 
+/// Attach a persistent tree or blob without replacing an existing entry.
+/// The parent must exist. Use delete explicitly when replacement is intended.
+pub fn mount(file_system: Entry, path: String, artifact: Entry) {
+  transform(file_system, path, fn(existing) {
+    case existing {
+      Ok(_) -> Error(simplifile.Eexist)
+      Error(Nil) -> Ok(artifact)
+    }
+  })
+  |> update_result(file_system)
+}
+
 pub fn append_bits(file_system, path, contents) {
   let appended = {
     use previous <- result.try(case read_bits(file_system, path) {

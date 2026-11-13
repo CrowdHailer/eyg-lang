@@ -19,8 +19,11 @@ import loam/internal/tracing
 import midas/effect
 import plinthx/javascript/promise as native_promise
 import plinthx/javascript/string as native_string
+import plinthx/node/fs as native_fs
 import shellout
 import simplifile
+import touch_grass/acquire
+import touch_grass/mount
 import untethered/keypair
 
 pub type Metadata {
@@ -30,6 +33,15 @@ pub type Metadata {
 // This exists for testing as the runner can be defined straight away.
 pub type Effect(a) {
   Done(a)
+  Acquire(acquire.Input, fn(Result(acquire.Receipt, String)) -> Effect(a))
+  Mount(mount.Input, fn(Result(Nil, String)) -> Effect(a))
+  TemporaryDirectory(fn(Result(String, String)) -> Effect(a))
+  Command(
+    program: String,
+    arguments: List(String),
+    directory: String,
+    resume: fn(Result(String, #(Int, String))) -> Effect(a),
+  )
   SpanStart(String, List(#(String, String)), fn(Nil) -> Effect(a))
   SpanEnd(Option(String), fn(Nil) -> Effect(a))
   AppendFileBits(
@@ -81,6 +93,22 @@ pub type Effect(a) {
 
 pub fn append_file_bits(path, contents) {
   AppendFileBits(path, contents, Done)
+}
+
+pub fn acquire(input) {
+  Acquire(input, Done)
+}
+
+pub fn mount(input) {
+  Mount(input, Done)
+}
+
+pub fn temporary_directory() {
+  TemporaryDirectory(Done)
+}
+
+pub fn command(program, arguments, directory) {
+  Command(program, arguments, directory, Done)
 }
 
 pub fn delete_file(path) {
@@ -196,6 +224,16 @@ pub fn stdout(text) {
 
 pub fn then(effect: Effect(a), func: fn(a) -> Effect(b)) -> Effect(b) {
   case effect {
+    Acquire(input, resume) ->
+      Acquire(input, fn(reply) { then(resume(reply), func) })
+    Mount(input, resume) ->
+      Mount(input, fn(reply) { then(resume(reply), func) })
+    TemporaryDirectory(resume) ->
+      TemporaryDirectory(fn(reply) { then(resume(reply), func) })
+    Command(program, arguments, directory, resume) ->
+      Command(program, arguments, directory, fn(reply) {
+        then(resume(reply), func)
+      })
     Done(value) -> func(value)
     SpanStart(name, attributes, resume) ->
       SpanStart(name, attributes, fn(value) { then(resume(value), func) })
@@ -373,6 +411,18 @@ fn continue(
 
 fn run_step(effect: Effect(a), trace: tracing.Context) -> Promise(Driver(a)) {
   case effect {
+    Acquire(_, resume) ->
+      continue(Error("Acquire requires a sandbox"), resume, trace)
+    Mount(_, resume) ->
+      continue(Error("Mount requires a sandbox"), resume, trace)
+    TemporaryDirectory(resume) ->
+      continue(native_fs.temporary_directory("eyg-acquire-"), resume, trace)
+    Command(program, arguments, directory, resume) ->
+      continue(
+        shellout.command(run: program, with: arguments, in: directory, opt: []),
+        resume,
+        trace,
+      )
     Done(value) -> promise.resolve(Finished(value, trace))
     SpanStart(name, attributes, resume) -> {
       let trace = tracing.start_span(trace, name, attributes)

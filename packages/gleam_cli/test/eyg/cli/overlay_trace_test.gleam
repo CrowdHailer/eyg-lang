@@ -23,9 +23,10 @@ import touch_grass/harness/computer
 import touch_grass/interface
 
 const fields = [
-  "append_file", "create_key", "cwd", "delete_file", "env", "exit", "fetch",
-  "flip", "make_directory", "now", "random", "read_directory", "read_file",
-  "sleep", "standard_error", "standard_in", "standard_out", "write_file",
+  "acquire", "mount", "append_file", "create_key", "cwd", "delete_file", "env",
+  "exit", "fetch", "flip", "make_directory", "now", "random", "read_directory",
+  "read_file", "sleep", "standard_error", "standard_in", "standard_out",
+  "write_file",
 ]
 
 pub fn credential_file_and_oauth_reply_are_redacted_and_replay_test() {

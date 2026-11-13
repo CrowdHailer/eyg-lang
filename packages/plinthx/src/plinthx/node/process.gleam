@@ -7,3 +7,6 @@ pub fn get() -> Result(Process, Nil)
 
 @external(javascript, "./process_ffi.mjs", "env")
 pub fn env(process: Process) -> List(#(String, String))
+
+@external(javascript, "./process_ffi.mjs", "heapBytes")
+pub fn heap_bytes(process: Process) -> Int

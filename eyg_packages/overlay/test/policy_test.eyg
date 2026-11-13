@@ -122,7 +122,19 @@ let test_fetch = (_) -> {
   {}
 }
 
+let test_acquire_and_mount = (_) -> {
+  let input = {source: Http({url: "https://example.com/input"}), expected: None({})}
+  let _ = assert.error(expect_mock(policy.deny_all.acquire(input)))
+  let _ = assert.equal(input, expect_pass(policy.allow_all.acquire(input)))
+  let writable = policy.read_write(["/project"])
+  let mount = writable.mount
+  let _ = assert.equal({root: "artifact", path: "/project/file"}, expect_pass(mount({root: "artifact", path: "/project/file"})))
+  let _ = assert.error(expect_mock(mount({root: "artifact", path: "/outside/file"})))
+  {}
+}
+
 [
+  {name: "policy acquire and mount", test: test_acquire_and_mount},
   {name: "policy pass and deny", test: test_pass_and_deny},
   {name: "policy defaults pass process effects", test: test_process_effects},
   {name: "policy is under", test: test_is_under},

@@ -60,6 +60,29 @@ pub fn type_check_halts_run_test() {
   assert reason == "type error"
 }
 
+pub fn acquisition_and_mount_policy_fields_are_required_test() {
+  let rules = [
+    #("Acquire", policy.PolicyField("acquire")),
+    #("Mount", policy.PolicyField("mount")),
+  ]
+  let harness = computer.effects() |> interface.take(["Acquire", "Mount"])
+  use #(fields, missing) <- list.each([
+    #("acquire: (_) -> { Mock(Error(\"disabled\")) }", "mount"),
+    #("mount: (_) -> { Mock(Error(\"disabled\")) }", "acquire"),
+  ])
+  let input =
+    source.Code(
+      "{llm: {provider: Mistral({api_key: \"test\"}), model: \"test\"}, "
+      <> "policy: {"
+      <> fields
+      <> "}, context: {}}",
+    )
+  let assert #(sandbox.Returned(#(Error(reason), _)), _) =
+    overlay.setup(input, helpers.config, harness, rules, helpers.state())
+    |> sandbox.run(sandbox.sandbox())
+  assert string.contains(reason, "missing row '" <> missing <> "'")
+}
+
 pub fn setup_generalises_context_types_test() {
   let input =
     source.Code(
