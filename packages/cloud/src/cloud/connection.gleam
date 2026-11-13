@@ -8,8 +8,11 @@
 
 import cloud/data
 import eyg/interpreter/break
+import eyg/interpreter/capture
 import eyg/interpreter/cast
 import eyg/interpreter/state
+import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -40,6 +43,15 @@ pub type Source {
   HackerNews(lists: List(String), every: Int)
   /// Stories on Lobsters lists, `hottest`, `newest` or `t/<tag>`.
   Lobsters(lists: List(String), every: Int)
+  /// Every HTTP request to `/connections/<name>/webhook` is an event, see `cloud/connections/webhook`.
+  /// `respond` is a pure function from the request to its reply, captured like a trigger pattern.
+  Webhook(
+    secret: Option(String),
+    split: Bool,
+    respond: Option(ir.Node(#(Int, Int))),
+  )
+  /// The webhooks of a Sentry integration signed with its client `secret`, see `cloud/connections/sentry`.
+  Sentry(secret: String)
 }
 
 pub type Connection {
@@ -79,6 +91,8 @@ pub fn kind(source: Source) -> String {
     Rss(..) -> "Rss"
     HackerNews(..) -> "HackerNews"
     Lobsters(..) -> "Lobsters"
+    Webhook(..) -> "Webhook"
+    Sentry(..) -> "Sentry"
   }
 }
 
@@ -154,7 +168,31 @@ fn decode_source(value) {
       use every <- result.map(every(c, 120))
       Lobsters(lists: default_lists(lists, "newest"), every:)
     }),
+    #("Webhook", fn(c) {
+      use secret <- result.try(optional(c, "secret", cast.as_string))
+      use split <- result.try(optional(c, "split", as_boolean))
+      use respond <- result.map(optional(c, "respond", as_function))
+      Webhook(secret:, split: option.unwrap(split, False), respond:)
+    }),
+    #("Sentry", fn(c) {
+      use secret <- result.map(cast.field("secret", cast.as_string, c))
+      Sentry(secret)
+    }),
   ])
+}
+
+fn as_boolean(value) {
+  cast.as_variant(value, [
+    #("True", cast.as_unit(_, True)),
+    #("False", cast.as_unit(_, False)),
+  ])
+}
+
+fn as_function(value) {
+  case value {
+    v.Closure(..) | v.Partial(..) -> Ok(capture.capture(value, #(0, 0)))
+    _ -> Error(break.IncorrectTerm("a function", value))
+  }
 }
 
 fn default_lists(lists, default) {

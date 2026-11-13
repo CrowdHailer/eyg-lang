@@ -1,4 +1,5 @@
-//// HTTP requests delivered to a connection at `/connections/<name>/webhook`.
+//// HTTP requests delivered to a connection at `/connections/<name>/webhook`,
+//// or a path under it, `/connections/<name>/webhook/<path>`.
 ////
 //// GitHub posts its events here, and plugins for platforms that push events,
 //// such as WhatsApp, listen here instead of polling.
@@ -13,6 +14,8 @@ import gleam/string
 pub type Request {
   Request(
     method: http.Method,
+    /// The path after the connection's webhook URL, `/` for the URL itself.
+    path: String,
     /// Header names are lowercase.
     headers: List(#(String, String)),
     query: List(#(String, String)),

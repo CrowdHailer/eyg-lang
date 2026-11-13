@@ -21,6 +21,18 @@ let story = (title) -> {
   HackerNewsStory({connection: "hn", list: "top", id: 1, title, url: "", link: "", by: "pg", score: 1, comments: 0})
 }
 
+let request = (path, fields) -> {
+  WebhookRequest({connection: "logs", method: "POST", path, query: [], headers: [], body: "", fields})
+}
+
+let sentry_issue = (action) -> {
+  SentryIssue({connection: "sentry", action, id: "1", short_id: "APP-1", title: "TypeError", culprit: "", level: "error", status: "unresolved", project: "app", url: ""})
+}
+
+let sentry_alert = (action) -> {
+  SentryAlert({connection: "sentry", kind: "metric_alert", action, rule: "Errors", title: "Errors high", level: action, url: ""})
+}
+
 let test_posted = (_) -> {
   let _ = assert.equal(True({}), triggers.posted(posted("hi")))
   let _ = assert.equal(False({}), triggers.posted(reacted("hi", "books")))
@@ -97,9 +109,38 @@ let test_title_contains = (_) -> {
   {}
 }
 
+let test_field_equals = (_) -> {
+  let not_found = triggers.field_equals("status", "404")
+  let _ = assert.equal(True({}), not_found(request("/", [{path: "path", value: "/x"}, {path: "status", value: "404"}])))
+  let _ = assert.equal(False({}), not_found(request("/", [{path: "status", value: "200"}])))
+  let _ = assert.equal(False({}), not_found(request("/", [])))
+  let _ = assert.equal(False({}), not_found(posted("404")))
+  {}
+}
+
+let test_webhook_path = (_) -> {
+  let errors = triggers.webhook_path("/errors")
+  let _ = assert.equal(True({}), errors(request("/errors", [])))
+  let _ = assert.equal(False({}), errors(request("/", [])))
+  {}
+}
+
+let test_sentry = (_) -> {
+  let created = triggers.sentry_issue("created")
+  let _ = assert.equal(True({}), created(sentry_issue("created")))
+  let _ = assert.equal(False({}), created(sentry_issue("resolved")))
+  let _ = assert.equal(True({}), triggers.sentry_alert(sentry_alert("critical")))
+  let _ = assert.equal(False({}), triggers.sentry_alert(sentry_alert("resolved")))
+  let _ = assert.equal(False({}), triggers.sentry_alert(sentry_issue("created")))
+  {}
+}
+
 [
   {name: "triggers retain native platform values", test: test_native_platforms},
   {name: "triggers preserve whatsapp content", test: test_whatsapp},
+  {name: "triggers webhook field equals", test: test_field_equals},
+  {name: "triggers webhook path", test: test_webhook_path},
+  {name: "triggers sentry issues and alerts", test: test_sentry},
   {name: "triggers posted", test: test_posted},
   {name: "triggers reaction", test: test_reaction},
   {name: "triggers contains", test: test_contains},

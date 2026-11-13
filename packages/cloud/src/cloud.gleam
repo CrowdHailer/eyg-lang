@@ -87,6 +87,7 @@ pub fn main() -> Nil {
             request,
             _,
           ))
+          |> result.map(fn(respond) { respond() })
         {
           Error("no connection named " <> _) as error -> list.Continue(error)
           result -> list.Stop(result)

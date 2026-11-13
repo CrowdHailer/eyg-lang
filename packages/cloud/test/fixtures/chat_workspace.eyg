@@ -31,8 +31,38 @@ let issues = {
   }
 }
 
+let not_found = {
+  name: "not-found",
+  pattern: cloud.triggers.field_equals("status", "404"),
+  script: match {
+    WebhookRequest(request) -> { perform Post(!string_append("404: ", request.body)) }
+    | (_) -> { Error("not a request") }
+  }
+}
+
+let sentry_issues = {
+  name: "sentry-issues",
+  pattern: cloud.triggers.sentry_issue("created"),
+  script: match {
+    SentryIssue(issue) -> { perform Post(!string_append("Sentry: ", issue.title)) }
+    | (_) -> { Error("not an issue") }
+  }
+}
+
 {
-  connections: [{name: "github", source: GitHub({repositories: [], secret: "s3cret", every: 0}), channel: "general"}],
+  connections: [
+    {name: "github", source: GitHub({repositories: [], secret: "s3cret", every: 0}), channel: "general"},
+    {
+      name: "logs",
+      source: Webhook({
+        secret: "s3cret",
+        split: True({}),
+        respond: (request) -> { {status: 202, body: !string_append("received ", request.path)} }
+      }),
+      channel: "general"
+    },
+    {name: "sentry", source: Sentry({secret: "client-secret"}), channel: "general"}
+  ],
   files: "./files",
   llm: {
     provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
@@ -41,7 +71,7 @@ let issues = {
   channel: (info) -> {
     {
       handle: cloud.handlers.for_channel(info),
-      triggers: [books, research, issues],
+      triggers: [books, research, issues, not_found, sentry_issues],
       channel_shell: match !equal(info.name, "notes") {
         True(_) -> { cloud.shell.writes_under(["/channels/notes"], cloud.shell.everything) }
         False(_) -> { cloud.shell.everything }

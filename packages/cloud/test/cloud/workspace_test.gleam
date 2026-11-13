@@ -15,10 +15,12 @@ import gleam/erlang/process
 import gleam/http
 import gleam/list
 import gleam/option.{None}
+import gleam/result
 import gleam/string
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
+import simplifile
 
 const general = channel.Conversation("chat", "C1", None)
 
@@ -103,6 +105,11 @@ fn detach(workspace) {
 fn stop(workspace) {
   let assert Ok(pid) = process.subject_owner(workspace)
   process.kill(pid)
+}
+
+fn webhook_call(workspace, name, request) {
+  process.call(workspace, 1000, workspace.Webhook(name, request, _))
+  |> result.map(fn(respond) { respond() })
 }
 
 fn start(completions) {
@@ -560,8 +567,8 @@ pub fn signed_webhooks_run_triggers_test() {
       #("x-github-delivery", "d1"),
       #("x-hub-signature-256", signature),
     ]
-    let request = webhook.Request(http.Post, headers, [], body)
-    process.call(workspace, 1000, workspace.Webhook(connection, request, _))
+    let request = webhook.Request(http.Post, "/", headers, [], body)
+    webhook_call(workspace, connection, request)
   }
   assert call("github", "sha256=bad")
     == Ok(webhook.Response(401, "invalid signature"))
@@ -579,9 +586,50 @@ pub fn listening_plugins_answer_their_connections_webhook_test() {
     webhook.Response(200, "ok")
   }
   process.send(workspace, workspace.Listen("github", listener))
-  let request = webhook.Request(http.Post, [], [], "summarise this")
-  assert process.call(workspace, 1000, workspace.Webhook("github", request, _))
+  let request = webhook.Request(http.Post, "/", [], [], "summarise this")
+  assert webhook_call(workspace, "github", request)
     == Ok(webhook.Response(200, "ok"))
   let assert Ok(text) = process.receive(seen, 1000)
   assert string.contains(text, "summarise this")
+}
+
+pub fn sentry_issues_run_triggers_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  let assert Ok(body) = simplifile.read("test/fixtures/sentry/issue.json")
+  let signature =
+    crypto.hmac(<<body:utf8>>, crypto.Sha256, <<"client-secret":utf8>>)
+    |> bit_array.base16_encode
+    |> string.lowercase
+  let headers = [
+    #("sentry-hook-resource", "issue"),
+    #("sentry-hook-signature", signature),
+  ]
+  let request = webhook.Request(http.Post, "/", headers, [], body)
+  assert webhook_call(workspace, "sentry", request) == Ok(webhook.accepted())
+  let assert Ok(#(_, text)) = process.receive(posts, 1000)
+  assert text
+    == "Sentry: TypeError: Cannot read properties of undefined (reading 'id')"
+}
+
+pub fn webhook_requests_run_triggers_for_each_line_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  let call = fn(query) {
+    let body =
+      "[{\"status\":200,\"path\":\"/\"},{\"status\":404,\"path\":\"/x\"}]"
+    webhook_call(
+      workspace,
+      "logs",
+      webhook.Request(http.Post, "/vercel", [], query, body),
+    )
+  }
+  assert call([]) == Ok(webhook.Response(401, "unauthorised"))
+  assert process.receive(posts, 200) == Error(Nil)
+  // The connection's respond function answers the request.
+  assert call([#("token", "s3cret")])
+    == Ok(webhook.Response(202, "received /vercel"))
+  let assert Ok(#(_, text)) = process.receive(posts, 1000)
+  assert text == "404: {\"path\":\"/x\",\"status\":404}"
+  // One post, for the line with a 404.
+  assert process.receive(posts, 200) == Error(Nil)
+  stop(workspace)
 }

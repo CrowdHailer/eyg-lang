@@ -18,7 +18,9 @@ connections: [
   {name: "bsky", source: Bsky({actors: ["gleam.run"]}), channel: "social"},
   {name: "blogs", source: Rss({feeds: ["https://gleam.run/feed.xml"]}), channel: "news"},
   {name: "hn", source: HackerNews({lists: ["top"]}), channel: "news"},
-  {name: "lobsters", source: Lobsters({lists: ["newest"]}), channel: "news"}
+  {name: "lobsters", source: Lobsters({lists: ["newest"]}), channel: "news"},
+  {name: "logs", source: Webhook({secret: logs_secret, split: True({})}), channel: "ops"},
+  {name: "sentry", source: Sentry({secret: sentry_client_secret}), channel: "ops"}
 ]
 ```
 
@@ -45,5 +47,7 @@ Agents do not see these events unless a trigger hands them over, for example wit
 | `Rss` | `feeds`, `every` default 300 | [RSS](./connections/rss.md) |
 | `HackerNews` | `lists`, default `["top"]`, `every` default 120 | [Hacker News and Lobsters](./connections/hacker_news_and_lobsters.md) |
 | `Lobsters` | `lists`, default `["newest"]`, `every` default 120 | [Hacker News and Lobsters](./connections/hacker_news_and_lobsters.md) |
+| `Webhook` | `secret`, `split`, `respond`, all optional | [webhooks](./connections/webhooks.md) |
+| `Sentry` | `secret`, the integration's client secret | [Sentry](./connections/sentry.md) |
 
 The events of each source are listed in [trigger events](./trigger_events.md).

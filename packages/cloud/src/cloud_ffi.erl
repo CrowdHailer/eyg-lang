@@ -1,5 +1,5 @@
 -module(cloud_ffi).
--export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0, set_tracer/1, get_tracer/0]).
+-export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0, set_tracer/1, get_tracer/0, is_null/1]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -82,3 +82,7 @@ get_tracer() ->
         undefined -> {error, nil};
         Tracer -> {ok, Tracer}
     end.
+
+%% JSON null, as decoded by gleam_json.
+is_null(null) -> true;
+is_null(_) -> false.

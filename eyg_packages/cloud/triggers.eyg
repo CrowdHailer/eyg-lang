@@ -84,4 +84,60 @@ let title_contains = (text) -> {
   }
 }
 
-{posted, reaction, contains, issue_opened, pull_request_merged, title_contains}
+// The value at a path in the JSON body of a webhook request, `status` or `lines.0.status`.
+let field = (request, path) -> {
+  !list_fold(request.fields, Error({}), (pair, found) -> {
+    match found {
+      Ok(value) -> { Ok(value) }
+      Error(_) -> {
+        match !equal(pair.path, path) {
+          True(_) -> { Ok(pair.value) }
+          False(_) -> { Error({}) }
+        }
+      }
+    }
+  })
+}
+
+// A webhook request whose JSON body has `value`, as text, at `path`.
+// `field_equals("status", "404")` matches every 404 a log drain sends.
+let field_equals = (path, value) -> {
+  match {
+    WebhookRequest(request) -> {
+      match field(request, path) {
+        Ok(found) -> { !equal(found, value) }
+        Error(_) -> { False({}) }
+      }
+    }
+    | false
+  }
+}
+
+// A webhook request to a path under the connection's URL, `/errors` for `/connections/<name>/webhook/errors`.
+let webhook_path = (path) -> {
+  match {
+    WebhookRequest(request) -> { !equal(request.path, path) }
+    | false
+  }
+}
+
+// A Sentry issue with this action, `created`, `resolved`, `assigned`, `ignored` or `unresolved`.
+let sentry_issue = (action) -> {
+  match {
+    SentryIssue(issue) -> { !equal(issue.action, action) }
+    | false
+  }
+}
+
+// A Sentry issue or metric alert fired, resolved metric alerts do not match.
+let sentry_alert = match {
+  SentryAlert(alert) -> {
+    match !equal(alert.action, "resolved") {
+      True(_) -> { False({}) }
+      False(_) -> { True({}) }
+    }
+  }
+  | false
+}
+
+{posted, reaction, contains, issue_opened, pull_request_merged, title_contains, field, field_equals, webhook_path, sentry_issue, sentry_alert}

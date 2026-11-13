@@ -21,6 +21,8 @@ import cloud/connections/github
 import cloud/connections/hacker_news
 import cloud/connections/lobsters
 import cloud/connections/rss
+import cloud/connections/sentry
+import cloud/connections/webhook as webhooks
 import cloud/cron
 import cloud/data
 import cloud/files
@@ -37,6 +39,8 @@ import cloud/tracing
 import cloud/trigger.{type Trigger}
 import cloud/webhook
 import cloud/work
+import eyg/interpreter/cast
+import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
 import gleam/dict.{type Dict}
@@ -94,10 +98,12 @@ pub type Message {
   Listen(connection: String, listener: webhook.Listener)
   /// A request to the webhook of the connection `connection`,
   /// replies with an error when there is no such connection.
+  /// The reply is a function the caller runs for the response, so a webhook's
+  /// `respond` function is evaluated in the caller's process, not the workspace's.
   Webhook(
     connection: String,
     request: webhook.Request,
-    reply: Subject(Result(webhook.Response, String)),
+    reply: Subject(Result(fn() -> webhook.Response, String)),
   )
   /// Give programs in this workspace the configuration API, gated by their channel shells.
   SetApi(api: fn(operation.Operation) -> Result(data.Value, String))
@@ -269,6 +275,8 @@ fn start_connection(
         Ok(hacker_news.start(name, lists, every, observe))
       connection.Lobsters(lists:, every:) ->
         Ok(lobsters.start(name, lists, every, observe))
+      // Webhook connections only answer requests, see `webhook`.
+      connection.Webhook(..) | connection.Sentry(..) -> Ok(Nil)
     }
     case started {
       Ok(Nil) ->
@@ -410,22 +418,19 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         listeners: dict.insert(state.listeners, connection, listener),
       )
     Webhook(connection: name, request:, reply:) -> {
-      let event = webhook(state, name, request)
-      process.send(reply, case event {
-        Ok(Ok(_)) -> Ok(webhook.accepted())
-        Ok(Error(response)) -> Ok(response)
-        Error(reason) -> Error(reason)
-      })
-      case event {
-        Ok(Ok(event)) -> {
-          let log =
-            dict.upsert(state.log, event.connection, fn(log) {
-              connection.append_log(option.unwrap(log, []), event, max_log)
-            })
-          observed(State(..state, log:), event)
-        }
-        _ -> state
+      let answered = webhook(state, name, request)
+      process.send(reply, result.map(answered, fn(answered) { answered.1 }))
+      let events = case answered {
+        Ok(#(events, _)) -> events
+        Error(_) -> []
       }
+      list.fold(events, state, fn(state, event) {
+        let log =
+          dict.upsert(state.log, event.connection, fn(log) {
+            connection.append_log(option.unwrap(log, []), event, max_log)
+          })
+        observed(State(..state, log:), event)
+      })
     }
     SetApi(api:) -> State(..state, api:)
     ListChannels(reply:) -> {
@@ -496,11 +501,38 @@ fn webhook(
   state: State,
   name: String,
   request: webhook.Request,
-) -> Result(Result(connection.Event, webhook.Response), String) {
+) -> Result(#(List(connection.Event), fn() -> webhook.Response), String) {
   let found = list.find(state.connections, fn(c) { c.name == name })
+  let one = fn(result) {
+    case result {
+      Ok(event) -> #([event], now(webhook.accepted()))
+      Error(response) -> #([], now(response))
+    }
+  }
   case found, dict.get(state.listeners, name) {
     Error(Nil), _ -> Error("no connection named " <> name)
-    Ok(_), Ok(listener) -> Ok(Error(listener(request)))
+    Ok(_), Ok(listener) -> Ok(#([], now(listener(request))))
+    Ok(connection.Connection(
+      source: connection.Webhook(secret:, split:, respond:),
+      ..,
+    )),
+      _
+    ->
+      case webhooks.authorised(option.to_result(secret, Nil), request) {
+        False -> Ok(#([], now(webhook.Response(401, "unauthorised"))))
+        True -> {
+          let load = state.load
+          let response = case respond {
+            Some(function) -> fn() {
+              respond_with(load, name, function, request)
+            }
+            None -> now(webhook.accepted())
+          }
+          Ok(#(webhooks.events(name, request, split), response))
+        }
+      }
+    Ok(connection.Connection(source: connection.Sentry(secret), ..)), _ ->
+      Ok(one(sentry.from_request(name, secret, request)))
     Ok(connection.Connection(
       source: connection.GitHub(secret: Some(secret), ..),
       ..,
@@ -518,10 +550,51 @@ fn webhook(
         }
         False -> Error(webhook.Response(401, "invalid signature"))
       }
+      |> one
       |> Ok
     }
     Ok(_), _ ->
-      Ok(Error(webhook.Response(404, name <> " does not accept webhooks")))
+      Ok(#([], now(webhook.Response(404, name <> " does not accept webhooks"))))
+  }
+}
+
+fn now(response: webhook.Response) -> fn() -> webhook.Response {
+  fn() { response }
+}
+
+/// Answer a request with a webhook connection's pure `respond` function.
+/// It is evaluated with the configuration loaded in the calling process.
+fn respond_with(load: config.Loader, name, function, request) {
+  let argument = #(webhooks.request_value(name, request), #(0, 0))
+  let reply = {
+    use config <- result.try(load())
+    let #(function, workspace_state) =
+      execute.pure_loop(expression.execute(function, []), config.state)
+    let #(returned, _) = case function {
+      Ok(function) ->
+        execute.pure_loop(
+          expression.call(function, [argument]),
+          workspace_state,
+        )
+      Error(debug) -> #(Error(debug), workspace_state)
+    }
+    use returned <- result.try(
+      returned
+      |> result.map_error(fn(debug) { simple_debug.describe(debug.0) }),
+    )
+    let status = cast.field("status", cast.as_integer, returned)
+    let body = cast.field("body", cast.as_string, returned)
+    case status, body {
+      Ok(status), Ok(body) -> Ok(webhook.Response(status, body))
+      _, _ -> Error("respond must return {status, body}")
+    }
+  }
+  case reply {
+    Ok(response) -> response
+    Error(reason) -> {
+      io.println_error(name <> " respond: " <> reason)
+      webhook.Response(500, "respond failed")
+    }
   }
 }
 

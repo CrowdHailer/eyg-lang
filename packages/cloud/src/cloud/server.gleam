@@ -10,7 +10,7 @@
 //// | `GET /artifacts` | A list of artifacts |
 //// | `GET /artifacts/<name>/<path>` | A file from the latest version, `index.html` for an empty path |
 //// | `GET /artifacts/<name>/v/<version>/<path>` | A file from a version |
-//// | `GET /connections/<name>/webhook`, `POST` | A webhook request for the connection `<name>`, such as a GitHub delivery |
+//// | `/connections/<name>/webhook[/<path>]`, any method | A webhook request for the connection `<name>`, such as a GitHub delivery |
 ////
 //// Artifact files are served with a sandbox content security policy,
 //// so scripts in a bundle run in an opaque origin without network access.
@@ -88,12 +88,8 @@ pub fn app(context: Context) -> howdy.App {
     |> controller.get("/artifacts/:name", fn(ctx) {
       serve(context.artifacts, param(ctx, "name"), None, "")
     })
-    |> controller.get("/connections/:name/webhook", fn(ctx) {
-      webhook(ctx, param(ctx, "name"), context)
-    })
-    |> controller.post("/connections/:name/webhook", fn(ctx) {
-      webhook(ctx, param(ctx, "name"), context)
-    })
+    |> webhook_routes("/connections/:name/webhook", context)
+    |> webhook_routes("/connections/:name/webhook/*path", context)
     |> controller.get("/login", fn(ctx) { login_page(ctx, next(ctx), "") })
     |> controller.post("/login", fn(ctx) { with_web(context, sign_in(ctx, _)) })
     |> controller.get("/shell", fn(ctx) {
@@ -255,7 +251,20 @@ fn api(ctx: Request, web: runner.Context, user: User, label: String) {
   }
 }
 
-fn webhook(ctx: Request, name: String, context: Context) {
+/// Every method is accepted, a webhook connection decides what each one means.
+fn webhook_routes(routes, path, context) {
+  let handle = fn(ctx) {
+    webhook(ctx, param(ctx, "name"), "/" <> param(ctx, "path"), context)
+  }
+  routes
+  |> controller.get(path, handle)
+  |> controller.post(path, handle)
+  |> controller.put(path, handle)
+  |> controller.patch(path, handle)
+  |> controller.delete(path, handle)
+}
+
+fn webhook(ctx: Request, name: String, path: String, context: Context) {
   case controller.read_body(ctx, limit: max_body) {
     Error(_) -> text(413, "body too large")
     Ok(body) ->
@@ -268,6 +277,7 @@ fn webhook(ctx: Request, name: String, context: Context) {
           let delivery =
             webhook.Request(
               method: ctx.request.method,
+              path:,
               headers: ctx.request.headers,
               query:,
               body:,

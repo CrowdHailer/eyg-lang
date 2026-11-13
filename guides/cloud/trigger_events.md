@@ -22,7 +22,8 @@ let pattern = match {
 A channel's triggers receive the events of its chat and of every connection whose `channel` names it,
 see [connections](./connections.md).
 The cloud EYG package has common patterns in `cloud.triggers`: `posted`, `reaction(emoji)`, `contains(text)`,
-`issue_opened`, `pull_request_merged` and `title_contains(text)`.
+`issue_opened`, `pull_request_merged`, `title_contains(text)`, `field_equals(path, value)`, `webhook_path(path)`,
+`sentry_issue(action)` and `sentry_alert`. `field(request, path)` reads a webhook request's JSON field.
 
 The type of every event is written in Gleam in [`cloud/trigger.event_type`](../../packages/cloud/src/cloud/trigger.gleam),
 it is also the type of the values the `Events` effect returns.
@@ -101,8 +102,34 @@ Counts are as they were when the post was first seen.
 | --- | --- |
 | `LobstersStory` | `connection`, `list`, `id`, `title`, `url`, `link`, `tags`, `submitter`, `score`, `comments` |
 
+## Webhooks
+
+| Event | Fields |
+| --- | --- |
+| `WebhookRequest` | `connection`, `method`, `path`, `query: [{key, value}]`, `headers: [{key, value}]`, `body`, `fields: [{path, value}]` |
+
+`path` is the path after the connection's URL, `/` for the URL itself.
+`fields` has a `{path, value}` pair for every string, number, boolean and null in a JSON body, as text,
+`status` for `{"status": 404}` and `lines.0.status` inside arrays. It is empty when the body is not JSON.
+With `split` each element of a JSON array body is its own event, with that element as `body`.
+Headers and query parameters that carry credentials are left out, see [webhooks](./connections/webhooks.md).
+
+## Sentry
+
+| Event | Fields |
+| --- | --- |
+| `SentryIssue` | `connection`, `action`, `id`, `short_id`, `title`, `culprit`, `level`, `status`, `project`, `url` |
+| `SentryAlert` | `connection`, `kind`, `action`, `rule`, `title`, `level`, `url` |
+| `SentryError` | `connection`, `action`, `title`, `level`, `culprit`, `url`, `issue_url` |
+| `SentryEvent` | `connection`, `resource`, `action` |
+
+`SentryIssue.action` is `created`, `resolved`, `assigned`, `ignored`, `archived` or `unresolved`.
+`SentryAlert.kind` is `event_alert`, an issue alert rule, or `metric_alert`, whose `action` is `critical`, `warning` or `resolved`.
+`SentryEvent` is any other resource, such as `installation` or `comment`, see [Sentry](./connections/sentry.md).
+
 ## Which events run triggers
 
+Webhook and Sentry events are always live, every request runs triggers.
 Connections that poll log what they find on their first poll without running triggers,
 so starting the cloud does not replay old activity. Later events are live and run triggers.
 Every event is kept in the connection's log, the latest 500, and programs read it with `Events`:

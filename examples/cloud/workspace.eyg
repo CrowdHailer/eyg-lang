@@ -118,6 +118,43 @@ let github_triggers = [
   }
 ]
 
+// Server logs arrive at the logs webhook, a log drain posts batches of lines.
+// Each line is its own event, server errors are posted in #dev.
+let log_triggers = [
+  {
+    name: "server-errors",
+    pattern: match {
+      WebhookRequest(request) -> {
+        match triggers.field(request, "status") {
+          Ok(status) -> { !string_starts_with(status, "5") }
+          Error(_) -> { False({}) }
+        }
+      }
+      | (_) -> { False({}) }
+    },
+    script: match {
+      WebhookRequest(request) -> {
+        let read = (path) -> {
+          match triggers.field(request, path) {
+            Ok(value) -> { value }
+            Error(_) -> { "?" }
+          }
+        }
+        post(["🔥 ", read("status"), " ", read("method"), " ", read("path")])
+      }
+      | (_) -> { {} }
+    }
+  },
+  {
+    name: "sentry-issues",
+    pattern: triggers.sentry_issue("created"),
+    script: match {
+      SentryIssue(issue) -> { post(["🐛 New Sentry issue in ", issue.project, ": ", issue.title, " ", issue.url]) }
+      | (_) -> { {} }
+    }
+  }
+]
+
 // Stories about the languages we use go to #news.
 let news_triggers = [
   {
@@ -178,6 +215,18 @@ let github = match perform Secret("GITHUB_WEBHOOK_SECRET") {
   Error(_) -> { GitHub({repositories, every: 60}) }
 }
 
+// A secret is required when one is saved, without one anyone with the URL can send lines.
+let logs = match perform Secret("LOGS_WEBHOOK_SECRET") {
+  Ok(secret) -> { Webhook({secret, split: True({})}) }
+  Error(_) -> { Webhook({split: True({})}) }
+}
+
+// Sentry is connected once its client secret is saved.
+let sentry = match perform Secret("SENTRY_CLIENT_SECRET") {
+  Ok(secret) -> { [{name: "sentry", source: Sentry({secret}), channel: "dev"}] }
+  Error(_) -> { [] }
+}
+
 {
   llm: {
     provider: Ollama({origin: "https://ollama.com", api_key}),
@@ -199,7 +248,9 @@ let github = match perform Secret("GITHUB_WEBHOOK_SECRET") {
     },
     {name: "blogs", source: Rss({feeds: ["https://gleam.run/feed.xml", "https://erlangforums.com/latest.rss"]}), channel: "news"},
     {name: "hn", source: HackerNews({lists: ["top", "new"], every: 60}), channel: "news"},
-    {name: "lobsters", source: Lobsters({lists: ["newest"]}), channel: "news"}
+    {name: "lobsters", source: Lobsters({lists: ["newest"]}), channel: "news"},
+    {name: "logs", source: logs, channel: "dev"},
+    ..sentry
   ],
   crons: [
     {
@@ -233,8 +284,8 @@ let github = match perform Secret("GITHUB_WEBHOOK_SECRET") {
       config: (info) -> { {
         handle: cloud.handlers.for_channel(info),
         channel_shell: online(shell.writes_under(["/channels/dev"], shell.everything)),
-        readme: "Development of eyg-lang, GitHub events arrive here through triggers.",
-        triggers: github_triggers
+        readme: "Development of eyg-lang, GitHub, Sentry and server log events arrive here through triggers.",
+        triggers: !list_fold(log_triggers, github_triggers, (trigger, all) -> { [trigger, ..all] })
       } }
     },
     {

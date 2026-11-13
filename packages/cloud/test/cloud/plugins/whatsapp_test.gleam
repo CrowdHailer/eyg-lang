@@ -33,7 +33,13 @@ fn sign(body) {
 }
 
 fn delivery(body, signature) {
-  webhook.Request(http.Post, [#("x-hub-signature-256", signature)], [], body)
+  webhook.Request(
+    http.Post,
+    "/",
+    [#("x-hub-signature-256", signature)],
+    [],
+    body,
+  )
 }
 
 pub fn subscription_is_verified_with_the_verify_token_test() {
@@ -44,7 +50,9 @@ pub fn subscription_is_verified_with_the_verify_token_test() {
       #("hub.challenge", "1158201444"),
     ]
   }
-  let request = fn(token) { webhook.Request(http.Get, [], query(token), "") }
+  let request = fn(token) {
+    webhook.Request(http.Get, "/", [], query(token), "")
+  }
   assert whatsapp.listen(config, request("verify-me"))
     == Error(webhook.Response(200, "1158201444"))
   assert whatsapp.listen(config, request("wrong"))

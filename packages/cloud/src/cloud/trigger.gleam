@@ -39,7 +39,7 @@ pub type Script {
 }
 
 /// The type of the `event` value given to patterns and scripts, a union of every event.
-/// Chat platforms retain their native tags and payloads;
+/// Chat platforms retain their own tagged payloads,
 /// other connections report events tagged with their source, see `guides/cloud/trigger_events.md`.
 pub fn event_type() {
   let github = fn(fields) {
@@ -183,9 +183,70 @@ pub fn event_type() {
             #("comments", t.Integer),
           ]),
         ),
+        #("WebhookRequest", webhook_request_type()),
+        #(
+          "SentryIssue",
+          sentry([
+            #("action", t.String),
+            #("id", t.String),
+            #("short_id", t.String),
+            #("title", t.String),
+            #("culprit", t.String),
+            #("level", t.String),
+            #("status", t.String),
+            #("project", t.String),
+            #("url", t.String),
+          ]),
+        ),
+        #(
+          "SentryAlert",
+          sentry([
+            #("kind", t.String),
+            #("action", t.String),
+            #("rule", t.String),
+            #("title", t.String),
+            #("level", t.String),
+            #("url", t.String),
+          ]),
+        ),
+        #(
+          "SentryError",
+          sentry([
+            #("action", t.String),
+            #("title", t.String),
+            #("level", t.String),
+            #("culprit", t.String),
+            #("url", t.String),
+            #("issue_url", t.String),
+          ]),
+        ),
+        #(
+          "SentryEvent",
+          sentry([#("resource", t.String), #("action", t.String)]),
+        ),
       ],
     ]),
   )
+}
+
+fn sentry(fields) {
+  t.record([#("connection", t.String), ..fields])
+}
+
+/// A request to a webhook connection, the event and the argument of its `respond` function.
+pub fn webhook_request_type() {
+  let pairs = fn(key, value) {
+    t.List(t.record([#(key, t.String), #(value, t.String)]))
+  }
+  t.record([
+    #("connection", t.String),
+    #("method", t.String),
+    #("path", t.String),
+    #("query", pairs("key", "value")),
+    #("headers", pairs("key", "value")),
+    #("body", t.String),
+    #("fields", pairs("path", "value")),
+  ])
 }
 
 /// The record type of a trigger in EYG, `{name, pattern, script}`.

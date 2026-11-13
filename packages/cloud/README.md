@@ -2,7 +2,7 @@
 
 A place to run EYG code and agents away from your local machine.
 People talk to agents in chat platforms such as Slack or the [example chat app](../example_chat/README.md),
-and events from GitHub, Bluesky, RSS feeds, Hacker News and Lobsters run triggers.
+and events from GitHub, Sentry, Bluesky, RSS feeds, Hacker News, Lobsters and any webhook run triggers.
 Everything a workspace does, which model it uses, what it connects to and what each channel may do, is configured in EYG.
 
 ```sh
@@ -125,7 +125,7 @@ An artifact belongs to the channel that created it, other channels can save vers
 ## Connections
 
 Chats plug into the [channel interface](./src/cloud/channel.gleam), see the [channel plugin guide](../../guides/cloud/channel_plugins.md).
-GitHub, Bluesky, RSS, Hacker News and Lobsters only report events, they are not chats, see [connections](../../guides/cloud/connections.md).
+GitHub, Sentry, webhooks, Bluesky, RSS, Hacker News and Lobsters only report events, they are not chats, see [connections](../../guides/cloud/connections.md).
 
 This [article](https://weli.dev/blog/the-valley-of-webhooks/) discusses the reliability problems of webhooks.
 Channels are connections that can start a session/chat etc.
