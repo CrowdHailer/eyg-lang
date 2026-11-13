@@ -1,0 +1,138 @@
+// Every example from https://www.instantdb.com/essays/datalogjs
+// A pattern [?e, attribute, value] is the clause Triple({e, a: attribute, v: value}).
+// A context binding such as {"?movieId": 200} is a lexical constant.
+let {assert} = import "../aok/source/index.eyg"
+let db = import "./triples.eyg"
+
+let match_pattern = (movie) -> {
+  resolve Out @{
+    fact Triple({e: 200, a: "movie/director", v: I(100)}),
+    rule Out({movie, director}) {
+      var director
+      Triple({e: movie, a: "movie/director", v: I(director)})
+    }
+  }
+}
+
+let match_pattern_binds_a_new_variable = (_) -> {
+  assert.equal([{movie: 200, director: 100}], match_pattern(200))
+}
+
+let match_pattern_fails_on_a_conflicting_context = (_) -> {
+  assert.equal([], match_pattern(202))
+}
+
+let released_in_1987 = (_) -> {
+  let ids = resolve Out @{
+    db,
+    rule Out(id) { var id Triple({e: id, a: "movie/year", v: I(1987)}) }
+  }
+  assert.equal([202, 203, 204], ids)
+}
+
+let find_returns_only_the_ids = (_) -> {
+  let rows = resolve Out @{
+    db,
+    rule Out([id]) { var id Triple({e: id, a: "movie/year", v: I(1987)}) }
+  }
+  assert.equal([[202], [203], [204]], rows)
+}
+
+let where_joins_on_shared_variables = (_) -> {
+  let contexts = resolve Out @{
+    db,
+    rule Out({movie_id, director_id, director_name}) {
+      var movie_id var director_id var director_name
+      Triple({e: movie_id, a: "movie/title", v: S("The Terminator")}),
+      Triple({e: movie_id, a: "movie/director", v: I(director_id)}),
+      Triple({e: director_id, a: "person/name", v: S(director_name)})
+    }
+  }
+  assert.equal([{movie_id: 200, director_id: 100, director_name: "James Cameron"}], contexts)
+}
+
+let query_finds_the_terminator_director = (_) -> {
+  let rows = resolve Out @{
+    db,
+    rule Out([director_name]) {
+      var movie_id var director_id var director_name
+      Triple({e: movie_id, a: "movie/title", v: S("The Terminator")}),
+      Triple({e: movie_id, a: "movie/director", v: I(director_id)}),
+      Triple({e: director_id, a: "person/name", v: S(director_name)})
+    }
+  }
+  assert.equal([["James Cameron"]], rows)
+}
+
+let when_was_alien_released = (_) -> {
+  let rows = resolve Out @{
+    db,
+    rule Out([year]) {
+      var id var year
+      Triple({e: id, a: "movie/title", v: S("Alien")}),
+      Triple({e: id, a: "movie/year", v: I(year)})
+    }
+  }
+  assert.equal([[1979]], rows)
+}
+
+let what_do_i_know_about_entity_200 = (_) -> {
+  let rows = resolve Out @{
+    db,
+    rule Out({attr, value}) {
+      var attr var value
+      Triple({e: 200, a: attr, v: value})
+    }
+  }
+  assert.equal([
+    {attr: "movie/title", value: S("The Terminator")},
+    {attr: "movie/year", value: I(1984)},
+    {attr: "movie/director", value: I(100)},
+    {attr: "movie/cast", value: I(101)},
+    {attr: "movie/cast", value: I(102)},
+    {attr: "movie/cast", value: I(103)},
+    {attr: "movie/sequel", value: I(207)}
+  ], rows)
+}
+
+let which_directors_shot_arnold = (_) -> {
+  let rows = resolve Out @{
+    db,
+    rule Out([director_name, movie_title]) {
+      var arnold_id var movie_id var movie_title var director_id var director_name
+      Triple({e: arnold_id, a: "person/name", v: S("Arnold Schwarzenegger")}),
+      Triple({e: movie_id, a: "movie/cast", v: I(arnold_id)}),
+      Triple({e: movie_id, a: "movie/title", v: S(movie_title)}),
+      Triple({e: movie_id, a: "movie/director", v: I(director_id)}),
+      Triple({e: director_id, a: "person/name", v: S(director_name)})
+    }
+  }
+  assert.equal([
+    ["James Cameron", "The Terminator"],
+    ["John McTiernan", "Predator"],
+    ["Mark L. Lester", "Commando"],
+    ["James Cameron", "Terminator 2: Judgment Day"],
+    ["Jonathan Mostow", "Terminator 3: Rise of the Machines"]
+  ], rows)
+}
+
+let index_lookup_by_entity = (_) -> {
+  let titles = resolve Out @{
+    db,
+    rule Out(title) { var title Triple({e: 200, a: "movie/title", v: S(title)}) }
+  }
+  assert.equal(["The Terminator"], titles)
+}
+
+[
+  {name: "datalogjs: matchPattern binds ?directorId", test: match_pattern_binds_a_new_variable},
+  {name: "datalogjs: matchPattern fails for a conflicting context", test: match_pattern_fails_on_a_conflicting_context},
+  {name: "datalogjs: querySingle movies released in 1987", test: released_in_1987},
+  {name: "datalogjs: find returns only ?id", test: find_returns_only_the_ids},
+  {name: "datalogjs: queryWhere joins The Terminator to its director", test: where_joins_on_shared_variables},
+  {name: "datalogjs: query finds The Terminator's director", test: query_finds_the_terminator_director},
+  {name: "datalogjs: when was Alien released", test: when_was_alien_released},
+  {name: "datalogjs: what do I know about entity 200", test: what_do_i_know_about_entity_200},
+  {name: "datalogjs: which directors shot Arnold for which movies", test: which_directors_shot_arnold},
+  {name: "datalogjs: [200, movie/title, ?movieTitle] uses the entity index", test: index_lookup_by_entity}
+]
