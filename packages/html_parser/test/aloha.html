@@ -1,0 +1,654 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#a32015">
+    <link rel="apple-touch-icon" href="icon.png">
+    <title>aloha — Wehe&sup2;wiki&sup2; Hawaiian Language Dictionaries</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=inter:300,400,700" rel="stylesheet">
+    <meta name="color-scheme" content="dark light">
+    <style>
+        .svg-icon{display:inline-block;width:1em;height:1em;fill:currentColor;margin-bottom:-0.1em}.svg-icon.svg-icon-white{fill:#fff}.svg-icon.svg-icon-black{fill:#000}.svg-icon.error{fill:#eb5339}.svg-icon.info{fill:#418acc}.svg-icon.success{fill:#99c600}.svg-icon.warning{fill:#ffc237}
+    </style>
+    <style>
+        :root {
+            --blue: #005b89;
+            --red: #a32015;
+            --gray: #f3f3f3;
+            --gray-dark: #7c7c7c;
+            --gray-33: rgba(0, 0, 0, 0.33);
+        }
+        :root {
+            --article-bg: #eee;
+            --body-bg: #eee;
+            --body-color: #fff;
+            --body-font: Inter, -apple-system, system-ui, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+            --border-color: #ccc;
+            --border-radius: 0.5rem;
+            --box-shadow: 0 2px 4px #0001;
+            --button-bg: #eee;
+            --button-active-bg: #9c9;
+            --code-color: rebeccapurple;
+            --definition-font: 'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', P052, Georgia, serif;
+            --en-bg: #eeeeff;
+            --error-color: #fccac2;
+            --footer-bg: var(--blue);
+            --footer-color: #fff;
+            --haw-bg: #ffeef8;
+            --header-bg: var(--red);
+            --header-color: #fff;
+            --headword-color: #000;
+            --muted-color: #555;
+            --separator-color: #0006;
+            --shadow: 0 2px 4px #0001;
+            --success-color: #efffb9;
+            --text-color: #222;
+            --update-color: #544;
+            --warning-color: #ffeaa8;
+        }
+        *, *:before, *:after { -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box; }
+        a:focus { text-decoration: none; outline: 2px solid currentColor; }
+        /*a > .hidden-until-focus { display: none; }*/
+        /*a:focus > .hidden-until-focus, a:hover > .hidden-until-focus { display: inline; }*/
+        article.w2w2 { background-color: var(--en-bg); clear: both; position: relative; }
+        article.w2w2.haw { background-color: var(--haw-bg); }
+        article.w2w2 h2 { margin-top: 0; }
+        article.w2w2 .head { /*backdrop-filter: blur(10px);*/ background-color: var(--en-bg); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; }
+        article.w2w2.haw .head { background-color: var(--haw-bg); }
+        article:not(:first-of-type) { border-top: 3px dotted var(--separator-color); }
+        body { background-color: var(--body-bg); color: var(--text-color); font-family: var(--body-font); font-size: 1.3em; line-height: 1.5; position: relative; }
+        html, body { height: 100%; display: flex; flex-direction: column; margin: 0; padding: 0; }
+        header, footer, article { padding: 1rem; }
+        /*main { flex: 1; display: flex; }*/
+        footer { margin-top: auto; background-color: var(--footer-bg); font-size: 1rem; }
+        footer, footer a { color: var(--footer-color); }
+        footer ul { list-style-type: none; padding-left: 0; }
+        footer li { padding-bottom: 1rem; }
+        footer li a { text-decoration: none; }
+        footer li a:hover { text-decoration: underline; }
+        form.stacked label:not(.inline), form.stacked .label:not(.inline) { display: block; }
+        form.stacked input, form.stacked textarea { font-family: inherit; font-size: inherit; max-width: 50em; padding: 0.5rem; width: 100%; }
+        header { background-color: var(--header-bg); }
+        header, header a { color: var(--header-color); }
+        header h1 { font-size: 1.8rem; font-weight: normal; margin: 0 0 0.2rem 0; padding: 0; }
+        header h1 a { border-bottom: 1px solid currentColor; text-decoration: none; }
+        header h1 small { display: block; font-size: 1rem; }
+        header p { margin: 0; }
+        .admin { background-color: #fcc3; font-size: 0.9rem; float: right; max-width: max(30vw, 20em); padding: 0 1rem; border: 1px solid #f003; border-radius: 4px; }
+        .admin.data-source { float: right; margin: 1rem 0 0 0; padding: 0 1rem; }
+        .button { background-color: var(--button-bg); border: 2px solid #0002; box-shadow: var(--box-shadow); font-family: inherit; font-size: inherit; }
+        .button.rounded { border-radius: 2em; padding-left: 0.5em; padding-right: 0.5em; }
+        .button.small { font-size: 0.8em; }
+        .button.success { background-color: var(--success-color); color: var(--text-color); }
+        .button.warning { background-color: var(--warning-color); color: var(--text-color); }
+        .button[aria-expanded="true"] { background-color: var(--button-active-bg); }
+        .button * { pointer-events: none; }
+        .button-group { display: flex; flex-direction: row; gap: 0; }
+        .button-group .button { margin: 0; }
+        .button-group.small { font-size: 1rem; }
+        .button-group.rounded > :first-child { border-radius: 2em 0 0 2em; padding-left: 0.5em; }
+        .button-group.rounded > :last-child { border-radius: 0 2em 2em 0; padding-right: 0.5em; }
+        .button-group .active { background-color: var(--button-active-bg); }
+        .clear-button { background-color: transparent; border-width: 0; font-size: 1.2em; color: currentColor; padding: 0 0.5em; }
+        code { background-color: #0001; border-radius: 2px; color: var(--code-color); display: inline-block; padding: 0 4px; }
+        .columns { column-width: 20rem; column-gap: 1rem; }
+        .columns.small { column-width: 12rem; }
+        .definition, .headword { font-family: var(--definition-font); }
+        .definition > p, .definition ol, .definition ul { max-width: 75ch; }
+        /*.definition ol, .definition ul { font-size: 1.2rem; }*/
+        .dictionary.pk svg { color: #cc9; }
+        .dictionary.mm svg { color: #9cc; }
+        .dictionary.an svg { color: #996; }
+        .dictionary.p1 svg { color: #c96; }
+        .dictionary.pp svg { color: #9c9; }
+        .dictionary.cl svg { color: #99c; }
+        .dictionary.w2 svg { color: var(--red); }
+        .indent-1 { margin-left: 1em; }
+        .indent-2 { margin-left: 2em; }
+        .input-group { border-radius: 0; display: flex; flex-flow: row wrap; width: 100%; }
+        .input-group > * { border-width: 1px 1px 1px 0; border-radius: 0; margin: 0; }
+        .input-group > input { border-color: #0003; flex: 1; }
+        .input-group > :first-child { border-left-width: 1px; }
+        .input-group button { border-color: #0003; padding: 0 0.5rem; }
+        .lang-switcher { float: right; }
+        .media { float: right; margin-left: 1rem; margin-bottom: 1rem; }
+        img.media { border-radius: var(--border-radius); clear: right; max-width: 10rem; max-height: 10rem; cursor: zoom-in; transition: all 0.3s ease; }
+        img.media.zoom { display: block; max-width: min(100%, 40ch); max-height: 100%; cursor: zoom-out; }
+        main { position: relative; }
+        .meta { display: block; font-size: 1rem; font-weight: normal; }
+        .notice { background-color: var(--success-color); padding: 1rem; }
+        .notice.error { background-color: var(--error-color); }
+        .pagination input { font-size: inherit; text-align: center; }
+        .pagination .button { padding: 0.25em 0.5em; background-color: var(--body-color); text-decoration: none; color: var(--text-color); border-radius: var(--border-radius); display: inline-block; }
+        .part-of-speech { font-size: 1rem; font-weight: bold; color: var(--muted-color); }
+        .preview header, .preview footer, .preview .no-preview, .preview .admin { display: none; }
+        .pronunciation { font-size: 1rem; font-weight: normal; color: var(--muted-color); }
+        .scroll-to-top { bottom: 1rem; position: fixed; right: 1rem; }
+        .scroll-to-top a { background-color: #000c; border-radius: 3px; box-shadow: 0 2px 4px #0001; color: #fff; display: inline-block; font-size: 1rem; padding: 0.5rem 1rem; text-decoration: none; }
+        .scroll-to-top a:hover { outline: 2px solid currentColor; }
+        #search-form .input-group { gap: 4px; }
+        #search-form input { border-width: 0; box-shadow: var(--box-shadow); font-size: inherit; padding: 0.5rem; }
+        .svg-flag { width: 1.5em; height: 1em; margin-bottom: -0.1em; }
+        .tag { background-color: #0001; border: 2px solid #0002; border-radius: 2em; font-size: 0.8em; padding: 0 0.5em; }
+        .tags,
+        .w2w2-updated { font-size: 1rem; }
+        .w2w2 .head { display: flex; flex-flow: row wrap; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
+        .w2w2 .head h2 { margin: 0; }
+        .w2w2 .meta { flex: 1; text-align: right; }
+        .visually-hidden{border:0;clip:rect(0 0 0 0);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute;width:1px}
+        .visually-hidden.focusable:active,.visually-hidden.focusable:focus{clip:auto;height:auto;margin:0;overflow:visible;position:static;width:auto}
+        a.visually-hidden.focusable:active,a.visually-hidden.focusable:focus{background-color:#fff;padding:0 .5rem;position:absolute}
+        @media all and (min-width: 60rem) {
+            /*body { line-height: 1.5; }*/
+            header h1 small { display: inline; }
+            .meta { float: right; margin-left: 1rem; }
+            .row { display: flex; flex-flow: row wrap; gap: 1rem; }
+            .row.grows > *, .row > .grows { flex: 1; }
+        }
+        @media all and (prefers-color-scheme: dark) {
+            form input, form textarea { background-color: #222; color: #ddd; }
+            :root {
+                --article-bg: #111;
+                --blue: #003956;
+                --body-bg: #111;
+                --body-color: #000;
+                --border-color: #333;
+                --box-shadow: 0 2px 4px #0009;
+                --button-bg: #333;
+                --button-active-bg: #060;
+                --code-color: fuchsia;
+                --en-bg: #112;
+                --error-color: #fccac2;
+                --haw-bg: #221811;
+                --header-color: #111;
+                --headword-color: #fff;
+                --muted-color: #ccc;
+                --red: #7a1810;
+                --separator-color: #fff6;
+                --success-color: #363;
+                --text-color: #ddd;
+                --update-color: #544;
+                --warning-color: #663;
+            }
+            a:link { color: #6cf; }
+            a:visited { color: #c9c; }
+            a:hover { color: #ccf; }
+            a:active { color: #9cf; }
+            .button { border-color: #fff6; color: var(--text-color); }
+            code { background-color: #fff1; }
+            footer a { color: #ccc !important; }
+            h1 a { color: #fff !important; }
+            header { color: var(--text-color); }
+            img.media { background-color: #fffc; }
+            .tag { background-color: #fff3; border-color: #fff9; }
+        }
+    </style>
+        <style media="screen">
+        [hidden], .only-print { display: none !important; }
+                @supports (display: grid) {
+            @media (min-width: 60rem) {
+                .two-by { display: grid; grid-template-columns: 3fr 2fr; grid-gap: 1em; max-width: 100rem; }
+                .two-by.bordered > :nth-child(even) { border-left: 3px solid var(--separator-color); padding-left: 1rem; }
+            }
+        }
+    </style>
+    <style media="print">
+        .svg-flag { width: 1.5em; height: 1em; }
+        .meta, .w2w2-updated { font-size: 0.7em; font-weight: normal; font-family: Helvetica, Arial, sans-serif; color: #666; }
+        .meta { margin-left: 1em; }
+        footer, .no-print { display: none; }
+        article:not(:first-of-type) { border-top: 1px dotted #000; }
+    </style>
+        </head>
+<body class="">
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="link-icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"></path><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></symbol>
+<symbol id="tags-icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"></path><path d="m2.53 19.65 1.34.56v-9.03l-2.43 5.86c-.41 1.02.08 2.19 1.09 2.61zm19.5-3.7L17.07 3.98a2.013 2.013 0 0 0-1.81-1.23c-.26 0-.53.04-.79.15L7.1 5.95a1.999 1.999 0 0 0-1.08 2.6l4.96 11.97a1.998 1.998 0 0 0 2.6 1.08l7.36-3.05a1.994 1.994 0 0 0 1.09-2.6zM7.88 8.75c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-2 11c0 1.1.9 2 2 2h1.45l-3.45-8.34v6.34z"></path></symbol>
+<symbol id="help-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path></symbol>
+<symbol id="source-book-icon" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"></path><path d="M12 11.55C9.64 9.35 6.48 8 3 8v11c3.48 0 6.64 1.35 9 3.55 2.36-2.19 5.52-3.55 9-3.55V8c-3.48 0-6.64 1.35-9 3.55zM12 8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"></path></symbol>
+<symbol id="book-icon" viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"></path><path d="M17.5 10.5c.88 0 1.73.09 2.5.26V9.24c-.79-.15-1.64-.24-2.5-.24-1.7 0-3.24.29-4.5.83v1.66c1.13-.64 2.7-.99 4.5-.99zM13 12.49v1.66c1.13-.64 2.7-.99 4.5-.99.88 0 1.73.09 2.5.26V11.9c-.79-.15-1.64-.24-2.5-.24-1.7 0-3.24.3-4.5.83zM17.5 14.33c-1.7 0-3.24.29-4.5.83v1.66c1.13-.64 2.7-.99 4.5-.99.88 0 1.73.09 2.5.26v-1.52c-.79-.16-1.64-.24-2.5-.24z"></path></symbol>
+<symbol id="hae-en" viewBox="0 0 383 202"><path d="M0 0h383v202H0z" fill="none"></path><g fill="none" fill-rule="evenodd"><g transform="translate(0 -1)"><g transform="translate(1.5 1.5)"><rect width="379" height="16" y="183" fill="#BF0A30"></rect><rect width="379" height="16" y="167" fill="#fff"></rect><rect width="379" height="16" y="151" fill="#BF0A30"></rect><rect width="379" height="16" y="135" fill="#fff"></rect><rect width="379" height="15" y="120" fill="#BF0A30"></rect><rect width="379" height="15" y="105" fill="#fff"></rect><rect width="379" height="15" y="90" fill="#BF0A30"></rect><rect width="379" height="15" y="75" fill="#fff"></rect><rect width="379" height="15" y="60" fill="#BF0A30"></rect><rect width="379" height="15" y="45" fill="#fff"></rect><rect width="379" height="15" y="30" fill="#BF0A30"></rect><rect width="379" height="15" y="15" fill="#fff"></rect><rect width="379" height="15" fill="#BF0A30"></rect></g><rect width="152" height="105" fill="#002868" transform="translate(1.5 1.5)"></rect><polygon fill="#fff" fill-rule="nonzero" points="0.6 199.5 381.6 0.8 380.7 199.9" transform="translate(.5 1.5)"></polygon><g fill="#00247D" fill-rule="nonzero" transform="translate(1.5 1.5)"><polygon points="220.6 199.2 220.2 126.6 378.9 126.7 379.1 199"></polygon><polygon points="379 0.4 250.1 68.7 378.8 68.7"></polygon><polygon points="0 199.2 141.5 125.5 161.3 125.8 160.9 199.4"></polygon></g><g fill-rule="nonzero" transform="translate(.5 .5)"><polygon fill="#fff" points="380.9 180.2 380.4 199.7 347.3 201.8 217.3 133.6 218.8 124.1 276.4 125.7"></polygon><polygon fill="#fff" points="381.1 0.5 247.7 71.5 289 72.4 380.5 23.9"></polygon><polygon fill="#fff" points="0.6 199.6 149.1 123.2 164.4 123.8 164.4 138.3 47.8 200"></polygon><polygon fill="#CF142B" points="0.3 199.8 146.9 124.3 162.3 124.3 161.9 132.2 32.4 200"></polygon><polygon fill="#CF142B" points="239.2 125.4 267.9 126.3 380.2 186.5 379.8 199.6"></polygon></g><g fill="#CF142B" fill-rule="nonzero" transform="translate(161.5 79.5)"><polygon points="219 37.7 0.1 37.4 72.7 0.3 219 0.6"></polygon><polygon points="49.2 120.5 49.7 13 11.8 32.2 11.9 121"></polygon></g></g><g fill="#fff" transform="translate(8 5)"><ellipse cx="6.2" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="18.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="31" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="43.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="56.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="68.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="81" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="93.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="106.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="118.4" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="130.8" cy="6" rx="6.1" ry="6"></ellipse><g transform="translate(0 20.89)"><ellipse cx="6.2" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="18.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="31" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="43.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="56.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="68.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="81" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="93.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="106.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="118.4" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="130.8" cy="6" rx="6.1" ry="6"></ellipse></g><g transform="translate(0 41.781)"><ellipse cx="6.2" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="18.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="31" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="43.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="56.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="68.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="81" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="93.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="106.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="118.4" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="130.8" cy="6" rx="6.1" ry="6"></ellipse></g><g transform="translate(0 62.672)"><ellipse cx="6.2" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="18.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="31" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="43.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="56.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="68.5" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="81" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="93.6" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="106.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="118.4" cy="16.4" rx="6.1" ry="6"></ellipse><ellipse cx="130.8" cy="6" rx="6.1" ry="6"></ellipse></g><g transform="translate(0 83.563)"><ellipse cx="6.2" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="31" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="56.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="81" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="106.1" cy="6" rx="6.1" ry="6"></ellipse><ellipse cx="130.8" cy="6" rx="6.1" ry="6"></ellipse></g></g></g></symbol>
+<symbol id="hae-haw" viewBox="0 0 46 34"><g transform="translate(-1)"><g transform="translate(1 1)"><rect width="45" height="32.5" x=".25" fill="#fff"></rect><polygon fill="#cf142b" points="45.25 16.24 .25 16.24 .25 20.3 45.25 20.3" transform="matrix(1 0 0 -1 0 36.54)"></polygon><polygon fill="#cf142b" points="45.25 28.42 .25 28.42 .25 32.48 45.25 32.48" transform="matrix(1 0 0 -1 0 60.9)"></polygon><polygon fill="#00247d" points="45.25 20.3 .25 20.3 .25 24.36 45.25 24.36" transform="matrix(1 0 0 -1 0 44.66)"></polygon><polygon fill="#cf142b" points="45.25 4.06 .25 4.06 .25 8.12 45.25 8.12" transform="matrix(1 0 0 -1 0 12.18)"></polygon><polygon fill="#00247d" points="45.25 8.12 .25 8.12 .25 12.18 45.25 12.18" transform="matrix(1 0 0 -1 0 20.3)"></polygon></g><g transform="matrix(1 0 0 -1 .62 17.5)"><rect width="22.5" height="16.25" x=".63" y=".25" fill="#fff"></rect><polygon fill="#00247d" points=".625 13.97 .625 11.506 4.145 11.506"></polygon><polygon fill="#00247d" points="3.542 .25 8.754 .25 8.754 3.9"></polygon><polygon fill="#00247d" points="15.007 3.899 15.007 .25 20.219 .25"></polygon><polygon fill="#00247d" points=".625 5.253 .625 2.788 4.146 5.253"></polygon><polygon fill="#00247d" points="20.221 16.508 15.007 16.508 15.007 12.858"></polygon><polygon fill="#00247d" points="23.136 2.787 23.136 5.252 19.615 5.252"></polygon><polygon fill="#00247d" points="23.136 11.506 23.136 13.97 19.617 11.506"></polygon><polygon fill="#00247d" points="8.754 16.508 3.542 16.508 8.754 12.858"></polygon><polygon fill="#cf142b" points="16.345 5.253 23.135 .5 23.135 2.019 18.526 5.253"></polygon><polygon fill="#cf142b" points="8.754 5.253 7.416 5.253 .631 .5 .631 .245 2.446 .245 8.754 4.663"></polygon><polygon fill="#cf142b" points="15.007 11.506 16.346 11.506 23.139 16.264 23.139 16.503 21.306 16.503 15.007 12.095"></polygon><polygon fill="#cf142b" points="7.415 11.506 .635 16.263 .635 14.705 5.235 11.506"></polygon><polygon fill="#cf142b" points="13.757 10.255 13.757 16.508 10.005 16.508 10.005 10.255 .625 10.255 .625 8.379 .625 6.503 10.005 6.503 10.005 .25 13.757 .25 13.757 6.503 23.136 6.503 23.136 8.379 23.136 10.255"></polygon></g></g></symbol>
+<symbol id="wehewehe-wikiwiki" viewBox="0 0 128 128"><path id="w2w2-mahele-w" d="m1,1l42,0l0,126l-4,0c0,0 -5,-120 -38,-122l0,-4z"></path><use xlink:href="#w2w2-mahele-w" x="42"></use><use xlink:href="#w2w2-mahele-w" x="84"></use></symbol>
+<symbol id="icon-pollex" viewBox="0 0 24 24"><circle fill="#fff" stroke="#007cc3" stroke-width="2" r="11" cx="12" cy="12"></circle><path d="M11 7v5h3c2 0 3 0 3-2.5S16.012 7 14 7h-3zm2 11c1 0 1 0 1 1s0 1-1 1H7c-1 0-1 0-1-1s0-1 1-1h2V7H7C6 7 6 7 6 6s0-1 1-1h6c3 0 6 0 6 4.5S16 14 13 14h-2v4h2z" fill="#007CC3"></path></symbol>
+<symbol id="location-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"></path></symbol>
+
+        </svg>
+<aside aria-label="Skip to content link">
+    <a href="#output" class="visually-hidden focusable">Skip to content</a>
+</aside>
+<script>(function(){var alerts=document.getElementById('uhhilo-alert-section');if(!alerts){document.body.insertAdjacentHTML('afterbegin','<div id="uhhilo-alert-section"></div>');alerts=document.getElementById('uhhilo-alert-section');}function checkUHHiloAlerts(){var xhr = new XMLHttpRequest();xhr.addEventListener('load',function(){alerts.innerHTML=xhr.responseText;});xhr.open('get','https://hilo.hawaii.edu/emergency-message/_top-bar.php');xhr.send();}checkUHHiloAlerts();setInterval(checkUHHiloAlerts,60000);})();</script>
+
+<header>
+    <div id="lang-switcher" class="lang-switcher no-print">
+    <div class="button-group small rounded right">
+        <button type="button" class="button small set-lang" data-show="haw,en" data-hide="" data-lang="both">Hawaiʻi &amp; English</button>
+        <button type="button" class="button small set-lang" data-show="haw" data-hide="en" data-lang="haw">Hawaiʻi</button>
+        <button type="button" class="button small set-lang" data-show="en" data-hide="haw" data-lang="en">English</button>
+    </div>
+</div>
+
+    <h1 id="top"><a href="./"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg> Wehewehe Wikiwiki</a> <small>Hawaiian language dictionaries</small></h1>
+    <form method="get" id="search-form" action="/wehe/" class="no-print">
+    <p class="input-group">
+        <label for="q" class="visually-hidden">Search:</label>
+        <input type="text" name="q" value="aloha" id="q" autofocus placeholder="huli (search)" autocorrect="off" autocapitalize="off" size="10" class="grows">
+        <button type="submit" id="huli" title="Huli (Search)" class="button success"><svg width="1em" height="1em" viewBox="0 0 24 24" class="svg-icon md-search" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg> <span lang="haw">Huli</span><span class="lang-delim"> ｜ </span><span lang="en">Search</span></button>
+        <button type="button" id="extended-searching-toggle" class="button" aria-expanded="false"><svg width="1em" height="1em" viewBox="0 0 24 24" class="svg-icon md-menu" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg> <span lang="haw">Keu</span><span class="lang-delim"> ｜ </span><span lang="en">Options</span></button>
+    </p>
+    <div id="extended-searching" hidden>
+        <div class="row">
+            <div>
+                <p>
+                    <label class="inline"><input type="checkbox" name="l" id="l-s" value="1" data-uncheck="ds-s,wb-s"> <span lang="haw">Huli kepela like loa</span><span class="lang-delim"> ｜ </span><span lang="en">Exact spelling only</span></label>
+                </p>
+                <p class="indent-1">
+                    <label class="inline"><input type="checkbox" name="ds" id="ds-s" value="1" data-check="l-s" data-uncheck="wb-s"> <span lang="haw">Huli hohonu (me nā wehewehena)</span><span class="lang-delim"> ｜ </span><span lang="en">Deep search (also within definitions)</span></label>
+                </p>
+                <p class="indent-2">
+                    <label class="inline"><input type="checkbox" name="wb" id="wb-s" value="1" data-check="l-s,ds-s"> <span lang="haw">Huli hua kāʻokoʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Whole word search</span> [<span lang="haw">kāmua</span><span class="lang-delim"> ｜ </span><span lang="en">beta</span>]</label>
+                </p>
+            </div>
+                    </div>
+            </div>
+</form>
+
+</header>
+
+<main id="output">
+                                <article class="w2w2 haw pk" id="w2w2-796"><div class="head"><h2 class="headword">aloha</h2> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary pk"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Pukui-Elbert</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-796" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Pukui-Elbert, Hwn to Eng</span></a></span></span></div><div class="definition"><p><em>nvt., nvs.</em> Aloha, <a href="./?q=love">love</a>, <a href="./?q=affection">affection</a>, <a href="./?q=compassion">compassion</a>, <a href="./?q=mercy">mercy</a>, <a href="./?q=sympathy">sympathy</a>, <a href="./?q=pity">pity</a>, <a href="./?q=kindness">kindness</a>, <a href="./?q=sentiment">sentiment</a>, <a href="./?q=grace">grace</a>, <a href="./?q=charity">charity</a>; <a href="./?q=greeting">greeting</a>, <a href="./?q=salutation">salutation</a>, <a href="./?q=regards">regards</a>; <a href="./?q=sweetheart">sweetheart</a>, <a href="./?q=lover">lover</a>, loved one; <a href="./?q=beloved">beloved</a>, <a href="./?q=loving">loving</a>, <a href="./?q=kind">kind</a>, compassionate, <a href="./?q=charitable">charitable</a>, <a href="./?q=lovable">lovable</a>; to love, be fond of; to show kindness, mercy, pity, charity, affection; to venerate; to remember with affection; to greet, hail.</p>
+<ul>
+<li class="defs-examples">Examples:
+<ul>
+<li>Aloha ʻino! What a pity! Alas! [Expression of regret, either great or small.]</li>
+<li>Aloha akua, love of god; divine love, pity, charity.</li>
+<li>Mea aloha, loved one, beloved.</li>
+<li>Aloha makua, considerate and thoughtful of parents and elders, filial.</li>
+<li>Aloha ʻia, beloved, pitied.</li>
+<li>Aloha pumehana, warm aloha, affection.</li>
+<li>Me ke aloha o Kawena, with the love (or greeting) of Kawena.</li>
+<li>ʻO wau iho nō me ke aloha, I remain, with very best regards.</li>
+<li>Aloha ʻoe, ē Maria, ua piha ʻoe i ka maikaʻi, hail, Mary, full of grace.</li>
+<li>Ē Maria hemolele, e aloha mai ʻoe iā mākou, Holy Mary, have mercy on us.</li>
+<li>Aloha aʻe ana mākou i ke ehu wāwae o ka lani (chant for Kalākaua), we remember fondly the footprints of the king.</li>
+<li>E aloha aku au i ka mea aʻu e manaʻo ai e aloha aku (Puk. 33.19), I show mercy tothose I want to show mercy to.</li>
+<li>Aloha nō ia mau lā o nā makahiki he kanalima i kūnewa akula! Affectionate [memories] of these days of fifty years past!</li>
+</ul>
+</li>
+<li class="defs-related">Related:
+<ul>
+<li>Greetings! <a href="./?q=hello">Hello</a>! <a href="./?q=good-by">Good-by</a>! <a href="./?q=farewell">Farewell</a>! <a href="./?q=alas">Alas</a>! The common greetings follow:
+<ul>
+<li>Aloha ʻoe, may you be loved or greeted, greetings (to one person).</li>
+<li>Aloha kāua, may there be friendship or love between us, greetings (to one person); dear Sir.</li>
+<li>Aloha kākou, same as above, but to more than one person.</li>
+<li>Ke aloha nō! Aloha! Greetings! (The nō may be prolonged for emphasis.) (Gram. 4.6)</li>
+<li>The following greetings were introduced after European times; Aloha ahiahi, good evening. Aloha kakahiaka, good morning.</li>
+</ul>
+</li>
+<li>Aloha aliʻi, royalist, royal love.</li>
+<li><strong>hōaloha</strong> <em>Caus/sim.</em>; Rare variant of hoʻālohaloha. Cf. <a href="./?q=hoaloha">hoaloha</a>.</li>
+</ul>
+</li>
+<li class="defs-references">References:
+<ul>
+<li>Cf. <a href="./?q=aloha+ʻāina">aloha ʻāina</a>, <a href="./?q=hanaaloha">hanaaloha</a>.</li>
+<li><a href="https://pollex.eva.mpg.de/search/?field=entry&amp;query=%27alofa">PPN ʻalofa <span title="link to Pollex"><svg class="svg-icon pollex"><use xlink:href="#icon-pollex"></use></svg></span></a>.</li>
+</ul>
+</li>
+</ul></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2022-08-08 09:10:53" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 en pk" id="w2w2-797"><div class="head"><h2 class="headword">aloha</h2> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-en"></use></svg> <abbr title="English">Eng</abbr> to <abbr title="Hawaiian">Haw</abbr></span>, <span class="dictionary pk"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Pukui-Elbert</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-797" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Pukui-Elbert, Eng to Hwn</span></a></span></span></div><div class="definition"><p><a href="./?q=aloha">Aloha</a>.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2019-01-31 17:51:04" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw mm" id="w2w2-798"><div class="head"><h2 class="headword">aloha</h2> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary mm"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Māmaka Kaiao</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-798" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Māmaka Kaiao, Hwn to Eng</span></a></span></span></div><div class="definition"><ul>
+<li class="defs-related">Related:
+<ul>
+<li><a href="./?q=kinipōpō+aloha">Kinipōpō aloha</a>. Aloha ball, in volleyball.</li>
+</ul>
+</li>
+</ul></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2022-07-28 10:49:58" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw an" id="w2w2-799"><div class="head"><h2 class="headword">aloha</h2> <span class="pronunciation">/ A-LO-HA /</span> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary an"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Andrews</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-799" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Andrews, Hwn to Eng</span></a></span></span></div><div class="definition"><p id="Andrews-1">1. <em>v.</em> To love; to regard with affection; to desire.</p>
+<p id="Andrews-2">2. To have pity or compassion upon.</p>
+<p id="Andrews-3">3. To show mercy; to be merciful as a habit. <em>Mat. #5</em>:7. To spare; to pity. <em>Ezek. #7</em>:9.</p>
+<p id="Andrews-4">4. To salute at meeting or parting. 1 <em>sam. #10</em>:4.</p>
+<p id="Andrews-5">5. To salute contemptuously; <em>aloha</em> ino kaua, alas for us two. NOTE.—<em>Aloha,</em> as a word of salutation, is modern; the ancient forms were anoai, welina, &c.</p>
+<p id="Andrews-6">6. <strong>Hooaloha</strong>. To give thanks as an act of worship. 1 <em>Oihl. #25</em>:3.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2022-08-08 09:11:55" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw an" id="w2w2-800"><div class="head"><h2 class="headword">aloha</h2> <span class="pronunciation">/ A-LO-HA /</span> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary an"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Andrews</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-800" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Andrews, Hwn to Eng</span></a></span></span></div><div class="definition"><p><em>s.,</em> A word expressing different feelings; as, love; affection; gratitude; kindness; pity; compassion; grief; the modern common salutation at meeting and parting.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2022-08-08 09:14:50" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw an" id="w2w2-801"><div class="head"><h2 class="headword">aloha</h2> <span class="part-of-speech"><span lang="haw">ʻaʻano</span><span class="lang-delim"> ｜ </span><span lang="en">stative verb</span></span> <span class="pronunciation">/ A-LO-HA /</span> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary an"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Andrews</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-801" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Andrews, Hwn to Eng</span></a></span></span></div><div class="definition"><p><em>adj.,</em> Loving; beloved; favored.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2023-08-01 09:29:24" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw p1" id="w2w2-802"><div class="head"><h2 class="headword">aloha</h2> <span class="part-of-speech"><span lang="haw">ʻaʻano</span><span class="lang-delim"> ｜ </span><span lang="en">stative verb</span></span> <span class="pronunciation">/ ā-lō'-hă /</span> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary p1"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Parker</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-802" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Parker, Hwn to Eng</span></a></span></span></div><div class="definition"><p><em>adj.,</em> Worthy of love; lovable; loving: Keiki aloha, loving child.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2023-08-01 09:28:57" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw p1" id="w2w2-803"><div class="head"><h2 class="headword">aloha</h2> <span class="part-of-speech"><span lang="haw">kikino</span><span class="lang-delim"> ｜ </span><span lang="en">noun</span></span> <span class="pronunciation">/ ā-lō'-hă /</span> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary p1"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Parker</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-803" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Parker, Hwn to Eng</span></a></span></span></div><div class="definition"><p id="Parker-1">1. <em>n.,</em> A word giving an expression of kind feelings.</p>
+<p id="Parker-2">2. <em>n.,</em> Love; affection; gratitude; kindness.</p>
+<p id="Parker-3">3. <em>n.,</em> Pity; compassion; grief.</p>
+<p id="Parker-4">4. <em>n.,</em> The modern, common salutation at meeting or parting.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2023-08-01 09:29:04" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+<article class="w2w2 haw p1" id="w2w2-804"><div class="head"><h2 class="headword">aloha</h2> <span class="pronunciation">/ ā-lō'-hă /</span> <span class="meta"><span class="type"><svg class="svg-flag no-print" aria-hidden="true" tabindex="-1"><use xlink:href="#hae-haw"></use></svg> <abbr title="Hawaiian">Haw</abbr> to <abbr title="English">Eng</abbr></span>, <span class="dictionary p1"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> Parker</span><span class="no-print no-preview">, <a href="https://hilo.hawaii.edu/wehe/?q=aloha#w2w2-804" class="permalink" rel="nofollow"><svg class="svg-icon link-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#link-icon"></use></svg> <span lang="haw">Loulou paʻa</span><span class="lang-delim"> ｜ </span><span lang="en">Permalink</span><span class="visually-hidden"><span lang="haw">no</span><span class="lang-delim"> ｜ </span><span lang="en">for</span> aloha, Parker, Hwn to Eng</span></a></span></span></div><div class="definition"><p id="Parker-1">1. <em>v.,</em> To address with an expression of kind wishes; to welcome.</p>
+<p id="Parker-2">2. <em>v.,</em> To salute at meeting or parting.</p>
+<p id="Parker-3">3. <em>v.,</em> To show mercy; to pity; to sympathize with.</p></div><p class="w2w2-updated"><button type="button" class="button small rounded no-print mea-loli" data-wa="2023-08-01 09:28:36" title="View change log"><svg class="svg-icon wehewehe-wikiwiki " aria-hidden="true" tabindex="-1"><use xlink:href="#wehewehe-wikiwiki"></use></svg></button> <span lang="haw">Papa helu loli</span><span class="lang-delim"> ｜ </span><span lang="en">Wehewehe Wikiwiki update log</span></p></article>
+
+                <article class="more no-preview">
+    <p lang="haw" class="haw">E huli iā <a href="https://www.wehewehe.org/gsdl2.85/cgi-bin/hdict?a=q&amp;r=1&amp;hs=1&amp;m=-1&amp;o=-1&amp;e=p-11000-00---off-0hdict--00-1----0-10-0---0---0direct-10-ED--4-------0-1lpm--11-haw-Zz-1---Zz-1-home---00-3-1-00-0--4----0-0-11-00-0utfZz-8-00&amp;q=aloha&amp;j=p0&amp;af=1&amp;fqf=ED&l=haw">“aloha” ma Ulukau</a>.</p>
+    <p lang="en" class="en">Search for <a href="https://www.wehewehe.org/gsdl2.85/cgi-bin/hdict?a=q&amp;r=1&amp;hs=1&amp;m=-1&amp;o=-1&amp;e=p-11000-00---off-0hdict--00-1----0-10-0---0---0direct-10-ED--4-------0-1lpm--11-haw-Zz-1---Zz-1-home---00-3-1-00-0--4----0-0-11-00-0utfZz-8-00&amp;q=aloha&amp;j=p0&amp;af=1&amp;fqf=ED&l=en">“aloha” on Ulukau</a>.</p>
+</article>
+
+                    <article class="suggestion no-print no-preview">
+    <form method="POST" id="suggest-translation-form" class="stacked">
+        <h2><svg width="1em" height="1em" viewBox="0 0 26 26" class="svg-icon i8-hand-planting" aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M25.627,17.1c-0.391-0.508-1.27-0.932-3.052,0.121c-2.598,1.546-3.374,2.007-3.666,2.145  C18.989,19.585,19,19.695,19,20c0,1.537-1.785,1.979-2.73,1.998H12c-1.76,0-3.482-1.834-3.482-1.834s2.034,0.834,3.482,0.834h4.261  C16.268,20.998,18,20.93,18,20c0-0.851-0.468-1-3.125-1c-1.734,0-3.488-1.023-3.488-1.023s-1.756-1.282-2.295-1.619  c-1.275-0.797-2.295-1.553-4.523-0.676c-1.411,0.557-4.494,1.991-4.494,1.991l2.843,6.308l1.449-0.941  c0.802-0.51,1.246-0.598,2.282-0.065c1.003,0.516,4.087,2.119,4.857,2.493c2.369,1.148,3.386,0.12,4.53-0.54  c0.977-0.562,7.892-5.142,8.618-5.656C25.79,18.471,26.144,17.771,25.627,17.1z"/><path d="M16.892,0.036c-0.401,2.202-2.591,3.325-3.212,6.351c-1.383,6.736,4.463,4.525,4.327,5.353  c-0.268,2.275-1.435,2.951-1.746,2.947c-0.264-0.003,0.519,0.099,0.64,0.331c0.085,0.165,0.254,0.26,0.43,0.259  c0.074,0,0.472-0.021,0.542-0.057c0.061-0.031,1.171-1.601,1.35-4.88c0.168-3.081,0.256-4.221-1.127-7.567  c1.517,2.141,2.249,3.481,1.784,8.833c1.695,0.357,3.091-1.938,3.091-4.347C22.971,3.361,18.621,1.48,16.892,0.036z"/><path d="M12.89,15.499c0.45-1.295,2.289-1.088,2.683-0.432c0.263-0.619,1.06-1.103,1.576-1.107  c0.885-0.006,1.951,0.131,2.397,1.295c1.73-1.013,2.912,0.281,3.1,1.069l-4.222,2.42c0,0-0.45-0.469-1.557-0.469  c-3.546,0-4.916-0.901-5.835-1.839C10.995,16.061,11.746,15.218,12.89,15.499z"/></svg> <span lang="haw">Hāpai i wehewehena hou a i ʻole i ʻōlelo hoʻoponopono</span><span class="lang-delim"> ｜ </span><span lang="en">Suggest a translation or correction</span></h2>
+        <p><span lang="haw">E hāpai i kahi wehewehena a i ʻole hoʻoponopono no Wehewehe Wikiwiki.</span><span class="lang-delim"> ｜ </span><span lang="en">Suggest a translation or correction to the Wehewehe Wikiwiki Community Dictionary for consideration.</span></p>
+        <p><strong><span lang="haw">Mai hoʻouna mai i noi unuhi ʻōlelo.</span><span class="lang-delim"> ｜ </span><span lang="en">This is not a translation service.</span></strong></p>
+        <div class="row">
+            <p>
+                <label for="name"><span lang="haw">Kou inoa</span><span class="lang-delim"> ｜ </span><span lang="en">Your full name</span>:</label>
+                <input type="text" name="name" id="name">
+            </p>
+            <p>
+                <label for="email"><span lang="haw">Kou lekauila</span><span class="lang-delim"> ｜ </span><span lang="en">Your email</span>:</label>
+                <input type="email" name="email" id="email">
+            </p>
+        </div>
+        <p>
+            <label for="note"><span lang="haw">Ka ʻōlelo a me kou wehewehena a i ʻole hoʻoponopono</span><span class="lang-delim"> ｜ </span><span lang="en">Term and definition or correction</span>: <span id="note-len"></span></label>
+            <textarea name="note" id="note" rows="5" maxlength="600">Term: aloha
+Feedback: </textarea>
+        </p>
+        <p>
+            <input type="hidden" name="token" value="c055c1ba52054dd23eda3173ad7f7c6d3aee7269" />
+            <input type="hidden" name="term" value="aloha">
+            <button type="submit" name="submit" value="suggestion" class="button rounded success"><span lang="haw">Hāpai</span><span class="lang-delim"> ｜ </span><span lang="en">Submit</span></button>
+        </p>
+    </form>
+</article>
+
+                <aside aria-label="scroll to top" class="scroll-to-top">
+        <a href="#top">⬆︎ <span lang="haw">Hoʻi i luna</span><span class="lang-delim"> ｜ </span><span lang="en">Top</span></a>
+    </aside>
+</main>
+<footer class="row grows">
+    <div>
+        <h2><span lang="haw">Kūmole</span><span class="lang-delim"> ｜ </span><span lang="en">References</span></h2>
+        <ul>
+            <li><a href="glossary.php"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> <span lang="haw">Papa Wehewehe ʻŌlelo</span><span class="lang-delim"> ｜ </span><span lang="en">Glossary</span></a></li>
+            <li><a href="./?tags"><svg class="svg-icon tags-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#tags-icon"></use></svg> <span lang="haw">Nā Lepili</span><span class="lang-delim"> ｜ </span><span lang="en">Tags</span> <span class="tag">Beta</span></a></li>
+            <li><a href="privacy.php"><svg width="1em" height="1em" viewBox="0 0 24 24" class="svg-icon md-security" aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"></path></svg> <span lang="haw">Pilikino</span><span class="lang-delim"> ｜ </span><span lang="en">Privacy</span></a></li>
+        </ul>
+    </div>
+    <div>
+        <h2><span lang="haw">Nā Waiwai ʻĒ Aʻe</span><span class="lang-delim"> ｜ </span><span lang="en">Other Resources</span></h2>
+        <ul>
+            <li><a href="https://www.hawaii.edu/news/tag/olelo-of-the-week/"><svg width="1em" height="1em" viewBox="0 0 64 64" class="svg-icon fa-calendar" aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M7.6,58.6h10v-10h-10V58.6z M19.8,58.6h11.1v-10H19.8V58.6z M7.6,46.4h10V35.3h-10V46.4z M19.8,46.4h11.1V35.3H19.8V46.4z M7.6,33.1h10v-10h-10V33.1z M33.1,58.6h11.1v-10H33.1V58.6z M19.8,33.1h11.1v-10H19.8V33.1z M46.4,58.6h10v-10h-10V58.6z M33.1,46.4h11.1V35.3H33.1V46.4z M20.9,16.5v-10c0-0.3-0.1-0.6-0.3-0.8c-0.2-0.2-0.5-0.3-0.8-0.3h-2.2c-0.3,0-0.6,0.1-0.8,0.3 c-0.2,0.2-0.3,0.5-0.3,0.8v10c0,0.3,0.1,0.6,0.3,0.8c0.2,0.2,0.5,0.3,0.8,0.3h2.2c0.3,0,0.6-0.1,0.8-0.3 C20.8,17.1,20.9,16.8,20.9,16.5z M46.4,46.4h10V35.3h-10V46.4z M33.1,33.1h11.1v-10H33.1V33.1z M46.4,33.1h10v-10h-10V33.1z M47.5,16.5v-10c0-0.3-0.1-0.6-0.3-0.8s-0.5-0.3-0.8-0.3h-2.2c-0.3,0-0.6,0.1-0.8,0.3s-0.3,0.5-0.3,0.8v10c0,0.3,0.1,0.6,0.3,0.8 s0.5,0.3,0.8,0.3h2.2c0.3,0,0.6-0.1,0.8-0.3S47.5,16.8,47.5,16.5z M60.8,14.3v44.3c0,1.2-0.4,2.2-1.3,3.1c-0.9,0.9-1.9,1.3-3.1,1.3 H7.6c-1.2,0-2.2-0.4-3.1-1.3c-0.9-0.9-1.3-1.9-1.3-3.1V14.3c0-1.2,0.4-2.2,1.3-3.1s1.9-1.3,3.1-1.3h4.4V6.5c0-1.5,0.5-2.8,1.6-3.9 S16.1,1,17.6,1h2.2c1.5,0,2.8,0.5,3.9,1.6c1.1,1.1,1.6,2.4,1.6,3.9v3.3h13.3V6.5c0-1.5,0.5-2.8,1.6-3.9C41.4,1.5,42.7,1,44.2,1h2.2 c1.5,0,2.8,0.5,3.9,1.6s1.6,2.4,1.6,3.9v3.3h4.4c1.2,0,2.2,0.4,3.1,1.3C60.3,12,60.8,13.1,60.8,14.3z"/></svg> UH News ʻŌlelo of the Week</a></li>
+            <li><a href="http://www.trussel2.com/haw/"><svg class="svg-icon book-icon " aria-hidden="true" tabindex="-1"><use xlink:href="#book-icon"></use></svg> CHD (Combined Hawaiian Dictionary)</a></li>
+            <li><a href="https://hilo.hawaii.edu/wehe/hoikeike/" rel="nofollow"><svg width="1em" height="1em" viewBox="0 0 64 64" class="svg-icon fa-play-circle" aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M32,1c5.6,0,10.8,1.4,15.6,4.2s8.5,6.5,11.3,11.3C61.6,21.2,63,26.4,63,32s-1.4,10.8-4.2,15.6c-2.8,4.7-6.5,8.5-11.3,11.3 C42.8,61.6,37.6,63,32,63s-10.8-1.4-15.6-4.2c-4.7-2.8-8.5-6.5-11.3-11.3S1,37.6,1,32s1.4-10.8,4.2-15.6s6.5-8.5,11.3-11.3 S26.4,1,32,1z M47.5,34.2c0.9-0.5,1.3-1.2,1.3-2.2c0-1-0.4-1.7-1.3-2.2l-22-12.9c-0.8-0.5-1.7-0.5-2.6,0c-0.9,0.5-1.3,1.3-1.3,2.3 v25.8c0,1,0.4,1.7,1.3,2.3c0.4,0.2,0.9,0.3,1.3,0.3c0.5,0,0.9-0.1,1.3-0.4L47.5,34.2z"/></svg> Hōʻikeʻike</a></li>
+        </ul>
+    </div>
+    <div>
+        <h2><span lang="haw">Na</span><span class="lang-delim"> ｜ </span><span lang="en">Provided By</span></h2>
+        <ul>
+            <li><a href="https://hilo.hawaii.edu/" title="Ke Kulanui o Hawaiʻi ma Hilo (University of Hawaii at Hilo)">Ke Kulanui o Hawaiʻi ma Hilo</a>
+            </li>
+            <li><a href="https://www.olelo.hawaii.edu/">Ka Haka ʻUla O Keʻelikōlani College of Hawaiian Language</a></li>
+            <li><a href="https://ulukau.org/">Ulukau</a></li>
+        </ul>
+    </div>
+    </footer>
+
+<script>
+    ((window, document) => {
+        if (!document.addEventListener) {
+            return;
+        }
+
+        /**
+         * If browser back button was used, flush cache
+         * This ensures that user will always see an accurate, up-to-date view based on their state
+         * https://stackoverflow.com/questions/8788802/prevent-safari-loading-from-cache-when-back-button-is-clicked
+         */
+        window.onpageshow = function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        };
+
+        const q = document.getElementById('q');
+        const huli = document.getElementById('huli');
+        // huli kīloi
+        huli.insertAdjacentHTML('afterend', '<button type="button" id="button-clear-search" class="button warning"><svg width="1em" height="1em" viewBox="0 0 24 24" class="svg-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg> <span lang="haw">Kāpae</span><span class="lang-delim"> ｜ </span><span lang="en">Clear</span></button>');
+        document.getElementById('button-clear-search').addEventListener('click', function (ev) {
+            ev.preventDefault();
+            q.value = '';
+            q.focus();
+            return false;
+        }, false);
+
+        // huli kaomi - removed because safari caching issues
+        let hoe = '<svg xmlns="http://www.w3.org/2000/svg" class="hoe" width="3em" height="3em" viewBox="0 0 678 666" aria-hidden="true"><path d="M677 598.1C677 598.1 658.8 579.4 656.2 587.8 652.7 599.6 638.8 611.8 638.8 611.8L259.4 241.4C274 180.1 197.3 71.4 117.9 7 110.1 0.7 104.4 1.2 100.2 3L52.3 53.7 2.4 102.3C0.6 106.6 0.2 112.3 6.7 119.9 73.1 197.8 183.5 271.8 244.5 255.8L623.8 626.2C623.8 626.2 611.9 640.4 600.2 644.3 591.8 647 611 664.8 611 664.8L629.5 649.8 646.5 633.8 662.9 615.5 677 598.1Z" transform="matrix(1 0 0 -1 0 666.625)"/></svg>',
+            o = document.getElementById('output');
+        document.getElementById('search-form').addEventListener('submit', function () {
+            if (o) {
+                o.innerHTML = '<article><p>' + hoe + ' <span lang="haw">Ke huli nei</span><span class="lang-delim"> ｜ </span><span lang="en">Searching</span>…</p></article>';
+            }
+        });
+
+        // hoʻopuka manaʻo
+        let f = document.getElementById('suggest-translation-form');
+        let s = document.createElement('button');
+        if (f) {
+            f.setAttribute('hidden', 'true');
+            s.className = 'button';
+            s.type = 'button';
+            s.insertAdjacentHTML('beforeend', '<span lang="haw">Hāpai i wehewehena hou a i ʻole i ʻōlelo hoʻoponopono</span><span class="lang-delim"> ｜ </span><span lang="en">Suggest a translation or correction</span>…');
+            s.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                f.removeAttribute('hidden');
+                s.remove();
+
+            }, false);
+            f.parentNode.insertBefore(s, f);
+        }
+
+        // huli keu
+        let est = document.getElementById('extended-searching-toggle');
+        let es = document.getElementById('extended-searching');
+        if (est && es) {
+            est.addEventListener('click', ev => {
+                let state = est.getAttribute('aria-expanded') === 'true';
+                est.setAttribute('aria-expanded', state ? 'false' : 'true');
+                if (!state) {
+                    es.removeAttribute('hidden');
+                } else {
+                    es.setAttribute('hidden', 'true');
+                }
+            }, false);
+        }
+        es.addEventListener('change', ev => {
+            if (ev.target.matches('[data-check]')) {
+                let ids = ev.target.dataset.check.split(',');
+                ids.forEach(id => {
+                    let el = document.getElementById(id);
+                    if (el && ev.target.checked) {
+                        el.checked = true;
+                    }
+                });
+            }
+            if (ev.target.matches('[data-uncheck]')) {
+                let ids = ev.target.dataset.uncheck.split(',');
+                ids.forEach(id => {
+                    let el = document.getElementById(id);
+                    if (el) {
+                        el.checked = false;
+                    }
+                });
+            }
+        });
+
+        // kaomi ki'i
+        const zoomMedia = ev => {
+            ev.preventDefault();
+            ev.target.classList.toggle('zoom');
+        };
+        document.querySelectorAll('.media').forEach(el => el.addEventListener('click', zoomMedia));
+    })(window, document);
+</script>
+
+<script src="https://hilo.hawaii.edu/assets/uhhilo-analytics/feature-tests.min.js"></script>
+<script src="https://hilo.hawaii.edu/assets/uhhilo-analytics/analytics.min.js"></script>
+<script>
+    ((window, document) => {
+        if (!window.XMLHttpRequest) {
+            return;
+        }
+        let doNotTrack = 0;
+        let d = {"p": '', "r": document.referrer};
+
+        function jsonToQueryString(json) {
+            let params = Object.keys(json).map(function (key) {
+                return encodeURIComponent(key) + '=' + encodeURIComponent(json[key]);
+            });
+            return params.length && params.join('&') || '';
+        }
+
+        // honor DNT
+        if ("doNotTrack" in navigator) {
+            doNotTrack = parseInt(navigator.doNotTrack, 10) || 0;
+        } else if ("msDoNotTrack" in navigator) {
+            doNotTrack = parseInt(navigator.msDoNotTrack, 10) || 0;
+        } else if ("doNotTrack" in window) {
+            doNotTrack = parseInt(window.doNotTrack, 10) || 0;
+        }
+        if (doNotTrack) {
+            return;
+        }
+
+        const buildAndSend = uad => {
+            // build the profile for aggregated analytics
+            if (window.location.search && window.location.search.match(/\bq=/)) {
+                d.p = window.location.search.match(/\bq=([^&]*)/)[1];
+            }
+            d.uad = JSON.stringify(uad);
+            d.u = navigator.userAgent;
+            d.l = navigator.language;
+            // flags
+            d.f = (location.protocol === 'https:' ? 1 : 0) // 1 = https
+                + (d.u.match(/Mobile/i) ? 2 : 0) // 2 = mobile
+            // 4 = bots
+            ;
+            // build the XHR
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', '/wehe/kk.php', true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.send(jsonToQueryString(d));
+        };
+
+        // user agent data if any
+        if (navigator.userAgentData) {
+            navigator.userAgentData.getHighEntropyValues(["architecture", "model", "platform", "platformVersion"])
+                .then(ua => {
+                    return {
+                        a: ua.architecture,
+                        m: ua.mobile,
+                        o: ua.platform,
+                        v: ua.platformVersion,
+                        b: ua.brands[1] ? ua.brands[1].brand + '/' + ua.brands[1].version : ua.brands.map(row => row.brand.trim() + '/' + row.version).join(';')
+                    };
+                })
+                .then(uad => buildAndSend(uad));
+        } else {
+            buildAndSend({
+                b: navigator.oscpu ? navigator.oscpu : null
+            });
+        }
+    })(window, document);
+</script>
+
+<script>
+    ((window, document, undefined) => {
+        const lang_switcher = document.getElementById('lang-switcher');
+        if (!lang_switcher) return;
+        const lang_switchers = lang_switcher.querySelectorAll('.button');
+
+        const toggleLang = ev => {
+            const delimiters = document.querySelectorAll('.lang-delim');
+            const els = document.body.querySelectorAll('[lang]');
+            let show = ev.target.dataset.show.length ? ev.target.dataset.show.split(',') : [];
+            let hide = ev.target.dataset.hide.length ? ev.target.dataset.hide.split(',') : [];
+            lang_switchers.forEach(el => el.classList.remove('active'));
+            ev.target.classList.add('active');
+            localStorage.lang = ev.target.dataset.lang;
+            ev.preventDefault();
+            els.forEach(el => {
+                if (show.indexOf(el.getAttribute('lang')) >= 0) {
+                    el.removeAttribute('hidden');
+                }
+                if (hide.indexOf(el.getAttribute('lang')) >= 0) {
+                    el.setAttribute('hidden', 'true');
+                }
+            });
+            if (hide.length) {
+                delimiters.forEach(el => el.setAttribute('hidden', 'true'));
+            } else {
+                delimiters.forEach(el => el.removeAttribute('hidden'));
+            }
+        };
+        document.querySelectorAll('.set-lang').forEach(el => el.addEventListener('click', toggleLang));
+        if (typeof localStorage.lang === 'undefined') {
+            localStorage.lang = 'both';
+        }
+        lang_switchers.forEach(el => {
+            if (el.dataset.lang === localStorage.lang) {
+                el.dispatchEvent(new Event('click'));
+            }
+        });
+    })(window, document);
+</script>
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-8500332-1"></script>
+<script>window.dataLayer = window.dataLayer || [];function gtag() {dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'UA-8500332-1');</script>
+
+<script>
+    document.querySelector('.scroll-to-top a').addEventListener('click', ev => {
+        ev.preventDefault();
+        document.querySelector('html, body').scrollTo({ top: 0, behavior: 'smooth' });
+    });
+</script>
+    <script>
+        document.addEventListener('click', ev => {
+            if (ev.target.matches('.mea-loli')) {
+                const id = ev.target.closest('article').id.match(/\d+$/);
+                ev.preventDefault();
+                fetch(`./?na-loli=${id}`)
+                    .then(resp => resp.json())
+                    .then(json => {
+                        let p = ev.target.closest('p');
+                        let c = [];
+                        json.map(o => c.push(`${o.modification} @ ${o.created_at.slice(0, 10)}.`));
+                        if (!c.length) {
+                            c.push(`Hōʻano nānaina @ ${ev.target.dataset.wa}`);
+                        }
+                        p.insertAdjacentHTML('beforeend', `<br>• ${c.join('<br>• ')}`);
+                        ev.target.disabled = true;
+                    })
+                    .catch(err => console.log(err));
+            }
+        });
+        const pie = percent => {
+            let p = Number(percent);
+            if (p > 1) {
+                p = p / 100;
+            }
+            percent   = Math.min(1.0, Math.max(0.0, p));
+            const large_arc = percent > 0.5 ? 1 : 0;
+            const x         = Math.cos(2 * Math.PI * percent);
+            const y         = Math.sin(2 * Math.PI * percent);
+            const slice     = percent > 0.0 && percent < 1.0 ? `<path d="M1 0A1 1 0 ${large_arc} 1 ${x} ${y}L0 0" fill="#00c" transform="rotate(-90)"></path>` : '';
+            return `<svg width="1em" height="1em" class="svg-icon" viewBox="-1 -1 2 2" aria-hidden="true"><circle r="1" cx="0" cy="0" fill="${percent === 1.0 ? '#c00' : '#ccc'}"></circle>${slice}</svg>`;
+        };
+        const note = document.getElementById('note');
+        if (note) {
+            const len = document.getElementById('note-len');
+            const max = parseInt(note.getAttribute('maxlength') || '600', 10);
+            note && note.addEventListener('input', ev => {
+                len.innerHTML = pie(ev.target.value.length / max);
+            });
+        }
+    </script>
+</body>
+</html>

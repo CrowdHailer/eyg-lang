@@ -11,7 +11,6 @@ import gleam/http/response.{type Response}
 import gleam/json
 import gleam/list
 import gleam/result
-import gleam/string
 import hub/cid
 import hub/modules/bundle
 import hub/modules/data
@@ -44,7 +43,7 @@ fn share_module(
   use source_text <- wisp.require_string_body(request)
   use source <- utils.do_decode(source_text, dag_json.decoder(Nil))
   let root = cid.from_tree(source)
-  process_bundle(#(#(root, source), []), context, uploaded_by(request))
+  process_bundle(#(#(root, source), []), context, utils.client_ip(request))
 }
 
 fn share_bundle(
@@ -55,7 +54,7 @@ fn share_bundle(
   case car.decode(body) {
     Ok(file) ->
       case bundle.from_car(file) {
-        Ok(bundle) -> process_bundle(bundle, context, uploaded_by(request))
+        Ok(bundle) -> process_bundle(bundle, context, utils.client_ip(request))
         Error(reason) -> utils.api_reason(422, reason)
       }
     Error(reason) -> utils.api_reason(400, reason)
@@ -118,15 +117,6 @@ fn check_single(
       }
     Error(reason) -> Error(LookupFailed(reason))
   }
-}
-
-fn uploaded_by(request: Request(wisp.Connection)) -> String {
-  request.get_header(request, "x-forwarded-for")
-  |> result.unwrap("0.0.0.0")
-  |> string.split(",")
-  |> list.last
-  |> result.map(string.trim)
-  |> result.unwrap("0.0.0.0")
 }
 
 type Cache {

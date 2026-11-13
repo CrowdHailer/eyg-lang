@@ -8,6 +8,12 @@
 	handle /signatories/* {
 		reverse_proxy backend:8080
 	}
+	handle /artifacts* {
+		reverse_proxy backend:8080
+	}
+	handle /artifact/* {
+		reverse_proxy backend:8080
+	}
 	handle /proxy/* {
 		reverse_proxy backend:8080
 	}

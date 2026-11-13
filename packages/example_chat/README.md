@@ -18,3 +18,13 @@ The cloud plugin for this app is described in the [channel plugin guide](../../g
 ```sh
 gleam test
 ```
+
+The browser regression covers Enter/Shift+Enter composition, threads, reactions and channel switching.
+With an isolated app running on port 8188, run from `packages/tracing`:
+
+```sh
+EXAMPLE_CHAT_ORIGIN=http://localhost:8188 gleam run -m tracing/example_chat_check
+```
+
+Set `CHROME_BIN` when Chromium is installed outside the usual location.
+The check saves a screenshot and video under `.recordings`.

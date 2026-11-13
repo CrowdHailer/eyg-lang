@@ -1,0 +1,14 @@
+name = "html_parser"
+version = "1.0.1"
+
+description = "A simple HTML parser using Gleam"
+licences = ["Apache-2.0"]
+repository = { type = "github", user = "calvinmclean", repo = "html_parser" }
+links = [{ title = "Website", href = "https://gleam.run" }]
+
+[dependencies]
+gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+simplifile = ">= 2.0.1 and < 3.0.0"
