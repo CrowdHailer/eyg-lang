@@ -74,7 +74,7 @@ Gates return `Pass(input)` to perform an effect, `Mock(reply)` to answer without
 Start with `cloud.reject_all` and overwrite the gates to allow. This platform value is available directly in configuration and programs; the cloud EYG package exports the same complete defaults.
 
 The [cloud EYG package](../../eyg_packages/cloud/) has helpers, `shell.everything`, `shell.offline`, `shell.read_only`,
-`shell.writes_under(roots, shell)` and `shell.with_databases(names, shell)`.
+`shell.writes_under(roots, shell)` and `shell.with_databases(names, shell)`, and network secrets in `secrets`.
 
 ### Effects
 
@@ -125,8 +125,8 @@ Cron schedules have five fields, or six with a leading seconds field, and are ev
 
 Secrets are stored per workspace with `gleam run -m cloud/secrets`, see [`cloud/secrets`](./src/cloud/secrets.gleam).
 Only the workspace configuration can read them.
-
-Networked secrets are a later feature, after the deployment checkpoint.
+`secrets.load(name, hosts)` in the cloud EYG package gives channel shells network secrets:
+`Env` returns a hash placeholder and `Fetch` to one of the hosts gets the real value.
 
 ### Databases and dataclips
 

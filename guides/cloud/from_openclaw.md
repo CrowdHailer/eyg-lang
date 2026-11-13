@@ -110,7 +110,19 @@ Save each secret in the workspace's store, it is kept in the workspace's `.data`
 gleam run -m cloud/secrets -- set path/to/workspace.eyg GITHUB_TOKEN < token.txt
 ```
 
-Networked secrets are added after the deployment checkpoint.
+Credentials that programs need for an API become network secrets: programs see a placeholder and the policy adds the real value to requests to the API's host.
+
+```eyg
+let github = match cloud.secrets.load("GITHUB_TOKEN", ["api.github.com"]) {
+  Ok(token) -> { [token] }
+  Error(_) -> { [] }
+}
+let shell_with_github = {
+  env: cloud.secrets.env(github),
+  fetch: cloud.secrets.fetch(github, shell.pass),
+  ..shell.everything
+}
+```
 
 ### 5. Move workspace files, memory and skills
 

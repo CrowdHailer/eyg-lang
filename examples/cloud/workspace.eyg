@@ -1,6 +1,7 @@
 // An example EYG cloud workspace, see README.md.
 let cloud = import "../../eyg_packages/cloud/index.eyg"
 let shell = cloud.shell
+let secrets = cloud.secrets
 let triggers = cloud.triggers
 
 // The model's key is only read here, agents never see it.
@@ -9,7 +10,16 @@ let api_key = match perform Secret("OLLAMA_API_KEY") {
   Error(_) -> { None({}) }
 }
 
-let online = (base) -> { {fetch: shell.pass, ..base} }
+// Network secrets: programs see a placeholder from Env,
+// requests to httpbin.org get the real value.
+let network = match secrets.load("DEMO_TOKEN", ["httpbin.org"]) {
+  Ok(token) -> { [token] }
+  Error(_) -> { [] }
+}
+
+let online = (base) -> {
+  {env: secrets.env(network), fetch: secrets.fetch(network, shell.pass), ..base}
+}
 
 let post = (parts) -> { perform Post(!list_fold(parts, "", (part, text) -> { !string_append(text, part) })) }
 
