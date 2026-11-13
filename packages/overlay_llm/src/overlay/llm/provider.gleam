@@ -112,3 +112,11 @@ pub fn completion_chunk_parse(
     Mistral(..) -> mistral.completion_chunk_parse(remaining, chunk)
   }
 }
+
+/// A short name for the provider, as used by other tools such as opencode.
+pub fn id(provider: Provider) -> String {
+  case provider {
+    Ollama(..) -> "ollama"
+    Mistral(..) -> "mistral"
+  }
+}
