@@ -1,0 +1,11 @@
+{
+  description: "A request that does not need the workspace leaves it unchanged.",
+  tags: ["workspace", "values"],
+  prompts: ["What is 12 times 12?"],
+  workspace: [
+    {path: "README.md", contents: "# Project\n"},
+    {path: "notes/json.md", contents: "---\nname: json\ndescription: Parse JSON with the json package\ndate: 2026-09-01\n---\n\nUse @json.parse.\n"}
+  ],
+  checks: [Computes(144), WorkspaceUnchanged({})],
+  reference: [[Run("!int_multiply(12, 12)"), Say("144")]]
+}

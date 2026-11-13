@@ -1,0 +1,81 @@
+// The guides published on eyg.run.
+
+let index = [
+  {slug: "advanced-effects", title: "Advanced effects", summary: "Working with effects and handlers to implement state and other patterns.", keywords: "advanced effects"},
+  {slug: "agents-in-an-embedded-shell", title: "Agents in an embedded shell", summary: "Give an agent the same typed scripting capabilities as a person.", keywords: "agents in an embedded shell"},
+  {slug: "deep-effect-handlers", title: "Deep effect handlers", summary: "Resume effects with persistent delimiters and bounded continuation storage.", keywords: "deep effect handlers"},
+  {slug: "embedding-in-javascript-hosts", title: "Embedding in JavaScript hosts", summary: "A bundled typed shell for hosts that do not use Gleam.", keywords: "embedding in javascript hosts"},
+  {slug: "exporting-compiled-eyg-modules", title: "Exporting compiled EYG modules", summary: "Import compiled programs and answer their effects from a JavaScript host.", keywords: "exporting compiled eyg modules"},
+  {slug: "json-boundaries-for-embedded-eyg", title: "JSON boundaries for embedded EYG", summary: "Exchange plain data and declare closed effect types for a host.", keywords: "json boundaries for embedded eyg"},
+  {slug: "loading-module-graphs", title: "Loading module graphs", summary: "Drain a hub cache's fetch and release work before checking or running code.", keywords: "loading module graphs"},
+  {slug: "masking-handlers-and-enforcing-purity", title: "Masking handlers and enforcing purity", summary: "Route effects past one enclosing handler and guard a pure function application.", keywords: "masking handlers and enforcing purity"},
+  {slug: "saving-and-replaying-trajectories", title: "Saving and replaying trajectories", summary: "Save portable execution journals and export their observability to OpenTelemetry backends.", keywords: "saving and replaying trajectories"},
+  {slug: "shallow-handlers", title: "Shallow handlers", summary: "Raw resumptions, independent answer types, and explicit reinstallation.", keywords: "shallow handlers"},
+  {slug: "overlay-artifacts", title: "Overlay artifacts", summary: "Create, show, control and share artifacts.", keywords: "artifact preview puppet screenshot share layout"},
+  {slug: "eyg-syntax-guide", title: "EYG syntax guide", summary: "Syntax of EYG: values, functions, records, unions, match, effects and imports.", keywords: "syntax let function record union match list effect perform handle import"},
+  {slug: "builtins-reference", title: "Builtins reference", summary: "Every builtin function, such as !int_add and !string_split, with its type.", keywords: "builtin builtins int string list binary equal fix compare"},
+  {slug: "http-fetch", title: "HTTP fetch", summary: "Create and send HTTP requests with the Fetch effect.", keywords: "http fetch request response api get post header"},
+  {slug: "json", title: "JSON", summary: "Parse and encode JSON with the json package.", keywords: "json parse decode encode"},
+  {slug: "writing-scripts", title: "Writing scripts", summary: "Write scripts to run on your computer.", keywords: "script scripts run shebang cli hello"},
+  {slug: "cli-effects-reference", title: "CLI effects reference", summary: "Effects of the eyg CLI: files, directories, environment, standard out and more.", keywords: "effects cli file read write directory env standard out cwd sleep random"},
+  {slug: "modifying-text-files", title: "Modifying text files", summary: "Read, change and write text files.", keywords: "file text edit write append replace read"},
+  {slug: "explore-the-file-system", title: "Explore the file system", summary: "List directories and find files.", keywords: "file system directory list find walk"},
+  {slug: "file-resolution", title: "File resolution", summary: "How relative paths and imports resolve.", keywords: "path relative import resolve directory"},
+  {slug: "overlay-policies", title: "Overlay policies", summary: "Allow, mock or deny effects in an overlay agent.", keywords: "access policy permission allow deny mock sandbox security"},
+  {slug: "writing-tests-with-aok", title: "Writing tests with aok", summary: "Write and run tests for EYG packages.", keywords: "test tests assert aok"},
+  {slug: "evaluate-model-written-eyg", title: "Evaluate model-written EYG", summary: "Type-check and evaluate one pure model-written program.", keywords: "eval evals evaluate benchmark grade fibonacci pure bounded"},
+  {slug: "evaluate-overlay-sessions", title: "Evaluate Overlay sessions", summary: "Validate tasks, run trials, grade sessions and replay model exchanges.", keywords: "eval evals evaluate benchmark grade judge task check context measure cassette"},
+  {slug: "evaluating-overlay-agents", title: "Evaluating Overlay agents", summary: "Choose outcome checks, validate controls and report honest comparisons.", keywords: "eval evals evaluate benchmark grade judge calibration reliability measure"},
+  {slug: "embedding-eyg-in-gleam-programs", title: "Embedding EYG in Gleam programs", summary: "Run EYG from Gleam and give programs effects.", keywords: "gleam embed interpreter host effects"},
+  {slug: "managing-signatories", title: "Managing signatories", summary: "Create and protect identities for publishing packages.", keywords: "publish signatory identity key package release"},
+  {slug: "install-a-prebuilt-binary", title: "Install a prebuilt binary", summary: "Install the eyg CLI.", keywords: "install cli binary download"},
+  {slug: "install-from-source", title: "Install from source", summary: "Build the eyg CLI from source.", keywords: "install build source cli"},
+  {slug: "github", title: "GitHub", summary: "Call the GitHub API with the GitHub service effect.", keywords: "github api repository issues pull request service"},
+  {slug: "dnsimple", title: "DNSimple", summary: "Manage domains with the DNSimple service effect.", keywords: "dnsimple dns domain service"},
+  {slug: "netlify", title: "Netlify", summary: "Deploy sites with the Netlify API.", keywords: "netlify deploy site hosting"},
+  {slug: "vimeo", title: "Vimeo", summary: "Work with videos through the Vimeo service effect.", keywords: "vimeo video service"},
+  {slug: "tavily", title: "Tavily", summary: "Search the web with Tavily.", keywords: "tavily search web"},
+  {slug: "ollama", title: "Ollama", summary: "Call models with the Ollama API.", keywords: "ollama model llm chat ai"},
+  {slug: "locate-me", title: "Locate me", summary: "Find the location of the computer running a program.", keywords: "location geolocation ip"},
+  {slug: "tracing-eyg-execution", title: "Tracing EYG execution", summary: "Inspect effect spans and named function profiles.", keywords: "trace tracing profile span performance function"},
+  {slug: "sandbox", title: "Reproducible sandboxes", summary: "Acquire immutable inputs and run with sealed budgets and offline replay.", keywords: "sandbox acquire mount isolation budget environment fetcher"},
+  {slug: "nix-fetcher", title: "Fetching EYG packages with Nix", summary: "Fetch and validate a pinned EYG package graph with Nix.", keywords: "nix fetcher package hash dependency offline"},
+  {slug: "editing-cli-prompts", title: "Editing CLI prompts", summary: "Edit prompts, recall history and interrupt model responses.", keywords: "cli prompt input history pipe interrupt unicode"},
+  {slug: "persistent-cli-package-cache", title: "Persistent CLI package cache", summary: "Reuse validated modules and pinned releases across processes.", keywords: "cli package cache cid release offline"},
+  {slug: "embedding-eyg-in-erlang-programs", title: "Embedding EYG in Erlang programs", summary: "Step by step guide to using EYG types, effects and packages from erlang.", keywords: "erlang otp embed beam supervisor"},
+  {slug: "openai-compatible-overlay-models", title: "OpenAI compatible Overlay models", summary: "Configure Chat Completions text and function calls.", keywords: "openai compatible model llm provider chat completions"},
+  {slug: "bedrock-overlay-models", title: "Bedrock Overlay models", summary: "Configure signed Bedrock Converse calls.", keywords: "aws bedrock model llm provider converse sigv4"},
+  {slug: "codex-subscription-models", title: "Codex subscription models", summary: "Use Codex credentials and preserve their JSON when refreshing.", keywords: "codex openai model llm provider subscription credentials oauth"},
+  {slug: "preserve-json-documents", title: "Preserve JSON documents", summary: "Update existing string fields without losing unknown JSON fields.", keywords: "json document preserve update credentials unknown"},
+  {slug: "overlay-contexts", title: "Overlay contexts", summary: "Find packages and guides before writing a program.", keywords: "librarian context catalogue search agent"}
+]
+
+// Fetch a guide as markdown text from eyg.run.
+let read = (slug) -> {
+  let request = {
+    method: GET({}),
+    scheme: HTTPS({}),
+    host: "eyg.run",
+    port: None({}),
+    path: !string_append("/guides/", !string_append(slug, ".md")),
+    query: None({}),
+    headers: [],
+    body: !string_to_binary("")
+  }
+  match perform Fetch(request) {
+    Ok({status, body}) -> {
+      match !int_compare(status, 200) {
+        Eq(_) -> {
+          match !string_from_binary(body) {
+            Ok(text) -> { Ok(text) }
+            Error(_) -> { Error("the guide is not text") }
+          }
+        }
+        | (_) -> { Error(!string_append("no guide with the slug ", slug)) }
+      }
+    }
+    Error(reason) -> { Error(reason) }
+  }
+}
+
+{index, read}

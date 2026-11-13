@@ -35,6 +35,8 @@ Projects in this repo introduce extra contraints, over regular programming langu
 - Effect spans and named function profiles are explained in [`guides/tracing.md`](./guides/tracing.md).
 - Portable recording, replay and telemetry export are explained in [`guides/trajectories.md`](./guides/trajectories.md).
 - Updating JSON while retaining unknown fields is covered in [`guides/json_documents.md`](./guides/json_documents.md).
+- Model-written pure programs can be checked with the [evaluation guide](./guides/pure_model_evals.md).
+- Choose tasks and interpret results with the [agent evaluation guide](./guides/overlay_evals.md).
 - Immutable acquisition, private sandboxes and offline evaluation are explained in [`guides/sandbox.md`](./guides/sandbox.md).
 - To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md).
 - The [JavaScript host bundle](./guides/embedding_javascript.md) exposes a retained typed shell without a Gleam toolchain.
@@ -70,6 +72,9 @@ Another reason could be to imagine your own syntax, or even visual editor, and r
 The source for packages maintained as a standard library i.e. `standard` and `json`.
 The [`aok`](./eyg_packages/aok/) package provides assertions, ordered computer-effect
 expectations, and test runners.
+The librarian [context](./guides/overlay_contexts.md) searches package and guide
+catalogues before the agent writes code. The maintainer extends it with source
+inspection and workspace notes.
 The [`overlay`](./eyg_packages/overlay/) package contains policy and skills helpers for overlay agents.
 The [`tiling`](./eyg_packages/tiling/) modules arrange Overlay artifacts using
 dwindle and main-stack layouts.

@@ -1,0 +1,23 @@
+{
+  description: "Sleep is not available in Overlay, confirm it in the source and suggest a pull request.",
+  tags: ["source", "pull-request"],
+  prompts: [
+    "Run a program that waits one second using the Sleep effect and then returns \"done\"."
+  ],
+  checks: [
+    Fetches("packages/touch_grass/src/touch_grass/harness/browser.gleam"),
+    Says("pull request"),
+    Judged("The agent explains that Sleep is not one of the effects programs can perform in Overlay, points to the source file that lists them, and suggests a pull request that adds Sleep. It does not claim that the program waited.")
+  ],
+  reference: [
+    [
+      Run("let _ = perform Sleep(1000)
+\"done\""),
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"raw.githubusercontent.com\", port: None({}), path: \"/CrowdHailer/eyg-lang/main/packages/touch_grass/src/touch_grass/harness/browser.gleam\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({body}) -> { !string_from_binary(body) }
+  Error(reason) -> { Error({}) }
+}"),
+      Say("I could not wait: Sleep is not an effect in Overlay. In packages/touch_grass/src/touch_grass/harness/browser.gleam, Sleep is commented out with a note that it needs a browser sleep. I suggest a pull request that adds Sleep to the browser harness, the browser platform already has a Wait effect that could perform it.")
+    ]
+  ]
+}

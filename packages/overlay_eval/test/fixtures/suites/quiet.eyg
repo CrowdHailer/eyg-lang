@@ -1,0 +1,8 @@
+{
+  description: "Answer without touching the workspace",
+  tags: ["workspace"],
+  prompts: ["What is two times two?"],
+  workspace: [{path: "notes/README.md", contents: "# Notes\n"}],
+  checks: [Computes(4), WorkspaceUnchanged({}), AnyFileContains({directory: "notes", text: "Notes"})],
+  reference: [[Run("!int_multiply(2, 2)"), Say("Four.")]]
+}
