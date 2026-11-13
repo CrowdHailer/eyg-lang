@@ -1,17 +1,21 @@
-//// A single actor executes queued code and owns each session's execution state.
+//// A single actor executes queued code and agent turns in each session.
 
 import cloud/beam/execute
 import cloud/beam/file_system
+import cloud/overlay
 import eyg/hub/cache
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/otp/actor
 import multiformats/cid/v1
 import ogre/origin
+import overlay/llm/chat
+import overlay/llm/provider
 import unixfs/mfs
 
 pub type Payload {
   Code(String)
+  UserPrompt(String)
 }
 
 pub type Message {
@@ -22,15 +26,33 @@ type State {
   State(
     execute_state: execute.State,
     blocks: Dict(v1.Cid, mfs.Entry),
-    sessions: Dict(String, v1.Cid),
+    sessions: Dict(String, Session),
+    // session is not a good name for overlay.Session
+    // it is closer to config as it is constant over the session life time.
+    agent_config: overlay.Session,
   )
 }
 
-pub fn start(hub: origin.Origin) -> actor.StartResult(Subject(Message)) {
+pub type Session {
+  Session(root: v1.Cid, history: chat.History)
+}
+
+pub fn start(
+  hub: origin.Origin,
+  llm: provider.Llm,
+) -> actor.StartResult(Subject(Message)) {
+  start_with_session(hub, overlay.setup(hub, llm))
+}
+
+pub fn start_with_session(
+  hub: origin.Origin,
+  agent_session: overlay.Session,
+) -> actor.StartResult(Subject(Message)) {
   actor.new(State(
     execute_state: execute.State(origin: hub, cache: cache.ready()),
     blocks: dict.new(),
     sessions: dict.new(),
+    agent_config: agent_session,
   ))
   |> actor.on_message(handle_message)
   |> actor.start
@@ -40,20 +62,39 @@ fn handle_message(
   state: State,
   message: Message,
 ) -> actor.Next(State, Message) {
-  let Message(id, Code(code), print) = message
-  let files = case dict.get(state.sessions, id) {
-    Ok(root) -> file_system.State(root, state.blocks)
-    Error(Nil) -> file_system.new(state.blocks)
+  let Message(id, action, print) = message
+  let #(files, history) = case dict.get(state.sessions, id) {
+    Ok(Session(root:, history:)) -> #(
+      file_system.State(root, state.blocks),
+      history,
+    )
+    Error(Nil) -> #(file_system.new(state.blocks), [])
   }
-  let #(outcome, execute_state, files) =
-    execute.block(code, state.execute_state, files, print)
-  case outcome {
-    Ok(value) -> print(execute.StandardOut(value))
-    Error(reason) -> print(execute.StandardError(reason))
+  let #(history, execute_state, files) = case action {
+    Code(code) -> {
+      let #(outcome, execute_state, files) =
+        execute.block(code, state.execute_state, files, print)
+      case outcome {
+        Ok(value) -> print(execute.StandardOut(value))
+        Error(reason) -> print(execute.StandardError(reason))
+      }
+      #(history, execute_state, files)
+    }
+    UserPrompt(text) ->
+      overlay.inner_loop(
+        state.agent_config,
+        state.execute_state,
+        [chat.UserMessage(text, []), ..history],
+        files,
+        print,
+      )
   }
-  actor.continue(State(
-    execute_state:,
-    blocks: files.blocks,
-    sessions: dict.insert(state.sessions, id, files.root),
-  ))
+  actor.continue(
+    State(
+      ..state,
+      execute_state:,
+      blocks: files.blocks,
+      sessions: dict.insert(state.sessions, id, Session(files.root, history)),
+    ),
+  )
 }

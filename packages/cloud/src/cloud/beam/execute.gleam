@@ -19,6 +19,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import ogre/origin
+import overlay/agent
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/fetch
@@ -53,35 +54,79 @@ pub fn block(
   files: file_system.State,
   emit: fn(Output) -> Nil,
 ) -> #(Result(String, String), State, file_system.State) {
+  let #(outcome, state, files, _) =
+    evaluate(code, [], simple_debug.inspect, state, files, emit)
+  #(outcome, state, files)
+}
+
+/// Execute an agent tool with fresh context and capture output for the model.
+/// TODO I think the agent can use block execute as well.
+pub fn run(
+  code: String,
+  state: State,
+  files: file_system.State,
+  emit: fn(Output) -> Nil,
+) -> #(Result(String, String), State, file_system.State, List(String)) {
+  evaluate(
+    code,
+    [#("context", v.unit())],
+    agent.inspect_result,
+    state,
+    files,
+    emit,
+  )
+}
+
+fn evaluate(code, scope, inspect, state, files, emit) {
   case parser.all_from_string(code) {
-    Error(reason) -> #(Error(parser.format_error(reason, code)), state, files)
-    Ok(source) -> loop(block.execute(source, []), state, files, emit)
+    Error(reason) -> #(
+      Error(parser.format_error(reason, code)),
+      state,
+      files,
+      [],
+    )
+    Ok(source) ->
+      loop(block.execute(source, scope), state, files, emit, inspect, [])
   }
 }
 
-fn loop(returned, state: State, files, emit) {
+fn loop(returned, state: State, files, emit, inspect, output) {
   case returned {
     Ok(#(value, _scope)) -> #(
-      Ok(value |> option.map(simple_debug.inspect) |> option.unwrap("")),
+      Ok(value |> option.map(inspect) |> option.unwrap("")),
       state,
       files,
+      output,
     )
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {
       let #(outcome, files) = perform(label, lift, files, emit)
+      let output = case label, lift, outcome {
+        "StandardOut", v.String(text), Ok(_)
+        | "StandardError", v.String(text), Ok(_)
+        -> [text, ..output]
+        _, _, _ -> output
+      }
       case outcome {
-        Ok(value) -> loop(block.resume(value, env, k), state, files, emit)
-        Error(reason) -> #(Error(reason), state, files)
+        Ok(value) ->
+          loop(block.resume(value, env, k), state, files, emit, inspect, output)
+        Error(reason) -> #(Error(reason), state, files, output)
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
       let #(value, cache) = lookup(reference, state)
       let state = State(..state, cache:)
       case value {
-        Ok(value) -> loop(block.resume(value, env, k), state, files, emit)
-        Error(reason) -> #(Error(reason), state, files)
+        Ok(value) ->
+          loop(block.resume(value, env, k), state, files, emit, inspect, output)
+        Error(reason) -> #(Error(reason), state, files, output)
       }
     }
-    Error(debug) -> #(Error(simple_debug.describe(debug.0)), state, files)
+    Error(debug) -> #(
+      Error(simple_debug.describe(debug.0)),
+      state,
+      files,
+      output,
+    )
   }
 }
 

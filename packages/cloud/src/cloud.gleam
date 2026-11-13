@@ -5,10 +5,19 @@ import envoy
 import gleam/erlang/process
 import gleam/result
 import ogre/origin
+import overlay/llm/provider
+import overlay/llm/provider/ollama
 
 pub fn main() -> Nil {
   let slack_token = envoy.get("SLACK_BOT_TOKEN")
   let discord_token = envoy.get("DISCORD_BOT_TOKEN")
+  let ollama_token = envoy.get("OLLAMA_API_KEY")
+  let llm = case ollama_token {
+    Ok(token) ->
+      provider.Llm(provider.Ollama(ollama.cloud(token)), "glm-5.3:cloud")
+    Error(_) ->
+      provider.Llm(provider.Ollama(ollama.local()), "devstral-small-2:24b")
+  }
   case slack_token, discord_token {
     Error(_), Error(_) -> panic as "Set SLACK_BOT_TOKEN or DISCORD_BOT_TOKEN"
     _, _ -> Nil
@@ -17,7 +26,7 @@ pub fn main() -> Nil {
     envoy.get("EYG_ORIGIN")
     |> result.unwrap("https://eyg.run")
     |> origin.from_string_strict
-  let assert Ok(sessions) = session.start(hub)
+  let assert Ok(sessions) = session.start(hub, llm)
   case slack_token {
     Ok(token) -> {
       let assert Ok(_) = slack.start_channel(sessions.data, token)

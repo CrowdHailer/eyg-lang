@@ -134,21 +134,17 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
             // Install/server ID and name: state.guild.id and state.guild.name.
             // Conversation ID and name: channel.id and channel.name.
             // This is where a configured hook would fit in.
-            case command.source(message.data, state.bot_user) {
+            case command.payload(message.data, state.bot_user) {
               Error(Nil) -> Nil
-              Ok(code) -> {
+              Ok(payload) -> {
                 process.send(
                   state.sessions,
-                  session.Message(
-                    id: session_id,
-                    payload: session.Code(code),
-                    print: print_output(
-                      state.bot_token,
-                      channel.id,
-                      message.id,
-                      _,
-                    ),
-                  ),
+                  session.Message(id: session_id, payload:, print: print_output(
+                    state.bot_token,
+                    channel.id,
+                    message.id,
+                    _,
+                  )),
                 )
               }
             }

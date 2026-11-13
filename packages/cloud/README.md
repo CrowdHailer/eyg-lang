@@ -12,7 +12,10 @@ A session is a shell session and/or agent session with persistent state and file
 External messages get routed to sessions to keep isolation.
 We do not yet solve inter session communication.
 
-Each session ID retains its own MFS root.
+Each session ID retains its own MFS root and agent history in memory. Slack
+sessions are scoped to a workspace/channel and Discord sessions to a guild/channel.
+
+
 
 ## Secrets
 
@@ -31,9 +34,9 @@ Most of their complexity is in solving the problem described in the article
 With `SLACK_BOT_TOKEN` exported, `gleam run` polls joined public and private channels.
 The bot needs `channels:read` and `channels:history` for public channels, and
 `groups:read` and `groups:history` for private channels.
-New human messages starting with the bot's mention, such as `@bot !int_add(2, 3)`,
-are parsed and evaluated as EYG. Results and errors are logged with the channel ID.
-Code fences are accepted. Initial history is cached without running its commands.
+New human messages are routed to code execution or the agent as described above.
+Replies are posted in the message's thread; posting requires `chat:write`.
+Initial history is cached without executing code or starting agent turns.
 
 #### Tokens
 

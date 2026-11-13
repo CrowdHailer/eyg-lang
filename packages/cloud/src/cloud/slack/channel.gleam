@@ -118,18 +118,19 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           list.each(fresh, fn(message) {
             // Conversation ID: channel.id; workspace ID: state.identity.team_id.
             // The optional thread ID is message.thread_ts (Option(String)).
-            case command.source(message.data, state.identity.user_id) {
+            case command.payload(message.data, state.identity.user_id) {
               Error(Nil) -> Nil
-              Ok(code) -> {
+              Ok(payload) -> {
                 // Reply in the existing thread, or start one on this message.
                 let ts = option.unwrap(message.thread_ts, message.ts)
                 process.send(
                   state.sessions,
-                  session.Message(
-                    id: session_id,
-                    payload: session.Code(code),
-                    print: print_output(state.bot_token, channel.id, ts, _),
-                  ),
+                  session.Message(id: session_id, payload:, print: print_output(
+                    state.bot_token,
+                    channel.id,
+                    ts,
+                    _,
+                  )),
                 )
               }
             }
