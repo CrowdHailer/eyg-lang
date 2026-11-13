@@ -5,6 +5,8 @@ import cloud/session
 import cloud/slack/api/schema
 import cloud/slack/client
 import cloud/slack/command
+import cloud/slack/event
+import cloud/trigger
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/int
@@ -27,6 +29,7 @@ pub opaque type State {
     identity: schema.Identity,
     conversations: Dict(String, Conversation),
     sessions: Subject(session.Message),
+    triggers: List(trigger.Checked),
   )
 }
 
@@ -39,11 +42,19 @@ pub fn start(
   bot_token: String,
   identity: schema.Identity,
   sessions: Subject(session.Message),
+  triggers: List(trigger.Checked),
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
     // Load in the message handler: full histories can exceed the init timeout.
     process.send(subject, Poll)
-    actor.initialised(State(bot_token, subject, identity, dict.new(), sessions))
+    actor.initialised(State(
+      bot_token,
+      subject,
+      identity,
+      dict.new(),
+      sessions,
+      triggers,
+    ))
     |> actor.returning(subject)
     |> Ok
   })
@@ -116,6 +127,15 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           let session_id =
             "Slack:" <> state.identity.team_id <> ":" <> channel.id
           list.each(fresh, fn(message) {
+            case event.from_message(channel.id, message) {
+              Ok(event) -> {
+                let value = event.to_eyg(channel.name, event)
+                list.each(state.triggers, fn(function) {
+                  process.send(state.sessions, session.Trigger(function, value))
+                })
+              }
+              Error(reason) -> io.println_error(reason)
+            }
             // Conversation ID: channel.id; workspace ID: state.identity.team_id.
             // The optional thread ID is message.thread_ts (Option(String)).
             case command.payload(message.data, state.identity.user_id) {

@@ -1,0 +1,54 @@
+let append = (a, b) -> { !string_append(a, b) }
+
+let run = ({channel_name, event}) -> {
+  match event {
+    MessageCreate(message) -> {
+      match !equal(channel_name, "moxii-agent-tests") {
+        False(_) -> { {} }
+        True(_) -> {
+          match !string_split_once(!string_lowercase(message.content), "rocket") {
+            Error(_) -> { {} }
+            Ok(_) -> {
+              match perform Env("SLACK_BOT_TOKEN") {
+                None(_) -> {
+                  let _ = perform StandardError("Right on: SLACK_BOT_TOKEN is not configured")
+                  {}
+                }
+                Some(token) -> {
+                  let response = perform Fetch({
+                    method: POST({}),
+                    scheme: HTTPS({}),
+                    host: "slack.com",
+                    port: None({}),
+                    path: "/api/chat.postMessage",
+                    query: None({}),
+                    headers: [
+                      {key: "authorization", value: append("Bearer ", token)},
+                      {key: "content-type", value: "application/json"}
+                    ],
+                    body: !string_to_binary(append(
+                      "{\"text\":\"🚀🚀🚀\",\"channel\":\"",
+                      append(message.channel_id, append("\",\"thread_ts\":\"", append(message.thread_ts, "\"}")))
+                    ))
+                  })
+                  let _ = match response {
+                    Ok(response) -> {
+                      match !int_compare(response.status, 300) {
+                        Lt(_) -> { {} }
+                        | (_) -> { perform StandardError(append("Right on: Slack returned ", !int_to_string(response.status))) }
+                      }
+                    }
+                    Error(reason) -> { perform StandardError(append("Right on: ", reason)) }
+                  }
+                  {}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    | (_) -> { {} }
+  }
+}
+run

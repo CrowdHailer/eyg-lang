@@ -35,6 +35,10 @@ pub fn main() -> Nil {
     Ok(token) -> dict.from_list([#("DISCORD_BOT_TOKEN", token)])
     Error(_) -> dict.new()
   }
+  let secrets = case slack_token {
+    Ok(token) -> dict.insert(secrets, "SLACK_BOT_TOKEN", token)
+    Error(_) -> secrets
+  }
   let assert Ok(code) = simplifile.read("right_on.eyg")
   let discord_triggers = [#("Right on", code)]
   // TODO keep this execute_state
@@ -44,10 +48,18 @@ pub fn main() -> Nil {
       discord.trigger_type(),
       execute.State(origin: hub, cache: cache.ready(), secrets:),
     )
+  let assert Ok(code) = simplifile.read("right_on_slack.eyg")
+  let assert Ok(#(slack_triggers, _)) =
+    trigger.prepare(
+      [#("Right on", code)],
+      slack.trigger_type(),
+      execute.State(origin: hub, cache: cache.ready(), secrets:),
+    )
   let assert Ok(sessions) = session.start(hub, llm, secrets)
   case slack_token {
     Ok(token) -> {
-      let assert Ok(_) = slack.start_channel(sessions.data, token)
+      let assert Ok(_) =
+        slack.start_channel(sessions.data, token, slack_triggers)
       Nil
     }
     Error(_) -> Nil
