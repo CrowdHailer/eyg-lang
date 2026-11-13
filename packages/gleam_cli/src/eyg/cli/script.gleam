@@ -1,3 +1,4 @@
+import eyg/cli/effects
 import eyg/cli/internal/config
 import eyg/interpreter/cast
 import eyg/interpreter/state
@@ -24,7 +25,11 @@ pub fn execute(
   let user_meta = source.1
   let source = call(source, arguments)
 
-  use #(result, _) <- system.map(execute.block(source, [], state))
+  use #(result, _) <- system.map(effects.handle(
+    execute.block(source, [], state),
+    cwd,
+    config.styled,
+  ))
   case result {
     Ok(#(Some(exit_code), _)) ->
       case cast.as_integer(exit_code) {
