@@ -39,6 +39,11 @@ The `.overlay.eyg` file returns a record with the following fields:
 Starting the CLI agent checks the configuration and policy once.
 The required policy fields depend on the host's selected effect rules.
 
+An EYG script can also [start Overlay](../../guides/script_agents.md) with an
+evaluated configuration and a captured, inferred context.
+Publishing the local overlay EYG package under @overlay requires a signatory
+with a grant for that package name; local imports need no publication.
+
 An example configuration
 
 ```eyg
