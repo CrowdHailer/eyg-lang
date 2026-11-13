@@ -8,22 +8,14 @@ pub const basic =
   "(label, value) => ({Alert: (x) => window.alert(x), Ask: (_) => 10, Log: (x) => console.log(x)})[label](value)"
 
 pub fn render(exp: ir.Node(Nil), handler: String) -> String {
-  let used = ir.list_builtins(exp)
-  let used = case needs_query_runtime(exp) {
-    True -> ["$query", ..used]
-    False -> used
-  }
+  let used = query_builtins(exp)
   let #(definitions, program) = case needs_effect_runtime(exp) {
     False -> #(list.map(used, render_builtin), do_render(exp))
     True -> #(
       [
         "const extrinsic = " <> handler,
         "const $runtime = (" <> runtime.source <> ").create(extrinsic)",
-        "const $run = $runtime.run, $fn = $runtime.function_, $call = $runtime.call, $bind = $runtime.bind, $handle = $runtime.handle, $perform = $runtime.perform, $mask = $runtime.mask, $shallow = $runtime.shallow",
-        "const bind = $runtime.bind_builtin, fix = $runtime.fix, list_fold = $runtime.list_fold, binary_fold = $runtime.binary_fold, never = $runtime.never, pure = $runtime.pure_",
-        ..used
-        |> list.filter(fn(name) { !runtime.defines(name) })
-        |> list.map(render_builtin)
+        ..runtime_bindings(used)
       ],
       "$run(" <> stack_expression(exp) <> ")",
     )
@@ -32,6 +24,38 @@ pub fn render(exp: ir.Node(Nil), handler: String) -> String {
   |> list.filter(fn(x) { x != "" })
   |> list.intersperse(";\n")
   |> string.concat
+}
+
+/// ES module whose host operations remain suspended until run or runAsync.
+pub fn render_module(exp: ir.Node(Nil)) -> String {
+  [
+    "const $library = (" <> runtime.source <> ")",
+    "const $runtime = $library.create_deferred()",
+    ..list.append(runtime_bindings(query_builtins(exp)), [
+      "const program = $run(" <> stack_expression(exp) <> ")",
+      "export default {program, run: $library.run_effects, runAsync: $library.run_effects_async, Eff: $library.Eff}",
+    ])
+  ]
+  |> string.join(";\n")
+  |> string.append(";\n")
+}
+
+fn query_builtins(exp) {
+  let used = ir.list_builtins(exp)
+  case needs_query_runtime(exp) {
+    True -> ["$query", ..used]
+    False -> used
+  }
+}
+
+fn runtime_bindings(used) {
+  [
+    "const $run = $runtime.run, $fn = $runtime.function_, $call = $runtime.call, $bind = $runtime.bind, $handle = $runtime.handle, $perform = $runtime.perform, $mask = $runtime.mask, $shallow = $runtime.shallow",
+    "const bind = $runtime.bind_builtin, fix = $runtime.fix, list_fold = $runtime.list_fold, binary_fold = $runtime.binary_fold, never = $runtime.never, pure = $runtime.pure_",
+    ..used
+    |> list.filter(fn(name) { !runtime.defines(name) })
+    |> list.map(render_builtin)
+  ]
 }
 
 // Lower every application in a runtime-backed program, not only effectful

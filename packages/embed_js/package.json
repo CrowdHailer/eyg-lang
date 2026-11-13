@@ -1,0 +1,11 @@
+{
+  "name": "eyg-embed-js",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "devDependencies": { "eyg-gleam-playwright": "file:../gleam_playwright" },
+  "scripts": {
+    "build": "gleam run -m build",
+    "test": "gleam run -m build && gleam test --runtime bun"
+  }
+}

@@ -253,3 +253,17 @@ pub fn check(source){
 
 This function type checks the source in an environment with only the `Log` effect.
 `infer.unpure()` will allow any effect, useful for checking libraries where you don't yet know the context they will run in.
+
+## Typed host variables
+
+Use `infer.with_variable(context, name, type_)` or
+`infer.with_variables(context, variables)` to check host-provided bindings.
+Their runtime values must be supplied in the interpreter's scope too.
+Generic types instantiate at each use. New entries shadow older context
+bindings; the first occurrence in a supplied list takes precedence.
+`infer.check_with_references(context, references, source)` returns the completed
+analysis when the host already has its referenced module types.
+
+## Reusable host loop
+
+On JavaScript the [eyg_embed](../packages/gleam_embed/) package packages this loop, with async effects and module resolution.
