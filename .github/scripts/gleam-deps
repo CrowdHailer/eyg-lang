@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Retry only Hex's transient API rate limit; preserve every other failure.
+set -eu
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+for attempt in 1 2 3; do
+  if gleam deps download >"$log" 2>&1; then
+    cat "$log"
+    exit 0
+  fi
+  cat "$log" >&2
+  if ! grep -q 'rate limit for the Hex API' "$log" || [ "$attempt" = 3 ]; then
+    exit 1
+  fi
+  sleep "$((attempt * 20))"
+done
