@@ -29,6 +29,20 @@ effects live, and where two of the three bugs found so far were hiding.
 rejected by the analysis, which is why it is not the main search, but it
 reaches shapes the typed generator does not know how to build.
 
+Together the generators cover every form of closed, reference-free IR
+expression that analysis can accept. The recursive grammar covers variables,
+lambdas, applications, lets and literals, and its tested primitive table covers
+lists, records, unions, effects and every builtin. Primitives and builtins can
+be bare, partially applied or fully applied. The typed generator additionally
+constructs every builtin at an inhabited concrete type, so uncommon result
+shapes do not depend on random target selection.
+
+Two IR forms are outside this property:
+
+- `Vacant` is incomplete code and analysis deliberately rejects it.
+- references need module resolution before evaluation, while this property
+  compares analysis directly with evaluation of one already-resolved tree.
+
 ## What it found
 
 The regression cases in the test suite are the programs that used to be
