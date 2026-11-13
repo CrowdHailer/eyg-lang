@@ -1,0 +1,26 @@
+{
+  description: "Read the syntax guide before writing a program with builtins alone.",
+  tags: ["guides", "values"],
+  prompts: [
+    "Without using any package, run a program that returns the second item of the list [\"a\", \"b\", \"c\"]."
+  ],
+  checks: [Computes("b"), Fetches("/guides/eyg-syntax-guide")],
+  reference: [
+    [
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"eyg.run\", port: None({}), path: \"/guides/eyg-syntax-guide.md\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({body}) -> { !string_from_binary(body) }
+  Error(reason) -> { Error({}) }
+}"),
+      Run("match !list_pop([\"a\", \"b\", \"c\"]) {
+  Ok({tail}) -> {
+    match !list_pop(tail) {
+      Ok({head}) -> { head }
+      Error(_) -> { \"\" }
+    }
+  }
+  Error(_) -> { \"\" }
+}"),
+      Say("The second item is \"b\".")
+    ]
+  ]
+}

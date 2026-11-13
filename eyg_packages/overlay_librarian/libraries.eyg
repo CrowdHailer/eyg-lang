@@ -1,0 +1,76 @@
+// Packages published from eyg_packages, what they are for and how to start.
+[
+  {
+    name: "json",
+    reference: "@json",
+    summary: "Parse JSON text or bytes into EYG values with decoders, and encode EYG values as JSON text.",
+    keywords: "json decode encode parse serialize api response body object field array",
+    example: "let {decode: d, parse} = @json
+let person = d.object((json) -> {
+  let name = d.field(\"name\", d.string)(json)
+  let age = d.field(\"age\", d.integer)(json)
+  {name, age}
+})
+match parse(\"{\\\"name\\\":\\\"Ada\\\",\\\"age\\\":36}\", person) {
+  Ok(person) -> { person.name }
+  Error(reason) -> { reason }
+}"
+  },
+  {
+    name: "http",
+    reference: "@http",
+    summary: "Build HTTP operations and requests from methods, origins, headers and bodies, then send them with dispatch.",
+    keywords: "http request response header url origin api get post fetch send client server",
+    example: "let http = @http
+let operation = http.prepend_header(
+  http.operation.get(\"/users/crowdhailer\"),
+  {key: \"accept\", value: \"application/json\"}
+)
+http.operation.to_request(operation, http.origin.https(\"api.github.com\"))"
+  },
+  {
+    name: "standard",
+    reference: "@standard",
+    summary: "Everyday helpers for lists, strings, integers, results, booleans, URLs, MIME types and binaries.",
+    keywords: "list string integer result boolean map filter fold sort join split url mime binary",
+    example: "let list = @standard.list
+list.map([1, 2, 3], (n) -> { !int_multiply(n, n) })"
+  },
+  {
+    name: "option",
+    reference: "@option",
+    summary: "Some(value) and None({}) for values that may be absent, with map, unwrap_or and conversion from results.",
+    keywords: "option maybe optional some none missing absent default nullable",
+    example: "@option.unwrap_or(Some(3), 0)"
+  },
+  {
+    name: "edit",
+    reference: "@edit",
+    summary: "Change text files with the file effects: replace text, append lines, insert or delete lines and grep.",
+    keywords: "edit file text replace append line insert delete grep write workspace",
+    example: "@edit.replace_all({path: \"README.md\", find: \"Helo\", replace: \"Hello\"})"
+  },
+  {
+    name: "fs",
+    reference: "@fs",
+    summary: "Walk directories and read files recursively, for programs run by the eyg CLI.",
+    keywords: "file system directory walk list files read cli",
+    example: "@fs.list_files({root: \"src\", ignore: []})"
+  },
+  {
+    name: "aok",
+    reference: "@aok",
+    summary: "Write tests for EYG code with assertions and run them.",
+    keywords: "test tests assert assertion check expect run",
+    example: "let {assert} = @aok
+assert.equal(!int_add(1, 1), 2)"
+  },
+  {
+    name: "overlay",
+    reference: "@overlay",
+    summary: "Access policies for overlay agents, gates that allow, mock or deny effects such as Fetch and WriteFile.",
+    keywords: "access policy permission allow deny mock sandbox effect restrict security",
+    example: "let {policy} = @overlay
+{write_file: policy.deny(\"read only\"), ..policy.allow_all}"
+  }
+]

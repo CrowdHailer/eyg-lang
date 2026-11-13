@@ -1,0 +1,25 @@
+// Tasks comparing Overlay contexts on what a context should help with:
+// finding libraries, searching guides, reading Overlay's own source to
+// suggest pull requests only when the fault is Overlay's, and keeping a
+// workspace and its notes.
+//
+// Tags group the tasks, `pull-request` tasks should end in a suggestion and
+// `no-pull-request` tasks should not.
+{
+  access_policy: import "./contexts/access_policy.eyg",
+  browser_sleep: import "./contexts/browser_sleep.eyg",
+  count_words: import "./contexts/count_words.eyg",
+  edit_replace: import "./contexts/edit_replace.eyg",
+  fix_greeting: import "./contexts/fix_greeting.eyg",
+  http_request: import "./contexts/http_request.eyg",
+  json_encode: import "./contexts/json_encode.eyg",
+  json_nested_field: import "./contexts/json_nested_field.eyg",
+  json_null: import "./contexts/json_null.eyg",
+  leave_workspace: import "./contexts/leave_workspace.eyg",
+  note_learning: import "./contexts/note_learning.eyg",
+  program_mistake: import "./contexts/program_mistake.eyg",
+  read_file_slice: import "./contexts/read_file_slice.eyg",
+  second_item: import "./contexts/second_item.eyg",
+  stale_note: import "./contexts/stale_note.eyg",
+  wrong_guide_link: import "./contexts/wrong_guide_link.eyg"
+}

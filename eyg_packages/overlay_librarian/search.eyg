@@ -1,0 +1,96 @@
+// Rank items by how many words of a query their text contains.
+
+let reverse = (items) -> {
+  !list_fold(items, [], (item, acc) -> { [item, ..acc] })
+}
+
+let map = (items, f) -> {
+  reverse(!list_fold(items, [], (item, acc) -> { [f(item), ..acc] }))
+}
+
+let contains = (text, part) -> {
+  match !string_split_once(text, part) {
+    Ok(_) -> { True({}) }
+    Error(_) -> { False({}) }
+  }
+}
+
+// Common words that say nothing about what is wanted.
+// Spaces delimit complete words, so "at" does not suppress "data".
+let stopwords = " an and are as at be by can do does for from how in into is it me my of on or please should that the this to use using want what when which with without you your "
+
+// The lowercase words of a text, spaces and punctuation separate words.
+let words = (text) -> {
+  let spaced = !list_fold([",", ".", "?", "!", "(", ")", "/", "-", "_", ":", "`", "@", "\n"], !string_lowercase(text), (mark, text) -> {
+    !string_replace(text, mark, " ")
+  })
+  let {head, tail} = !string_split(spaced, " ")
+  reverse(!list_fold([head, ..tail], [], (word, acc) -> {
+    match !int_compare(!string_length(word), 1) {
+      Gt(_) -> {
+        match contains(stopwords, !string_append(" ", !string_append(word, " "))) {
+          True(_) -> { acc }
+          False(_) -> { [word, ..acc] }
+        }
+      }
+      | (_) -> { acc }
+    }
+  }))
+}
+
+// The number of query words that start a word of the text, `file` matches `files`.
+let score = (text, query_words) -> {
+  let text_words = words(text)
+  !list_fold(query_words, 0, (word, total) -> {
+    let found = !list_fold(text_words, False({}), (text_word, found) -> {
+      match found {
+        True(_) -> { True({}) }
+        False(_) -> { !string_starts_with(text_word, word) }
+      }
+    })
+    match found {
+      True(_) -> { !int_add(total, 1) }
+      False(_) -> { total }
+    }
+  })
+}
+
+// Insert keeping the highest score first, earlier items stay first on a tie.
+let insert = !fix((self, item, sorted) -> {
+  match !list_pop(sorted) {
+    Ok({head, tail}) -> {
+      match !int_compare(item.score, head.score) {
+        Gt(_) -> { [item, ..sorted] }
+        | (_) -> { [head, ..self(item, tail)] }
+      }
+    }
+    Error(_) -> { [item] }
+  }
+})
+
+let take = !fix((self, items, count) -> {
+  match !int_compare(count, 0) {
+    Gt(_) -> {
+      match !list_pop(items) {
+        Ok({head, tail}) -> { [head, ..self(tail, !int_subtract(count, 1))] }
+        Error(_) -> { [] }
+      }
+    }
+    | (_) -> { [] }
+  }
+})
+
+// The best `limit` items for a query, items that match no word are left out.
+let rank = (items, text_of, query, limit) -> {
+  let query_words = words(query)
+  let scored = !list_fold(items, [], (item, sorted) -> {
+    let points = score(text_of(item), query_words)
+    match !int_compare(points, 0) {
+      Gt(_) -> { insert({score: points, item}, sorted) }
+      | (_) -> { sorted }
+    }
+  })
+  map(take(scored, limit), (scored) -> { scored.item })
+}
+
+{words, score, rank, map, contains}

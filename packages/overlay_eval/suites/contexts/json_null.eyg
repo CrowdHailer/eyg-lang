@@ -1,0 +1,21 @@
+{
+  description: "The json package cannot decode null, find this in its source and suggest a pull request.",
+  tags: ["source", "pull-request", "libraries"],
+  prompts: [
+    "Use the json package to read the nickname from {\"name\": \"Ada\", \"nickname\": null}, returning Some(nickname) or None({}) when it is null."
+  ],
+  checks: [
+    Fetches("eyg_packages/json/index.eyg"),
+    Says("pull request"),
+    Judged("The agent finds, from the json package's source, that it has no decoder for null values, says so, and suggests a pull request that adds one.")
+  ],
+  reference: [
+    [
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"raw.githubusercontent.com\", port: None({}), path: \"/CrowdHailer/eyg-lang/main/eyg_packages/json/index.eyg\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({body}) -> { !string_from_binary(body) }
+  Error(reason) -> { Error({}) }
+}"),
+      Say("The json package cannot tell a null nickname apart: eyg_packages/json/index.eyg has decoders for booleans, integers, strings, lists, fields and objects, but none for null. I suggest a pull request that adds a null or optional decoder to the json package.")
+    ]
+  ]
+}

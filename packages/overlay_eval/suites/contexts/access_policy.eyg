@@ -1,0 +1,33 @@
+{
+  description: "Search the guides for access policies and explain how to restrict effects.",
+  tags: ["guides"],
+  prompts: [
+    "How can a script be allowed to fetch web pages but not write files? Show me how."
+  ],
+  checks: [
+    Fetches("/guides/overlay-policies"),
+    Says("write_file"),
+    Judged("The answer runs the script's work through an overlay policy that denies WriteFile while Fetch stays allowed, and shows the code for it.")
+  ],
+  reference: [
+    [
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"eyg.run\", port: None({}), path: \"/guides/overlay-policies.md\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({body}) -> { !string_from_binary(body) }
+  Error(reason) -> { Error({}) }
+}"),
+      Say("Configure the overlay with a policy that passes Fetch and mocks WriteFile with an error, starting from a helper policy that has a gate for every effect:
+
+```eyg
+let {policy} = import \"./eyg_packages/overlay/index.eyg\"
+
+{
+  fetch: (request) -> { Pass(request) },
+  write_file: (_) -> { Mock(Error(\"read-only session\")) },
+  ..policy.read_only([\"/project\"])
+}
+```
+
+Fetch is performed. The write_file gate returns an error to the script instead of writing.")
+    ]
+  ]
+}

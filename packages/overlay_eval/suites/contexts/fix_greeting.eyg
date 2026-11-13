@@ -1,0 +1,29 @@
+{
+  description: "Fix a bug in a workspace project so its code does the right thing.",
+  tags: ["workspace"],
+  prompts: ["The greeting in src/greet.eyg is misspelt, fix it."],
+  workspace: [
+    {path: "README.md", contents: "# Greeter\n\nGreets people by name, see src/greet.eyg.\n"},
+    {path: "src/greet.eyg", contents: "let words = import \"./words.eyg\"\nlet greet = (name) -> { !string_append(words.hello, name) }\ngreet\n"},
+    {path: "src/words.eyg", contents: "{hello: \"Helo, \", goodbye: \"Goodbye, \"}\n"}
+  ],
+  checks: [
+    FileSatisfies({
+      path: "src/greet.eyg",
+      description: "greets Ada with \"Hello, Ada\"",
+      check: (greet) -> { !equal(greet("Ada"), "Hello, Ada") }
+    }),
+    NoFileContains({directory: "src", text: "Helo"}),
+    FileContains({path: "src/words.eyg", text: "Goodbye, "})
+  ],
+  reference: [
+    [
+      Run("match perform ReadFile({path: \"src/words.eyg\", offset: 0, limit: 10000}) {
+  Ok(bytes) -> { !string_from_binary(bytes) }
+  Error(reason) -> { Error({}) }
+}"),
+      Run("perform WriteFile({path: \"src/words.eyg\", contents: !string_to_binary(\"{hello: \\\"Hello, \\\", goodbye: \\\"Goodbye, \\\"}\\n\")})"),
+      Say("Fixed the spelling of Hello in src/words.eyg, which src/greet.eyg uses.")
+    ]
+  ]
+}

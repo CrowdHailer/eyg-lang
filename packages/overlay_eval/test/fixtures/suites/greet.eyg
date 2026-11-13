@@ -1,0 +1,15 @@
+{
+  description: "Greet with the greeting package",
+  tags: ["libraries"],
+  prompts: ["Greet Ada"],
+  checks: [
+    References("greeting"),
+    ReadsContext(["readme"]),
+    Satisfies({description: "starts with Hello", check: (value) -> { !string_starts_with(value, "Hello") }}),
+    NeverSays("pull request"),
+    Judged("The reply greets Ada by name")
+  ],
+  reference: [
+    [Run("context.readme"), Run("@greeting.hello(\"Ada\")"), Say("Hello, Ada")]
+  ]
+}

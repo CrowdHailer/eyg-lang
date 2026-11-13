@@ -1,0 +1,28 @@
+{
+  description: "Fix a typo in a project",
+  tags: ["workspace"],
+  prompts: ["The greeting in src/greet.eyg is misspelt, fix it."],
+  workspace: [
+    {path: "src/greet.eyg", contents: "let words = import \"./words.eyg\"\nlet greet = (name) -> { !string_append(words.hello, name) }\ngreet\n"},
+    {path: "src/words.eyg", contents: "{hello: \"Helo, \"}\n"}
+  ],
+  checks: [
+    FileSatisfies({
+      path: "src/greet.eyg",
+      description: "greets Ada with Hello",
+      check: (greet) -> {
+        match !equal(greet("Ada"), "Hello, Ada") {
+          True(_) -> { True({}) }
+          False(_) -> { False({}) }
+        }
+      }
+    }),
+    NoFileContains({directory: "src", text: "Helo"})
+  ],
+  reference: [
+    [
+      Run("perform WriteFile({path: \"src/words.eyg\", contents: !string_to_binary(\"{hello: \\\"Hello, \\\"}\")})"),
+      Say("Fixed the greeting.")
+    ]
+  ]
+}

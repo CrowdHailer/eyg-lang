@@ -1,0 +1,19 @@
+{
+  description: "Find the json package and decode a nested field of an API response.",
+  tags: ["libraries"],
+  prompts: [
+    "An API returned this JSON: {\"user\": {\"name\": \"Ada\", \"id\": 7}}. Run a program that works out the user's id."
+  ],
+  checks: [Computes(7), References("json")],
+  reference: [
+    [
+      Run("let {decode: d, parse} = @json
+let id = d.object(d.field(\"user\", d.object(d.field(\"id\", d.integer))))
+match parse(\"{\\\"user\\\": {\\\"name\\\": \\\"Ada\\\", \\\"id\\\": 7}}\", id) {
+  Ok(id) -> { id }
+  Error(reason) -> { !never(perform Abort(reason)) }
+}"),
+      Say("The user's id is 7.")
+    ]
+  ]
+}

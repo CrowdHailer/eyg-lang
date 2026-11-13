@@ -1,0 +1,13 @@
+{
+  description: "Keep a note",
+  tags: ["notes"],
+  prompts: ["Remember that the build uses bun"],
+  workspace: [{path: "notes/README.md", contents: "# Notes\n"}],
+  checks: [FileContains({path: "notes/build.md", text: "bun"}), NoFile("scratch.txt")],
+  reference: [
+    [
+      Run("perform WriteFile({path: \"notes/build.md\", contents: !string_to_binary(\"The build uses bun.\")})"),
+      Say("Noted.")
+    ]
+  ]
+}

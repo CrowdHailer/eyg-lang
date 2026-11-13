@@ -1,0 +1,26 @@
+{
+  description: "Search the guides for a CLI effect and answer with it.",
+  tags: ["guides"],
+  prompts: [
+    "In a script run by the eyg CLI, how do I read only the first 100 bytes of data.txt? Show me the code."
+  ],
+  checks: [
+    Fetches("/guides/cli-effects-reference"),
+    Says("offset"),
+    Says("limit"),
+    Judged("The final answer shows the ReadFile effect with the path data.txt, offset 0 and limit 100, and does not claim the CLI script was run.")
+  ],
+  reference: [
+    [
+      Run("match perform Fetch({method: GET({}), scheme: HTTPS({}), host: \"eyg.run\", port: None({}), path: \"/guides/cli-effects-reference.md\", query: None({}), headers: [], body: !string_to_binary(\"\")}) {
+  Ok({body}) -> { !string_from_binary(body) }
+  Error(reason) -> { Error({}) }
+}"),
+      Say("Use the ReadFile effect with an offset of 0 and a limit of 100:
+
+`perform ReadFile({path: \"data.txt\", offset: 0, limit: 100})`
+
+It returns `Ok(bytes)` or `Error(reason)`.")
+    ]
+  ]
+}

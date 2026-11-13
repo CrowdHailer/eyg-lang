@@ -1,0 +1,156 @@
+let {assert} = @aok
+let context = import "./index.eyg"
+
+let reply = (status, text) -> {
+  (request, resume) -> {
+    resume(Ok({status, headers: [], body: !string_to_binary(!string_append(request.host, text))}))
+  }
+}
+
+let note = "---
+name: json
+description: Parse JSON with the json package
+date: 2026-09-17
+---
+
+Use @json.parse with decoders.
+"
+
+[
+  {name: "the librarian's search is kept",
+   test: (_) -> {
+     let {head} = assert.ok(!list_pop(context.libraries.search("parse json")))
+     assert.equal_string("json", head.name)
+   }},
+  {name: "files are read from GitHub",
+   test: (_) -> {
+     let result = handle Fetch(
+       (request, resume) -> {
+         let _ = assert.equal_string("raw.githubusercontent.com", request.host)
+         let _ = assert.equal_string("/CrowdHailer/eyg-lang/main/guides/json.md", request.path)
+         resume(Ok({status: 200, headers: [], body: !string_to_binary("# JSON")}))
+       },
+       (_) -> { context.source.read("guides/json.md") }
+     )
+     assert.equal(result, Ok("# JSON"))
+   }},
+  {name: "a missing file is an error",
+   test: (_) -> {
+     let result = handle Fetch(reply(404, ""), (_) -> { context.source.read("nope") })
+     assert.equal(result, Error("not found: /CrowdHailer/eyg-lang/main/nope"))
+   }},
+  {name: "directories are listed with the GitHub API",
+   test: (_) -> {
+     let body = "[{\"name\":\"json\",\"path\":\"eyg_packages/json\",\"type\":\"dir\"},{\"name\":\"README.md\",\"path\":\"eyg_packages/README.md\",\"type\":\"file\"}]"
+     let result = handle Fetch(
+       (request, resume) -> {
+         let _ = assert.equal_string("api.github.com", request.host)
+         let _ = assert.equal(request.query, Some("ref=main"))
+         resume(Ok({status: 200, headers: [], body: !string_to_binary(body)}))
+       },
+       (_) -> { context.source.list("eyg_packages") }
+     )
+     assert.equal(result, Ok([{path: "eyg_packages/json", type: "dir"}, {path: "eyg_packages/README.md", type: "file"}]))
+   }},
+  {name: "every mapped path says what it is for",
+   test: (_) -> {
+     !list_fold(context.source.map, {}, (entry, _) -> {
+       assert.false(!equal(entry.about, ""))
+     })
+   }},
+  {name: "source revision selects both raw and directory requests",
+   test: (_) -> {
+     let source = context.source.at({owner: "example", name: "project", branch: "version/2", url: "https://github.com/example/project"})
+     let _ = assert.equal(source.repository.branch, "version/2")
+     let raw = handle Fetch((request, resume) -> {
+       let _ = assert.equal(request.host, "raw.githubusercontent.com")
+       let _ = assert.equal(request.path, "/example/project/version/2/README.md")
+       let _ = assert.equal(request.query, None({}))
+       resume(Ok({status: 200, body: !string_to_binary("source")}))
+     }, (_) -> { source.read("README.md") })
+     let listed = handle Fetch((request, resume) -> {
+       let _ = assert.equal(request.path, "/repos/example/project/contents/src")
+       let _ = assert.equal(request.query, Some("ref=version%2F2"))
+       resume(Ok({status: 200, body: !string_to_binary("[]")}))
+     }, (_) -> { source.list("src") })
+     let _ = assert.equal(raw, Ok("source"))
+     assert.equal(listed, Ok([]))
+   }},
+  {name: "source rejects invalid text and directory JSON",
+   test: (_) -> {
+     let raw = handle Fetch((_, resume) -> {
+       resume(Ok({status: 200, body: !binary_from_integers([255])}))
+     }, (_) -> { context.source.read("README.md") })
+     let _ = assert.equal(raw, Error("the response is not text"))
+     let listed = handle Fetch((_, resume) -> {
+       resume(Ok({status: 200, body: !string_to_binary("{}")}))
+     }, (_) -> { context.source.list("src") })
+     let _ = assert.error(listed)
+     {}
+   }},
+  {name: "frontmatter gives a note's name, description and date",
+   test: (_) -> {
+     assert.equal(context.workspace.frontmatter(note), Ok({name: "json", description: "Parse JSON with the json package", date: "2026-09-17"}))
+   }},
+  {name: "source fetch failures are returned",
+   test: (_) -> {
+     let result = handle Fetch((_, resume) -> { resume(Error("offline")) }, (_) -> { context.source.list("eyg_packages") })
+     assert.equal(result, Error("offline"))
+   }},
+  {name: "a missing notes directory is an empty index",
+   test: (_) -> {
+     let result = handle ReadDirectory((_, resume) -> { resume(Error("missing")) }, (_) -> { context.workspace.notes({}) })
+     assert.equal(result, [])
+   }},
+  {name: "a failed note write is returned",
+   test: (_) -> {
+     let result = handle MakeDirectory((_, resume) -> { resume(Ok({})) }, (_) -> {
+       handle WriteFile((_, resume) -> { resume(Error("read only")) }, (_) -> {
+         context.workspace.write_note({name: "test", description: "test", date: "2026-09-26", body: "test"})
+       })
+     })
+     assert.equal(result, Error("read only"))
+   }},
+  {name: "notes need frontmatter with a name and description",
+   test: (_) -> {
+     let _ = assert.equal(context.workspace.frontmatter("# Notes"), Error("the note has no frontmatter"))
+     let _ = assert.equal(context.workspace.frontmatter("---\nname: a\n---\n"), Error("the note has no description"))
+     assert.equal(context.workspace.frontmatter("---\nname: a\n"), Error("the frontmatter is not closed"))
+   }},
+  {name: "notes are listed from the notes directory",
+   test: (_) -> {
+     let found = handle ReadDirectory(
+       (path, resume) -> {
+         let _ = assert.equal_string("notes", path)
+         resume(Ok([{name: "json.md", type: File({size: 10})}, {name: "drafts", type: Directory({})}, {name: "README.txt", type: File({size: 1})}]))
+       },
+       (_) -> {
+         handle ReadFile(
+           (input, resume) -> {
+             let _ = assert.equal_string("notes/json.md", input.path)
+             resume(Ok(!string_to_binary(note)))
+           },
+           (_) -> { context.workspace.notes({}) }
+         )
+       }
+     )
+     assert.equal(found, [{path: "notes/json.md", name: "json", description: "Parse JSON with the json package", date: "2026-09-17"}])
+   }},
+  {name: "a note is written with frontmatter",
+   test: (_) -> {
+     let written = handle MakeDirectory(
+       (path, resume) -> { resume(Ok({})) },
+       (_) -> {
+         handle WriteFile(
+           (input, resume) -> {
+             let _ = assert.equal_string("notes/parsing-json.md", input.path)
+             let _ = assert.equal(!string_from_binary(input.contents), Ok("---\nname: Parsing JSON\ndescription: Use the json package\ndate: 2026-09-17\n---\n\nUse @json.\n"))
+             resume(Ok({}))
+           },
+           (_) -> { context.workspace.write_note({name: "Parsing JSON", description: "Use the json package", date: "2026-09-17", body: "Use @json."}) }
+         )
+       }
+     )
+     assert.equal(written, Ok("notes/parsing-json.md"))
+   }}
+]
