@@ -83,6 +83,12 @@ It is not yet published so import it by path.
 NOTE: in `overlay_web` The llm configuration is provided through the UI.
 The policy is provided through the UI but is still an textarea input that accepts a program
 
+### Exporting chats
+
+Type `/export [path]` at the prompt to save the chat as JSON in the opencode session export format.
+Tool results are recorded in the state of the tool parts of the assistant message that called them.
+Overlay does not record when each message was sent so all timestamps are the export time.
+
 ### Effect rules and policy gates
 
 The host supplies an explicit mapping from effect labels to rules and matches it
@@ -173,3 +179,5 @@ Limit published reference loading to only trusted publisher, i.e. signatories or
 This is potentially not an overlay specific capability
 
 Publish the `overlay` EYG package so configs can use `@overlay.policy` and `@overlay.skills` rather than importing by path.
+
+Add an export button to the web overlay, downloading the chat with `overlay/export`.
