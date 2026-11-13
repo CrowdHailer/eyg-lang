@@ -1,4 +1,5 @@
 {
+  codex: import "./codex.eyg",
   policy: import "./policy.eyg",
   skills: import "./skills.eyg"
 }

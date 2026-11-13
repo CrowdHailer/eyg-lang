@@ -34,6 +34,7 @@ Projects in this repo introduce extra contraints, over regular programming langu
 - File and import path resolution is explained in [`guides/file_resolution.md`](./guides/file_resolution.md).
 - Effect spans and named function profiles are explained in [`guides/tracing.md`](./guides/tracing.md).
 - Portable recording, replay and telemetry export are explained in [`guides/trajectories.md`](./guides/trajectories.md).
+- Updating JSON while retaining unknown fields is covered in [`guides/json_documents.md`](./guides/json_documents.md).
 - Immutable acquisition, private sandboxes and offline evaluation are explained in [`guides/sandbox.md`](./guides/sandbox.md).
 - To install from source see [`./guides/install_from_source.md`](./guides/install_from_source.md).
 - The [JavaScript host bundle](./guides/embedding_javascript.md) exposes a retained typed shell without a Gleam toolchain.
