@@ -49,6 +49,7 @@ pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
         hub,
         effects,
         "context is an empty record. The working directory is /. Files belong to this session and are shared with direct code execution. Each command starts with fresh lexical scope. Env only returns secrets explicitly supplied at startup; host environment variables are not exposed. Respond using the chat platform's Markdown formatting.",
+        False,
       ),
       tools: agent.tools(),
     )
@@ -64,6 +65,7 @@ pub fn context(origin, effects, readme) -> provider.Context {
       effects,
       "You are part of a chat workspace. Your replies are delivered directly to the person who requested this turn. Programs run with fresh lexical scope and private in-memory session files retained between turns. Use Post when a program needs to send an additional message.\n"
         <> readme,
+      True,
     ),
     tools: agent.tools(),
   )
