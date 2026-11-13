@@ -278,6 +278,26 @@ pub fn run(
       |> run(sandbox)
     }
     system.Cwd(resume) -> run(resume(Ok(sandbox.cwd)), sandbox)
+    system.FetchStream(request, resume) -> {
+      run(
+        system.Fetch(request, fn(reply) {
+          resume(
+            result.map(reply, fn(reply) {
+              response.set_body(reply, system.Chunks([reply.body]))
+            }),
+          )
+        }),
+        sandbox,
+      )
+    }
+    system.ReadChunk(system.Chunks(chunks), resume) ->
+      case chunks {
+        [] -> run(resume(Ok(#(option.None, system.Chunks([])))), sandbox)
+        [chunk, ..rest] ->
+          run(resume(Ok(#(option.Some(chunk), system.Chunks(rest)))), sandbox)
+      }
+    system.ReadChunk(system.Body(_), resume) ->
+      run(resume(Error(effect.UnableToReadBody)), sandbox)
     system.Fetch(request, resume) -> {
       let #(response, state) = sandbox.network(request, sandbox.network_state)
       let sandbox = Sandbox(..sandbox, network_state: state)
