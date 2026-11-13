@@ -1,0 +1,6 @@
+let db = @{
+  fact Edge({from: "A", to: "B"}),
+  rule Reach({from, to}) { var from var to Edge({from, to}) }
+}
+resolve Reach @{db, @std}
+!int_add(1, 2)
