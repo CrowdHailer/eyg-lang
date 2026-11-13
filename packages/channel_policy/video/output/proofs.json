@@ -1,0 +1,300 @@
+{
+  "provenance": "Captured from eyg/interpreter/explain, not authored by the renderer",
+  "deployments": {
+    "kind": "rule",
+    "title": "Permit [rule 0]",
+    "fields": {
+      "action": "\"view\"",
+      "actor": "\"U_ADA\"",
+      "policy": "\"deployment-page\"",
+      "resource": "{kind: \"page\", path: \"/deployments\", scope: \"console\"}",
+      "role": "\"C_PLATFORM\"",
+      "tenant": "\"T_ACME\""
+    },
+    "source": "",
+    "children": [
+      {
+        "kind": "fact",
+        "title": "Member",
+        "fields": {
+          "actor": "\"U_ADA\"",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": []
+      },
+      {
+        "kind": "fact",
+        "title": "RolePermission",
+        "fields": {
+          "action": "\"view\"",
+          "policy": "\"deployment-page\"",
+          "resource": "{kind: \"page\", path: \"/deployments\", scope: \"console\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": []
+      }
+    ]
+  },
+  "pull_request": {
+    "head": "ba25f42d8ed5d8530835ba305050ef3156d3bc9c",
+    "permissions": [
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"change\"",
+          "actor": "\"U_ADA\"",
+          "policy": "\"infra-submitter\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_ADA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"change\"",
+              "policy": "\"infra-submitter\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"approve\"",
+          "actor": "\"U_BEA\"",
+          "policy": "\"infra-reviewer\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_BEA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"approve\"",
+              "policy": "\"infra-reviewer\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "updated_pull_request": {
+    "head": "1be598a279f28d2446668e53eb5cb75110ebe249",
+    "permissions": [
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"change\"",
+          "actor": "\"U_ADA\"",
+          "policy": "\"infra-submitter\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_ADA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"change\"",
+              "policy": "\"infra-submitter\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      },
+      {
+        "kind": "rule",
+        "title": "Permit [rule 0]",
+        "fields": {
+          "action": "\"approve\"",
+          "actor": "\"U_BEA\"",
+          "policy": "\"infra-reviewer\"",
+          "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+          "role": "\"C_PLATFORM\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "",
+        "children": [
+          {
+            "kind": "fact",
+            "title": "Member",
+            "fields": {
+              "actor": "\"U_BEA\"",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          },
+          {
+            "kind": "fact",
+            "title": "RolePermission",
+            "fields": {
+              "action": "\"approve\"",
+              "policy": "\"infra-reviewer\"",
+              "resource": "{kind: \"file\", path: \"infra/main.tf\", scope: \"acme/app\"}",
+              "role": "\"C_PLATFORM\"",
+              "tenant": "\"T_ACME\""
+            },
+            "source": "",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "inference_below_limit": {
+    "kind": "rule",
+    "title": "Permit [rule 0]",
+    "fields": {
+      "actor": "\"U_ADA\"",
+      "limit": "50",
+      "policy": "\"llm-usage-limit\"",
+      "resource": "\"/v1/inference\"",
+      "role": "\"usage-quota\"",
+      "tenant": "\"T_ACME\"",
+      "used": "49",
+      "window": "\"2026-10\""
+    },
+    "source": "",
+    "children": [
+      {
+        "kind": "fact",
+        "title": "Quota",
+        "fields": {
+          "actor": "\"U_ADA\"",
+          "limit": "50",
+          "policy": "\"llm-usage-limit\"",
+          "resource": "\"/v1/inference\"",
+          "tenant": "\"T_ACME\"",
+          "window": "\"2026-10\""
+        },
+        "source": "",
+        "children": []
+      },
+      {
+        "kind": "fact",
+        "title": "Usage",
+        "fields": {
+          "actor": "\"U_ADA\"",
+          "resource": "\"/v1/inference\"",
+          "tenant": "\"T_ACME\"",
+          "used": "49",
+          "window": "\"2026-10\""
+        },
+        "source": "",
+        "children": []
+      },
+      {
+        "kind": "predicate",
+        "title": "Predicate passed",
+        "fields": {
+          "used": "49",
+          "policy": "\"llm-usage-limit\"",
+          "limit": "50",
+          "window": "\"2026-10\"",
+          "resource": "\"/v1/inference\"",
+          "action": "\"infer\"",
+          "actor": "\"U_ADA\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "!equal(action, \"infer\")",
+        "children": []
+      },
+      {
+        "kind": "predicate",
+        "title": "Predicate passed",
+        "fields": {
+          "used": "49",
+          "policy": "\"llm-usage-limit\"",
+          "limit": "50",
+          "window": "\"2026-10\"",
+          "resource": "\"/v1/inference\"",
+          "action": "\"infer\"",
+          "actor": "\"U_ADA\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "nonnegative(used)",
+        "children": []
+      },
+      {
+        "kind": "predicate",
+        "title": "Predicate passed",
+        "fields": {
+          "used": "49",
+          "policy": "\"llm-usage-limit\"",
+          "limit": "50",
+          "window": "\"2026-10\"",
+          "resource": "\"/v1/inference\"",
+          "action": "\"infer\"",
+          "actor": "\"U_ADA\"",
+          "tenant": "\"T_ACME\""
+        },
+        "source": "!equal(!int_compare(used, limit), Lt({}))",
+        "children": []
+      }
+    ]
+  }
+}

@@ -119,6 +119,7 @@ jobs:
         bun: ["1.3.13"]
         node: ["24.15.0"]
         path: [
+          "packages/channel_policy",
           "packages/embed_js",
           "packages/example_tools",
           "packages/eyg_pi",
