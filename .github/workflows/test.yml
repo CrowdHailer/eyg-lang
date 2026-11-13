@@ -153,6 +153,7 @@ jobs:
           "packages/pal",
           "packages/pi_extension",
           "packages/plinthx",
+          "packages/soundness",
           "packages/topological",
           "packages/touch_grass",
           "packages/tracing",
