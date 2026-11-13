@@ -1,10 +1,26 @@
 import eyg/cli/args
+import gleam/option.{None, Some}
 import gleam/string
 import loam/source
 
 pub fn run_test() {
   let file = "example.eyg.json"
   assert args.Run(source.File(file)) == args.parse(["run", file])
+}
+
+pub fn trajectory_commands_test() {
+  assert args.parse(["record", "run", "-c", "42"])
+    == args.Record(source.Code("42"), None)
+  assert args.parse(["record", "run", "main.eyg"])
+    == args.Record(source.File("main.eyg"), None)
+  assert args.parse(["record", "main.eyg", "hello"])
+    == args.Record(source.File("main.eyg"), Some(["hello"]))
+  assert args.parse(["inspect", "trace.json", "0"])
+    == args.Inspect("trace.json", Some(0))
+  let assert args.InvalidArguments(_) =
+    args.parse(["inspect", "trace.json", "-1"])
+  assert args.parse(["replay", "trace.json"]) == args.Replay("trace.json")
+  assert args.parse(["upload", "trace.json"]) == args.Upload("trace.json")
 }
 
 pub fn profile_inputs_test() {

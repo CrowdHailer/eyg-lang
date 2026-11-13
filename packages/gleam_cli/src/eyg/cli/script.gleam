@@ -22,19 +22,8 @@ pub fn execute(
   use source <- system.try(source.parse_input(code, input))
 
   let state = execute.State(config.client.origin, cache.empty())
-  // The synthetic `.script(arguments)` wrapper carries the user source's
-  // location so any error here is rendered against the actual source.
   let user_meta = source.1
-  let arguments =
-    list.map(arguments, fn(arg) { #(ir.String(arg), user_meta) })
-    |> wrap_list(user_meta)
-  let source = #(
-    ir.Apply(
-      #(ir.Apply(#(ir.Select("script"), user_meta), source), user_meta),
-      arguments,
-    ),
-    user_meta,
-  )
+  let source = call(source, arguments)
 
   use #(result, _) <- system.map(execute.block(source, [], state))
   case result {
@@ -49,6 +38,23 @@ pub fn execute(
       Error(execute.render_error(reason, location, k, cwd))
     }
   }
+}
+
+/// Call the `script` field of a module with the command line arguments.
+/// The synthetic `.script(arguments)` wrapper carries the user source's
+/// location so any error here is rendered against the actual source.
+pub fn call(source: ir.Node(m), arguments: List(String)) -> ir.Node(m) {
+  let user_meta = source.1
+  let arguments =
+    list.map(arguments, fn(arg) { #(ir.String(arg), user_meta) })
+    |> wrap_list(user_meta)
+  #(
+    ir.Apply(
+      #(ir.Apply(#(ir.Select("script"), user_meta), source), user_meta),
+      arguments,
+    ),
+    user_meta,
+  )
 }
 
 fn wrap_list(items, meta) {
