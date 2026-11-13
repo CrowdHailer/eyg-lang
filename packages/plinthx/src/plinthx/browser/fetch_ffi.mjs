@@ -27,6 +27,13 @@ export function newResponse(constructor, body, status, headers) {
   try { return Result$Ok(new constructor(body, { status, headers: Array.from(headers) })); }
   catch (error) { return Result$Error(String(error)); }
 }
+export function newResponseBits(constructor, body, status, headers) {
+  try {
+    if (body.bitSize % 8 !== 0) return Result$Error("response body must contain whole bytes");
+    const bytes = body.bitOffset === 0 ? body.rawBuffer : Uint8Array.from({ length: body.byteSize }, (_, i) => body.byteAt(i));
+    return Result$Ok(new constructor(bytes, { status, headers: Array.from(headers) }));
+  } catch (error) { return Result$Error(String(error)); }
+}
 export async function text(response) {
   try { return Result$Ok(await response.text()); }
   catch (error) { return Result$Error(String(error)); }

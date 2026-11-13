@@ -23,6 +23,14 @@ pub fn new_response(
   headers: List(#(String, String)),
 ) -> Result(Response, String)
 
+@external(javascript, "./fetch_ffi.mjs", "newResponseBits")
+pub fn new_response_bits(
+  constructor: ResponseConstructor,
+  body: BitArray,
+  status: Int,
+  headers: List(#(String, String)),
+) -> Result(Response, String)
+
 @external(javascript, "./fetch_ffi.mjs", "requestUrl")
 pub fn request_url(request: Request) -> String
 
