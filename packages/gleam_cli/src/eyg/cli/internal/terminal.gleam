@@ -1,6 +1,7 @@
 //// Styling for terminal output, plain text when output is not a terminal or NO_COLOR is set.
 
 import gleam/list
+import javascript/mutable_reference as cell
 import plinthx/node/process
 import plinthx/node/tty
 
@@ -30,4 +31,47 @@ pub fn style(
     True -> apply(text)
     False -> text
   }
+}
+
+pub opaque type Interrupt {
+  Interrupt(pressed: cell.MutableReference(Bool), listener: fn() -> Nil)
+}
+
+pub fn interrupt() {
+  let pressed = cell.new(False)
+  let listener = fn() {
+    let _ = cell.set(pressed, True)
+    Nil
+  }
+  Interrupt(pressed, listener)
+}
+
+pub fn request_stop(interrupt: Interrupt) {
+  interrupt.listener()
+}
+
+pub fn start_turn(interrupt: Interrupt) {
+  let _ = cell.set(interrupt.pressed, False)
+  case process.get() {
+    Ok(host) -> {
+      let _ = process.remove_signal_listener(host, "SIGINT", interrupt.listener)
+      let _ = process.on_signal(host, "SIGINT", interrupt.listener)
+      Nil
+    }
+    Error(_) -> Nil
+  }
+}
+
+pub fn end_turn(interrupt: Interrupt) {
+  case process.get() {
+    Ok(host) -> {
+      let _ = process.remove_signal_listener(host, "SIGINT", interrupt.listener)
+      Nil
+    }
+    Error(_) -> Nil
+  }
+}
+
+pub fn interrupted(interrupt: Interrupt) {
+  cell.get(interrupt.pressed)
 }

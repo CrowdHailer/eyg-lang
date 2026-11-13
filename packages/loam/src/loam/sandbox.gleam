@@ -25,6 +25,7 @@ pub type Sandbox(a) {
     cwd: String,
     stdin: List(String),
     prompt_responses: List(Result(String, Nil)),
+    keys: List(String),
     stdout: List(String),
     stderr: List(String),
     environment: Dict(String, String),
@@ -45,6 +46,7 @@ pub fn sandbox() -> Sandbox(Nil) {
     stdin: [],
     // This being separate to stdin is not great but it's not part of an EYG API that I want to keep stable.
     prompt_responses: [],
+    keys: [],
     stdout: [],
     stderr: [],
     environment: dict.new(),
@@ -83,6 +85,10 @@ pub fn with_env(
 /// Configure the wall clock in Unix milliseconds.
 pub fn with_now(sandbox: Sandbox(a), milliseconds: Int) -> Sandbox(a) {
   Sandbox(..sandbox, now: milliseconds)
+}
+
+pub fn with_keys(sandbox: Sandbox(a), keys: List(String)) -> Sandbox(a) {
+  Sandbox(..sandbox, keys:)
 }
 
 /// Supply random results in consumption order; missing or out-of-range fixtures fail the test.
@@ -304,6 +310,17 @@ pub fn run(
       response
       |> resume
       |> run(sandbox)
+    }
+    system.ReadKey(milliseconds, resume) -> {
+      case sandbox.keys {
+        [key, ..keys] ->
+          run(resume(option.Some(key)), Sandbox(..sandbox, keys:))
+        [] ->
+          run(
+            resume(option.None),
+            Sandbox(..sandbox, now: sandbox.now + int.max(0, milliseconds)),
+          )
+      }
     }
     system.GenerateKey(resume) ->
       generate_key()

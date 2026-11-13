@@ -2,7 +2,28 @@ import gleam/int
 import gleam/option.{None, Some}
 import loam/sandbox
 import loam/system
+import loam/virtual
 import simplifile
+
+pub fn keys_are_ordered_and_empty_reads_advance_virtual_time_test() {
+  let workflow = {
+    use first <- system.then(system.read_key(50))
+    use second <- system.then(system.read_key(50))
+    use none <- system.map(system.read_key(50))
+    #(first, second, none)
+  }
+  let input =
+    sandbox.sandbox()
+    |> sandbox.with_keys(["ArrowUp", "q"])
+    |> sandbox.with_now(1000)
+  let assert #(sandbox.Returned(keys), result) = sandbox.run(workflow, input)
+  assert keys == #(Some("ArrowUp"), Some("q"), None)
+  assert result.now == 1050
+  let machine = virtual.new("/", 1000, 1) |> virtual.with_keys(["ArrowUp", "q"])
+  let assert system.Done(#(Ok(keys), result)) = virtual.run(workflow, machine)
+  assert keys == #(Some("ArrowUp"), Some("q"), None)
+  assert result.clock == 1050
+}
 
 pub fn resolve_relative_paths_test() {
   assert system.resolve_relative("/project/src", "../data/./file")
