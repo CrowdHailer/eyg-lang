@@ -1,0 +1,50 @@
+// Channel shell policies.
+//
+// A channel shell is the policy for every program run from a channel:
+// programs people post, programs the channel's agent runs and anything the channel starts.
+// It is a record with a gate function for each effect the channel may use.
+// Every field is required and checked when the policy is set.
+// Start from reject_all and overwrite the gates that should allow effects.
+//
+// Gates receive the effect's value and return `Pass(value)` to perform the effect,
+// possibly with a changed value, or `Mock(value)` to return a value without performing it.
+// Gates are pure, they cannot perform effects.
+
+let policy = import "../overlay/policy.eyg"
+let platform = import "./platform.eyg"
+let reject_all = platform.reject_all
+let pass = policy.pass
+
+// Every effect available on the cloud, each performed unchanged.
+// Start from this record and overwrite the fields to restrict.
+let everything = {
+  env: pass,
+  fetch: pass,
+  flip: pass,
+  now: pass,
+  post: pass,
+  random: pass,
+  sleep: pass,
+  standard_error: pass,
+  standard_out: pass,
+  ..reject_all
+}
+
+// Reply with an error instead of performing an effect.
+let deny = policy.deny
+
+// No network access, everything else is allowed.
+let offline = {
+  fetch: deny("fetch denied by channel shell"),
+  ..everything
+}
+
+{
+  reject_all,
+  everything,
+  offline,
+  deny,
+  pass,
+  fetch_hosts: policy.fetch_hosts,
+  with_header: policy.with_header
+}

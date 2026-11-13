@@ -51,6 +51,10 @@ pub type Pattern {
 }
 
 fn do_destructure(tokens, acc) {
+  let tokens = case tokens {
+    [#(token, at), ..rest] -> [#(field_token(token), at), ..rest]
+    [] -> []
+  }
   case tokens {
     [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
     // can be spaces between colon and rest
@@ -390,7 +394,11 @@ fn after_expression(exp, rest) {
         })
       after_expression(exp, rest)
     }
-    [#(t.Dot, dot_at), #(t.Name(label), name_at), ..rest] -> {
+    [#(t.Dot, dot_at), #(token, name_at), ..rest] -> {
+      use label <- try(case field_token(token) {
+        t.Name(label) -> Ok(label)
+        _ -> Error(UnexpectedToken(token, name_at))
+      })
       let end = name_at + string.length(label)
       let select = #(ir.Select(label), #(dot_at, end))
       let #(_value, #(start, _)) = exp
@@ -489,8 +497,19 @@ pub fn build_list(reversed, acc) {
   }
 }
 
+// Keywords can name fields, but remain reserved as bindings.
+// Use an alias when destructuring: {handle: on_input}.
+fn field_token(token) {
+  case token {
+    t.Let | t.Match | t.Perform | t.Deep | t.Handle | t.Import | t.Todo ->
+      t.Name(t.to_string(token))
+    _ -> token
+  }
+}
+
 fn do_record(rest, start, acc) {
   use #(#(token, kstart), rest) <- try(pop(rest))
+  let token = field_token(token)
   case token {
     t.RightBrace ->
       // in the empty case the finishing span covers the whole record `{}`

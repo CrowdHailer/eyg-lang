@@ -219,6 +219,8 @@ outer(inner(value))
 ## Records
 
 Records are ordered collections of named fields, written with `{}`.
+Keywords can name explicit fields: `{handle: (value) -> { value }}` and `config.handle`.
+Use an alias when destructuring a keyword field, such as `let {handle: on_input} = config`; keywords remain reserved as variable names.
 
 ```eyg
 let _ = {}

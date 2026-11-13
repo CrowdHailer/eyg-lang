@@ -34,6 +34,16 @@ pub fn literal_test() {
   // |> should.equal(#(ir.String("hello"), #(0, 7)))
 }
 
+pub fn keywords_can_name_explicit_record_fields_test() {
+  let assert Ok(_) =
+    parser.all_from_string(
+      "let config = {handle: (value) -> { value }, import: 1} let changed = {handle: (value) -> { !int_add(value, 1) }, ..config} let {handle: on_input} = changed on_input(config.import)",
+    )
+  let assert Ok(_) =
+    parser.all_from_string("{handle: (value) -> { value }}.handle(42)")
+  let assert Error(_) = parser.all_from_string("let handle = 1 handle")
+}
+
 pub fn todo_test() {
   "  todo"
   |> parser.all_from_string()

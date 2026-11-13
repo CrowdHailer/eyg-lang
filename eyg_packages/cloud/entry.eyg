@@ -1,0 +1,15 @@
+let aok = @aok
+let list = @standard.list
+let tests = list.flatten([
+  import "./test/shell_test.eyg"
+])
+
+{
+  tests,
+  script: (_) -> {
+    match !equal(aok.all(tests).failed, 0) {
+      True(_) -> { 0 }
+      False(_) -> { 1 }
+    }
+  }
+}

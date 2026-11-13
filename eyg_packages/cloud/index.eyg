@@ -1,0 +1,5 @@
+let platform = import "./platform.eyg"
+{
+  reject_all: platform.reject_all,
+  shell: import "./shell.eyg"
+}

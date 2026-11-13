@@ -13,13 +13,17 @@ import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/parser
+import filepath
+import gleam/bit_array
 import gleam/crypto
 import gleam/dict
 import gleam/erlang/process
 import gleam/httpc
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
@@ -27,6 +31,7 @@ import gleam/string
 import ogre/origin
 import overlay/check
 import overlay/policy
+import simplifile
 import touch_grass
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
@@ -170,6 +175,15 @@ pub fn run(
   host: Host,
   state: State,
 ) -> #(Run, State) {
+  run_with_lookup(code, scope, policy, host, state, program_reference)
+}
+
+/// Only trusted workspace configuration can import modules from the host.
+pub fn run_configuration(code, policy, host, state) {
+  run_with_lookup(code, [], policy, host, state, lookup)
+}
+
+fn run_with_lookup(code, scope, policy, host, state, resolve) {
   case parser.all_from_string(code) {
     Error(reason) -> #(Run(Error(parser.format_error(reason, code)), []), state)
     Ok(source) ->
@@ -179,11 +193,19 @@ pub fn run(
         policy,
         host,
         [],
+        resolve,
       )
   }
 }
 
-fn loop(returned, state: State, policy, host, output) -> #(Run, State) {
+fn loop(
+  returned,
+  state: State,
+  policy,
+  host,
+  output,
+  resolve,
+) -> #(Run, State) {
   case returned {
     Ok(value) -> #(Run(Ok(option.Some(value)), output), state)
     Error(#(break.Vacant, _, _, state.Empty)) -> #(
@@ -205,6 +227,7 @@ fn loop(returned, state: State, policy, host, output) -> #(Run, State) {
                     policy,
                     host,
                     output,
+                    resolve,
                   )
                 }
                 Error(reason) -> #(Run(Error(reason), output), state)
@@ -215,7 +238,14 @@ fn loop(returned, state: State, policy, host, output) -> #(Run, State) {
             )
           }
         policy.Resume(value) ->
-          loop(expression.resume(value, env, k), state, policy, host, output)
+          loop(
+            expression.resume(value, env, k),
+            state,
+            policy,
+            host,
+            output,
+            resolve,
+          )
         policy.Failed(#(reason, _, _, _)) -> #(
           Run(Error("Policy failed: " <> simple_debug.describe(reason)), output),
           state,
@@ -227,11 +257,18 @@ fn loop(returned, state: State, policy, host, output) -> #(Run, State) {
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
-      let #(value, cache) = lookup(reference, state)
+      let #(value, cache) = resolve(reference, state)
       let state = State(..state, cache:)
       case value {
         Ok(value) ->
-          loop(expression.resume(value, env, k), state, policy, host, output)
+          loop(
+            expression.resume(value, env, k),
+            state,
+            policy,
+            host,
+            output,
+            resolve,
+          )
         Error(reason) -> #(Run(Error(reason), output), state)
       }
     }
@@ -312,7 +349,7 @@ fn result_string(result) {
   }
 }
 
-pub fn lookup(
+fn program_reference(
   reference: ir.Reference,
   state: State,
 ) -> #(Result(state.Value(#(Int, Int)), String), cache.Cache(Meta)) {
@@ -322,6 +359,88 @@ pub fn lookup(
       state.cache,
     )
     _ -> lookup_hub(reference, state)
+  }
+}
+
+/// Resolve references for trusted configuration and its pure checked closures.
+pub fn lookup(reference: ir.Reference, state: State) {
+  case reference {
+    ir.Relative(path) -> relative(path, state)
+    _ -> lookup_hub(reference, state)
+  }
+}
+
+/// Evaluate the module at a path relative to the state's root.
+/// Modules are evaluated without effects, their relative imports are read from their own directory.
+fn relative(path, state: State) {
+  case state.root {
+    option.None -> #(
+      Error("Relative import of " <> path <> " is not available"),
+      state.cache,
+    )
+    option.Some(root) -> {
+      let file = case path {
+        "/" <> _ -> path
+        _ -> filepath.join(root, path)
+      }
+      case read_module(file) {
+        Error(reason) -> #(Error(reason), state.cache)
+        Ok(source) -> {
+          let directory = filepath.directory_name(file)
+          let state = State(..state, root: option.Some(directory))
+          let #(result, state) =
+            module_loop(expression.execute(source, []), state, lookup)
+          #(result, state.cache)
+        }
+      }
+    }
+  }
+}
+
+fn read_module(file) {
+  use bytes <- result.try(
+    simplifile.read_bits(file)
+    |> result.map_error(fn(reason) {
+      "Failed to read " <> file <> ": " <> simplifile.describe_error(reason)
+    }),
+  )
+  parse_module(bytes, file)
+}
+
+fn parse_module(bytes, file) {
+  case string.ends_with(file, ".json") {
+    True ->
+      json.parse_bits(bytes, dag_json.decoder(#(0, 0)))
+      |> result.replace_error("Invalid EYG module " <> file)
+    False ->
+      case bit_array.to_string(bytes) {
+        Ok(code) ->
+          parser.all_from_string(code)
+          |> result.map_error(fn(reason) {
+            file <> ": " <> parser.format_error(reason, code)
+          })
+        Error(Nil) -> Error("Module is not UTF-8 " <> file)
+      }
+  }
+}
+
+fn module_loop(returned, state: State, resolve) {
+  case returned {
+    Ok(value) -> #(Ok(value), state)
+    Error(#(break.Vacant, _, _, state.Empty)) -> #(
+      Error("Module has no value"),
+      state,
+    )
+    Error(#(break.UndefinedReference(reference), _, env, k)) -> {
+      let #(value, cache) = resolve(reference, state)
+      let state = State(..state, cache:)
+      case value {
+        Ok(value) ->
+          module_loop(expression.resume(value, env, k), state, resolve)
+        Error(reason) -> #(Error(reason), state)
+      }
+    }
+    Error(#(reason, _, _, _)) -> #(Error(simple_debug.describe(reason)), state)
   }
 }
 

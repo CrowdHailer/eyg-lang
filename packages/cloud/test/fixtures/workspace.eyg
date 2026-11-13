@@ -1,0 +1,15 @@
+let cloud = import "../../../../eyg_packages/cloud/index.eyg"
+
+{
+  llm: {
+    provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
+    model: "test-model"
+  },
+  readme: "The test workspace.",
+  channel: ({name}) -> {
+    match !equal(name, "general") {
+      True(_) -> { {handle: ({text}) -> { [Post({thread: None({}), text})] }, channel_shell: cloud.shell.everything, readme: "Be helpful."} }
+      False(_) -> { {handle: (_) -> { [] }, channel_shell: {post: cloud.shell.pass, ..cloud.reject_all}} }
+    }
+  }
+}

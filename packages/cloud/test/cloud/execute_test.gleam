@@ -1,13 +1,13 @@
 import cloud/beam/execute
-import eyg/hub/cache
+import cloud/test_helpers
+import eyg/interpreter/cast
 import eyg/interpreter/value as v
+import gleam/dict
 import gleam/erlang/process
 import gleam/option.{Some}
-import ogre/origin
 
 pub fn state() {
-  let assert Ok(origin) = origin.from_string_strict("https://eyg.run")
-  execute.State(origin:, cache: cache.ready(), root: option.None)
+  test_helpers.state()
 }
 
 /// Evaluate EYG source to a value, for building policies in tests.
@@ -149,4 +149,21 @@ pub fn successive_programs_do_not_retain_scope_test() {
   let #(execute.Run(result: second, ..), _) =
     execute.run("retained", [], execute.unrestricted(), host, next)
   let assert Error(_) = second
+}
+
+pub fn package_reject_all_matches_the_native_platform_contract_test() {
+  let state = execute.State(..state(), root: Some("."))
+  let #(run, state) =
+    execute.run_configuration(
+      "import \"../../eyg_packages/cloud/platform.eyg\".reject_all",
+      execute.unrestricted(),
+      execute.Host(post: fn(_) { Error("Configuration cannot post") }),
+      state,
+    )
+  let assert Ok(Some(package)) = run.result
+  let assert Ok(native) = cast.field("reject_all", Ok, execute.platform())
+  let assert Ok(package_fields) = cast.as_record(package)
+  let assert Ok(native_fields) = cast.as_record(native)
+  assert dict.keys(package_fields) == dict.keys(native_fields)
+  let assert Ok(_) = execute.decode_policy(package, state)
 }

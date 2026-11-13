@@ -1,0 +1,76 @@
+let {assert} = @aok
+let cloud = import "../index.eyg"
+let shell = cloud.shell
+
+let expect_pass = (decision) -> {
+  match decision {
+    Pass(value) -> { value }
+    Mock(_) -> { !never(perform Abort("expected Pass, got Mock")) }
+    Reject(_) -> { !never(perform Abort("expected Pass, got Reject")) }
+  }
+}
+
+let expect_mock = (decision) -> {
+  match decision {
+    Mock(value) -> { value }
+    Pass(_) -> { !never(perform Abort("expected Mock, got Pass")) }
+    Reject(_) -> { !never(perform Abort("expected Mock, got Reject")) }
+  }
+}
+
+let request = {
+  method: GET({}),
+  scheme: HTTPS({}),
+  host: "example.com",
+  port: None({}),
+  path: "/",
+  query: None({}),
+  headers: [],
+  body: !string_to_binary("")
+}
+
+let test_everything_passes = (_) -> {
+  let s = shell.everything
+  let _ = assert.equal_string("hi", expect_pass(s.post("hi")))
+  let _ = assert.equal_string("out", expect_pass(s.standard_out("out")))
+  let _ = assert.equal_string("KEY", expect_pass(s.env("KEY")))
+  let _ = assert.equal_string("example.com", expect_pass(s.fetch(request)).host)
+  {}
+}
+
+let test_offline_denies_fetch = (_) -> {
+  let s = shell.offline
+  let _ = assert.equal_string(
+    "fetch denied by channel shell",
+    assert.error(expect_mock(s.fetch(request)))
+  )
+  let _ = assert.equal_string("hi", expect_pass(s.post("hi")))
+  {}
+}
+
+let expect_reject = (decision) -> {
+  match decision {
+    Reject(_) -> { {} }
+    | (_) -> { !never(perform Abort("expected Reject")) }
+  }
+}
+
+let test_defaults_reject_every_gate = (_) -> {
+  let s = cloud.reject_all
+  let _ = expect_reject(s.env("KEY"))
+  let _ = expect_reject(s.fetch(request))
+  let _ = expect_reject(s.flip({}))
+  let _ = expect_reject(s.now({}))
+  let _ = expect_reject(s.post("hello"))
+  let _ = expect_reject(s.random(10))
+  let _ = expect_reject(s.sleep(0))
+  let _ = expect_reject(s.standard_error("error"))
+  let _ = expect_reject(s.standard_out("out"))
+  {}
+}
+
+[
+  {name: "cloud defaults reject every gate", test: test_defaults_reject_every_gate},
+  {name: "cloud shell everything passes", test: test_everything_passes},
+  {name: "cloud shell offline denies fetch", test: test_offline_denies_fetch}
+]

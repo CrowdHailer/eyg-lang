@@ -1,0 +1,15 @@
+// Complete defaults; the cloud tests check this record against its harness.
+let reject = (_) -> { Reject({}) }
+{
+  reject_all: {
+    env: reject,
+    fetch: reject,
+    flip: reject,
+    now: reject,
+    post: reject,
+    random: reject,
+    sleep: reject,
+    standard_error: reject,
+    standard_out: reject
+  }
+}
