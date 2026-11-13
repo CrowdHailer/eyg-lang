@@ -74,6 +74,34 @@ let discord = (info) -> {
   }
 }
 
+let whatsapp = (info) -> {
+  match {
+    WhatsAppMessage(event) -> {
+      let message = event.message
+      match message.content {
+        Reaction(reaction) -> { [Trigger(Some(reaction.message_id))] }
+        | (content) -> {
+          let text = match content {
+            Text(text) -> { text }
+            Button(button) -> { button.text }
+            Interactive(reply) -> { reply.title }
+            Media(media) -> {
+              let kind = !string_append("[", !string_append(media.type, "]"))
+              match !equal(media.caption, "") {
+                True(_) -> { kind }
+                False(_) -> { !string_append(kind, !string_append(" ", media.caption)) }
+              }
+            }
+            Other(kind) -> { !string_append("[", !string_append(kind, "]")) }
+          }
+          let author = match message.name { Some(name) -> { name } None(_) -> { message.from } }
+          submit(info.name, None({}), message.id, author, text)
+        }
+      }
+    }
+  }
+}
+
 let for_channel = (info) -> {
   match !equal(info.platform, "chat") {
     True(_) -> { chat(info) }
@@ -83,7 +111,12 @@ let for_channel = (info) -> {
         False(_) -> {
           match !equal(info.platform, "discord") {
             True(_) -> { discord(info) }
-            False(_) -> { (_) -> { [] } }
+            False(_) -> {
+              match !equal(info.platform, "whatsapp") {
+                True(_) -> { whatsapp(info) }
+                False(_) -> { (_) -> { [] } }
+              }
+            }
           }
         }
       }
@@ -91,4 +124,4 @@ let for_channel = (info) -> {
   }
 }
 
-{chat, slack, discord, for_channel}
+{chat, slack, discord, whatsapp, for_channel}

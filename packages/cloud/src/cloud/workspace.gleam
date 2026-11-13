@@ -30,10 +30,12 @@ import cloud/operation
 import cloud/plugins/discord
 import cloud/plugins/example_chat
 import cloud/plugins/slack
+import cloud/plugins/whatsapp
 import cloud/session
 import cloud/shell
 import cloud/tracing
 import cloud/trigger.{type Trigger}
+import cloud/webhook
 import cloud/work
 import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
@@ -88,8 +90,15 @@ pub type Message {
     connection: String,
     reply: Subject(Result(List(data.Value), String)),
   )
-  /// A webhook delivery for a connection.
-  Webhook(delivery: github.Delivery, reply: Subject(Result(Nil, String)))
+  /// A plugin answers the webhook requests of the connection `name`.
+  Listen(connection: String, listener: webhook.Listener)
+  /// A request to the webhook of the connection `connection`,
+  /// replies with an error when there is no such connection.
+  Webhook(
+    connection: String,
+    request: webhook.Request,
+    reply: Subject(Result(webhook.Response, String)),
+  )
   /// Give programs in this workspace the configuration API, gated by their channel shells.
   SetApi(api: fn(operation.Operation) -> Result(data.Value, String))
   /// Every channel of every connected chat.
@@ -134,6 +143,8 @@ type State {
     self: Subject(Message),
     load: config.Loader,
     platforms: Dict(String, channel.Outbound),
+    /// Plugins that answer webhook requests, by connection name.
+    listeners: Dict(String, webhook.Listener),
     sessions: Dict(String, Subject(session.Message)),
     files: Subject(files.Message),
     /// Triggers per channel, keyed by `platform:channel`.
@@ -192,6 +203,7 @@ pub fn start_with(
       self:,
       load:,
       platforms: dict.new(),
+      listeners: dict.new(),
       sessions: dict.new(),
       files:,
       triggers: dict.new(),
@@ -239,6 +251,13 @@ fn start_connection(
       connection.Discord(token:, guild:) -> {
         use outbound <- result.map(discord.start(token, guild, inbound))
         process.send(workspace, Connect(discord.platform, outbound))
+      }
+      connection.WhatsApp(token:, phone_number_id:, app_secret:, verify_token:) -> {
+        let config =
+          whatsapp.Config(token:, phone_number_id:, app_secret:, verify_token:)
+        use #(outbound, listener) <- result.map(whatsapp.start(config, inbound))
+        process.send(workspace, Listen(name, listener))
+        process.send(workspace, Connect(whatsapp.platform, outbound))
       }
       connection.GitHub(repositories:, every:, ..) ->
         Ok(github.start(name, repositories, every, observe))
@@ -385,18 +404,27 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         False -> state
       }
     }
-    Webhook(delivery:, reply:) -> {
-      let event = webhook(state, delivery)
-      process.send(reply, result.replace(event, Nil))
+    Listen(connection:, listener:) ->
+      State(
+        ..state,
+        listeners: dict.insert(state.listeners, connection, listener),
+      )
+    Webhook(connection: name, request:, reply:) -> {
+      let event = webhook(state, name, request)
+      process.send(reply, case event {
+        Ok(Ok(_)) -> Ok(webhook.accepted())
+        Ok(Error(response)) -> Ok(response)
+        Error(reason) -> Error(reason)
+      })
       case event {
-        Ok(event) -> {
+        Ok(Ok(event)) -> {
           let log =
             dict.upsert(state.log, event.connection, fn(log) {
               connection.append_log(option.unwrap(log, []), event, max_log)
             })
           observed(State(..state, log:), event)
         }
-        Error(_) -> state
+        _ -> state
       }
     }
     SetApi(api:) -> State(..state, api:)
@@ -461,25 +489,39 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
   |> actor.continue
 }
 
-/// Check and convert a webhook delivery, only GitHub connections with a secret accept webhooks.
+/// Answer a webhook request.
+/// A listening plugin answers for its connection, GitHub connections with a secret
+/// accept signed deliveries, which become an event.
 fn webhook(
   state: State,
-  delivery: github.Delivery,
-) -> Result(connection.Event, String) {
-  let github.Delivery(connection: name, kind:, delivery: id, signature:, body:) =
-    delivery
+  name: String,
+  request: webhook.Request,
+) -> Result(Result(connection.Event, webhook.Response), String) {
   let found = list.find(state.connections, fn(c) { c.name == name })
-  case found {
+  case found, dict.get(state.listeners, name) {
+    Error(Nil), _ -> Error("no connection named " <> name)
+    Ok(_), Ok(listener) -> Ok(Error(listener(request)))
     Ok(connection.Connection(
       source: connection.GitHub(secret: Some(secret), ..),
       ..,
-    )) ->
+    )),
+      _
+    -> {
+      let body = request.body
+      let signature = webhook.header(request, "x-hub-signature-256")
       case github.verify(secret, body, signature) {
-        True -> github.from_webhook(name, kind, id, body)
-        False -> Error("invalid signature")
+        True -> {
+          let kind = webhook.header(request, "x-github-event")
+          let id = webhook.header(request, "x-github-delivery")
+          github.from_webhook(name, kind, id, body)
+          |> result.map_error(fn(reason) { webhook.Response(400, reason) })
+        }
+        False -> Error(webhook.Response(401, "invalid signature"))
       }
-    Ok(_) -> Error(name <> " does not accept webhooks")
-    Error(Nil) -> Error("no connection named " <> name)
+      |> Ok
+    }
+    Ok(_), _ ->
+      Ok(Error(webhook.Response(404, name <> " does not accept webhooks")))
   }
 }
 

@@ -6,6 +6,7 @@ import cloud/execute_test
 import cloud/plugins/chat_input
 import cloud/plugins/discord
 import cloud/plugins/slack
+import cloud/plugins/whatsapp
 import cloud/test_helpers
 import cloud/trigger
 import eyg/interpreter/capture
@@ -60,6 +61,7 @@ pub fn named_factories_check_handlers_for_each_native_platform_test() {
       #("chat", chat_input.input_type()),
       #("slack", slack.input_type()),
       #("discord", discord.input_type()),
+      #("whatsapp", whatsapp.input_type()),
     ],
     fn(platform) {
       list.each(["general", "links", "random"], fn(name) {
@@ -105,6 +107,10 @@ pub fn link_summaries_project_each_platforms_native_reaction_test() {
       #(
         "DiscordReaction({message: {content: \"discord link\"}, emoji: \"📚\"})",
         "discord link",
+      ),
+      #(
+        "WhatsAppMessage({message: {content: Reaction({emoji: \"📚\"})}, referenced: Some({content: Text(\"whatsapp link\")})})",
+        "whatsapp link",
       ),
     ],
     fn(example) {

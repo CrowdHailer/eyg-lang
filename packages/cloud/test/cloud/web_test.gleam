@@ -41,7 +41,7 @@ fn start() {
       state:,
     )
   let app =
-    server.app(server.Context(store, fn(_) { Error("none") }, Some(web)))
+    server.app(server.Context(store, fn(_, _) { Error("none") }, Some(web)))
   #(app, web)
 }
 

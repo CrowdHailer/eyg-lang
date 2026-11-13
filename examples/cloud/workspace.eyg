@@ -37,6 +37,18 @@ let summarise_links = {
       ChatReacted(event) -> { Some(event.message.text) }
       SlackReaction(event) -> { Some(event.message.text) }
       DiscordReaction(event) -> { Some(event.message.content) }
+      WhatsAppMessage(event) -> {
+        match event.referenced {
+          Some(message) -> {
+            match message.content {
+              Text(text) -> { Some(text) }
+              Media(media) -> { Some(media.caption) }
+              | (_) -> { None({}) }
+            }
+          }
+          None(_) -> { None({}) }
+        }
+      }
       | (_) -> { None({}) }
     }
     match text {

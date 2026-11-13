@@ -5,18 +5,26 @@
 
 let false = (_) -> { False({}) }
 
+// A message posted in a chat channel.
 let posted = match {
   ChatPosted(_) -> { True({}) }
   SlackMessage(_) -> { True({}) }
   DiscordMessage(_) -> { True({}) }
+  WhatsAppMessage(event) -> {
+    match event.message.content { Reaction(_) -> { False({}) } | (_) -> { True({}) } }
+  }
   | false
 }
 
+// A reaction with this emoji name added to a chat message.
 let reaction = (emoji) -> {
   match {
-    ChatReacted(event) -> { !equal(event.emoji, emoji) }
+    ChatReacted(reacted) -> { !equal(reacted.emoji, emoji) }
     SlackReaction(event) -> { !equal(event.reaction, emoji) }
     DiscordReaction(event) -> { !equal(event.emoji, emoji) }
+    WhatsAppMessage(event) -> {
+      match event.message.content { Reaction(reaction) -> { !equal(reaction.emoji, emoji) } | false }
+    }
     | false
   }
 }
@@ -28,11 +36,21 @@ let includes = (text, part) -> {
   }
 }
 
+// A chat message posted containing the text.
 let contains = (text) -> {
   match {
     ChatPosted(message) -> { includes(message.text, text) }
     SlackMessage(event) -> { includes(event.message.text, text) }
     DiscordMessage(event) -> { includes(event.message.content, text) }
+    WhatsAppMessage(event) -> {
+      match event.message.content {
+        Text(value) -> { includes(value, text) }
+        Button(button) -> { includes(button.text, text) }
+        Interactive(reply) -> { includes(reply.title, text) }
+        Media(media) -> { includes(media.caption, text) }
+        | false
+      }
+    }
     | false
   }
 }

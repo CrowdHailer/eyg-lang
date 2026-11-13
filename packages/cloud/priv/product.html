@@ -132,19 +132,45 @@ const textCases = (body, fallback) => `match {
   ChatPosted(message) -> { ${body('message.text')} }
   SlackMessage(event) -> { ${body('event.message.text')} }
   DiscordMessage(event) -> { ${body('event.message.content')} }
+  WhatsAppMessage(event) -> {
+    match event.message.content {
+      Text(text) -> { ${body('text')} }
+      Button(button) -> { ${body('button.text')} }
+      Interactive(reply) -> { ${body('reply.title')} }
+      Media(media) -> { ${body('media.caption')} }
+      | (_) -> { ${fallback} }
+    }
+  }
   | (_) -> { ${fallback} }
 }`;
 const reactionCases = (body, fallback) => `match {
   ChatReacted(event) -> { ${body('event.emoji', 'event.message.text')} }
   SlackReaction(event) -> { ${body('event.reaction', 'event.message.text')} }
   DiscordReaction(event) -> { ${body('event.emoji', 'event.message.content')} }
+  WhatsAppMessage(event) -> {
+    match event.message.content {
+      Reaction(reaction) -> {
+        match event.referenced {
+          Some(message) -> {
+            match message.content {
+              Text(text) -> { ${body('reaction.emoji', 'text')} }
+              Media(media) -> { ${body('reaction.emoji', 'media.caption')} }
+              | (_) -> { ${fallback} }
+            }
+          }
+          None(_) -> { ${fallback} }
+        }
+      }
+      | (_) -> { ${fallback} }
+    }
+  }
   | (_) -> { ${fallback} }
 }`;
 
 const widgets = [
   {
     title: 'Summarise links on 👀',
-    description: 'React to a message and a subagent summarises its links in the thread. Use the platform’s emoji value: eyes on Slack or 👀 on Discord.',
+    description: 'React to a message and a subagent summarises its links in the thread. Use the platform’s emoji value: eyes on Slack or 👀 on Discord and WhatsApp.',
     needs: [],
     fields: [['channel', 'links'], ['emoji', 'eyes'], ['task', 'Fetch each link in this message and post a two sentence summary of each link.']],
     code: ({ emoji, task }) => trigger('summarise-on-' + emoji,

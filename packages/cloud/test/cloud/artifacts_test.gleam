@@ -69,7 +69,7 @@ pub fn serve_test() {
   let assert Ok(_) = save(store, "my notes", page("one"), general)
   let assert Ok(_) = save(store, "my notes", page("two"), general)
   let get = fn(path) {
-    let context = server.Context(store, fn(_) { Error("no webhooks") }, None)
+    let context = server.Context(store, fn(_, _) { Error("no webhooks") }, None)
     let response = testing.get(path) |> testing.send(server.app(context))
     #(response.status, testing.text(response))
   }

@@ -74,8 +74,7 @@ channel
 The runtime checks `handle` against the plugin's input type and the shared work result type.
 It rejects effectful handlers, access to fields the plugin does not supply, and malformed work results.
 Every configured policy is checked against the actual effect interfaces as well.
-Uploads through `SetWorkspaceSource` check all currently connected channels before saving the source.
-A newly discovered channel is checked against its plugin's type when first admitted.
+Uploads validate currently connected channels before replacing the source; newly encountered channels are checked on admission.
 
 Custom handlers can choose different behavior without implementing sessions.
 This example chat handler posts the author's name and ignores reactions:
@@ -117,13 +116,15 @@ Each execution starts with explicit inputs and returns a result; channel executi
 | Example chat | `ChatPosted`, `ChatReacted` | Posted messages retain `id, channel, thread, author: {id, name, bot}, text`. Reactions retain `message, by, emoji`. |
 | Slack | `SlackMessage`, `SlackReaction` | `channel, thread_ts, message, is_self`; reactions also have `user, reaction`. The message retains the history fields and its full JSON in `data`. |
 | Discord | `DiscordMessage`, `DiscordReaction` | `thread, message, is_self`; reactions also have the native `user` object and `emoji` key. Messages retain `id, channel_id, type, author, webhook, content, reactions`. |
+| WhatsApp | `WhatsAppMessage` | `message` and optional `referenced` message. A message retains `id, from, name, timestamp, context, data, content`. Content distinguishes text, reactions, buttons, interactive replies and media. |
 
 The authoritative types live beside each implementation:
 [example chat](../../packages/cloud/src/cloud/plugins/chat_input.gleam),
 [Slack](../../packages/cloud/src/cloud/plugins/slack_input.gleam),
-[Discord](../../packages/cloud/src/cloud/plugins/discord_input.gleam).
+[Discord](../../packages/cloud/src/cloud/plugins/discord_input.gleam), and
+[WhatsApp](../../packages/cloud/src/cloud/plugins/whatsapp.gleam).
 
-Emoji stay native: Slack names and Discord characters or `name:id` keys.
+Emoji stay native: Slack names, Discord characters or `name:id` keys, and WhatsApp characters.
 A handler or trigger may interpret those values for its own purpose.
 
 The example chat polls `GET /api/events?after=<seq>` and skips history on startup.
@@ -131,6 +132,19 @@ Slack polls the last hour and follows changed threads.
 Discord polls the latest 50 messages in channels and active threads, using snowflake timestamps to skip history.
 Discord's outbound operation creates a thread when needed.
 These transport choices do not determine how an event is handled.
+
+## Webhooks
+
+Push plugins also return a listener:
+
+```gleam
+pub fn start(config, emit) -> Result(#(channel.Outbound, webhook.Listener), String)
+```
+
+The workspace registers it at `/connections/<name>/webhook`.
+The listener validates deliveries, hands them to the plugin process, and answers promptly.
+WhatsApp verifies the subscription token and each delivery's HMAC, deduplicates message IDs, and remembers messages for reaction references.
+Each sender is a channel. Its outbound thread selector quotes a message using WhatsApp's reply context.
 
 ## Connect the plugin
 

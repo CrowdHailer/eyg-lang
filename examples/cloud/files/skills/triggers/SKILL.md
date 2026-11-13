@@ -10,6 +10,7 @@ Events are tagged, match on the tag:
 - `ChatPosted(message)` and `ChatReacted({message, emoji, by})` for the example chat.
 - `SlackMessage({message, ...})` and `SlackReaction({message, reaction, ...})` for Slack.
 - `DiscordMessage({message, ...})` and `DiscordReaction({message, emoji, ...})` for Discord.
+- `WhatsAppMessage({message, referenced})` retains native content tags: `Text`, `Reaction`, `Button`, `Interactive`, `Media` or `Other`.
 
 Payloads keep the platform's native fields. Discord uses Unicode such as `📚` or `name:id`; Slack uses reaction names such as `books`.
 - `GitHubIssue`, `GitHubComment`, `GitHubPullRequest`, `GitHubPush`, `GitHubStar`, `GitHubRelease`, `GitHubWorkflowRun`,

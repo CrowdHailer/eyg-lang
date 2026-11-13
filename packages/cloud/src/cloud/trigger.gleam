@@ -9,6 +9,7 @@
 import cloud/plugins/chat_input
 import cloud/plugins/discord_input
 import cloud/plugins/slack_input
+import cloud/plugins/whatsapp
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/capture
@@ -55,6 +56,7 @@ pub fn event_type() {
       chat_input.event_types(),
       slack_input.event_types(),
       discord_input.event_types(),
+      whatsapp.event_types(),
       [
         #(
           "GitHubIssue",

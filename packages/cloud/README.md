@@ -235,3 +235,27 @@ Message IDs (snowflakes) remain strings to avoid losing precision. Ordering is p
 #### Notes
 
 Rate limits return HTTP 429 with a `retry_after` delay in seconds https://discord.com/developers/docs/topics/rate-limits
+
+### WhatsApp
+
+`{name: "whatsapp", source: WhatsApp({token, phone_number_id, app_secret, verify_token})}` connects a WhatsApp business phone number with the [WhatsApp plugin](./src/cloud/plugins/whatsapp.gleam).
+WhatsApp pushes messages to the connection's webhook, `<CLOUD_ORIGIN>/connections/whatsapp/webhook`,
+which must be reachable over HTTPS, use a tunnel when developing locally.
+Each person who messages the number is a channel named by their phone number.
+
+#### Setup
+
+1. Create an app of type "Business" in the [Meta developer dashboard](https://developers.facebook.com/apps/) and add the WhatsApp product.
+2. Copy the phone number id from "API Setup", the test number works while developing.
+3. Create a system user in Business Settings with the `whatsapp_business_messaging` permission and generate a token,
+   save it with `perform SetSecret({name: "WHATSAPP_TOKEN", value: token})`.
+4. Copy the app secret from "App settings > Basic" and save it as `WHATSAPP_APP_SECRET`.
+5. Under "WhatsApp > Configuration" set the callback URL to the connection's webhook,
+   and the verify token to the connection's `verify_token`, Meta checks it with a `GET`.
+6. Subscribe the webhook to the `messages` field.
+
+#### Notes
+
+A business can only send free form messages within 24 hours of the person's last message,
+outside that window WhatsApp requires an approved template and a post fails with error 131047.
+Scheduled messages to quiet conversations can fail for this reason.

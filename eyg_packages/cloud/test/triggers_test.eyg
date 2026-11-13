@@ -56,6 +56,25 @@ let test_native_platforms = (_) -> {
   {}
 }
 
+let test_whatsapp = (_) -> {
+  let event = (content) -> { WhatsAppMessage({message: {content}}) }
+  let _ = !list_fold([
+    Text("yes please"), Button({text: "yes please"}), Interactive({title: "yes please"}),
+    Media({caption: "yes please"})
+  ], {}, (content, _) -> {
+    let _ = assert.equal(True({}), triggers.posted(event(content)))
+    assert.equal(True({}), triggers.contains("please")(event(content)))
+  })
+  let reaction = event(Reaction({message_id: "m1", emoji: "📚"}))
+  let _ = assert.equal(False({}), triggers.posted(reaction))
+  let _ = assert.equal(False({}), triggers.contains("please")(reaction))
+  let _ = assert.equal(False({}), triggers.contains("please")(event(Other("location"))))
+  let _ = assert.equal(True({}), triggers.reaction("📚")(reaction))
+  let _ = assert.equal(False({}), triggers.reaction("books")(reaction))
+  let _ = assert.equal(False({}), triggers.reaction("📚")(event(Text("📚"))))
+  {}
+}
+
 let test_issue_opened = (_) -> {
   let _ = assert.equal(True({}), triggers.issue_opened(issue("opened")))
   let _ = assert.equal(False({}), triggers.issue_opened(issue("closed")))
@@ -80,6 +99,7 @@ let test_title_contains = (_) -> {
 
 [
   {name: "triggers retain native platform values", test: test_native_platforms},
+  {name: "triggers preserve whatsapp content", test: test_whatsapp},
   {name: "triggers posted", test: test_posted},
   {name: "triggers reaction", test: test_reaction},
   {name: "triggers contains", test: test_contains},

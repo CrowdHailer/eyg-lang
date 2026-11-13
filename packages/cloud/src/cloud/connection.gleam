@@ -1,6 +1,6 @@
 //// Connections bring events from other services into a workspace.
 ////
-//// Chat connections, `ExampleChat`, `Slack` and `Discord`, provide channels: messages reach agents
+//// Chat connections, `ExampleChat`, `Slack`, `Discord` and `WhatsApp`, provide channels: messages reach agents
 //// and `eyg` code blocks run with the channel shell.
 //// Every other connection only reports events. Its events are logged and given to the
 //// triggers of the channel the connection names, they never run code by themselves.
@@ -21,6 +21,13 @@ pub type Source {
   Slack(token: String)
   /// The Discord server (guild) with id `guild` the bot with `token` is installed in.
   Discord(token: String, guild: String)
+  /// A WhatsApp business phone number, messages arrive at `/connections/<name>/webhook`.
+  WhatsApp(
+    token: String,
+    phone_number_id: String,
+    app_secret: String,
+    verify_token: String,
+  )
   /// Events of GitHub repositories, `owner/name`.
   /// Polled from the public events API every `every` seconds, 0 disables polling.
   /// Webhooks signed with `secret` are accepted at `/connections/<name>/webhook`.
@@ -56,7 +63,7 @@ pub type Event {
 
 pub fn is_chat(source: Source) -> Bool {
   case source {
-    ExampleChat(..) | Slack(..) | Discord(..) -> True
+    ExampleChat(..) | Slack(..) | Discord(..) | WhatsApp(..) -> True
     _ -> False
   }
 }
@@ -66,6 +73,7 @@ pub fn kind(source: Source) -> String {
     ExampleChat(..) -> "ExampleChat"
     Slack(..) -> "Slack"
     Discord(..) -> "Discord"
+    WhatsApp(..) -> "WhatsApp"
     GitHub(..) -> "GitHub"
     Bsky(..) -> "Bsky"
     Rss(..) -> "Rss"
@@ -103,6 +111,21 @@ fn decode_source(value) {
       use token <- result.try(cast.field("token", cast.as_string, c))
       use guild <- result.map(cast.field("guild", cast.as_string, c))
       Discord(token:, guild:)
+    }),
+    #("WhatsApp", fn(c) {
+      use token <- result.try(cast.field("token", cast.as_string, c))
+      use phone_number_id <- result.try(cast.field(
+        "phone_number_id",
+        cast.as_string,
+        c,
+      ))
+      use app_secret <- result.try(cast.field("app_secret", cast.as_string, c))
+      use verify_token <- result.map(cast.field(
+        "verify_token",
+        cast.as_string,
+        c,
+      ))
+      WhatsApp(token:, phone_number_id:, app_secret:, verify_token:)
     }),
     #("GitHub", fn(c) {
       use repositories <- result.try(strings(c, "repositories"))

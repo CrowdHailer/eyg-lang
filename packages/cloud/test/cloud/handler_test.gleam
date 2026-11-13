@@ -4,6 +4,7 @@ import cloud/plugins/chat_input
 import cloud/plugins/discord
 import cloud/plugins/example_chat
 import cloud/plugins/slack
+import cloud/plugins/whatsapp
 import cloud/test_helpers
 import cloud/work
 import gleam/option.{None}
@@ -60,5 +61,15 @@ pub fn discord_default_handler_accepts_the_plugins_native_type_test() {
     })
   let info =
     config.ChannelInfo("discord", "C1", "general", discord.input_type())
+  let assert Ok(_) = config.channel(workspace, info)
+}
+
+pub fn whatsapp_default_handler_accepts_the_plugins_native_type_test() {
+  let assert Ok(workspace) =
+    config.load("test/fixtures/chat_workspace.eyg", test_helpers.state(), fn(_) {
+      Error("no secrets")
+    })
+  let info =
+    config.ChannelInfo("whatsapp", "123", "general", whatsapp.input_type())
   let assert Ok(_) = config.channel(workspace, info)
 }

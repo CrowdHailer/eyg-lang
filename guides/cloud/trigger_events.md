@@ -41,8 +41,10 @@ The standard handlers request this for incoming messages and reactions.
 | `SlackReaction` | Slack message fields above, plus `reaction, user` |
 | `DiscordMessage` | `thread, message, is_self`; message fields include `id, channel_id, type, author, content, reactions` |
 | `DiscordReaction` | Discord message fields above, plus `emoji, user` |
+| `WhatsAppMessage` | `message: {id, from, name, timestamp, context, data, content}`, `referenced: Option(message)` |
 
 See the [plugin guide](./channel_plugins.md#native-schemas) for the complete type definitions.
+Emoji stay in the platform's format: `books` on Slack, `📚` on WhatsApp, and a character or `name:id` on Discord.
 `cloud.triggers.reaction(emoji)` compares that exact value.
 Scripts match the platform tag to access its fields; there is no shared incoming message shape.
 

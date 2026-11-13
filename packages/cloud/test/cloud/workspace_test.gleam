@@ -2,16 +2,17 @@ import cloud/artifacts
 import cloud/channel
 import cloud/config
 import cloud/connection
-import cloud/connections/github
 import cloud/data
 import cloud/execute_test
 import cloud/plugins/chat_input
 import cloud/test_helpers
+import cloud/webhook
 import cloud/workspace
 import gleam/bit_array
 import gleam/crypto
 import gleam/dict
 import gleam/erlang/process
+import gleam/http
 import gleam/list
 import gleam/option.{None}
 import gleam/string
@@ -553,15 +554,34 @@ pub fn signed_webhooks_run_triggers_test() {
   let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
   let body =
     "{\"action\":\"opened\",\"repository\":{\"full_name\":\"eyg/eyg\"},\"sender\":{\"login\":\"bob\"},\"issue\":{\"number\":3,\"title\":\"Docs\"}}"
-  let delivery = fn(connection, signature) {
-    github.Delivery(connection, "issues", "d1", signature, body)
+  let call = fn(connection, signature) {
+    let headers = [
+      #("x-github-event", "issues"),
+      #("x-github-delivery", "d1"),
+      #("x-hub-signature-256", signature),
+    ]
+    let request = webhook.Request(http.Post, headers, [], body)
+    process.call(workspace, 1000, workspace.Webhook(connection, request, _))
   }
-  let call = fn(delivery) {
-    process.call(workspace, 1000, workspace.Webhook(delivery, _))
-  }
-  assert call(delivery("github", "sha256=bad")) == Error("invalid signature")
-  assert call(delivery("nope", sign(body))) == Error("no connection named nope")
+  assert call("github", "sha256=bad")
+    == Ok(webhook.Response(401, "invalid signature"))
+  assert call("nope", sign(body)) == Error("no connection named nope")
   assert process.receive(posts, 200) == Error(Nil)
-  assert call(delivery("github", sign(body))) == Ok(Nil)
+  assert call("github", sign(body)) == Ok(webhook.accepted())
   assert process.receive(posts, 1000) == Ok(#(general, "New issue: Docs"))
+}
+
+pub fn listening_plugins_answer_their_connections_webhook_test() {
+  let #(workspace, _posts, seen) = start([chat.Completion("", "", [])])
+  // A plugin, such as WhatsApp, reports the messages of a delivery as channel events.
+  let listener = fn(request: webhook.Request) {
+    process.send(workspace, workspace.Inbound(message("m1", request.body)))
+    webhook.Response(200, "ok")
+  }
+  process.send(workspace, workspace.Listen("github", listener))
+  let request = webhook.Request(http.Post, [], [], "summarise this")
+  assert process.call(workspace, 1000, workspace.Webhook("github", request, _))
+    == Ok(webhook.Response(200, "ok"))
+  let assert Ok(text) = process.receive(seen, 1000)
+  assert string.contains(text, "summarise this")
 }

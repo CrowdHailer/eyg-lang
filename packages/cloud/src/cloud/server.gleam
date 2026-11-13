@@ -10,20 +10,20 @@
 //// | `GET /artifacts` | A list of artifacts |
 //// | `GET /artifacts/<name>/<path>` | A file from the latest version, `index.html` for an empty path |
 //// | `GET /artifacts/<name>/v/<version>/<path>` | A file from a version |
-//// | `POST /connections/<name>/webhook` | A GitHub webhook delivery for the connection `<name>` |
+//// | `GET /connections/<name>/webhook`, `POST` | A webhook request for the connection `<name>`, such as a GitHub delivery |
 ////
 //// Artifact files are served with a sandbox content security policy,
 //// so scripts in a bundle run in an opaque origin without network access.
 
 import cloud/artifacts
 import cloud/beam/execute
-import cloud/connections/github
 import cloud/operation
 import cloud/registry
 import cloud/users.{type User}
 import cloud/web/json_value
 import cloud/web/runner
 import cloud/web/shell
+import cloud/webhook
 import eyg/interpreter/value as v
 import filepath
 import gleam/bit_array
@@ -50,7 +50,8 @@ import simplifile
 pub type Context {
   Context(
     artifacts: Subject(artifacts.Message),
-    webhook: fn(github.Delivery) -> Result(Nil, String),
+    /// Answer a request to the webhook of a connection.
+    webhook: fn(String, webhook.Request) -> Result(webhook.Response, String),
     /// The web shell and API, not available without a registry.
     web: Option(runner.Context),
   )
@@ -86,6 +87,9 @@ pub fn app(context: Context) -> howdy.App {
     })
     |> controller.get("/artifacts/:name", fn(ctx) {
       serve(context.artifacts, param(ctx, "name"), None, "")
+    })
+    |> controller.get("/connections/:name/webhook", fn(ctx) {
+      webhook(ctx, param(ctx, "name"), context)
     })
     |> controller.post("/connections/:name/webhook", fn(ctx) {
       webhook(ctx, param(ctx, "name"), context)
@@ -252,26 +256,25 @@ fn api(ctx: Request, web: runner.Context, user: User, label: String) {
 }
 
 fn webhook(ctx: Request, name: String, context: Context) {
-  let header = fn(key) {
-    request.get_header(ctx.request, key) |> result.unwrap("")
-  }
   case controller.read_body(ctx, limit: max_body) {
     Error(_) -> text(413, "body too large")
     Ok(body) ->
       case bit_array.to_string(body) {
         Error(Nil) -> text(400, "body is not utf8")
         Ok(body) -> {
+          let query =
+            request.get_query(ctx.request)
+            |> result.unwrap([])
           let delivery =
-            github.Delivery(
-              connection: name,
-              kind: header("x-github-event"),
-              delivery: header("x-github-delivery"),
-              signature: header("x-hub-signature-256"),
+            webhook.Request(
+              method: ctx.request.method,
+              headers: ctx.request.headers,
+              query:,
               body:,
             )
-          case context.webhook(delivery) {
-            Ok(Nil) -> text(202, "accepted")
-            Error(reason) -> text(400, reason)
+          case context.webhook(name, delivery) {
+            Ok(webhook.Response(status:, body:)) -> text(status, body)
+            Error(reason) -> text(404, reason)
           }
         }
       }

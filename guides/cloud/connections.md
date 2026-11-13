@@ -13,6 +13,7 @@ connections: [
   {name: "chat", source: ExampleChat({origin: "http://localhost:8080"})},
   {name: "slack", source: Slack({token: slack_token})},
   {name: "discord", source: Discord({token: discord_token, guild: "1234567890"})},
+  {name: "whatsapp", source: WhatsApp({token: whatsapp_token, phone_number_id: "106540352242922", app_secret: whatsapp_app_secret, verify_token: "choose-a-token"})},
   {name: "github", source: GitHub({repositories: ["owner/repo"], secret: webhook_secret}), channel: "dev"},
   {name: "bsky", source: Bsky({actors: ["gleam.run"]}), channel: "social"},
   {name: "blogs", source: Rss({feeds: ["https://gleam.run/feed.xml"]}), channel: "news"},
@@ -25,7 +26,7 @@ Secrets such as tokens come from the workspace's secrets store with the `Secret`
 
 ## Chats and other connections
 
-**Chats**, `ExampleChat`, `Slack` and `Discord`, provide channels.
+**Chats**, `ExampleChat`, `Slack`, `Discord` and `WhatsApp`, provide channels.
 Every message in a channel reaches the conversation's agent, and a message that is a single `eyg` code block runs with the channel's shell.
 
 **Every other connection** only reports events.
@@ -38,6 +39,7 @@ Agents do not see these events unless a trigger hands them over, for example wit
 | `ExampleChat` | `origin` | [example chat](../../packages/example_chat/README.md) |
 | `Slack` | `token` | [channel plugins](./channel_plugins.md#slack) |
 | `Discord` | `token`, `guild` the server id | [channel plugins](./channel_plugins.md#discord) |
+| `WhatsApp` | `token`, `phone_number_id`, `app_secret`, `verify_token` | [channel plugins](./channel_plugins.md#whatsapp) |
 | `GitHub` | `repositories`, `secret` optional, `every` seconds, default 60, 0 for webhooks only | [GitHub](./connections/github.md) |
 | `Bsky` | `actors`, `feeds`, `every` default 60 | [Bluesky](./connections/bsky.md) |
 | `Rss` | `feeds`, `every` default 300 | [RSS](./connections/rss.md) |

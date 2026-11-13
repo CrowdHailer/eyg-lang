@@ -51,6 +51,19 @@ let discord = (_) -> {
   assert.equal([], handler(DiscordReaction({is_self: True({}), ..reaction})))
 }
 
+let whatsapp = (_) -> {
+  let handler = handlers.for_channel(info("whatsapp"))
+  let event = (content, name) -> { WhatsAppMessage({message: {id: "m1", from: "123", name, content}, referenced: None({})}) }
+  let _ = submitted(handler(event(Text("hello"), None({}))), "hello")
+  let _ = submitted(handler(event(Text("hello"), Some("Alice"))), "hello")
+  let _ = submitted(handler(event(Button({text: "button", payload: "key"}), None({}))), "button")
+  let _ = submitted(handler(event(Interactive({title: "choice"}), None({}))), "choice")
+  let _ = submitted(handler(event(Media({type: "image", caption: "one"}), None({}))), "[image] one")
+  let _ = submitted(handler(event(Media({type: "image", caption: ""}), None({}))), "[image]")
+  let _ = submitted(handler(event(Other("location"), None({}))), "[location]")
+  assert.equal([Trigger(Some("root"))], handler(event(Reaction({message_id: "root", emoji: "📚"}), None({}))))
+}
+
 let unknown = (_) -> {
   assert.equal([], handlers.for_channel(info("custom"))({anything: 42}))
 }
@@ -59,5 +72,6 @@ let unknown = (_) -> {
   {name: "cloud chat handler", test: chat},
   {name: "cloud slack handler", test: slack},
   {name: "cloud discord handler", test: discord},
+  {name: "cloud whatsapp handler", test: whatsapp},
   {name: "cloud unknown platform handler", test: unknown}
 ]

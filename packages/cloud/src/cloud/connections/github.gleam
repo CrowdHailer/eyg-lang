@@ -9,8 +9,7 @@ import cloud/connection
 import cloud/connections/http
 import cloud/connections/poller
 import cloud/data
-import gleam/bit_array
-import gleam/crypto
+import cloud/webhook
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -105,11 +104,7 @@ pub fn from_webhook(
 
 /// Check the `X-Hub-Signature-256` header of a webhook delivery.
 pub fn verify(secret: String, body: String, signature: String) -> Bool {
-  let expected =
-    crypto.hmac(<<body:utf8>>, crypto.Sha256, <<secret:utf8>>)
-    |> bit_array.base16_encode
-    |> string.lowercase
-  crypto.secure_compare(<<{ "sha256=" <> expected }:utf8>>, <<signature:utf8>>)
+  webhook.verify_sha256(secret, body, signature)
 }
 
 fn repository_url(repository) {

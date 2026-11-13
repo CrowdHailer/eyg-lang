@@ -9,7 +9,6 @@
 import cloud/api
 import cloud/artifacts
 import cloud/beam/execute
-import cloud/connections/github
 import cloud/instance
 import cloud/registry
 import cloud/server
@@ -77,13 +76,17 @@ pub fn main() -> Nil {
     io.println("Workspace " <> handle.name <> " loaded from " <> handle.file)
   })
   // A delivery goes to the first workspace with a connection of that name.
-  let webhook = fn(delivery: github.Delivery) {
+  let webhook = fn(name, request) {
     list.fold_until(
       handles,
-      Error("no connection named " <> delivery.connection),
+      Error("no connection named " <> name),
       fn(_, handle) {
         case
-          process.call(handle.workspace, 5000, workspace.Webhook(delivery, _))
+          process.call(handle.workspace, 5000, workspace.Webhook(
+            name,
+            request,
+            _,
+          ))
         {
           Error("no connection named " <> _) as error -> list.Continue(error)
           result -> list.Stop(result)
