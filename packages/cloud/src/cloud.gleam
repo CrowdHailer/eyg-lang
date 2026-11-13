@@ -1,6 +1,7 @@
 import cloud/discord/discord
 import cloud/session
 import cloud/slack/slack
+import cloud/system
 import envoy
 import gleam/erlang/process
 import gleam/result
@@ -9,6 +10,7 @@ import overlay/llm/provider
 import overlay/llm/provider/ollama
 
 pub fn main() -> Nil {
+  system.configure_proxy()
   let slack_token = envoy.get("SLACK_BOT_TOKEN")
   let discord_token = envoy.get("DISCORD_BOT_TOKEN")
   let ollama_token = envoy.get("OLLAMA_API_KEY")
