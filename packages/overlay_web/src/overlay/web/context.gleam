@@ -262,3 +262,11 @@ pub fn readme(status: Status) -> String {
     }
   }
 }
+
+/// The instructions given to the agent, a context without a readme is named.
+pub fn instructions(source: Source, status: Status) -> String {
+  case provided_readme(status) {
+    Some(readme) -> readme
+    None -> "The context is " <> describe(source) <> ".\n" <> readme(status)
+  }
+}

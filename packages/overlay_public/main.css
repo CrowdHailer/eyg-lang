@@ -61,7 +61,9 @@ pre {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 40rem) 1fr;
+  /* A single centred column until there is an output panel */
+  grid-template-columns: minmax(0, 52rem);
+  justify-content: center;
   min-height: 100%;
   background: var(--color-base-100);
   color: var(--color-base-content);
@@ -162,12 +164,22 @@ pre {
   &.configured-true {
     background: oklch(55% 0.16 150);
   }
+
+  &.rejected {
+    background: oklch(58% 0.2 25);
+  }
 }
 
 .provider-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
 }
 
 .provider-panel {
@@ -304,10 +316,19 @@ pre {
 
   &.thinking {
     color: oklch(64% 0 0);
+    font-style: italic;
+  }
+
+  /* Thinking, code and results expand and collapse on click */
+  &.thinking,
+  &.code,
+  &.tool-result {
+    cursor: pointer;
   }
 
   &.user {
     margin-inline: 0;
+    white-space: pre-wrap;
     padding-left: 7px;
     padding-top: 1px;
     padding-bottom: 1px;
@@ -326,6 +347,7 @@ pre {
 
   &.tool-result {
     background-color: var(--color-neutral);
+    white-space: pre-wrap;
     padding: 2px;
     color: var(--color-neutral-content);
   }
@@ -431,5 +453,168 @@ pre {
 
   .provider-panel {
     max-width: calc(100vw - 20px);
+  }
+
+  /* Settings sit below the heading rather than over it */
+  .session-settings {
+    position: static;
+    align-items: stretch;
+    margin-bottom: 10px;
+  }
+}
+
+.activity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 10px 10px;
+  color: oklch(64% 0 0);
+}
+
+.activity-label::after {
+  content: "…";
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.2; }
+  to { opacity: 1; }
+}
+
+.stop {
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.policy {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-content);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  max-width: min(22rem, calc(100vw - 20px));
+
+  &[open] {
+    width: 22rem;
+  }
+
+  & summary {
+    cursor: pointer;
+  }
+
+  & pre {
+    max-height: 12rem;
+    overflow: auto;
+  }
+
+  & .policy-source {
+    display: block;
+    width: 100%;
+    font-family: monospace;
+    margin: 5px 0;
+  }
+
+  & button {
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-field);
+    padding: 2px 10px;
+    cursor: pointer;
+  }
+}
+
+.chat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  margin: 0 10px 10px;
+}
+
+.chat-action {
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+/* The recorded trace, beside the chat. */
+.trace {
+  border-left: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+  /* Room for the provider settings in the top corner. */
+  padding: 3.5rem 1rem 1rem;
+  overflow-y: auto;
+  max-height: 100dvh;
+}
+
+.trace-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.trace-download {
+  border-color: var(--color-base-content);
+}
+
+.trace-note {
+  font-size: 0.85rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.trace-runs {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.trace-run {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.trace-run-heading {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.trace-id {
+  font-weight: bold;
+}
+
+.trace-effects {
+  list-style: none;
+  padding: 0.25rem 0 0.25rem 1rem;
+}
+
+.trace-label {
+  font-weight: bold;
+}
+
+.trace-result {
+  color: var(--color-secondary);
+}
+
+.trace .one-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .trace {
+    border-left: none;
+    border-top: 1px solid var(--color-base-300);
+    max-height: none;
   }
 }

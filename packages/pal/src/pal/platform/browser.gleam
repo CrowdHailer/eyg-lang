@@ -104,7 +104,10 @@ fn fetch_encode(
 
 fn describe_fetch_error(reason) {
   case reason {
-    effect.NetworkError(description) -> "network error: " <> description
+    effect.NetworkError(description) ->
+      "network error: "
+      <> description
+      <> ", in a browser this is often the server not allowing cross origin (CORS) requests"
     effect.UnableToReadBody -> "unable to read body"
     effect.NotImplemented -> "not implemented"
   }
