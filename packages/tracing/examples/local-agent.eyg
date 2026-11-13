@@ -1,0 +1,10 @@
+// Run from packages/gleam_cli against tracing/model_fixture.
+let {policy} = import "../../../eyg_packages/overlay/index.eyg"
+{
+  llm: {
+    provider: Ollama({origin: "http://127.0.0.1:7201", api_key: None({})}),
+    model: "local-scripted-demo"
+  },
+  policy: policy.read_only(["/"]),
+  context: {readme: "Use integer addition and print the result. This is a scripted recording check."}
+}

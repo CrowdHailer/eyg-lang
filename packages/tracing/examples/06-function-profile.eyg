@@ -1,0 +1,32 @@
+// Run with `eyg profile`, not `eyg run`, to observe all function applications.
+// EYG_DEMO_DELAY=0 or 120 gives the same computation with a different wait.
+let foo = (a, b) -> { !string_append(a, b) }
+let grow = (_, text) -> { foo(text, text) }
+let prepare = (seed) -> {
+  !list_fold([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], seed, grow)
+}
+let normalise = (text) -> { !string_lowercase(!string_uppercase(text)) }
+let slow_lookup = (delay, text) -> {
+  let _ = perform Sleep(delay)
+  text
+}
+let summarise = (text) -> { !binary_size(!string_to_binary(text)) }
+let workflow = (delay) -> {
+  let text = prepare("eat your greens. ")
+  let cleaned = normalise(text)
+  let answer = slow_lookup(delay, cleaned)
+  summarise(answer)
+}
+let main = (_) -> {
+  let delay = match perform Env("EYG_DEMO_DELAY") {
+    Some(text) -> {
+      match !int_parse(text) {
+        Ok(n) -> { n }
+        Error(_) -> { !never(perform Abort("EYG_DEMO_DELAY must be an integer")) }
+      }
+    }
+    None(_) -> { 120 }
+  }
+  perform StandardOut(!string_append(!int_to_string(workflow(delay)), " bytes processed\n"))
+}
+main({})

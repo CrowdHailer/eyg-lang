@@ -1,0 +1,104 @@
+# Local integration fixture based on https://github.com/langfuse/langfuse/blob/main/docker-compose.yml
+# Images are the digests verified with Langfuse 4.59.0 on 2026-10-14.
+# The fixed credentials are test data, and all published ports bind to localhost.
+services:
+  postgres:
+    image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: langfuse
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 20
+    volumes: ["langfuse_postgres:/var/lib/postgresql/data"]
+    mem_limit: 256m
+  clickhouse:
+    image: clickhouse/clickhouse-server@sha256:8a790dd3468db22b1d4e7b18a176f378ff5ff6053b9c48dd4ea1fa71a24c5ba6
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping"]
+      interval: 5s
+      retries: 20
+    volumes: ["langfuse_clickhouse:/var/lib/clickhouse"]
+    mem_limit: 1g
+  redis:
+    image: redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    command: ["redis-server", "--requirepass", "eyg-local-redis"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "eyg-local-redis", "ping"]
+      interval: 5s
+      retries: 20
+    mem_limit: 128m
+  minio:
+    image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 20
+    volumes: ["langfuse_minio:/data"]
+    mem_limit: 256m
+  langfuse-worker:
+    image: docker.langfuse.com/langfuse/langfuse-worker@sha256:246a3a0fab57810734080d302492aa99d7ed0b6acc909c84b58832074b564175
+    depends_on: &dependencies
+      postgres: {condition: service_healthy}
+      clickhouse: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    environment: &environment
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/langfuse
+      DIRECT_URL: postgresql://postgres:postgres@postgres:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: eyg-local-test-secret
+      SALT: eyg-local-salt
+      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+      TELEMETRY_ENABLED: "false"
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: eyg-local-redis
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_INGESTION_QUEUE_DELAY_MS: "100"
+      LANGFUSE_INGESTION_CLICKHOUSE_WRITE_INTERVAL_MS: "100"
+      NODE_OPTIONS: --max-old-space-size=384
+    mem_limit: 512m
+  langfuse-web:
+    image: docker.langfuse.com/langfuse/langfuse@sha256:48ecae32cd74d3a567588602c144de0ec626daf32dc5f2e831a03cebd0bb2d34
+    depends_on: *dependencies
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      <<: *environment
+      NODE_OPTIONS: --max-old-space-size=768
+      LANGFUSE_INIT_ORG_ID: eyg-local
+      LANGFUSE_INIT_ORG_NAME: EYG local
+      LANGFUSE_INIT_PROJECT_ID: eyg-local
+      LANGFUSE_INIT_PROJECT_NAME: EYG trajectories
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-eyg-local
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-eyg-local
+      LANGFUSE_INIT_USER_EMAIL: demo@eyg.local
+      LANGFUSE_INIT_USER_NAME: EYG demo
+      LANGFUSE_INIT_USER_PASSWORD: eyg-local-test-password
+    mem_limit: 1280m
+
+volumes:
+  langfuse_postgres:
+  langfuse_clickhouse:
+  langfuse_minio:

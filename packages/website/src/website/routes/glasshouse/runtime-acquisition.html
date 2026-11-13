@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How EYG agents acquire changing Git branches at runtime, preserve immutable artifacts, and replay each observation without Git or the network.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://eyg.run/glasshouse/runtime-acquisition.html">
+  <title>Fetch master twice. Replay both answers. — EYG / Glasshouse</title>
+  <style>
+    :root { --paper:#faf8f1; --ink:#233126; --muted:#526451; --line:#cbd6c4; --green:#235d37; --panel:#edf2e7; --code:#17291e; --code-ink:#edf5e9; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:1.06rem/1.75 system-ui,sans-serif; }
+    a { color:var(--green); text-underline-offset:.2em; }
+    a:hover { text-decoration-thickness:2px; }
+    a:focus-visible,summary:focus-visible { outline:3px solid var(--green); outline-offset:5px; }
+    .skip { position:absolute; top:-5rem; left:1rem; padding:.5rem 1rem; background:var(--paper); }
+    .skip:focus { top:1rem; }
+    .site { border-bottom:1px solid var(--line); padding:1rem max(1.25rem,calc((100vw - 1120px)/2)); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .site strong { letter-spacing:.03em; }
+    .site nav { display:flex; gap:1.4rem; flex-wrap:wrap; }
+    .shell { max-width:1120px; margin:auto; padding:4rem 1.25rem; }
+    .eyebrow { text-transform:uppercase; letter-spacing:.16em; font-size:.76rem; font-weight:750; color:var(--muted); }
+    h1 { max-width:17ch; font-size:clamp(2.8rem,7vw,5.5rem); line-height:1.08; letter-spacing:-.055em; margin:1.2rem 0; }
+    .lead { max-width:57ch; font-size:1.3rem; line-height:1.55; }
+    .byline { color:var(--muted); font-size:.9rem; }
+    .layout { display:grid; grid-template-columns:210px minmax(0,1fr); gap:3.5rem; margin-top:3rem; align-items:start; }
+    .toc { position:sticky; top:1.5rem; font-size:.87rem; border-top:2px solid var(--green); padding-top:1rem; }
+    .toc ol { margin:0; padding-left:1.3rem; }
+    .toc li { margin:.6rem 0; }
+    article { min-width:0; max-width:76ch; }
+    h2 { font-size:1.8rem; line-height:1.25; letter-spacing:-.025em; margin:3.2rem 0 1rem; scroll-margin-top:2rem; }
+    h2:first-child { margin-top:0; }
+    h3 { font-size:1.13rem; margin:2rem 0 .6rem; }
+    p,ul,ol { margin:.9rem 0 1.3rem; }
+    li { padding-left:.15rem; }
+    code { font: .88em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; overflow-wrap:anywhere; }
+    :not(pre)>code { background:var(--panel); padding:.1em .3em; border-radius:3px; }
+    pre { background:var(--code); color:var(--code-ink); padding:1.3rem; border-radius:8px; overflow:auto; font-size:.91rem; line-height:1.65; tab-size:2; }
+    pre code { overflow-wrap:normal; }
+    .callout { border-left:4px solid var(--green); padding:.4rem 1.3rem; background:var(--panel); margin:1.8rem 0; }
+    .table { overflow:auto; }
+    table { border-collapse:collapse; width:100%; font-size:.93rem; }
+    th,td { text-align:left; vertical-align:top; padding:.8rem .75rem; border-bottom:1px solid var(--line); }
+    th { background:var(--panel); }
+    figure { margin:2rem 0; }
+    figcaption { color:var(--muted); font-size:.85rem; margin-top:.65rem; }
+    .flow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem; }
+    .flow>div { border:1px solid var(--line); border-radius:8px; padding:1rem; background:var(--panel); }
+    .flow strong { display:block; font-size:.95rem; }
+    .flow span { display:block; font-size:.88rem; margin-top:.5rem; }
+    details { border:1px solid var(--line); padding:1rem; border-radius:8px; margin:1.5rem 0; }
+    summary { cursor:pointer; font-weight:650; }
+    footer { margin-top:4rem; padding-top:1.4rem; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem; }
+    @media(max-width:850px) { .layout { grid-template-columns:1fr; gap:2.5rem; } .toc { position:static; } .toc ol { columns:2; } .shell { padding-top:2.5rem; } }
+    @media(max-width:520px) { .flow { grid-template-columns:1fr; } .toc ol { columns:1; } }
+    @media(prefers-color-scheme:dark) { :root { --paper:#142018; --ink:#e5eddf; --muted:#b2c3ab; --line:#3d5140; --green:#99d6a6; --panel:#203224; --code:#0b150e; } }
+    @media print { .site,.toc,.skip { display:none; } .layout { display:block; } .shell { padding:0; } body { background:white; color:black; } pre { white-space:pre-wrap; border:1px solid #888; background:white; color:black; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#article">Skip to article</a>
+  <header class="site">
+    <strong><a href="/">EYG</a> / <a href="/glasshouse">Glasshouse</a></strong>
+    <nav aria-label="Site"><a href="/glasshouse/documentation">Documentation</a><a href="/glasshouse/debugger">Debugger</a></nav>
+  </header>
+  <main class="shell" id="article">
+    <header>
+      <p class="eyebrow">Engineering notes · Reproducible agents</p>
+      <h1>Fetch master twice.<br>Replay both answers.</h1>
+      <p class="lead">An agent should be able to discover its inputs as it works. Reproducibility comes from preserving what it observed—not from pretending a changing branch is a pure function.</p>
+      <p class="byline"><time datetime="2026-10-14">14 October 2026</time> · Implementation walkthrough</p>
+    </header>
+    <div class="layout">
+      <nav class="toc" aria-label="Article contents">
+        <ol>
+          <li><a href="#problem">The changing-input problem</a></li>
+          <li><a href="#operations">Two operations</a></li>
+          <li><a href="#live">One live acquisition</a></li>
+          <li><a href="#identity">Three different identities</a></li>
+          <li><a href="#journal">One ordered journal</a></li>
+          <li><a href="#mounts">Mounting and private edits</a></li>
+          <li><a href="#start">Start without a project</a></li>
+          <li><a href="#export">Export and replay</a></li>
+          <li><a href="#tests">Executable evidence</a></li>
+          <li><a href="#boundaries">What this guarantees</a></li>
+        </ol>
+      </nav>
+      <article>
+        <h2 id="problem">1. A branch name is an observation</h2>
+        <p>Suppose an agent asks for <code>master</code>, edits a file, and asks for <code>master</code> again. Meanwhile, somebody pushes a commit. A cache keyed only by repository URL and branch would give the agent stale files. Re-resolving the branch during replay would give it today's files. Neither reproduces the original execution.</p>
+        <p>The sandbox now records each acquisition as a separate external observation:</p>
+        <pre><code>time 1  Acquire(repo, master) → commit A, artifact T₁
+        another user pushes B
+time 2  Acquire(repo, master) → commit B, artifact T₂
+
+replay  Acquire(repo, master) → recorded A, stored T₁
+        Acquire(repo, master) → recorded B, stored T₂</code></pre>
+        <p>If the branch has not moved, both live lookups still happen. Their journal entries remain separate, while identical artifact blocks share a content identifier in storage.</p>
+        <div class="callout"><p><strong>Reproducible does not mean unchanging.</strong> It means we can reproduce the particular sequence of changes an execution observed.</p></div>
+
+        <h2 id="operations">2. Acquire an artifact; mount a workspace</h2>
+        <p>The interface has two operations. Acquisition obtains immutable data and provenance. Mounting makes that data available at a new path in the private filesystem.</p>
+        <pre><code class="language-eyg">let receipt = match perform Acquire({
+  source: Git({
+    url: "https://example.com/team/project.git",
+    ref: Some("master")
+  }),
+  expected: None({})
+}) {
+  Ok(receipt) -&gt; { receipt }
+  Error(reason) -&gt; {
+    let _ = perform StandardError(reason)
+    !never(perform Exit(1))
+  }
+}
+
+perform Mount({root: receipt.root, path: "repo"})</code></pre>
+        <p>Replace the example URL with your repository. A successful acquisition returns <code>Ok({root, resolved})</code>. For Git, <code>resolved</code> is the full commit object ID. <code>root</code> is the EYG content identifier of the captured filesystem tree. <code>ref: None({})</code> selects the remote's default <code>HEAD</code>; a branch, tag or commit can be supplied explicitly.</p>
+        <p>HTTP acquisition uses the same result and retention model:</p>
+        <pre><code class="language-eyg">perform Acquire({
+  source: Http({url: "https://example.com/data.json"}),
+  expected: None({})
+})</code></pre>
+        <p>Its artifact is a binary file, and <code>resolved</code> retains the requested URL. It is not a promise that the URL is immutable or an account of redirect destinations. Supply <code>expected: Some(tree_or_blob_cid)</code> to require an exact content identity. A mismatch returns an acquisition error. This field is an EYG artifact CID, not a Git commit hash or a raw file SHA-256.</p>
+        <p>Neither operation grants arbitrary process execution. Repository acquisition is expressed as <code>Acquire</code> followed by <code>Mount</code>; arbitrary Git commands are outside the EYG contract.</p>
+
+        <h2 id="live">3. What happens during a live Git acquisition</h2>
+        <figure>
+          <div class="flow">
+            <div><strong>1 · Broker</strong><span>Fingerprint request; check authority; decide replay or live.</span></div>
+            <div><strong>2 · Trusted fetcher</strong><span>Clone into host scratch space; resolve and check out a commit; capture files.</span></div>
+            <div><strong>3 · Sandbox</strong><span>Retain verified artifact; return receipt; mount only when asked.</span></div>
+          </div>
+          <figcaption>The Git subprocess belongs to the fetcher, not to the agent's execution environment.</figcaption>
+        </figure>
+        <ol>
+          <li><strong>Decode the effect.</strong> <code>touch_grass/acquire</code> checks the source descriptor and optional expected CID. Overlay's <code>acquire</code> policy runs before the request reaches the broker.</li>
+          <li><strong>Apply the common broker rule.</strong> The broker fingerprints the complete acquisition input. A live Git request needs a Git authority: <code>git:github.com</code>, for example. An ordinary HTTP grant for <code>github.com</code> does not also grant Git acquisition.</li>
+          <li><strong>Allocate owned scratch space.</strong> The host uses an atomic temporary-directory operation. The agent cannot request that operation directly. The scratch path is neither mounted nor included in the receipt; adapter errors replace it with a placeholder.</li>
+          <li><strong>Fetch and resolve.</strong> Git clones into a fresh child directory with <code>--no-checkout --no-local</code>. It resolves the requested revision to a commit, then checks out that exact commit detached. For an unqualified name, the adapter tries the remote branch, then a tag, then the revision itself. <code>refs/heads/…</code> explicitly selects a remote branch.</li>
+          <li><strong>Capture the checkout.</strong> The fetcher reads regular files and directories, excluding <code>.git</code>. It rejects submodules, symbolic links and special files rather than manufacturing an incomplete representation. Git hooks are disabled for clone/checkout and <code>core.autocrlf</code> is set to false for checkout.</li>
+          <li><strong>Verify and clean up.</strong> The captured tree is stored by content. An expected CID is checked when present. The owned scratch directory is removed on the normal success and failure paths; cleanup failure is reported.</li>
+          <li><strong>Retain the result.</strong> The sandbox validates the bundle, registers its root and returns the receipt. Acquisition alone has not changed the workspace.</li>
+        </ol>
+        <p>The native adapter returns the requested source, resolved commit and artifact bundle. The program receives the two identifying strings; the recording keeps the source descriptor and the artifact's complete block closure as well.</p>
+
+        <h2 id="identity">4. Request identity, Git identity, artifact identity</h2>
+        <div class="table"><table>
+          <thead><tr><th>Identity</th><th>What it identifies</th><th>What it does not imply</th></tr></thead>
+          <tbody>
+            <tr><td>Request fingerprint</td><td>The acquisition source and expected CID.</td><td>That the same request always has the same answer.</td></tr>
+            <tr><td>Resolved Git commit</td><td>The commit selected by this particular fetch.</td><td>That the remote will retain the objects forever.</td></tr>
+            <tr><td>Artifact root CID</td><td>The actual captured files, recursively.</td><td>That there is only one Git commit with those files.</td></tr>
+          </tbody>
+        </table></div>
+        <p>The acquisition key is the CID of the canonical EYG-IR encoding of <code>Acquire({source, expected})</code>: a tagged value, encoded as DAG-JSON and hashed with SHA-256. The tag separates acquisition keys from ordinary HTTP request fingerprints. Record fields are sorted before encoding.</p>
+        <p>A file is stored as an EYG <code>Binary</code> module. A directory is a literal record from entry names to content references. Each directory therefore identifies its children transitively. These are EYG/DAG-JSON CIDs, not Git tree object IDs.</p>
+        <p>Two commits with different messages or parents may produce the same artifact root. Two identical acquisitions can therefore have different commit provenance while sharing the same file blocks. Conversely, the root identifies the actual captured checkout bytes, including the outcome of any applicable checkout transformations; it is not inferred from the commit string.</p>
+        <p>This is the part worth borrowing from Nix fetchers: turn external sources into immutable inputs. The extra requirement for agents is an ordered history of acquisitions, because an agent may intentionally observe the same mutable source more than once.</p>
+
+        <h2 id="journal">5. HTTP, models and acquisitions share one cursor</h2>
+        <p>The broker does not maintain a separate Git cache or Git replay position. An agent session can contain:</p>
+        <pre><code>0  model request             → model response
+1  Acquire(repo, master)      → commit A, tree T₁
+2  Fetch(status endpoint)    → "pending"
+3  Acquire(repo, master)      → commit B, tree T₂
+4  model request             → model response</code></pre>
+        <p>The broker's state machine sees request keys and authorities. Its payload codecs distinguish HTTP responses, acquisition receipts and refusals, but ordering and permission decisions use one implementation:</p>
+        <pre><code>Offline: refuse the external request and record the refusal.
+Live:    check authority, invoke the adapter, append the observation.
+Replay:  match the next key, consume its observation, return its payload.
+Fork:    reuse the matching prefix; at the first mismatch,
+         discard the old suffix and use permitted live requests.</code></pre>
+        <p>The live adapter is a deferred callback. Replay never invokes it. There is no search through older entries for a matching request, and no automatic reuse of a previous live branch lookup. Repeated identical keys can appear at several positions with different payloads.</p>
+        <p>A replayed acquisition installs its stored artifact into the sandbox's retained-artifact store before resuming the program. Missing blocks, corrupt content, a different request, or unconsumed observations make replay fail. Successful acquisitions, adapter errors and broker refusals all have recorded outcomes.</p>
+        <p>For a changed prompt or policy, <code>Fork</code> preserves only the identical external prefix. Once execution diverges, even a later request that resembles an old request is live. This deliberately sacrifices speculative cache hits to avoid guessing which observation belongs to a new trajectory.</p>
+
+        <h2 id="mounts">6. A second acquisition cannot overwrite private edits</h2>
+        <p><code>Mount</code> accepts only an artifact already retained in that environment. It resolves its destination inside the virtual filesystem, requires an existing parent, and refuses any destination that already exists—even an empty directory.</p>
+        <pre><code class="language-eyg">let request = {
+  source: Git({url: "https://example.com/team/project.git", ref: Some("master")}),
+  expected: None({})
+}
+let unwrap = (result) -&gt; {
+  match result {
+    Ok(value) -&gt; { value }
+    Error(reason) -&gt; {
+      let _ = perform StandardError(reason)
+      !never(perform Exit(1))
+    }
+  }
+}
+
+let first = unwrap(perform Acquire(request))
+let _ = unwrap(perform Mount({root: first.root, path: "first"}))
+let _ = perform WriteFile({
+  path: "first/file.txt",
+  contents: !string_to_binary("my private edit")
+})
+
+let second = unwrap(perform Acquire(request))
+let conflict = perform Mount({root: second.root, path: "first"})
+// conflict is Error: the private edit is still there.
+
+let _ = unwrap(perform Mount({root: second.root, path: "second"}))
+let _ = unwrap(perform Mount({root: first.root, path: "original"}))
+{first, second, conflict}</code></pre>
+        <p><code>first</code> contains the agent's edit. <code>second</code> contains the second acquired version. <code>original</code> contains the untouched first version. The mounted filesystem is a persistent data structure: writing through one mount does not mutate the retained artifact or another mount.</p>
+        <p>To replace a workspace deliberately, delete its path and then mount the chosen root. The two steps are explicit; there is no hidden reset, pull, merge or staging-area behaviour. To reuse a known version, mount its retained root rather than acquiring a branch again.</p>
+        <p>Code dependencies are still pinned before each EYG run. If an agent wants to import EYG code from a newly acquired repository, it mounts the tree in one tool call and imports that code in a subsequent call. An import later in the same source block is still pinned before the block starts.</p>
+
+        <h2 id="start">7. Start an agent without a project snapshot</h2>
+        <p><code>eyg sandbox start</code> prepares a configuration-only environment. It mounts the explicitly supplied configuration as <code>/workspace/.overlay.eyg</code> and pins its code dependencies. It does not copy the directory containing that configuration, inherit host environment variables, or provide an existing repository.</p>
+        <pre><code>eyg sandbox start agent.eyg runs \
+  "Acquire master from https://example.com/team/project.git and mount it at repo" \
+  localhost git:example.com</code></pre>
+        <p>The example assumes a local Ollama server and a repository you control; replace the URL and model name. <code>localhost</code> permits the model request. <code>git:example.com</code> permits the repository fetch. A local repository instead needs an exact grant such as <code>git:file:/absolute/path/to/repository</code>. Supported repository sources are HTTPS URLs and absolute local paths or local <code>file://</code> URLs.</p>
+        <details>
+          <summary>A self-contained agent.eyg configuration</summary>
+          <pre><code class="language-eyg">let pass = (request) -&gt; { Pass(request) }
+let deny = (_) -&gt; { Mock(Error("unavailable")) }
+{
+  llm: {
+    provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
+    model: "qwen3"
+  },
+  policy: {
+    acquire: pass, mount: pass,
+    append_file: pass, create_key: deny, cwd: pass,
+    delete_file: pass, env: (_) -&gt; { Mock(None({})) },
+    fetch: deny, make_directory: pass, now: pass,
+    read_directory: pass, read_file: pass, sign: deny,
+    sleep: pass, standard_error: pass, standard_in: deny,
+    standard_out: pass, write_file: pass
+  },
+  context: {
+    readme: "Acquire repositories, then mount their roots at new paths. Preserve existing edits."
+  }
+}</code></pre>
+        </details>
+        <p>Both effect policy and broker authority must allow a live acquisition. Existing policies without <code>acquire</code> or <code>mount</code> keep those operations unavailable. The policy helpers' <code>read_write</code> grants mounting under selected roots but still denies acquisition until it is explicitly enabled.</p>
+
+        <h2 id="export">8. The recording owns the data it needs</h2>
+        <p>An acquisition receipt in the broker journal contains an actual content-reference edge to the artifact root. It is not merely a string containing a hash. Walking the journal's dependency graph therefore reaches the directory nodes and file blocks needed to reconstruct every acquisition.</p>
+        <p>The output environment also keeps a registry of retained artifact roots. An artifact survives environment export even when it was acquired but never mounted. Mounting a retained root in a later execution requires no external observation.</p>
+        <pre><code>eyg sandbox replay runs/&lt;id&gt;.json
+eyg sandbox export runs/&lt;id&gt;.json portable.json
+eyg sandbox snapshot runs/&lt;id&gt;.json next-environment.json
+
+# On another machine, with no repository or model server:
+eyg sandbox replay portable.json</code></pre>
+        <p>Local trace manifests share a content-addressed block directory. <code>export</code> collects a self-contained archive. Full sandbox replay reruns the configuration and tools, answers model/HTTP/acquisition requests from the ordered observations, and compares recorded EYG results, journals, terminal output and final environment identity. The older <code>eyg replay</code> command remains the narrower per-EYG-run journal verifier.</p>
+        <p>Preserving the commit is valuable provenance. Preserving the tree is what allows replay after the remote has been deleted.</p>
+
+        <h2 id="tests">9. Executable evidence</h2>
+        <p>The real-Git integration program creates a temporary repository on <code>master</code>, commits file contents A, and lets an EYG program acquire it. Its trusted test adapter advances the repository to B before the identical second acquisition. The agent edits its first mount, gets an error when attempting to mount over it, and mounts the new version elsewhere.</p>
+        <p>The test compares the receipts with Git's actual commit IDs, exports and reloads the journal closure, deletes the source repository, and replays with a fetcher that panics if called. The values and final workspace must match.</p>
+        <pre><code># From packages/loam:
+gleam run -m loam/runtime_acquire_integration \
+  --target javascript --runtime bun</code></pre>
+        <p>Additional tests cover mixed HTTP/acquisition ordering, unchanged branches resolving twice, artifact retention without mounting, exact expected-CID failures, authority refusal, scratch cleanup on Git failure, and an Overlay session starting from only its configuration before acquiring, exporting and replaying offline.</p>
+        <h3>Implementation map</h3>
+        <div class="table"><table>
+          <thead><tr><th>Module</th><th>Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td><code>touch_grass/acquire</code>, <code>touch_grass/mount</code></td><td>EYG effect schemas and value codecs.</td></tr>
+            <tr><td><code>loam/broker</code></td><td>One ordered observation state machine and payload persistence.</td></tr>
+            <tr><td><code>loam/acquire</code>, <code>loam/git</code></td><td>Authority names, acquisition adapters, commit resolution, capture and cleanup.</td></tr>
+            <tr><td><code>loam/virtual</code>, <code>loam/sandbox/fs</code></td><td>Artifact retention, quotas and non-replacing persistent mounts.</td></tr>
+            <tr><td><code>loam/environment</code></td><td>Immutable tree encoding and retained-root export.</td></tr>
+            <tr><td><code>eyg/cli/sandbox</code></td><td>Configuration-only startup, execution, snapshot export and full replay.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h2 id="boundaries">10. The guarantees have boundaries</h2>
+        <ul>
+          <li><strong>Live acquisition needs a trusted adapter.</strong> Git must be installed for live repository acquisition. Host Git configuration and checkout filters can influence the initial captured bytes. The artifact CID identifies those actual bytes; replay does not run Git or its filters again.</li>
+          <li><strong>The capture format is deliberately small.</strong> It represents regular files and directories, with normalised virtual permissions, not a Git working copy with an index and history. Symlinks, special files and submodules are rejected. Separate acquisition or additional format support is needed for those inputs.</li>
+          <li><strong>Authorities are broker permissions.</strong> They constrain requested sources/endpoints. They are not operating-system network namespaces or per-redirect/per-socket enforcement.</li>
+          <li><strong>Capture limits are not transport limits.</strong> Local/Git capture is bounded by 10,000 entries, 64 MB and 128 levels. Unique acquired payload bytes and logical mounted/written bytes have separate per-machine counters bounded by the write budget, initially 64 MB. These checks do not bound the size or duration of a native Git clone before capture.</li>
+          <li><strong>Execution is bounded, not a native VM.</strong> Interpreter reduction and IO budgets remain in force. Hard JavaScript heap limits, preemptive worker isolation, bounded streaming transports and crash-safe incremental persistence are separate platform work.</li>
+          <li><strong>Diagnostics are checkpoints.</strong> A hard sandbox stop preserves the latest completed agent trace, broker observations and final workspace. An in-flight tool's partial EYG journal may not have reached that checkpoint.</li>
+        </ul>
+        <div class="callout"><p><strong>The invariant is simple:</strong> each live request observes the world once; the recording retains that observation and its immutable artifacts; replay follows the sequence without consulting the world again.</p></div>
+        <footer>
+          <p><a href="/glasshouse/documentation">Glasshouse documentation</a> · <a href="/guides/sandbox">Sandbox guide</a> · <a href="https://github.com/CrowdHailer/eyg-lang">Source repository</a></p>
+        </footer>
+      </article>
+    </div>
+  </main>
+</body>
+</html>

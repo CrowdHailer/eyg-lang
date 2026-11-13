@@ -171,6 +171,42 @@ pub type Event
 @external(javascript, "./node_ffi.mjs", "listen")
 pub fn listen(node: Node, name: String, handler: fn(Event) -> Nil) -> Nil
 
+@external(javascript, "./node_ffi.mjs", "unlisten")
+pub fn unlisten(node: Node, name: String, handler: fn(Event) -> Nil) -> Nil
+
+@external(javascript, "./node_ffi.mjs", "preventDefault")
+pub fn prevent_default(event: Event) -> Nil
+
+@external(javascript, "./node_ffi.mjs", "modifier")
+pub fn modifier(event: Event, name: String) -> Bool
+
+@external(javascript, "./node_ffi.mjs", "eventText")
+pub fn event_text(event: Event, name: String) -> String
+
+@external(javascript, "./node_ffi.mjs", "listenGlobal")
+pub fn listen_global(name: String, handler: fn(Event) -> Nil) -> Nil
+
+pub type MediaQuery
+
+@external(javascript, "./node_ffi.mjs", "mediaQuery")
+pub fn media_query(query: String) -> MediaQuery
+
+@external(javascript, "./node_ffi.mjs", "mediaMatches")
+pub fn media_matches(query: MediaQuery) -> Bool
+
+@external(javascript, "./node_ffi.mjs", "listenMedia")
+pub fn listen_media(query: MediaQuery, handler: fn(Event) -> Nil) -> Nil
+
+@external(javascript, "./node_ffi.mjs", "writeStorage")
+pub fn write_storage(
+  storage: String,
+  key: String,
+  value: String,
+) -> Result(Nil, String)
+
+@external(javascript, "./node_ffi.mjs", "removeStorage")
+pub fn remove_storage(storage: String, key: String) -> Result(Nil, String)
+
 @external(javascript, "./node_ffi.mjs", "key")
 pub fn key(event: Event) -> String
 

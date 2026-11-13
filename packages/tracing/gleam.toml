@@ -4,6 +4,7 @@ target = "javascript"
 description = "Gleam checks and recordings of EYG tools"
 
 [dependencies]
+argv = ">= 1.0.2 and < 2.0.0"
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 gleam_javascript = ">= 1.0.0 and < 2.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
