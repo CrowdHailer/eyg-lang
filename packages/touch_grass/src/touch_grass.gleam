@@ -27,6 +27,8 @@ import touch_grass/print
 import touch_grass/prompt
 import touch_grass/random
 import touch_grass/sleep
+import touch_grass/sqlite
+import touch_grass/sqlite_query
 import touch_grass/standard_error
 import touch_grass/standard_in
 import touch_grass/standard_out
@@ -171,6 +173,19 @@ pub fn sign() -> Interface(sign.Request, a) {
 
 pub fn sleep() -> Interface(Int, a) {
   Interface(sleep.label, sleep.lift(), sleep.lower(), sleep.decode)
+}
+
+pub fn sqlite() -> Interface(sqlite.Input, a) {
+  Interface(sqlite.label, sqlite.lift(), sqlite.lower(), sqlite.decode)
+}
+
+pub fn sqlite_query() -> Interface(sqlite_query.Input, a) {
+  Interface(
+    sqlite_query.label,
+    sqlite_query.lift(),
+    sqlite_query.lower(),
+    sqlite_query.decode,
+  )
 }
 
 pub fn standard_error() -> Interface(String, a) {
