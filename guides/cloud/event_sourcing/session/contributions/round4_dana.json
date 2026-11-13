@@ -1,0 +1,17 @@
+{
+  "agree": true,
+  "objections": [
+    {"event_or_ruling": "secrets.SecretLeakRedacted", "issue": "RedactPayload is described as running 'before EffectResultRecorded, MessagePosted, MessageReceived, FileWritten', but H12 says blocks are written before the event that references them. Read literally, an unredacted payload would already sit in the block store (encrypted only with the scope key) until garbage collection, and its CID would be computed over the secret bytes. That breaks H10's 'never values or plain hashes of values'.", "proposal": "Amend the RedactPayload wording to: 'scan before any block put or inline payload is formed; the redacted bytes are what get addressed, and the run's journal records the redacted CID so replay sees the same content'. This is a clarification of order, not a new event.", "blocking": false}
+  ],
+  "accepted_with_reservations": [
+    "records.RetentionPurgeCompleted {roots_released}: per H12, the list goes in a block referenced by CID once it passes 4 KiB. A purge can release thousands of roots.",
+    "evidence.AuditTrailExported: an export ships the events together with the referenced blocks it is entitled to (a CAR-style bundle of verified CIDs). Shredded or purged payloads appear as explicit 'shredded' or 'purged' markers, never as missing blocks, so the verifier can tell erasure from loss (BlockIntegrityFailed).",
+    "artifacts.ArtifactVisibilityChanged to 'anyone with the link' only changes who may read. Bundle blocks stay in the workspace scope (encrypted at rest, served decrypted) and never move to the public scope for dedup.",
+    "packages.ReleaseRetracted and packages.SignatoryRevoked stop new resolutions only. Public-scope module blocks stay live while any retained RunBasisPinned references them, or replay of old runs breaks.",
+    "The erasure order depends on the databases policy on the board: run the erasure dataclip, then take a new snapshot, and only then records.SubjectKeyShredded. The SQLite working copy holds plaintext, so shredding the key alone does not erase it.",
+    "configuration.CloudSourceChanged and access.PrivilegeChangeExpired have no command on the board. I read them as SetCloudSource (admin) and an expiry policy on a deadline; that wording should be added for completeness.",
+    "O5 phase 1 (journal cap, no checkpoints) is fine for storage. Phase 2 checkpoints should be stored as blocks referenced by RunCheckpointed and pinned only until the next checkpoint or the end of the run.",
+    "fleet.RunLease living in the lease store and not in the ledger is right. Those events are coordination and should have a short retention class of their own."
+  ],
+  "signoff": "Everything that is stored once is now referenced by hash: files are a chain of roots, payloads are blocks behind small events, and garbage collection works from roots and keys rather than guesswork. Assuming redaction runs before anything is addressed, I agree with the catalogue."
+}

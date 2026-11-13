@@ -1,0 +1,18 @@
+{
+  "agree": true,
+  "objections": [
+    {
+      "amendment": "N3",
+      "issue": "If the stale-epoch check looked up the lease store on every append, each EffectPassed and EffectResultRecorded would pay a cross-store round trip on the hot path.",
+      "proposal": "The run stream enforces it locally: the new owner's RunResumed carries its lease epoch, and the stream refuses any append whose epoch is lower than the highest epoch already in the stream. That is checked together with the expected-version condition, with no lease store lookup.",
+      "blocking": false
+    },
+    {
+      "amendment": "A2",
+      "issue": "Replay compares each requested effect's input digest with the recorded one, and that digest is now an HMAC.",
+      "proposal": "The replayer computes the HMAC with the same key. If the key has been shredded, the run is cancelled with reason erased, as recorded in my round 4 reservation, and never reaches ReplayDiverged.",
+      "blocking": false
+    }
+  ],
+  "signoff": "A1 and N2 keep replay exact and the hot path free of contention, and the other amendments leave the journal intact. Rui agrees."
+}

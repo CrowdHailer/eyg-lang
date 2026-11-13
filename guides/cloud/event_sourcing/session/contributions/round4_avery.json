@@ -1,0 +1,26 @@
+{
+  "agree": false,
+  "objections": [
+    {
+      "event_or_ruling": "O3 ruling",
+      "issue": "The ruling as written covers only acts that widen privilege or exposure. Acts that destroy or reinterpret evidence fall outside it, so one person could release a legal hold, shorten retention and let the purge run, or register an upcaster that changes how history reads. In round 3 Sam and I both listed these, but the summary dropped them. This is the one thing I cannot sign: a single person able to change what the record shows.",
+      "proposal": "Amend O3 to read: 'a second person approves anything that widens privilege or exposure, or that destroys or reinterprets evidence: RetentionPolicySet that shortens a period, LegalHoldReleased, SubjectKeyShredded other than a subject's own self-service request, EventUpcasterRegistered, CheckpointKeyRotated and TamperIncidentResolved'. Each of those events carries the PrivilegeChange approval id, and the aggregates' invariants reject them without one. The rest of the ruling stays unchanged, including the sole-admin 24 hour self-approval, which is flagged.",
+      "blocking": true
+    },
+    {
+      "event_or_ruling": "configuration.CloudSourceChanged",
+      "issue": "It is the only event on the board with no command and no aggregate. cloud.eyg defines the workspaces and every named shell, so its versions need the same compare-and-set and attribution as workspace.eyg.",
+      "proposal": "Add command SetCloudSource {source_cid, expected_previous_cid, reason, restores?} and aggregate CloudConfiguration with stream configuration/cloud, using the same invariants as WorkspaceConfiguration. ShellDefinitionPublished and WorkspaceCreated then cite the CloudSourceChanged version that caused them.",
+      "blocking": false
+    }
+  ],
+  "accepted_with_reservations": [
+    "Fleet as coordination, not evidence: acceptable only if every decision and result event in a run carries the machine id and lease epoch that appended it. Otherwise 'which machine performed this Post' cannot be answered from the ledger.",
+    "files.FileSystemRestored, files.FileRestored and databases.DatabaseRestored must be forward-only: a new root or sequence equal to the old state, the intervening events kept, and the restore view must list effects not undone (as in H20).",
+    "access.PrivilegeChangeExpired has no command. I read it as a timer policy in the PrivilegeChange aggregate, and the expiry period must be stated on the proposal.",
+    "AuditTrailExported counts as exposure under O3 when the scope includes payloads with personal data. An export of envelopes only needs one auditor.",
+    "Garbage collection and retention purges act on roots and keys only (O4). I expect a test that a root pinned by a legal hold survives a sweep, rather than relying on a note.",
+    "Self-approval in a sole-admin cloud is flagged; I expect that flag to appear in every audit export, not only on the admins view."
+  ],
+  "signoff": "I can sign this catalogue once the four-eyes rule explicitly covers releasing holds, shortening retention, shredding keys and reinterpreting history, because those are the acts that can quietly change what the record shows. Everything else gives me an attributable, policy-pinned, externally anchored record I would be willing to hand to a regulator."
+}

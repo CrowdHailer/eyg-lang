@@ -1,0 +1,228 @@
+{
+  "position": "I care about the run journal: every program run, agent turn and trigger script is a sequence of suspensions on effects, and durability means the effect result (and the policy decision that allowed it) is appended to a journal before the continuation resumes. Today execute.loop performs effects inline and resumes immediately, Sleep blocks a BEAM process, schedules tick from memory, and continuations cannot even cross a process (see the process-boundaries note), so recovery must be deterministic replay of source plus journal, not continuation snapshots. I want a clear split between deterministic replay (feed recorded results, perform nothing) and re-execution (perform again), explicit idempotency per effect, leases so only one machine owns a run, and a hot path where pure evaluation never touches the journal.",
+  "events": [
+    {
+      "text": "RunStarted",
+      "why": "a run gets an id, the CID of its source or captured expression, its scope, shell CID and owner; the root of the journal",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "ReferencesPinned",
+      "why": "@name references resolved to concrete CIDs at first execution, so a replay on another machine runs the same code even if a new version was published",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "EffectRequested",
+      "why": "the program suspended on an effect with label and lift; written before performing so a crash leaves an in-doubt marker, not silence",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "PolicyDecided",
+      "why": "pass, mock, failed or unavailable with the modified lift; replay must use the recorded decision, not re-evaluate a shell that may have changed since",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "EffectResultRecorded",
+      "why": "the value fed back into the continuation, persisted before resume; the core durability invariant",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "EffectOutcomeInDoubt",
+      "why": "after a crash an EffectRequested with no result: for non-idempotent effects like Post or Fetch POST we cannot know if it happened",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "EffectReconciled",
+      "why": "an in-doubt effect resolved by querying the external system (e.g. Slack message by client id) or by an operator decision",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunSuspended",
+      "why": "a run parked waiting on a durable timer, a Delegate reply or an external event; no process held, no memory used",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunResumed",
+      "why": "a suspended run picked up again, possibly on a different machine, by replaying its journal",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunReplayed",
+      "why": "deterministic replay finished catching up to the journal head without performing anything; marks the switch to live execution",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "ReplayDiverged",
+      "why": "replay requested a different effect than the journal recorded (non-determinism or code changed); the run must stop, not guess",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunCompleted",
+      "why": "final value recorded; journal can be compacted to its result",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunFailed",
+      "why": "program error, policy failure or unhandled effect, with the reason that today only lives in a trace span",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunCancelled",
+      "why": "an admin, /new reset or epoch change abandoned a run; pending timers and in-flight effects must be released",
+      "context_guess": "Durable execution"
+    },
+    {
+      "text": "RunLeaseAcquired",
+      "why": "a machine became the single owner of a run for a bounded time; prevents two machines resuming the same journal",
+      "context_guess": "Leases and ownership"
+    },
+    {
+      "text": "RunLeaseExpired",
+      "why": "owner presumed dead, run becomes claimable; fencing token must reject late writes from the old owner",
+      "context_guess": "Leases and ownership"
+    },
+    {
+      "text": "TimerArmed",
+      "why": "Sleep and Timeout become durable timers with an absolute due time instead of process.sleep and send_after",
+      "context_guess": "Scheduling"
+    },
+    {
+      "text": "TimerFired",
+      "why": "the scheduler woke a run or delivered a message; must be idempotent by timer id",
+      "context_guess": "Scheduling"
+    },
+    {
+      "text": "CronScheduled",
+      "why": "a cron from workspace.eyg or the Cron effect, stored with its owner session and parsed schedule",
+      "context_guess": "Scheduling"
+    },
+    {
+      "text": "CronOccurrenceDue",
+      "why": "one occurrence identified by schedule id plus the instant, so the same occurrence is never fired twice across machines",
+      "context_guess": "Scheduling"
+    },
+    {
+      "text": "CronOccurrenceMissed",
+      "why": "the 1s tick was late or the cloud was down at that instant; today cron.matches on the current second silently skips it",
+      "context_guess": "Scheduling"
+    },
+    {
+      "text": "AgentTurnStarted",
+      "why": "a session turn with the batched queued inputs; a turn is itself a run whose effects include LLM completions",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "CompletionReceived",
+      "why": "an LLM completion is the least deterministic effect of all; it must be journaled so a crashed turn replays without re-billing or diverging",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "AgentTurnFinished",
+      "why": "history updated; today the history lives only in the session actor and is lost on restart",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "SessionReset",
+      "why": "/new bumped the epoch; runs from the old epoch must be cancelled not merely ignored",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "SubagentDelegated",
+      "why": "Delegate creates a child run; parent suspends until ChildRunCompleted rather than blocking a process",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "InputQueued",
+      "why": "a message arrived while a turn was busy; the queue is backpressure and must survive a crash",
+      "context_guess": "Sessions and agents"
+    },
+    {
+      "text": "ConnectionEventIngested",
+      "why": "a live event from GitHub, RSS, webhook etc. with a dedup key so redelivery after a crash does not trigger twice",
+      "context_guess": "Connections and triggers"
+    },
+    {
+      "text": "ConnectionBackfilled",
+      "why": "first poll recorded as backfill, never delivered to triggers; the cursor must be durable or a restart backfills forever",
+      "context_guess": "Connections and triggers"
+    },
+    {
+      "text": "PollCursorAdvanced",
+      "why": "the poller's high water mark committed after events are stored, giving at-least-once ingest",
+      "context_guess": "Connections and triggers"
+    },
+    {
+      "text": "TriggerMatched",
+      "why": "a pure pattern returned true for an event; the run it starts is keyed by trigger id plus event id for exactly-once start",
+      "context_guess": "Connections and triggers"
+    },
+    {
+      "text": "TriggerAdded",
+      "why": "AddTrigger at runtime; today in memory only, lost on restart",
+      "context_guess": "Connections and triggers"
+    },
+    {
+      "text": "RunThrottled",
+      "why": "admission control refused or delayed a run because a workspace or channel hit its concurrency limit; backpressure made visible",
+      "context_guess": "Backpressure"
+    },
+    {
+      "text": "MessagePosted",
+      "why": "Post delivered to a channel, recorded with an idempotency key so retries do not double post",
+      "context_guess": "Channels"
+    },
+    {
+      "text": "FileTreeCommitted",
+      "why": "a write produced a new MFS root CID; the journal only needs the root CID since blocks are content addressed",
+      "context_guess": "Files"
+    },
+    {
+      "text": "WorkspaceSourceChanged",
+      "why": "new workspace.eyg CID; runs keep the config CID they started with, new turns pick up the new one",
+      "context_guess": "Workspaces"
+    },
+    {
+      "text": "SecretSet",
+      "why": "secret value changed; the journal of a run must never contain the plaintext, only the placeholder hash",
+      "context_guess": "Secrets"
+    },
+    {
+      "text": "DatabaseStatementExecuted",
+      "why": "a SQLite write is not idempotent on replay; journal its result and consider transactions keyed by run and step",
+      "context_guess": "Databases and dataclips"
+    },
+    {
+      "text": "ArtifactVersionSaved",
+      "why": "SaveArtifact assigns a version number; replay must reuse the recorded version, not create another",
+      "context_guess": "Artifacts"
+    },
+    {
+      "text": "UserShellChanged",
+      "why": "SetUserShell; affects new runs only, in-flight runs keep their recorded decisions",
+      "context_guess": "Users and policies"
+    }
+  ],
+  "hotspots": [
+    {
+      "text": "Continuations cannot be serialized today (closures flatten to hundreds of MB across processes), so durable execution must be replay from source plus journal. Replay cost grows with journal length: do we need snapshots (captured continuation, free variables only) for long-running agent turns and loops, and where is the checkpoint boundary?"
+    },
+    {
+      "text": "Exactly-once is impossible for Post, Fetch, Delegate and SQLite writes; which effects are declared idempotent, which carry an idempotency key to the external system, and what happens to an EffectOutcomeInDoubt (retry, ask a human, fail the run)? This must be a property of each effect interface, not of the policy."
+    },
+    {
+      "text": "Replay versus re-execution: if workspace.eyg, the channel shell or a pinned @name changed between crash and resume, do we replay with recorded policy decisions and CIDs (faithful) or re-evaluate (current rules)? Audit and security pull in opposite directions; I propose recorded for replayed steps and current for new steps, with ReplayDiverged as a hard stop."
+    },
+    {
+      "text": "Hot path cost: journaling every Now, Random, Flip, Hash and ReadFile with a synchronous durable write could dominate small programs. Can we batch, treat pure-ish effects (Hash, DecodeJson) as not journaled, and only fsync before externally visible effects (Post, Fetch, writes)?"
+    },
+    {
+      "text": "Lease and fencing design: who is the authority for run ownership across machines (one event stream per run with optimistic append on expected version is enough?), and how do long blocking effects (LLM completions, Sleep, Delegate) renew or release the lease?"
+    },
+    {
+      "text": "Cron semantics after downtime: the 1s Tick with cron.matches on the current second skips occurrences when late and fires nothing while down. Do we catch up missed occurrences, fire once, or skip, and is that per schedule? Timeouts from send_after are lost on restart entirely."
+    },
+    {
+      "text": "Backpressure: session queues, trigger fan-out (one event matching many triggers) and connection polls spawn unbounded processes. Where do we bound concurrency (per workspace, channel, connection) and is a throttled run an event in the audit log or just a metric?"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "agree": true,
+  "objections": [
+    {
+      "amendment": "N2",
+      "issue": "With per-stream chains, the global order between two checkpoints is only proven at checkpoint granularity. An operator could reorder global positions across streams inside a checkpoint window without breaking any stream chain.",
+      "proposal": "Each event envelope also records the global position, and the checkpoint's Merkle leaves are (stream, head hash, head global position), so the cross-stream order is fixed at every checkpoint. Checkpoint frequency (every 1000 events or 5 minutes) bounds the remaining window.",
+      "blocking": false
+    }
+  ],
+  "signoff": "Avery agrees: with A3 in place, no single person can quietly change what the record shows, and the catalogue gives me an attributable, policy-pinned, externally anchored ledger I can hand to a regulator."
+}

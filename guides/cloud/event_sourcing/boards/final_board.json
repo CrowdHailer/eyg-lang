@@ -1,0 +1,5217 @@
+{
+ "title": "EYG cloud on event sourcing",
+ "stage": "Final \u00b7 All five participants agreed on every event",
+ "subtitle": "138 domain events in 17 bounded contexts, with their commands, actors, aggregates, policies, read models and external systems. Every hot spot is resolved.",
+ "contexts": [
+  {
+   "id": "identity",
+   "name": "Identity",
+   "purpose": "Who people and API clients are and how they prove it. Authentication only, grants live in access."
+  },
+  {
+   "id": "access",
+   "name": "Access",
+   "purpose": "Who may do what: shell definitions, channel shells, person shells, admin, bindings, and proposals that widen privilege."
+  },
+  {
+   "id": "configuration",
+   "name": "Workspace configuration",
+   "purpose": "Versions of workspace.eyg by source CID and the moment a version takes effect."
+  },
+  {
+   "id": "secrets",
+   "name": "Secrets",
+   "purpose": "Secret values live in a vault, events record names, versions and keyed fingerprints only."
+  },
+  {
+   "id": "packages",
+   "name": "Code by hash",
+   "purpose": "Signatories, signed releases, verification, and workspaces pinning releases by hash."
+  },
+  {
+   "id": "content",
+   "name": "Content store",
+   "purpose": "Blocks by CID: roots that keep them alive, garbage collection, integrity and rebuilds."
+  },
+  {
+   "id": "files",
+   "name": "Files",
+   "purpose": "The workspace file system: each event carries the previous and new root CID."
+  },
+  {
+   "id": "channels",
+   "name": "Channels and agents",
+   "purpose": "Messages in and out of channels, the queue for the agent and its turns. An agent turn is a run."
+  },
+  {
+   "id": "runs",
+   "name": "Runs (the journal)",
+   "purpose": "One stream per run: what it was based on, every effect decision and result, suspensions and outcome."
+  },
+  {
+   "id": "fleet",
+   "name": "Fleet",
+   "purpose": "Machines, leases on runs and admission. Coordination, not evidence."
+  },
+  {
+   "id": "triggers",
+   "name": "Triggers",
+   "purpose": "Configured and runtime triggers per channel, both durable, configuration wins a name clash."
+  },
+  {
+   "id": "connections",
+   "name": "Connections",
+   "purpose": "Chats and services connected to a workspace, and every delivery they make."
+  },
+  {
+   "id": "schedules",
+   "name": "Schedules",
+   "purpose": "Reminders and recurring schedules that message a session. Sleep is a run suspension, not a schedule."
+  },
+  {
+   "id": "artifacts",
+   "name": "Artifacts",
+   "purpose": "Versioned bundles stored as UnixFS roots, owned by a channel."
+  },
+  {
+   "id": "databases",
+   "name": "Databases and dataclips",
+   "purpose": "Named SQLite databases and the dataclips that read them."
+  },
+  {
+   "id": "evidence",
+   "name": "Evidence",
+   "purpose": "The hash chained global ledger: checkpoints, verification, export and the upcasters used to read it."
+  },
+  {
+   "id": "records",
+   "name": "Records management",
+   "purpose": "Retention, legal holds and erasure, a governed process with deadlines."
+  }
+ ],
+ "stickies": [
+  {
+   "id": "identity.CloudBootstrapped",
+   "kind": "event",
+   "text": "CloudBootstrapped",
+   "context": "identity",
+   "order": 0
+  },
+  {
+   "id": "identity.PersonInvited",
+   "kind": "event",
+   "text": "PersonInvited",
+   "context": "identity",
+   "order": 1
+  },
+  {
+   "id": "identity.PersonSignedUp",
+   "kind": "event",
+   "text": "PersonSignedUp",
+   "context": "identity",
+   "order": 2
+  },
+  {
+   "id": "identity.PersonSignedIn",
+   "kind": "event",
+   "text": "PersonSignedIn",
+   "context": "identity",
+   "order": 3
+  },
+  {
+   "id": "identity.SignInRejected",
+   "kind": "event",
+   "text": "SignInRejected",
+   "context": "identity",
+   "order": 4
+  },
+  {
+   "id": "identity.ApiCredentialIssued",
+   "kind": "event",
+   "text": "ApiCredentialIssued",
+   "context": "identity",
+   "order": 5
+  },
+  {
+   "id": "identity.CredentialRevoked",
+   "kind": "event",
+   "text": "CredentialRevoked",
+   "context": "identity",
+   "order": 6
+  },
+  {
+   "id": "identity.PersonDeactivated",
+   "kind": "event",
+   "text": "PersonDeactivated",
+   "context": "identity",
+   "order": 7
+  },
+  {
+   "id": "access.ShellDefinitionPublished",
+   "kind": "event",
+   "text": "ShellDefinitionPublished",
+   "context": "access",
+   "order": 0
+  },
+  {
+   "id": "access.ChannelShellChanged",
+   "kind": "event",
+   "text": "ChannelShellChanged",
+   "context": "access",
+   "order": 1
+  },
+  {
+   "id": "access.PrivilegeChangeProposed",
+   "kind": "event",
+   "text": "PrivilegeChangeProposed",
+   "context": "access",
+   "order": 2
+  },
+  {
+   "id": "access.PrivilegeChangeApproved",
+   "kind": "event",
+   "text": "PrivilegeChangeApproved",
+   "context": "access",
+   "order": 3
+  },
+  {
+   "id": "access.PrivilegeChangeDeclined",
+   "kind": "event",
+   "text": "PrivilegeChangeDeclined",
+   "context": "access",
+   "order": 4
+  },
+  {
+   "id": "access.AdminGranted",
+   "kind": "event",
+   "text": "AdminGranted",
+   "context": "access",
+   "order": 6
+  },
+  {
+   "id": "access.AdminRevoked",
+   "kind": "event",
+   "text": "AdminRevoked",
+   "context": "access",
+   "order": 7
+  },
+  {
+   "id": "access.PersonShellAssigned",
+   "kind": "event",
+   "text": "PersonShellAssigned",
+   "context": "access",
+   "order": 8
+  },
+  {
+   "id": "access.PersonBoundToChannel",
+   "kind": "event",
+   "text": "PersonBoundToChannel",
+   "context": "access",
+   "order": 9
+  },
+  {
+   "id": "access.PersonUnboundFromChannel",
+   "kind": "event",
+   "text": "PersonUnboundFromChannel",
+   "context": "access",
+   "order": 10
+  },
+  {
+   "id": "configuration.WorkspaceCreated",
+   "kind": "event",
+   "text": "WorkspaceCreated",
+   "context": "configuration",
+   "order": 1
+  },
+  {
+   "id": "configuration.WorkspaceSourceChanged",
+   "kind": "event",
+   "text": "WorkspaceSourceChanged",
+   "context": "configuration",
+   "order": 2
+  },
+  {
+   "id": "configuration.WorkspaceConfigurationApplied",
+   "kind": "event",
+   "text": "WorkspaceConfigurationApplied",
+   "context": "configuration",
+   "order": 3
+  },
+  {
+   "id": "configuration.WorkspaceConfigurationRejected",
+   "kind": "event",
+   "text": "WorkspaceConfigurationRejected",
+   "context": "configuration",
+   "order": 4
+  },
+  {
+   "id": "secrets.SecretSet",
+   "kind": "event",
+   "text": "SecretSet",
+   "context": "secrets",
+   "order": 0
+  },
+  {
+   "id": "secrets.SecretRotated",
+   "kind": "event",
+   "text": "SecretRotated",
+   "context": "secrets",
+   "order": 1
+  },
+  {
+   "id": "secrets.SecretInjectedIntoRequest",
+   "kind": "event",
+   "text": "SecretInjectedIntoRequest",
+   "context": "secrets",
+   "order": 2
+  },
+  {
+   "id": "secrets.SecretInjectionRefused",
+   "kind": "event",
+   "text": "SecretInjectionRefused",
+   "context": "secrets",
+   "order": 3
+  },
+  {
+   "id": "secrets.SecretLeakRedacted",
+   "kind": "event",
+   "text": "SecretLeakRedacted",
+   "context": "secrets",
+   "order": 4
+  },
+  {
+   "id": "secrets.SecretDeleted",
+   "kind": "event",
+   "text": "SecretDeleted",
+   "context": "secrets",
+   "order": 5
+  },
+  {
+   "id": "packages.SignatoryTrusted",
+   "kind": "event",
+   "text": "SignatoryTrusted",
+   "context": "packages",
+   "order": 0
+  },
+  {
+   "id": "packages.ModulePublished",
+   "kind": "event",
+   "text": "ModulePublished",
+   "context": "packages",
+   "order": 1
+  },
+  {
+   "id": "packages.ReleaseSigned",
+   "kind": "event",
+   "text": "ReleaseSigned",
+   "context": "packages",
+   "order": 2
+  },
+  {
+   "id": "packages.PackageSignatureVerified",
+   "kind": "event",
+   "text": "PackageSignatureVerified",
+   "context": "packages",
+   "order": 3
+  },
+  {
+   "id": "packages.PackageVerificationFailed",
+   "kind": "event",
+   "text": "PackageVerificationFailed",
+   "context": "packages",
+   "order": 4
+  },
+  {
+   "id": "packages.PackagePinned",
+   "kind": "event",
+   "text": "PackagePinned",
+   "context": "packages",
+   "order": 5
+  },
+  {
+   "id": "packages.ReleaseRetracted",
+   "kind": "event",
+   "text": "ReleaseRetracted",
+   "context": "packages",
+   "order": 6
+  },
+  {
+   "id": "packages.SignatoryRevoked",
+   "kind": "event",
+   "text": "SignatoryRevoked",
+   "context": "packages",
+   "order": 7
+  },
+  {
+   "id": "content.ContentRootPinned",
+   "kind": "event",
+   "text": "ContentRootPinned",
+   "context": "content",
+   "order": 0
+  },
+  {
+   "id": "content.ContentRootReleased",
+   "kind": "event",
+   "text": "ContentRootReleased",
+   "context": "content",
+   "order": 1
+  },
+  {
+   "id": "content.GarbageCollectionSweepCompleted",
+   "kind": "event",
+   "text": "GarbageCollectionSweepCompleted",
+   "context": "content",
+   "order": 2
+  },
+  {
+   "id": "content.BlockIntegrityFailed",
+   "kind": "event",
+   "text": "BlockIntegrityFailed",
+   "context": "content",
+   "order": 3
+  },
+  {
+   "id": "content.ProjectionRebuilt",
+   "kind": "event",
+   "text": "ProjectionRebuilt",
+   "context": "content",
+   "order": 5
+  },
+  {
+   "id": "files.FileWritten",
+   "kind": "event",
+   "text": "FileWritten",
+   "context": "files",
+   "order": 0
+  },
+  {
+   "id": "files.DirectoryCreated",
+   "kind": "event",
+   "text": "DirectoryCreated",
+   "context": "files",
+   "order": 1
+  },
+  {
+   "id": "files.FileDeleted",
+   "kind": "event",
+   "text": "FileDeleted",
+   "context": "files",
+   "order": 2
+  },
+  {
+   "id": "files.FileRestored",
+   "kind": "event",
+   "text": "FileRestored",
+   "context": "files",
+   "order": 3
+  },
+  {
+   "id": "files.FileSystemSnapshotTagged",
+   "kind": "event",
+   "text": "FileSystemSnapshotTagged",
+   "context": "files",
+   "order": 4
+  },
+  {
+   "id": "files.FileSystemRestored",
+   "kind": "event",
+   "text": "FileSystemRestored",
+   "context": "files",
+   "order": 5
+  },
+  {
+   "id": "channels.MessageReceived",
+   "kind": "event",
+   "text": "MessageReceived",
+   "context": "channels",
+   "order": 1
+  },
+  {
+   "id": "channels.ReactionAdded",
+   "kind": "event",
+   "text": "ReactionAdded",
+   "context": "channels",
+   "order": 2
+  },
+  {
+   "id": "channels.MessageRetractedOnPlatform",
+   "kind": "event",
+   "text": "MessageRetractedOnPlatform",
+   "context": "channels",
+   "order": 3
+  },
+  {
+   "id": "channels.InputQueued",
+   "kind": "event",
+   "text": "InputQueued",
+   "context": "channels",
+   "order": 4
+  },
+  {
+   "id": "channels.AgentTurnStarted",
+   "kind": "event",
+   "text": "AgentTurnStarted",
+   "context": "channels",
+   "order": 5
+  },
+  {
+   "id": "channels.AgentRanProgram",
+   "kind": "event",
+   "text": "AgentRanProgram",
+   "context": "channels",
+   "order": 6
+  },
+  {
+   "id": "channels.SubagentDelegated",
+   "kind": "event",
+   "text": "SubagentDelegated",
+   "context": "channels",
+   "order": 7
+  },
+  {
+   "id": "channels.MessagePosted",
+   "kind": "event",
+   "text": "MessagePosted",
+   "context": "channels",
+   "order": 8
+  },
+  {
+   "id": "channels.AgentStayedQuiet",
+   "kind": "event",
+   "text": "AgentStayedQuiet",
+   "context": "channels",
+   "order": 9
+  },
+  {
+   "id": "channels.AgentTurnCompleted",
+   "kind": "event",
+   "text": "AgentTurnCompleted",
+   "context": "channels",
+   "order": 10
+  },
+  {
+   "id": "channels.ConversationRestarted",
+   "kind": "event",
+   "text": "ConversationRestarted",
+   "context": "channels",
+   "order": 11
+  },
+  {
+   "id": "runs.RunStarted",
+   "kind": "event",
+   "text": "RunStarted",
+   "context": "runs",
+   "order": 0
+  },
+  {
+   "id": "runs.RunBasisPinned",
+   "kind": "event",
+   "text": "RunBasisPinned",
+   "context": "runs",
+   "order": 1
+  },
+  {
+   "id": "runs.EffectInputRewrittenByGate",
+   "kind": "event",
+   "text": "EffectInputRewrittenByGate",
+   "context": "runs",
+   "order": 2
+  },
+  {
+   "id": "runs.EffectPassed",
+   "kind": "event",
+   "text": "EffectPassed",
+   "context": "runs",
+   "order": 3
+  },
+  {
+   "id": "runs.EffectMocked",
+   "kind": "event",
+   "text": "EffectMocked",
+   "context": "runs",
+   "order": 4
+  },
+  {
+   "id": "runs.EffectDenied",
+   "kind": "event",
+   "text": "EffectDenied",
+   "context": "runs",
+   "order": 5
+  },
+  {
+   "id": "runs.GateFailed",
+   "kind": "event",
+   "text": "GateFailed",
+   "context": "runs",
+   "order": 6
+  },
+  {
+   "id": "runs.EffectResultRecorded",
+   "kind": "event",
+   "text": "EffectResultRecorded",
+   "context": "runs",
+   "order": 7
+  },
+  {
+   "id": "runs.LocalEffectResultsRecorded",
+   "kind": "event",
+   "text": "LocalEffectResultsRecorded",
+   "context": "runs",
+   "order": 8
+  },
+  {
+   "id": "runs.EffectFailed",
+   "kind": "event",
+   "text": "EffectFailed",
+   "context": "runs",
+   "order": 9
+  },
+  {
+   "id": "runs.EffectRetryScheduled",
+   "kind": "event",
+   "text": "EffectRetryScheduled",
+   "context": "runs",
+   "order": 10
+  },
+  {
+   "id": "runs.EffectOutcomeInDoubt",
+   "kind": "event",
+   "text": "EffectOutcomeInDoubt",
+   "context": "runs",
+   "order": 11
+  },
+  {
+   "id": "runs.EffectReconciled",
+   "kind": "event",
+   "text": "EffectReconciled",
+   "context": "runs",
+   "order": 12
+  },
+  {
+   "id": "runs.RunSuspended",
+   "kind": "event",
+   "text": "RunSuspended",
+   "context": "runs",
+   "order": 13
+  },
+  {
+   "id": "runs.ChildRunAwaited",
+   "kind": "event",
+   "text": "ChildRunAwaited",
+   "context": "runs",
+   "order": 14
+  },
+  {
+   "id": "runs.RunResumed",
+   "kind": "event",
+   "text": "RunResumed",
+   "context": "runs",
+   "order": 15
+  },
+  {
+   "id": "runs.RunResumedUnderNewShell",
+   "kind": "event",
+   "text": "RunResumedUnderNewShell",
+   "context": "runs",
+   "order": 16
+  },
+  {
+   "id": "runs.ReplayDiverged",
+   "kind": "event",
+   "text": "ReplayDiverged",
+   "context": "runs",
+   "order": 17
+  },
+  {
+   "id": "runs.RunCheckpointed",
+   "kind": "event",
+   "text": "RunCheckpointed",
+   "context": "runs",
+   "order": 18
+  },
+  {
+   "id": "runs.RunCompleted",
+   "kind": "event",
+   "text": "RunCompleted",
+   "context": "runs",
+   "order": 19
+  },
+  {
+   "id": "runs.RunFailed",
+   "kind": "event",
+   "text": "RunFailed",
+   "context": "runs",
+   "order": 20
+  },
+  {
+   "id": "runs.RunCancelled",
+   "kind": "event",
+   "text": "RunCancelled",
+   "context": "runs",
+   "order": 21
+  },
+  {
+   "id": "fleet.MachineJoined",
+   "kind": "event",
+   "text": "MachineJoined",
+   "context": "fleet",
+   "order": 0
+  },
+  {
+   "id": "fleet.RunLeaseAcquired",
+   "kind": "event",
+   "text": "RunLeaseAcquired",
+   "context": "fleet",
+   "order": 1
+  },
+  {
+   "id": "fleet.RunThrottled",
+   "kind": "event",
+   "text": "RunThrottled",
+   "context": "fleet",
+   "order": 2
+  },
+  {
+   "id": "fleet.RunLeaseExpired",
+   "kind": "event",
+   "text": "RunLeaseExpired",
+   "context": "fleet",
+   "order": 4
+  },
+  {
+   "id": "fleet.MachineDrained",
+   "kind": "event",
+   "text": "MachineDrained",
+   "context": "fleet",
+   "order": 5
+  },
+  {
+   "id": "triggers.TriggerAdded",
+   "kind": "event",
+   "text": "TriggerAdded",
+   "context": "triggers",
+   "order": 0
+  },
+  {
+   "id": "triggers.TriggerSavedToWorkspace",
+   "kind": "event",
+   "text": "TriggerSavedToWorkspace",
+   "context": "triggers",
+   "order": 2
+  },
+  {
+   "id": "triggers.TriggerShadowedByConfiguration",
+   "kind": "event",
+   "text": "TriggerShadowedByConfiguration",
+   "context": "triggers",
+   "order": 3
+  },
+  {
+   "id": "triggers.TriggerMatched",
+   "kind": "event",
+   "text": "TriggerMatched",
+   "context": "triggers",
+   "order": 4
+  },
+  {
+   "id": "triggers.TriggerScriptFailed",
+   "kind": "event",
+   "text": "TriggerScriptFailed",
+   "context": "triggers",
+   "order": 5
+  },
+  {
+   "id": "triggers.TriggerStopped",
+   "kind": "event",
+   "text": "TriggerStopped",
+   "context": "triggers",
+   "order": 6
+  },
+  {
+   "id": "triggers.TriggerResumed",
+   "kind": "event",
+   "text": "TriggerResumed",
+   "context": "triggers",
+   "order": 7
+  },
+  {
+   "id": "triggers.TriggerDeleted",
+   "kind": "event",
+   "text": "TriggerDeleted",
+   "context": "triggers",
+   "order": 8
+  },
+  {
+   "id": "connections.ChatConnected",
+   "kind": "event",
+   "text": "ChatConnected",
+   "context": "connections",
+   "order": 0
+  },
+  {
+   "id": "connections.ServiceConnected",
+   "kind": "event",
+   "text": "ServiceConnected",
+   "context": "connections",
+   "order": 1
+  },
+  {
+   "id": "connections.UnauthenticatedConnectionCreated",
+   "kind": "event",
+   "text": "UnauthenticatedConnectionCreated",
+   "context": "connections",
+   "order": 2
+  },
+  {
+   "id": "connections.ConnectionBackfilled",
+   "kind": "event",
+   "text": "ConnectionBackfilled",
+   "context": "connections",
+   "order": 3
+  },
+  {
+   "id": "connections.WebhookDeliveryAuthenticated",
+   "kind": "event",
+   "text": "WebhookDeliveryAuthenticated",
+   "context": "connections",
+   "order": 4
+  },
+  {
+   "id": "connections.WebhookDeliveryRejected",
+   "kind": "event",
+   "text": "WebhookDeliveryRejected",
+   "context": "connections",
+   "order": 5
+  },
+  {
+   "id": "connections.WebhookReplayDetected",
+   "kind": "event",
+   "text": "WebhookReplayDetected",
+   "context": "connections",
+   "order": 6
+  },
+  {
+   "id": "connections.ConnectionEventReceived",
+   "kind": "event",
+   "text": "ConnectionEventReceived",
+   "context": "connections",
+   "order": 7
+  },
+  {
+   "id": "connections.PollCursorAdvanced",
+   "kind": "event",
+   "text": "PollCursorAdvanced",
+   "context": "connections",
+   "order": 8
+  },
+  {
+   "id": "connections.ServiceDisconnected",
+   "kind": "event",
+   "text": "ServiceDisconnected",
+   "context": "connections",
+   "order": 9
+  },
+  {
+   "id": "schedules.ReminderSet",
+   "kind": "event",
+   "text": "ReminderSet",
+   "context": "schedules",
+   "order": 0
+  },
+  {
+   "id": "schedules.RecurringScheduleSet",
+   "kind": "event",
+   "text": "RecurringScheduleSet",
+   "context": "schedules",
+   "order": 1
+  },
+  {
+   "id": "schedules.ScheduleOccurrenceFired",
+   "kind": "event",
+   "text": "ScheduleOccurrenceFired",
+   "context": "schedules",
+   "order": 2
+  },
+  {
+   "id": "schedules.CronOccurrenceMissed",
+   "kind": "event",
+   "text": "CronOccurrenceMissed",
+   "context": "schedules",
+   "order": 3
+  },
+  {
+   "id": "schedules.ScheduleCancelled",
+   "kind": "event",
+   "text": "ScheduleCancelled",
+   "context": "schedules",
+   "order": 4
+  },
+  {
+   "id": "artifacts.ArtifactVersionSaved",
+   "kind": "event",
+   "text": "ArtifactVersionSaved",
+   "context": "artifacts",
+   "order": 0
+  },
+  {
+   "id": "artifacts.ArtifactSharedForEditing",
+   "kind": "event",
+   "text": "ArtifactSharedForEditing",
+   "context": "artifacts",
+   "order": 1
+  },
+  {
+   "id": "artifacts.ArtifactUnsharedForEditing",
+   "kind": "event",
+   "text": "ArtifactUnsharedForEditing",
+   "context": "artifacts",
+   "order": 2
+  },
+  {
+   "id": "databases.DatabaseStatementExecuted",
+   "kind": "event",
+   "text": "DatabaseStatementExecuted",
+   "context": "databases",
+   "order": 0
+  },
+  {
+   "id": "databases.DatabaseSnapshotTaken",
+   "kind": "event",
+   "text": "DatabaseSnapshotTaken",
+   "context": "databases",
+   "order": 1
+  },
+  {
+   "id": "databases.DataclipInvoked",
+   "kind": "event",
+   "text": "DataclipInvoked",
+   "context": "databases",
+   "order": 3
+  },
+  {
+   "id": "evidence.AuditLogCheckpointSigned",
+   "kind": "event",
+   "text": "AuditLogCheckpointSigned",
+   "context": "evidence",
+   "order": 0
+  },
+  {
+   "id": "evidence.AuditLogVerified",
+   "kind": "event",
+   "text": "AuditLogVerified",
+   "context": "evidence",
+   "order": 2
+  },
+  {
+   "id": "evidence.AuditLogTamperDetected",
+   "kind": "event",
+   "text": "AuditLogTamperDetected",
+   "context": "evidence",
+   "order": 3
+  },
+  {
+   "id": "evidence.AuditTrailExported",
+   "kind": "event",
+   "text": "AuditTrailExported",
+   "context": "evidence",
+   "order": 5
+  },
+  {
+   "id": "evidence.EventUpcasterRegistered",
+   "kind": "event",
+   "text": "EventUpcasterRegistered",
+   "context": "evidence",
+   "order": 6
+  },
+  {
+   "id": "records.RetentionPolicySet",
+   "kind": "event",
+   "text": "RetentionPolicySet",
+   "context": "records",
+   "order": 0
+  },
+  {
+   "id": "records.RetentionPurgeCompleted",
+   "kind": "event",
+   "text": "RetentionPurgeCompleted",
+   "context": "records",
+   "order": 1
+  },
+  {
+   "id": "records.LegalHoldPlaced",
+   "kind": "event",
+   "text": "LegalHoldPlaced",
+   "context": "records",
+   "order": 2
+  },
+  {
+   "id": "records.LegalHoldReleased",
+   "kind": "event",
+   "text": "LegalHoldReleased",
+   "context": "records",
+   "order": 3
+  },
+  {
+   "id": "records.ErasureRequested",
+   "kind": "event",
+   "text": "ErasureRequested",
+   "context": "records",
+   "order": 4
+  },
+  {
+   "id": "records.ErasureRefusedUnderLegalHold",
+   "kind": "event",
+   "text": "ErasureRefusedUnderLegalHold",
+   "context": "records",
+   "order": 5
+  },
+  {
+   "id": "records.SubjectKeyShredded",
+   "kind": "event",
+   "text": "SubjectKeyShredded",
+   "context": "records",
+   "order": 6
+  },
+  {
+   "id": "R1",
+   "kind": "hotspot",
+   "text": "H1 resolved: separate events EffectPassed, EffectMocked, EffectDenied, GateFailed, each with run, step, effect, input digest, shell CID and actor chain. EffectRequested folds into them. A rewrite is EffectInputRewrittenByGate with digests only.",
+   "context": "runs",
+   "status": "resolved"
+  },
+  {
+   "id": "R2",
+   "kind": "hotspot",
+   "text": "H2 resolved: replayed steps reuse recorded decisions and results, new steps are decided by the shell in force now. A changed shell is RunResumedUnderNewShell.",
+   "context": "runs",
+   "status": "resolved"
+  },
+  {
+   "id": "R3",
+   "kind": "hotspot",
+   "text": "H3 resolved: every effect declares a delivery class: pure, internal, idempotent, keyed or unsafe. Unsafe effects are never retried automatically, they become EffectOutcomeInDoubt for reconciliation or a person.",
+   "context": "runs",
+   "status": "resolved"
+  },
+  {
+   "id": "R4",
+   "kind": "hotspot",
+   "text": "H4 resolved: everything that shapes behaviour is journaled. Now, Random, Flip and lazy pins are buffered and flushed as LocalEffectResultsRecorded before the next externally visible effect. ReadFile records content CIDs, not bytes.",
+   "context": "runs",
+   "status": "resolved"
+  },
+  {
+   "id": "R5",
+   "kind": "hotspot",
+   "text": "H5 resolved: EffectMocked is its own event, replay feeds the mock, projections of the world only consume EffectResultRecorded.",
+   "context": "runs",
+   "status": "resolved"
+  },
+  {
+   "id": "R6",
+   "kind": "hotspot",
+   "text": "H6 resolved: personal data stays out of envelopes. Payloads are encrypted blocks with workspace and subject keys, erasure shreds the key.",
+   "context": "records",
+   "status": "resolved"
+  },
+  {
+   "id": "R7",
+   "kind": "hotspot",
+   "text": "H7 resolved: one stream per aggregate with optimistic appends on expected version, a global position assigned at commit, hash chained, the ledger's commit time is the authoritative when.",
+   "context": "evidence",
+   "status": "resolved"
+  },
+  {
+   "id": "R8",
+   "kind": "hotspot",
+   "text": "H8 resolved: never rewrite events. Pure upcasters by CID applied on read, registering one is an event.",
+   "context": "evidence",
+   "status": "resolved"
+  },
+  {
+   "id": "R9",
+   "kind": "hotspot",
+   "text": "H9 resolved: traces become a projection of the journal and decisions, never the record.",
+   "context": "evidence",
+   "status": "resolved"
+  },
+  {
+   "id": "R10",
+   "kind": "hotspot",
+   "text": "H10 resolved: effects record secret name and version, never values or plain hashes of values. Replay reads the version from the vault.",
+   "context": "secrets",
+   "status": "resolved"
+  },
+  {
+   "id": "R11",
+   "kind": "hotspot",
+   "text": "H11 resolved: RunBasisPinned stores the @name to release to CID map as one block, replay never asks the hub.",
+   "context": "packages",
+   "status": "resolved"
+  },
+  {
+   "id": "R12",
+   "kind": "hotspot",
+   "text": "H12 resolved: inline up to 4 KiB, larger payloads are blocks, chunked above 256 KiB. Blocks are written before the event that references them.",
+   "context": "content",
+   "status": "resolved"
+  },
+  {
+   "id": "R13",
+   "kind": "hotspot",
+   "text": "H13 resolved: a mandatory envelope: actor, on_behalf_of chain ending in a person or a configuration version, shell CID, causation and correlation ids.",
+   "context": "identity",
+   "status": "resolved"
+  },
+  {
+   "id": "R14",
+   "kind": "hotspot",
+   "text": "H14 resolved: CloudBootstrapped by a one time code printed by the server, then invitation only. Sign in records the verified provider and subject.",
+   "context": "identity",
+   "status": "resolved"
+  },
+  {
+   "id": "R15",
+   "kind": "hotspot",
+   "text": "H15 resolved: runtime and configured triggers are both durable, configuration wins a name clash and the runtime one is TriggerShadowedByConfiguration.",
+   "context": "triggers",
+   "status": "resolved"
+  },
+  {
+   "id": "R16",
+   "kind": "hotspot",
+   "text": "H16 resolved: a webhook without a secret is an explicit, attributed opt in and flagged in views. Token in URL is deprecated.",
+   "context": "connections",
+   "status": "resolved"
+  },
+  {
+   "id": "R17",
+   "kind": "hotspot",
+   "text": "H17 resolved: every delivery is stored as a block, high volume sources batch them, deliveries that matched are retained with their run.",
+   "context": "connections",
+   "status": "resolved"
+  },
+  {
+   "id": "R18",
+   "kind": "hotspot",
+   "text": "H19 resolved: each schedule declares a catch up policy, default one late occurrence, the rest recorded as CronOccurrenceMissed.",
+   "context": "schedules",
+   "status": "resolved"
+  },
+  {
+   "id": "R19",
+   "kind": "hotspot",
+   "text": "H20 resolved: a revert is a WorkspaceSourceChanged that restores an earlier CID. Effects already performed stay facts, the UI lists what is not undone.",
+   "context": "configuration",
+   "status": "resolved"
+  },
+  {
+   "id": "O1",
+   "kind": "hotspot",
+   "text": "O1 resolved (Rui, Dana): the stream databases/<ws>/<name> is the record, the SQLite file a working copy. Each statement commits with a (run, step) row in a cloud owned outbox table, nondeterministic SQL is rejected, snapshots carry a row hash.",
+   "context": "databases",
+   "status": "resolved"
+  },
+  {
+   "id": "O2",
+   "kind": "hotspot",
+   "text": "O2 resolved (Avery): a dedicated ledger key in an HSM or keyring, never in the data directory. Checkpoints are anchored to the hub and a public transparency log, CheckpointAnchored, and checked by an independent verifier.",
+   "context": "evidence",
+   "status": "resolved"
+  },
+  {
+   "id": "O3",
+   "kind": "hotspot",
+   "text": "O3 resolved (Avery, Sam): a second person approves anything that widens privilege or exposure, a shell is narrower only when its gates are a subset by CID. Agents, triggers and schedules may propose, never approve. A single admin may self approve after 24 hours, flagged.",
+   "context": "access",
+   "status": "resolved"
+  },
+  {
+   "id": "O4",
+   "kind": "hotspot",
+   "text": "O4 resolved (Dana): dedup per workspace scope, blocks encrypted with the scope key, only public hub modules are shared. Holds and erasure act on roots and keys, never single blocks.",
+   "context": "content",
+   "status": "resolved"
+  },
+  {
+   "id": "O5",
+   "kind": "hotspot",
+   "text": "O5 resolved (Rui): phase 1 caps a run's journal and has no checkpoints, units of work are already short. Phase 2 checkpoints only at suspension points once closures capture only free variables.",
+   "context": "runs",
+   "status": "resolved"
+  },
+  {
+   "id": "O6",
+   "kind": "hotspot",
+   "text": "O6 resolved (Rui): admission slots per workspace and channel, a separate model call limit, suspended runs hold no slot, a child borrows its parent's slot, Delegate depth capped at 4, ingestion pauses at the source.",
+   "context": "fleet",
+   "status": "resolved"
+  },
+  {
+   "id": "O7",
+   "kind": "hotspot",
+   "text": "O7 resolved (Sam): placeholders become random handles per secret version, injection only where a program names the secret, implicit Bearer injection becomes a logged, deprecated opt in.",
+   "context": "secrets",
+   "status": "resolved"
+  },
+  {
+   "id": "O8",
+   "kind": "hotspot",
+   "text": "O8 resolved (Priya, Sam): members read their channel's history, binding grants powers not history, an admin or auditor outside the channel reads it through a recorded ChannelHistoryOpened with a reason.",
+   "context": "channels",
+   "status": "resolved"
+  },
+  {
+   "id": "O9",
+   "kind": "hotspot",
+   "text": "O9 resolved (Rui, Priya): a reminder belongs to its conversation and survives /new, erasure of the conversation cancels it.",
+   "context": "schedules",
+   "status": "resolved"
+  },
+  {
+   "id": "O10",
+   "kind": "hotspot",
+   "text": "O10 ruled (Rui, Priya): an identical card is a no op. A changed card is an explicit TriggerReplaced with both definition CIDs, offered as one click when the same person submits it, a deliberate replace when someone else added it, rejected when the name is in workspace.eyg.",
+   "context": "triggers",
+   "status": "resolved"
+  },
+  {
+   "id": "avery1",
+   "kind": "aggregate",
+   "text": "WorkspaceConfiguration (per workspace): the chain of source versions and which one is in force",
+   "author": "avery",
+   "context": "configuration",
+   "for": null
+  },
+  {
+   "id": "avery2",
+   "kind": "command",
+   "text": "CreateWorkspace",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceCreated"
+  },
+  {
+   "id": "avery3",
+   "kind": "actor",
+   "text": "Admin (person), via cloud.eyg or the admin page",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceCreated"
+  },
+  {
+   "id": "avery4",
+   "kind": "command",
+   "text": "SetWorkspaceSource {workspace, source_cid, expected_previous_cid, reason, restores?}",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery5",
+   "kind": "actor",
+   "text": "Workspace maintainer (person) in the web shell or POST /api/SetWorkspaceSource",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery6",
+   "kind": "actor",
+   "text": "Agent with a set_workspace_source gate, on behalf of the person at the root of its chain",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery7",
+   "kind": "command",
+   "text": "ApplyWorkspaceConfiguration {source_cid, evaluated_config_cid, secret_names_read, basis}",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "avery8",
+   "kind": "command",
+   "text": "RejectWorkspaceConfiguration {source_cid, reason}",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationRejected"
+  },
+  {
+   "id": "avery9",
+   "kind": "actor",
+   "text": "Configuration evaluator (system process, pure evaluation of workspace.eyg)",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "avery10",
+   "kind": "actor",
+   "text": "Configuration evaluator (system process)",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationRejected"
+  },
+  {
+   "id": "avery11",
+   "kind": "policy",
+   "text": "Whenever WorkspaceSourceChanged, evaluate the new source purely: if it fails, RejectWorkspaceConfiguration; if it changes any channel shell, person shell or admin, ProposePrivilegeChange (access) and wait; otherwise ApplyWorkspaceConfiguration",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery12",
+   "kind": "policy",
+   "text": "Whenever WorkspaceSourceChanged, PinContentRoot for the source CID so every configuration version stays readable for its retention period (content)",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery13",
+   "kind": "policy",
+   "text": "Whenever PrivilegeChangeApproved for a configuration version, ApplyWorkspaceConfiguration for that version if it is still the latest source; whenever PrivilegeChangeDeclined, RejectWorkspaceConfiguration",
+   "author": "avery",
+   "context": "access",
+   "for": "access.PrivilegeChangeApproved"
+  },
+  {
+   "id": "avery14",
+   "kind": "policy",
+   "text": "Whenever SecretRotated for a name listed in the applied configuration's secret_names_read, ApplyWorkspaceConfiguration again with the same source CID",
+   "author": "avery",
+   "context": "secrets",
+   "for": "secrets.SecretRotated"
+  },
+  {
+   "id": "avery15",
+   "kind": "policy",
+   "text": "Whenever WorkspaceConfigurationApplied, reconcile what it declares: SaveTriggerToWorkspace / ShadowTrigger (triggers), SetRecurringSchedule (schedules), ConnectService (connections), ChangeChannelShell (access). Each resulting event cites the applied version as its cause",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "avery16",
+   "kind": "policy",
+   "text": "Whenever WorkspaceConfigurationRejected, post the evaluation error to the author and keep the previous version in force",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationRejected"
+  },
+  {
+   "id": "avery17",
+   "kind": "read_model",
+   "text": "Configuration history per workspace: version, source CID, author and on_behalf_of chain, reason, restores, applied or rejected, approval reference, diff against the previous version",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery18",
+   "kind": "read_model",
+   "text": "Policy in force at time T: for any global position, which configuration version, channel shells, person shells and admins applied, by CID. Answers 'what was this agent allowed to do last March'",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "avery19",
+   "kind": "read_model",
+   "text": "Revert impact: for a restored version, the effects performed under the versions in between that a revert does not undo",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery20",
+   "kind": "external",
+   "text": "Git repository or editor the source was authored in (source CID is the link)",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "avery21",
+   "kind": "aggregate",
+   "text": "CheckpointChain (per cloud): signed checkpoints over the global ledger, their anchors and verifications",
+   "author": "avery",
+   "context": "evidence",
+   "for": null
+  },
+  {
+   "id": "avery22",
+   "kind": "aggregate",
+   "text": "AuditExport (per export request)",
+   "author": "avery",
+   "context": "evidence",
+   "for": null
+  },
+  {
+   "id": "avery23",
+   "kind": "aggregate",
+   "text": "UpcasterRegistry (per event type)",
+   "author": "avery",
+   "context": "evidence",
+   "for": null
+  },
+  {
+   "id": "avery24",
+   "kind": "command",
+   "text": "SignCheckpoint {global_position, chain_head_hash, previous_checkpoint_hash, key_id}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogCheckpointSigned"
+  },
+  {
+   "id": "avery25",
+   "kind": "actor",
+   "text": "Checkpointer (system scheduler)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogCheckpointSigned"
+  },
+  {
+   "id": "avery26",
+   "kind": "external",
+   "text": "HSM or OS keyring holding the ledger signing key (never in the data directory, never readable by EYG)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogCheckpointSigned"
+  },
+  {
+   "id": "avery27",
+   "kind": "policy",
+   "text": "Every 1000 ledger events or 5 minutes, whichever comes first, SignCheckpoint",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogCheckpointSigned"
+  },
+  {
+   "id": "avery28",
+   "kind": "command",
+   "text": "AnchorCheckpoint {checkpoint_hash, anchor}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.CheckpointAnchored"
+  },
+  {
+   "id": "avery29",
+   "kind": "actor",
+   "text": "Checkpointer (system)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.CheckpointAnchored"
+  },
+  {
+   "id": "avery30",
+   "kind": "external",
+   "text": "Hub (append the checkpoint to a signed untethered stream) and a public transparency log / RFC 3161 timestamp authority",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.CheckpointAnchored"
+  },
+  {
+   "id": "avery31",
+   "kind": "policy",
+   "text": "Whenever AuditLogCheckpointSigned, AnchorCheckpoint to every configured anchor. An anchor still missing after 1 hour raises an operator alert",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogCheckpointSigned"
+  },
+  {
+   "id": "avery32",
+   "kind": "command",
+   "text": "RotateCheckpointKey {new_key_id, public_key, signed_by_old_key}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.CheckpointKeyRotated"
+  },
+  {
+   "id": "avery33",
+   "kind": "actor",
+   "text": "Cloud operator (person), approved by an auditor",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.CheckpointKeyRotated"
+  },
+  {
+   "id": "avery34",
+   "kind": "command",
+   "text": "VerifyAuditLog {from_position, to_position, against_checkpoint}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogVerified"
+  },
+  {
+   "id": "avery35",
+   "kind": "command",
+   "text": "VerifyAuditLog (failed)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogTamperDetected"
+  },
+  {
+   "id": "avery36",
+   "kind": "actor",
+   "text": "Independent verifier (auditor's process run outside the cloud, reads the export API and the anchors)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogVerified"
+  },
+  {
+   "id": "avery37",
+   "kind": "actor",
+   "text": "Daily verification job (system)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogVerified"
+  },
+  {
+   "id": "avery38",
+   "kind": "actor",
+   "text": "Independent verifier or verification job",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogTamperDetected"
+  },
+  {
+   "id": "avery39",
+   "kind": "policy",
+   "text": "Daily, VerifyAuditLog from the last verified position to the latest anchored checkpoint",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogVerified"
+  },
+  {
+   "id": "avery40",
+   "kind": "policy",
+   "text": "Whenever BlockIntegrityFailed, VerifyAuditLog over the range whose events reference that block",
+   "author": "avery",
+   "context": "content",
+   "for": "content.BlockIntegrityFailed"
+  },
+  {
+   "id": "avery41",
+   "kind": "policy",
+   "text": "Whenever AuditLogTamperDetected, PlaceLegalHold over the whole cloud (preservation hold, records), suspend retention purges and post an alert to admins and auditors (channels). Keep signing checkpoints so the damage stays bounded",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogTamperDetected"
+  },
+  {
+   "id": "avery42",
+   "kind": "command",
+   "text": "ResolveTamperIncident {incident, finding, evidence_cid}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.TamperIncidentResolved"
+  },
+  {
+   "id": "avery43",
+   "kind": "actor",
+   "text": "Auditor (person) together with the cloud operator (two people)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.TamperIncidentResolved"
+  },
+  {
+   "id": "avery44",
+   "kind": "command",
+   "text": "ExportAuditTrail {scope, from, to, recipient, legal_basis, format}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditTrailExported"
+  },
+  {
+   "id": "avery45",
+   "kind": "actor",
+   "text": "Auditor (person, audit shell)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditTrailExported"
+  },
+  {
+   "id": "avery46",
+   "kind": "external",
+   "text": "Regulator or external auditor (recipient)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditTrailExported"
+  },
+  {
+   "id": "avery47",
+   "kind": "command",
+   "text": "RegisterEventUpcaster {event_type, from_version, to_version, upcaster_cid, test_vectors_cid}",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.EventUpcasterRegistered"
+  },
+  {
+   "id": "avery48",
+   "kind": "actor",
+   "text": "Platform developer (person), approved by a second person",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.EventUpcasterRegistered"
+  },
+  {
+   "id": "avery49",
+   "kind": "policy",
+   "text": "Whenever EventUpcasterRegistered, RebuildProjection for every view that reads that event type (content)",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.EventUpcasterRegistered"
+  },
+  {
+   "id": "avery50",
+   "kind": "read_model",
+   "text": "Ledger health: last checkpoint, last anchor per anchor, last verified position, gap since then, open tamper incidents",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditLogVerified"
+  },
+  {
+   "id": "avery51",
+   "kind": "read_model",
+   "text": "Who did what: events by actor and by any person in the on_behalf_of chain, with causation tree (person -> agent turn -> subagent -> trigger -> run)",
+   "author": "avery",
+   "context": "evidence",
+   "for": null
+  },
+  {
+   "id": "avery52",
+   "kind": "read_model",
+   "text": "Decision evidence per agent, channel or shell CID: attempted effects, passed, rewritten, mocked, denied and gate failures over a period",
+   "author": "avery",
+   "context": "evidence",
+   "for": null
+  },
+  {
+   "id": "avery53",
+   "kind": "read_model",
+   "text": "Export register: every export, its scope, recipient, legal basis and the checkpoint it was verified against",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.AuditTrailExported"
+  },
+  {
+   "id": "avery54",
+   "kind": "read_model",
+   "text": "Upcaster catalogue: event type versions and the upcaster CID that maps each",
+   "author": "avery",
+   "context": "evidence",
+   "for": "evidence.EventUpcasterRegistered"
+  },
+  {
+   "id": "avery55",
+   "kind": "aggregate",
+   "text": "RetentionSchedule (per workspace): retention period per record category",
+   "author": "avery",
+   "context": "records",
+   "for": null
+  },
+  {
+   "id": "avery56",
+   "kind": "aggregate",
+   "text": "LegalHold (per hold): scope, matter, lifecycle",
+   "author": "avery",
+   "context": "records",
+   "for": null
+  },
+  {
+   "id": "avery57",
+   "kind": "aggregate",
+   "text": "DataSubject (per subject): erasure requests, deadlines and the subject key",
+   "author": "avery",
+   "context": "records",
+   "for": null
+  },
+  {
+   "id": "avery58",
+   "kind": "command",
+   "text": "SetRetentionPolicy {category, period, legal_basis}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPolicySet"
+  },
+  {
+   "id": "avery59",
+   "kind": "actor",
+   "text": "Records officer (person). A shortening needs a second person's approval",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPolicySet"
+  },
+  {
+   "id": "avery60",
+   "kind": "command",
+   "text": "PurgeExpiredRecords {category, up_to_position, roots_released}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPurgeCompleted"
+  },
+  {
+   "id": "avery61",
+   "kind": "actor",
+   "text": "Retention job (system scheduler)",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPurgeCompleted"
+  },
+  {
+   "id": "avery62",
+   "kind": "policy",
+   "text": "Daily, for each category, PurgeExpiredRecords for payloads older than the period that no active hold covers. Envelopes are never purged, only their payload roots are released",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPolicySet"
+  },
+  {
+   "id": "avery63",
+   "kind": "policy",
+   "text": "Whenever RetentionPurgeCompleted, ReleaseContentRoot for each released root and then run a garbage collection sweep (content)",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPurgeCompleted"
+  },
+  {
+   "id": "avery64",
+   "kind": "command",
+   "text": "PlaceLegalHold {matter, scope: workspace|channel|subject|time range, reason}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldPlaced"
+  },
+  {
+   "id": "avery65",
+   "kind": "actor",
+   "text": "Legal counsel or records officer (person)",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldPlaced"
+  },
+  {
+   "id": "avery66",
+   "kind": "actor",
+   "text": "Tamper response policy (system, preservation hold)",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldPlaced"
+  },
+  {
+   "id": "avery67",
+   "kind": "policy",
+   "text": "Whenever LegalHoldPlaced, PinContentRoot for the payload roots in scope (content), so neither a purge nor garbage collection can remove them",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldPlaced"
+  },
+  {
+   "id": "avery68",
+   "kind": "command",
+   "text": "ReleaseLegalHold {hold, reason}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldReleased"
+  },
+  {
+   "id": "avery69",
+   "kind": "actor",
+   "text": "Legal counsel (person), approved by a second person",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldReleased"
+  },
+  {
+   "id": "avery70",
+   "kind": "policy",
+   "text": "Whenever LegalHoldReleased, ReleaseContentRoot for the hold's pins, then re-evaluate refused erasure requests whose subject is no longer under any hold",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldReleased"
+  },
+  {
+   "id": "avery71",
+   "kind": "command",
+   "text": "RequestErasure {subject, scope, received_at, channel_of_request}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "avery72",
+   "kind": "actor",
+   "text": "Data subject (person), lodged by a privacy officer or self-service",
+   "author": "avery",
+   "context": "records",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "avery73",
+   "kind": "policy",
+   "text": "Whenever ErasureRequested, if any active hold covers the subject, RefuseErasure; otherwise ShredSubjectKey once the request is approved and before the legal deadline",
+   "author": "avery",
+   "context": "records",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "avery74",
+   "kind": "command",
+   "text": "RefuseErasure {request, holds}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.ErasureRefusedUnderLegalHold"
+  },
+  {
+   "id": "avery75",
+   "kind": "actor",
+   "text": "Erasure process (system policy)",
+   "author": "avery",
+   "context": "records",
+   "for": "records.ErasureRefusedUnderLegalHold"
+  },
+  {
+   "id": "avery76",
+   "kind": "command",
+   "text": "ShredSubjectKey {subject, key_version}",
+   "author": "avery",
+   "context": "records",
+   "for": "records.SubjectKeyShredded"
+  },
+  {
+   "id": "avery77",
+   "kind": "actor",
+   "text": "Privacy officer (person) approving the erasure process",
+   "author": "avery",
+   "context": "records",
+   "for": "records.SubjectKeyShredded"
+  },
+  {
+   "id": "avery78",
+   "kind": "external",
+   "text": "Key management service holding workspace and subject keys",
+   "author": "avery",
+   "context": "records",
+   "for": "records.SubjectKeyShredded"
+  },
+  {
+   "id": "avery79",
+   "kind": "policy",
+   "text": "Whenever SubjectKeyShredded, RebuildProjection for views that cached decrypted payloads (content) and rebuild databases derived from the subject's events (databases). Channel histories show the messages as erased",
+   "author": "avery",
+   "context": "records",
+   "for": "records.SubjectKeyShredded"
+  },
+  {
+   "id": "avery80",
+   "kind": "policy",
+   "text": "Whenever PersonDeactivated, keep all attribution: deactivation never triggers erasure by itself",
+   "author": "avery",
+   "context": "identity",
+   "for": "identity.PersonDeactivated"
+  },
+  {
+   "id": "avery81",
+   "kind": "read_model",
+   "text": "Retention schedule per workspace: category, period, legal basis, next purge, volume due",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPolicySet"
+  },
+  {
+   "id": "avery82",
+   "kind": "read_model",
+   "text": "Active legal holds by scope, and which subjects, channels and roots each one freezes",
+   "author": "avery",
+   "context": "records",
+   "for": "records.LegalHoldPlaced"
+  },
+  {
+   "id": "avery83",
+   "kind": "read_model",
+   "text": "Erasure cases: request date, deadline, status (pending, refused under hold, shredded), holds blocking",
+   "author": "avery",
+   "context": "records",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "avery84",
+   "kind": "read_model",
+   "text": "Disposition log: what was purged or shredded, when, under which policy version or request (what a regulator asks for)",
+   "author": "avery",
+   "context": "records",
+   "for": "records.RetentionPurgeCompleted"
+  },
+  {
+   "id": "rui85",
+   "kind": "aggregate",
+   "text": "Run (one stream per run, id derived from its cause)",
+   "author": "rui",
+   "context": "runs",
+   "for": null
+  },
+  {
+   "id": "rui86",
+   "kind": "command",
+   "text": "StartRun",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "rui87",
+   "kind": "command",
+   "text": "PinRunBasis (source CID, @name->CID map, interpreter version, shell CID)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunBasisPinned"
+  },
+  {
+   "id": "rui88",
+   "kind": "command",
+   "text": "DecideEffect (evaluate the pure gate of the shell in force)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "rui89",
+   "kind": "command",
+   "text": "DecideEffect",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectInputRewrittenByGate"
+  },
+  {
+   "id": "rui90",
+   "kind": "command",
+   "text": "DecideEffect",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectMocked"
+  },
+  {
+   "id": "rui91",
+   "kind": "command",
+   "text": "DecideEffect",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectDenied"
+  },
+  {
+   "id": "rui92",
+   "kind": "command",
+   "text": "DecideEffect",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.GateFailed"
+  },
+  {
+   "id": "rui93",
+   "kind": "command",
+   "text": "RecordEffectResult",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectResultRecorded"
+  },
+  {
+   "id": "rui94",
+   "kind": "command",
+   "text": "FlushLocalResults (Now, Random, Flip, lazy pins)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.LocalEffectResultsRecorded"
+  },
+  {
+   "id": "rui95",
+   "kind": "command",
+   "text": "RecordEffectFailure",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectFailed"
+  },
+  {
+   "id": "rui96",
+   "kind": "command",
+   "text": "ScheduleEffectRetry (same idempotency key, backoff)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectRetryScheduled"
+  },
+  {
+   "id": "rui97",
+   "kind": "command",
+   "text": "MarkEffectInDoubt",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectOutcomeInDoubt"
+  },
+  {
+   "id": "rui98",
+   "kind": "command",
+   "text": "ReconcileEffect (sent / not sent / retry)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectReconciled"
+  },
+  {
+   "id": "rui99",
+   "kind": "command",
+   "text": "SuspendRun (wake_at, awaiting child, awaiting reconciliation)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunSuspended"
+  },
+  {
+   "id": "rui100",
+   "kind": "command",
+   "text": "AwaitChildRun (child id = hash(parent run, step))",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.ChildRunAwaited"
+  },
+  {
+   "id": "rui101",
+   "kind": "command",
+   "text": "ResumeRun (replay journal, then go live)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunResumed"
+  },
+  {
+   "id": "rui102",
+   "kind": "command",
+   "text": "ResumeRun (shell CID in force differs from the last decision)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunResumedUnderNewShell"
+  },
+  {
+   "id": "rui103",
+   "kind": "command",
+   "text": "ResumeRun (replay asked for a different effect than recorded)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.ReplayDiverged"
+  },
+  {
+   "id": "rui104",
+   "kind": "command",
+   "text": "CheckpointRun (at a suspension point)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunCheckpointed"
+  },
+  {
+   "id": "rui105",
+   "kind": "command",
+   "text": "CompleteRun",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunCompleted"
+  },
+  {
+   "id": "rui106",
+   "kind": "command",
+   "text": "FailRun",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunFailed"
+  },
+  {
+   "id": "rui107",
+   "kind": "command",
+   "text": "CancelRun",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunCancelled"
+  },
+  {
+   "id": "rui108",
+   "kind": "actor",
+   "text": "Runtime (interpreter on the machine holding the lease)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "rui109",
+   "kind": "actor",
+   "text": "Runtime (interpreter on the machine holding the lease)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectResultRecorded"
+  },
+  {
+   "id": "rui110",
+   "kind": "actor",
+   "text": "Agent turn (session starting a turn run)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "rui111",
+   "kind": "actor",
+   "text": "Trigger policy",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "rui112",
+   "kind": "actor",
+   "text": "Schedule policy",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "rui113",
+   "kind": "actor",
+   "text": "Person invoking code in a chat or bound web shell",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "rui114",
+   "kind": "actor",
+   "text": "Parent run (Delegate, Dataclip, agent run tool)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.ChildRunAwaited"
+  },
+  {
+   "id": "rui115",
+   "kind": "actor",
+   "text": "Reconciler (automatic for keyed effects)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectReconciled"
+  },
+  {
+   "id": "rui116",
+   "kind": "actor",
+   "text": "Person in the channel or admin (unsafe effects)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectReconciled"
+  },
+  {
+   "id": "rui117",
+   "kind": "actor",
+   "text": "Admin (person)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunCancelled"
+  },
+  {
+   "id": "rui118",
+   "kind": "actor",
+   "text": "Replayer on the new lease holder",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.ReplayDiverged"
+  },
+  {
+   "id": "rui119",
+   "kind": "external",
+   "text": "Model provider (Complete effect of a turn run)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectResultRecorded"
+  },
+  {
+   "id": "rui120",
+   "kind": "external",
+   "text": "HTTP services (Fetch)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectFailed"
+  },
+  {
+   "id": "rui121",
+   "kind": "external",
+   "text": "Chat platform history (search for the run+step key of an in doubt Post)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectReconciled"
+  },
+  {
+   "id": "rui122",
+   "kind": "policy",
+   "text": "Whenever EffectPassed for an internal effect (files, triggers, schedules, artifacts, databases), send the target aggregate's command carrying (run, step) as idempotency key, then RecordEffectResult with what it returns; a repeat returns the original result",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "rui123",
+   "kind": "policy",
+   "text": "Whenever EffectPassed for Post, post with run+step in the platform metadata, then record channels.MessagePosted and RecordEffectResult",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "rui124",
+   "kind": "policy",
+   "text": "Whenever ChildRunAwaited, StartRun for the child with the derived id (a second start is a no-op)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.ChildRunAwaited"
+  },
+  {
+   "id": "rui125",
+   "kind": "policy",
+   "text": "Whenever a child's RunCompleted or RunFailed, ResumeRun of the parent with the child's outcome as the effect result",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunCompleted"
+  },
+  {
+   "id": "rui126",
+   "kind": "policy",
+   "text": "Whenever RunSuspended with wake_at (Sleep), the wake-up queue issues ResumeRun at wake_at on any machine",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunSuspended"
+  },
+  {
+   "id": "rui127",
+   "kind": "policy",
+   "text": "Whenever EffectRetryScheduled, ResumeRun at the retry time and perform the effect again with the same key",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectRetryScheduled"
+  },
+  {
+   "id": "rui128",
+   "kind": "policy",
+   "text": "Whenever ResumeRun finds a last EffectPassed with no result: internal or idempotent -> perform again; keyed -> ReconcileEffect via the platform; unsafe -> MarkEffectInDoubt",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunResumed"
+  },
+  {
+   "id": "rui129",
+   "kind": "policy",
+   "text": "Whenever EffectOutcomeInDoubt, post a notice to the run's channel and add it to the in doubt queue, the run stays suspended",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectOutcomeInDoubt"
+  },
+  {
+   "id": "rui130",
+   "kind": "policy",
+   "text": "Whenever channels.ConversationRestarted, CancelRun for the conversation's active turn run and its children",
+   "author": "rui",
+   "context": "runs",
+   "for": "channels.ConversationRestarted"
+  },
+  {
+   "id": "rui131",
+   "kind": "policy",
+   "text": "Whenever identity.PersonDeactivated, CancelRun for every live or suspended run whose on_behalf_of chain ends in that person",
+   "author": "rui",
+   "context": "runs",
+   "for": "identity.PersonDeactivated"
+  },
+  {
+   "id": "rui132",
+   "kind": "policy",
+   "text": "Whenever access.ChannelShellChanged or access.PersonShellAssigned, live runs pick up the new shell at their next effect decision, recorded as RunResumedUnderNewShell",
+   "author": "rui",
+   "context": "runs",
+   "for": "access.ChannelShellChanged"
+  },
+  {
+   "id": "rui133",
+   "kind": "policy",
+   "text": "Whenever RunStarted, pin the run's basis and payload blocks as a content root (content.ContentRootPinned)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "rui134",
+   "kind": "policy",
+   "text": "Whenever RunCompleted, RunFailed or RunCancelled, release the run's content root once retention and holds allow (content.ContentRootReleased)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunCompleted"
+  },
+  {
+   "id": "rui135",
+   "kind": "policy",
+   "text": "Whenever any decision or result is recorded, project a trace span (OTLP export is a view, never the record)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectResultRecorded"
+  },
+  {
+   "id": "rui136",
+   "kind": "read_model",
+   "text": "Run timeline: every decision with shell CID, rewritten inputs, results, mocks clearly marked, actor chain (auditors, developers)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "rui137",
+   "kind": "read_model",
+   "text": "In doubt effects queue with the reconcile choices (people, operators)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectOutcomeInDoubt"
+  },
+  {
+   "id": "rui138",
+   "kind": "read_model",
+   "text": "Live and suspended runs per workspace and channel, with reason and wake time (operators)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.RunSuspended"
+  },
+  {
+   "id": "rui139",
+   "kind": "read_model",
+   "text": "Run tree: parent, children, cause and on_behalf_of chain (auditors)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.ChildRunAwaited"
+  },
+  {
+   "id": "rui140",
+   "kind": "read_model",
+   "text": "Mocked and denied effects per shell CID (security reviewing what agents tried)",
+   "author": "rui",
+   "context": "runs",
+   "for": "runs.EffectDenied"
+  },
+  {
+   "id": "rui141",
+   "kind": "read_model",
+   "text": "Trace spans projected from the journal (observability)",
+   "author": "rui",
+   "context": "runs",
+   "for": null
+  },
+  {
+   "id": "rui142",
+   "kind": "aggregate",
+   "text": "Machine (per machine)",
+   "author": "rui",
+   "context": "fleet",
+   "for": null
+  },
+  {
+   "id": "rui143",
+   "kind": "aggregate",
+   "text": "RunLease (per run, monotonically increasing epoch)",
+   "author": "rui",
+   "context": "fleet",
+   "for": null
+  },
+  {
+   "id": "rui144",
+   "kind": "aggregate",
+   "text": "Admission (per workspace: slots per workspace and channel, FIFO queue)",
+   "author": "rui",
+   "context": "fleet",
+   "for": null
+  },
+  {
+   "id": "rui145",
+   "kind": "command",
+   "text": "JoinFleet",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.MachineJoined"
+  },
+  {
+   "id": "rui146",
+   "kind": "command",
+   "text": "AcquireRunLease",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunLeaseAcquired"
+  },
+  {
+   "id": "rui147",
+   "kind": "command",
+   "text": "ReleaseRunLease (suspension, drain, terminal run)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunLeaseReleased"
+  },
+  {
+   "id": "rui148",
+   "kind": "command",
+   "text": "AdmitRun (queue when over the limit)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunThrottled"
+  },
+  {
+   "id": "rui149",
+   "kind": "command",
+   "text": "ExpireRunLease",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunLeaseExpired"
+  },
+  {
+   "id": "rui150",
+   "kind": "command",
+   "text": "DrainMachine",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.MachineDrained"
+  },
+  {
+   "id": "rui151",
+   "kind": "actor",
+   "text": "Machine (worker node on start)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.MachineJoined"
+  },
+  {
+   "id": "rui152",
+   "kind": "actor",
+   "text": "Operator (deploy, scale down)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.MachineDrained"
+  },
+  {
+   "id": "rui153",
+   "kind": "actor",
+   "text": "Lease sweeper (clock)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunLeaseExpired"
+  },
+  {
+   "id": "rui154",
+   "kind": "actor",
+   "text": "Run starter (any policy that issues StartRun or ResumeRun)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunThrottled"
+  },
+  {
+   "id": "rui155",
+   "kind": "policy",
+   "text": "Whenever RunLeaseExpired, a live machine with free slots issues AcquireRunLease then ResumeRun (runs)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunLeaseExpired"
+  },
+  {
+   "id": "rui156",
+   "kind": "policy",
+   "text": "Whenever DrainMachine starts, suspend each of its runs at the next effect boundary and ReleaseRunLease, then MachineDrained",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.MachineDrained"
+  },
+  {
+   "id": "rui157",
+   "kind": "policy",
+   "text": "Whenever RunSuspended or a run ends, ReleaseRunLease and free its admission slot; the next queued run is admitted",
+   "author": "rui",
+   "context": "fleet",
+   "for": "runs.RunSuspended"
+  },
+  {
+   "id": "rui158",
+   "kind": "policy",
+   "text": "Whenever ChildRunAwaited, the parent's slot is lent to the child (no new slot for a sequential child)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "runs.ChildRunAwaited"
+  },
+  {
+   "id": "rui159",
+   "kind": "policy",
+   "text": "Whenever the workspace admission queue passes its bound, pause ingestion: pollers stop advancing PollCursorAdvanced, webhooks answer 503 with Retry-After (connections)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunThrottled"
+  },
+  {
+   "id": "rui160",
+   "kind": "read_model",
+   "text": "Machine roster with leases held and slots used (operators)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunLeaseAcquired"
+  },
+  {
+   "id": "rui161",
+   "kind": "read_model",
+   "text": "Admission queue depth and wait time per workspace, channel and cause (operators, teams wondering why a trigger is slow)",
+   "author": "rui",
+   "context": "fleet",
+   "for": "fleet.RunThrottled"
+  },
+  {
+   "id": "rui162",
+   "kind": "read_model",
+   "text": "Wake-up queue: suspended runs by wake_at and retry time (drives ResumeRun)",
+   "author": "rui",
+   "context": "fleet",
+   "for": null
+  },
+  {
+   "id": "rui163",
+   "kind": "aggregate",
+   "text": "ScheduleBook (per conversation, plus one per workspace for configured crons)",
+   "author": "rui",
+   "context": "schedules",
+   "for": null
+  },
+  {
+   "id": "rui164",
+   "kind": "command",
+   "text": "SetReminder (Timeout effect, keyed by run+step)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ReminderSet"
+  },
+  {
+   "id": "rui165",
+   "kind": "command",
+   "text": "SetRecurringSchedule (Cron effect or configured cron)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.RecurringScheduleSet"
+  },
+  {
+   "id": "rui166",
+   "kind": "command",
+   "text": "FireOccurrence (schedule id + due instant)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ScheduleOccurrenceFired"
+  },
+  {
+   "id": "rui167",
+   "kind": "command",
+   "text": "RecordMissedOccurrences (catch up policy of the schedule)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.CronOccurrenceMissed"
+  },
+  {
+   "id": "rui168",
+   "kind": "command",
+   "text": "CancelSchedule",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ScheduleCancelled"
+  },
+  {
+   "id": "rui169",
+   "kind": "actor",
+   "text": "Agent program (Timeout, Cron, CancelSchedule effects)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ReminderSet"
+  },
+  {
+   "id": "rui170",
+   "kind": "actor",
+   "text": "Configuration policy (configured crons)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.RecurringScheduleSet"
+  },
+  {
+   "id": "rui171",
+   "kind": "actor",
+   "text": "Scheduler (leased, one per workspace)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ScheduleOccurrenceFired"
+  },
+  {
+   "id": "rui172",
+   "kind": "actor",
+   "text": "Scheduler on start after downtime",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.CronOccurrenceMissed"
+  },
+  {
+   "id": "rui173",
+   "kind": "external",
+   "text": "Clock (UTC)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ScheduleOccurrenceFired"
+  },
+  {
+   "id": "rui174",
+   "kind": "policy",
+   "text": "Whenever ScheduleOccurrenceFired, queue its message in the target conversation (channels.InputQueued), idempotent on the occurrence id",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ScheduleOccurrenceFired"
+  },
+  {
+   "id": "rui175",
+   "kind": "policy",
+   "text": "Whenever configuration.WorkspaceConfigurationApplied, reconcile configured crons: SetRecurringSchedule for new or changed, CancelSchedule for removed",
+   "author": "rui",
+   "context": "schedules",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "rui176",
+   "kind": "policy",
+   "text": "Whenever records.ErasureRequested covers a conversation, CancelSchedule for reminders targeting it (their message text is personal data)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "rui177",
+   "kind": "policy",
+   "text": "Whenever a reminder's occurrence fired, the reminder is done: no separate cancel event",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.ScheduleOccurrenceFired"
+  },
+  {
+   "id": "rui178",
+   "kind": "read_model",
+   "text": "Upcoming reminders and schedules per channel with next due time and who set them (teams)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.RecurringScheduleSet"
+  },
+  {
+   "id": "rui179",
+   "kind": "read_model",
+   "text": "Missed and late occurrences after downtime (operators)",
+   "author": "rui",
+   "context": "schedules",
+   "for": "schedules.CronOccurrenceMissed"
+  },
+  {
+   "id": "rui180",
+   "kind": "aggregate",
+   "text": "ChannelTriggers (per channel: runtime triggers, shadowing, state)",
+   "author": "rui",
+   "context": "triggers",
+   "for": null
+  },
+  {
+   "id": "rui181",
+   "kind": "command",
+   "text": "AddTrigger (AddTrigger effect keyed by run+step, or a product page card)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerAdded"
+  },
+  {
+   "id": "rui182",
+   "kind": "command",
+   "text": "ReplaceTrigger (explicit, same name, new definition)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerReplaced"
+  },
+  {
+   "id": "rui183",
+   "kind": "command",
+   "text": "SaveTriggerToWorkspace",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerSavedToWorkspace"
+  },
+  {
+   "id": "rui184",
+   "kind": "command",
+   "text": "ShadowTrigger",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerShadowedByConfiguration"
+  },
+  {
+   "id": "rui185",
+   "kind": "command",
+   "text": "MatchEvent (pure patterns of active triggers)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerMatched"
+  },
+  {
+   "id": "rui186",
+   "kind": "command",
+   "text": "RecordTriggerScriptFailure",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerScriptFailed"
+  },
+  {
+   "id": "rui187",
+   "kind": "command",
+   "text": "StopTrigger",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerStopped"
+  },
+  {
+   "id": "rui188",
+   "kind": "command",
+   "text": "ResumeTrigger",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerResumed"
+  },
+  {
+   "id": "rui189",
+   "kind": "command",
+   "text": "DeleteTrigger",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerDeleted"
+  },
+  {
+   "id": "rui190",
+   "kind": "actor",
+   "text": "Agent program (AddTrigger, StopTrigger, StartTrigger, DeleteTrigger effects)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerAdded"
+  },
+  {
+   "id": "rui191",
+   "kind": "actor",
+   "text": "Person on the product page (trigger card)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerAdded"
+  },
+  {
+   "id": "rui192",
+   "kind": "actor",
+   "text": "Person promoting a runtime trigger into workspace.eyg",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerSavedToWorkspace"
+  },
+  {
+   "id": "rui193",
+   "kind": "actor",
+   "text": "Matcher (policy on every delivery)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerMatched"
+  },
+  {
+   "id": "rui194",
+   "kind": "actor",
+   "text": "Circuit breaker (policy)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerStopped"
+  },
+  {
+   "id": "rui195",
+   "kind": "policy",
+   "text": "Whenever connections.ConnectionEventReceived or channels.MessageReceived, MatchEvent against active triggers of the channel",
+   "author": "rui",
+   "context": "triggers",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "rui196",
+   "kind": "policy",
+   "text": "Whenever TriggerMatched, StartRun with id = hash(trigger definition CID, event id), through admission; a duplicate delivery starts nothing",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerMatched"
+  },
+  {
+   "id": "rui197",
+   "kind": "policy",
+   "text": "Whenever a run caused by a trigger ends in RunFailed, RecordTriggerScriptFailure",
+   "author": "rui",
+   "context": "triggers",
+   "for": "runs.RunFailed"
+  },
+  {
+   "id": "rui198",
+   "kind": "policy",
+   "text": "Whenever TriggerScriptFailed 5 times in a row, StopTrigger and post why to the channel",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerScriptFailed"
+  },
+  {
+   "id": "rui199",
+   "kind": "policy",
+   "text": "Whenever configuration.WorkspaceConfigurationApplied defines a trigger whose name a runtime trigger uses, ShadowTrigger",
+   "author": "rui",
+   "context": "triggers",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "rui200",
+   "kind": "policy",
+   "text": "Whenever TriggerSavedToWorkspace, propose the source change (configuration.WorkspaceSourceChanged); after it is applied the runtime copy is shadowed",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerSavedToWorkspace"
+  },
+  {
+   "id": "rui201",
+   "kind": "read_model",
+   "text": "Triggers per channel: configured or runtime, active or stopped, shadowed, last match, consecutive failures (teams, product page)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerAdded"
+  },
+  {
+   "id": "rui202",
+   "kind": "read_model",
+   "text": "Match history: delivery -> trigger -> run -> outcome (auditors, debugging)",
+   "author": "rui",
+   "context": "triggers",
+   "for": "triggers.TriggerMatched"
+  },
+  {
+   "id": "sam203",
+   "kind": "command",
+   "text": "BootstrapCloud (one-time code printed by the server)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.CloudBootstrapped"
+  },
+  {
+   "id": "sam204",
+   "kind": "actor",
+   "text": "Operator at the server console",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.CloudBootstrapped"
+  },
+  {
+   "id": "sam205",
+   "kind": "aggregate",
+   "text": "CloudInstallation (singleton)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.CloudBootstrapped"
+  },
+  {
+   "id": "sam206",
+   "kind": "policy",
+   "text": "Whenever CloudBootstrapped, GrantAdmin to the bootstrapping person (the only grant that needs no approval)",
+   "author": "sam",
+   "context": "access",
+   "for": "identity.CloudBootstrapped"
+  },
+  {
+   "id": "sam207",
+   "kind": "command",
+   "text": "InvitePerson (with proposed shell)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonInvited"
+  },
+  {
+   "id": "sam208",
+   "kind": "actor",
+   "text": "Admin (person)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonInvited"
+  },
+  {
+   "id": "sam209",
+   "kind": "aggregate",
+   "text": "Person (per person id)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonInvited"
+  },
+  {
+   "id": "sam210",
+   "kind": "command",
+   "text": "AcceptInvitation",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedUp"
+  },
+  {
+   "id": "sam211",
+   "kind": "actor",
+   "text": "Invited person",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedUp"
+  },
+  {
+   "id": "sam212",
+   "kind": "external",
+   "text": "Identity provider (OIDC / passkeys)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedUp"
+  },
+  {
+   "id": "sam213",
+   "kind": "policy",
+   "text": "Whenever PersonSignedUp, AssignPersonShell to the invitation's shell (through a PrivilegeChange if it is wider than the default shell)",
+   "author": "sam",
+   "context": "access",
+   "for": "identity.PersonSignedUp"
+  },
+  {
+   "id": "sam214",
+   "kind": "command",
+   "text": "SignIn",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedIn"
+  },
+  {
+   "id": "sam215",
+   "kind": "actor",
+   "text": "Person",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedIn"
+  },
+  {
+   "id": "sam216",
+   "kind": "external",
+   "text": "Identity provider (OIDC / passkeys)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedIn"
+  },
+  {
+   "id": "sam217",
+   "kind": "command",
+   "text": "SignIn (rejected: unknown subject, deactivated, bad assertion, throttled)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.SignInRejected"
+  },
+  {
+   "id": "sam218",
+   "kind": "actor",
+   "text": "Unknown visitor",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.SignInRejected"
+  },
+  {
+   "id": "sam219",
+   "kind": "aggregate",
+   "text": "SignInGuard (per provider subject, for subjects with no Person)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.SignInRejected"
+  },
+  {
+   "id": "sam220",
+   "kind": "policy",
+   "text": "Whenever SignInRejected passes a threshold for a subject or source, throttle SignIn for it and alert admins",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.SignInRejected"
+  },
+  {
+   "id": "sam221",
+   "kind": "command",
+   "text": "IssueApiCredential (scoped to a shell no wider than the issuer's)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.ApiCredentialIssued"
+  },
+  {
+   "id": "sam222",
+   "kind": "actor",
+   "text": "Admin or person issuing a credential for themself",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.ApiCredentialIssued"
+  },
+  {
+   "id": "sam223",
+   "kind": "aggregate",
+   "text": "Credential (per credential id, value stored hashed)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.ApiCredentialIssued"
+  },
+  {
+   "id": "sam224",
+   "kind": "command",
+   "text": "RevokeCredential",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.CredentialRevoked"
+  },
+  {
+   "id": "sam225",
+   "kind": "actor",
+   "text": "Admin, the credential's owner, or a revocation policy",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.CredentialRevoked"
+  },
+  {
+   "id": "sam226",
+   "kind": "policy",
+   "text": "Whenever CredentialRevoked for a web shell session, UnbindFromChannel and close the live view",
+   "author": "sam",
+   "context": "access",
+   "for": "identity.CredentialRevoked"
+  },
+  {
+   "id": "sam227",
+   "kind": "command",
+   "text": "DeactivatePerson",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonDeactivated"
+  },
+  {
+   "id": "sam228",
+   "kind": "actor",
+   "text": "Admin (person)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonDeactivated"
+  },
+  {
+   "id": "sam229",
+   "kind": "policy",
+   "text": "Whenever PersonDeactivated, RevokeCredential for all their credentials, UnbindFromChannel everywhere, and RevokeAdmin",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonDeactivated"
+  },
+  {
+   "id": "sam230",
+   "kind": "policy",
+   "text": "Whenever PersonDeactivated, list every secret they set or rotated as 'known by a departed person' and propose RotateSecret",
+   "author": "sam",
+   "context": "secrets",
+   "for": "identity.PersonDeactivated"
+  },
+  {
+   "id": "sam231",
+   "kind": "policy",
+   "text": "Whenever ErasureRequested for a person, DeactivatePerson first. After SubjectKeyShredded their grants stay in history under a pseudonymous person id",
+   "author": "sam",
+   "context": "identity",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "sam232",
+   "kind": "read_model",
+   "text": "People: provider and subject, status, shell, admin flag, active credentials with issue, expiry and last use",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.PersonSignedIn"
+  },
+  {
+   "id": "sam233",
+   "kind": "read_model",
+   "text": "Sign-in failures by subject and source (operator security view)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.SignInRejected"
+  },
+  {
+   "id": "sam234",
+   "kind": "read_model",
+   "text": "Dormant and long-lived credentials (unused for 30 days, no expiry)",
+   "author": "sam",
+   "context": "identity",
+   "for": "identity.ApiCredentialIssued"
+  },
+  {
+   "id": "sam235",
+   "kind": "command",
+   "text": "PublishShellDefinitions (from a cloud.eyg version)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ShellDefinitionPublished"
+  },
+  {
+   "id": "sam236",
+   "kind": "actor",
+   "text": "Admin editing cloud.eyg, applied after approval when any shell widens",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ShellDefinitionPublished"
+  },
+  {
+   "id": "sam237",
+   "kind": "aggregate",
+   "text": "ShellCatalog (per cloud)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ShellDefinitionPublished"
+  },
+  {
+   "id": "sam238",
+   "kind": "policy",
+   "text": "Whenever ShellDefinitionPublished removes a shell name, AssignPersonShell to the default (least) shell for everyone who held it",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ShellDefinitionPublished"
+  },
+  {
+   "id": "sam239",
+   "kind": "command",
+   "text": "RecordChannelShells (diff of channel shell CIDs)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ChannelShellChanged"
+  },
+  {
+   "id": "sam240",
+   "kind": "policy",
+   "text": "Whenever WorkspaceConfigurationApplied, RecordChannelShells for every channel whose shell CID changed",
+   "author": "sam",
+   "context": "access",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "sam241",
+   "kind": "aggregate",
+   "text": "ChannelAccess (per workspace and channel)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ChannelShellChanged"
+  },
+  {
+   "id": "sam242",
+   "kind": "policy",
+   "text": "Whenever WorkspaceSourceChanged and the new source adds an effect field to a channel shell, changes a configuration-API, secret or admin gate, or changes a secret's allowed hosts, ProposePrivilegeChange and hold ApplyWorkspaceConfiguration until it is approved",
+   "author": "sam",
+   "context": "access",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "sam243",
+   "kind": "command",
+   "text": "ProposePrivilegeChange (carries the exact command to apply and the expected version of its target)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeProposed"
+  },
+  {
+   "id": "sam244",
+   "kind": "actor",
+   "text": "Admin, person, or agent acting for a person",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeProposed"
+  },
+  {
+   "id": "sam245",
+   "kind": "aggregate",
+   "text": "PrivilegeChange (per proposal)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeProposed"
+  },
+  {
+   "id": "sam246",
+   "kind": "command",
+   "text": "ApprovePrivilegeChange",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeApproved"
+  },
+  {
+   "id": "sam247",
+   "kind": "actor",
+   "text": "Second admin (a person signed in within 15 minutes, never an agent, trigger, schedule or API credential)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeApproved"
+  },
+  {
+   "id": "sam248",
+   "kind": "policy",
+   "text": "Whenever PrivilegeChangeApproved, issue the proposed command (GrantAdmin, AssignPersonShell, ApplyWorkspaceConfiguration, PublishShellDefinitions, TrustSignatory, CreateUnauthenticatedConnection) with the approval as causation",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeApproved"
+  },
+  {
+   "id": "sam249",
+   "kind": "command",
+   "text": "DeclinePrivilegeChange",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeDeclined"
+  },
+  {
+   "id": "sam250",
+   "kind": "actor",
+   "text": "Admin (person) or the proposer withdrawing",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeDeclined"
+  },
+  {
+   "id": "sam251",
+   "kind": "policy",
+   "text": "Whenever PrivilegeChangeDeclined for a held configuration, notify the proposer's channel and leave the previous configuration in force",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeDeclined"
+  },
+  {
+   "id": "sam252",
+   "kind": "command",
+   "text": "GrantAdmin",
+   "author": "sam",
+   "context": "access",
+   "for": "access.AdminGranted"
+  },
+  {
+   "id": "sam253",
+   "kind": "actor",
+   "text": "Approval policy (after PrivilegeChangeApproved) or bootstrap policy",
+   "author": "sam",
+   "context": "access",
+   "for": "access.AdminGranted"
+  },
+  {
+   "id": "sam254",
+   "kind": "aggregate",
+   "text": "PersonGrants (per person)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.AdminGranted"
+  },
+  {
+   "id": "sam255",
+   "kind": "command",
+   "text": "RevokeAdmin (no approval needed, refused if it would leave no admin)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.AdminRevoked"
+  },
+  {
+   "id": "sam256",
+   "kind": "actor",
+   "text": "Admin (person) or deactivation policy",
+   "author": "sam",
+   "context": "access",
+   "for": "access.AdminRevoked"
+  },
+  {
+   "id": "sam257",
+   "kind": "command",
+   "text": "AssignPersonShell (the SetUserShell operation)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PersonShellAssigned"
+  },
+  {
+   "id": "sam258",
+   "kind": "actor",
+   "text": "Admin (directly when narrowing, through the approval policy when widening)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PersonShellAssigned"
+  },
+  {
+   "id": "sam259",
+   "kind": "policy",
+   "text": "Whenever PersonShellAssigned or AdminRevoked, re-prepare the person's live web shells and RevokeCredential for API credentials scoped wider than the new shell",
+   "author": "sam",
+   "context": "identity",
+   "for": "access.PersonShellAssigned"
+  },
+  {
+   "id": "sam260",
+   "kind": "command",
+   "text": "BindToChannel (Bind effect from the web shell)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PersonBoundToChannel"
+  },
+  {
+   "id": "sam261",
+   "kind": "actor",
+   "text": "Person in the web shell",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PersonBoundToChannel"
+  },
+  {
+   "id": "sam262",
+   "kind": "command",
+   "text": "UnbindFromChannel",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PersonUnboundFromChannel"
+  },
+  {
+   "id": "sam263",
+   "kind": "actor",
+   "text": "Person, or the revocation and deactivation policies",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PersonUnboundFromChannel"
+  },
+  {
+   "id": "sam264",
+   "kind": "policy",
+   "text": "Whenever EffectDenied or EffectMocked for a configuration-API effect (set_user_shell, set_workspace_source, set_secret, delete_secret) and the actor is an agent, trigger or schedule, alert workspace admins of an attempted escalation",
+   "author": "sam",
+   "context": "access",
+   "for": "runs.EffectDenied"
+  },
+  {
+   "id": "sam265",
+   "kind": "policy",
+   "text": "Whenever UnauthenticatedConnectionCreated, add it to the exposure view and remind admins weekly until a secret is set",
+   "author": "sam",
+   "context": "access",
+   "for": "connections.UnauthenticatedConnectionCreated"
+  },
+  {
+   "id": "sam266",
+   "kind": "read_model",
+   "text": "Access matrix as of time T: for each person, credential, channel and agent, which effects it may perform, which shell CID grants them, and which configuration and approval produced it",
+   "author": "sam",
+   "context": "access",
+   "for": "access.ChannelShellChanged"
+  },
+  {
+   "id": "sam267",
+   "kind": "read_model",
+   "text": "Pending privilege proposals: diff, proposer and on-behalf-of chain, expiry (the admin queue)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeProposed"
+  },
+  {
+   "id": "sam268",
+   "kind": "read_model",
+   "text": "Privilege change history with proposer, approver and causation (the auditor's view)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.PrivilegeChangeApproved"
+  },
+  {
+   "id": "sam269",
+   "kind": "read_model",
+   "text": "Admins and break-glass status (sole admin, self-approvals used)",
+   "author": "sam",
+   "context": "access",
+   "for": "access.AdminGranted"
+  },
+  {
+   "id": "sam270",
+   "kind": "read_model",
+   "text": "Exposure: unauthenticated connections, shared artifacts, channels whose shell holds fetch plus a secret",
+   "author": "sam",
+   "context": "access",
+   "for": "connections.UnauthenticatedConnectionCreated"
+  },
+  {
+   "id": "sam271",
+   "kind": "command",
+   "text": "SetSecret: the event gets name, version and keyed fingerprint, the vault issues the opaque handle",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretSet"
+  },
+  {
+   "id": "sam272",
+   "kind": "actor",
+   "text": "Admin (person at the root of the actor chain; an agent can only propose)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretSet"
+  },
+  {
+   "id": "sam273",
+   "kind": "external",
+   "text": "Vault / KMS (holds values and the workspace fingerprint key)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretSet"
+  },
+  {
+   "id": "sam274",
+   "kind": "aggregate",
+   "text": "SecretVault (per workspace)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretSet"
+  },
+  {
+   "id": "sam275",
+   "kind": "command",
+   "text": "RotateSecret",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretRotated"
+  },
+  {
+   "id": "sam276",
+   "kind": "actor",
+   "text": "Admin, or a person answering a rotation alert",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretRotated"
+  },
+  {
+   "id": "sam277",
+   "kind": "policy",
+   "text": "Whenever SecretRotated or SecretDeleted, ApplyWorkspaceConfiguration again for every workspace whose last WorkspaceConfigurationApplied read that secret",
+   "author": "sam",
+   "context": "configuration",
+   "for": "secrets.SecretRotated"
+  },
+  {
+   "id": "sam278",
+   "kind": "command",
+   "text": "InjectSecret (egress replaces the opaque handle for an allowed host)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectedIntoRequest"
+  },
+  {
+   "id": "sam279",
+   "kind": "actor",
+   "text": "Egress gateway (system)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectedIntoRequest"
+  },
+  {
+   "id": "sam280",
+   "kind": "external",
+   "text": "Third party API on the secret's allowed host",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectedIntoRequest"
+  },
+  {
+   "id": "sam281",
+   "kind": "aggregate",
+   "text": "SecretEgress (per run)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectedIntoRequest"
+  },
+  {
+   "id": "sam282",
+   "kind": "policy",
+   "text": "Whenever EffectPassed for a Fetch whose request carries a secret handle, InjectSecret with the current version",
+   "author": "sam",
+   "context": "secrets",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "sam283",
+   "kind": "command",
+   "text": "InjectSecret (refused: host not allowed, secret deleted, handle from a retired version)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectionRefused"
+  },
+  {
+   "id": "sam284",
+   "kind": "policy",
+   "text": "Whenever SecretInjectionRefused, fail the Fetch step (EffectFailed) and alert workspace admins with the actor chain: a placeholder sent to the wrong host is a likely exfiltration attempt",
+   "author": "sam",
+   "context": "runs",
+   "for": "secrets.SecretInjectionRefused"
+  },
+  {
+   "id": "sam285",
+   "kind": "command",
+   "text": "RedactPayload (scan for known values and handles before EffectResultRecorded, MessagePosted, MessageReceived, FileWritten)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretLeakRedacted"
+  },
+  {
+   "id": "sam286",
+   "kind": "actor",
+   "text": "Redactor (system)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretLeakRedacted"
+  },
+  {
+   "id": "sam287",
+   "kind": "aggregate",
+   "text": "LeakRegister (per workspace)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretLeakRedacted"
+  },
+  {
+   "id": "sam288",
+   "kind": "policy",
+   "text": "Whenever SecretLeakRedacted, alert admins and ProposeRotation of that secret (a value seen in a payload is treated as exposed)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretLeakRedacted"
+  },
+  {
+   "id": "sam289",
+   "kind": "command",
+   "text": "DeleteSecret (crypto-erases the value in the vault)",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretDeleted"
+  },
+  {
+   "id": "sam290",
+   "kind": "actor",
+   "text": "Admin, or the disconnect policy",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretDeleted"
+  },
+  {
+   "id": "sam291",
+   "kind": "policy",
+   "text": "Whenever ServiceDisconnected (chat or service), DeleteSecret for that connection's credentials",
+   "author": "sam",
+   "context": "secrets",
+   "for": "connections.ServiceDisconnected"
+  },
+  {
+   "id": "sam292",
+   "kind": "read_model",
+   "text": "Secret inventory: name, current version, fingerprint, set and rotated by, age, allowed hosts, configurations reading it, last used",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretSet"
+  },
+  {
+   "id": "sam293",
+   "kind": "read_model",
+   "text": "Secret usage: per secret version, hosts, runs and actor chains that used it (the auditor's 'who used the Stripe key')",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectedIntoRequest"
+  },
+  {
+   "id": "sam294",
+   "kind": "read_model",
+   "text": "Security alerts: refused injections and redactions by run, channel and actor",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretInjectionRefused"
+  },
+  {
+   "id": "sam295",
+   "kind": "read_model",
+   "text": "Rotation due: secrets older than policy, known by departed people, or seen in a payload",
+   "author": "sam",
+   "context": "secrets",
+   "for": "secrets.SecretRotated"
+  },
+  {
+   "id": "sam296",
+   "kind": "command",
+   "text": "TrustSignatory (key fingerprint and name scope, e.g. @acme/*)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryTrusted"
+  },
+  {
+   "id": "sam297",
+   "kind": "actor",
+   "text": "Admin, applied after PrivilegeChangeApproved",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryTrusted"
+  },
+  {
+   "id": "sam298",
+   "kind": "aggregate",
+   "text": "TrustStore (per workspace, cloud defaults inherited)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryTrusted"
+  },
+  {
+   "id": "sam299",
+   "kind": "command",
+   "text": "PublishModule",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ModulePublished"
+  },
+  {
+   "id": "sam300",
+   "kind": "actor",
+   "text": "Publisher (person, or agent with a hub publishing shell)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ModulePublished"
+  },
+  {
+   "id": "sam301",
+   "kind": "external",
+   "text": "EYG hub (gleam_hub, content addressed modules)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ModulePublished"
+  },
+  {
+   "id": "sam302",
+   "kind": "aggregate",
+   "text": "PackageRelease (per package name, authoritative in the hub, mirrored)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ModulePublished"
+  },
+  {
+   "id": "sam303",
+   "kind": "command",
+   "text": "SignRelease",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ReleaseSigned"
+  },
+  {
+   "id": "sam304",
+   "kind": "actor",
+   "text": "Publisher holding a signatory key",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ReleaseSigned"
+  },
+  {
+   "id": "sam305",
+   "kind": "external",
+   "text": "Hub signatory chain (eyg/hub/signatory)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ReleaseSigned"
+  },
+  {
+   "id": "sam306",
+   "kind": "command",
+   "text": "VerifyRelease (hash of fetched bytes equals CID, signature by a trusted key in scope, release not retracted)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackageSignatureVerified"
+  },
+  {
+   "id": "sam307",
+   "kind": "actor",
+   "text": "Run loader (system)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackageSignatureVerified"
+  },
+  {
+   "id": "sam308",
+   "kind": "aggregate",
+   "text": "ReleaseVerification (per workspace and release CID, keyed by trust store version)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackageSignatureVerified"
+  },
+  {
+   "id": "sam309",
+   "kind": "policy",
+   "text": "Whenever RunBasisPinned, VerifyRelease for each release CID in the basis not yet verified under the current trust store version, before the first step is evaluated",
+   "author": "sam",
+   "context": "packages",
+   "for": "runs.RunBasisPinned"
+  },
+  {
+   "id": "sam310",
+   "kind": "command",
+   "text": "VerifyRelease (failed: hash mismatch, unknown or revoked signer, out of scope)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackageVerificationFailed"
+  },
+  {
+   "id": "sam311",
+   "kind": "policy",
+   "text": "Whenever PackageVerificationFailed, FailRun for the run that needed it (no step evaluated) and alert the channel and admins",
+   "author": "sam",
+   "context": "runs",
+   "for": "packages.PackageVerificationFailed"
+  },
+  {
+   "id": "sam312",
+   "kind": "command",
+   "text": "PinPackage (only a verified release)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackagePinned"
+  },
+  {
+   "id": "sam313",
+   "kind": "actor",
+   "text": "Person, or agent for a person (code runs inside the channel shell, so this is not a privilege change)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackagePinned"
+  },
+  {
+   "id": "sam314",
+   "kind": "aggregate",
+   "text": "WorkspacePins (per workspace)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackagePinned"
+  },
+  {
+   "id": "sam315",
+   "kind": "command",
+   "text": "RetractRelease",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ReleaseRetracted"
+  },
+  {
+   "id": "sam316",
+   "kind": "external",
+   "text": "EYG hub (retraction notice)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ReleaseRetracted"
+  },
+  {
+   "id": "sam317",
+   "kind": "policy",
+   "text": "Whenever ReleaseRetracted for a pinned release, alert the workspace. Never unpin automatically, since replays still need the CID; new runs refuse it unless the pin is explicitly confirmed",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.ReleaseRetracted"
+  },
+  {
+   "id": "sam318",
+   "kind": "command",
+   "text": "RevokeSignatory (with compromised-since time; no approval needed)",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryRevoked"
+  },
+  {
+   "id": "sam319",
+   "kind": "actor",
+   "text": "Admin, or a hub key revocation notice",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryRevoked"
+  },
+  {
+   "id": "sam320",
+   "kind": "policy",
+   "text": "Whenever SignatoryRevoked, invalidate ReleaseVerifications signed by that key after compromised-since and flag the runs that executed them in the code exposure view",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryRevoked"
+  },
+  {
+   "id": "sam321",
+   "kind": "read_model",
+   "text": "Trusted signatories per workspace with scope, approver and status",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryTrusted"
+  },
+  {
+   "id": "sam322",
+   "kind": "read_model",
+   "text": "Pinned releases with CID, signer, verification status and retraction flag",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackagePinned"
+  },
+  {
+   "id": "sam323",
+   "kind": "read_model",
+   "text": "Code provenance per run: every module CID, its release, signer and verification event",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.PackageSignatureVerified"
+  },
+  {
+   "id": "sam324",
+   "kind": "read_model",
+   "text": "Code exposure: runs that executed a retracted release or code signed by a revoked key",
+   "author": "sam",
+   "context": "packages",
+   "for": "packages.SignatoryRevoked"
+  },
+  {
+   "id": "priya325",
+   "kind": "aggregate",
+   "text": "Channel (one platform channel in a workspace: messages in and out, its name)",
+   "author": "priya",
+   "context": "channels",
+   "for": null
+  },
+  {
+   "id": "priya326",
+   "kind": "aggregate",
+   "text": "Conversation (one thread or DM: its input queue, agent turns and /new epochs)",
+   "author": "priya",
+   "context": "channels",
+   "for": null
+  },
+  {
+   "id": "priya327",
+   "kind": "external",
+   "text": "Slack / Discord / WhatsApp / example chat",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageReceived"
+  },
+  {
+   "id": "priya328",
+   "kind": "command",
+   "text": "RecordInboundMessage",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageReceived"
+  },
+  {
+   "id": "priya329",
+   "kind": "actor",
+   "text": "Chat connection (on behalf of the platform author)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageReceived"
+  },
+  {
+   "id": "priya330",
+   "kind": "policy",
+   "text": "Whenever connections.ConnectionEventReceived from a chat connection, RecordInboundMessage or RecordReaction in the Channel (deduplicated by platform message id)",
+   "author": "priya",
+   "context": "channels",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "priya331",
+   "kind": "command",
+   "text": "RecordReaction",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ReactionAdded"
+  },
+  {
+   "id": "priya332",
+   "kind": "actor",
+   "text": "Chat connection (on behalf of the person who reacted)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ReactionAdded"
+  },
+  {
+   "id": "priya333",
+   "kind": "command",
+   "text": "RecordRetraction",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageRetractedOnPlatform"
+  },
+  {
+   "id": "priya334",
+   "kind": "external",
+   "text": "Slack / Discord / WhatsApp message deleted or edited event",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageRetractedOnPlatform"
+  },
+  {
+   "id": "priya335",
+   "kind": "policy",
+   "text": "Whenever MessageRetractedOnPlatform and the workspace erases retracted messages, RequestErasure of that message's payload (records)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageRetractedOnPlatform"
+  },
+  {
+   "id": "priya336",
+   "kind": "command",
+   "text": "RecordChannelName",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelNamed"
+  },
+  {
+   "id": "priya337",
+   "kind": "actor",
+   "text": "Chat connection (channel list or rename event from the platform)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelNamed"
+  },
+  {
+   "id": "priya338",
+   "kind": "policy",
+   "text": "Whenever ChannelNamed changes a channel's name, re-resolve its channel config and record access.ChannelShellChanged when the shell differs, and post a notice in the channel ('#dev is now #platform, it now runs with the platform shell')",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelNamed"
+  },
+  {
+   "id": "priya339",
+   "kind": "policy",
+   "text": "Whenever MessageReceived from a Person (not Bot, not Self) in a channel whose agent is listening, QueueInput in that message's Conversation",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageReceived"
+  },
+  {
+   "id": "priya340",
+   "kind": "policy",
+   "text": "Whenever MessageReceived or ReactionAdded, MatchTriggers of the channel (triggers)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessageReceived"
+  },
+  {
+   "id": "priya341",
+   "kind": "policy",
+   "text": "Whenever schedules.ScheduleOccurrenceFired, QueueInput in the schedule's Conversation with the schedule's message",
+   "author": "priya",
+   "context": "channels",
+   "for": "schedules.ScheduleOccurrenceFired"
+  },
+  {
+   "id": "priya342",
+   "kind": "command",
+   "text": "QueueInput",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.InputQueued"
+  },
+  {
+   "id": "priya343",
+   "kind": "actor",
+   "text": "Person posting / schedule / trigger script that observes",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.InputQueued"
+  },
+  {
+   "id": "priya344",
+   "kind": "command",
+   "text": "StartAgentTurn",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.AgentTurnStarted"
+  },
+  {
+   "id": "priya345",
+   "kind": "policy",
+   "text": "Whenever InputQueued and no turn is in progress in the Conversation, StartAgentTurn, which starts a run (runs.RunStarted) as the channel agent",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.InputQueued"
+  },
+  {
+   "id": "priya346",
+   "kind": "actor",
+   "text": "Channel agent",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.AgentTurnStarted"
+  },
+  {
+   "id": "priya347",
+   "kind": "command",
+   "text": "RecordProgramRun (the agent's run tool)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.AgentRanProgram"
+  },
+  {
+   "id": "priya348",
+   "kind": "policy",
+   "text": "Whenever runs.RunStarted with a parent agent turn, record AgentRanProgram in that turn's Conversation, linking the run",
+   "author": "priya",
+   "context": "channels",
+   "for": "runs.RunStarted"
+  },
+  {
+   "id": "priya349",
+   "kind": "command",
+   "text": "Delegate (effect)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.SubagentDelegated"
+  },
+  {
+   "id": "priya350",
+   "kind": "policy",
+   "text": "Whenever runs.EffectPassed for Delegate, record SubagentDelegated and start the child run with the subagent's task",
+   "author": "priya",
+   "context": "channels",
+   "for": "runs.EffectPassed"
+  },
+  {
+   "id": "priya351",
+   "kind": "command",
+   "text": "Post (effect), recorded by RecordPostedMessage",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessagePosted"
+  },
+  {
+   "id": "priya352",
+   "kind": "actor",
+   "text": "Agent, subagent, trigger script, schedule or bound person (from the run's actor chain)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessagePosted"
+  },
+  {
+   "id": "priya353",
+   "kind": "external",
+   "text": "Slack / Discord / WhatsApp / example chat (returns the platform message id)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessagePosted"
+  },
+  {
+   "id": "priya354",
+   "kind": "policy",
+   "text": "Whenever runs.EffectResultRecorded for Post, record MessagePosted in the Channel with run, step and platform message id; an in-doubt Post is shown in the channel's Activity with Retry and 'It was posted' buttons",
+   "author": "priya",
+   "context": "channels",
+   "for": "runs.EffectResultRecorded"
+  },
+  {
+   "id": "priya355",
+   "kind": "command",
+   "text": "CompleteAgentTurn (no post)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.AgentStayedQuiet"
+  },
+  {
+   "id": "priya356",
+   "kind": "command",
+   "text": "CompleteAgentTurn",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.AgentTurnCompleted"
+  },
+  {
+   "id": "priya357",
+   "kind": "policy",
+   "text": "Whenever runs.RunCompleted, RunFailed or RunCancelled for a turn's run, CompleteAgentTurn, then start the next queued input",
+   "author": "priya",
+   "context": "channels",
+   "for": "runs.RunCompleted"
+  },
+  {
+   "id": "priya358",
+   "kind": "command",
+   "text": "RestartConversation (/new)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ConversationRestarted"
+  },
+  {
+   "id": "priya359",
+   "kind": "actor",
+   "text": "Person in the conversation",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ConversationRestarted"
+  },
+  {
+   "id": "priya360",
+   "kind": "policy",
+   "text": "Whenever ConversationRestarted, cancel the turn in progress (runs.RunCancelled) and discard results that arrive for the old epoch, but keep reminders, which follow the thread (O9)",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ConversationRestarted"
+  },
+  {
+   "id": "priya361",
+   "kind": "command",
+   "text": "OpenChannelHistory",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelHistoryOpened"
+  },
+  {
+   "id": "priya362",
+   "kind": "actor",
+   "text": "Admin or auditor who is not a member of the channel",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelHistoryOpened"
+  },
+  {
+   "id": "priya363",
+   "kind": "read_model",
+   "text": "Channel Activity: team-visible events as sentences ('Bob added the regressions trigger from the product page', 'the agent was stopped from reading secrets'), with Undo only where it exists",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessagePosted"
+  },
+  {
+   "id": "priya364",
+   "kind": "read_model",
+   "text": "Agent context: the current epoch's last 200 messages of a Conversation, the agent's history",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ConversationRestarted"
+  },
+  {
+   "id": "priya365",
+   "kind": "read_model",
+   "text": "Why did the bot post this? Each MessagePosted linked to its run, the trigger, schedule or message that caused it, and the shell that allowed it",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.MessagePosted"
+  },
+  {
+   "id": "priya366",
+   "kind": "read_model",
+   "text": "Agents at work (operators): turns in progress, queue depth and oldest waiting input per Conversation",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.AgentTurnStarted"
+  },
+  {
+   "id": "priya367",
+   "kind": "read_model",
+   "text": "Channel directory per workspace: platform id, current and past names, the config and shell that apply, members as reported by the platform",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelNamed"
+  },
+  {
+   "id": "priya368",
+   "kind": "read_model",
+   "text": "Who read this channel (auditors): every ChannelHistoryOpened and every Bind into the channel",
+   "author": "priya",
+   "context": "channels",
+   "for": "channels.ChannelHistoryOpened"
+  },
+  {
+   "id": "priya369",
+   "kind": "aggregate",
+   "text": "Connection (one named connection in a workspace: its lifecycle, secret mode and poll cursor)",
+   "author": "priya",
+   "context": "connections",
+   "for": null
+  },
+  {
+   "id": "priya370",
+   "kind": "aggregate",
+   "text": "DeliveryInbox (per connection, partitioned by day: deduplication and authentication of deliveries)",
+   "author": "priya",
+   "context": "connections",
+   "for": null
+  },
+  {
+   "id": "priya371",
+   "kind": "command",
+   "text": "ConnectConnection",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ChatConnected"
+  },
+  {
+   "id": "priya372",
+   "kind": "command",
+   "text": "ConnectConnection",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceConnected"
+  },
+  {
+   "id": "priya373",
+   "kind": "actor",
+   "text": "Configuration reconciler, on behalf of the person whose WorkspaceSourceChanged added the connection",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceConnected"
+  },
+  {
+   "id": "priya374",
+   "kind": "policy",
+   "text": "Whenever configuration.WorkspaceConfigurationApplied, reconcile connections: ConnectConnection for each new or changed one, DisconnectConnection for each removed one",
+   "author": "priya",
+   "context": "connections",
+   "for": "configuration.WorkspaceConfigurationApplied"
+  },
+  {
+   "id": "priya375",
+   "kind": "external",
+   "text": "Slack / Discord / WhatsApp / example chat",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ChatConnected"
+  },
+  {
+   "id": "priya376",
+   "kind": "external",
+   "text": "GitHub / Sentry / Bluesky / RSS feeds / Hacker News / Lobsters / log drains (Vercel, Netlify, Vector)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceConnected"
+  },
+  {
+   "id": "priya377",
+   "kind": "command",
+   "text": "AcknowledgeUnauthenticatedWebhook",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.UnauthenticatedConnectionCreated"
+  },
+  {
+   "id": "priya378",
+   "kind": "actor",
+   "text": "Person who saved workspace.eyg with a webhook without a secret",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.UnauthenticatedConnectionCreated"
+  },
+  {
+   "id": "priya379",
+   "kind": "policy",
+   "text": "Whenever UnauthenticatedConnectionCreated, flag the connection in the admin page and the product page cards, and post once in its channel ('anyone with the URL can send events to #dev')",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.UnauthenticatedConnectionCreated"
+  },
+  {
+   "id": "priya380",
+   "kind": "command",
+   "text": "PollConnection (first poll)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionBackfilled"
+  },
+  {
+   "id": "priya381",
+   "kind": "actor",
+   "text": "Poller",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionBackfilled"
+  },
+  {
+   "id": "priya382",
+   "kind": "policy",
+   "text": "Whenever ServiceConnected for a polling source, PollConnection once as backfill: events are logged, not live, and run no triggers",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceConnected"
+  },
+  {
+   "id": "priya383",
+   "kind": "command",
+   "text": "AcceptWebhookDelivery",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookDeliveryAuthenticated"
+  },
+  {
+   "id": "priya384",
+   "kind": "actor",
+   "text": "External sender (GitHub, Sentry, log drain)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookDeliveryAuthenticated"
+  },
+  {
+   "id": "priya385",
+   "kind": "command",
+   "text": "AcceptWebhookDelivery (signature invalid or missing)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookDeliveryRejected"
+  },
+  {
+   "id": "priya386",
+   "kind": "policy",
+   "text": "Whenever WebhookDeliveryRejected happens 5 times in an hour for one connection, post one notice in its channel and show the reason on the connection, because 'my webhook does nothing' is the usual setup problem",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookDeliveryRejected"
+  },
+  {
+   "id": "priya387",
+   "kind": "command",
+   "text": "AcceptWebhookDelivery (delivery id already seen)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookReplayDetected"
+  },
+  {
+   "id": "priya388",
+   "kind": "command",
+   "text": "RecordConnectionEvent",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "priya389",
+   "kind": "actor",
+   "text": "Poller or webhook listener",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "priya390",
+   "kind": "policy",
+   "text": "Whenever WebhookDeliveryAuthenticated, RecordConnectionEvent for each event in it (one for each array element with split)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookDeliveryAuthenticated"
+  },
+  {
+   "id": "priya391",
+   "kind": "policy",
+   "text": "Whenever ConnectionEventReceived is live and the connection names a channel, MatchTriggers of that channel (triggers.TriggerMatched)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "priya392",
+   "kind": "command",
+   "text": "AdvanceCursor (after a poll)",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.PollCursorAdvanced"
+  },
+  {
+   "id": "priya393",
+   "kind": "actor",
+   "text": "Poller",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.PollCursorAdvanced"
+  },
+  {
+   "id": "priya394",
+   "kind": "command",
+   "text": "DisconnectConnection",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceDisconnected"
+  },
+  {
+   "id": "priya395",
+   "kind": "actor",
+   "text": "Configuration reconciler, on behalf of the person who removed the connection or deleted its secret",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceDisconnected"
+  },
+  {
+   "id": "priya396",
+   "kind": "policy",
+   "text": "Whenever secrets.SecretDeleted or secrets.SecretRotated for a secret a connection read, re-apply the workspace configuration, which connects, reconnects or disconnects it",
+   "author": "priya",
+   "context": "connections",
+   "for": "secrets.SecretDeleted"
+  },
+  {
+   "id": "priya397",
+   "kind": "policy",
+   "text": "Whenever ServiceDisconnected, post once in the channel it fed ('github no longer sends events to #dev, the GITHUB_WEBHOOK_SECRET was deleted by Alice')",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceDisconnected"
+  },
+  {
+   "id": "priya398",
+   "kind": "read_model",
+   "text": "Connections page per workspace: name, kind, channel, status (live, backfilling, unauthenticated, disconnected), last delivery and rejected count. It also gives the product page cards their '\u2713 github sends events to #dev'",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ServiceConnected"
+  },
+  {
+   "id": "priya399",
+   "kind": "read_model",
+   "text": "Connection event log: the latest events of a connection, newest first, which is the Events effect's answer",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "priya400",
+   "kind": "read_model",
+   "text": "Delivery debugger (team setting up a webhook): the last 50 deliveries with accepted, rejected or replayed and the reason, plus which triggers matched",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.WebhookDeliveryRejected"
+  },
+  {
+   "id": "priya401",
+   "kind": "read_model",
+   "text": "Volume per connection per hour: received, matched, rejected, for operators and retention",
+   "author": "priya",
+   "context": "connections",
+   "for": "connections.ConnectionEventReceived"
+  },
+  {
+   "id": "priya402",
+   "kind": "aggregate",
+   "text": "Artifact (one name in a workspace: owner channel, editors, visibility, numbered versions)",
+   "author": "priya",
+   "context": "artifacts",
+   "for": null
+  },
+  {
+   "id": "priya403",
+   "kind": "command",
+   "text": "SaveArtifact (Artifact effect)",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVersionSaved"
+  },
+  {
+   "id": "priya404",
+   "kind": "actor",
+   "text": "Agent, trigger script or person bound to a channel, acting as that channel",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVersionSaved"
+  },
+  {
+   "id": "priya405",
+   "kind": "policy",
+   "text": "Whenever ArtifactVersionSaved, pin the bundle's root (content.ContentRootPinned), so every published version stays viewable",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVersionSaved"
+  },
+  {
+   "id": "priya406",
+   "kind": "command",
+   "text": "ShareArtifact (effect)",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactSharedForEditing"
+  },
+  {
+   "id": "priya407",
+   "kind": "actor",
+   "text": "The owner channel's agent, or a person bound to it",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactSharedForEditing"
+  },
+  {
+   "id": "priya408",
+   "kind": "command",
+   "text": "UnshareArtifact (new effect, the inverse of ShareArtifact)",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactUnsharedForEditing"
+  },
+  {
+   "id": "priya409",
+   "kind": "command",
+   "text": "SetArtifactVisibility (workspace members, anyone with the link)",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVisibilityChanged"
+  },
+  {
+   "id": "priya410",
+   "kind": "actor",
+   "text": "The owner channel's agent or a person bound to it; making an artifact public is a PrivilegeChangeProposed when the channel shell requires approval",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVisibilityChanged"
+  },
+  {
+   "id": "priya411",
+   "kind": "policy",
+   "text": "Whenever access.PrivilegeChangeApproved for an artifact's visibility, SetArtifactVisibility",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "access.PrivilegeChangeApproved"
+  },
+  {
+   "id": "priya412",
+   "kind": "policy",
+   "text": "Whenever records.ErasureRequested covers content in an artifact version, hide that version with a note and keep the version number, never renumber",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "priya413",
+   "kind": "read_model",
+   "text": "Artifact gallery per workspace: name, owner channel, editors, visibility, latest version, saved by and when",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVersionSaved"
+  },
+  {
+   "id": "priya414",
+   "kind": "read_model",
+   "text": "Artifact version history: version, root CID, saved by (actor chain), the run that saved it, the paths that changed",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVersionSaved"
+  },
+  {
+   "id": "priya415",
+   "kind": "read_model",
+   "text": "Served artifacts: name and version to root CID and visibility, read by the HTTP server for /artifacts/<name>/v/<n>/",
+   "author": "priya",
+   "context": "artifacts",
+   "for": "artifacts.ArtifactVisibilityChanged"
+  },
+  {
+   "id": "dana416",
+   "kind": "command",
+   "text": "PinContentRoot (root CID, holder, reason, until)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ContentRootPinned"
+  },
+  {
+   "id": "dana417",
+   "kind": "actor",
+   "text": "Records policy (legal hold), files policy (snapshot tag), Operator (person)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ContentRootPinned"
+  },
+  {
+   "id": "dana418",
+   "kind": "command",
+   "text": "ReleaseContentRoot (root CID, holder)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ContentRootReleased"
+  },
+  {
+   "id": "dana419",
+   "kind": "actor",
+   "text": "Records policy (hold released, retention purge), Operator (person)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ContentRootReleased"
+  },
+  {
+   "id": "dana420",
+   "kind": "command",
+   "text": "SweepUnreachableBlocks (scope, mark epoch, grace period)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.GarbageCollectionSweepCompleted"
+  },
+  {
+   "id": "dana421",
+   "kind": "actor",
+   "text": "Collector schedule (system, nightly per scope)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.GarbageCollectionSweepCompleted"
+  },
+  {
+   "id": "dana422",
+   "kind": "external",
+   "text": "Block backend (local disk or object store, encrypted at rest per scope key)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.GarbageCollectionSweepCompleted"
+  },
+  {
+   "id": "dana423",
+   "kind": "command",
+   "text": "ReportBlockIntegrityFailure (CID, missing or hash mismatch, where found)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.BlockIntegrityFailed"
+  },
+  {
+   "id": "dana424",
+   "kind": "actor",
+   "text": "Any block reader: replaying run, scrubber, audit exporter, file reader",
+   "author": "dana",
+   "context": "content",
+   "for": "content.BlockIntegrityFailed"
+  },
+  {
+   "id": "dana425",
+   "kind": "command",
+   "text": "RepairBlock (CID, source)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.BlockRepaired"
+  },
+  {
+   "id": "dana426",
+   "kind": "external",
+   "text": "Replica block store or the hub (public module blocks, verified by CID)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.BlockRepaired"
+  },
+  {
+   "id": "dana427",
+   "kind": "command",
+   "text": "RebuildProjection (read model, projector CID, from position or snapshot)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ProjectionRebuilt"
+  },
+  {
+   "id": "dana428",
+   "kind": "actor",
+   "text": "Operator (person) or deploy policy (new projector version)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ProjectionRebuilt"
+  },
+  {
+   "id": "dana429",
+   "kind": "aggregate",
+   "text": "ContentScope (per workspace, plus one public scope)",
+   "author": "dana",
+   "context": "content",
+   "for": null
+  },
+  {
+   "id": "dana430",
+   "kind": "aggregate",
+   "text": "Projection (per read model)",
+   "author": "dana",
+   "context": "content",
+   "for": null
+  },
+  {
+   "id": "dana431",
+   "kind": "policy",
+   "text": "Whenever BlockIntegrityFailed, RepairBlock from a replica or (public scope) from the hub. If no source verifies, alert the operator and mark the runs whose journals reference the CID as not replayable.",
+   "author": "dana",
+   "context": "content",
+   "for": "content.BlockIntegrityFailed"
+  },
+  {
+   "id": "dana432",
+   "kind": "policy",
+   "text": "Whenever evidence.EventUpcasterRegistered, RebuildProjection for every read model that consumes that event type",
+   "author": "dana",
+   "context": "content",
+   "for": "evidence.EventUpcasterRegistered"
+  },
+  {
+   "id": "dana433",
+   "kind": "policy",
+   "text": "Whenever records.LegalHoldPlaced, PinContentRoot for every payload root referenced by the held streams (holder = the hold id)",
+   "author": "dana",
+   "context": "content",
+   "for": "records.LegalHoldPlaced"
+  },
+  {
+   "id": "dana434",
+   "kind": "policy",
+   "text": "Whenever records.LegalHoldReleased, ReleaseContentRoot for that hold's pins",
+   "author": "dana",
+   "context": "content",
+   "for": "records.LegalHoldReleased"
+  },
+  {
+   "id": "dana435",
+   "kind": "policy",
+   "text": "Whenever records.RetentionPurgeCompleted or records.SubjectKeyShredded, SweepUnreachableBlocks for that scope at the next window",
+   "author": "dana",
+   "context": "content",
+   "for": "records.SubjectKeyShredded"
+  },
+  {
+   "id": "dana436",
+   "kind": "read_model",
+   "text": "LiveRoots: every root keeping blocks alive (explicit pins plus roots referenced by retained events: file heads, run bases, effect result CIDs, artifact versions, deliveries), with holder and reason. Input to garbage collection marking.",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ContentRootPinned"
+  },
+  {
+   "id": "dana437",
+   "kind": "read_model",
+   "text": "Storage usage per workspace: unique bytes, referenced bytes, dedup ratio, bytes held by legal holds, reclaimable bytes (operators, billing)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.GarbageCollectionSweepCompleted"
+  },
+  {
+   "id": "dana438",
+   "kind": "read_model",
+   "text": "Integrity report: failed CIDs, repair status, affected streams and runs (auditors, operators)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.BlockIntegrityFailed"
+  },
+  {
+   "id": "dana439",
+   "kind": "read_model",
+   "text": "Projection status: projector CID, position, lag, last rebuild (operators)",
+   "author": "dana",
+   "context": "content",
+   "for": "content.ProjectionRebuilt"
+  },
+  {
+   "id": "dana440",
+   "kind": "command",
+   "text": "WriteFile / AppendFile (path, content CID, expected root)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana441",
+   "kind": "actor",
+   "text": "Run (WriteFile/AppendFile effect after EffectPassed), Person (web shell upload), seed policy",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana442",
+   "kind": "command",
+   "text": "MakeDirectory (path, expected root)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.DirectoryCreated"
+  },
+  {
+   "id": "dana443",
+   "kind": "actor",
+   "text": "Run (MakeDirectory effect), Person (web shell)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.DirectoryCreated"
+  },
+  {
+   "id": "dana444",
+   "kind": "command",
+   "text": "DeleteFile (path, expected root)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileDeleted"
+  },
+  {
+   "id": "dana445",
+   "kind": "actor",
+   "text": "Run (DeleteFile effect), Person (web shell)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileDeleted"
+  },
+  {
+   "id": "dana446",
+   "kind": "command",
+   "text": "RestoreFile (path, from root CID)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileRestored"
+  },
+  {
+   "id": "dana447",
+   "kind": "actor",
+   "text": "Person (team member from file history view), Agent run on a person's behalf",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileRestored"
+  },
+  {
+   "id": "dana448",
+   "kind": "command",
+   "text": "TagFileSystemSnapshot (root CID, tag)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileSystemSnapshotTagged"
+  },
+  {
+   "id": "dana449",
+   "kind": "actor",
+   "text": "Person, daily snapshot schedule, policy before WorkspaceSourceChanged",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileSystemSnapshotTagged"
+  },
+  {
+   "id": "dana450",
+   "kind": "command",
+   "text": "RestoreFileSystem (to root CID or tag)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileSystemRestored"
+  },
+  {
+   "id": "dana451",
+   "kind": "actor",
+   "text": "Admin (person); privilege-widening restores go through access.PrivilegeChangeProposed",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileSystemRestored"
+  },
+  {
+   "id": "dana452",
+   "kind": "external",
+   "text": "Host seed directory (copied in at workspace creation)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana453",
+   "kind": "aggregate",
+   "text": "FileSystem (per workspace)",
+   "author": "dana",
+   "context": "files",
+   "for": null
+  },
+  {
+   "id": "dana454",
+   "kind": "policy",
+   "text": "Whenever configuration.WorkspaceCreated with a seed directory, WriteFile/MakeDirectory for each seed entry (actor = configuration version)",
+   "author": "dana",
+   "context": "files",
+   "for": "configuration.WorkspaceCreated"
+  },
+  {
+   "id": "dana455",
+   "kind": "policy",
+   "text": "Whenever FileWritten or FileDeleted on a path a conversation's runs read (by content CID), queue a 'file changed' notice for that conversation's next agent turn (channels.InputQueued)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana456",
+   "kind": "policy",
+   "text": "Whenever FileSystemSnapshotTagged, PinContentRoot(root, holder = tag)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileSystemSnapshotTagged"
+  },
+  {
+   "id": "dana457",
+   "kind": "policy",
+   "text": "Whenever configuration.WorkspaceSourceChanged, TagFileSystemSnapshot('before config <source CID>') so a configuration revert can come with a file restore",
+   "author": "dana",
+   "context": "files",
+   "for": "configuration.WorkspaceSourceChanged"
+  },
+  {
+   "id": "dana458",
+   "kind": "read_model",
+   "text": "File tree at head: path to content CID, size, last writer and run (teams, agents via ReadDirectory)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana459",
+   "kind": "read_model",
+   "text": "File history per path: every version with root, actor chain, run and step, diff to previous (teams, auditors)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana460",
+   "kind": "read_model",
+   "text": "Snapshots and tags with their roots, plus a diff of any two roots (operators, restore UI)",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileSystemSnapshotTagged"
+  },
+  {
+   "id": "dana461",
+   "kind": "read_model",
+   "text": "Files read per conversation (path, content CID read) for change notices",
+   "author": "dana",
+   "context": "files",
+   "for": "files.FileWritten"
+  },
+  {
+   "id": "dana462",
+   "kind": "command",
+   "text": "ExecuteStatement (database, SQL, parameters CID, run, step)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseStatementExecuted"
+  },
+  {
+   "id": "dana463",
+   "kind": "actor",
+   "text": "Run with a with_databases shell (SQLite effect), dataclip child run, records erasure policy",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseStatementExecuted"
+  },
+  {
+   "id": "dana464",
+   "kind": "external",
+   "text": "SQLite engine (working copy file in the data directory)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseStatementExecuted"
+  },
+  {
+   "id": "dana465",
+   "kind": "command",
+   "text": "TakeDatabaseSnapshot (database, at sequence)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseSnapshotTaken"
+  },
+  {
+   "id": "dana466",
+   "kind": "actor",
+   "text": "Snapshot policy (every N statements or M bytes, nightly), Admin",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseSnapshotTaken"
+  },
+  {
+   "id": "dana467",
+   "kind": "command",
+   "text": "RestoreDatabase (database, to snapshot or sequence)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseRestored"
+  },
+  {
+   "id": "dana468",
+   "kind": "actor",
+   "text": "Admin (person), recovery policy after a corrupt working copy",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseRestored"
+  },
+  {
+   "id": "dana469",
+   "kind": "command",
+   "text": "InvokeDataclip (name, arguments CID)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DataclipInvoked"
+  },
+  {
+   "id": "dana470",
+   "kind": "actor",
+   "text": "Run in a channel with the dataclips shell (agent turn, trigger script), Person via web shell",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DataclipInvoked"
+  },
+  {
+   "id": "dana471",
+   "kind": "aggregate",
+   "text": "Database (per workspace and name)",
+   "author": "dana",
+   "context": "databases",
+   "for": null
+  },
+  {
+   "id": "dana472",
+   "kind": "aggregate",
+   "text": "Dataclip (per workspace and name, version = dataclip CID from the applied configuration)",
+   "author": "dana",
+   "context": "databases",
+   "for": null
+  },
+  {
+   "id": "dana473",
+   "kind": "policy",
+   "text": "Whenever DatabaseStatementExecuted brings the count since the last snapshot to N (default 10,000) or M bytes, TakeDatabaseSnapshot",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseStatementExecuted"
+  },
+  {
+   "id": "dana474",
+   "kind": "policy",
+   "text": "Whenever DatabaseSnapshotTaken, statements older than the previous snapshot fall to the database retention class (records), and the snapshot root is referenced by the event so LiveRoots keeps it",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseSnapshotTaken"
+  },
+  {
+   "id": "dana475",
+   "kind": "policy",
+   "text": "Whenever records.ErasureRequested for a subject, run the workspace's configured erasure dataclip for that subject (DELETE/UPDATE statements), then TakeDatabaseSnapshot. Only after that may records shred the subject key and release older snapshots that contain the subject.",
+   "author": "dana",
+   "context": "databases",
+   "for": "records.ErasureRequested"
+  },
+  {
+   "id": "dana476",
+   "kind": "policy",
+   "text": "Whenever content.BlockIntegrityFailed hits a database snapshot, or the working copy fails its integrity check, RestoreDatabase from the latest verifiable snapshot and replay the statements after it",
+   "author": "dana",
+   "context": "databases",
+   "for": "content.BlockIntegrityFailed"
+  },
+  {
+   "id": "dana477",
+   "kind": "read_model",
+   "text": "Database catalog: name, sequence, size, last statement and actor, last snapshot, statements since snapshot (operators, admins)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseStatementExecuted"
+  },
+  {
+   "id": "dana478",
+   "kind": "read_model",
+   "text": "Statement log per database with actor chain, run/step and shell CID; parameters decryptable by auditors with the key (auditors)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseStatementExecuted"
+  },
+  {
+   "id": "dana479",
+   "kind": "read_model",
+   "text": "Point-in-time database: a read-only copy materialised from snapshot plus statements to sequence S (auditors, restore preview)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DatabaseSnapshotTaken"
+  },
+  {
+   "id": "dana480",
+   "kind": "read_model",
+   "text": "Dataclip usage: who asked which dataclip, under which shell, with result CID (teams, security)",
+   "author": "dana",
+   "context": "databases",
+   "for": "databases.DataclipInvoked"
+  },
+  {
+   "id": "access.PrivilegeChangeExpired",
+   "kind": "event",
+   "text": "PrivilegeChangeExpired",
+   "context": "access",
+   "author": "sam",
+   "order": 5
+  },
+  {
+   "id": "configuration.CloudSourceChanged",
+   "kind": "event",
+   "text": "CloudSourceChanged",
+   "context": "configuration",
+   "author": "sam",
+   "order": 0
+  },
+  {
+   "id": "content.BlockRepaired",
+   "kind": "event",
+   "text": "BlockRepaired",
+   "context": "content",
+   "author": "dana",
+   "order": 4
+  },
+  {
+   "id": "channels.ChannelNamed",
+   "kind": "event",
+   "text": "ChannelNamed",
+   "context": "channels",
+   "author": "priya",
+   "order": 0
+  },
+  {
+   "id": "channels.ChannelHistoryOpened",
+   "kind": "event",
+   "text": "ChannelHistoryOpened",
+   "context": "channels",
+   "author": "priya",
+   "order": 12
+  },
+  {
+   "id": "fleet.RunLeaseReleased",
+   "kind": "event",
+   "text": "RunLeaseReleased",
+   "context": "fleet",
+   "author": "rui",
+   "order": 3
+  },
+  {
+   "id": "triggers.TriggerReplaced",
+   "kind": "event",
+   "text": "TriggerReplaced",
+   "context": "triggers",
+   "author": "rui",
+   "order": 1
+  },
+  {
+   "id": "artifacts.ArtifactVisibilityChanged",
+   "kind": "event",
+   "text": "ArtifactVisibilityChanged",
+   "context": "artifacts",
+   "author": "priya",
+   "order": 3
+  },
+  {
+   "id": "databases.DatabaseRestored",
+   "kind": "event",
+   "text": "DatabaseRestored",
+   "context": "databases",
+   "author": "dana",
+   "order": 2
+  },
+  {
+   "id": "evidence.CheckpointAnchored",
+   "kind": "event",
+   "text": "CheckpointAnchored",
+   "context": "evidence",
+   "author": "avery",
+   "order": 1
+  },
+  {
+   "id": "evidence.TamperIncidentResolved",
+   "kind": "event",
+   "text": "TamperIncidentResolved",
+   "context": "evidence",
+   "author": "avery",
+   "order": 4
+  },
+  {
+   "id": "evidence.CheckpointKeyRotated",
+   "kind": "event",
+   "text": "CheckpointKeyRotated",
+   "context": "evidence",
+   "author": "avery",
+   "order": 7
+  },
+  {
+   "id": "f1",
+   "kind": "command",
+   "text": "SetCloudSource {source_cid, expected_previous_cid, reason, restores?}",
+   "author": "avery",
+   "context": "configuration",
+   "for": "configuration.CloudSourceChanged"
+  },
+  {
+   "id": "f2",
+   "kind": "actor",
+   "text": "Admin (person)",
+   "author": "sam",
+   "context": "configuration",
+   "for": "configuration.CloudSourceChanged"
+  },
+  {
+   "id": "f3",
+   "kind": "aggregate",
+   "text": "CloudConfiguration (stream configuration/cloud, compare and set on source CID)",
+   "author": "avery",
+   "context": "configuration",
+   "for": null
+  },
+  {
+   "id": "A0",
+   "kind": "hotspot",
+   "text": "A1 agreed: secrets are replaced by their handle before any block is put and before the program resumes, so program, journal and blocks see the same value.",
+   "context": "secrets",
+   "status": "resolved"
+  },
+  {
+   "id": "A1",
+   "kind": "hotspot",
+   "text": "A2 agreed: every digest that is not a content CID is a keyed HMAC, subject key for personal data, workspace key otherwise.",
+   "context": "evidence",
+   "status": "resolved"
+  },
+  {
+   "id": "A2",
+   "kind": "hotspot",
+   "text": "A3 agreed: four eyes also for shortening retention, releasing holds, shredding keys, registering upcasters, rotating the checkpoint key, resolving tamper incidents and exporting personal data.",
+   "context": "records",
+   "status": "resolved"
+  },
+  {
+   "id": "A3",
+   "kind": "hotspot",
+   "text": "A4 agreed: the cloud.eyg shell catalogue is pre-approved, an admin assigning a catalogue shell other than admin needs no second person.",
+   "context": "access",
+   "status": "resolved"
+  },
+  {
+   "id": "A4",
+   "kind": "hotspot",
+   "text": "N2 agreed: every stream is hash chained, checkpoints sign a Merkle root over stream heads at a global position.",
+   "context": "evidence",
+   "status": "resolved"
+  },
+  {
+   "id": "A5",
+   "kind": "hotspot",
+   "text": "N3 agreed: every run event names the machine id and lease epoch, stale epochs are refused, MachineJoined and MachineDrained are evidence.",
+   "context": "fleet",
+   "status": "resolved"
+  }
+ ],
+ "discussion": [
+  {
+   "author": "avery",
+   "text": "Agreed. Avery agrees: with A3 in place, no single person can quietly change what the record shows, and the catalogue gives me an attributable, policy-pinned, externally anchored ledger I can hand to a regulator."
+  },
+  {
+   "author": "rui",
+   "text": "Agreed. A1 and N2 keep replay exact and the hot path free of contention, and the other amendments leave the journal intact. Rui agrees."
+  },
+  {
+   "author": "sam",
+   "text": "Agreed. I sign: A2 keeps erased data unguessable, N3 and N4 close the machine identity and handle gaps, and my two remaining notes on A4 and A1 are refinements for design, not reasons to hold the board."
+  },
+  {
+   "author": "priya",
+   "text": "Agreed. A4 lets an admin invite a teammate with a reviewed shell straight away, and keeps four eyes for agents, wider exposure and evidence, so I sign: a team can read this history as a story, and it says plainly what can and cannot be undone."
+  },
+  {
+   "author": "dana",
+   "text": "Agreed. A1 puts redaction before anything is addressed, A2 keeps content CIDs plain while every other digest is keyed and shreddable, and N2's per-stream chains under a Merkle checkpoint are the stream layout I wanted, so I agree to the final catalogue."
+  }
+ ],
+ "removed": {
+  "AgentReplied": "an agent's reply is MessagePosted with an agent actor",
+  "ModelResponseReceived": "a model completion is EffectResultRecorded of the Complete effect in the turn's run",
+  "EffectRequested": "folded into the decision events, which are the in doubt marker and the fence",
+  "RunLeaseRenewed": "heartbeats live in the lease store, not the audit log",
+  "BlockStored": "putting a block is idempotent and proven by its CID",
+  "FileSystemRootAdvanced": "every file event carries previous and new root",
+  "SecretReadByConfiguration": "WorkspaceConfigurationApplied lists the secret names read",
+  "WorkspaceConfigurationReverted": "a revert is a WorkspaceSourceChanged that restores an earlier CID",
+  "ShellAssignmentRequested": "replaced by PrivilegeChangeProposed, approved or declined",
+  "PackageNameResolved": "resolutions are recorded in RunBasisPinned",
+  "PersonalDataErased": "split into ErasureRequested, ErasureRefusedUnderLegalHold and SubjectKeyShredded",
+  "EventSchemaUpcasted": "upcasting is on read, registering an upcaster is EventUpcasterRegistered"
+ }
+}

@@ -1,0 +1,644 @@
+{
+  "statement": "Configuration is one aggregate per workspace: a compare-and-set chain of source CIDs, where a version takes effect only through a pure evaluation and, if it touches privilege, an approval in access. Applying it drives triggers, schedules, connections and channel shells through cross-context policies. Evidence and records sit beside every other context. Evidence holds the checkpoint chain, its external anchors, verification and exports. Records holds retention schedules, holds and per-subject erasure, and only ever acts by releasing or pinning content roots and shredding keys, never by deleting events.",
+  "stickies": [
+    {
+      "kind": "aggregate",
+      "text": "WorkspaceConfiguration (per workspace): the chain of source versions and which one is in force",
+      "context": "configuration",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "CreateWorkspace",
+      "context": "configuration",
+      "for": "configuration.WorkspaceCreated"
+    },
+    {
+      "kind": "actor",
+      "text": "Admin (person), via cloud.eyg or the admin page",
+      "context": "configuration",
+      "for": "configuration.WorkspaceCreated"
+    },
+    {
+      "kind": "command",
+      "text": "SetWorkspaceSource {workspace, source_cid, expected_previous_cid, reason, restores?}",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "actor",
+      "text": "Workspace maintainer (person) in the web shell or POST /api/SetWorkspaceSource",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "actor",
+      "text": "Agent with a set_workspace_source gate, on behalf of the person at the root of its chain",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "command",
+      "text": "ApplyWorkspaceConfiguration {source_cid, evaluated_config_cid, secret_names_read, basis}",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "command",
+      "text": "RejectWorkspaceConfiguration {source_cid, reason}",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationRejected"
+    },
+    {
+      "kind": "actor",
+      "text": "Configuration evaluator (system process, pure evaluation of workspace.eyg)",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "actor",
+      "text": "Configuration evaluator (system process)",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationRejected"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever WorkspaceSourceChanged, evaluate the new source purely: if it fails, RejectWorkspaceConfiguration; if it changes any channel shell, person shell or admin, ProposePrivilegeChange (access) and wait; otherwise ApplyWorkspaceConfiguration",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever WorkspaceSourceChanged, PinContentRoot for the source CID so every configuration version stays readable for its retention period (content)",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever PrivilegeChangeApproved for a configuration version, ApplyWorkspaceConfiguration for that version if it is still the latest source; whenever PrivilegeChangeDeclined, RejectWorkspaceConfiguration",
+      "context": "access",
+      "for": "access.PrivilegeChangeApproved"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever SecretRotated for a name listed in the applied configuration's secret_names_read, ApplyWorkspaceConfiguration again with the same source CID",
+      "context": "secrets",
+      "for": "secrets.SecretRotated"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever WorkspaceConfigurationApplied, reconcile what it declares: SaveTriggerToWorkspace / ShadowTrigger (triggers), SetRecurringSchedule (schedules), ConnectService (connections), ChangeChannelShell (access). Each resulting event cites the applied version as its cause",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever WorkspaceConfigurationRejected, post the evaluation error to the author and keep the previous version in force",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationRejected"
+    },
+    {
+      "kind": "read_model",
+      "text": "Configuration history per workspace: version, source CID, author and on_behalf_of chain, reason, restores, applied or rejected, approval reference, diff against the previous version",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "read_model",
+      "text": "Policy in force at time T: for any global position, which configuration version, channel shells, person shells and admins applied, by CID. Answers 'what was this agent allowed to do last March'",
+      "context": "configuration",
+      "for": "configuration.WorkspaceConfigurationApplied"
+    },
+    {
+      "kind": "read_model",
+      "text": "Revert impact: for a restored version, the effects performed under the versions in between that a revert does not undo",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "external",
+      "text": "Git repository or editor the source was authored in (source CID is the link)",
+      "context": "configuration",
+      "for": "configuration.WorkspaceSourceChanged"
+    },
+    {
+      "kind": "aggregate",
+      "text": "CheckpointChain (per cloud): signed checkpoints over the global ledger, their anchors and verifications",
+      "context": "evidence",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "AuditExport (per export request)",
+      "context": "evidence",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "UpcasterRegistry (per event type)",
+      "context": "evidence",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "SignCheckpoint {global_position, chain_head_hash, previous_checkpoint_hash, key_id}",
+      "context": "evidence",
+      "for": "evidence.AuditLogCheckpointSigned"
+    },
+    {
+      "kind": "actor",
+      "text": "Checkpointer (system scheduler)",
+      "context": "evidence",
+      "for": "evidence.AuditLogCheckpointSigned"
+    },
+    {
+      "kind": "external",
+      "text": "HSM or OS keyring holding the ledger signing key (never in the data directory, never readable by EYG)",
+      "context": "evidence",
+      "for": "evidence.AuditLogCheckpointSigned"
+    },
+    {
+      "kind": "policy",
+      "text": "Every 1000 ledger events or 5 minutes, whichever comes first, SignCheckpoint",
+      "context": "evidence",
+      "for": "evidence.AuditLogCheckpointSigned"
+    },
+    {
+      "kind": "command",
+      "text": "AnchorCheckpoint {checkpoint_hash, anchor}",
+      "context": "evidence",
+      "for": "evidence.CheckpointAnchored"
+    },
+    {
+      "kind": "actor",
+      "text": "Checkpointer (system)",
+      "context": "evidence",
+      "for": "evidence.CheckpointAnchored"
+    },
+    {
+      "kind": "external",
+      "text": "Hub (append the checkpoint to a signed untethered stream) and a public transparency log / RFC 3161 timestamp authority",
+      "context": "evidence",
+      "for": "evidence.CheckpointAnchored"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever AuditLogCheckpointSigned, AnchorCheckpoint to every configured anchor. An anchor still missing after 1 hour raises an operator alert",
+      "context": "evidence",
+      "for": "evidence.AuditLogCheckpointSigned"
+    },
+    {
+      "kind": "command",
+      "text": "RotateCheckpointKey {new_key_id, public_key, signed_by_old_key}",
+      "context": "evidence",
+      "for": "evidence.CheckpointKeyRotated"
+    },
+    {
+      "kind": "actor",
+      "text": "Cloud operator (person), approved by an auditor",
+      "context": "evidence",
+      "for": "evidence.CheckpointKeyRotated"
+    },
+    {
+      "kind": "command",
+      "text": "VerifyAuditLog {from_position, to_position, against_checkpoint}",
+      "context": "evidence",
+      "for": "evidence.AuditLogVerified"
+    },
+    {
+      "kind": "command",
+      "text": "VerifyAuditLog (failed)",
+      "context": "evidence",
+      "for": "evidence.AuditLogTamperDetected"
+    },
+    {
+      "kind": "actor",
+      "text": "Independent verifier (auditor's process run outside the cloud, reads the export API and the anchors)",
+      "context": "evidence",
+      "for": "evidence.AuditLogVerified"
+    },
+    {
+      "kind": "actor",
+      "text": "Daily verification job (system)",
+      "context": "evidence",
+      "for": "evidence.AuditLogVerified"
+    },
+    {
+      "kind": "actor",
+      "text": "Independent verifier or verification job",
+      "context": "evidence",
+      "for": "evidence.AuditLogTamperDetected"
+    },
+    {
+      "kind": "policy",
+      "text": "Daily, VerifyAuditLog from the last verified position to the latest anchored checkpoint",
+      "context": "evidence",
+      "for": "evidence.AuditLogVerified"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever BlockIntegrityFailed, VerifyAuditLog over the range whose events reference that block",
+      "context": "content",
+      "for": "content.BlockIntegrityFailed"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever AuditLogTamperDetected, PlaceLegalHold over the whole cloud (preservation hold, records), suspend retention purges and post an alert to admins and auditors (channels). Keep signing checkpoints so the damage stays bounded",
+      "context": "evidence",
+      "for": "evidence.AuditLogTamperDetected"
+    },
+    {
+      "kind": "command",
+      "text": "ResolveTamperIncident {incident, finding, evidence_cid}",
+      "context": "evidence",
+      "for": "evidence.TamperIncidentResolved"
+    },
+    {
+      "kind": "actor",
+      "text": "Auditor (person) together with the cloud operator (two people)",
+      "context": "evidence",
+      "for": "evidence.TamperIncidentResolved"
+    },
+    {
+      "kind": "command",
+      "text": "ExportAuditTrail {scope, from, to, recipient, legal_basis, format}",
+      "context": "evidence",
+      "for": "evidence.AuditTrailExported"
+    },
+    {
+      "kind": "actor",
+      "text": "Auditor (person, audit shell)",
+      "context": "evidence",
+      "for": "evidence.AuditTrailExported"
+    },
+    {
+      "kind": "external",
+      "text": "Regulator or external auditor (recipient)",
+      "context": "evidence",
+      "for": "evidence.AuditTrailExported"
+    },
+    {
+      "kind": "command",
+      "text": "RegisterEventUpcaster {event_type, from_version, to_version, upcaster_cid, test_vectors_cid}",
+      "context": "evidence",
+      "for": "evidence.EventUpcasterRegistered"
+    },
+    {
+      "kind": "actor",
+      "text": "Platform developer (person), approved by a second person",
+      "context": "evidence",
+      "for": "evidence.EventUpcasterRegistered"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever EventUpcasterRegistered, RebuildProjection for every view that reads that event type (content)",
+      "context": "evidence",
+      "for": "evidence.EventUpcasterRegistered"
+    },
+    {
+      "kind": "read_model",
+      "text": "Ledger health: last checkpoint, last anchor per anchor, last verified position, gap since then, open tamper incidents",
+      "context": "evidence",
+      "for": "evidence.AuditLogVerified"
+    },
+    {
+      "kind": "read_model",
+      "text": "Who did what: events by actor and by any person in the on_behalf_of chain, with causation tree (person -> agent turn -> subagent -> trigger -> run)",
+      "context": "evidence",
+      "for": null
+    },
+    {
+      "kind": "read_model",
+      "text": "Decision evidence per agent, channel or shell CID: attempted effects, passed, rewritten, mocked, denied and gate failures over a period",
+      "context": "evidence",
+      "for": null
+    },
+    {
+      "kind": "read_model",
+      "text": "Export register: every export, its scope, recipient, legal basis and the checkpoint it was verified against",
+      "context": "evidence",
+      "for": "evidence.AuditTrailExported"
+    },
+    {
+      "kind": "read_model",
+      "text": "Upcaster catalogue: event type versions and the upcaster CID that maps each",
+      "context": "evidence",
+      "for": "evidence.EventUpcasterRegistered"
+    },
+    {
+      "kind": "aggregate",
+      "text": "RetentionSchedule (per workspace): retention period per record category",
+      "context": "records",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "LegalHold (per hold): scope, matter, lifecycle",
+      "context": "records",
+      "for": null
+    },
+    {
+      "kind": "aggregate",
+      "text": "DataSubject (per subject): erasure requests, deadlines and the subject key",
+      "context": "records",
+      "for": null
+    },
+    {
+      "kind": "command",
+      "text": "SetRetentionPolicy {category, period, legal_basis}",
+      "context": "records",
+      "for": "records.RetentionPolicySet"
+    },
+    {
+      "kind": "actor",
+      "text": "Records officer (person). A shortening needs a second person's approval",
+      "context": "records",
+      "for": "records.RetentionPolicySet"
+    },
+    {
+      "kind": "command",
+      "text": "PurgeExpiredRecords {category, up_to_position, roots_released}",
+      "context": "records",
+      "for": "records.RetentionPurgeCompleted"
+    },
+    {
+      "kind": "actor",
+      "text": "Retention job (system scheduler)",
+      "context": "records",
+      "for": "records.RetentionPurgeCompleted"
+    },
+    {
+      "kind": "policy",
+      "text": "Daily, for each category, PurgeExpiredRecords for payloads older than the period that no active hold covers. Envelopes are never purged, only their payload roots are released",
+      "context": "records",
+      "for": "records.RetentionPolicySet"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever RetentionPurgeCompleted, ReleaseContentRoot for each released root and then run a garbage collection sweep (content)",
+      "context": "records",
+      "for": "records.RetentionPurgeCompleted"
+    },
+    {
+      "kind": "command",
+      "text": "PlaceLegalHold {matter, scope: workspace|channel|subject|time range, reason}",
+      "context": "records",
+      "for": "records.LegalHoldPlaced"
+    },
+    {
+      "kind": "actor",
+      "text": "Legal counsel or records officer (person)",
+      "context": "records",
+      "for": "records.LegalHoldPlaced"
+    },
+    {
+      "kind": "actor",
+      "text": "Tamper response policy (system, preservation hold)",
+      "context": "records",
+      "for": "records.LegalHoldPlaced"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever LegalHoldPlaced, PinContentRoot for the payload roots in scope (content), so neither a purge nor garbage collection can remove them",
+      "context": "records",
+      "for": "records.LegalHoldPlaced"
+    },
+    {
+      "kind": "command",
+      "text": "ReleaseLegalHold {hold, reason}",
+      "context": "records",
+      "for": "records.LegalHoldReleased"
+    },
+    {
+      "kind": "actor",
+      "text": "Legal counsel (person), approved by a second person",
+      "context": "records",
+      "for": "records.LegalHoldReleased"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever LegalHoldReleased, ReleaseContentRoot for the hold's pins, then re-evaluate refused erasure requests whose subject is no longer under any hold",
+      "context": "records",
+      "for": "records.LegalHoldReleased"
+    },
+    {
+      "kind": "command",
+      "text": "RequestErasure {subject, scope, received_at, channel_of_request}",
+      "context": "records",
+      "for": "records.ErasureRequested"
+    },
+    {
+      "kind": "actor",
+      "text": "Data subject (person), lodged by a privacy officer or self-service",
+      "context": "records",
+      "for": "records.ErasureRequested"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever ErasureRequested, if any active hold covers the subject, RefuseErasure; otherwise ShredSubjectKey once the request is approved and before the legal deadline",
+      "context": "records",
+      "for": "records.ErasureRequested"
+    },
+    {
+      "kind": "command",
+      "text": "RefuseErasure {request, holds}",
+      "context": "records",
+      "for": "records.ErasureRefusedUnderLegalHold"
+    },
+    {
+      "kind": "actor",
+      "text": "Erasure process (system policy)",
+      "context": "records",
+      "for": "records.ErasureRefusedUnderLegalHold"
+    },
+    {
+      "kind": "command",
+      "text": "ShredSubjectKey {subject, key_version}",
+      "context": "records",
+      "for": "records.SubjectKeyShredded"
+    },
+    {
+      "kind": "actor",
+      "text": "Privacy officer (person) approving the erasure process",
+      "context": "records",
+      "for": "records.SubjectKeyShredded"
+    },
+    {
+      "kind": "external",
+      "text": "Key management service holding workspace and subject keys",
+      "context": "records",
+      "for": "records.SubjectKeyShredded"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever SubjectKeyShredded, RebuildProjection for views that cached decrypted payloads (content) and rebuild databases derived from the subject's events (databases). Channel histories show the messages as erased",
+      "context": "records",
+      "for": "records.SubjectKeyShredded"
+    },
+    {
+      "kind": "policy",
+      "text": "Whenever PersonDeactivated, keep all attribution: deactivation never triggers erasure by itself",
+      "context": "identity",
+      "for": "identity.PersonDeactivated"
+    },
+    {
+      "kind": "read_model",
+      "text": "Retention schedule per workspace: category, period, legal basis, next purge, volume due",
+      "context": "records",
+      "for": "records.RetentionPolicySet"
+    },
+    {
+      "kind": "read_model",
+      "text": "Active legal holds by scope, and which subjects, channels and roots each one freezes",
+      "context": "records",
+      "for": "records.LegalHoldPlaced"
+    },
+    {
+      "kind": "read_model",
+      "text": "Erasure cases: request date, deadline, status (pending, refused under hold, shredded), holds blocking",
+      "context": "records",
+      "for": "records.ErasureRequested"
+    },
+    {
+      "kind": "read_model",
+      "text": "Disposition log: what was purged or shredded, when, under which policy version or request (what a regulator asks for)",
+      "context": "records",
+      "for": "records.RetentionPurgeCompleted"
+    }
+  ],
+  "event_changes": [
+    {
+      "change": "missing",
+      "id_or_context": "evidence",
+      "text": "CheckpointAnchored",
+      "why": "O2: a signature by the operator's own key proves nothing against the operator. The checkpoint must be recorded as published to an anchor outside the operator's control, after AuditLogCheckpointSigned."
+    },
+    {
+      "change": "missing",
+      "id_or_context": "evidence",
+      "text": "CheckpointKeyRotated",
+      "why": "Verifiers need the history of ledger keys. The new key is signed by the old one and the rotation is approved by an auditor, otherwise a stolen or replaced key cannot be detected."
+    },
+    {
+      "change": "missing",
+      "id_or_context": "evidence",
+      "text": "TamperIncidentResolved",
+      "why": "AuditLogTamperDetected opens an incident and a cloud-wide preservation hold. Closing it needs a recorded finding by two people before that hold can be released."
+    }
+  ],
+  "hotspot_resolutions": [
+    {
+      "id": "O2",
+      "resolution": "The ledger signing key is a dedicated signatory for the cloud ledger, separate from package signatories. It lives in an HSM or OS keyring that the cloud process can ask to sign but cannot export, and never sits in the data directory beside secrets JSON or users.json. Every checkpoint (global position, chain head hash, previous checkpoint hash, key id) is anchored outside the operator's control in two places. The first is the hub, as an entry in a signed untethered stream for the cloud, reusing sequence, previous CID and signatory. The second is a public transparency log or an RFC 3161 timestamp authority. Auditors may also run their own witness that countersigns checkpoints. Verification is done by an independent verifier outside the cloud, which reads the export API and compares against the anchors, not against the cloud's own copy. A rewrite by an admin then shows up as a fork from an anchored head. Key rotation is CheckpointKeyRotated, signed by the old key and approved by an auditor. A lost key is treated as a tamper incident."
+    },
+    {
+      "id": "O3",
+      "resolution": "Four eyes (a PrivilegeChangeProposed followed by an approval from a different person) is required for the following. Access: AdminGranted, PersonShellAssigned, ChannelShellChanged and any WorkspaceSourceChanged whose evaluation changes a channel shell, person shell or admin. Shells are functions, so 'wider' cannot be decided in general; every change of shell CID needs approval except a move to a shell on the cloud's declared narrowing list (pure, read_only). Records: shortening a RetentionPolicySet, LegalHoldReleased and ShredSubjectKey outside a self-service request. Evidence: EventUpcasterRegistered, CheckpointKeyRotated and TamperIncidentResolved. An agent, trigger, schedule or connection may propose (on behalf of its principal), but may never approve, whatever its shell says. The approver must have actor kind person, have signed in recently, be someone other than the proposer, and not appear in the proposal's on_behalf_of chain. A cloud with a single admin cannot get a second person. There, self-approval is allowed only after a 24 hour cooling-off delay, is recorded as self-approved, and shows on the ledger health view until a second admin exists."
+    }
+  ],
+  "aggregate_notes": [
+    {
+      "aggregate": "WorkspaceConfiguration",
+      "stream": "configuration/<workspace>",
+      "invariants": [
+        "SetWorkspaceSource is compare-and-set on expected_previous_cid; a stale base is rejected, never merged silently",
+        "the source block is stored before the event that references it",
+        "every change carries a reason; a revert carries restores=<earlier source CID> that exists in this stream",
+        "at most one version is in force; Applied only for a source CID in this stream and only the latest source (a superseded pending version is rejected)",
+        "a version that changes privilege is not applied without a PrivilegeChangeApproved reference",
+        "Applied lists the secret names read, the evaluated config CID and the package pins used to evaluate"
+      ],
+      "emits": [
+        "WorkspaceCreated",
+        "WorkspaceSourceChanged",
+        "WorkspaceConfigurationApplied",
+        "WorkspaceConfigurationRejected"
+      ]
+    },
+    {
+      "aggregate": "CheckpointChain",
+      "stream": "evidence/checkpoints",
+      "invariants": [
+        "checkpoint positions strictly increase and each one commits to the previous checkpoint hash",
+        "the chain head hash equals the recomputed hash at that global position",
+        "signed only by the current key; a rotation is signed by the previous key",
+        "verification references an anchored checkpoint; a failed verification opens an incident that only TamperIncidentResolved closes",
+        "nothing in this stream is ever purged by retention"
+      ],
+      "emits": [
+        "AuditLogCheckpointSigned",
+        "CheckpointAnchored",
+        "CheckpointKeyRotated",
+        "AuditLogVerified",
+        "AuditLogTamperDetected",
+        "TamperIncidentResolved"
+      ]
+    },
+    {
+      "aggregate": "AuditExport",
+      "stream": "evidence/exports/<export id>",
+      "invariants": [
+        "the scope is within the requester's audit grants",
+        "the export ends at an anchored checkpoint and includes raw events, upcaster CIDs and the checkpoint proofs",
+        "erased or purged payloads appear as tombstones, never as silent gaps",
+        "recipient and legal basis are mandatory"
+      ],
+      "emits": [
+        "AuditTrailExported"
+      ]
+    },
+    {
+      "aggregate": "UpcasterRegistry",
+      "stream": "evidence/upcasters/<event type>",
+      "invariants": [
+        "one upcaster per (event type, from version)",
+        "the upcaster is a pure EYG function by CID and passes its test vectors",
+        "approved by a second person"
+      ],
+      "emits": [
+        "EventUpcasterRegistered"
+      ]
+    },
+    {
+      "aggregate": "RetentionSchedule",
+      "stream": "records/retention/<workspace>",
+      "invariants": [
+        "a period is never below the statutory minimum for its category; evidence and decision envelopes are kept indefinitely",
+        "shortening a period needs an approval reference",
+        "a purge cites the policy version it applied, releases only payload roots older than the period, and never touches roots pinned by a hold"
+      ],
+      "emits": [
+        "RetentionPolicySet",
+        "RetentionPurgeCompleted"
+      ]
+    },
+    {
+      "aggregate": "LegalHold",
+      "stream": "records/holds/<hold id>",
+      "invariants": [
+        "a hold has a matter, a non-empty scope and a placing person or the tamper policy",
+        "released at most once, by a different approver from the requester",
+        "a preservation hold opened by tamper detection cannot be released while its incident is open"
+      ],
+      "emits": [
+        "LegalHoldPlaced",
+        "LegalHoldReleased"
+      ]
+    },
+    {
+      "aggregate": "DataSubject",
+      "stream": "records/subjects/<subject id>",
+      "invariants": [
+        "each request has a received time and a deadline",
+        "the key is shredded at most once per key version",
+        "a shred requires the active-holds view at a global position no earlier than the request; if a hold is placed afterwards, it lands on already-shredded data and the conflict is reported, not hidden (the cross-aggregate race is accepted and made visible)",
+        "a refusal names the holds that block it"
+      ],
+      "emits": [
+        "ErasureRequested",
+        "ErasureRefusedUnderLegalHold",
+        "SubjectKeyShredded"
+      ]
+    }
+  ]
+}
