@@ -143,6 +143,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
         state.EnterInteger(_) -> "Integer"
         state.PickCid(_) -> "Content reference"
         state.ReplyStandardIn(..) -> "Standard input"
+        state.ReplyPrompt(text, ..) -> text
       }
       let message = case input.validate(widget, editing.value) {
         Ok(_) ->

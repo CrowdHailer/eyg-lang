@@ -5,6 +5,7 @@ import loam/source
 pub type Args {
   Shell(Option(source.Input))
   Tui(Option(source.Input))
+  TuiOverlay(source.Input)
   Run(input: source.Input)
   Profile(input: source.Input)
   Script(input: source.Input, arguments: List(String))
@@ -120,6 +121,7 @@ pub fn parse(args) {
     ["shell", "#" <> _ as code] | ["shell", "@" <> _ as code] ->
       Shell(Some(source.Code(code)))
     ["shell", file] -> Shell(Some(source.File(file)))
+    ["tui", "overlay", file] -> TuiOverlay(source.File(file))
     ["tui"] -> Tui(None)
     ["tui", "-c", code] | ["tui", "--code", code] ->
       Tui(Some(source.Code(code)))
@@ -213,6 +215,7 @@ commands:
   shell #<mod>, @<pkg>   start a shell with a module or package as shell config
   shell -, --stdin       start a shell with stdin as shell config
   shell -c, --code <code>start a shell with inline shell config
+  tui overlay <file>     start a recorded Overlay agent in the tui
   tui                    start the tui
   tui <file>             start a tui with the file as shell config
   tui #<mod>, @<pkg>     start a tui with a module or package as shell config
