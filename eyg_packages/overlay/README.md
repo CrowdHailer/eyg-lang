@@ -47,3 +47,11 @@ let readme = !string_append("This project...", skills.print(found))
 - `print(skills)` a readme section listing the skills.
 - `parse(text, fallback_name)` parse one skill file.
 - `read_text(path)` read a utf-8 file, the path must be absolute.
+
+## codex
+
+The [Codex guide](../../guides/codex_models.md) covers its private Responses
+transport and file-cache helpers. `codex.read(path)` returns a provider from the
+file cache; `codex.refresh(path)` exchanges and saves credentials before returning
+one. Both return `Ok(provider)` or `Error(reason)`. Refresh preserves unknown fields,
+updates UTC `last_refresh` and retains optional tokens omitted by the server.

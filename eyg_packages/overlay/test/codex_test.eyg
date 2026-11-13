@@ -1,0 +1,161 @@
+let {assert} = @aok
+let codex = import "../codex.eyg"
+let clock = import "../codex_time.eyg"
+let document = import "../../json/document.eyg"
+
+let fixture = "{\"auth_mode\":\"chatgpt\",\"OPENAI_API_KEY\":null,\"tokens\":{\"id_token\":\"id\",\"access_token\":\"access\",\"refresh_token\":\"refresh\",\"account_id\":\"account\",\"extra\":[true,1.05e-2]},\"last_refresh\":\"2026-10-04T00:00:00Z\",\"unknown\":{\"label\":\"keep 🌱\"}}"
+let path = "/fixture/auth.json"
+
+let with_auth = (bytes, body) -> {
+  handle ReadFile((request, resume) -> {
+    let _ = assert.equal_string(path, request.path)
+    resume(Ok(bytes))
+  }, body)
+}
+
+let refresh_without_write = (bytes, response) -> {
+  with_auth(bytes, (_) -> {
+    handle Fetch((_request, resume) -> { resume(response) }, (_) -> {
+      handle WriteFile((_request, _resume) -> {
+        !never(perform Abort("refresh must not write on failure"))
+      }, (_) -> { codex.refresh(path) })
+    })
+  })
+}
+
+let response = (status, text) -> { Ok({status, headers: [], body: !string_to_binary(text)}) }
+
+let refresh_and_capture = (body, write_result) -> {
+  with_auth(!string_to_binary(fixture), (_) -> {
+    handle Fetch((request, resume) -> {
+      let _ = assert.equal(codex.refresh_request("refresh"), request)
+      resume(response(200, body))
+    }, (_) -> {
+      handle Now((_request, resume) -> { resume(1709164800000) }, (_) -> {
+        handle WriteFile((request, resume) -> {
+          let _ = assert.equal_string(path, request.path)
+          let completed = resume(write_result)
+          {result: completed.result, saved: assert.ok(!string_from_binary(request.contents))}
+        }, (_) -> { {result: codex.refresh(path), saved: ""} })
+      })
+    })
+  })
+}
+
+let test_refresh = (_) -> {
+  let captured = refresh_and_capture("{\"access_token\":\"new-access\",\"refresh_token\":\"new-refresh\",\"id_token\":\"new-id\"}", Ok({}))
+  let _ = assert.equal(Codex({access_token: "new-access", account_id: "account"}), assert.ok(captured.result))
+  let parsed = assert.ok(document.parse(fixture))
+  let parsed = assert.ok(document.replace(parsed, ["tokens", "access_token"], "new-access"))
+  let parsed = assert.ok(document.replace(parsed, ["tokens", "refresh_token"], "new-refresh"))
+  let parsed = assert.ok(document.replace(parsed, ["tokens", "id_token"], "new-id"))
+  let parsed = assert.ok(document.replace(parsed, ["last_refresh"], "2024-02-29T00:00:00Z"))
+  let _ = assert.equal(parsed, assert.ok(document.parse(captured.saved)))
+  {}
+}
+
+let test_optional_tokens_and_write_failure = (_) -> {
+  let captured = refresh_and_capture("{\"access_token\":\"new-access\"}", Ok({}))
+  let _ = assert.ok(captured.result)
+  let parsed = assert.ok(document.parse(fixture))
+  let parsed = assert.ok(document.replace(parsed, ["tokens", "access_token"], "new-access"))
+  let parsed = assert.ok(document.replace(parsed, ["last_refresh"], "2024-02-29T00:00:00Z"))
+  let _ = assert.equal(parsed, assert.ok(document.parse(captured.saved)))
+  let captured = refresh_and_capture("{\"access_token\":\"new-access\",\"refresh_token\":\"rotated\"}", Error("read only"))
+  let _ = assert.equal_string("failed to save refreshed tokens; log in again with codex login: read only", assert.error(captured.result))
+  {}
+}
+
+let test_refresh_failures = (_) -> {
+  let bytes = !string_to_binary(fixture)
+  let _ = assert.equal_string("network unavailable", assert.error(refresh_without_write(bytes, Error("network unavailable"))))
+  let _ = assert.equal_string("codex token refresh failed, log in again with `codex login`, status 401", assert.error(refresh_without_write(bytes, response(401, "{}"))))
+  let _ = assert.error(refresh_without_write(bytes, response(200, "not JSON")))
+  let _ = assert.error(refresh_without_write(bytes, response(200, "{}")))
+  let _ = assert.error(refresh_without_write(bytes, response(200, "{\"access_token\":12}")))
+  let _ = assert.error(refresh_without_write(bytes, response(200, "{\"access_token\":\"new\",\"id_token\":12}")))
+  let _ = assert.error(refresh_without_write(bytes, response(200, "{\"access_token\":\"new\",\"refresh_token\":12}")))
+  let _ = assert.equal_string("refresh response is not valid utf-8", assert.error(refresh_without_write(bytes, Ok({status: 200, headers: [], body: !binary_from_integers([255])}))))
+  {}
+}
+
+let test_bad_auth = (_) -> {
+  let _ = !list_fold([
+    !binary_from_integers([255]),
+    !string_to_binary("{}"),
+    !string_to_binary("{"),
+    !string_to_binary(!string_replace(fixture, "\"chatgpt\"", "\"apikey\""))
+  ], {}, (bytes, _) -> {
+    let _ = assert.error(with_auth(bytes, (_) -> { codex.read(path) }))
+    handle Fetch((_request, _resume) -> {
+      !never(perform Abort("invalid auth must not fetch"))
+    }, (_) -> { let _ = assert.error(with_auth(bytes, (_) -> { codex.refresh(path) })) {} })
+  })
+  let _ = handle ReadFile((_request, resume) -> { resume(Error("missing")) }, (_) -> {
+    assert.equal_string("missing", assert.error(codex.read(path)))
+  })
+  {}
+}
+
+let test_clock = (_) -> {
+  let _ = !list_fold([
+    {epoch: 0, expected: "1970-01-01T00:00:00Z"},
+    {epoch: -1, expected: "1969-12-31T23:59:59Z"},
+    {epoch: -86400000, expected: "1969-12-31T00:00:00Z"},
+    {epoch: 951827696000, expected: "2000-02-29T12:34:56Z"},
+    {epoch: 1709164800000, expected: "2024-02-29T00:00:00Z"},
+    {epoch: 4107542400000, expected: "2100-03-01T00:00:00Z"}
+  ], {}, ({epoch, expected}, _) -> {
+    let _ = assert.equal_string(expected, clock.format(epoch))
+    {}
+  })
+  {}
+}
+
+let test_read = (_) -> {
+  let cwd = match perform CWD({}) {
+    Ok(cwd) -> { cwd }
+    Error(_) -> { perform Abort("no cwd") }
+  }
+  let path = !string_append(cwd, "/eyg_packages/overlay/fixtures/codex/auth.json")
+  let provider = assert.ok(codex.read(path))
+  let _ = assert.equal(Codex({access_token: "fixture-access-token-123", account_id: "fixture-account-123"}), provider)
+  let _ = assert.error(codex.read(!string_append(cwd, "/eyg_packages/overlay/fixtures/none.json")))
+  {}
+}
+
+let test_refresh_request = (_) -> {
+  let request = codex.refresh_request("r1")
+  let _ = assert.equal_string("auth.openai.com", request.host)
+  let _ = assert.equal_string("/oauth/token", request.path)
+  let body = assert.ok(!string_from_binary(request.body))
+  let _ = assert.equal_string(
+    "{\"client_id\":\"app_EMoamEEZ73f0CkXaXp7hrann\",\"grant_type\":\"refresh_token\",\"refresh_token\":\"r1\"}",
+    body
+  )
+  {}
+}
+
+let test_encode_auth = (_) -> {
+  let auth = {
+    auth_mode: "chatgpt",
+    last_refresh: "2026-10-04T00:00:00Z",
+    tokens: {id_token: "id", access_token: "access", refresh_token: "refresh", account_id: "account"}
+  }
+  let _ = assert.equal_string(
+    "{\"auth_mode\":\"chatgpt\",\"OPENAI_API_KEY\":null,\"tokens\":{\"id_token\":\"id\",\"access_token\":\"access\",\"refresh_token\":\"refresh\",\"account_id\":\"account\"},\"last_refresh\":\"2026-10-04T00:00:00Z\"}",
+    codex.encode_auth(auth)
+  )
+  {}
+}
+
+[
+  {name: "codex read auth file", test: test_read},
+  {name: "codex refresh request", test: test_refresh_request},
+  {name: "codex encode auth file", test: test_encode_auth},
+  {name: "codex refresh preserves unknown fields and saves rotated tokens", test: test_refresh},
+  {name: "codex refresh retains omitted tokens and reports write failure", test: test_optional_tokens_and_write_failure},
+  {name: "codex refresh failures never write", test: test_refresh_failures},
+  {name: "codex invalid auth never requests refresh", test: test_bad_auth},
+  {name: "codex cache timestamps use UTC Gregorian dates", test: test_clock}
+]

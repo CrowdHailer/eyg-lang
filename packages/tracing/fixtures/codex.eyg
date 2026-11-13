@@ -1,0 +1,21 @@
+let {codex, policy} = import "../../../eyg_packages/overlay/index.eyg"
+let root = match perform CWD({}) { Ok(root) -> { root } Error(_) -> { "/" } }
+let auth_path = !string_append(root, "/eyg_packages/overlay/fixtures/codex/auth.json")
+let provider = match codex.read(auth_path) {
+  Ok(provider) -> { provider }
+  Error(reason) -> {
+    let _ = perform StandardError(reason)
+    !never(perform Exit(1))
+  }
+}
+let base = policy.read_write([root])
+let rules = {
+  read_file: (request) -> {
+    match !equal(request.path, auth_path) {
+      True(_) -> { Mock(Error("auth cache is private")) }
+      False(_) -> { base.read_file(request) }
+    }
+  },
+  ..base
+}
+{llm: {provider, model: "fixture-codex"}, policy: rules, context: {}}

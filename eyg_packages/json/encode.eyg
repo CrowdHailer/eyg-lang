@@ -15,16 +15,55 @@
 
 let string_helpers = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja.string
 
-// Escape characters that aren't legal between JSON double-quotes.
-// Order matters: replace backslash first so the escapes we add next
-// aren't themselves escaped.
+let hex_digit = (n) -> {
+  match !int_compare(n, 10) {
+    Lt(_) -> { !int_add(48, n) }
+    | (_) -> { !int_add(87, n) }
+  }
+}
+
+// Escape every control byte while retaining complete UTF-8 byte sequences.
 let escape = (value) -> {
-  let value = !string_replace(value, "\\", "\\\\")
-  let value = !string_replace(value, "\"", "\\\"")
-  let value = !string_replace(value, "\n", "\\n")
-  let value = !string_replace(value, "\r", "\\r")
-  let value = !string_replace(value, "\t", "\\t")
-  value
+  let reversed = !binary_fold(!string_to_binary(value), [], (byte, acc) -> {
+    match !int_compare(byte, 32) {
+      Lt(_) -> {
+        match !equal(byte, 10) {
+          True(_) -> { [110, 92, ..acc] }
+          False(_) -> {
+            match !equal(byte, 13) {
+              True(_) -> { [114, 92, ..acc] }
+              False(_) -> {
+                match !equal(byte, 9) {
+                  True(_) -> { [116, 92, ..acc] }
+                  False(_) -> {
+                    let high = match !int_compare(byte, 16) { Lt(_) -> { 0 } | (_) -> { 1 } }
+                    let low = !int_subtract(byte, !int_multiply(high, 16))
+                    [hex_digit(low), hex_digit(high), 48, 48, 117, 92, ..acc]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      | (_) -> {
+        match !equal(byte, 34) {
+          True(_) -> { [34, 92, ..acc] }
+          False(_) -> {
+            match !equal(byte, 92) {
+              True(_) -> { [92, 92, ..acc] }
+              False(_) -> { [byte, ..acc] }
+            }
+          }
+        }
+      }
+    }
+  })
+  let bytes = !list_fold(reversed, [], (byte, acc) -> { [byte, ..acc] })
+  match !string_from_binary(!binary_from_integers(bytes)) {
+    Ok(text) -> { text }
+    Error(_) -> { "" }
+  }
 }
 
 let quote = (value) -> {

@@ -8,13 +8,13 @@ repository = { type = "github", user = "crowdhailer", repo = "eyg-lang", path = 
 links = [{ title = "Website", href = "https://eyg.run/glasshouse" }]
 
 [dependencies]
-gleam_sha256 = { path = "../gleam_sha256" }
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 dag_json = ">= 3.0.0 and < 4.0.0"
 eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_ir = { path = "../gleam_ir" }
 gleam_http = ">= 4.4.0 and < 5.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
+gleam_sha256 = { path = "../gleam_sha256" }
 multiformats = ">= 4.0.0 and < 5.0.0"
 otel = { path = "../otel" }
 

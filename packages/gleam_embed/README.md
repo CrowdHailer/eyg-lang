@@ -103,3 +103,5 @@ real local HTTP response and a stopped-server failure. Unit tests check hashing
 on Node and Bun. The check starts and stops its own ephemeral server.
 Use these callbacks with the [module graph loader](../../guides/loading_modules.md).
 For precompiled programs, use the [ES module export](../../guides/compiled_modules.md).
+
+An [embedded agent](../../guides/embedded_agents.md) can share the same retained shell.

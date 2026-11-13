@@ -524,17 +524,27 @@ fn do_update(
     LlmStreamFinished(Ok(Nil)) -> {
       case state.status {
         Streaming(reader: _, completion:, remaining: _) -> {
-          let message = chat.from_completion(completion)
-          let history = [message, ..state.history]
-
-          let state =
-            State(..record_generation(state, Ok(completion)), history:)
-          case completion.tool_calls {
-            [] -> #(State(..state, status: Waiting), [])
-            calls -> {
-              current_context(state)
-              |> tools.execute_all(calls)
-              |> run_effects_if_any_remain_to_do(state)
+          case
+            provider.finish_stream(
+              state.llm.provider,
+              state.streamed,
+              completion,
+            )
+          {
+            Error(reason) -> update(state, LlmStreamFinished(Error(reason)))
+            Ok(completion) -> {
+              let message = chat.from_completion(completion)
+              let history = [message, ..state.history]
+              let state =
+                State(..record_generation(state, Ok(completion)), history:)
+              case completion.tool_calls {
+                [] -> #(State(..state, status: Waiting), [])
+                calls -> {
+                  current_context(state)
+                  |> tools.execute_all(calls)
+                  |> run_effects_if_any_remain_to_do(state)
+                }
+              }
             }
           }
         }
@@ -998,10 +1008,7 @@ fn record_generation(state: State, result) {
 
 /// The agent the session is recorded for.
 pub fn agent(state: State) -> session.Agent {
-  let provider = case state.llm.provider {
-    provider.Ollama(_) -> "ollama"
-    provider.Mistral(_) -> "mistral"
-  }
+  let provider = provider.id(state.llm.provider)
   session.Agent(
     provider:,
     model: state.llm.model,

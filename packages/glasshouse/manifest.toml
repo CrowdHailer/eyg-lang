@@ -39,6 +39,7 @@ eyg_ir = { path = "../gleam_ir" }
 gleam_crypto = { version = ">= 1.6.0 and < 2.0.0" }
 gleam_http = { version = ">= 4.4.0 and < 5.0.0" }
 gleam_json = { version = ">= 3.1.0 and < 4.0.0" }
+gleam_sha256 = { path = "../gleam_sha256" }
 gleam_stdlib = { version = ">= 1.0.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 multiformats = { version = ">= 4.0.0 and < 5.0.0" }

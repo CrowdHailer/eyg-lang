@@ -194,5 +194,6 @@ let encode = import "./encode.eyg"
   parse,
   parse_bytes,
   decode,
-  encode
+  encode,
+  document: import "./document.eyg"
 }
