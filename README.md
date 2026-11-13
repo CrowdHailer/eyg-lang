@@ -89,6 +89,11 @@ The [`playwright`](./eyg_packages/playwright/) package checks and controls shown
 previews. The [artifact guide](./guides/overlay_artifacts.md) covers revision
 history, portable workspaces and public sharing.
 Other packages in this collection are for demo purposes i.e. `catfact`
+The [`overlay`](./eyg_packages/overlay/) package contains access policy helpers for CLI effects.
+The [authorization tutorial](./guides/authorization.md) builds typed query policies
+for roles, delegation, and agents, with executable examples in
+[`authorization`](./eyg_packages/authorization/).
+
 
 ### Previous experiments
 

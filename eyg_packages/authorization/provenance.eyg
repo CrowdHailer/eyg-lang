@@ -1,0 +1,35 @@
+let common = import "./common.eyg"
+let paths = import "./paths.eyg"
+let view = (now) -> {
+  @{
+    rule Proof({tenant, actor, issuer: actor, action, scope, expires,
+                grants: [id], seen: [actor]}) {
+      var tenant var actor var action var scope var expires var id
+      Grant({tenant, actor, action, scope, expires, id}),
+      common.before(now, expires)
+    }
+    rule Proof({tenant, actor: recipient, issuer, action, scope: child,
+                expires: until, grants: [id, ..grants], seen: [recipient, ..seen]}) {
+      var tenant var owner var recipient var issuer var action
+      var parent var child var expires var until var grants var seen var id
+      Proof({tenant, actor: owner, issuer, action, scope: parent, expires, grants, seen}),
+      Delegation({tenant, owner, recipient, action, scope: child, expires: until, id}),
+      paths.within(parent, child),
+      common.at_most(until, expires),
+      common.before(now, until),
+      common.not(common.contains(seen, recipient))
+    }
+  }
+}
+let authorize = (db, request, now) -> {
+  let {tenant, actor, action, resource} = request
+  resolve Permit @{
+    db, view(now),
+    rule Permit({tenant, actor, issuer, action, resource, scope, expires, grants}) {
+      var issuer var scope var expires var grants
+      Proof({tenant, actor, issuer, action, scope, expires, grants}),
+      paths.within(scope, resource)
+    }
+  }
+}
+{view, authorize}

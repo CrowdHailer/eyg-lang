@@ -1,0 +1,32 @@
+let common = import "./common.eyg"
+let paths = import "./paths.eyg"
+let view = (now) -> {
+  @{
+    rule Can({tenant, actor, action, scope, expires}) {
+      var tenant var actor var action var scope var expires
+      Grant({tenant, actor, action, scope, expires}),
+      common.before(now, expires)
+    }
+    rule Can({tenant, actor: recipient, action, scope: child, expires: until}) {
+      var tenant var owner var recipient var action
+      var parent var child var expires var until
+      Can({tenant, actor: owner, action, scope: parent, expires}),
+      Delegation({tenant, owner, recipient, action, scope: child, expires: until}),
+      paths.within(parent, child),
+      common.at_most(until, expires),
+      common.before(now, until)
+    }
+  }
+}
+let authorize = (db, request, now) -> {
+  let {tenant, actor, action, resource} = request
+  resolve Permit @{
+    db, view(now),
+    rule Permit({tenant, actor, action, resource, scope, expires}) {
+      var scope var expires
+      Can({tenant, actor, action, scope, expires}),
+      paths.within(scope, resource)
+    }
+  }
+}
+{view, authorize}
