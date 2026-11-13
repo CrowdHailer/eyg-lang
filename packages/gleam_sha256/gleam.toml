@@ -1,0 +1,11 @@
+name = "gleam_sha256"
+version = "0.1.0"
+description = "Portable synchronous SHA-256 and HMAC-SHA-256 in Gleam"
+licences = ["Apache-2.0"]
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+gleam_crypto = ">= 1.6.0 and < 2.0.0"
