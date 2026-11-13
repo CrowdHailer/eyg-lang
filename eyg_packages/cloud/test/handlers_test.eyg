@@ -1,0 +1,29 @@
+let {assert} = @aok
+let handlers = import "../handlers.eyg"
+let info = (platform) -> { {platform, id: "C1", name: "general"} }
+let alice = {id: "U1", name: "alice", bot: False({})}
+let message = {id: "m1", channel: "C1", thread: None({}), author: alice, text: "hello"}
+
+let chat = (_) -> {
+  let handle_message = handlers.for_channel(info("chat"))
+  let _ = assert.equal([
+    Submit({session: None({}), reply: Some("m1"), text: "hello", description: "[#general] alice (message m1): hello"})
+  ], handle_message(ChatPosted(message)))
+  let threaded = {thread: Some("root"), ..message}
+  let _ = assert.equal([
+    Submit({session: Some("root"), reply: Some("root"), text: "hello", description: "[#general, in the thread started by message root] alice (message m1): hello"})
+  ], handle_message(ChatPosted(threaded)))
+  let _ = assert.equal([], handle_message(ChatReacted({message: threaded, by: alice, emoji: "books"})))
+  let bot = {id: "cloud", ..alice}
+  let _ = assert.equal([], handle_message(ChatPosted({author: bot, ..message})))
+  assert.equal([], handle_message(ChatReacted({message, by: bot, emoji: "books"})))
+}
+
+let unknown = (_) -> {
+  assert.equal([], handlers.for_channel(info("custom"))({anything: 42}))
+}
+
+[
+  {name: "cloud chat handler", test: chat},
+  {name: "cloud unknown platform handler", test: unknown}
+]

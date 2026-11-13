@@ -1,0 +1,42 @@
+// Each handler receives the native EYG type published by its plugin.
+// The result is a list of work requests. A custom handler can return any subset.
+let thread = (parent, id) -> {
+  match parent { Some(_) -> { parent } None(_) -> { Some(id) } }
+}
+let submit = (channel, session, id, author, text) -> {
+  let reply = thread(session, id)
+  let suffix = match session {
+    Some(id) -> { !string_append(", in the thread started by message ", id) }
+    None(_) -> { "" }
+  }
+  let description = !list_fold([
+    "[#", channel, suffix, "] ", author, " (message ", id, "): ", text
+  ], "", (part, acc) -> { !string_append(acc, part) })
+  [Submit({session, reply, text, description})]
+}
+
+let chat = (info) -> {
+  match {
+    ChatPosted(message) -> {
+      match !equal(message.author.id, "cloud") {
+        True(_) -> { [] }
+        False(_) -> { submit(info.name, message.thread, message.id, message.author.name, message.text) }
+      }
+    }
+    ChatReacted(reaction) -> {
+      match !equal(reaction.by.id, "cloud") {
+        True(_) -> { [] }
+        False(_) -> { [] }
+      }
+    }
+  }
+}
+
+let for_channel = (info) -> {
+  match !equal(info.platform, "chat") {
+    True(_) -> { chat(info) }
+    False(_) -> { (_) -> { [] } }
+  }
+}
+
+{chat, for_channel}
