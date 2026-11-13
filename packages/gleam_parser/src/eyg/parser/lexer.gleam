@@ -1,6 +1,7 @@
 import eyg/parser/token as t
 import gleam/bit_array
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 
@@ -226,7 +227,38 @@ fn name(buffer, raw, done) {
   {
     True -> name(bit_array.append(buffer, next_byte), rest, done)
     False ->
-      done(keyword_or_name(to_string(buffer)), bit_array.byte_size(buffer), raw)
+      done(
+        contextual_keyword(to_string(buffer), raw),
+        bit_array.byte_size(buffer),
+        raw,
+      )
+  }
+}
+
+// Query words remain usable as ordinary names outside their query syntax.
+// This preserves existing bindings and record fields such as workspace.resolve.
+fn contextual_keyword(name, raw) {
+  case keyword_or_name(name) {
+    keyword if keyword == t.Fact || keyword == t.Rule || keyword == t.Resolve ->
+      case next_significant(raw) {
+        Some(t.Uppername(_)) -> keyword
+        _ -> t.Name(name)
+      }
+    t.Var ->
+      case next_significant(raw) {
+        Some(t.Name(_)) -> t.Var
+        _ -> t.Name(name)
+      }
+    keyword -> keyword
+  }
+}
+
+fn next_significant(raw) {
+  case pop(raw, 0) {
+    Error(Nil) -> None
+    Ok(#(#(t.Whitespace(_), _), _, rest))
+    | Ok(#(#(t.Comment(_), _), _, rest)) -> next_significant(rest)
+    Ok(#(#(token, _), _, _)) -> Some(token)
   }
 }
 
@@ -239,6 +271,10 @@ fn keyword_or_name(buffer) {
     "handle" -> t.Handle
     "import" -> t.Import
     "todo" -> t.Todo
+    "fact" -> t.Fact
+    "rule" -> t.Rule
+    "var" -> t.Var
+    "resolve" -> t.Resolve
     _ -> t.Name(buffer)
   }
 }

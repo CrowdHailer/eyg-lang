@@ -66,6 +66,7 @@ fn do_print(source) {
     ir.Tag(label) -> #(string.concat(["tag(", label, ")"]), [])
     ir.Case(label) -> #(string.concat(["case(", label, ")"]), [])
     ir.NoCases -> #("no cases", [])
+    ir.Query(operation) -> #(string.inspect(operation), [])
 
     // Effect
     // do/act/effect(effect is a verb and noun)

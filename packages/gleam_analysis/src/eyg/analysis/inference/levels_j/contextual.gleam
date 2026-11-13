@@ -250,6 +250,7 @@ pub fn ftv(type_) {
     t.Fun(arg, eff, ret) -> set.union(ftv(arg), set.union(ftv(eff), ftv(ret)))
     t.Integer | t.Binary | t.String -> set.new()
     t.List(el) -> ftv(el)
+    t.Table(rows) -> ftv(rows)
     t.Record(rows) -> ftv(rows)
     t.Union(inner) -> ftv(inner)
     t.Empty -> set.new()
@@ -474,6 +475,29 @@ pub fn do_infer(source, env, eff, level, bindings) -> Step(_) {
       prim(perform(label), env, eff, level, bindings, ir.Perform(label))
     ir.Handle(label) ->
       prim(handle(label), env, eff, level, bindings, ir.Handle(label))
+    ir.Query(operation) -> {
+      let table = t.Table(q(0))
+      let scheme = case operation {
+        ir.EmptyTable -> table
+        ir.Fact(label) -> pure1(q(1), t.Table(t.RowExtend(label, q(1), q(0))))
+        ir.Merge -> pure2(table, table, table)
+        ir.Rule -> pure1(t.Fun(table, t.Empty, table), table)
+        ir.Resolve(label) ->
+          pure1(t.Table(t.RowExtend(label, q(1), q(0))), t.List(q(1)))
+        ir.Match(label, keys) -> {
+          let keys =
+            list.index_map(list.unique(keys), fn(k, i) { #(k, q(i + 3)) })
+          let row = case keys {
+            [] -> q(1)
+            _ -> t.Record(t.do_rows(keys, q(2)))
+          }
+          let table = t.Table(t.RowExtend(label, row, q(0)))
+          let key = t.Record(t.do_rows(keys, t.Empty))
+          pure3(table, key, t.Fun(row, t.Empty, table), table)
+        }
+      }
+      prim(scheme, env, eff, level, bindings, ir.Query(operation))
+    }
     ir.Builtin(id) ->
       case builtin(id) {
         Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Builtin(id))

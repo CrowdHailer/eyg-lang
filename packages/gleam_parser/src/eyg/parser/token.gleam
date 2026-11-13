@@ -14,6 +14,10 @@ pub type Token {
   Handle
   Import
   Todo
+  Fact
+  Rule
+  Var
+  Resolve
   // Having keyword token instead of using name prevents keywords used as names
   Equal
   Comma
@@ -73,6 +77,10 @@ pub fn to_string(token) {
     Handle -> "handle"
     Import -> "import"
     Todo -> "todo"
+    Fact -> "fact"
+    Rule -> "rule"
+    Var -> "var"
+    Resolve -> "resolve"
     // Having keyword token instead of using name prevents keywords used as names
     Equal -> "="
     Comma -> ","

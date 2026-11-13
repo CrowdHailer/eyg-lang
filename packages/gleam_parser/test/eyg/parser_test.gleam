@@ -41,6 +41,10 @@ pub fn keywords_can_name_explicit_record_fields_test() {
     )
   let assert Ok(_) =
     parser.all_from_string("{handle: (value) -> { value }}.handle(42)")
+  let assert Ok(_) =
+    parser.all_from_string(
+      "let fields = {fact: 1, rule: 2, var: 3, resolve: 4} let {rule: value} = fields fields.fact",
+    )
   let assert Error(_) = parser.all_from_string("let handle = 1 handle")
 }
 

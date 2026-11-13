@@ -1,5 +1,6 @@
 import eyg/ir/integer
 import eyg/ir/tree as ir
+import eyg/parser/query
 import eyg/parser/token as t
 import gleam/int
 import gleam/list
@@ -9,6 +10,7 @@ import gleam/string
 import multiformats/cid/v1
 
 pub type Reason {
+  InvalidQuery(message: String, position: Int)
   UnexpectEnd
   UnexpectedToken(token: t.Token, position: Int)
   // Raised when `=` is missing in a let binding: `let x 5`
@@ -316,8 +318,42 @@ pub fn expression(tokens) {
         }
         _ -> Error(InvalidCidReference(next_pos(rest, start + 1)))
       }
+    t.Fact -> {
+      use #(head, rest) <- try(expression(rest))
+      case head {
+        #(ir.Apply(#(ir.Tag(label), _), value), span) ->
+          Ok(#(query.call(ir.Fact(label), [value], #(start, span.1)), rest))
+        _ -> Error(InvalidQuery("a fact must be Relation(value)", start))
+      }
+    }
+    t.Rule -> {
+      use #(head, rest) <- try(expression(rest))
+      use rest <- try(case rest {
+        [#(t.LeftBrace, _), ..rest] -> Ok(rest)
+        _ -> fail(rest)
+      })
+      use #(variables, rest) <- try(query_variables(rest, []))
+      use #(body, end, rest) <- try(query_body(rest, []))
+      use rule <- try(
+        query.rule(head, body, variables, #(start, end))
+        |> result.map_error(fn(e) { InvalidQuery(e.0, e.1) }),
+      )
+      Ok(#(rule, rest))
+    }
+    t.Resolve ->
+      case rest {
+        [#(t.Uppername(label), _), ..rest] -> {
+          use #(table, rest) <- try(expression(rest))
+          Ok(#(
+            query.call(ir.Resolve(label), [table], #(start, table.1.1)),
+            rest,
+          ))
+        }
+        _ -> fail(rest)
+      }
     t.At ->
       case rest {
+        [#(t.LeftBrace, _), ..rest] -> query_table(rest, start, [])
         [#(t.Name(label), end), ..rest] -> {
           let after_name = end + string.length(label)
           case rest {
@@ -501,8 +537,17 @@ pub fn build_list(reversed, acc) {
 // Use an alias when destructuring: {handle: on_input}.
 fn field_token(token) {
   case token {
-    t.Let | t.Match | t.Perform | t.Deep | t.Handle | t.Import | t.Todo ->
-      t.Name(t.to_string(token))
+    t.Let
+    | t.Match
+    | t.Perform
+    | t.Deep
+    | t.Handle
+    | t.Import
+    | t.Todo
+    | t.Fact
+    | t.Rule
+    | t.Var
+    | t.Resolve -> t.Name(t.to_string(token))
     _ -> token
   }
 }
@@ -662,5 +707,54 @@ fn pop(tokens) {
   case tokens {
     [t, ..rest] -> Ok(#(t, rest))
     [] -> Error(UnexpectEnd)
+  }
+}
+
+fn query_table(tokens, start, items) {
+  case tokens {
+    [#(t.RightBrace, end), ..rest] -> {
+      let span = #(start, end + 1)
+      let table =
+        list.fold(
+          list.reverse(items),
+          query.call(ir.EmptyTable, [], span),
+          fn(acc, item) { query.call(ir.Merge, [acc, item], span) },
+        )
+      Ok(#(table, rest))
+    }
+    _ -> {
+      use #(item, rest) <- try(expression(tokens))
+      let rest = case rest {
+        [#(t.Comma, _), ..rest] -> rest
+        _ -> rest
+      }
+      query_table(rest, start, [item, ..items])
+    }
+  }
+}
+
+fn query_variables(tokens, variables) {
+  case tokens {
+    [#(t.Var, at), #(t.Name(name), _), ..rest] -> {
+      case list.contains(variables, name) {
+        True -> Error(InvalidQuery("duplicate query variable: " <> name, at))
+        False -> query_variables(rest, [name, ..variables])
+      }
+    }
+    _ -> Ok(#(variables, tokens))
+  }
+}
+
+fn query_body(tokens, body) {
+  case tokens {
+    [#(t.RightBrace, end), ..rest] -> Ok(#(list.reverse(body), end + 1, rest))
+    _ -> {
+      use #(item, rest) <- try(expression(tokens))
+      let rest = case rest {
+        [#(t.Comma, _), ..rest] -> rest
+        _ -> rest
+      }
+      query_body(rest, [item, ..body])
+    }
   }
 }

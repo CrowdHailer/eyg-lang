@@ -10,7 +10,8 @@ pub fn unnest(node) {
       let v = unnest(v)
       let t = unnest(t)
       case v {
-        #(ir.Let(y, v, i), m1) -> #(ir.Let(y, v, #(ir.Let(x, i, t), m)), m1)
+        #(ir.Let(y, v, i), m1) ->
+          unnest(#(ir.Let(y, v, #(ir.Let(x, i, t), m)), m1))
         v -> #(ir.Let(x, v, t), m)
       }
     }
@@ -19,8 +20,10 @@ pub fn unnest(node) {
     }
     #(ir.Apply(f, a), m) -> {
       case unnest(f), unnest(a) {
-        #(ir.Let(x, v, t), ml), a -> #(ir.Let(x, v, #(ir.Apply(t, a), m)), ml)
-        f, #(ir.Let(x, v, t), ml) -> #(ir.Let(x, v, #(ir.Apply(f, t), m)), ml)
+        #(ir.Let(x, v, t), ml), a ->
+          unnest(#(ir.Let(x, v, #(ir.Apply(t, a), m)), ml))
+        f, #(ir.Let(x, v, t), ml) ->
+          unnest(#(ir.Let(x, v, #(ir.Apply(f, t), m)), ml))
         f, a -> #(ir.Apply(f, a), m)
       }
     }

@@ -96,3 +96,10 @@ pub fn as_option(value, decoder) {
     #("None", as_unit(_, None)),
   ])
 }
+
+pub fn as_table(value) {
+  case value {
+    v.Table(facts, rules) -> Ok(#(facts, rules))
+    _ -> Error(break.IncorrectTerm("Table", value))
+  }
+}

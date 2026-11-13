@@ -30,6 +30,7 @@ pub type Expression {
   Perform(String)
   Deep(String)
   Builtin(String)
+  Query(ir.QueryOperation)
   Reference(ir.Reference)
 }
 
@@ -166,6 +167,7 @@ pub fn from_annotated(node) {
     ir.Handle(label) -> Deep(label)
 
     ir.Builtin(identifier) -> Builtin(identifier)
+    ir.Query(operation) -> Query(operation)
     ir.Reference(reference) -> Reference(reference)
   }
 }
@@ -423,6 +425,7 @@ pub fn to_annotated(source, rev) {
     Perform(label) -> #(ir.Perform(label), rev)
     Deep(label) -> #(ir.Handle(label), rev)
     Builtin(identifier) -> #(ir.Builtin(identifier), rev)
+    Query(operation) -> #(ir.Query(operation), rev)
     Reference(reference) -> #(ir.Reference(reference), rev)
   }
 }

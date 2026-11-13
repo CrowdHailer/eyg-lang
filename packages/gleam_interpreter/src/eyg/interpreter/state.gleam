@@ -1,10 +1,13 @@
 import eyg/interpreter/break
 import eyg/interpreter/cast
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
+import gleam/set.{type Set}
 
 pub type Context(m) =
   #(List(#(Kontinue(m), m)), Env(m))
@@ -60,7 +63,39 @@ pub type Stack(m) {
   Empty
 }
 
+/// Fixed-point evaluation of one `resolve`. Every rule in a round sees the same
+/// `snapshot`. A rule is only run again when a relation it matched last time grew,
+/// pure rules read the snapshot only through `Match`, so its output would not change.
+pub type Resolution(m) {
+  Resolution(
+    label: String,
+    snapshot: Dict(String, Dict(Value(m), Int)),
+    facts: Dict(String, Dict(Value(m), Int)),
+    rules: List(#(Int, Value(m))),
+    pending: List(#(Int, Value(m))),
+    reads: Dict(Int, Set(String)),
+    current: Int,
+    reading: Set(String),
+    grown: Set(String),
+    // Relations only grow while resolving, an index is current while the
+    // relation it was built from has the same size.
+    indexes: Dict(
+      #(String, List(String)),
+      #(Int, Dict(Value(m), List(Value(m)))),
+    ),
+    env: Env(m),
+  )
+}
+
 pub type Kontinue(m) {
+  QueryNext(Resolution(m))
+  /// Union the tables returned by `then` for each remaining matched row.
+  MatchNext(
+    rows: List(Value(m)),
+    then: Value(m),
+    acc: Dict(String, Dict(Value(m), Int)),
+    env: Env(m),
+  )
   Arg(ir.Node(m), Env(m))
   Apply(Value(m), Env(m))
   Assign(String, ir.Node(m), Env(m))
@@ -107,6 +142,8 @@ pub fn eval(exp, env: Env(m), k) {
     ir.Binary(data) -> value(v.Binary(data))
     ir.Integer(data) -> value(v.Integer(data))
     ir.String(data) -> value(v.String(data))
+    ir.Query(ir.EmptyTable) -> value(v.Table(dict.new(), []))
+    ir.Query(operation) -> value(v.Partial(v.Query(operation), []))
     ir.Tail -> value(v.LinkedList([]))
     ir.Cons -> value(v.Partial(v.Cons, []))
     ir.Vacant -> Error(break.Vacant)
@@ -140,11 +177,46 @@ pub fn apply(value, env, k, meta, rest) {
     CallWith(arg, env) -> call(value, arg, meta, env, rest)
     Delimit(_, _, env, _) -> Ok(#(V(value), env, rest))
     Trace(_, env) -> Ok(#(V(value), env, rest))
+    QueryNext(resolution) -> {
+      use #(derived, nested) <- result.try(cast.as_table(value))
+      case nested {
+        [] -> {
+          let #(facts, grown) = table.merge(resolution.facts, derived)
+          let resolution =
+            Resolution(
+              ..resolution,
+              facts:,
+              reads: dict.insert(
+                resolution.reads,
+                resolution.current,
+                resolution.reading,
+              ),
+              grown: set.union(resolution.grown, grown),
+            )
+          query_next(resolution, meta, rest)
+        }
+        _ -> Error(break.IncorrectTerm("facts returned by a rule", value))
+      }
+    }
+    MatchNext(rows, then, acc, env) -> {
+      use #(derived, nested) <- result.try(cast.as_table(value))
+      case nested {
+        [] ->
+          match_next(rows, then, table.merge(acc, derived).0, meta, env, rest)
+        _ -> Error(break.IncorrectTerm("facts returned by a rule", value))
+      }
+    }
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, rest) })
 }
 
-pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
+pub fn call(
+  f: Value(m),
+  arg: Value(m),
+  meta: m,
+  env: Env(m),
+  k: Stack(m),
+) -> Return(m) {
   case f {
     v.Closure(param, body, captured) -> {
       let k = trace(arg, meta, env, k)
@@ -155,6 +227,48 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
     // Resume/Deep need access to k nothing needs access to env but extension might change that
     v.Partial(switch, applied) ->
       case switch, applied {
+        v.Query(ir.Fact(label)), [] ->
+          Ok(#(V(v.Table(table.singleton(label, arg), [])), env, k))
+        v.Query(ir.Rule), [] -> Ok(#(V(v.Table(dict.new(), [arg])), env, k))
+        v.Query(ir.Merge), [left] -> {
+          use #(left_facts, left_rules) <- result.try(cast.as_table(left))
+          use #(right_facts, right_rules) <- result.try(cast.as_table(arg))
+          Ok(#(
+            V(v.Table(
+              table.merge(left_facts, right_facts).0,
+              list.append(left_rules, right_rules),
+            )),
+            env,
+            k,
+          ))
+        }
+        v.Query(ir.Resolve(label)), [] -> {
+          use #(facts, rules) <- result.try(cast.as_table(arg))
+          use <- bool.lazy_guard(rules == [], fn() {
+            let #(_, k) = matching(facts, label, [], v.unit(), k)
+            Ok(#(V(v.LinkedList(table.rows(facts, label))), env, k))
+          })
+          let rules = list.index_map(rules, fn(rule, i) { #(i, rule) })
+          Resolution(
+            label:,
+            snapshot: facts,
+            facts:,
+            rules:,
+            pending: rules,
+            reads: dict.new(),
+            current: 0,
+            reading: set.new(),
+            grown: set.new(),
+            indexes: dict.new(),
+            env:,
+          )
+          |> query_next(meta, k)
+        }
+        v.Query(ir.Match(label, keys)), [db, key] -> {
+          use #(facts, _rules) <- result.try(cast.as_table(db))
+          let #(rows, k) = matching(facts, label, keys, key, k)
+          match_next(rows, arg, dict.new(), meta, env, k)
+        }
         v.Cons, [item] -> {
           use elements <- result.try(cast.as_list(arg))
           Ok(#(V(v.LinkedList([item, ..elements])), env, k))
@@ -258,6 +372,7 @@ fn do_perform(label, arg, i_env, k, acc) {
         Stack(CallWith(arg, e), meta, Stack(CallWith(resume, e), meta, rest))
       Ok(#(V(h), e, k))
     }
+    Stack(QueryNext(..), _, _) -> Error(break.ImpureQuery(label))
     Stack(kontinue, meta, rest) ->
       do_perform(label, arg, i_env, rest, [#(kontinue, meta), ..acc])
     Empty -> Error(break.UnhandledEffect(label, arg))
@@ -273,8 +388,111 @@ pub fn deep(label, handle, exec, meta, env, k) {
   let k = Stack(Delimit(label, handle, env, False), meta, k)
   call(exec, v.unit(), meta, env, k)
 }
+
 // somewhere this needs outer k
 // fn shallow(label, handle, exec, meta, env, k) {
 //   let k = Stack(Delimit(label, handle, env, True), meta, k)
 //   call(exec, v.unit(), meta, env, k)
 // }
+
+fn query_next(resolution: Resolution(m), meta: m, k: Stack(m)) -> Return(m) {
+  case resolution.pending {
+    [#(index, rule), ..pending] -> {
+      let resolution =
+        Resolution(..resolution, pending:, current: index, reading: set.new())
+      let db = v.Table(resolution.snapshot, [])
+      let k = Stack(QueryNext(resolution), meta, k)
+      call(rule, db, meta, resolution.env, k)
+    }
+    [] ->
+      case set.is_empty(resolution.grown) {
+        True -> {
+          let rows = table.rows(resolution.facts, resolution.label)
+          Ok(#(V(v.LinkedList(rows)), resolution.env, k))
+        }
+        False -> {
+          let Resolution(rules:, reads:, grown:, ..) = resolution
+          let pending =
+            list.filter(rules, fn(rule) {
+              case dict.get(reads, rule.0) {
+                Ok(read) -> !set.is_empty(set.intersection(read, grown))
+                Error(Nil) -> True
+              }
+            })
+          Resolution(
+            ..resolution,
+            snapshot: resolution.facts,
+            pending:,
+            grown: set.new(),
+          )
+          |> query_next(meta, k)
+        }
+      }
+  }
+}
+
+fn match_next(
+  rows: List(Value(m)),
+  then: Value(m),
+  acc: Dict(String, Dict(Value(m), Int)),
+  meta: m,
+  env: Env(m),
+  k: Stack(m),
+) -> Return(m) {
+  case rows {
+    [row, ..rows] -> {
+      let k = Stack(MatchNext(rows, then, acc, env), meta, k)
+      call(then, row, meta, env, k)
+    }
+    [] -> Ok(#(V(v.Table(acc, [])), env, k))
+  }
+}
+
+// Rows of the snapshot are found through an index cached on the enclosing
+// resolution, which also records the relation as read by the running rule.
+fn matching(
+  facts: Dict(String, Dict(Value(m), Int)),
+  label: String,
+  keys: List(String),
+  key: Value(m),
+  k: Stack(m),
+) -> #(List(Value(m)), Stack(m)) {
+  case find_resolution(k, []) {
+    Ok(#(resolution, meta, above, rest)) if facts == resolution.snapshot -> {
+      let size = table.relation_size(facts, label)
+      let #(index, indexes) = case
+        dict.get(resolution.indexes, #(label, keys))
+      {
+        Ok(#(indexed, index)) if indexed == size -> #(index, resolution.indexes)
+        _ -> {
+          let index = table.index(facts, label, keys)
+          let indexes =
+            dict.insert(resolution.indexes, #(label, keys), #(size, index))
+          #(index, indexes)
+        }
+      }
+      let reading = set.insert(resolution.reading, label)
+      let resolution = Resolution(..resolution, reading:, indexes:)
+      let k =
+        list.fold(above, Stack(QueryNext(resolution), meta, rest), fn(k, frame) {
+          Stack(frame.0, frame.1, k)
+        })
+      #(dict.get(index, key) |> result.unwrap([]), k)
+    }
+    _ -> {
+      let rows =
+        table.rows(facts, label)
+        |> list.filter(fn(row) { table.key(row, keys) == Ok(key) })
+      #(rows, k)
+    }
+  }
+}
+
+fn find_resolution(k, above) {
+  case k {
+    Stack(QueryNext(resolution), meta, rest) ->
+      Ok(#(resolution, meta, above, rest))
+    Stack(frame, meta, rest) -> find_resolution(rest, [#(frame, meta), ..above])
+    Empty -> Error(Nil)
+  }
+}

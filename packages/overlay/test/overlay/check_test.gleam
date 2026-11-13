@@ -1,6 +1,8 @@
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/capture
 import eyg/interpreter/expression
 import eyg/interpreter/state
+import eyg/interpreter/table
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser
@@ -101,4 +103,11 @@ pub fn nested_interface_variables_are_registered_without_colliding_test() {
     == Ok(Nil)
   let assert Error(_) =
     check.value(gate("(_) -> { 42 }"), expected, #(0, 0), lookup)
+}
+
+pub fn tables_cannot_hide_captured_continuations_test() {
+  let resume = v.Partial(v.Resume(#([], state.Env([], dict.new()))), [])
+  assert !capture.is_capturable(v.Table(table.singleton("Row", resume), []))
+  assert !capture.is_capturable(v.Table(dict.new(), [resume]))
+  assert capture.is_capturable(gate("fact Row({value: 42})"))
 }

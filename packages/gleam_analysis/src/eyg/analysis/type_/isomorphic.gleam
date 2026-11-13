@@ -11,6 +11,7 @@ pub type Type(var) {
   Integer
   String
   List(Type(var))
+  Table(Type(var))
   Record(Type(var))
   Union(Type(var))
   Empty
@@ -69,6 +70,17 @@ pub fn ast() {
       #("Binary", Binary),
       #("Integer", Integer),
       #("String", String),
+      #(
+        "Query",
+        union([
+          #("EmptyTable", unit),
+          #("Fact", String),
+          #("Rule", unit),
+          #("Merge", unit),
+          #("Resolve", String),
+          #("Match", record([#("label", String), #("keys", List(String))])),
+        ]),
+      ),
       #("Tail", unit),
       #("Cons", unit),
       #("Vacant", unit),

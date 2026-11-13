@@ -78,7 +78,7 @@ pub fn with_index(context, index) {
 // use capture because we want efficient ability to get to continuations
 pub fn value_to_type(value, bindings, meta: t) {
   case value {
-    v.Closure(_, _, _) -> {
+    v.Closure(_, _, _) | v.Table(_, _) -> {
       let icontext = infer.Context(..infer.pure(), level: 0, bindings:)
       // let #(#(_, #(_, type_, _, _)), bindings) 
       let infer.Analysis(bindings:, tree:, original: _) =

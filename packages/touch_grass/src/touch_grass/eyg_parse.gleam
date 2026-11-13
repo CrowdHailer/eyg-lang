@@ -7,6 +7,7 @@ import eyg/interpreter/cast
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
+import gleam/list
 import multiformats/cid/v1
 
 pub const label = "EYGParse"
@@ -55,6 +56,26 @@ fn flatten(node: ir.Node(m), rest: List(v.Value(a, b))) -> List(v.Value(a, b)) {
     ir.Binary(value) -> [tagged("Binary", v.Binary(value)), ..rest]
     ir.Integer(value) -> [tagged("Integer", v.Integer(value)), ..rest]
     ir.String(value) -> [tagged("String", v.String(value)), ..rest]
+    ir.Query(operation) -> {
+      let inner = case operation {
+        ir.EmptyTable -> tagged("EmptyTable", v.unit())
+        ir.Fact(label) -> tagged("Fact", v.String(label))
+        ir.Rule -> tagged("Rule", v.unit())
+        ir.Merge -> tagged("Merge", v.unit())
+        ir.Resolve(label) -> tagged("Resolve", v.String(label))
+        ir.Match(label, keys) ->
+          tagged(
+            "Match",
+            v.Record(
+              dict.from_list([
+                #("label", v.String(label)),
+                #("keys", v.LinkedList(list.map(keys, v.String))),
+              ]),
+            ),
+          )
+      }
+      [tagged("Query", inner), ..rest]
+    }
     ir.Tail -> [tagged("Tail", v.unit()), ..rest]
     ir.Cons -> [tagged("Cons", v.unit()), ..rest]
     ir.Vacant -> [tagged("Vacant", v.unit()), ..rest]
