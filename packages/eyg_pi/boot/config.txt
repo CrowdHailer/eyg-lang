@@ -1,0 +1,11 @@
+# Raspberry Pi firmware configuration, read by the GPU before the kernel starts.
+arm_64bit=1
+kernel=kernel8.img
+initramfs initramfs.gz followkernel
+# Keep the classic framebuffer driver, the console is drawn on HDMI.
+disable_overscan=1
+hdmi_force_hotplug=1
+# Put the full UART (ttyAMA0) on the GPIO header pins instead of Bluetooth,
+# serial0 in cmdline.txt then names it.
+dtoverlay=disable-bt
+enable_uart=1

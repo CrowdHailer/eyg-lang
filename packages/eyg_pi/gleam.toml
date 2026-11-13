@@ -1,0 +1,27 @@
+name = "eyg_pi"
+version = "0.1.0"
+target = "javascript"
+
+[dependencies]
+argv = ">= 1.0.0 and < 2.0.0"
+filepath = ">= 1.1.0 and < 2.0.0"
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_http = ">= 4.4.0 and < 5.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
+loam = { path = "../loam" }
+tracing = { path = "../tracing" }
+eyg_ir = { path = "../gleam_ir" }
+eyg_parser = { path = "../gleam_parser" }
+glasshouse = { path = "../glasshouse" }
+multiformats = ">= 4.0.0 and < 5.0.0"
+midas = ">= 3.1.0 and < 4.0.0"
+plinthx = { path = "../plinthx" }
+simplifile = ">= 2.7.0 and < 3.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+
+[javascript]
+runtime = "bun"

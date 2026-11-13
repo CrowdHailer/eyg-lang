@@ -1,0 +1,269 @@
+// Pong for a text terminal, the left paddle is yours and the right is played by the computer.
+// Move with the arrow keys or w and s, q quits, first to 5 points wins.
+//
+// Drawing uses ANSI escape codes so it works on the Linux console and over serial.
+// Only the cells that change are redrawn each frame.
+//
+//   let pong = import "pong.eyg"
+//   pong.play({})
+
+let width = 60
+let height = 20
+let paddle = 4
+let winning_score = 5
+let frame_delay = 60
+let left_x = 1
+let right_x = !int_subtract(width, 2)
+
+// Helpers
+
+let esc = match !string_from_binary(!binary_from_integers([27])) {
+  Ok(esc) -> { esc }
+  Error(_) -> { "" }
+}
+let join = (parts) -> { !list_fold(parts, "", (part, acc) -> { !string_append(acc, part) }) }
+let less = (a, b) -> {
+  match !int_compare(a, b) {
+    Lt(_) -> { True({}) }
+    | (_) -> { False({}) }
+  }
+}
+let clamp = (value, low, high) -> {
+  match less(value, low) {
+    True(_) -> { low }
+    False(_) -> {
+      match less(high, value) {
+        True(_) -> { high }
+        False(_) -> { value }
+      }
+    }
+  }
+}
+let div = (a, b) -> {
+  match !int_divide(a, b) {
+    Ok(v) -> { v }
+    Error(_) -> { 0 }
+  }
+}
+let remainder = (a, b) -> { !int_subtract(a, !int_multiply(b, div(a, b))) }
+let repeat = !fix((repeat, text, count) -> {
+  match less(0, count) {
+    True(_) -> { !string_append(text, repeat(text, !int_subtract(count, 1))) }
+    False(_) -> { "" }
+  }
+})
+let range = !fix((range, from, to) -> {
+  match less(from, to) {
+    True(_) -> { [from, ..range(!int_add(from, 1), to)] }
+    False(_) -> { [] }
+  }
+})
+
+// Drawing, the field is drawn with its top left corner at row 3, column 2.
+
+let at = (x, y, text) -> {
+  join([esc, "[", !int_to_string(!int_add(y, 3)), ";", !int_to_string(!int_add(x, 2)), "H", text])
+}
+let draw_paddle = (x, top, text) -> {
+  join(!list_fold(range(0, paddle), [], (i, acc) -> { [at(x, !int_add(top, i), text), ..acc] }))
+}
+let draw_score = (state) -> {
+  at(0, -2, join(["you ", !int_to_string(state.player), "   computer ", !int_to_string(state.cpu), "      q to quit"]))
+}
+let draw_field = (state) -> {
+  let line = join(["+", repeat("-", width), "+"])
+  join([
+    esc, "[2J", esc, "[?25l",
+    at(-1, -1, line),
+    join(!list_fold(range(0, height), [], (y, acc) -> { [at(-1, y, "|"), at(width, y, "|"), ..acc] })),
+    at(-1, height, line),
+    draw_score(state),
+    draw_paddle(left_x, state.left, "#"),
+    draw_paddle(right_x, state.right, "#"),
+    at(state.bx, state.by, "O")
+  ])
+}
+// Redraw only what moved between two states.
+let draw_change = (old, new) -> {
+  let paddles = (x, before, after) -> {
+    match !equal(before, after) {
+      True(_) -> { "" }
+      False(_) -> { !string_append(draw_paddle(x, before, " "), draw_paddle(x, after, "#")) }
+    }
+  }
+  let score = match !equal({player: old.player, cpu: old.cpu}, {player: new.player, cpu: new.cpu}) {
+    True(_) -> { "" }
+    False(_) -> { draw_score(new) }
+  }
+  join([
+    at(old.bx, old.by, " "),
+    paddles(left_x, old.left, new.left),
+    paddles(right_x, old.right, new.right),
+    at(new.bx, new.by, "O"),
+    score,
+    at(-1, !int_add(height, 1), "")
+  ])
+}
+
+// Game rules
+
+let serve = (state, dx) -> {
+  {
+    bx: div(width, 2),
+    // Vary the serve row with the score, staying inside the field.
+    by: !int_add(2, remainder(!int_multiply(5, !int_add(state.player, state.cpu)), !int_subtract(height, 4))),
+    dx: dx,
+    dy: 1,
+    left: state.left,
+    right: state.right,
+    player: state.player,
+    cpu: state.cpu,
+    tick: state.tick
+  }
+}
+let initial = serve({left: 8, right: 8, player: 0, cpu: 0, tick: 0}, -1)
+
+let hits = (top, y) -> {
+  match less(y, top) {
+    True(_) -> { False({}) }
+    False(_) -> { less(y, !int_add(top, paddle)) }
+  }
+}
+
+// The computer moves towards the ball on two ticks out of three, so it can be beaten.
+let follow = (top, tick, by) -> {
+  match !int_compare(!int_multiply(3, div(tick, 3)), tick) {
+    Eq(_) -> { top }
+    | (_) -> {
+      let center = !int_add(top, 1)
+      match !int_compare(center, by) {
+        Lt(_) -> { !int_add(top, 1) }
+        Gt(_) -> { !int_subtract(top, 1) }
+        Eq(_) -> { top }
+      }
+    }
+  }
+}
+
+// Advance the game one tick, `move` is -1, 0 or 1 for the player's paddle.
+let step = (state, move) -> {
+  let max_top = !int_subtract(height, paddle)
+  let left = clamp(!int_add(state.left, move), 0, max_top)
+  let right = clamp(follow(state.right, state.tick, state.by), 0, max_top)
+  let tick = !int_add(state.tick, 1)
+
+  let y = !int_add(state.by, state.dy)
+  let {y, dy} = match less(y, 0) {
+    True(_) -> { {y: 1, dy: 1} }
+    False(_) -> {
+      match less(!int_subtract(height, 1), y) {
+        True(_) -> { {y: !int_subtract(height, 2), dy: -1} }
+        False(_) -> { {y: y, dy: state.dy} }
+      }
+    }
+  }
+  let x = !int_add(state.bx, state.dx)
+  let moved = {bx: x, by: y, dx: state.dx, dy: dy, left: left, right: right, player: state.player, cpu: state.cpu, tick: tick}
+  match !equal(x, left_x) {
+    True(_) -> {
+      match hits(left, y) {
+        True(_) -> { {bx: !int_add(left_x, 1), by: y, dx: 1, dy: dy, left: left, right: right, player: state.player, cpu: state.cpu, tick: tick} }
+        False(_) -> { moved }
+      }
+    }
+    False(_) -> {
+      match !equal(x, right_x) {
+        True(_) -> {
+          match hits(right, y) {
+            True(_) -> { {bx: !int_subtract(right_x, 1), by: y, dx: -1, dy: dy, left: left, right: right, player: state.player, cpu: state.cpu, tick: tick} }
+            False(_) -> { moved }
+          }
+        }
+        False(_) -> {
+          match less(x, 0) {
+            True(_) -> { serve({left: left, right: right, player: state.player, cpu: !int_add(state.cpu, 1), tick: tick}, 1) }
+            False(_) -> {
+              match less(!int_subtract(width, 1), x) {
+                True(_) -> { serve({left: left, right: right, player: !int_add(state.player, 1), cpu: state.cpu, tick: tick}, -1) }
+                False(_) -> { moved }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Input
+
+let key_move = (key) -> {
+  match !equal(key, "ArrowUp") {
+    True(_) -> { Move(-1) }
+    False(_) -> {
+      match !equal(key, "w") {
+        True(_) -> { Move(-1) }
+        False(_) -> {
+          match !equal(key, "ArrowDown") {
+            True(_) -> { Move(1) }
+            False(_) -> {
+              match !equal(key, "s") {
+                True(_) -> { Move(1) }
+                False(_) -> {
+                  match !equal(key, "q") {
+                    True(_) -> { Quit({}) }
+                    False(_) -> { Move(0) }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Read every key pressed since the last frame.
+let read_keys = !fix((read_keys, move) -> {
+  match perform ReadKey(0) {
+    None(_) -> { Move(move) }
+    Some(key) -> {
+      match key_move(key) {
+        Quit(_) -> { Quit({}) }
+        Move(m) -> { read_keys(!int_add(move, m)) }
+      }
+    }
+  }
+})
+
+let game_over = (state) -> {
+  match less(state.player, winning_score) {
+    True(_) -> { !equal(state.cpu, winning_score) }
+    False(_) -> { True({}) }
+  }
+}
+
+let play = (_) -> {
+  let _ = perform StandardOut(draw_field(initial))
+  let final = !fix((loop, state) -> {
+    match game_over(state) {
+      True(_) -> { state }
+      False(_) -> {
+        match read_keys(0) {
+          Quit(_) -> { state }
+          Move(move) -> {
+            let next = step(state, move)
+            let _ = perform StandardOut(draw_change(state, next))
+            let _ = perform Sleep(frame_delay)
+            loop(next)
+          }
+        }
+      }
+    }
+  })(initial)
+  let _ = perform StandardOut(join([esc, "[?25h", at(-1, !int_add(height, 1), "\n")]))
+  {you: final.player, computer: final.cpu}
+}
+
+{play: play, step: step, initial: initial}
