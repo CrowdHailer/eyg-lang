@@ -70,6 +70,23 @@ pub fn create_message(
   }
 }
 
+pub fn guild(
+  context: Context(t),
+  guild: String,
+) -> K(t, Result(schema.Guild, Failure)) {
+  let request = operations.guild_request(base_request(context.token), guild)
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.guild_response(response) {
+        Ok(Ok(guild)) -> Ok(guild)
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
 /// Discover text and announcement channels in a guild (server).
 pub fn guild_channels(
   context: Context(t),

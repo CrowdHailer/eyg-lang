@@ -25,7 +25,7 @@ pub type Message {
 pub opaque type State {
   State(
     bot_token: String,
-    guild: String,
+    guild: schema.Guild,
     subject: Subject(Message),
     bot_user: String,
     conversations: Dict(String, List(schema.Message)),
@@ -35,7 +35,7 @@ pub opaque type State {
 
 pub fn start(
   bot_token: String,
-  guild: String,
+  guild: schema.Guild,
   bot_user: String,
   execute_state: execute.State,
 ) -> actor.StartResult(Subject(Message)) {
@@ -72,7 +72,7 @@ fn handle_message(
 }
 
 fn poll(state: State) -> State {
-  case client.guild_channels(state.bot_token, state.guild) {
+  case client.guild_channels(state.bot_token, state.guild.id) {
     Error(reason) -> {
       report_failure("channels", reason)
       state
@@ -120,6 +120,9 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
         }
         True ->
           list.fold(fresh, state.execute_state, fn(execute_state, message) {
+            // Install/server ID and name: state.guild.id and state.guild.name.
+            // Conversation ID and name: channel.id and channel.name.
+            // This is where a hook would fit in
             case command.source(message.data, state.bot_user) {
               Error(Nil) -> execute_state
               Ok(code) -> {

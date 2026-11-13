@@ -9,7 +9,7 @@ pub fn start_channel(hub, token: String) {
   let assert Ok(identity) = client.auth_test(token)
   channel.start(
     token,
-    identity.user_id,
+    identity,
     execute.State(origin: hub, cache: cache.ready()),
   )
 }

@@ -15,6 +15,16 @@ pub fn channel_decoder() -> decode.Decoder(Channel) {
   decode.success(Channel(id, name, kind))
 }
 
+pub type Guild {
+  Guild(id: String, name: String)
+}
+
+pub fn guild_decoder() -> decode.Decoder(Guild) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  decode.success(Guild(id, name))
+}
+
 pub type Identity {
   Identity(id: String, username: String)
 }

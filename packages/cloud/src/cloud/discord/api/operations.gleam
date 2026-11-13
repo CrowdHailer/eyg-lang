@@ -67,6 +67,22 @@ pub fn create_message_response(
   decode_response(response, decode.success(Nil))
 }
 
+/// https://discord.com/developers/docs/resources/guild#get-guild
+pub fn guild_request(
+  base: request.Request(BitArray),
+  guild: String,
+) -> request.Request(BitArray) {
+  base
+  |> utils.set_method(http.Get)
+  |> utils.append_path("/guilds/" <> guild)
+}
+
+pub fn guild_response(
+  response: response.Response(BitArray),
+) -> Result(Result(schema.Guild, Failure), json.DecodeError) {
+  decode_response(response, schema.guild_decoder())
+}
+
 /// Guild channel discovery is not paginated and does not include threads.
 pub fn guild_channels_request(
   base: request.Request(BitArray),

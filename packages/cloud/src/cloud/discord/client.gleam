@@ -9,6 +9,13 @@ pub fn current_user(token: String) -> Result(schema.Identity, client.Failure) {
   client.current_user(client.Context(token:, fetch: system.fetch))(identity)
 }
 
+pub fn guild(
+  token: String,
+  guild: String,
+) -> Result(schema.Guild, client.Failure) {
+  client.guild(client.Context(token:, fetch: system.fetch), guild)(identity)
+}
+
 pub fn guild_channels(
   token: String,
   guild: String,

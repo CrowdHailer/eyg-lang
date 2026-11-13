@@ -23,7 +23,7 @@ pub opaque type State {
   State(
     bot_token: String,
     subject: Subject(Message),
-    bot_user: String,
+    identity: schema.Identity,
     conversations: Dict(String, Conversation),
     execute_state: execute.State,
   )
@@ -36,7 +36,7 @@ pub type Conversation {
 
 pub fn start(
   bot_token: String,
-  bot_user: String,
+  identity: schema.Identity,
   execute_state: execute.State,
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
@@ -45,7 +45,7 @@ pub fn start(
     actor.initialised(State(
       bot_token,
       subject,
-      bot_user,
+      identity,
       dict.new(),
       execute_state,
     ))
@@ -120,9 +120,12 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
         }
         True ->
           list.fold(fresh, state.execute_state, fn(execute_state, message) {
-            case command.source(message.data, state.bot_user) {
+            // Conversation ID: channel.id; workspace ID: state.identity.team_id.
+            // The optional thread ID is message.thread_ts (Option(String)).
+            case command.source(message.data, state.identity.user_id) {
               Error(Nil) -> execute_state
               Ok(code) -> {
+                // Reply in the existing thread, or start one on this message.
                 let ts = option.unwrap(message.thread_ts, message.ts)
                 let #(outcome, session) =
                   execute.block(code, execute_state, print_output(
