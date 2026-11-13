@@ -14,6 +14,7 @@ import cloud/instance
 import cloud/registry
 import cloud/server
 import cloud/system
+import cloud/tracing
 import cloud/web/runner
 import cloud/workspace
 import envoy
@@ -58,6 +59,7 @@ pub fn main() -> Nil {
   let origin =
     envoy.get("CLOUD_ORIGIN")
     |> result.unwrap("http://localhost:" <> int.to_string(port))
+  let assert Ok(_) = tracing.start_tracer()
   let assert Ok(artifacts) = artifacts.start(origin)
   let entries =
     list.map(instance.workspaces, fn(entry) { #(entry.name, entry.file) })

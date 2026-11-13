@@ -9,6 +9,7 @@ import cloud/agent
 import cloud/beam/execute
 import cloud/config
 import cloud/skills
+import cloud/tracing
 import cloud/trigger
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
@@ -16,7 +17,7 @@ import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
-import gleam/option
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import overlay/agent as overlay
@@ -47,7 +48,8 @@ pub fn prepare(
   use channel <- result.try(config.channel(workspace, info))
   let state = execute.State(..workspace.state, root: option.None)
   let shell = Shell(workspace:, channel:, host:, state:, location:, completer:)
-  let subagent = fn(task) {
+  let subagent = fn(task, trace) {
+    let shell = Shell(..shell, host: execute.Host(..shell.host, trace:))
     turn(shell, [], task) |> result.map(agent.last_reply)
   }
   Ok(Shell(..shell, host: execute.Host(..host, subagent:)))
@@ -129,7 +131,32 @@ pub fn turn(
     |> list.filter(fn(section) { section != "" })
     |> string.join("\n\n")
   let context = agent.context(workspace.state.origin, effects, readme)
-  let complete = shell.completer(channel.llm, context)
+  // A turn is a span, each completion and each program the agent runs is inside it.
+  let span =
+    tracing.start("eyg.agent.turn", shell.host.trace, [
+      #("eyg.cloud.location", tracing.text(shell.location)),
+      #("gen_ai.request.model", tracing.text(channel.llm.model)),
+    ])
+  let shell =
+    Shell(
+      ..shell,
+      host: execute.Host(..shell.host, trace: Some(tracing.context(span))),
+    )
+  let completion = shell.completer(channel.llm, context)
+  let complete = fn(history) {
+    tracing.span(
+      "eyg.llm.completion",
+      Some(tracing.context(span)),
+      [#("gen_ai.request.model", tracing.text(channel.llm.model))],
+      fn(_) { completion(history) },
+      fn(result) {
+        case result {
+          Ok(_) -> None
+          Error(reason) -> Some(reason)
+        }
+      },
+    )
+  }
   let scope = [
     #(
       "context",
@@ -141,16 +168,22 @@ pub fn turn(
       ),
     ),
   ]
-  agent.turn(history, input, complete, fn(code) {
-    let execute.Run(result:, output:) = run(shell, code, scope)
-    let printed = list.map(output, execute.output_text)
-    case result {
-      Ok(value) ->
-        Ok(run.report(
-          printed,
-          value |> option.map(overlay.inspect_result) |> option.unwrap(""),
-        ))
-      Error(reason) -> Error(run.report(printed, reason))
-    }
+  let turn =
+    agent.turn(history, input, complete, fn(code) {
+      let execute.Run(result:, output:) = run(shell, code, scope)
+      let printed = list.map(output, execute.output_text)
+      case result {
+        Ok(value) ->
+          Ok(run.report(
+            printed,
+            value |> option.map(overlay.inspect_result) |> option.unwrap(""),
+          ))
+        Error(reason) -> Error(run.report(printed, reason))
+      }
+    })
+  tracing.end(span, [], case turn {
+    Ok(_) -> None
+    Error(reason) -> Some(reason)
   })
+  turn
 }

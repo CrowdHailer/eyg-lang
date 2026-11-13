@@ -25,6 +25,8 @@ pub type Operation {
   ListUsers
   ListShells
   SetUserShell(user: String, shell: String)
+  /// The most recent spans, newest first, see `cloud/tracing`.
+  RecentTraces(limit: Int)
 }
 
 /// An operation with its effect name, the policy field gating it and its types.
@@ -164,6 +166,27 @@ pub fn specs() -> List(Spec) {
     ),
     Spec("Shells", "shells", t.unit, t.List(t.String), unit(ListShells)),
     Spec(
+      "Traces",
+      "traces",
+      t.Integer,
+      t.List(
+        t.record([
+          #("trace", t.String),
+          #("span", t.String),
+          #("parent", t.option(t.String)),
+          #("name", t.String),
+          #("start", t.String),
+          #("microseconds", t.Integer),
+          #("error", t.option(t.String)),
+          #(
+            "attributes",
+            t.List(t.record([#("key", t.String), #("value", t.String)])),
+          ),
+        ]),
+      ),
+      cast.map(cast.as_integer, RecentTraces),
+    ),
+    Spec(
       "SetUserShell",
       "set_user_shell",
       t.record([#("user", t.String), #("shell", t.String)]),
@@ -188,6 +211,7 @@ pub fn label(operation: Operation) -> String {
     ListUsers -> "Users"
     ListShells -> "Shells"
     SetUserShell(..) -> "SetUserShell"
+    RecentTraces(..) -> "Traces"
   }
 }
 

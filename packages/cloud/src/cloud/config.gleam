@@ -27,6 +27,7 @@
 import cloud/beam/execute
 import cloud/connection
 import cloud/handler
+import cloud/tracing
 import cloud/trigger
 import eyg/analysis/type_/binding
 import eyg/interpreter/cast
@@ -118,9 +119,21 @@ pub fn load_source(
   secret: fn(String) -> Result(String, String),
 ) -> Result(Workspace, String) {
   let state = execute.State(..state, root: Some(filepath.directory_name(file)))
-  let host = execute.configuration_host(secret)
+  let span =
+    tracing.start("eyg.cloud.configuration", None, [
+      #("eyg.cloud.file", tracing.text(file)),
+    ])
+  let host =
+    execute.Host(
+      ..execute.configuration_host(secret),
+      trace: Some(tracing.context(span)),
+    )
   let #(execute.Run(result:, ..), state) =
     execute.run_configuration(code, execute.configuration(), host, state)
+  tracing.end(span, [], case result {
+    Ok(_) -> None
+    Error(reason) -> Some(reason)
+  })
   case result {
     Ok(Some(value)) -> decode(value, filepath.directory_name(file), state)
     Ok(None) -> Error(file <> " has no value")

@@ -11,6 +11,7 @@ import cloud/beam/execute
 import cloud/instance
 import cloud/registry
 import cloud/shell
+import cloud/tracing
 import cloud/users.{type User}
 import cloud/workspace
 import gleam/erlang/process.{type Subject}
@@ -61,6 +62,16 @@ pub fn run(
       None -> Ok(process.send(changes, None))
     }
   }
+  let at = case binding {
+    Some(Binding(workspace:, channel:)) -> workspace <> " #" <> channel
+    None -> "unbound"
+  }
+  let span =
+    tracing.start("eyg.cloud.web", None, [
+      #("eyg.cloud.user", tracing.text(user.name)),
+      #("eyg.cloud.binding", tracing.text(at)),
+    ])
+  let trace = Some(tracing.context(span))
   let outcome = case binding {
     None -> {
       use policy <- result.map(policy(context, user))
@@ -72,6 +83,7 @@ pub fn run(
           post: fn(_) { Error("Bind to a channel to post") },
           api: api.perform(context.registry, context.state, _),
           bind:,
+          trace:,
         )
       execute.run(code, scope, policy, host, context.state).0
     }
@@ -81,7 +93,7 @@ pub fn run(
         workspace,
         channel,
       ))
-      let host = execute.Host(..host, bind:)
+      let host = execute.Host(..host, bind:, trace:)
       let location =
         "You are in the channel #"
         <> info.name
@@ -102,6 +114,10 @@ pub fn run(
     Ok(run) -> run
     Error(reason) -> execute.Run(Error(reason), [])
   }
+  tracing.end(span, [], case run.result {
+    Ok(_) -> None
+    Error(reason) -> Some(reason)
+  })
   #(run, latest(changes, binding))
 }
 

@@ -57,6 +57,7 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.traces({workspace: "x", limit: 10}))
   let _ = expect_reject(s.bind({}))
   let _ = expect_reject(s.unbind({}))
   let _ = expect_reject(s.workspaces({}))

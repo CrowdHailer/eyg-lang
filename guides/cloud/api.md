@@ -23,6 +23,7 @@ and by the HTTP API, so there is one API and every caller is gated by an EYG pol
 | `Users` | `users` | `{}` | `[{name, admin, shell}]` |
 | `Shells` | `shells` | `{}` | the names of the shells in `cloud.eyg` |
 | `SetUserShell` | `set_user_shell` | `{user, shell}` | |
+| `Traces` | `traces` | limit | the newest spans, see [tracing](./tracing.md) |
 
 Every effect returns `Ok(value)` or `Error(reason)`.
 Changes to a channel's configuration apply to the next message, connections and crons apply when the cloud restarts.

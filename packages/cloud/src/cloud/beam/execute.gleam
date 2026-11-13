@@ -8,6 +8,7 @@ import cloud/artifacts
 import cloud/files
 import cloud/operation
 import cloud/system
+import cloud/tracing
 import cloud/trigger
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
@@ -114,7 +115,8 @@ pub type Host {
     secret: fn(String) -> Result(String, String),
     files: Files,
     triggers: Triggers,
-    subagent: fn(String) -> Result(String, String),
+    /// Run a subagent with a task, its spans are children of the given span.
+    subagent: fn(String, Option(tracing.Context)) -> Result(String, String),
     schedules: Schedules,
     artifacts: Artifacts,
     /// The logged events of a connection, newest first.
@@ -123,6 +125,8 @@ pub type Host {
     api: fn(operation.Operation) -> Result(Value, String),
     /// Bind a web shell to a channel, `None` unbinds it. Only web shells can bind.
     bind: fn(Option(#(String, String))) -> Result(Nil, String),
+    /// The span programs run with this host belong to, see `cloud/tracing`.
+    trace: Option(tracing.Context),
   )
 }
 
@@ -207,7 +211,7 @@ pub fn no_triggers() -> Triggers {
   )
 }
 
-fn no_subagent(_task) {
+fn no_subagent(_task, _trace) {
   Error("Delegation is not available")
 }
 
@@ -263,6 +267,7 @@ pub fn channel_host(
     events: no_events,
     api: no_api,
     bind: no_bind,
+    trace: option.None,
   )
 }
 
@@ -281,6 +286,7 @@ pub fn configuration_host(
     events: no_events,
     api: no_api,
     bind: no_bind,
+    trace: option.None,
   )
 }
 
@@ -563,6 +569,7 @@ const operation_rules = [
   #("Users", policy.PolicyField("users")),
   #("Shells", policy.PolicyField("shells")),
   #("SetUserShell", policy.PolicyField("set_user_shell")),
+  #("Traces", policy.PolicyField("traces")),
 ]
 
 /// Check a complete policy before admitting it. Check gates independently so
@@ -640,49 +647,84 @@ pub fn run(
   host: Host,
   state: State,
 ) -> #(Run, State) {
-  run_with_lookup(code, scope, policy, host, state, fn(reference, state) {
+  run_with_lookup(code, scope, policy, host, state, fn(reference, state, host) {
     program_reference(reference, state, policy, host, [])
   })
 }
 
-/// Only trusted workspace configuration can import modules from the host.
+/// Only trusted configuration resolves imports on the host filesystem.
+/// Channel programs, agent actions and web/API scripts always use `run`.
 pub fn run_configuration(code, policy, host, state) {
-  run_with_lookup(code, [], policy, host, state, lookup)
+  run_with_lookup(code, [], policy, host, state, fn(reference, state, _host) {
+    lookup(reference, state)
+  })
 }
 
-fn run_with_lookup(code, scope, policy, host, state, resolve) {
-  case parser.all_from_string(code) {
+fn run_with_lookup(code, scope, policy, host: Host, state: State, resolve) {
+  let scope = list.append(scope, [#("cloud", platform())])
+  let span = tracing.start("eyg.run", host.trace, [])
+  let host = Host(..host, trace: option.Some(tracing.context(span)))
+  let resolve = fn(reference, state) { resolve(reference, state, host) }
+  let #(run, state) = case parser.all_from_string(code) {
     Error(reason) -> #(Run(Error(parser.format_error(reason, code)), []), state)
     Ok(source) ->
-      loop(
-        expression.execute(source, [#("cloud", platform()), ..scope]),
-        state,
-        policy,
-        host,
-        [],
-        resolve,
-      )
+      loop(expression.execute(source, scope), state, policy, host, [], resolve)
   }
+  finish(span, run, state)
 }
 
-/// Run captured scripts with the same session import resolver as source programs.
+/// Run an expression, for example a captured trigger script applied to its event.
 pub fn run_expression(
-  source: ir.Node(Meta),
+  expression: ir.Node(Meta),
   scope: List(#(String, Value)),
   policy: Policy,
   host: Host,
   state: State,
 ) -> #(Run, State) {
-  loop(
-    expression.execute(source, scope),
-    state,
-    policy,
-    host,
-    [],
-    fn(reference, state) {
-      program_reference(reference, state, policy, host, [])
-    },
-  )
+  let span = tracing.start("eyg.run", host.trace, [])
+  let host = Host(..host, trace: option.Some(tracing.context(span)))
+  let #(run, state) =
+    loop(
+      expression.execute(expression, scope),
+      state,
+      policy,
+      host,
+      [],
+      fn(reference, state) {
+        program_reference(reference, state, policy, host, [])
+      },
+    )
+  finish(span, run, state)
+}
+
+fn finish(span, run: Run, state) {
+  let error = case run.result {
+    Ok(_) -> option.None
+    Error(reason) -> option.Some(reason)
+  }
+  tracing.end(span, [], error)
+  #(run, state)
+}
+
+/// Record a span for an effect, how the policy decided and whether it failed.
+fn effect_span(label, host: Host, then) {
+  let span =
+    tracing.start("eyg.effect." <> label, host.trace, [
+      #("eyg.effect.name", tracing.text(label)),
+    ])
+  let #(decision, failure, result) =
+    then(Host(..host, trace: option.Some(tracing.context(span))))
+  tracing.end(span, [#("eyg.policy.decision", tracing.text(decision))], failure)
+  result
+}
+
+/// An `Error` reply is a failed effect, though the program can recover from it.
+fn failure(value) {
+  case value {
+    v.Tagged("Error", v.String(reason)) -> option.Some(reason)
+    v.Tagged("Error", reason) -> option.Some(simple_debug.inspect(reason))
+    _ -> option.None
+  }
 }
 
 fn loop(
@@ -702,30 +744,40 @@ fn loop(
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       let lift = absolute_paths(label, lift)
       let #(action, state) = decide(policy, label, lift, meta, state)
-      case action {
-        policy.Perform(interface, input) ->
-          case interface.decode(input) {
-            Ok(effect) ->
-              case perform(effect, host) {
-                Ok(#(value, printed)) -> {
-                  let output = list.append(printed, output)
-                  loop(
-                    expression.resume(value, env, k),
-                    state,
-                    policy,
-                    host,
-                    output,
-                    resolve,
+      // Each effect is a span, the program continues after it ends.
+      let next = {
+        use host <- effect_span(label, host)
+        case action {
+          policy.Perform(interface, input) ->
+            case interface.decode(input) {
+              Ok(effect) ->
+                case perform(effect, host) {
+                  Ok(#(value, printed)) -> #(
+                    "pass",
+                    failure(value),
+                    Ok(#(value, printed)),
                   )
+                  Error(reason) -> #("pass", option.Some(reason), Error(reason))
                 }
-                Error(reason) -> #(Run(Error(reason), output), state)
+              Error(reason) -> {
+                let reason = simple_debug.describe(reason)
+                #("pass", option.Some(reason), Error(reason))
               }
-            Error(reason) -> #(
-              Run(Error(simple_debug.describe(reason)), output),
-              state,
-            )
+            }
+          policy.Resume(value) -> #("mock", failure(value), Ok(#(value, [])))
+          policy.Failed(#(reason, _, _, _)) -> {
+            let reason = "Policy failed: " <> simple_debug.describe(reason)
+            #("failed", option.Some(reason), Error(reason))
           }
-        policy.Resume(value) ->
+          policy.Unavailable -> {
+            let reason = "Effect " <> label <> " is not allowed by policy"
+            #("unavailable", option.Some(reason), Error(reason))
+          }
+        }
+      }
+      case next {
+        Ok(#(value, printed)) -> {
+          let output = list.append(printed, output)
           loop(
             expression.resume(value, env, k),
             state,
@@ -734,14 +786,8 @@ fn loop(
             output,
             resolve,
           )
-        policy.Failed(#(reason, _, _, _)) -> #(
-          Run(Error("Policy failed: " <> simple_debug.describe(reason)), output),
-          state,
-        )
-        policy.Unavailable -> #(
-          Run(Error("Effect " <> label <> " is not allowed by policy"), output),
-          state,
-        )
+        }
+        Error(reason) -> #(Run(Error(reason), output), state)
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
@@ -840,7 +886,7 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
       let described = list.map(host.triggers.list(), trigger.describe)
       Ok(#(v.LinkedList(list.map(described, v.String)), []))
     }
-    Delegate(task) -> Ok(#(result_string(host.subagent(task)), []))
+    Delegate(task) -> Ok(#(result_string(host.subagent(task, host.trace)), []))
     Operate(operation) ->
       case host.api(operation) {
         Ok(value) -> v.ok(value)
@@ -1004,24 +1050,51 @@ fn read_import(path, policy, host: Host, state: State) {
       ]),
     )
   let #(action, state) = decide(policy, "ReadFile", input, #(0, 0), state)
-  let loaded = case action {
-    policy.Perform(interface, input) -> {
-      use effect <- result.try(
-        interface.decode(input) |> result.map_error(simple_debug.describe),
-      )
-      case effect {
-        Computer(computer.ReadFile(read_file.Input(path:, offset:, limit:))) ->
-          host.files.read(path)
-          |> result.map(fn(bytes) { #(files.slice(bytes, offset, limit), path) })
-        _ -> Error("Import policy did not return a ReadFile request")
+  let loaded = {
+    use host <- effect_span("ReadFile", host)
+    let #(decision, loaded) = case action {
+      policy.Perform(interface, input) -> {
+        let loaded = {
+          use effect <- result.try(
+            interface.decode(input) |> result.map_error(simple_debug.describe),
+          )
+          case effect {
+            Computer(computer.ReadFile(read_file.Input(path:, offset:, limit:))) ->
+              host.files.read(path)
+              |> result.map(fn(bytes) {
+                #(files.slice(bytes, offset, limit), path)
+              })
+            _ -> Error("Import policy did not return a ReadFile request")
+          }
+        }
+        #("pass", loaded)
       }
+      policy.Resume(v.Tagged("Ok", v.Binary(bytes))) -> #(
+        "mock",
+        Ok(#(bytes, path)),
+      )
+      policy.Resume(v.Tagged("Error", v.String(reason))) -> #(
+        "mock",
+        Error(reason),
+      )
+      policy.Resume(_) -> #(
+        "failed",
+        Error("Import policy must return file bytes"),
+      )
+      policy.Unavailable -> #(
+        "unavailable",
+        Error("Effect ReadFile is not allowed by policy"),
+      )
+      policy.Failed(#(reason, _, _, _)) -> #(
+        "failed",
+        Error("Policy failed: " <> simple_debug.describe(reason)),
+      )
     }
-    policy.Resume(v.Tagged("Ok", v.Binary(bytes))) -> Ok(#(bytes, path))
-    policy.Resume(v.Tagged("Error", v.String(reason))) -> Error(reason)
-    policy.Resume(_) -> Error("Import policy must return file bytes")
-    policy.Unavailable -> Error("Effect ReadFile is not allowed by policy")
-    policy.Failed(#(reason, _, _, _)) ->
-      Error("Policy failed: " <> simple_debug.describe(reason))
+    let failure = case loaded {
+      Ok(_) -> option.None
+      Error(reason) -> option.Some(reason)
+    }
+    #(decision, failure, loaded)
   }
   #(loaded, state)
 }

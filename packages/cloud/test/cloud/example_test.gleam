@@ -88,7 +88,7 @@ pub fn link_summaries_project_each_platforms_native_reaction_test() {
       execute.no_artifacts(),
     )
   let host =
-    execute.Host(..host, subagent: fn(task) {
+    execute.Host(..host, subagent: fn(task, _trace) {
       process.send(tasks, task)
       Ok("done")
     })

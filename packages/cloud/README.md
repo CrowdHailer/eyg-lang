@@ -13,6 +13,7 @@ A cloud runs the workspaces listed in `cloud.eyg`, see [`cloud/instance`](./src/
 People sign in at `/login` to the [web shell](../../guides/cloud/web_shell.md), the first person is the admin.
 Everything can be read and changed with the [configuration API](../../guides/cloud/api.md),
 from the web shell, from a channel whose shell allows it and over HTTP.
+Every program and every effect is [traced](../../guides/cloud/tracing.md) as OpenTelemetry spans.
 
 Start with the [example workspace](../../examples/cloud/README.md).
 Coming from another agent gateway, see migrating from [OpenClaw](../../guides/cloud/from_openclaw.md) or [Hermes Agent](../../guides/cloud/from_hermes.md).
@@ -81,6 +82,7 @@ and `shell.writes_under(roots, shell)`, and network secrets in `secrets`.
 | `Events(connection)` | `events` | The logged events of a connection, newest first |
 | `Workspaces`, `Connections`, `SetWorkspaceSource`, `SetSecret` ... | `workspaces` ... | The [configuration API](../../guides/cloud/api.md) |
 | `Bind({workspace, channel})`, `Unbind({})` | `bind`, `unbind` | Web shells only, run as a channel |
+| `Traces(limit)` | `traces` | The most recent [trace spans](../../guides/cloud/tracing.md) |
 | `Cron`, `Timeout`, `CancelSchedule` | `cron` ... | Messages sent to the program's session later |
 | `Artifact({name, bundle})`, `ShareArtifact(name)` | `artifact`, `share_artifact` | Versioned HTML pages served by the cloud |
 | `DecodeJSON`, `Hash` | | Always available |

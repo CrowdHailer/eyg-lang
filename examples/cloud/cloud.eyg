@@ -17,6 +17,7 @@ let pass = shell.pass
       connections: pass,
       workspace_triggers: pass,
       shells: pass,
+      traces: pass,
       bind: shell.bind_to(["random"]),
       unbind: pass,
       standard_out: pass,

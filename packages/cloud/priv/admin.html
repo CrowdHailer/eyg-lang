@@ -18,6 +18,9 @@
   textarea { width: 100%; box-sizing: border-box; min-height: 360px; font: 13px/1.45 ui-monospace, Menlo, monospace; }
   .error { color: #f38ba8; } .ok { color: #a6e3a1; } .muted { color: #7f849c; }
   code { font: 13px ui-monospace, Menlo, monospace; color: #f9e2af; }
+  .span { display: flex; gap: 10px; font: 13px/1.6 ui-monospace, Menlo, monospace; }
+  .span .name { color: #89b4fa; } .span .ms { color: #a6adc8; min-width: 70px; text-align: right; } .span .attrs { color: #7f849c; }
+  .span.failed .name { color: #f38ba8; }
 </style>
 <header>
   <strong>EYG cloud configuration</strong>
@@ -27,7 +30,7 @@
   <span class="muted">Every request is <code>POST /api/&lt;Operation&gt;</code>, gated by your shell policy.</span>
 </header>
 <main>
-  <nav><h2>Workspaces</h2><div id="workspaces"></div></nav>
+  <nav><h2>Workspaces</h2><div id="workspaces"></div><h2>Tracing</h2><button onclick="showTraces()">Recent traces</button></nav>
   <div id="workspace"><p class="muted">Choose a workspace.</p></div>
 </main>
 <script>
@@ -99,6 +102,42 @@ async function showWorkspace(name) {
     }),
   ]);
   root.replaceChildren(el('h1', {}, name), ...parts);
+}
+
+// Spans are newest first, a trace is drawn as a tree from its root.
+async function showTraces() {
+  const root = document.getElementById('workspace');
+  root.replaceChildren(el('p', { class: 'muted' }, 'Loading traces…'));
+  const node = await attempt(async () => {
+    const spans = await api('Traces', 500);
+    const byTrace = new Map();
+    for (const s of spans) { if (!byTrace.has(s.trace)) byTrace.set(s.trace, []); byTrace.get(s.trace).push(s); }
+    const shown = ['eyg.effect.name', 'eyg.policy.decision', 'eyg.cloud.channel', 'eyg.cloud.user', 'eyg.trigger.name', 'gen_ai.request.model'];
+    const line = (s, depth) => {
+      const attrs = s.attributes.filter(a => shown.includes(a.key) && !(a.key === 'eyg.effect.name')).map(a => a.value).join(' · ');
+      const error = s.error.Some ? ' ✕ ' + s.error.Some : '';
+      return el('div', { class: 'span' + (s.error.Some ? ' failed' : '') },
+        el('span', { class: 'ms' }, (s.microseconds / 1000).toFixed(1) + ' ms'),
+        el('span', { style: 'padding-left:' + depth * 18 + 'px', class: 'name' }, s.name),
+        el('span', { class: 'attrs' }, attrs + error));
+    };
+    const traces = [...byTrace.values()].slice(0, 25).map((group) => {
+      const ids = new Set(group.map(s => s.span));
+      const children = new Map();
+      const roots = [];
+      for (const s of [...group].reverse()) {
+        const parent = s.parent.Some;
+        if (parent && ids.has(parent)) { if (!children.has(parent)) children.set(parent, []); children.get(parent).push(s); } else roots.push(s);
+      }
+      const lines = [];
+      const walk = (s, depth) => { lines.push(line(s, depth)); (children.get(s.span) || []).forEach(c => walk(c, depth + 1)); };
+      roots.forEach(r => walk(r, 0));
+      return el('section', {}, lines);
+    });
+    return el('div', {}, el('h1', {}, 'Recent traces'),
+      el('p', { class: 'muted' }, 'Every program is an eyg.run span and every effect an eyg.effect span, read with the Traces effect.'), traces);
+  });
+  root.replaceChildren(node);
 }
 
 async function showUsers() {

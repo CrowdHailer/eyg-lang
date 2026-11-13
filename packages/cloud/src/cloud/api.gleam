@@ -10,12 +10,17 @@ import cloud/data
 import cloud/operation.{type Operation}
 import cloud/registry
 import cloud/secrets
+import cloud/tracing
 import cloud/workspace
 import gleam/dict
 import gleam/erlang/process.{type Subject}
+import gleam/float
+import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
+import otel/clock
+import otel/span
 import simplifile
 
 /// Perform an operation. `state` is used to check new workspace configuration.
@@ -122,8 +127,48 @@ pub fn perform(
       |> Ok
     operation.ListShells ->
       process.call(registry, 5000, registry.Shells) |> data.strings |> Ok
+    operation.RecentTraces(limit) ->
+      tracing.recent(limit)
+      |> list.map(fn(span) {
+        data.record([
+          #("trace", data.string(span.trace_id)),
+          #("span", data.string(span.span_id)),
+          #("parent", data.option(span.parent_id, data.string)),
+          #("name", data.string(span.name)),
+          #("start", data.string(clock.encode(span.started))),
+          #(
+            "microseconds",
+            data.int(clock.difference(span.ended, span.started) / 1000),
+          ),
+          #("error", data.option(span.error, data.string)),
+          #(
+            "attributes",
+            data.list(
+              list.map(span.attributes, fn(attribute) {
+                data.record([
+                  #("key", data.string(attribute.0)),
+                  #("value", data.string(attribute_text(attribute.1))),
+                ])
+              }),
+            ),
+          ),
+        ])
+      })
+      |> data.list
+      |> Ok
     operation.SetUserShell(user, shell) ->
       process.call(registry, 5000, registry.SetUserShell(user, shell, _))
       |> result.replace(data.record([]))
+  }
+}
+
+fn attribute_text(attribute: span.Attribute) -> String {
+  case attribute {
+    span.Text(text) -> text
+    span.Integer(i) -> int.to_string(i)
+    span.Boolean(True) -> "true"
+    span.Boolean(False) -> "false"
+    span.Real(f) -> float.to_string(f)
+    span.Array(items) -> string.join(list.map(items, attribute_text), ", ")
   }
 }

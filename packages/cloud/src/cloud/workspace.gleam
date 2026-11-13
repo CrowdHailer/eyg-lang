@@ -32,9 +32,11 @@ import cloud/plugins/example_chat
 import cloud/plugins/slack
 import cloud/session
 import cloud/shell
+import cloud/tracing
 import cloud/trigger.{type Trigger}
 import cloud/work
 import eyg/interpreter/simple_debug
+import eyg/interpreter/value as v
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/int
@@ -657,7 +659,17 @@ fn perform_work(
         let observed = case
           shell.prepare(load, info, host, location(info, reply), complete)
         {
-          Ok(shell) -> invoke(shell, code, description)
+          Ok(shell) -> {
+            let attributes = [
+              #("eyg.cloud.channel", tracing.text(info.name)),
+            ]
+            use trace <-
+              tracing.span("eyg.cloud.invocation", None, attributes, _, fn(_) {
+                None
+              })
+            let host = execute.Host(..shell.host, trace: Some(trace))
+            invoke(shell.Shell(..shell, host:), code, description)
+          }
           Error(reason) -> description <> "\nError: " <> reason
         }
         process.send(session, session.Observe(observed))
@@ -785,8 +797,21 @@ fn run_triggers(
         )
         case matched {
           True -> {
+            let attributes = [
+              #("eyg.trigger.name", tracing.text(t.name)),
+              #("eyg.cloud.channel", tracing.text(info.name)),
+              #("eyg.trigger.event", tracing.text(event_tag(event))),
+            ]
+            use trace <-
+              tracing.span("eyg.cloud.trigger", None, attributes, _, fn(result) {
+                case result {
+                  Ok(_) -> None
+                  Error(reason) -> Some(reason)
+                }
+              })
+            let host = execute.Host(..shell.host, trace: Some(trace))
             let execute.Run(result:, ..) =
-              shell.run_script(shell, t.script, event)
+              shell.run_script(shell.Shell(..shell, host:), t.script, event)
             result.replace(result, True)
           }
           False -> Ok(False)
@@ -800,6 +825,13 @@ fn run_triggers(
       }
     })
   })
+}
+
+fn event_tag(event: data.Value) -> String {
+  case event {
+    v.Tagged(tag, _) -> tag
+    _ -> "Event"
+  }
 }
 
 fn session_for(

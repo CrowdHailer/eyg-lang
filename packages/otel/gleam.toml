@@ -1,0 +1,11 @@
+name = "otel"
+version = "0.1.0"
+description = "Portable OpenTelemetry span data and OTLP/HTTP JSON encoding for EYG hosts"
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+gleam_time = ">= 1.0.0 and < 2.0.0"
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"

@@ -8,6 +8,7 @@ envoy = ">= 1.2.0 and < 2.0.0"
 eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_analysis = { path = "../gleam_analysis" }
 eyg_hub = { path = "../gleam_hub" }
+otel = { path = "../otel" }
 eyg_ir = { path = "../gleam_ir" }
 filepath = ">= 1.1.0 and < 2.0.0"
 eyg_parser = { path = "../gleam_parser" }

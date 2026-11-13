@@ -1,5 +1,5 @@
 -module(cloud_ffi).
--export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0]).
+-export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0, set_tracer/1, get_tracer/0]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -75,3 +75,10 @@ priv_directory() ->
         Directory -> unicode:characters_to_binary(Directory)
     end.
 
+%% The tracer every process records spans to, once the cloud has started one.
+set_tracer(Tracer) -> persistent_term:put(eyg_cloud_tracer, Tracer), nil.
+get_tracer() ->
+    case persistent_term:get(eyg_cloud_tracer, undefined) of
+        undefined -> {error, nil};
+        Tracer -> {ok, Tracer}
+    end.

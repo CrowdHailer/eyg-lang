@@ -2,6 +2,7 @@
 let reject = (_) -> { Reject({}) }
 {
   reject_all: {
+    traces: reject,
     bind: reject,
     unbind: reject,
     workspaces: reject,
