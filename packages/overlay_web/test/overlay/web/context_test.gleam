@@ -1,3 +1,7 @@
+import eyg/analysis/type_/isomorphic as t
+import eyg/hub/cache
+import eyg/interpreter/value
+import gleam/dict
 import gleam/option.{None, Some}
 import multiformats/cid/v1
 import overlay/web/context
@@ -79,4 +83,12 @@ pub fn reference_and_package_parameter_test() {
   let assert context.Invalid(raw: _, reason:) =
     context.from_query([#("reference", example), #("package", "example")])
   assert "Set only one of the reference and package parameters." == reason
+}
+
+pub fn instructions_name_a_context_without_readme_test() {
+  let module =
+    cache.Module(value: value.Record(dict.new()), type_: t.record([]))
+  let status = context.Loaded(module)
+  assert context.instructions(context.Package("standard", None), status)
+    == "The context is @standard.\nThis is the overlay agent\n\nThe context module has type:\n{}"
 }

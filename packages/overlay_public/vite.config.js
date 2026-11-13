@@ -25,7 +25,7 @@ function watchGleamDependencies(packagePaths) {
 
 export default defineConfig({
   base: '/overlay/',
-  plugins: [gleam(), watchGleamDependencies(['../overlay_web', '../pal'])],
+  plugins: [gleam(), watchGleamDependencies(['../overlay_web', '../overlay', '../overlay_llm', '../pal'])],
   server: {
     host: '0.0.0.0',
     port: 5173,

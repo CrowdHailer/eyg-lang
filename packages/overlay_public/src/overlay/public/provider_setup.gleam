@@ -20,7 +20,10 @@ pub fn render(model: state.State) {
       ],
       [
         h.span(
-          [a.class("provider-dot configured-" <> bool_class(setup.configured))],
+          [
+            a.class("provider-dot configured-" <> bool_class(setup.configured)),
+            a.classes([#("rejected", setup.configured && setup.error != None)]),
+          ],
           [],
         ),
         h.span([a.class("provider-label")], [
@@ -30,7 +33,18 @@ pub fn render(model: state.State) {
     ),
     case setup.settings_open {
       False -> element.none()
-      True -> render_form(model)
+      True ->
+        element.fragment([
+          // Clicking outside the panel closes it.
+          h.div(
+            [
+              a.class("backdrop"),
+              event.on_click(message(provider_setup.ToggleSettings)),
+            ],
+            [],
+          ),
+          render_form(model),
+        ])
     },
   ])
 }
@@ -41,6 +55,12 @@ fn render_form(model: state.State) {
     [
       a.class("provider-panel"),
       event.on_submit(fn(_) { message(provider_setup.SaveSettings) }),
+      event.on_keydown(fn(key) {
+        case key {
+          "Escape" -> message(provider_setup.ToggleSettings)
+          _ -> state.Ignore
+        }
+      }),
     ],
     [
       h.div([a.class("provider-panel-heading")], [
@@ -104,9 +124,8 @@ fn render_form(model: state.State) {
             ],
             [
               h.text(
-                "Create a "
-                <> provider_setup.provider_label(selected_provider)
-                <> " API key",
+                "Create an API key for "
+                <> provider_setup.provider_label(selected_provider),
               ),
             ],
           )
