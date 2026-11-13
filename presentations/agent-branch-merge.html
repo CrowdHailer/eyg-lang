@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EYG · Bringing the agent branch into main</title>
+<style>
+:root{--paper:#f4f2e9;--ink:#182f28;--green:#285c46;--lime:#d8ef93;--muted:#607168;--line:#c9d0c1;--red:#a64b32;--blue:#315d85;--scale:1;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:#dfe4da;color:var(--ink);font-family:Inter,Arial,Helvetica,sans-serif}button,a{touch-action:manipulation}button{font:inherit;cursor:pointer}a{color:inherit;text-underline-offset:3px}button:focus-visible,a:focus-visible{outline:3px solid #db8b36;outline-offset:4px}header{height:64px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #bac5b7;font-size:12px;letter-spacing:1px}header b{font-size:23px;letter-spacing:-1px}header span{color:var(--muted)}#viewport{width:calc(1280px * var(--scale));height:calc(720px * var(--scale));margin:24px auto}main{width:1280px;height:720px;transform:scale(var(--scale));transform-origin:top left;box-shadow:0 14px 45px #182f281c}.slide{display:none;position:relative;width:1280px;height:720px;padding:42px 58px 37px;background:var(--paper);overflow:hidden;flex-direction:column}.slide.active{display:flex}.kicker{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin:0 0 25px}.kicker span:last-child{font-weight:400;letter-spacing:1px;color:var(--muted)}h1,h2,h3,p{margin:0}h1{font-size:72px;line-height:1.04;letter-spacing:-3.5px;font-weight:650;max-width:930px}h2{font-size:46px;line-height:1.09;letter-spacing:-1.8px;max-width:1100px;font-weight:650;margin-bottom:13px}h3{font-size:22px;line-height:1.2;letter-spacing:-.4px;margin-bottom:12px}.intro{font-size:21px;line-height:1.4;color:var(--muted);max-width:1050px}.accent{color:var(--green)}.body{flex:1;min-height:0;margin-top:28px}.row{display:grid;grid-template-columns:1fr 1fr;gap:30px}.thirds{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:#e9eddf;border:1px solid var(--line);padding:23px 25px;border-radius:3px}.card p,.copy{font-size:19px;line-height:1.45;color:#43574c}.label{font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:1.6px;margin-bottom:12px;display:block;color:var(--muted)}.label.hard{color:var(--red)}.label.review{color:var(--blue)}.callout{padding:17px 21px;border-left:4px solid var(--green);background:#e9eddf;font-size:19px;line-height:1.4;margin-top:22px}.gate{border-left-color:var(--blue);background:#e5ebed}.gate b{color:var(--blue)}.hardline{border-left-color:var(--red);background:#f0e4d9}.hardline b{color:var(--red)}.source{border-top:1px solid var(--line);padding-top:12px;margin-top:auto;display:flex;justify-content:space-between;gap:16px;color:var(--muted);font-size:11px;line-height:1.35}.source a{color:var(--muted)}.source .num{font-size:14px;font-weight:700;color:var(--green)}.small{font-size:15px;line-height:1.4;color:var(--muted)}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{font-size:.88em}.big{font-size:48px;line-height:1;letter-spacing:-2px;font-weight:650}.divider{height:1px;background:var(--line);margin:20px 0}.flow{display:flex;align-items:stretch;gap:12px}.flow .node{flex:1;padding:21px 19px;border:1px solid var(--line);background:#e9eddf}.flow h3{font-size:20px}.flow p{font-size:17px;line-height:1.4;color:#43574c}.arrow{align-self:center;font-size:24px;color:var(--green)}.node.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}.node.dark p{color:#d4dece}.pill{display:inline-block;font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:20px;margin:7px 4px 0 0;color:#43574c}.stage-no{color:var(--green);font-size:12px;font-weight:700;margin-bottom:14px}.list{display:grid;gap:16px}.item{display:grid;grid-template-columns:32px 1fr;gap:10px}.item b{font-size:20px;line-height:1.3}.item p{font-size:17px;line-height:1.4;color:#43574c;margin-top:4px}.dot{font-size:13px;width:26px;height:26px;border-radius:50%;background:var(--green);color:white;display:grid;place-items:center}.timeline{margin-top:37px;display:grid;grid-template-columns:repeat(4,1fr);gap:0}.timeline>div{border-top:3px solid var(--green);padding:19px 20px 0 0;position:relative}.timeline>div:before{content:"";position:absolute;top:-7px;left:0;width:11px;height:11px;background:var(--green);border-radius:50%}.timeline h3{font-size:20px}.timeline p{font-size:16px;line-height:1.4;color:var(--muted)}.hero-bottom{display:flex;gap:46px;align-items:end;margin-top:30px}.hero-bottom .stat{display:flex;gap:12px;align-items:center}.hero-bottom .stat p{font-size:13px;line-height:1.4;color:var(--muted)}.title .kicker{margin-bottom:37px}.title .intro{max-width:850px;margin-top:21px}.mini-table{width:100%;border-collapse:collapse;font-size:17px;line-height:1.35}.mini-table th{text-align:left;color:var(--muted);font-size:11px;letter-spacing:1.3px;text-transform:uppercase;padding:0 15px 11px}.mini-table td{border-top:1px solid var(--line);padding:14px 15px;vertical-align:top}.mini-table td:first-child{font-weight:700;padding-left:0;width:24%}.mini-table th:first-child{padding-left:0}.mini-table td code{font-size:12px;color:var(--muted);font-weight:400}.mini-table .end{width:22%}.split{display:grid;grid-template-columns:1.12fr 1fr;gap:34px}.decision{padding:18px 21px;background:var(--ink);color:var(--paper);font-size:19px;line-height:1.4;margin-top:20px}.decision b{color:var(--lime)}.path{background:var(--ink);color:var(--paper);padding:22px 25px}.path .label{color:var(--lime)}.path p{font-size:18px;line-height:1.5;color:#dae4d5}.path .rule{color:var(--lime);font-size:24px;line-height:1.4;margin:17px 0}.proof{font-size:19px;line-height:1.5;padding:20px 24px;background:#e9eddf;border:1px solid var(--line)}.proof .indent{padding-left:25px;border-left:2px solid #9baa91;margin-left:5px}.matrix{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:19px}.matrix>div{border:1px solid var(--line);padding:15px 18px}.matrix b{font-size:27px;display:block;margin-bottom:5px}.matrix span{font-size:14px;line-height:1.35;color:var(--muted)}aside.notes{display:none}footer{display:flex;align-items:center;justify-content:space-between;max-width:1280px;margin:0 auto;padding:0 24px 20px;gap:16px;font-size:12px;color:var(--muted)}.controls{display:flex;gap:7px;align-items:center}button{border:1px solid #b9c5b2;background:transparent;color:var(--ink);padding:9px 13px;border-radius:4px;font-size:12px}button:hover{background:#f4f2e9}button:disabled{opacity:.3;cursor:default}#position{font-variant-numeric:tabular-nums;min-width:48px;text-align:center}#notes-panel{display:none;max-width:1000px;margin:12px auto 30px;background:var(--paper);border:1px solid var(--line);padding:24px 30px;font-size:17px;line-height:1.6}#notes-panel.open{display:block}#notes-panel h3{font-size:16px;color:var(--green)}#notes-panel p+p{margin-top:13px}#notes-panel a{color:var(--blue)}dialog{border:1px solid var(--line);background:var(--paper);color:var(--ink);width:590px;max-width:92vw;padding:28px}dialog::backdrop{background:#182f2877}dialog h3{margin:0 0 20px}dialog ol{padding-left:26px;line-height:1.4}dialog li{padding:6px}dialog a{text-decoration:none}dialog a:hover{text-decoration:underline}dialog .close{float:right}.progress{position:fixed;bottom:0;left:0;height:3px;background:var(--green);width:10%}.nojs{padding:20px;background:#fff0c7}.merge .body{margin-top:18px}.merge .callout{font-size:17px;margin-top:15px}.merge .mini-table td{padding-top:12px;padding-bottom:12px}
+.body{margin-top:22px}.intro{font-size:20px;line-height:1.35}.card{padding:20px 23px}.card p{font-size:18px;line-height:1.4}.callout{padding:14px 18px;font-size:18px;line-height:1.35;margin-top:16px}.path{padding:18px 25px}.path .rule{margin:12px 0}.decision{padding:14px 18px;font-size:17px;line-height:1.35;margin-top:16px}.merge .mini-table td{font-size:16px;padding-top:10px;padding-bottom:10px}.source{flex-shrink:0}
+@media(max-width:700px){header{padding:0 16px;height:52px}header span{font-size:9px;max-width:220px;text-align:right}footer{padding:0 12px 18px;flex-wrap:wrap;justify-content:center}.hint{display:none}button{padding:9px}#notes-panel{margin:15px 12px;font-size:16px;padding:20px}#viewport{margin:18px auto}.desktop-only{display:none}}
+@page{size:13.333333in 7.5in;margin:0}
+@media print{html,body{margin:0;padding:0;background:var(--paper);-webkit-print-color-adjust:exact;print-color-adjust:exact}header,footer,#notes-panel,dialog,.progress,.nojs{display:none!important}#viewport{width:auto;height:auto;margin:0}main{width:auto;height:auto;transform:none;box-shadow:none}.slide,.slide.active{display:flex;width:1280px;height:720px;margin:0;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}}
+</style>
+</head>
+<body>
+<header><b>EYG<span style="color:var(--green)">.</span></b><span>AGENT → MAIN &nbsp; / &nbsp; BRANCH REVIEW &nbsp; / &nbsp; 13 NOV 2026</span></header>
+<noscript><p class="nojs">Enable JavaScript for slide navigation, or print this document to read all ten slides.</p></noscript>
+<div id="viewport"><main aria-label="Agent branch merge presentation">
+<section class="slide active" id="slide-1" aria-labelledby="title-1">
+<p class="kicker">The revised branch<span>EYG · agent → main</span></p>
+<h2 id="title-1">A smaller cloud foundation.<br>The remaining features land in stages.</h2><p class="intro">62 commits including this review. Deployment is commit 3; this walkthrough groups the work into ten stages.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">01 / FOUNDATION</span><h3>Preserve main</h3><p>One serial executor, source checks, private memory and Clockwork schedules.</p></div><div class="card"><span class="stage-no">02 / DEPLOYMENT</span><h3>Prove the image</h3><p>Build and boot without writable host storage before optional adapters.</p></div><div class="card"><span class="stage-no">03 / EXTENSIONS</span><h3>Add independent features</h3><p>Adapters, queries, recording, local artifacts, embedding and assurance.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> remove features and their consumers together while keeping each retained stage buildable.</div>
+<div class="callout gate"><b>Merge review:</b> The branch is ready for staged review; it has not been merged or deployed to production.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/packages/cloud/README.md">cloud overview</a></span><span class="num">01</span></div>
+<aside class="notes"><p>Base: origin/main ea52e422, including main’s Clockwork scheduler. This revision removes local secret and session stores, feeds/webhooks, cloud helpers/example workspace, operator pages and cloud databases/dataclips. The independent later features remain. The full per-commit review explains all 61 feature/documentation commits.</p></aside>
+</section>
+
+<section class="slide" id="slide-2" aria-labelledby="title-2">
+<p class="kicker">Stage 01 / State<span>EYG · agent → main</span></p>
+<h2 id="title-2">Cloud state stays in memory.</h2><p class="intro">The host filesystem supplies startup inputs. It is not a persistence backend.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">SESSIONS</span><h3>Private roots and history</h3><p>The central actor retains each session’s files and messages between turns. Every command starts with fresh lexical scope.</p></div><div class="card"><span class="stage-no">CONFIGURATION</span><h3>Actor-held settings</h3><p>Source edits, secrets and users stay in memory. API updates leave startup files unchanged.</p></div><div class="card"><span class="stage-no">CLUSTER</span><h3>No disk-first detour</h3><p>No JSON snapshots, local SQLite store or writable volume. Cluster replication is separate work.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> remove storage paths, save callbacks and restart assumptions from execution, APIs and tests.</div>
+<div class="callout gate"><b>Merge review:</b> A fresh owner does not restore local state. Replication, failover and all-owner-loss behavior still need a cluster design.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/notes/cloud-memory-state.md">state decision</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/packages/cloud/src/cloud/session.gleam">session actor</a></span><span class="num">02</span></div>
+<aside class="notes"><p>The rejected commits were bb22e74a and 02907612. The audit also found filesystem persistence in the runtime, deployment and cloud SQLite/dataclip feature. The latter and its dependent demonstrations are removed. Shared in-memory blocks still have separate session roots. Agents remain unbounded; a long turn can hold the serial queue.</p></aside>
+</section>
+
+<section class="slide" id="slide-3" aria-labelledby="title-3">
+<p class="kicker">Stage 01 / Execution<span>EYG · agent → main</span></p>
+<h2 id="title-3">Check source before it runs.</h2><p class="intro">Extend main’s actor and policy model with trusted workspace configuration, triggers, timers and the shell/API.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">TYPES</span><h3>Source-derived checks</h3><p>Check root source and imported code before configuration effects. Do not reconstruct types from captured runtime values.</p></div><div class="card"><span class="stage-no">POLICY</span><h3>Pass / Mock</h3><p>Explicit effects use pure gates. Ordinary agent replies and final values still reply directly.</p></div><div class="card"><span class="stage-no">SCHEDULING</span><h3>Main’s Clockwork</h3><p>Reuse main’s startup scheduler and next-occurrence helper. Configured timers retain policy and destination.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> keep session identity, reply routing and closure handling consistent through one executor.</div>
+<div class="callout gate"><b>Merge review:</b> Keywords stay reserved; use on_input. No separate Reject concept, custom cron parser or public cloud helper package.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/packages/cloud/src/cloud/config.gleam">configuration</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/notes/cloud-process-boundaries.md">process boundaries</a></span><span class="num">03</span></div>
+<aside class="notes"><p>Source checking and initial OTel spans are folded into their first runtime consumer. Configuration is reevaluated for fresh settings; the source/import checks are not an atomic filesystem snapshot. Five-field UTC cron tests cover minute boundaries, recurrence and duplicate ticks. Evaluated configuration closures do not cross actor boundaries.</p></aside>
+</section>
+
+<section class="slide" id="slide-4" aria-labelledby="title-4">
+<p class="kicker">Stage 02 / Deployment<span>EYG · agent → main</span></p>
+<h2 id="title-4">Deployment is commit 3: 7f639db8.</h2><p class="intro">The image ships read-only startup configuration and main’s policy and native trigger sources.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">BUILD</span><h3>Independent checkpoint</h3><p>No feeds, operator pages, cloud databases, query prerequisites or configured adapter implementations.</p></div><div class="card"><span class="stage-no">BOOT</span><h3>Read-only root</h3><p>Docker starts with --read-only. The root endpoint returns 200 and unauthenticated /api/me returns 401.</p></div><div class="card"><span class="stage-no">VERIFY</span><h3>110 cloud tests</h3><p>Strict build passes. Container filesystem changes are empty; mutable state remains in actors.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> remove the entrypoint’s /data initialization and every runtime dependency on writable storage.</div>
+<div class="callout gate"><b>Merge review:</b> Provide front-door authentication before public use. The example name-only login still makes the first user an administrator.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/packages/cloud/Dockerfile">Dockerfile</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/packages/cloud/deploy/README.md">deployment guide</a></span><span class="num">04</span></div>
+<aside class="notes"><p>The smaller sequence is runtime integration, concise workflow documentation, then deployment. No persistent volume is requested. Main’s basic adapters and startup scheduler remain usable. The container was built and booted locally; no Railway production deployment is claimed.</p></aside>
+</section>
+
+<section class="slide" id="slide-5" aria-labelledby="title-5">
+<p class="kicker">Stage 03 / Adapters and secrets<span>EYG · agent → main</span></p>
+<h2 id="title-5">Optional integrations follow deployment.</h2><p class="intro">Network secrets are the immediate next feature; example-chat, WhatsApp and native extensions follow.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">CREDENTIALS</span><h3>Independent policy package</h3><p>Load actor-held secrets in trusted configuration. Env returns placeholders; Fetch substitutes only for allowed HTTPS hosts.</p></div><div class="card"><span class="stage-no">CHAT</span><h3>Example-chat / WhatsApp</h3><p>Move implementations, runtime wiring and tests together. Keep the standalone chat application separate.</p></div><div class="card"><span class="stage-no">NATIVE</span><h3>Extend main’s adapters</h3><p>Add Slack/Discord thread and reaction hooks while preserving their checked startup triggers.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> avoid leaving early consumers behind when moving adapters, and separate session IDs from reply addresses.</div>
+<div class="callout gate"><b>Merge review:</b> Service feeds and generic service webhook integrations are removed. Chat webhook plumbing remains for WhatsApp.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/eyg_packages/network_secrets/README.md">network secrets</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/cloud/channel_plugins.md">adapter guide</a></span><span class="num">05</span></div>
+<aside class="notes"><p>The public cloud helper package and example workspace were removed at the user’s request. Network secrets now have a separate package and tested entry point. Runtime tests use small local fixtures, not a relocated public helper library. The native checkpoint passes 138 cloud tests; chat/WhatsApp alone passes 120.</p></aside>
+</section>
+
+<section class="slide" id="slide-6" aria-labelledby="title-6">
+<p class="kicker">Stage 04 / Language and local data<span>EYG · agent → main</span></p>
+<h2 id="title-6">Queries remain a later language feature.</h2><p class="intro">Typed query tables, fixed-point evaluation and SQL planning do not block cloud deployment.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">EVALUATION</span><h3>Indexed query tables</h3><p>Infer table types and evaluate recursive rules with indexed fixed-point processing.</p></div><div class="card"><span class="stage-no">PLANNING</span><h3>SQL translation</h3><p>Plan evaluated tables as joins; preserve the common interfaces for hosts that support SQLite.</p></div><div class="card"><span class="stage-no">HOSTS</span><h3>Keep local SQLite local</h3><p>CLI/browser SQLite and executable examples remain. Cloud SQLite and dataclips are removed.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> place broad local dependencies and compiler metadata at their first real consumers.</div>
+<div class="callout gate"><b>Merge review:</b> No retained query commit installs a disk-backed database handler in packages/cloud.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/sqlite.md">SQLite guide</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/query_proofs.md">query proofs</a></span><span class="num">06</span></div>
+<aside class="notes"><p>Removing cloud databases does not require removing the independent language query engine or local host implementations. The common SQLite interface introduces a transitive compiler dependency; its cloud manifest entry now lands with that interface, not with the removed database feature.</p></aside>
+</section>
+
+<section class="slide" id="slide-7" aria-labelledby="title-7">
+<p class="kicker">Stage 05 / Runtime and recording<span>EYG · agent → main</span></p>
+<h2 id="title-7">Make execution inspectable and reusable.</h2><p class="intro">Retained shells, resumable execution, trajectories and embedding build on the shared interpreter.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">EXECUTION</span><h3>Consistent semantics</h3><p>Align interpreter/compiler behavior, masks, shallow handlers and retained lexical binding order.</p></div><div class="card"><span class="stage-no">EVIDENCE</span><h3>Record and replay</h3><p>Capture effects, inspect trajectories, pin dependencies and redact secrets in portable archives.</p></div><div class="card"><span class="stage-no">HOSTS</span><h3>Embed the runtime</h3><p>Expose native host APIs, provider transports and integrations for terminal and application hosts.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> preserve ordering, cancellation and authority while moving execution across runtimes.</div>
+<div class="callout gate"><b>Merge review:</b> Explicit budgets in evaluation tools do not impose a cloud agent round limit. Other hosts may use their own local storage.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/trajectories.md">trajectories</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/embedding_javascript.md">embedding</a></span><span class="num">07</span></div>
+<aside class="notes"><p>These independent commits retain their earlier implementation. CLI caches, sandbox acquisition and Raspberry Pi storage are outside packages/cloud and do not reintroduce cloud host persistence. The current CLI suite passes 198 tests.</p></aside>
+</section>
+
+<section class="slide" id="slide-8" aria-labelledby="title-8">
+<p class="kicker">Stage 06 / Artifacts<span>EYG · agent → main</span></p>
+<h2 id="title-8">Keep artifacts with their owning host.</h2><p class="intro">Browser-local workspaces and cloud in-memory bundles remain. The hub stores no artifacts.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">BROWSER</span><h3>Local revisions</h3><p>Keep editable files, revision history, recovery, import/export and portable workspaces.</p></div><div class="card"><span class="stage-no">VIEWERS</span><h3>Reusable presentation</h3><p>Retain layouts, previews, controls and reusable artifact viewers.</p></div><div class="card"><span class="stage-no">CLOUD</span><h3>In-memory bundles</h3><p>Validate bundles independently and serve sandboxed versions from the cloud artifact actor.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> remove hub storage and publishing across later commits without damaging local artifact workflows.</div>
+<div class="callout gate"><b>Merge review:</b> No hub artifact tables, routes, ownership secrets or publishing UI return in this rewrite.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/overlay_artifacts.md">artifact workflows</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/packages/artifact_bundle/README.md">bundle validation</a></span><span class="num">08</span></div>
+<aside class="notes"><p>The removed hub-artifact commit remains absent. The artifact implementation is unchanged by this storage revision. Its prior Chromium integration checks remain historical validation; this revision reran cloud, CLI and repository EYG tests.</p></aside>
+</section>
+
+<section class="slide" id="slide-9" aria-labelledby="title-9">
+<p class="kicker">Stage 07 / Assurance and cluster design<span>EYG · agent → main</span></p>
+<h2 id="title-9">Separate working features from future design.</h2><p class="intro">Soundness checks, authorization proofs and Zig remain independent review decisions.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">ASSURANCE</span><h3>Test the semantics</h3><p>Generate typed programs, retain regression fixes and compare runtime behavior against an oracle.</p></div><div class="card"><span class="stage-no">AUTHORIZATION</span><h3>Explain decisions</h3><p>Keep executable policy examples and proof trees as independently reviewable capabilities.</p></div><div class="card"><span class="stage-no">FUTURE</span><h3>Cluster questions</h3><p>Define ownership, replication, partition behavior and effect retry contracts before adding recovery guarantees.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> keep historical event-storming proposals from being mistaken for an accepted disk-first rollout.</div>
+<div class="callout gate"><b>Merge review:</b> The study is archival. Its local ledger, snapshot migration and disk vault plan are superseded.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/cloud/event_sourcing/README.md">cluster follow-up</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/38129c4fe6d1199f7cd89f0bcf2482cb31b4f29c/guides/authorization.md">authorization</a></span><span class="num">09</span></div>
+<aside class="notes"><p>Historical boards and contributions remain as evidence. Their current README now states the in-memory constraints and open cluster questions. No replication implementation is claimed. Zig remains a separate merge decision with its documented oracle and platform limits.</p></aside>
+</section>
+
+<section class="slide" id="slide-10" aria-labelledby="title-10">
+<p class="kicker">Merge sequence / Review<span>EYG · agent → main</span></p>
+<h2 id="title-10">Merge the foundation.<br>Add features in stages.</h2><p class="intro">The final audit covers every retained commit and the dependencies removed with each feature.</p>
+<div class="body"><div class="thirds"><div class="card"><span class="stage-no">FIRST</span><h3>Cloud foundation</h3><p>Review in-memory ownership and source checks, then the tested read-only image.</p></div><div class="card"><span class="stage-no">NEXT</span><h3>Secrets → adapters → language</h3><p>Keep optional integration and language work after the deployment checkpoint.</p></div><div class="card"><span class="stage-no">THEN</span><h3>Runtime tools and hosts</h3><p>Review recording, embedding, local artifacts, assurance and future design independently.</p></div></div>
+<div class="callout hardline"><b>Hardest problem:</b> simplify history without hiding prerequisites or changing the behavior of unrelated later features.</div>
+<div class="callout gate"><b>Merge review:</b> Verified: 138 cloud tests, 198 CLI tests and 260 repository EYG tests. Deployment: build, read-only boot and HTTP checks.</div></div>
+<div class="source"><span><a href="https://github.com/crowdhailer-bot/eyg-lang/blob/agent/notes/agent-commit-review.md">every commit reviewed</a> · <a href="https://github.com/crowdhailer-bot/eyg-lang/blob/agent/notes/agent-rework-in-progress.md">work list</a></span><span class="num">10</span></div>
+<aside class="notes"><p>62 commits including this review; 61 feature/documentation commits. Deployment is commit 3. The range comparison accounts for every retained patch. This is a reviewable branch, not a claim that main has merged it or that the cluster architecture is implemented.</p></aside>
+</section>
+</main></div>
+<footer><span class="hint">← → navigate &nbsp; · &nbsp; N notes &nbsp; · &nbsp; C contents</span><div class="controls"><button id="previous" aria-label="Previous slide">←</button><span id="position" aria-live="polite">1 / 10</span><button id="next" aria-label="Next slide">→</button><button id="contents">Contents</button><button id="notes-toggle" aria-expanded="false" aria-controls="notes-panel">Notes</button><button id="print">Print / PDF</button><button id="fullscreen" class="desktop-only">Fullscreen</button></div></footer>
+<section id="notes-panel" aria-label="Speaker notes"></section>
+<dialog id="contents-dialog" aria-labelledby="contents-title"><button class="close" aria-label="Close contents">Close</button><h3 id="contents-title">The ten-slide walkthrough</h3><ol id="contents-list"></ol></dialog>
+<div class="progress" aria-hidden="true"></div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const panel = document.querySelector('#notes-panel');
+  const toggle = document.querySelector('#notes-toggle');
+  const dialog = document.querySelector('#contents-dialog');
+  let current = 0;
+  function titleOf(slide) {
+    const title = slide.querySelector('h1,h2').cloneNode(true);
+    title.querySelectorAll('br').forEach(br => br.replaceWith(' '));
+    return title.textContent.replace(/\s+/g, ' ').trim();
+  }
+  function resize() {
+    const scale = Math.max(.2, Math.min((innerWidth - 32) / 1280, (innerHeight - 158) / 720, 1.3));
+    document.documentElement.style.setProperty('--scale', scale);
+  }
+  function show(index, updateHash = true) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === current);
+      slide.setAttribute('aria-hidden', String(i !== current));
+    });
+    document.querySelector('#position').textContent = `${current + 1} / ${slides.length}`;
+    document.querySelector('#previous').disabled = current === 0;
+    document.querySelector('#next').disabled = current === slides.length - 1;
+    document.querySelector('.progress').style.width = `${(current + 1) / slides.length * 100}%`;
+    panel.innerHTML = `<h3>Speaker notes · ${current + 1} / ${slides.length}</h3>` + slides[current].querySelector('.notes').innerHTML;
+    document.title = `EYG · ${current + 1}/10 · ${titleOf(slides[current])}`;
+    if (updateHash) history.replaceState(null, '', `#slide-${current + 1}`);
+  }
+  function fromHash() {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    show(match ? Number(match[1]) - 1 : 0, false);
+  }
+  function notes() {
+    const open = panel.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) panel.scrollIntoView({block:'nearest', behavior:'smooth'});
+  }
+  slides.forEach((slide, i) => {
+    const li = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = `#slide-${i + 1}`;
+    link.textContent = titleOf(slide);
+    link.addEventListener('click', event => {event.preventDefault();show(i);dialog.close();});
+    li.append(link);document.querySelector('#contents-list').append(li);
+  });
+  document.querySelector('#previous').onclick = () => show(current - 1);
+  document.querySelector('#next').onclick = () => show(current + 1);
+  document.querySelector('#contents').onclick = () => dialog.showModal();
+  dialog.querySelector('.close').onclick = () => dialog.close();
+  toggle.onclick = notes;
+  document.querySelector('#print').onclick = () => print();
+  document.querySelector('#fullscreen').onclick = async () => {
+    try {if (document.fullscreenElement) await document.exitFullscreen();else await document.documentElement.requestFullscreen();} catch (_) { /* Fullscreen may be unavailable in embedded viewers. */ }
+  };
+  document.addEventListener('keydown', event => {
+    if (dialog.open || event.altKey || event.ctrlKey || event.metaKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+    if (event.key === 'ArrowRight' || event.key === 'PageDown') {event.preventDefault();show(current + 1);}
+    if (event.key === 'ArrowLeft' || event.key === 'PageUp') {event.preventDefault();show(current - 1);}
+    if (event.key === 'Home') {event.preventDefault();show(0);}
+    if (event.key === 'End') {event.preventDefault();show(slides.length - 1);}
+    if (event.key.toLowerCase() === 'n') notes();
+    if (event.key.toLowerCase() === 'c') dialog.showModal();
+  });
+  addEventListener('resize', resize);addEventListener('hashchange', fromHash);
+  fromHash();resize();
+})();
+</script>
+</body>
+</html>
