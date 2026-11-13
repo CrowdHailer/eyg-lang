@@ -20,3 +20,7 @@ needed by the emitted JavaScript.
 The [handler guide](../../guides/deep_effect_handlers.md) describes semantics.
 Tests check deep scope, independent resumptions, host-callable partial functions,
 100,000 tail calls and constant continuation/capture sizes across 10,000 updates.
+
+`create_deferred` pauses host operations as `Eff` values. `run_effects` and
+`run_effects_async` resume them with a caller-owned handler object. The compiler
+exports these through its [module API](../../guides/compiled_modules.md).

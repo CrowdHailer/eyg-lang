@@ -1017,3 +1017,34 @@ fn repeat_build(
     False -> repeat_build(times - 1, wrap(node), wrap)
   }
 }
+
+pub fn a_variable_added_to_the_context_is_in_scope_test() {
+  let context = j.pure() |> j.with_variable("x", t.Integer)
+  let analysis = j.check_with_references(context, dict.new(), parse("x"))
+  assert j.all_errors(analysis) == []
+  assert j.type_(analysis) == t.Integer
+}
+
+pub fn supplied_variables_shadow_previous_context_without_reordering_test() {
+  let context =
+    j.pure()
+    |> j.with_variable("n", t.String)
+    |> j.with_variables([#("n", t.Integer), #("n", t.String)])
+  let analysis = j.check_with_references(context, dict.new(), parse("n"))
+  assert j.all_errors(analysis) == []
+  assert j.type_(analysis) == t.Integer
+}
+
+pub fn a_generic_variable_is_instantiated_at_each_use_test() {
+  let a = t.Var(#(True, 0))
+  let id = t.Fun(a, t.Var(#(True, 1)), a)
+  let context = j.pure() |> j.with_variables([#("id", id), #("n", t.Integer)])
+  let analysis =
+    j.check_with_references(
+      context,
+      dict.new(),
+      parse("let _ = id(\"s\")\nid(n)"),
+    )
+  assert j.all_errors(analysis) == []
+  assert j.type_(analysis) == t.Integer
+}

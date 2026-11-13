@@ -3,8 +3,10 @@
 //// delimiters, resumptions and fold control flow live here.
 
 import gleam/dynamic.{type Dynamic}
+import gleam/dynamic/decode
 import gleam/int
 import gleam/javascript/array
+import gleam/javascript/promise
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import javascript/mutable_reference as reference
@@ -23,6 +25,7 @@ pub type Step {
   Perform(label: String, value: Dynamic)
   MaskCall(label: String, body: Dynamic)
   PureCall(function: Dynamic, argument: Dynamic)
+  Suspend(label: String, value: Dynamic)
   Resume(value: Dynamic, frames: List(Frame))
 }
 
@@ -31,6 +34,69 @@ pub type Frame {
   Delimiter(String, Dynamic, Option(Dynamic))
   MaskBoundary(String)
   PureBoundary
+}
+
+/// An unresolved host operation with an immutable continuation.
+pub type Suspension {
+  Eff(label: String, value: Dynamic, k: fn(Dynamic) -> Dynamic)
+}
+
+@external(javascript, "./runtime_ffi.mjs", "effect")
+fn as_effect(value: Dynamic) -> Option(Suspension)
+
+/// Exported programs pause until run_effects is given host handlers.
+pub fn create_deferred() -> Runtime {
+  create(
+    foreign.to_dynamic(fn(label, value) {
+      let assert Ok(label) = decode.run(label, decode.string)
+      foreign.to_dynamic(Suspend(label, value))
+    }),
+  )
+}
+
+fn handler(handlers, label) {
+  case foreign.has_own(handlers, label) {
+    False -> fail("UnhandledEffect", dynamic.string(label))
+    True -> {
+      let handler = foreign.property(handlers, label)
+      case foreign.is_function(handler) {
+        True -> handler
+        False -> fail("IncorrectTerm", dynamic.string("Function"))
+      }
+    }
+  }
+}
+
+/// Run with synchronous native host callbacks.
+pub fn run_effects(value: Dynamic, handlers: Dynamic) -> Dynamic {
+  case as_effect(value) {
+    None -> value
+    Some(Eff(label, value, k)) -> {
+      let reply =
+        foreign.apply(handler(handlers, label), array.from_list([value]))
+      run_effects(k(reply), handlers)
+    }
+  }
+}
+
+/// Await each callback before resuming the next operation.
+pub fn run_effects_async(
+  value: Dynamic,
+  handlers: Dynamic,
+) -> promise.Promise(Dynamic) {
+  use _ <- promise.await(promise.resolve(Nil))
+  case as_effect(value) {
+    None -> promise.resolve(value)
+    Some(Eff(label, value, k)) -> {
+      use reply <- promise.await(
+        foreign.to_promise(foreign.apply(
+          handler(handlers, label),
+          array.from_list([value]),
+        )),
+      )
+      run_effects_async(k(reply), handlers)
+    }
+  }
 }
 
 pub type Metrics {
@@ -173,6 +239,10 @@ fn loop(value, stack, host, metrics) {
           loop(next, outside, host, metrics)
         }
       }
+    Some(Suspend(label, value)) ->
+      foreign.to_dynamic(
+        Eff(label, value, fn(reply) { loop(reply, stack, host, metrics) }),
+      )
     Some(Resume(value, frames)) -> {
       let stack =
         list.fold(frames, stack, fn(stack, frame) { [frame, ..stack] })
