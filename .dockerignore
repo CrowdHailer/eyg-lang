@@ -1,0 +1,12 @@
+.git
+**/build
+**/node_modules
+**/.data
+**/.env
+**/.env.*
+**/erl_crash.dump
+**/recordings
+**/work
+**/.zig-cache
+**/zig-out
+**/.recordings

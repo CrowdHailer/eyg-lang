@@ -1,0 +1,75 @@
+name: cloud
+
+on:
+  push:
+    branches: [agent, main]
+    paths: ['packages/**', 'eyg_packages/**', '.github/workflows/cloud.yml', '.dockerignore']
+  pull_request:
+    paths: ['packages/**', 'eyg_packages/**', '.github/workflows/cloud.yml', '.dockerignore']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy the tested cloud to pathfinder
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: '28.4'
+          gleam-version: '1.19.2'
+          rebar3-version: '3.25'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.13'
+      - name: Test cloud
+        working-directory: packages/cloud
+        env:
+          HEXPM_READ_API_KEY: ${{ secrets.HEXPM_READ_API_KEY }}
+        run: |
+          gleam deps download
+          git diff --exit-code manifest.toml
+          gleam format --check src test
+          gleam build --warnings-as-errors
+          gleam test
+      - name: Test EYG packages with the current CLI
+        working-directory: packages/gleam_cli
+        run: gleam run -- script ../../entry.eyg
+      - name: Build cloud image
+        run: docker build -f packages/cloud/Dockerfile -t eyg-cloud:test .
+      - name: Smoke test the exported application
+        run: |
+          docker run -d --name cloud -p 8081:8081 eyg-cloud:test
+          trap 'docker logs cloud; docker rm -f cloud' EXIT
+          curl --fail --retry 30 --retry-all-errors --retry-delay 1 http://localhost:8081/ > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/me)" = 401
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: pathfinder
+    concurrency: pathfinder-cloud
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install -g @railway/cli@5.71.1
+      - name: Deploy and wait for Railway health check
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT: ${{ vars.RAILWAY_PROJECT || '14407b70-834a-4981-a9d3-2f6312904a9c' }}
+          RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT || 'production' }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE || 'cloud' }}
+        run: |
+          test -n "$RAILWAY_TOKEN"
+          railway up --ci --project "$RAILWAY_PROJECT" --environment "$RAILWAY_ENVIRONMENT" --service "$RAILWAY_SERVICE" -m "$GITHUB_SHA"

@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+if [ ! -f "$CLOUD" ]; then
+  mkdir -p "$(dirname "$CLOUD")"
+  cp /defaults/cloud.eyg "$CLOUD"
+fi
+exec /app/entrypoint.sh run
