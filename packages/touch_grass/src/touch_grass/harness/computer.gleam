@@ -38,8 +38,10 @@ pub type Effect {
   Hash(hash.Input)
   MakeDirectory(path: String)
   Now
+  Prompt(String)
   Random(Int)
   ReadDirectory(path: String)
+  ReadKey(timeout: Int)
   ReadFile(read_file.Input)
   Sign(sign.Request)
   Sleep(Int)
@@ -67,8 +69,10 @@ pub fn effects() -> interface.Harness(Effect, meta) {
     tg.hash() |> tg.map(Hash),
     tg.make_directory() |> tg.map(MakeDirectory),
     tg.now() |> tg.replace(Now),
+    tg.prompt() |> tg.map(Prompt),
     tg.random() |> tg.map(Random),
     tg.read_directory() |> tg.map(ReadDirectory),
+    tg.read_key() |> tg.map(ReadKey),
     tg.read_file() |> tg.map(ReadFile),
     tg.sign() |> tg.map(Sign),
     tg.sleep() |> tg.map(Sleep),

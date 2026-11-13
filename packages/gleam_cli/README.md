@@ -55,6 +55,9 @@ eyg script @myscript
 
 Starting the REPL is the default command for the CLI, so run as follows.
 
+The [prompt guide](../../guides/terminal_prompts.md) covers arrow-key editing,
+Unicode, history and piped input with a checked recording.
+
 ```sh
 eyg
 ```

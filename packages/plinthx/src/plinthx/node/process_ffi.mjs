@@ -64,3 +64,48 @@ export function onError(stream, callback) {
 
 export const env = process => toList(Object.entries(process.env));
 export const heapBytes = process => process.memoryUsage().heapUsed;
+
+export const argv = process => process.argv;
+
+
+
+export const exit = (process, code) => process.exit(code);
+
+export function cwd(process) {
+  try { return Result$Ok(process.cwd()); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export function onceExit(process, callback) {
+  try { return Result$Ok(process.once("exit", callback)); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export function removeExitListener(process, callback) {
+  try { return Result$Ok(process.removeListener("exit", callback)); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export function setStreamRawMode(stream, mode) {
+  try { stream.setRawMode(mode); return Result$Ok(undefined); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export function onSignal(process, signal, callback) {
+  try { return Result$Ok(process.on(signal, callback)); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export function removeSignalListener(process, signal, callback) {
+  try { return Result$Ok(process.removeListener(signal, callback)); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export const setExitCode = (process, code) => { process.exitCode = code; };
+
+export function signalSelf(process, signal) {
+  try { process.kill(process.pid, signal); return Result$Ok(undefined); }
+  catch (error) { return Result$Error(String(error)); }
+}
+
+export const isStreamTTY = stream => typeof stream.isTTY === "boolean" ? Result$Ok(stream.isTTY) : Result$Error(undefined);
