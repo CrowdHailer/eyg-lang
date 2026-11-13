@@ -1,0 +1,151 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "packages": {
+      "alpha": {
+        "version": 3,
+        "program": {
+          "0": "i",
+          "v": 7
+        }
+      },
+      "demo": {
+        "version": 1,
+        "program": {
+          "0": "i",
+          "v": 42
+        }
+      },
+      "record": {
+        "version": 2,
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "e",
+              "l": "answer"
+            },
+            "a": {
+              "0": "i",
+              "v": 42
+            }
+          },
+          "a": {
+            "0": "u"
+          }
+        }
+      },
+      "succ": {
+        "version": 1,
+        "program": {
+          "0": "f",
+          "l": "x",
+          "b": {
+            "0": "a",
+            "f": {
+              "0": "a",
+              "f": {
+                "0": "b",
+                "l": "int_add"
+              },
+              "a": {
+                "0": "v",
+                "l": "x"
+              }
+            },
+            "a": {
+              "0": "i",
+              "v": 1
+            }
+          }
+        }
+      }
+    },
+    "events": [
+      {
+        "paste": "@demo:1:baguqeeraooj6ibjfubq677vfybcoqug74uuwfxe77boehxluwter4yklz2ia"
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "packages": {
+      "alpha": {
+        "version": 3,
+        "program": {
+          "0": "i",
+          "v": 7
+        }
+      },
+      "demo": {
+        "version": 1,
+        "program": {
+          "0": "i",
+          "v": 42
+        }
+      },
+      "record": {
+        "version": 2,
+        "program": {
+          "0": "a",
+          "f": {
+            "0": "a",
+            "f": {
+              "0": "e",
+              "l": "answer"
+            },
+            "a": {
+              "0": "i",
+              "v": 42
+            }
+          },
+          "a": {
+            "0": "u"
+          }
+        }
+      },
+      "succ": {
+        "version": 1,
+        "program": {
+          "0": "f",
+          "l": "x",
+          "b": {
+            "0": "a",
+            "f": {
+              "0": "a",
+              "f": {
+                "0": "b",
+                "l": "int_add"
+              },
+              "a": {
+                "0": "v",
+                "l": "x"
+              }
+            },
+            "a": {
+              "0": "i",
+              "v": 1
+            }
+          }
+        }
+      }
+    },
+    "events": [
+      {
+        "paste": "@demo:1:baguqeeraooj6ibjfubq677vfybcoqug74uuwfxe77boehxluwter4yklz2ia"
+      }
+    ]
+  }
+}

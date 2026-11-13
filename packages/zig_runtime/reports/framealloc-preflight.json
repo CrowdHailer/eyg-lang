@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "binary_sha256": "a50d6030712456f2a250d124a408d68be7809245edffdd93684be4e96eb6fcbe",
+  "main_source_sha256": "0bdf99e00997866a5ecaf40a376053cae23215f5aa97cd07a8700fb0fe96284e",
+  "wall_samples_ns": [
+    3732304,
+    9207924,
+    10605668,
+    3223436
+  ],
+  "cpu_samples_ns": [
+    3722713,
+    9202447,
+    10587391,
+    3222237
+  ]
+}

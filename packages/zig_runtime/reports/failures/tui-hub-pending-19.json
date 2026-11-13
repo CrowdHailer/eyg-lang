@@ -1,0 +1,97 @@
+{
+  "request": {
+    "op": "tui",
+    "files": {},
+    "width": 40,
+    "height": 10,
+    "events": [
+      {
+        "key": "p"
+      },
+      {
+        "key": "L"
+      },
+      {
+        "key": "b"
+      },
+      {
+        "key": "j"
+      },
+      {
+        "key": "C"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "resize": [
+          80,
+          3
+        ]
+      },
+      {
+        "key": "home"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "paste": "invalid!!"
+      },
+      {
+        "paste": "[1, 2, 3]"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "paste": "invalid!!"
+      },
+      {
+        "key": "home"
+      },
+      {
+        "key": "h"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "L"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "ctrl+e"
+      },
+      {
+        "resize": [
+          1,
+          24
+        ]
+      },
+      {
+        "key": "w"
+      },
+      {
+        "key": "v"
+      },
+      {
+        "resize": [
+          120,
+          3
+        ]
+      },
+      {
+        "resize": [
+          80,
+          24
+        ]
+      },
+      {
+        "key": "x"
+      }
+    ]
+  }
+}

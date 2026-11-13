@@ -1,0 +1,104 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 5,
+    "events": [
+      {
+        "key": "r"
+      },
+      {
+        "key": "f"
+      },
+      {
+        "key": "i"
+      },
+      {
+        "key": "R"
+      },
+      {
+        "key": "ctrl+u"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "R"
+      },
+      {
+        "key": "delete"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "z"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "ctrl+e"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "ctrl+k"
+      },
+      {
+        "key": "?"
+      },
+      {
+        "resize": [
+          80,
+          40
+        ]
+      },
+      {
+        "paste": "\"hello λ\""
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "p"
+      },
+      {
+        "key": "z"
+      },
+      {
+        "key": "h"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 5,
+    "events": [
+      {
+        "key": "E"
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  }
+}

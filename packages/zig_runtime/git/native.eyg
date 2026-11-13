@@ -1,0 +1,15 @@
+// Native local Git plumbing. Every I/O boundary remains an explicit effect.
+// GitQuery is local to the Zig runtime and never runs a Git subprocess.
+let unwrap = match { Ok(value) -> { value } Error(reason) -> { !never(perform Abort(reason)) } }
+{
+  head: (repo) -> { unwrap(perform GitQuery({action: "head", repo})) },
+  resolve: (repo, ref) -> { unwrap(perform GitQuery({action: "resolve", repo, ref})) },
+  object: (repo, id) -> { unwrap(perform GitQuery({action: "object", repo, id})) },
+  commit: (repo, id) -> { unwrap(perform GitQuery({action: "commit", repo, id})) },
+  history: (repo, limit) -> { unwrap(perform GitQuery({action: "history", repo, limit})) },
+  tree: (repo, id) -> { unwrap(perform GitQuery({action: "tree", repo, id})) },
+  show: (repo, ref, path) -> { unwrap(perform GitQuery({action: "show", repo, ref, path})) },
+  remotes: (repo) -> { unwrap(perform GitQuery({action: "remotes", repo})) },
+  // Query options are regular EYG records; defaults are applied by the runtime.
+  query: (options) -> { unwrap(perform GitQuery(options)) },
+}

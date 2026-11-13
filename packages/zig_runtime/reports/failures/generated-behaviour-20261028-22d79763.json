@@ -1,0 +1,104 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 40,
+    "height": 24,
+    "events": [
+      {
+        "resize": [
+          40,
+          5
+        ]
+      },
+      {
+        "paste": "todo"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "resize": [
+          40,
+          40
+        ]
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "l"
+      },
+      {
+        "key": "p"
+      },
+      {
+        "key": "x"
+      },
+      {
+        "key": "Y"
+      },
+      {
+        "paste": "todo"
+      },
+      {
+        "key": "<"
+      },
+      {
+        "key": "R"
+      },
+      {
+        "paste": "todo"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": "ctrl+u"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "y"
+      },
+      {
+        "key": "t"
+      },
+      {
+        "key": "@"
+      },
+      {
+        "key": "p"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "tab"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": "n"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 40,
+    "height": 24,
+    "events": [
+      {
+        "key": "l"
+      }
+    ]
+  }
+}

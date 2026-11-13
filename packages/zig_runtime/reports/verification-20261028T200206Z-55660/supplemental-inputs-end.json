@@ -1,0 +1,16 @@
+{
+  "unchanged": true,
+  "start": {
+    "spec/evaluation/builtins_suite.json": "934bb576c0d4e78e594d32e390e395dd1cfa9a9fbdf040e3c43f7eda1164f3d9",
+    "spec/evaluation/core_suite.json": "8057e5a972474d951f7ca6ff3d539979df7d32770da9812850ce6305557e31c8",
+    "spec/evaluation/effects_suite.json": "e8369dc1db399fbfba823137bad9eb599d805e9812381992c9447dcf26124e50",
+    "packages/zig_runtime/tests/requirements.txt": "da52b99cd6b53abbaa7f05de511a1bc721ed81c8e11603b5eb85724a7ca9ac23"
+  },
+  "end": {
+    "spec/evaluation/builtins_suite.json": "934bb576c0d4e78e594d32e390e395dd1cfa9a9fbdf040e3c43f7eda1164f3d9",
+    "spec/evaluation/core_suite.json": "8057e5a972474d951f7ca6ff3d539979df7d32770da9812850ce6305557e31c8",
+    "spec/evaluation/effects_suite.json": "e8369dc1db399fbfba823137bad9eb599d805e9812381992c9447dcf26124e50",
+    "packages/zig_runtime/tests/requirements.txt": "da52b99cd6b53abbaa7f05de511a1bc721ed81c8e11603b5eb85724a7ca9ac23"
+  },
+  "verification_status": "complete"
+}

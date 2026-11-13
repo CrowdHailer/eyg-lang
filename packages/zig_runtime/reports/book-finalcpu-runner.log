@@ -1,0 +1,6 @@
+{"passed": false, "status": "running", "report": "/workspace/eyg-lang/packages/zig_runtime/docs/book-validation.json"}
+Traceback (most recent call last):
+  File "/workspace/eyg-lang/packages/zig_runtime/work/prove-book-finalcpu.py", line 21, in <module>
+    if child.returncode:raise RuntimeError(name+' failed')
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: release failed

@@ -1,0 +1,19 @@
+{
+  "target": "host C ABI; Android device not measured",
+  "iterations": 10000,
+  "workload": "parse/evaluate !int_add(20,22); external effect continuation resume",
+  "evaluate": {
+    "p50_ms": 0.002201,
+    "p95_ms": 0.00254,
+    "p99_ms": 0.015237,
+    "max_ms": 15.921601
+  },
+  "resume": {
+    "p50_ms": 0.00167,
+    "p95_ms": 0.001908,
+    "p99_ms": 0.013066,
+    "max_ms": 28.333551
+  },
+  "budget_ms": 10,
+  "passed": false
+}

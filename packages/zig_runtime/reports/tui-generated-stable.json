@@ -1,0 +1,363 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "22d79763176bef4fafce5d2fc933f8e51b6fddf67119d6d916f060c28506b9b8",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "../../work/tui-dev/bin/eyg",
+    "--only",
+    "tui",
+    "--traces",
+    "20",
+    "--report",
+    "reports/tui-generated-stable.json"
+  ],
+  "counts": {
+    "tui-scenario": {
+      "checked": 18,
+      "passed": 18,
+      "failed": 0
+    },
+    "tui-world": {
+      "checked": 11,
+      "passed": 7,
+      "failed": 4
+    },
+    "generated-behaviour": {
+      "checked": 20,
+      "passed": 18,
+      "failed": 2
+    }
+  },
+  "failures": [
+    {
+      "category": "tui-world",
+      "name": "import-picker",
+      "difference": {
+        "path": "$.frames[4].cells[1600].fg",
+        "expected": 6,
+        "got": 5
+      },
+      "request": {
+        "files": {
+          "lib/answer.eyg": "42",
+          "main.eyg": "{answer: 42}",
+          ".hidden.eyg": "0"
+        },
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "key": "q"
+          },
+          {
+            "paste": "lib/answer.eyg"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      },
+      "reproducer": "reports/failures/tui-world-20261028-22d79763.json"
+    },
+    {
+      "category": "tui-world",
+      "name": "import-expression",
+      "difference": {
+        "path": "$.frames[2].cells[1600].fg",
+        "expected": 6,
+        "got": 5
+      },
+      "request": {
+        "files": {
+          "lib/answer.eyg": "42",
+          "main.eyg": "{answer: 42}",
+          ".hidden.eyg": "0"
+        },
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "import \"lib/answer.eyg\""
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "tui-world",
+      "name": "import-missing",
+      "difference": {
+        "path": "$.frames[2].cells[1600].fg",
+        "expected": 6,
+        "got": 5
+      },
+      "request": {
+        "files": {
+          "lib/answer.eyg": "42",
+          "main.eyg": "{answer: 42}",
+          ".hidden.eyg": "0"
+        },
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "import \"missing.eyg\""
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "tui-world",
+      "name": "sandbox-now",
+      "difference": {
+        "path": "$.frames[2].cells[1682].symbol",
+        "expected": "0",
+        "got": "1"
+      },
+      "request": {
+        "files": {
+          "lib/answer.eyg": "42",
+          "main.eyg": "{answer: 42}",
+          ".hidden.eyg": "0"
+        },
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "perform Now({})"
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "6",
+      "difference": {
+        "path": "$.frames[7].cells[1560].symbol",
+        "expected": "✔",
+        "got": "!"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 40,
+        "height": 24,
+        "events": [
+          {
+            "resize": [
+              40,
+              5
+            ]
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "resize": [
+              40,
+              40
+            ]
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "Y"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "y"
+          },
+          {
+            "key": "t"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "n"
+          }
+        ]
+      },
+      "reproducer": "reports/failures/generated-behaviour-20261028-22d79763.json"
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "7",
+      "difference": {
+        "path": "$.frames[7].cells[85].fg",
+        "expected": 12,
+        "got": null
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 40,
+        "height": 5,
+        "events": [
+          {
+            "key": " "
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "L"
+          },
+          {
+            "resize": [
+              1,
+              24
+            ]
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "end"
+          },
+          {
+            "key": "j"
+          },
+          {
+            "resize": [
+              20,
+              3
+            ]
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "t"
+          },
+          {
+            "key": "#"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "l"
+          }
+        ]
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "passed": false,
+  "elapsed_seconds": 105.40435858700016
+}

@@ -1,0 +1,532 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "1efaad4078fbd9c372c9227deddafcf84744ec88f858731ca517d9a81aeef4b8",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "../../work/tui-expanded-final/bin/eyg",
+    "--edit-only",
+    "--edit-traces",
+    "100",
+    "--report",
+    "reports/tui-nested-edit.json"
+  ],
+  "comparison": "Exact object keys, arrays, strings and buffer cells; JSON Numbers compare by JavaScript IEEE-754 value, with booleans separate. Rendered text is never normalized.",
+  "rng_streams": {
+    "programs": 20261028,
+    "syntax": 20261029,
+    "behaviour": 20261028,
+    "program_edits": 20261030
+  },
+  "passed": false,
+  "status": "running",
+  "counts": {
+    "generated-program-edit": {
+      "checked": 15,
+      "passed": 9,
+      "failed": 6
+    }
+  },
+  "failures": [
+    {
+      "category": "generated-program-edit",
+      "name": "1",
+      "difference": {
+        "path": "$.frames[1].cells[80].symbol",
+        "expected": "!",
+        "got": " "
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 40,
+        "height": 10,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string(match Some(51) { Some(x) -> { x } | (_) -> { 0 } }), !string_append(!string_append(\"λ\", \"é\"), !int_to_string(-33)))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      },
+      "reproducer": "reports/failures/generated-program-edit-20261028-1efaad40.json"
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "3",
+      "difference": {
+        "path": "$.frames[4].cells[1360].symbol",
+        "expected": " ",
+        "got": "m"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "(x) -> { !int_add(x, !int_add(!int_add(19, 77), let x = 41 !int_multiply(x, 2))) }"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "down"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "8",
+      "difference": {
+        "path": "$.frames[1].cells[2560].symbol",
+        "expected": "!",
+        "got": " "
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 40,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string(let {x, y: z} = {x: 10, y: 22} !int_add(x, z)), !int_to_string({answer: 81, name: \"λ\"}.answer))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "m"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "a"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "9",
+      "difference": {
+        "path": "$.frames[7].cells[365].symbol",
+        "expected": " ",
+        "got": "I"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 40,
+        "height": 10,
+        "events": [
+          {
+            "paste": "[match Some({answer: 17, name: \"é\"}.answer) { Some(x) -> { x } | (_) -> { 0 } }, !list_fold([!list_fold([96, -73], 0, (x, acc) -> { !int_add(x, acc) }), !int_add(-17, -77)], 0, (x, acc) -> { !int_add(x, acc) }), {answer: !int_add(-55, -20), name: !int_to_string(-88)}.answer]"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "left"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "13",
+      "difference": {
+        "path": "$.frames[8].cells[1845].symbol",
+        "expected": " ",
+        "got": "I"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "!string_append(!int_to_string({answer: -4, name: \"a\\nb\"}.answer), !string_append(!int_to_string(50), !int_to_string(68)))"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "paste": "field"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "right"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-program-edit",
+      "name": "14",
+      "difference": {
+        "path": "$.frames[1].cells[240].symbol",
+        "expected": " ",
+        "got": "m"
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 10,
+        "events": [
+          {
+            "paste": "match Some(match Some(!int_add(78, -89)) { Some(x) -> { x } | (_) -> { 0 } }) { Some(x) -> { x } | (_) -> { 0 } }"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "k"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": " "
+          }
+        ]
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true,
+    "number_difference": true,
+    "numeric_string": true,
+    "number_token_equivalence": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "elapsed_seconds": 63.02040226099962
+}

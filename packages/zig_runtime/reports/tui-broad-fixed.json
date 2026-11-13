@@ -1,0 +1,938 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "c7d34892d57c34dbd417d8c64c512f5b1a5b5aa7408de0a3908dff147e4611c1",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "../../work/tui-fixed/bin/eyg",
+    "--only",
+    "tui",
+    "--traces",
+    "100",
+    "--report",
+    "reports/tui-broad-fixed.json"
+  ],
+  "counts": {
+    "tui-scenario": {
+      "checked": 18,
+      "passed": 18,
+      "failed": 0
+    },
+    "tui-world": {
+      "checked": 11,
+      "passed": 10,
+      "failed": 1
+    },
+    "generated-behaviour": {
+      "checked": 100,
+      "passed": 91,
+      "failed": 9
+    }
+  },
+  "failures": [
+    {
+      "category": "tui-world",
+      "name": "import-missing",
+      "difference": {
+        "path": "$.frames[2].cells[1682].symbol",
+        "expected": "A",
+        "got": "r"
+      },
+      "request": {
+        "files": {
+          "lib/answer.eyg": "42",
+          "main.eyg": "{answer: 42}",
+          ".hidden.eyg": "0"
+        },
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "import \"missing.eyg\""
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      },
+      "reproducer": "reports/failures/tui-world-20261028-c7d34892.json"
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "30",
+      "difference": {
+        "path": "$.frames[15].cells[160].symbol",
+        "expected": "l",
+        "got": " "
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 5,
+        "events": [
+          {
+            "key": "r"
+          },
+          {
+            "key": "f"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "key": "delete"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "ctrl+e"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "ctrl+k"
+          },
+          {
+            "key": "?"
+          },
+          {
+            "resize": [
+              80,
+              40
+            ]
+          },
+          {
+            "paste": "\"hello λ\""
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "h"
+          }
+        ]
+      },
+      "reproducer": "reports/failures/generated-behaviour-20261028-c7d34892.json"
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "33",
+      "difference": {
+        "path": "$.frames[19].cells[3048].modifiers",
+        "expected": 0,
+        "got": 8
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 40,
+        "events": [
+          {
+            "key": "l"
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "paste": "👩‍💻é"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "resize": [
+              80,
+              40
+            ]
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "#"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "c"
+          },
+          {
+            "paste": "\"hello λ\""
+          },
+          {
+            "key": "c"
+          },
+          {
+            "paste": "[1, 2, 3]"
+          },
+          {
+            "key": "?"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "36",
+      "difference": {
+        "path": "$.frames[2].cells[643].modifiers",
+        "expected": 41,
+        "got": 33
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 10,
+        "events": [
+          {
+            "key": "L"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "q"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "ctrl+e"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "key": "Y"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "Y"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "key": "t"
+          },
+          {
+            "key": "q"
+          },
+          {
+            "key": "home"
+          },
+          {
+            "key": "ctrl+a"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "R"
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "1"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "46",
+      "difference": {
+        "path": "$.frames[4].cells[240].symbol",
+        "expected": "l",
+        "got": " "
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 5,
+        "events": [
+          {
+            "key": "L"
+          },
+          {
+            "key": " "
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "key": "?"
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "resize": [
+              20,
+              1
+            ]
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "j"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "w"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "y"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "key": "end"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "up"
+          },
+          {
+            "paste": "[1, 2, 3]"
+          },
+          {
+            "key": "down"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "49",
+      "difference": {
+        "path": "$.frames[4].cells[362].modifiers",
+        "expected": 9,
+        "got": 1
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 5,
+        "events": [
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "left"
+          },
+          {
+            "paste": "let x = 2 x"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "f"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "paste": "!int_add(20, 22)"
+          },
+          {
+            "key": "Y"
+          },
+          {
+            "key": "1"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "paste": "!int_add(20, 22)"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "ctrl+e"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "_"
+          },
+          {
+            "resize": [
+              100,
+              24
+            ]
+          },
+          {
+            "key": "esc"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "50",
+      "difference": {
+        "path": "$.frames[23].cells[1000].modifiers",
+        "expected": 8,
+        "got": 0
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 24,
+        "events": [
+          {
+            "key": "k"
+          },
+          {
+            "paste": "👩‍💻é"
+          },
+          {
+            "key": "h"
+          },
+          {
+            "resize": [
+              100,
+              1
+            ]
+          },
+          {
+            "key": "d"
+          },
+          {
+            "resize": [
+              100,
+              10
+            ]
+          },
+          {
+            "key": "up"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "key": "z"
+          },
+          {
+            "key": "f"
+          },
+          {
+            "paste": "[1, 2, 3]"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "o"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "resize": [
+              120,
+              40
+            ]
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "ctrl+k"
+          },
+          {
+            "resize": [
+              120,
+              10
+            ]
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "paste": "\"hello λ\""
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "57",
+      "difference": {
+        "path": "$.frames[22].cells[4570].modifiers",
+        "expected": 41,
+        "got": 33
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 40,
+        "events": [
+          {
+            "key": "z"
+          },
+          {
+            "paste": "\"hello λ\""
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "y"
+          },
+          {
+            "key": "f"
+          },
+          {
+            "key": "w"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "?"
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "d"
+          },
+          {
+            "key": "ctrl+a"
+          },
+          {
+            "key": "v"
+          },
+          {
+            "paste": "todo"
+          },
+          {
+            "key": "backspace"
+          },
+          {
+            "key": "ctrl+k"
+          },
+          {
+            "key": "Z"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "C"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "key": "f"
+          },
+          {
+            "key": "Y"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "67",
+      "difference": {
+        "path": "$.frames[21].cells[4580].modifiers",
+        "expected": 41,
+        "got": 33
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 120,
+        "height": 40,
+        "events": [
+          {
+            "key": "backspace"
+          },
+          {
+            "key": "n"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "h"
+          },
+          {
+            "key": "r"
+          },
+          {
+            "key": "Y"
+          },
+          {
+            "key": "L"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "down"
+          },
+          {
+            "paste": "\"hello λ\""
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "ctrl+u"
+          },
+          {
+            "key": "tab"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "p"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "ctrl+e"
+          },
+          {
+            "key": "f"
+          }
+        ]
+      }
+    },
+    {
+      "category": "generated-behaviour",
+      "name": "90",
+      "difference": {
+        "path": "$.frames[18].cells[581].modifiers",
+        "expected": 0,
+        "got": 8
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 20,
+        "height": 24,
+        "events": [
+          {
+            "paste": "👩‍💻é"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "paste": "42"
+          },
+          {
+            "key": "E"
+          },
+          {
+            "key": "x"
+          },
+          {
+            "resize": [
+              80,
+              10
+            ]
+          },
+          {
+            "paste": "invalid!!"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "@"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "i"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "l"
+          },
+          {
+            "paste": "\"hello λ\""
+          },
+          {
+            "key": "home"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "key": "1"
+          },
+          {
+            "paste": "{x: 1, y: 2}"
+          },
+          {
+            "key": "e"
+          },
+          {
+            "key": "#"
+          },
+          {
+            "paste": "42"
+          },
+          {
+            "resize": [
+              40,
+              24
+            ]
+          },
+          {
+            "key": "a"
+          },
+          {
+            "key": "g"
+          },
+          {
+            "paste": "!int_add(20, 22)"
+          }
+        ]
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "passed": false,
+  "elapsed_seconds": 203.07725658499976
+}

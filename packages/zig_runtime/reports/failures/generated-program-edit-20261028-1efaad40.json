@@ -1,0 +1,86 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 40,
+    "height": 10,
+    "events": [
+      {
+        "paste": "!string_append(!int_to_string(match Some(51) { Some(x) -> { x } | (_) -> { 0 } }), !string_append(!string_append(\"λ\", \"é\"), !int_to_string(-33)))"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "left"
+      },
+      {
+        "key": "tab"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "left"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "up"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "up"
+      },
+      {
+        "key": "right"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 40,
+    "height": 10,
+    "events": [
+      {
+        "paste": "!string_append(!int_to_string(match Some(51) { Some(x) -> { x } | (_) -> { 0 } }), !string_append(!string_append(\"λ\", \"é\"), !int_to_string(-33)))"
+      }
+    ]
+  }
+}

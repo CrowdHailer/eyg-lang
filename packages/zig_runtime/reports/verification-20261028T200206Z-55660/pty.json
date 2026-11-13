@@ -1,0 +1,265 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "2cb198a80f5e89398fd79ac313732fec8d07c01b5c6a125933e449400a5dc67e",
+  "measurement": "write key bytes to local PTY through read of synchronized frame terminator; includes dispatch, rendering, ANSI encoding, transport, Python reader scheduling; timestamp before observer VT decoding; excludes startup; standalone Escape has oracle 40ms timeout",
+  "terminal_model": "pyte 0.8.2; internal full-cell tests additionally cover dim, underline color, hyperlinks",
+  "checked": 21,
+  "failures": [
+    {
+      "name": "integer-open",
+      "difference": {
+        "path": "$.cells[815].data",
+        "expected": "\u256d",
+        "got": " "
+      }
+    },
+    {
+      "name": "integer-type",
+      "difference": {
+        "path": "$.cells[897].data",
+        "expected": "7",
+        "got": " "
+      }
+    },
+    {
+      "name": "integer-apply",
+      "difference": {
+        "path": "$.cells[815].data",
+        "expected": " ",
+        "got": "\u256d"
+      }
+    },
+    {
+      "name": "integer-run",
+      "difference": {
+        "path": "$.cells[1600].data",
+        "expected": "7",
+        "got": " "
+      }
+    },
+    {
+      "name": "history-open",
+      "difference": {
+        "path": "$.cells[1520].data",
+        "expected": "\u25c6",
+        "got": " "
+      }
+    },
+    {
+      "name": "history-close",
+      "difference": {
+        "path": "$.cells[1520].data",
+        "expected": " ",
+        "got": "\u25c6"
+      }
+    },
+    {
+      "name": "paste-arithmetic",
+      "difference": {
+        "path": "$.cells[1760].data",
+        "expected": "!",
+        "got": "W"
+      }
+    },
+    {
+      "name": "run-arithmetic",
+      "difference": {
+        "path": "$.cells[1440].data",
+        "expected": "7",
+        "got": " "
+      }
+    },
+    {
+      "name": "string-open",
+      "difference": {
+        "path": "$.cells[815].data",
+        "expected": "\u256d",
+        "got": " "
+      }
+    },
+    {
+      "name": "unicode-paste",
+      "difference": {
+        "path": "$.cells[896].data",
+        "expected": "h",
+        "got": "E"
+      }
+    },
+    {
+      "name": "string-apply",
+      "difference": {
+        "path": "$.cells[815].data",
+        "expected": " ",
+        "got": "\u256d"
+      }
+    },
+    {
+      "name": "string-run",
+      "difference": {
+        "path": "$.cells[1280].data",
+        "expected": "7",
+        "got": " "
+      }
+    },
+    {
+      "name": "picker-open",
+      "difference": {
+        "path": "$.cells[415].data",
+        "expected": "\u256d",
+        "got": " "
+      }
+    },
+    {
+      "name": "picker-next",
+      "difference": {
+        "path": "$.cells[496].data",
+        "expected": "f",
+        "got": "e"
+      }
+    },
+    {
+      "name": "picker-close",
+      "difference": {
+        "path": "$.cells[415].data",
+        "expected": " ",
+        "got": "\u256d"
+      }
+    },
+    {
+      "name": "resize",
+      "difference": {
+        "path": "$.cells[1600].data",
+        "expected": " ",
+        "got": "7"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "name": "split-utf8-open",
+      "native_ns": 697253,
+      "gleam_ns": 20021786,
+      "standalone_escape": false
+    },
+    {
+      "name": "split-utf8-complete",
+      "native_ns": 930639,
+      "gleam_ns": 19523386,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-open",
+      "native_ns": 167495,
+      "gleam_ns": 17034040,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-type",
+      "native_ns": 96638,
+      "gleam_ns": 13479008,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-apply",
+      "native_ns": 73578,
+      "gleam_ns": 29904006,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-run",
+      "native_ns": 112924,
+      "gleam_ns": 12372371,
+      "standalone_escape": false
+    },
+    {
+      "name": "history-open",
+      "native_ns": 170057,
+      "gleam_ns": 13408067,
+      "standalone_escape": false
+    },
+    {
+      "name": "history-close",
+      "native_ns": 83817,
+      "gleam_ns": 25283445,
+      "standalone_escape": false
+    },
+    {
+      "name": "paste-arithmetic",
+      "native_ns": 42733,
+      "gleam_ns": 42658295,
+      "standalone_escape": false
+    },
+    {
+      "name": "run-arithmetic",
+      "native_ns": 99852,
+      "gleam_ns": 11346785,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-open",
+      "native_ns": 88446,
+      "gleam_ns": 16924096,
+      "standalone_escape": false
+    },
+    {
+      "name": "unicode-paste",
+      "native_ns": 59997,
+      "gleam_ns": 15622535,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-apply",
+      "native_ns": 151216,
+      "gleam_ns": 6175877,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-run",
+      "native_ns": 65629,
+      "gleam_ns": 6052834,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-open",
+      "native_ns": 125190,
+      "gleam_ns": 113118082,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-next",
+      "native_ns": 166753,
+      "gleam_ns": 64638538,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-close",
+      "native_ns": 69321,
+      "gleam_ns": 62698145,
+      "standalone_escape": true
+    }
+  ],
+  "native_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026h\u001b[2J\u001b[1;1H\u001b[0m                                                                                                    \u001b[2;1H\u001b[0m                                                                                                    \u001b[3;1H\u001b[0m                                                                                                    \u001b[4;1H\u001b[0m                                                                                                    \u001b[5;1H\u001b[0m                                                                                                    \u001b[6;1H\u001b[0m                                                                                                    \u001b[7;1H\u001b[0m                                                                                                    \u001b[8;1H\u001b[0m                                                                                                    \u001b[9;1H\u001b[0m                                                                                                    \u001b[10;1H\u001b[0m                                                                                                    \u001b[11;1H\u001b[0m                                                                                                    \u001b[12;1H\u001b[0m                                                                                                    \u001b[13;1H\u001b[0m                                                                                                    \u001b[14;1H\u001b[0m                                                                                                    \u001b[15;1H\u001b[0m                                                                                                    \u001b[16;1H\u001b[0m                                                                                                    \u001b[17;1H\u001b[0m                                                                                                    \u001b[18;1H\u001b[0m                                                                                                    \u001b[19;1H\u001b[0m                                                                                                    \u001b[20;1H\u001b[0m                                                                                                    \u001b[21;1H\u001b[0m                                                                                                    \u001b[22;1H\u001b[0m                                                                                                    \u001b[23;1H\u001b[0m\u001b[35m7\u001b[0m                                                                                                   \u001b[24;1H\u001b[0m= 7                                                                                                 \u001b[25;1H\u001b[0m\u001b[32m!int_add\u001b[0m(\u001b[0m\u001b[35m20\u001b[0m, \u001b[0m\u001b[35m22\u001b[0m)                                                                                    \u001b[26;1H\u001b[0m= 42                                                                                                \u001b[27;1H\u001b[0m\u001b[32m\"hello \u03bb\u00e9\"\u001b[0m                                                                                          \u001b[28;1H\u001b[0m= \"hello \u03bb\u00e9\"                                                                                        \u001b[29;1H\u001b[0m\u001b[7mWrite EYG\u2026\u001b[0m                                                                                          \u001b[30;1H\u001b[0m\u001b[2m\u2191 history \u00b7 Ctrl+Q quit\u001b[0m                                                                             \u001b[0m\u001b[?2026l\u001b[?2026l\u001b[?2004l\u001b[0m\u001b[?25h"
+  },
+  "gleam_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l"
+  },
+  "key_to_frame": {
+    "samples": 16,
+    "p50_ms": 0.099852,
+    "p95_ms": 0.930639,
+    "p99_ms": 0.930639,
+    "max_ms": 0.930639,
+    "mean_ms": 0.1957635625,
+    "under_10ms": true
+  },
+  "parity_passed": false,
+  "cleanup_passed": true,
+  "passed": false
+}

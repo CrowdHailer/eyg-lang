@@ -1,0 +1,229 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "category": "generated-program-edit",
+  "name": "15",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 40,
+    "events": [
+      {
+        "paste": "let x = !int_add({answer: -96, name: \"e\u0301\"}.answer, !int_add(-30, 35)) !int_multiply(x, 2)"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "tab"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": "C"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "o"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "up"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 40,
+    "events": [
+      {
+        "paste": "let x = !int_add({answer: -96, name: \"e\u0301\"}.answer, !int_add(-30, 35)) !int_multiply(x, 2)"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "tab"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": "C"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "enter"
+      },
+      {
+        "key": "o"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "d"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "up"
+      }
+    ]
+  },
+  "failure": {
+    "category": "generated-program-edit",
+    "name": "15",
+    "request": {
+      "files": {},
+      "op": "tui",
+      "width": 80,
+      "height": 40,
+      "events": [
+        {
+          "paste": "let x = !int_add({answer: -96, name: \"e\u0301\"}.answer, !int_add(-30, 35)) !int_multiply(x, 2)"
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": "tab"
+        },
+        {
+          "key": "Z"
+        },
+        {
+          "key": "C"
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": "a"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "enter"
+        },
+        {
+          "key": "o"
+        },
+        {
+          "key": "k"
+        },
+        {
+          "key": ">"
+        },
+        {
+          "key": "Z"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "d"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "k"
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": "up"
+        }
+      ]
+    },
+    "native_error": null,
+    "oracle_error": {
+      "kind": "timeout",
+      "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+    }
+  }
+}

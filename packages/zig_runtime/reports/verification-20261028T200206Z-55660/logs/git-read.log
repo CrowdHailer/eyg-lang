@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/workspace/eyg-lang/packages/zig_runtime/git/verify_native.py", line 147, in <module>
+    if __name__=='__main__': main()
+                             ^^^^^^
+  File "/workspace/eyg-lang/packages/zig_runtime/git/verify_native.py", line 54, in main
+    assert n.call(fixture,'history',limit=20)==[commit_data(fixture,samples[-2][2])]; checks+=1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/eyg-lang/packages/zig_runtime/git/verify_native.py", line 21, in call
+    self.last_duration_ns = result.get('duration_ns')
+                            ^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'

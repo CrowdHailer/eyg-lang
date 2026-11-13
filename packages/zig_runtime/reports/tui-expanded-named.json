@@ -1,0 +1,138 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "1efaad4078fbd9c372c9227deddafcf84744ec88f858731ca517d9a81aeef4b8",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "../../work/tui-expanded-final/bin/eyg",
+    "--named-only",
+    "--report",
+    "reports/tui-expanded-named.json"
+  ],
+  "comparison": "Exact object keys, arrays, strings and buffer cells; JSON Numbers compare by JavaScript IEEE-754 value, with booleans separate. Rendered text is never normalized.",
+  "rng_streams": {
+    "programs": 20261028,
+    "syntax": 20261029,
+    "behaviour": 20261028,
+    "program_edits": 20261030
+  },
+  "passed": false,
+  "status": "complete",
+  "counts": {
+    "tui-scenario": {
+      "checked": 38,
+      "passed": 36,
+      "failed": 2
+    }
+  },
+  "failures": [
+    {
+      "category": "tui-scenario",
+      "name": "branch-before",
+      "difference": {
+        "path": "$.frames[4].cells[1606].modifiers",
+        "expected": 0,
+        "got": 33
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "match Some(1) { Some(x) -> { x } | (_) -> { 0 } }"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "<"
+          },
+          {
+            "paste": "Other"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "a"
+          }
+        ]
+      },
+      "reproducer": "reports/failures/tui-scenario-20261028-1efaad40.json"
+    },
+    {
+      "category": "tui-scenario",
+      "name": "branch-after",
+      "difference": {
+        "path": "$.frames[4].cells[1606].modifiers",
+        "expected": 0,
+        "got": 33
+      },
+      "request": {
+        "files": {},
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "events": [
+          {
+            "paste": "match Some(1) { Some(x) -> { x } | (_) -> { 0 } }"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": ">"
+          },
+          {
+            "paste": "Other"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "esc"
+          },
+          {
+            "key": "a"
+          }
+        ]
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true,
+    "number_difference": true,
+    "numeric_string": true,
+    "number_token_equivalence": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "elapsed_seconds": 33.00198379599988
+}

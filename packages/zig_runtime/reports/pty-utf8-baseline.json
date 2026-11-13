@@ -1,0 +1,145 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "22d79763176bef4fafce5d2fc933f8e51b6fddf67119d6d916f060c28506b9b8",
+  "measurement": "write key bytes to local PTY through read of synchronized frame terminator; includes dispatch, rendering, ANSI encoding, transport, Python reader scheduling; timestamp before observer VT decoding; excludes startup; standalone Escape has oracle 40ms timeout",
+  "terminal_model": "pyte 0.8.2; internal full-cell tests additionally cover dim, underline color, hyperlinks",
+  "checked": 21,
+  "failures": [
+    {
+      "name": "split-utf8-prefix",
+      "difference": {
+        "path": "$.cells[896].data",
+        "expected": "E",
+        "got": "\ufffd"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "name": "split-utf8-open",
+      "native_ns": 7827626,
+      "gleam_ns": 28479263,
+      "standalone_escape": false
+    },
+    {
+      "name": "split-utf8-complete",
+      "native_ns": 3285443,
+      "gleam_ns": 18061297,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-open",
+      "native_ns": 11294791,
+      "gleam_ns": 22732129,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-type",
+      "native_ns": 2743776,
+      "gleam_ns": 32704725,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-apply",
+      "native_ns": 7164653,
+      "gleam_ns": 13159404,
+      "standalone_escape": false
+    },
+    {
+      "name": "integer-run",
+      "native_ns": 2509681,
+      "gleam_ns": 11303957,
+      "standalone_escape": false
+    },
+    {
+      "name": "history-open",
+      "native_ns": 3428603,
+      "gleam_ns": 12275982,
+      "standalone_escape": false
+    },
+    {
+      "name": "history-close",
+      "native_ns": 10107017,
+      "gleam_ns": 6409821,
+      "standalone_escape": false
+    },
+    {
+      "name": "paste-arithmetic",
+      "native_ns": 5313363,
+      "gleam_ns": 26513537,
+      "standalone_escape": false
+    },
+    {
+      "name": "run-arithmetic",
+      "native_ns": 7639823,
+      "gleam_ns": 13514444,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-open",
+      "native_ns": 4926548,
+      "gleam_ns": 8021260,
+      "standalone_escape": false
+    },
+    {
+      "name": "unicode-paste",
+      "native_ns": 2579980,
+      "gleam_ns": 7599425,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-apply",
+      "native_ns": 4971714,
+      "gleam_ns": 7582532,
+      "standalone_escape": false
+    },
+    {
+      "name": "string-run",
+      "native_ns": 4699235,
+      "gleam_ns": 8239330,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-open",
+      "native_ns": 5171394,
+      "gleam_ns": 14419116,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-next",
+      "native_ns": 4719336,
+      "gleam_ns": 6716395,
+      "standalone_escape": false
+    },
+    {
+      "name": "picker-close",
+      "native_ns": 113994954,
+      "gleam_ns": 47521475,
+      "standalone_escape": true
+    }
+  ],
+  "native_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l\u001b[0m\u001b[?25h"
+  },
+  "gleam_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l"
+  },
+  "key_to_frame": {
+    "samples": 16,
+    "p50_ms": 4.926548,
+    "p95_ms": 11.294791,
+    "p99_ms": 11.294791,
+    "max_ms": 11.294791,
+    "mean_ms": 5.5239364375,
+    "under_10ms": false
+  },
+  "parity_passed": false,
+  "cleanup_passed": true,
+  "passed": false
+}

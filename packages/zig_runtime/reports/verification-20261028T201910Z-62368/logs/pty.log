@@ -1,0 +1,1 @@
+{"checked": 21, "parity_passed": true, "cleanup_passed": true, "key_to_frame": {"samples": 16, "p50_ms": 0.564885, "p95_ms": 2.830087, "p99_ms": 2.830087, "max_ms": 2.830087, "mean_ms": 0.9478988125, "under_10ms": true}}

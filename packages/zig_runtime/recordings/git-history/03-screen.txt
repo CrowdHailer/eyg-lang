@@ -1,0 +1,40 @@
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+                                                                                                                                        
+let git = import "packages/zig_runtime/git/native.eyg"                                                                                  
+  ▸ 4 more lines                                                                                                                        
+= {}                                                                                                                                    
+subjects(git.query({repo: repo, ref: revision, limit: 1}))                                                                              
+▸ 1 effect                                                                                                                              
+= ["Verify subsecond TUI history and mutable ref freshness"]                                                                            
+subjects(git.query({repo: repo, ref: revision, contains: "TUI", limit: 1}))                                                             
+▸ 1 effect                                                                                                                              
+= ["Verify subsecond TUI history and mutable ref freshness"]                                                                            
+Write EYG…                                                                                                                              
+↑ history · Ctrl+Q quit                                                                                                                 

@@ -1,0 +1,41 @@
+{
+  "failed": 1,
+  "failures": [
+    {
+      "request": {
+        "op": "tui",
+        "width": 80,
+        "height": 24,
+        "files": {},
+        "events": [
+          {
+            "key": "s"
+          },
+          {
+            "paste": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx界Z"
+          },
+          {
+            "key": "home"
+          },
+          {
+            "key": "right"
+          },
+          {
+            "key": "end"
+          },
+          {
+            "key": "enter"
+          },
+          {
+            "key": "enter"
+          }
+        ]
+      },
+      "difference": {
+        "path": "$.frames[2].cells[940].symbol",
+        "expected": "x",
+        "got": "界"
+      }
+    }
+  ]
+}

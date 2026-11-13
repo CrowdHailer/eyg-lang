@@ -1,0 +1,52 @@
+{
+  "real_pty": true,
+  "executable_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "oracle_git_revision": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+  "steps": [
+    {
+      "title": "Load the EYG Git facade",
+      "code": "let git = import \"packages/zig_runtime/git/native.eyg\"\nlet repo = \"/workspace/eyg-lang\"\nlet revision = \"f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9\"\nlet subjects = (rows) -> { !list_fold(rows, [], (commit, found) -> { [commit.subject, ..found] }) }\n{}",
+      "enter_to_first_feedback_ms": 2.8129,
+      "enter_to_complete_frame_ms": 2.8538,
+      "verified_visible": "= {}"
+    },
+    {
+      "title": "Inspect the current commit",
+      "code": "subjects(git.query({repo, ref: revision, limit: 1}))",
+      "enter_to_first_feedback_ms": 0.7968,
+      "enter_to_complete_frame_ms": 13.3987,
+      "verified_visible": "Verify subsecond TUI history"
+    },
+    {
+      "title": "Search commit messages",
+      "code": "subjects(git.query({repo, ref: revision, contains: \"TUI\", limit: 1}))",
+      "enter_to_first_feedback_ms": 3.6376,
+      "enter_to_complete_frame_ms": 26.149,
+      "verified_visible": "Verify subsecond TUI history"
+    },
+    {
+      "title": "Filter by author and time window",
+      "code": "subjects(git.query({repo, ref: revision, author: \"Peter\", since: 1793200000, until: 1793210000, limit: 1}))",
+      "enter_to_first_feedback_ms": 0.8493,
+      "enter_to_complete_frame_ms": 9.3755,
+      "verified_visible": "Verify subsecond TUI history"
+    },
+    {
+      "title": "Find changes to the Git reader",
+      "code": "subjects(git.query({repo, ref: revision, path: \"dark/git/read.eyg\", limit: 1}))",
+      "enter_to_first_feedback_ms": 2.7158,
+      "enter_to_complete_frame_ms": 23.0226,
+      "verified_visible": "Accelerate EYG Git decoding"
+    },
+    {
+      "title": "Browse and expand query history",
+      "verified_visible": "selected history"
+    }
+  ],
+  "cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l\u001b[0m\u001b[?25h"
+  }
+}

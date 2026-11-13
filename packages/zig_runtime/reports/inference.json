@@ -1,0 +1,11 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "ab15bd2216c40ad461d77fcdc1614c7075394cfd55a70991042fe62de5dfa64c",
+  "programs": 1000,
+  "scopes": 300,
+  "node_annotations": 30061,
+  "failed": 0,
+  "failures": [],
+  "passed": true
+}

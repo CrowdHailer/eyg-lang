@@ -1,0 +1,88 @@
+{
+  "request": {
+    "op": "tui",
+    "files": {},
+    "width": 120,
+    "height": 5,
+    "events": [
+      {
+        "key": "L"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "z"
+      },
+      {
+        "key": "home"
+      },
+      {
+        "key": "Z"
+      },
+      {
+        "key": "y"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "z"
+      },
+      {
+        "key": "ctrl+e"
+      },
+      {
+        "paste": "let x = 2 x"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "_"
+      },
+      {
+        "resize": [
+          120,
+          40
+        ]
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "x"
+      },
+      {
+        "key": "b"
+      },
+      {
+        "paste": "{x: 1, y: 2}"
+      },
+      {
+        "key": "?"
+      },
+      {
+        "key": "x"
+      },
+      {
+        "key": "delete"
+      },
+      {
+        "key": "#"
+      },
+      {
+        "paste": "let x = 2 x"
+      },
+      {
+        "key": "l"
+      },
+      {
+        "key": "#"
+      },
+      {
+        "key": "@"
+      }
+    ]
+  }
+}
