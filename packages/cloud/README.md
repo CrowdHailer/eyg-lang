@@ -60,6 +60,10 @@ and user-policy operations update actor-held state. Secrets are readable only
 from trusted configuration. Programs use private file effects, explicit posts,
 delegation, trigger management and scheduling according to their policy.
 
+The [network-secrets package](../../eyg_packages/network_secrets/README.md) can
+substitute credentials only into requests to configured HTTPS hosts. It loads
+from the workspace's in-memory secrets and adds no host persistence.
+
 Clockwork parses five-field UTC schedules. Configured timers reuse main’s
 next-occurrence helper; duplicate ticks do not deliver twice. Scheduled work
 retains its session identity, policy context and reply destination.
