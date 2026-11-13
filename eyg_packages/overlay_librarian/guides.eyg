@@ -1,6 +1,10 @@
 // The guides published on eyg.run.
 
 let index = [
+  {slug: "a-todo-host-using-the-native-api", title: "A todo host using the native API", summary: "Consume the standalone JavaScript shell with plain task data.", keywords: "a todo host using the native api"},
+  {slug: "compiled-eyg-in-nginx", title: "Compiled EYG in nginx", summary: "Await native subrequests from an EYG request handler in QuickJS.", keywords: "compiled eyg in nginx"},
+  {slug: "playing-hashi-through-eyg", title: "Playing Hashi through EYG", summary: "Give a puzzle shell and an agent only the original game's operations.", keywords: "playing hashi through eyg"},
+  {slug: "querying-a-todo-list-with-eyg", title: "Querying a todo list with EYG", summary: "Script a TodoMVC model through a deliberately limited typed interface.", keywords: "querying a todo list with eyg"},
   {slug: "start-overlay-from-scripts", title: "Start Overlay from scripts", summary: "Start a typed agent context and ask the type checker from an EYG script.", keywords: "start overlay from scripts"},
   {slug: "advanced-effects", title: "Advanced effects", summary: "Working with effects and handlers to implement state and other patterns.", keywords: "advanced effects"},
   {slug: "agents-in-an-embedded-shell", title: "Agents in an embedded shell", summary: "Give an agent the same typed scripting capabilities as a person.", keywords: "agents in an embedded shell"},

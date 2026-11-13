@@ -39,6 +39,9 @@ pub fn stdout(process: Subprocess) -> Result(ReadableStream, Nil)
 @external(javascript, "./subprocess_ffi.mjs", "stderr")
 pub fn stderr(process: Subprocess) -> Result(ReadableStream, Nil)
 
+@external(javascript, "./subprocess_ffi.mjs", "kill")
+pub fn kill(process: Subprocess, signal: String) -> Result(Nil, String)
+
 @external(javascript, "./subprocess_ffi.mjs", "readableStreamToText")
 pub fn readable_stream_to_text(
   bun: Bun,
