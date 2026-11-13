@@ -128,4 +128,4 @@ Start the cloud with the platform variables and post an `eyg` code block in each
 - Per user sessions in groups.
 - Webhook routes, they could be written as a channel plugin that reports events.
 - Session search, `send_message` to other platforms and interactive approvals.
-- Platforms other than Slack and the example chat, see the [channel plugin guide](./channel_plugins.md).
+- Platforms other than the example chat, Slack, Discord and WhatsApp, see the [channel plugin guide](./channel_plugins.md).

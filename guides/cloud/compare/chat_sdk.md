@@ -10,7 +10,7 @@ Chat SDK is a TypeScript library for writing one bot that runs on Slack, Teams, 
 | | EYG cloud | Vercel Chat SDK |
 | --- | --- | --- |
 | What it is | A cloud that runs agents, triggers and people's programs | A library for writing chat bots |
-| Platforms | The channel interface: example chat, Slack, guides for more | Many adapters maintained by Vercel and the community |
+| Platforms | The channel interface: example chat, Slack, Discord, WhatsApp, a guide for more | Many adapters maintained by Vercel and the community |
 | Agents | Built in overlay agents that act through EYG | Bring your own, often with the AI SDK |
 | Permissions | Channel shells | Your application code |
 

@@ -10,7 +10,7 @@ n8n is a workflow automation tool with a visual editor, hundreds of integrations
 | | EYG cloud | n8n |
 | --- | --- | --- |
 | Building automations | EYG code: pure patterns and scripts | A visual node editor, with code nodes |
-| Triggers | Events from chats, GitHub, Bluesky, RSS, Hacker News and Lobsters | Hundreds of trigger nodes and webhooks |
+| Triggers | Events from chats, GitHub, Sentry, Bluesky, RSS, Hacker News, Lobsters and any webhook | Hundreds of trigger nodes and webhooks |
 | Agents | Agents in every channel, with policies | AI agent nodes inside workflows |
 | Permissions | Per channel shell policies, also for people in the web shell | Credentials per workflow and user roles |
 | Configuration as code | Always, EYG files | Workflows export as JSON |

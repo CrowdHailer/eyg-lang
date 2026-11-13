@@ -27,7 +27,7 @@ Both projects keep the core small so it can be read. EYG cloud also makes the ru
 ## Choose EYG cloud when
 
 - Several people and channels share one deployment and need different permissions.
-- You want triggers on GitHub, Bluesky or feeds, with patterns you can test.
+- You want triggers on GitHub, Sentry, webhooks, Bluesky or feeds, with patterns you can test.
 
 Comparisons describe each product as its public documentation does at the time of writing, check it for changes.
 See [all comparisons](./README.md).

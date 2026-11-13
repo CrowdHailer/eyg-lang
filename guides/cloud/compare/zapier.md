@@ -12,7 +12,7 @@ Zapier is a hosted automation service that connects thousands of apps with Zaps,
 | Hosting | Your own server | Zapier's cloud |
 | Source | Open source | Closed source |
 | Automations | Triggers written in EYG | Zaps built in an editor, AI steps |
-| Integrations | A handful of connections and any HTTP API through `Fetch` | Thousands of app integrations |
+| Integrations | A handful of connections, any service that can call a webhook, and any HTTP API through `Fetch` | Thousands of app integrations |
 | Permissions | Programmable policies per channel | Account and app connection permissions |
 
 ## Human agency

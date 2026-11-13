@@ -12,7 +12,7 @@ Copilot Studio is Microsoft's hosted builder for agents in Teams, Microsoft 365 
 | Hosting | Your own server | Microsoft's cloud |
 | Configuration | EYG programs | A low code designer and Power Platform environments |
 | Governance | Policies are code, reviewed like code | Admin centre policies, data loss prevention and environments |
-| Channels | Chats through the channel interface | Teams, Microsoft 365 Copilot, web and more |
+| Channels | The example chat, Slack, Discord and WhatsApp through the channel interface | Teams, Microsoft 365 Copilot, web and more |
 
 ## Human agency
 

@@ -5,8 +5,9 @@ description: How EYG cloud compares with other agent gateways, frameworks and au
 
 # EYG cloud compared
 
-EYG cloud runs agents in chat channels and triggers on events from chats and services,
+EYG cloud runs agents in chat channels and triggers on events from chats, services and webhooks,
 with everything they may do written in EYG and checked by policies people own.
+Dataclips let channels answer questions from databases they cannot read directly.
 It is always aiming to maximise human agency: people can read, test and change every rule,
 agents must choose to act, and the same API serves people, scripts and agents.
 
@@ -29,9 +30,25 @@ agents must choose to act, and the same API serves people, scripts and agents.
 - [ChatGPT agents](./chatgpt.md), closed source assistant and agents. ChatGPT is OpenAI's assistant.
 - [IFTTT](./ifttt.md), closed source automation. IFTTT connects services with applets: if this happens, then do that.
 
+## Workflow, event and data platforms
+
+These run code on events or share data, and are compared on what starts work, who may change it and what it may do.
+
+- [Pipedream](./pipedream.md), closed source integration platform. Workflows from HTTP requests, schedules and app events, with code steps and prebuilt actions.
+- [Windmill](./windmill.md), open source developer platform. Scripts in many languages as webhooks, schedules, workflows and apps.
+- [Trigger.dev](./trigger_dev.md), open source background tasks. Durable TypeScript tasks with retries, queues and schedules.
+- [Inngest](./inngest.md), source available durable functions. Event driven functions in your application, run step by step.
+- [Temporal](./temporal.md), open source durable execution. Workflows as code that survive failures.
+- [Retool Workflows](./retool_workflows.md), closed source automation. Code and query blocks on schedules and webhooks, next to Retool apps.
+- [Hookdeck](./hookdeck.md), closed source event gateway. Receives, queues, retries and routes webhooks.
+- [Heroku Dataclips](./heroku_dataclips.md), closed source shared queries. Saved SQL over Heroku Postgres, shared by link.
+- [Supabase](./supabase.md), open source Postgres platform. Database, auth, storage, functions and row level security.
+- [Databricks](./databricks.md), closed source data platform. A lakehouse, Lakebase and agents on governed data.
+
 ## What EYG cloud does not do yet
 
 - Run shell commands. Programs only have EYG effects, an agent cannot install a package or run a binary.
 - Interactive approvals. Gates decide immediately, there is no prompt to approve an action.
-- Many platforms. The example chat and Slack plug into the channel interface, others need a plugin, see the [channel plugin guide](../channel_plugins.md).
+- Many platforms. The example chat, Slack, Discord and WhatsApp plug into the channel interface, others need a plugin, see the [channel plugin guide](../channel_plugins.md).
+  Any service that can call a URL can send events to a [webhook connection](../connections/webhooks.md).
 - Accounts. The web shell signs people in by name, put it behind your own authentication.
