@@ -49,6 +49,7 @@ pub fn describe(reason) -> String {
       "Aborted with reason: " <> inspect(reason)
     break.UnhandledEffect(effect, lift) ->
       "unhandled effect " <> effect <> "(" <> inspect(lift) <> ")"
+    break.ImpureQuery(label) -> "effect in query rule: " <> label
     break.Vacant -> "tried to run a todo"
     break.Unrepresentable(..) -> "integer out of range"
   }
@@ -81,6 +82,7 @@ pub fn hint(reason) -> String {
       "handle the abort effect or avoid performing it in this runtime"
     break.UnhandledEffect(_, _) ->
       "handle this effect or run the program in a runtime that supports it"
+    break.ImpureQuery(_) -> "query rule heads and predicates must be pure"
     break.Vacant ->
       "replace the todo with an expression before running the program"
     break.Unrepresentable(..) ->
@@ -115,6 +117,14 @@ fn to_doc(value: v.Value(_, _), depth: Int) -> Document {
         v.Tagged(label, inner) ->
           doc.from_string(label)
           |> doc.append(wrap("(", to_doc(inner, depth + 1), ")"))
+        v.Table(facts, rules) ->
+          doc.from_string(
+            "Table("
+            <> int.to_string(dict.size(facts))
+            <> " relations, "
+            <> int.to_string(list.length(rules))
+            <> " rules)",
+          )
         v.Record(fields) -> record_doc(fields, depth)
         v.LinkedList(items) -> list_doc(items, depth)
         v.Closure(param, _, _) -> doc.from_string("fn(" <> param <> ") { ... }")

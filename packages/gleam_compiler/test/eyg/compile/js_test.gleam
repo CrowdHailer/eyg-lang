@@ -4,6 +4,7 @@ import eyg/parser
 import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/javascript/array.{type Array}
+import gleam/json
 import gleam/list
 import gleam/pair
 import gleeunit/should
@@ -64,6 +65,66 @@ fn test_eval(source, evaled) {
   |> eval()
   |> should.be_ok()
   |> should.equal(evaled)
+}
+
+pub fn query_fact_set_test() {
+  test_eval(
+    "resolve Number @{ fact Number(1), fact Number(1), fact Number(2) }",
+    list([1, 2], dynamic.int),
+  )
+}
+
+pub fn query_recursive_join_test() {
+  test_eval(
+    "let view = @{
+    rule Reach({from, to}) { var from var to Edge({from, to}) }
+    rule Reach({from, to}) {
+      var from var to var middle
+      Edge({from, to: middle}), Reach({from: middle, to})
+    }
+  }
+  resolve Out @{
+    view, fact Edge({from: 1, to: 2}), fact Edge({from: 2, to: 3}),
+    rule Out(to) { var to Reach({from: 1, to}) }
+  }",
+    list([2, 3], dynamic.int),
+  )
+}
+
+pub fn query_pure_head_and_boolean_predicates_test() {
+  test_eval(
+    "resolve Out @{
+    fact Number(2),
+    rule Out(!int_add(n, 1)) { var n Number(n), True({}) },
+    rule Out(100) { False({}) }
+  }",
+    list([3], dynamic.int),
+  )
+}
+
+pub fn unchecked_query_effects_cannot_reach_the_host_or_outer_handler_test() {
+  list.each(
+    [
+      "resolve Out @{ rule Out(perform Nope({})) {} }",
+      "handle Nope((_, resume) -> { resume(1) }, (_) -> {
+      resolve Out @{ rule Out(perform Nope({})) {} }
+    })",
+    ],
+    fn(source) {
+      let program = source |> parser.all_from_string |> should.be_ok
+      let code =
+        compiler.to_js(program, dict.new(), "() => { calls++; return 1; }")
+      let script =
+        "(() => { let calls = 0; try { eval("
+        <> json.to_string(json.string(code))
+        <> "); return 'unexpected success'; } catch (e) { return calls + ':' + e.eygBreak?.ImpureQuery; } })()"
+      script |> eval |> should.be_ok |> should.equal(dynamic.string("0:Nope"))
+    },
+  )
+}
+
+pub fn several_let_bindings_in_an_argument_test() {
+  test_eval("!int_add(1, let a = 2 let b = 3 !int_add(a, b))", dynamic.int(6))
 }
 
 pub fn literal_test() {

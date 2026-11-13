@@ -38,6 +38,15 @@ pub fn small_record_test() {
   |> should.equal("{name: String, age: Integer}")
 }
 
+pub fn polymorphic_table_relations_are_separated_test() {
+  let row = t.record([#("from", t.Var(0)), #("to", t.Var(1))])
+  t.Table(t.do_rows([#("Edge", row), #("Reachable", row)], t.Var(2)))
+  |> debug.render(120)
+  |> should.equal(
+    "Table({Edge: {from: 0, to: 1}, Reachable: {from: 0, to: 1}, ..2})",
+  )
+}
+
 pub fn small_union_test() {
   t.option(t.Integer)
   |> debug.render(80)

@@ -44,6 +44,7 @@ fn to_doc(typ) -> Document {
     t.Fun(from, eff, to) -> function_doc(to, [#(from, eff)])
     t.Union(row) ->
       wrap("[", row_docs(row) |> doc.join(with: doc.break(" | ", " |")), "]")
+    t.Table(row) -> wrap("Table(", to_doc(t.Record(row)), ")")
     t.Record(row) -> separated(row_docs(row), "{", "}")
     // Rows can be rendered as any mismatch in errors
     t.EffectExtend(_, _, _) -> wrap("<", effects_doc(typ), ">")

@@ -185,6 +185,7 @@ pub fn top_content(projection) {
           call_with(),
         ]
         e.Builtin(_) -> [edit(), call_function(), call_with()]
+        e.Query(_) -> [call_function(), call_with()]
         e.List(_, _) | e.Record(_, _) -> [toggle_spread(), call_with()]
         e.Select(_, _) -> [select_field(), call_function(), call_with()]
         e.Tag(_) -> [edit(), call_with()]

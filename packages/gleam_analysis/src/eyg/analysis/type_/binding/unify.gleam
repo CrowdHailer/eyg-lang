@@ -65,6 +65,8 @@ fn do_unify(ts, level, bindings) -> Result(dict.Dict(Int, binding.Binding), _) {
         t.List(el1), _, t.List(el2), _ ->
           do_unify([#(el1, el2), ..ts], level, bindings)
         t.Empty, _, t.Empty, _ -> do_unify(ts, level, bindings)
+        t.Table(rows1), _, t.Table(rows2), _ ->
+          do_unify([#(rows1, rows2), ..ts], level, bindings)
         t.Record(rows1), _, t.Record(rows2), _ ->
           do_unify([#(rows1, rows2), ..ts], level, bindings)
         t.Union(rows1), _, t.Union(rows2), _ ->
@@ -135,6 +137,7 @@ fn do_occurs_and_levels(i, level, types, bindings) {
         t.Binary -> do_occurs_and_levels(i, level, types, bindings)
         t.String -> do_occurs_and_levels(i, level, types, bindings)
         t.List(el) -> do_occurs_and_levels(i, level, [el, ..types], bindings)
+        t.Table(row) -> do_occurs_and_levels(i, level, [row, ..types], bindings)
         t.Record(row) ->
           do_occurs_and_levels(i, level, [row, ..types], bindings)
         t.Union(row) -> do_occurs_and_levels(i, level, [row, ..types], bindings)

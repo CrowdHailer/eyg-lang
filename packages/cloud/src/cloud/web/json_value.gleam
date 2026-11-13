@@ -37,6 +37,7 @@ pub fn to_json(value: data.Value) -> json.Json {
     v.Tagged("True", v.Record(_)) -> json.bool(True)
     v.Tagged("False", v.Record(_)) -> json.bool(False)
     v.Tagged(tag, inner) -> json.object([#(tag, to_json(inner))])
+    v.Table(..) -> json.string("<table>")
     v.Closure(..) | v.Partial(..) -> json.string("<function>")
   }
 }
