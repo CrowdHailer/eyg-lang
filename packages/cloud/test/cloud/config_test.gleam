@@ -134,6 +134,7 @@ pub fn secrets_are_placeholders_in_channels_test() {
       fn(_) { Ok("m") },
       execute.no_files(),
       execute.no_triggers(),
+      execute.no_schedules(),
     )
   let #(execute.Run(result:, ..), _) =
     execute.run(

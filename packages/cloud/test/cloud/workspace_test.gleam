@@ -92,13 +92,19 @@ fn detach(workspace) {
   process.unlink(pid)
 }
 
+/// Stop a workspace and its sessions, so schedules do not outlive the test.
+fn stop(workspace) {
+  let assert Ok(pid) = process.subject_owner(workspace)
+  process.kill(pid)
+}
+
 fn start(completions) {
+  start_file("test/fixtures/chat_workspace.eyg", completions)
+}
+
+fn start_file(file, completions) {
   let load =
-    config.loader(
-      "test/fixtures/chat_workspace.eyg",
-      test_helpers.state(),
-      fn(_) { Error("no secrets") },
-    )
+    config.loader(file, test_helpers.state(), fn(_) { Error("no secrets") })
   let #(completer, seen) = model(completions)
   let assert Ok(workspace) = workspace.start_with(load, completer)
   detach(workspace)
@@ -403,4 +409,52 @@ pub fn patterns_cannot_perform_effects_test() {
   assert process.receive(posts, 1000) == Ok(#(thread("m1"), "Ok({})"))
   process.send(workspace, workspace.Inbound(message("m2", "hello")))
   assert process.receive(posts, 300) == Error(Nil)
+}
+
+pub fn timeouts_message_the_session_test() {
+  let #(workspace, posts, seen) =
+    start([chat.Completion("", "", [run_call("perform Post(\"Oven!\")")])])
+  invoke(
+    workspace,
+    "m1",
+    "perform Timeout({name: \"remind\", after: 50, message: \"check the oven\"})",
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "Ok({})"))
+  let assert Ok(input) = process.receive(seen, 1000)
+  assert string.ends_with(input, "[timeout remind] check the oven")
+  assert process.receive(posts, 1000) == Ok(#(general, "Oven!"))
+}
+
+pub fn crons_repeat_until_cancelled_test() {
+  let #(workspace, posts, seen) = start([chat.Completion("", "Quiet.", [])])
+  invoke(
+    workspace,
+    "m1",
+    "perform Cron({name: \"tick\", schedule: \"* * * * * *\", message: \"tick\"})",
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "Ok({})"))
+  let assert Ok(first) = process.receive(seen, 2000)
+  assert string.ends_with(first, "[cron tick] tick")
+  let assert Ok(second) = process.receive(seen, 2000)
+  assert string.ends_with(second, "[cron tick] tick")
+  invoke(workspace, "m2", "perform CancelSchedule(\"tick\")")
+  assert process.receive(posts, 1000) == Ok(#(thread("m2"), "Ok({})"))
+  // A turn may already be queued, after that no more.
+  let _ = process.receive(seen, 1100)
+  assert process.receive(seen, 1500) == Error(Nil)
+  stop(workspace)
+}
+
+pub fn configured_crons_message_existing_sessions_test() {
+  let #(workspace, _posts, seen) =
+    start_file("test/fixtures/cron_workspace.eyg", [
+      chat.Completion("", "Quiet.", []),
+    ])
+  // There is no session for general until a message is posted.
+  assert process.receive(seen, 1500) == Error(Nil)
+  process.send(workspace, workspace.Inbound(message("m1", "morning")))
+  let assert Ok(_) = process.receive(seen, 1000)
+  let assert Ok(input) = process.receive(seen, 2000)
+  assert input == "[cron standup] Time for standup."
+  stop(workspace)
 }

@@ -1,0 +1,7 @@
+let cloud = import "../../../../eyg_packages/cloud/index.eyg"
+
+{
+  llm: {provider: Ollama({origin: "http://localhost:11434", api_key: None({})}), model: "test"},
+  crons: [{name: "standup", schedule: "* * * * * *", channel: "general", message: "Time for standup."}],
+  channel: (info) -> { {handle: cloud.handlers.for_channel(info), channel_shell: cloud.shell.everything} }
+}

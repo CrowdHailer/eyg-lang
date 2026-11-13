@@ -18,6 +18,7 @@ pub fn evaluate(code) {
       fn(_) { Error("no posting") },
       execute.no_files(),
       execute.no_triggers(),
+      execute.no_schedules(),
     )
   let #(execute.Run(result:, ..), _) =
     execute.run(code, [], execute.unrestricted(), host, state())
@@ -40,6 +41,7 @@ fn recording_host() {
       },
       execute.no_files(),
       execute.no_triggers(),
+      execute.no_schedules(),
     )
   #(host, posts)
 }
@@ -171,6 +173,7 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
         fn(_) { Error("Configuration cannot post") },
         execute.no_files(),
         execute.no_triggers(),
+        execute.no_schedules(),
       ),
       state,
     )

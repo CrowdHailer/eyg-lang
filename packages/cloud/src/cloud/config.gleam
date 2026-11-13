@@ -7,6 +7,8 @@
 //// - `channel` a function from `{platform, id, name}` to the channel's configuration.
 //// - `files` optional, a directory relative to the workspace file that the
 ////   workspace's shared file system starts with.
+//// - `crons` optional, a list of `{name, schedule, channel, message}` records,
+////   the message is sent to the named channel's session on the cron schedule, see `cloud/cron`.
 ////
 //// The channel configuration is a record with:
 ////
@@ -42,8 +44,14 @@ pub type Workspace {
     channel: execute.Value,
     /// The host directory the workspace's file system starts with.
     files: Option(String),
+    crons: List(Cron),
     state: execute.State,
   )
+}
+
+/// A message sent to a channel's session on a schedule.
+pub type Cron {
+  Cron(name: String, schedule: String, channel: String, message: String)
 }
 
 /// Evaluates the workspace configuration.
@@ -113,7 +121,19 @@ fn decode(value, directory, state) {
       |> result.map(fn(path) { Some(filepath.join(directory, path)) })
     Error(_) -> Ok(None)
   })
-  Ok(Workspace(llm:, readme:, channel:, files:, state:))
+  use crons <- result.try(case cast.field("crons", Ok, value) {
+    Ok(_) -> field("crons", cast.as_list_of(_, decode_cron), value)
+    Error(_) -> Ok([])
+  })
+  Ok(Workspace(llm:, readme:, channel:, files:, crons:, state:))
+}
+
+fn decode_cron(value) {
+  use name <- result.try(cast.field("name", cast.as_string, value))
+  use schedule <- result.try(cast.field("schedule", cast.as_string, value))
+  use channel <- result.try(cast.field("channel", cast.as_string, value))
+  use message <- result.try(cast.field("message", cast.as_string, value))
+  Ok(Cron(name:, schedule:, channel:, message:))
 }
 
 /// Call the workspace's `channel` function for one channel.

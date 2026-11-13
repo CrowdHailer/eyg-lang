@@ -21,6 +21,8 @@ let pass = policy.pass
 let everything = {
   add_trigger: pass,
   append_file: pass,
+  cancel_schedule: pass,
+  cron: pass,
   cwd: pass,
   delegate: pass,
   delete_file: pass,
@@ -40,6 +42,7 @@ let everything = {
   standard_out: pass,
   start_trigger: pass,
   stop_trigger: pass,
+  timeout: pass,
   write_file: pass,
   ..reject_all
 }

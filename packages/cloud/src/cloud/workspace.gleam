@@ -11,6 +11,7 @@ import cloud/agent
 import cloud/beam/execute
 import cloud/channel.{type Conversation}
 import cloud/config
+import cloud/cron
 import cloud/data
 import cloud/files
 import cloud/handler
@@ -22,12 +23,14 @@ import cloud/work
 import eyg/interpreter/simple_debug
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor
 import gleam/result
 import gleam/string
+import gleam/time/timestamp
 
 pub type Message {
   /// A platform plugin has started, outbound operations for the platform are now available.
@@ -47,6 +50,40 @@ pub type Message {
     reply: Subject(Result(Nil, String)),
   )
   ListTriggers(channel: config.ChannelInfo, reply: Subject(List(Trigger)))
+  /// Check cron schedules, sent every second.
+  Tick
+  AddSchedule(
+    session: String,
+    name: String,
+    timing: Timing,
+    message: String,
+    reply: Subject(Result(Nil, String)),
+  )
+  CancelSchedule(
+    session: String,
+    name: String,
+    reply: Subject(Result(Nil, String)),
+  )
+  /// A timeout has elapsed.
+  Fire(session: String, name: String)
+}
+
+pub type Timing {
+  Repeating(cron.Schedule)
+  /// Send once after the milliseconds.
+  Once(Int)
+}
+
+/// Who a scheduled message is sent to.
+type Target {
+  /// The session with this key.
+  Session(String)
+  /// The session of the channel with this name, if it has one.
+  ChannelNamed(String)
+}
+
+type Scheduled {
+  Scheduled(target: Target, timing: Timing, message: String)
 }
 
 type State {
@@ -59,6 +96,10 @@ type State {
     /// Triggers per channel, keyed by `platform:channel`.
     /// A channel's configured triggers are installed when its first event arrives.
     triggers: Dict(String, List(Trigger)),
+    /// Scheduled messages, keyed by the session that scheduled them and a name.
+    schedules: Dict(#(String, String), Scheduled),
+    /// The session key of each channel's top level conversation, by channel name.
+    channels: Dict(String, String),
     complete: agent.Completer,
   )
 }
@@ -71,8 +112,18 @@ pub fn start_with(
   load: config.Loader,
   complete: agent.Completer,
 ) -> Result(Subject(Message), String) {
-  // Only the seed directory, a string, leaves this process.
-  use seed <- result.try(load() |> result.map(fn(config) { config.files }))
+  // Only Gleam data, not EYG values, leaves this process.
+  use #(seed, crons) <- result.try(
+    load() |> result.map(fn(config) { #(config.files, config.crons) }),
+  )
+  use schedules <- result.try(
+    list.try_map(crons, fn(c) {
+      use schedule <- result.map(cron.parse(c.schedule))
+      let scheduled =
+        Scheduled(ChannelNamed(c.channel), Repeating(schedule), c.message)
+      #(#("workspace", c.name), scheduled)
+    }),
+  )
   use files <- result.try(files.start(seed))
   actor.new_with_initialiser(1000, fn(self) {
     let changes = process.new_subject()
@@ -81,6 +132,7 @@ pub fn start_with(
       process.new_selector()
       |> process.select(self)
       |> process.select_map(changes, FileChanged)
+    process.send_after(self, until_next_second(), Tick)
     State(
       self:,
       load:,
@@ -88,6 +140,8 @@ pub fn start_with(
       sessions: dict.new(),
       files:,
       triggers: dict.new(),
+      schedules: dict.from_list(schedules),
+      channels: dict.new(),
       complete:,
     )
     |> actor.initialised
@@ -159,6 +213,60 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
       process.send(reply, channel_triggers(state, trigger_key(info)))
       state
     }
+    Tick -> {
+      process.send_after(state.self, until_next_second(), Tick)
+      let now = timestamp.system_time()
+      dict.each(state.schedules, fn(key, scheduled) {
+        case scheduled.timing {
+          Repeating(schedule) ->
+            case cron.matches(schedule, now) {
+              True -> deliver(state, key.1, scheduled)
+              False -> Nil
+            }
+          Once(_) -> Nil
+        }
+      })
+      state
+    }
+    AddSchedule(session:, name:, timing:, message:, reply:) -> {
+      process.send(reply, Ok(Nil))
+      case timing {
+        Once(after) ->
+          process.send_after(state.self, int.max(after, 0), Fire(session, name))
+        Repeating(_) -> process.send_after(state.self, 0, Tick)
+      }
+      let scheduled = Scheduled(Session(session), timing, message)
+      State(
+        ..state,
+        schedules: dict.insert(state.schedules, #(session, name), scheduled),
+      )
+    }
+    CancelSchedule(session:, name:, reply:) ->
+      case dict.has_key(state.schedules, #(session, name)) {
+        True -> {
+          process.send(reply, Ok(Nil))
+          State(
+            ..state,
+            schedules: dict.delete(state.schedules, #(session, name)),
+          )
+        }
+        False -> {
+          process.send(reply, Error("no schedule named " <> name))
+          state
+        }
+      }
+    Fire(session:, name:) ->
+      case dict.get(state.schedules, #(session, name)) {
+        Ok(Scheduled(timing: Once(_), ..) as scheduled) -> {
+          deliver(state, name, scheduled)
+          State(
+            ..state,
+            schedules: dict.delete(state.schedules, #(session, name)),
+          )
+        }
+        // Cancelled, or replaced by a repeating schedule.
+        _ -> state
+      }
   }
   |> actor.continue
 }
@@ -225,7 +333,8 @@ fn perform_work(
     }
     work.Post(thread, text) -> {
       let conversation = channel.Conversation(..origin, thread:)
-      let host = host(state, outbound, conversation, info)
+      let host =
+        host(state, outbound, conversation, info, channel.key(conversation))
       case
         shell.prepare(
           state.load,
@@ -284,7 +393,7 @@ fn perform_work(
       let conversation = channel.Conversation(..origin, thread:)
       let #(session, state) = session_for(state, conversation, outbound, info)
       let reply = channel.Conversation(..origin, thread: reply)
-      let host = host(state, outbound, reply, info)
+      let host = host(state, outbound, reply, info, channel.key(conversation))
       let #(load, complete) = #(state.load, state.complete)
       // Only plain data and host operations cross this boundary, never the handler closure.
       process.spawn(fn() {
@@ -354,13 +463,40 @@ fn set_active(triggers: List(Trigger), name, active) {
   })
 }
 
+fn until_next_second() {
+  let #(_, nanoseconds) =
+    timestamp.system_time() |> timestamp.to_unix_seconds_and_nanoseconds
+  1000 - nanoseconds / 1_000_000
+}
+
+/// Send a scheduled message to its session, if the session exists.
+fn deliver(state: State, name, scheduled: Scheduled) -> Nil {
+  let key = case scheduled.target {
+    Session(key) -> Ok(key)
+    ChannelNamed(channel) -> dict.get(state.channels, channel)
+  }
+  case result.try(key, dict.get(state.sessions, _)) {
+    Ok(session) -> {
+      let kind = case scheduled.timing {
+        Repeating(_) -> "cron"
+        Once(_) -> "timeout"
+      }
+      let text = "[" <> kind <> " " <> name <> "] " <> scheduled.message
+      process.send(session, session.Input(text))
+    }
+    Error(Nil) ->
+      io.println_error("schedule " <> name <> " has no session to send to")
+  }
+}
+
 /// Run the script of each active trigger whose pattern matches the event, in the event message's thread.
 /// Each trigger is matched and run in its own process.
 fn run_triggers(state: State, event, conversation, outbound, info) -> Nil {
   channel_triggers(state, trigger_key(info))
   |> list.filter(fn(t) { t.active })
   |> list.each(fn(t) {
-    let host = host(state, outbound, conversation, info)
+    let key = channel.key(conversation)
+    let host = host(state, outbound, conversation, info, key)
     let #(load, complete) = #(state.load, state.complete)
     process.spawn(fn() {
       let location =
@@ -416,11 +552,15 @@ fn session_for(
           location: location(info, conversation),
           load: state.load,
           complete: state.complete,
-          host: host(state, outbound, conversation, info),
+          host: host(state, outbound, conversation, info, key),
         )
       let assert Ok(session) = session.start(setup)
       let sessions = dict.insert(state.sessions, key, session)
-      #(session, State(..state, sessions:))
+      let channels = case conversation.thread {
+        None -> dict.insert(state.channels, info.name, key)
+        Some(_) -> state.channels
+      }
+      #(session, State(..state, sessions:, channels:))
     }
   }
 }
@@ -436,9 +576,10 @@ fn option_thread(conversation: Conversation) {
   }
 }
 
-/// The host for programs run from a conversation.
-/// File changes are made as the channel and triggers are added to the channel.
-fn host(state: State, outbound: channel.Outbound, conversation, info) {
+/// The host for programs run from a conversation, posts go to `conversation`.
+/// File changes are made as the channel, triggers are added to the channel
+/// and scheduled messages are sent to the session with key `session`.
+fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
   let config.ChannelInfo(name:, ..) = info
   let self = state.self
   let triggers =
@@ -449,10 +590,26 @@ fn host(state: State, outbound: channel.Outbound, conversation, info) {
       },
       list: fn() { process.call(self, 5000, ListTriggers(info, _)) },
     )
+  let schedules =
+    execute.Schedules(
+      cron: fn(name, spec, message) {
+        use schedule <- result.try(cron.parse(spec))
+        let timing = Repeating(schedule)
+        process.call(self, 5000, AddSchedule(session, name, timing, message, _))
+      },
+      timeout: fn(name, after, message) {
+        let timing = Once(after)
+        process.call(self, 5000, AddSchedule(session, name, timing, message, _))
+      },
+      cancel: fn(name) {
+        process.call(self, 5000, CancelSchedule(session, name, _))
+      },
+    )
   execute.channel_host(
     outbound.post(conversation, _),
     execute.files(state.files, "#" <> name),
     triggers,
+    schedules,
   )
 }
 

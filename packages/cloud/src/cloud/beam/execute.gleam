@@ -87,6 +87,11 @@ pub type Effect {
   ListTriggers
   /// Run a subagent with the channel shell to complete a task, returns its final reply.
   Delegate(task: String)
+  /// Send a message to the program's session on a cron schedule.
+  Cron(name: String, schedule: String, message: String)
+  /// Send a message to the program's session once, after a number of milliseconds.
+  Timeout(name: String, after: Int, message: String)
+  CancelSchedule(name: String)
 }
 
 /// Implementations of effects that need the cloud's services.
@@ -97,6 +102,24 @@ pub type Host {
     files: Files,
     triggers: Triggers,
     subagent: fn(String) -> Result(String, String),
+    schedules: Schedules,
+  )
+}
+
+/// Messages scheduled for the program's session, see `cloud/cron` for schedules.
+pub type Schedules {
+  Schedules(
+    cron: fn(String, String, String) -> Result(Nil, String),
+    timeout: fn(String, Int, String) -> Result(Nil, String),
+    cancel: fn(String) -> Result(Nil, String),
+  )
+}
+
+pub fn no_schedules() -> Schedules {
+  Schedules(
+    cron: fn(_, _, _) { Error("Schedules are not available") },
+    timeout: fn(_, _, _) { Error("Schedules are not available") },
+    cancel: fn(_) { Error("Schedules are not available") },
   )
 }
 
@@ -166,6 +189,7 @@ pub fn channel_host(
   post: fn(String) -> Result(String, String),
   files: Files,
   triggers: Triggers,
+  schedules: Schedules,
 ) -> Host {
   Host(
     post:,
@@ -173,6 +197,7 @@ pub fn channel_host(
     files:,
     triggers:,
     subagent: no_subagent,
+    schedules:,
   )
 }
 
@@ -186,6 +211,7 @@ pub fn configuration_host(
     files: no_files(),
     triggers: no_triggers(),
     subagent: no_subagent,
+    schedules: no_schedules(),
   )
 }
 
@@ -211,7 +237,55 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
     trigger_update("DeleteTrigger", DeleteTrigger),
     list_triggers(),
     delegate_interface(),
+    cron(),
+    timeout(),
+    cancel_schedule(),
   ])
+}
+
+fn cron() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Cron",
+    lift_type: t.record([
+      #("name", t.String),
+      #("schedule", t.String),
+      #("message", t.String),
+    ]),
+    lower_type: t.result(t.unit, t.String),
+    decode: fn(value) {
+      use name <- result.try(cast.field("name", cast.as_string, value))
+      use schedule <- result.try(cast.field("schedule", cast.as_string, value))
+      use message <- result.try(cast.field("message", cast.as_string, value))
+      Ok(Cron(name:, schedule:, message:))
+    },
+  )
+}
+
+fn timeout() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Timeout",
+    lift_type: t.record([
+      #("name", t.String),
+      #("after", t.Integer),
+      #("message", t.String),
+    ]),
+    lower_type: t.result(t.unit, t.String),
+    decode: fn(value) {
+      use name <- result.try(cast.field("name", cast.as_string, value))
+      use after <- result.try(cast.field("after", cast.as_integer, value))
+      use message <- result.try(cast.field("message", cast.as_string, value))
+      Ok(Timeout(name:, after:, message:))
+    },
+  )
+}
+
+fn cancel_schedule() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "CancelSchedule",
+    lift_type: t.String,
+    lower_type: t.result(t.unit, t.String),
+    decode: cast.map(cast.as_string, CancelSchedule),
+  )
 }
 
 fn add_trigger() -> interface.Interface(Effect, Meta) {
@@ -278,6 +352,8 @@ fn post() -> interface.Interface(Effect, Meta) {
 pub const rules = [
   #("AddTrigger", policy.PolicyField("add_trigger")),
   #("AppendFile", policy.PolicyField("append_file")),
+  #("CancelSchedule", policy.PolicyField("cancel_schedule")),
+  #("Cron", policy.PolicyField("cron")),
   #("CWD", policy.PolicyField("cwd")),
   #("DecodeJSON", policy.Unchecked),
   #("Delegate", policy.PolicyField("delegate")),
@@ -299,6 +375,7 @@ pub const rules = [
   #("StandardError", policy.PolicyField("standard_error")),
   #("StandardOut", policy.PolicyField("standard_out")),
   #("StopTrigger", policy.PolicyField("stop_trigger")),
+  #("Timeout", policy.PolicyField("timeout")),
   #("WriteFile", policy.PolicyField("write_file")),
 ]
 
@@ -578,6 +655,11 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
       Ok(#(v.LinkedList(list.map(described, v.String)), []))
     }
     Delegate(task) -> Ok(#(result_string(host.subagent(task)), []))
+    Cron(name:, schedule:, message:) ->
+      Ok(#(result_unit(host.schedules.cron(name, schedule, message)), []))
+    Timeout(name:, after:, message:) ->
+      Ok(#(result_unit(host.schedules.timeout(name, after, message)), []))
+    CancelSchedule(name) -> Ok(#(result_unit(host.schedules.cancel(name)), []))
     Computer(effect) ->
       case effect {
         computer.StandardOut(text) ->

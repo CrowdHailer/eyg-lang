@@ -2,6 +2,9 @@
 let reject = (_) -> { Reject({}) }
 {
   reject_all: {
+    cancel_schedule: reject,
+    cron: reject,
+    timeout: reject,
     add_trigger: reject,
     delete_trigger: reject,
     start_trigger: reject,
