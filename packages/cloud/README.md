@@ -6,16 +6,22 @@ and events from GitHub, Bluesky, RSS feeds, Hacker News and Lobsters run trigger
 Everything a workspace does, which model it uses, what it connects to and what each channel may do, is configured in EYG.
 
 ```sh
-WORKSPACE=../../examples/cloud/workspace.eyg gleam run
+CLOUD=../../examples/cloud/cloud.eyg gleam run
 ```
+
+A cloud runs the workspaces listed in `cloud.eyg`, see [`cloud/instance`](./src/cloud/instance.gleam).
+People sign in at `/login` to the [web shell](../../guides/cloud/web_shell.md), the first person is the admin.
+Everything can be read and changed with the [configuration API](../../guides/cloud/api.md),
+from the web shell, from a channel whose shell allows it and over HTTP.
 
 Start with the [example workspace](../../examples/cloud/README.md).
 Coming from another agent gateway, see migrating from [OpenClaw](../../guides/cloud/from_openclaw.md) or [Hermes Agent](../../guides/cloud/from_hermes.md).
 
 | Variable | Purpose |
 | --- | --- |
-| `WORKSPACE` | The workspace configuration, defaults to `workspace.eyg` |
-| `PORT` / `CLOUD_ORIGIN` | Where artifacts and webhooks are served, defaults to port 8081 |
+| `CLOUD` | The cloud configuration, defaults to `cloud.eyg` |
+| `WORKSPACE` | Without a `cloud.eyg`, run this one workspace, defaults to `workspace.eyg` |
+| `PORT` / `CLOUD_ORIGIN` | Where the web shell, API, artifacts and webhooks are served, defaults to port 8081 |
 | `CLOUD_DATA` | The data directory holding secrets, defaults to `.data` next to the workspace file |
 | `EYG_ORIGIN` | The hub packages are loaded from, defaults to `https://eyg.run` |
 
@@ -73,6 +79,8 @@ and `shell.writes_under(roots, shell)`, and network secrets in `secrets`.
 | `AddTrigger`, `StopTrigger`, `StartTrigger`, `DeleteTrigger`, `ListTriggers` | `add_trigger` ... | The channel's triggers |
 | `Delegate(task)` | `delegate` | Run a subagent with the channel shell, returns its final reply |
 | `Events(connection)` | `events` | The logged events of a connection, newest first |
+| `Workspaces`, `Connections`, `SetWorkspaceSource`, `SetSecret` ... | `workspaces` ... | The [configuration API](../../guides/cloud/api.md) |
+| `Bind({workspace, channel})`, `Unbind({})` | `bind`, `unbind` | Web shells only, run as a channel |
 | `Cron`, `Timeout`, `CancelSchedule` | `cron` ... | Messages sent to the program's session later |
 | `Artifact({name, bundle})`, `ShareArtifact(name)` | `artifact`, `share_artifact` | Versioned HTML pages served by the cloud |
 | `DecodeJSON`, `Hash` | | Always available |

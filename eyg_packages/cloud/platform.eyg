@@ -2,6 +2,20 @@
 let reject = (_) -> { Reject({}) }
 {
   reject_all: {
+    bind: reject,
+    unbind: reject,
+    workspaces: reject,
+    workspace_source: reject,
+    set_workspace_source: reject,
+    channels: reject,
+    connections: reject,
+    workspace_triggers: reject,
+    secrets: reject,
+    set_secret: reject,
+    delete_secret: reject,
+    users: reject,
+    shells: reject,
+    set_user_shell: reject,
     artifact: reject,
     share_artifact: reject,
     cancel_schedule: reject,

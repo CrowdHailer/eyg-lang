@@ -1,0 +1,10 @@
+let cloud = import "../../../../eyg_packages/cloud/index.eyg"
+let shell = cloud.shell
+
+{
+  workspaces: [{name: "test", file: "./chat_workspace.eyg"}],
+  shells: {
+    observer: {workspaces: shell.pass, bind: shell.bind_to(["general"]), ..cloud.reject_all},
+    pure: shell.pure
+  }
+}

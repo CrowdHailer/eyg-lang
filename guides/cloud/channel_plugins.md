@@ -74,6 +74,8 @@ channel
 The runtime checks `handle` against the plugin's input type and the shared work result type.
 It rejects effectful handlers, access to fields the plugin does not supply, and malformed work results.
 Every configured policy is checked against the actual effect interfaces as well.
+Uploads through `SetWorkspaceSource` check all currently connected channels before saving the source.
+A newly discovered channel is checked against its plugin's type when first admitted.
 
 Custom handlers can choose different behavior without implementing sessions.
 This example chat handler posts the author's name and ignores reactions:

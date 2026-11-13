@@ -26,6 +26,7 @@ import cloud/data
 import cloud/files
 import cloud/handler
 import cloud/invocation
+import cloud/operation
 import cloud/plugins/discord
 import cloud/plugins/example_chat
 import cloud/plugins/slack
@@ -87,6 +88,22 @@ pub type Message {
   )
   /// A webhook delivery for a connection.
   Webhook(delivery: github.Delivery, reply: Subject(Result(Nil, String)))
+  /// Give programs in this workspace the configuration API, gated by their channel shells.
+  SetApi(api: fn(operation.Operation) -> Result(data.Value, String))
+  /// Every channel of every connected chat.
+  ListChannels(reply: Subject(List(config.ChannelInfo)))
+  /// The connections the workspace started with.
+  GetConnections(reply: Subject(List(connection.Connection)))
+  /// The triggers of a channel by name.
+  ChannelTriggers(
+    channel: String,
+    reply: Subject(Result(List(Trigger), String)),
+  )
+  /// The host for a program run as a channel, for binding a web shell to it.
+  ChannelHost(
+    channel: String,
+    reply: Subject(Result(#(config.ChannelInfo, execute.Host), String)),
+  )
 }
 
 /// The most events kept per connection.
@@ -129,6 +146,7 @@ type State {
     connections: List(connection.Connection),
     /// The latest events of each connection, newest first.
     log: Dict(String, List(connection.Event)),
+    api: fn(operation.Operation) -> Result(data.Value, String),
   )
 }
 
@@ -181,6 +199,7 @@ pub fn start_with(
       complete:,
       connections:,
       log: dict.new(),
+      api: fn(_) { Error("The configuration API is not available") },
     )
     |> actor.initialised
     |> actor.selecting(selector)
@@ -377,6 +396,53 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         }
         Error(_) -> state
       }
+    }
+    SetApi(api:) -> State(..state, api:)
+    ListChannels(reply:) -> {
+      dict.to_list(state.platforms)
+      |> list.flat_map(fn(platform) {
+        let #(platform, outbound) = platform
+        outbound.channels()
+        |> result.unwrap([])
+        |> list.map(fn(c) {
+          config.ChannelInfo(
+            platform:,
+            id: c.0,
+            name: c.1,
+            input_type: outbound.input_type,
+          )
+        })
+      })
+      |> process.send(reply, _)
+      state
+    }
+    GetConnections(reply:) -> {
+      process.send(reply, state.connections)
+      state
+    }
+    ChannelTriggers(channel: name, reply:) ->
+      case find_channel(state, name) {
+        Ok(#(_outbound, info)) -> {
+          let state = install(state, info)
+          process.send(reply, Ok(channel_triggers(state, trigger_key(info))))
+          state
+        }
+        Error(Nil) -> {
+          process.send(reply, Error("no channel named " <> name))
+          state
+        }
+      }
+    ChannelHost(channel: name, reply:) -> {
+      case find_channel(state, name) {
+        Ok(#(outbound, info)) -> {
+          let conversation = channel.Conversation(info.platform, info.id, None)
+          let key = channel.key(conversation)
+          Ok(#(info, host(state, outbound, conversation, info, key)))
+        }
+        Error(Nil) -> Error("no channel named " <> name)
+      }
+      |> process.send(reply, _)
+      state
     }
     ReadEvents(connection: name, reply:) -> {
       case list.any(state.connections, fn(c) { c.name == name }) {
@@ -815,9 +881,13 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
       schedules,
       execute.artifacts(state.artifacts, artifacts.Channel(key, name)),
     )
-  execute.Host(..host, events: fn(connection) {
-    process.call(self, 5000, ReadEvents(connection, _))
-  })
+  execute.Host(
+    ..host,
+    events: fn(connection) {
+      process.call(self, 5000, ReadEvents(connection, _))
+    },
+    api: state.api,
+  )
 }
 
 /// Run a direct invocation, post its output and return a description for the agent.

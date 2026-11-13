@@ -82,10 +82,119 @@ let writes_under = (roots, shell) -> {
 // Everything except changing files.
 let read_only = writes_under([], everything)
 
+// Read the cloud's configuration with the configuration API, see guides/cloud/api.md.
+let observe = {
+  workspaces: pass,
+  workspace_source: pass,
+  channels: pass,
+  connections: pass,
+  workspace_triggers: pass,
+  secrets: pass,
+  users: pass,
+  shells: pass,
+  ..reject_all
+}
+
+// Change the cloud's configuration, for admins and trusted channels such as a founders channel.
+let configure = {
+  workspaces: pass,
+  workspace_source: pass,
+  channels: pass,
+  connections: pass,
+  workspace_triggers: pass,
+  secrets: pass,
+  users: pass,
+  shells: pass,
+  set_workspace_source: pass,
+  set_secret: pass,
+  delete_secret: pass,
+  set_user_shell: pass,
+  ..reject_all
+}
+
+// Every channel effect and the configuration API, for a trusted channel such as #founders.
+let admin = {
+  add_trigger: pass,
+  append_file: pass,
+  artifact: pass,
+  cancel_schedule: pass,
+  channels: pass,
+  connections: pass,
+  cron: pass,
+  cwd: pass,
+  delegate: pass,
+  delete_file: pass,
+  delete_secret: pass,
+  delete_trigger: pass,
+  env: pass,
+  events: pass,
+  fetch: pass,
+  flip: pass,
+  list_triggers: pass,
+  make_directory: pass,
+  now: pass,
+  post: pass,
+  random: pass,
+  read_directory: pass,
+  read_file: pass,
+  secrets: pass,
+  set_secret: pass,
+  set_user_shell: pass,
+  set_workspace_source: pass,
+  share_artifact: pass,
+  shells: pass,
+  sleep: pass,
+  standard_error: pass,
+  standard_out: pass,
+  start_trigger: pass,
+  stop_trigger: pass,
+  timeout: pass,
+  users: pass,
+  workspace_source: pass,
+  workspace_triggers: pass,
+  workspaces: pass,
+  write_file: pass,
+  ..reject_all
+}
+
+let includes = (items, item) -> {
+  !list_fold(items, False({}), (each, found) -> {
+    match found {
+      True(_) -> { True({}) }
+      False(_) -> { !equal(each, item) }
+    }
+  })
+}
+
+// A web shell gate that binds only to the named channels.
+let bind_to = (channels) -> {
+  (target) -> {
+    match includes(channels, target.channel) {
+      True(_) -> { Pass(target) }
+      False(_) -> { Mock(Error(!string_append("binding to #", !string_append(target.channel, " is not allowed")))) }
+    }
+  }
+}
+
+// Computation without access to anything outside the shell.
+let pure = {
+  now: pass,
+  random: pass,
+  flip: pass,
+  standard_out: pass,
+  standard_error: pass,
+  ..reject_all
+}
+
 {
   reject_all,
   everything,
   read_only,
+  observe,
+  configure,
+  admin,
+  bind_to,
+  pure,
   writes_under,
   offline,
   deny,

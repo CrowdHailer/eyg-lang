@@ -6,6 +6,7 @@
 
 import cloud/artifacts
 import cloud/files
+import cloud/operation
 import cloud/system
 import cloud/trigger
 import eyg/analysis/type_/isomorphic as t
@@ -90,6 +91,11 @@ pub type Effect {
   Delegate(task: String)
   /// Read the logged events of a connection, newest first.
   Events(connection: String)
+  /// An operation of the configuration API, see `cloud/operation`.
+  Operate(operation.Operation)
+  /// Run the rest of a web shell's programs as a channel of a workspace.
+  Bind(workspace: String, channel: String)
+  Unbind
   /// Send a message to the program's session on a cron schedule.
   Cron(name: String, schedule: String, message: String)
   /// Send a message to the program's session once, after a number of milliseconds.
@@ -113,7 +119,19 @@ pub type Host {
     artifacts: Artifacts,
     /// The logged events of a connection, newest first.
     events: fn(String) -> Result(List(Value), String),
+    /// Perform an operation of the configuration API.
+    api: fn(operation.Operation) -> Result(Value, String),
+    /// Bind a web shell to a channel, `None` unbinds it. Only web shells can bind.
+    bind: fn(Option(#(String, String))) -> Result(Nil, String),
   )
+}
+
+fn no_api(_operation) {
+  Error("The configuration API is not available")
+}
+
+fn no_bind(_channel) {
+  Error("Only web shells can bind to a channel")
 }
 
 fn no_events(_connection) {
@@ -243,6 +261,8 @@ pub fn channel_host(
     schedules:,
     artifacts:,
     events: no_events,
+    api: no_api,
+    bind: no_bind,
   )
 }
 
@@ -259,6 +279,8 @@ pub fn configuration_host(
     schedules: no_schedules(),
     artifacts: no_artifacts(),
     events: no_events,
+    api: no_api,
+    bind: no_bind,
   )
 }
 
@@ -290,7 +312,43 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
     cancel_schedule(),
     artifact(),
     share_artifact(),
+    bind(),
+    unbind(),
+    ..list.map(operation.specs(), operation_interface)
   ])
+}
+
+fn operation_interface(
+  spec: operation.Spec,
+) -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: spec.label,
+    lift_type: spec.lift,
+    lower_type: spec.lower,
+    decode: fn(value) { spec.decode(value) |> result.map(Operate) },
+  )
+}
+
+fn bind() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Bind",
+    lift_type: t.record([#("workspace", t.String), #("channel", t.String)]),
+    lower_type: t.result(t.unit, t.String),
+    decode: fn(value) {
+      use workspace <- result.try(cast.field("workspace", cast.as_string, value))
+      use channel <- result.map(cast.field("channel", cast.as_string, value))
+      Bind(workspace, channel)
+    },
+  )
+}
+
+fn unbind() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Unbind",
+    lift_type: t.unit,
+    lower_type: t.result(t.unit, t.String),
+    decode: cast.as_unit(_, Unbind),
+  )
 }
 
 fn artifact() -> interface.Interface(Effect, Meta) {
@@ -459,6 +517,7 @@ fn post() -> interface.Interface(Effect, Meta) {
 pub const rules = [
   #("AddTrigger", policy.PolicyField("add_trigger")),
   #("AppendFile", policy.PolicyField("append_file")),
+  #("Bind", policy.PolicyField("bind")),
   #("Artifact", policy.PolicyField("artifact")),
   #("CancelSchedule", policy.PolicyField("cancel_schedule")),
   #("Cron", policy.PolicyField("cron")),
@@ -486,7 +545,24 @@ pub const rules = [
   #("StandardOut", policy.PolicyField("standard_out")),
   #("StopTrigger", policy.PolicyField("stop_trigger")),
   #("Timeout", policy.PolicyField("timeout")),
+  #("Unbind", policy.PolicyField("unbind")),
   #("WriteFile", policy.PolicyField("write_file")),
+  ..operation_rules
+]
+
+const operation_rules = [
+  #("Workspaces", policy.PolicyField("workspaces")),
+  #("WorkspaceSource", policy.PolicyField("workspace_source")),
+  #("SetWorkspaceSource", policy.PolicyField("set_workspace_source")),
+  #("Channels", policy.PolicyField("channels")),
+  #("Connections", policy.PolicyField("connections")),
+  #("WorkspaceTriggers", policy.PolicyField("workspace_triggers")),
+  #("Secrets", policy.PolicyField("secrets")),
+  #("SetSecret", policy.PolicyField("set_secret")),
+  #("DeleteSecret", policy.PolicyField("delete_secret")),
+  #("Users", policy.PolicyField("users")),
+  #("Shells", policy.PolicyField("shells")),
+  #("SetUserShell", policy.PolicyField("set_user_shell")),
 ]
 
 /// Check a complete policy before admitting it. Check gates independently so
@@ -765,6 +841,15 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
       Ok(#(v.LinkedList(list.map(described, v.String)), []))
     }
     Delegate(task) -> Ok(#(result_string(host.subagent(task)), []))
+    Operate(operation) ->
+      case host.api(operation) {
+        Ok(value) -> v.ok(value)
+        Error(reason) -> v.error(v.String(reason))
+      }
+      |> no_output
+    Bind(workspace, channel) ->
+      Ok(#(result_unit(host.bind(option.Some(#(workspace, channel)))), []))
+    Unbind -> Ok(#(result_unit(host.bind(option.None)), []))
     Events(connection) ->
       case host.events(connection) {
         Ok(events) -> v.ok(v.LinkedList(events))

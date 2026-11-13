@@ -1,0 +1,28 @@
+// The example cloud: one workspace and the shells people choose from in the web shell.
+// The first person to sign in is the admin and gets a shell with every effect.
+let cloud = import "../../eyg_packages/cloud/index.eyg"
+let shell = cloud.shell
+let pass = shell.pass
+
+{
+  workspaces: [{name: "example", file: "./workspace.eyg"}],
+  shells: {
+    // Computation only.
+    pure: shell.pure,
+    // Read the configuration of the cloud and run programs as #random.
+    observer: {
+      workspaces: pass,
+      workspace_source: pass,
+      channels: pass,
+      connections: pass,
+      workspace_triggers: pass,
+      shells: pass,
+      bind: shell.bind_to(["random"]),
+      unbind: pass,
+      standard_out: pass,
+      ..cloud.reject_all
+    },
+    // Computation and the web.
+    online: {fetch: pass, now: pass, random: pass, flip: pass, standard_out: pass, ..cloud.reject_all}
+  }
+}

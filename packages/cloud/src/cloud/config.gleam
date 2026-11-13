@@ -107,6 +107,16 @@ pub fn load(
       "Failed to read " <> file <> ": " <> simplifile.describe_error(reason)
     }),
   )
+  load_source(file, code, state, secret)
+}
+
+/// Evaluate the source of a workspace file, for checking a change before it is saved.
+pub fn load_source(
+  file: String,
+  code: String,
+  state: execute.State,
+  secret: fn(String) -> Result(String, String),
+) -> Result(Workspace, String) {
   let state = execute.State(..state, root: Some(filepath.directory_name(file)))
   let host = execute.configuration_host(secret)
   let #(execute.Run(result:, ..), state) =

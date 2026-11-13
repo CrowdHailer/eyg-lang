@@ -1,0 +1,123 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>EYG cloud configuration</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 15px/1.5 -apple-system, sans-serif; background: #1e1e2e; color: #cdd6f4; }
+  header { display: flex; gap: 16px; align-items: center; padding: 12px 24px; background: #181825; border-bottom: 1px solid #313244; }
+  header a { color: #89b4fa; }
+  main { display: grid; grid-template-columns: 220px 1fr; gap: 24px; padding: 24px; }
+  nav button { display: block; width: 100%; text-align: left; margin-bottom: 6px; }
+  section { background: #181825; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; }
+  h2 { margin: 0 0 10px; font-size: 16px; color: #f5c2e7; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #313244; vertical-align: top; }
+  button, input, select, textarea { font: inherit; background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 6px; padding: 4px 10px; }
+  button.primary { background: #89b4fa; color: #11111b; border: 0; font-weight: 600; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 360px; font: 13px/1.45 ui-monospace, Menlo, monospace; }
+  .error { color: #f38ba8; } .ok { color: #a6e3a1; } .muted { color: #7f849c; }
+  code { font: 13px ui-monospace, Menlo, monospace; color: #f9e2af; }
+</style>
+<header>
+  <strong>EYG cloud configuration</strong>
+  <span id="me" class="muted"></span>
+  <a href="/shell">Shell</a>
+  <a href="/artifacts">Artifacts</a>
+  <span class="muted">Every request is <code>POST /api/&lt;Operation&gt;</code>, gated by your shell policy.</span>
+</header>
+<main>
+  <nav><h2>Workspaces</h2><div id="workspaces"></div></nav>
+  <div id="workspace"><p class="muted">Choose a workspace.</p></div>
+</main>
+<script>
+// Call an operation of the configuration API. Results are EYG values as JSON, Ok and Error are unwrapped.
+async function api(operation, input) {
+  const response = await fetch('/api/' + operation, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: input === undefined ? '' : JSON.stringify(input),
+  });
+  const body = await response.json();
+  if (body && typeof body === 'object' && 'error' in body) throw new Error(body.error);
+  if (body && typeof body === 'object' && 'Error' in body) throw new Error(body.Error);
+  if (body && typeof body === 'object' && 'Ok' in body) return body.Ok;
+  return body;
+}
+const el = (tag, attrs = {}, ...children) => {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => k.startsWith('on') ? node.addEventListener(k.slice(2), v) : node.setAttribute(k, v));
+  children.flat().forEach(c => node.append(c instanceof Node ? c : document.createTextNode(String(c))));
+  return node;
+};
+const section = (title, ...children) => el('section', {}, el('h2', {}, title), ...children);
+const failure = (error) => el('p', { class: 'error' }, error.message);
+async function attempt(render) { try { return await render() } catch (e) { return failure(e) } }
+
+async function showWorkspace(name) {
+  const root = document.getElementById('workspace');
+  root.replaceChildren(el('p', { class: 'muted' }, 'Loading ' + name + '…'));
+  const parts = await Promise.all([
+    attempt(async () => {
+      const channels = await api('Channels', name);
+      const rows = await Promise.all(channels.map(async (c) => {
+        const triggers = await api('WorkspaceTriggers', { workspace: name, channel: c.name }).catch(() => []);
+        return el('tr', {}, el('td', {}, '#' + c.name), el('td', { class: 'muted' }, c.platform + ':' + c.id),
+          el('td', {}, triggers.map(t => t.name + (t.active ? '' : ' (stopped)')).join(', ') || '—'));
+      }));
+      return section('Channels and triggers', el('table', {}, el('tr', {}, el('th', {}, 'Channel'), el('th', {}, 'Id'), el('th', {}, 'Triggers')), rows));
+    }),
+    attempt(async () => {
+      const connections = await api('Connections', name);
+      return section('Connections', el('table', {},
+        el('tr', {}, el('th', {}, 'Name'), el('th', {}, 'Kind'), el('th', {}, 'Channel')),
+        connections.map(c => el('tr', {}, el('td', {}, c.name), el('td', {}, c.kind), el('td', {}, c.channel.Some ? '#' + c.channel.Some : 'chat')))));
+    }),
+    attempt(async () => {
+      const names = await api('Secrets', name);
+      const key = el('input', { placeholder: 'NAME' });
+      const value = el('input', { placeholder: 'value', type: 'password' });
+      const status = el('span');
+      return section('Secrets', el('p', { class: 'muted' }, 'Values are never shown, only the configuration reads them.'),
+        el('table', {}, names.map(n => el('tr', {}, el('td', {}, el('code', {}, n)),
+          el('td', {}, el('button', { onclick: async () => { await api('DeleteSecret', { workspace: name, name: n }).then(() => showWorkspace(name), e => status.replaceWith(failure(e))) } }, 'Delete'))))),
+        el('p', {}, key, ' ', value, ' ', el('button', { onclick: async () => {
+          await api('SetSecret', { workspace: name, name: key.value, value: value.value }).then(() => showWorkspace(name), e => status.replaceChildren(failure(e)));
+        } }, 'Save secret'), ' ', status));
+    }),
+    attempt(async () => {
+      const source = await api('WorkspaceSource', name);
+      const editor = el('textarea', { spellcheck: 'false' }, source);
+      const status = el('span');
+      return section('workspace.eyg', el('p', { class: 'muted' }, 'Saved only if it evaluates. Channel changes apply to the next message, connections and crons after a restart.'),
+        editor, el('p', {}, el('button', { class: 'primary', onclick: async () => {
+          status.replaceChildren('Checking…');
+          await api('SetWorkspaceSource', { workspace: name, source: editor.value }).then(
+            () => status.replaceChildren(el('span', { class: 'ok' }, 'Saved')),
+            e => status.replaceChildren(failure(e)));
+        } }, 'Save'), ' ', status));
+    }),
+  ]);
+  root.replaceChildren(el('h1', {}, name), ...parts);
+}
+
+async function showUsers() {
+  const node = await attempt(async () => {
+    const [users, shells] = await Promise.all([api('Users'), api('Shells')]);
+    return section('People', el('table', {}, users.map(u => el('tr', {}, el('td', {}, u.name),
+      el('td', {}, u.admin ? 'admin' : el('select', { onchange: (e) => api('SetUserShell', { user: u.name, shell: e.target.value }).then(showUsers) },
+        shells.map(s => { const o = el('option', { value: s }, s); if (s === u.shell) o.selected = true; return o })))))));
+  });
+  const old = document.getElementById('users');
+  node.id = 'users';
+  old ? old.replaceWith(node) : document.querySelector('nav').append(node);
+}
+
+(async () => {
+  const me = await fetch('/api/me', { headers: { accept: 'application/json' } }).then(r => r.json());
+  document.getElementById('me').textContent = me.name + (me.admin ? ' (admin)' : ' (' + me.shell + ' shell)');
+  const list = document.getElementById('workspaces');
+  list.replaceChildren(await attempt(async () => el('div', {}, (await api('Workspaces')).map(w => el('button', { onclick: () => showWorkspace(w.name) }, w.name)))));
+  await showUsers();
+})();
+</script>

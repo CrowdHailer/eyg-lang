@@ -57,6 +57,20 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.bind({}))
+  let _ = expect_reject(s.unbind({}))
+  let _ = expect_reject(s.workspaces({}))
+  let _ = expect_reject(s.workspace_source({}))
+  let _ = expect_reject(s.set_workspace_source({}))
+  let _ = expect_reject(s.channels({}))
+  let _ = expect_reject(s.connections({}))
+  let _ = expect_reject(s.workspace_triggers({}))
+  let _ = expect_reject(s.secrets({}))
+  let _ = expect_reject(s.set_secret({}))
+  let _ = expect_reject(s.delete_secret({}))
+  let _ = expect_reject(s.users({}))
+  let _ = expect_reject(s.shells({}))
+  let _ = expect_reject(s.set_user_shell({}))
   let _ = expect_reject(s.events("github"))
   let _ = expect_reject(s.artifact({name: "x", bundle: []}))
   let _ = expect_reject(s.share_artifact("x"))
@@ -112,8 +126,33 @@ let test_read_only = (_) -> {
   {}
 }
 
+let test_admin_has_channel_and_api_effects = (_) -> {
+  let _ = assert.equal_string("hi", expect_pass(shell.admin.post("hi")))
+  let _ = assert.equal_string("demo", expect_pass(shell.admin.set_workspace_source("demo")))
+  {}
+}
+
+let test_configure_includes_observe = (_) -> {
+  let _ = assert.equal_string("demo", expect_pass(shell.configure.workspaces("demo")))
+  let _ = assert.equal_string("demo", expect_pass(shell.configure.set_secret("demo")))
+  {}
+}
+
+let test_bind_to = (_) -> {
+  let gate = shell.bind_to(["random", "links"])
+  let _ = assert.equal_string("random", expect_pass(gate({workspace: "w", channel: "random"})).channel)
+  let _ = assert.equal_string(
+    "binding to #general is not allowed",
+    assert.error(expect_mock(gate({workspace: "w", channel: "general"})))
+  )
+  {}
+}
+
 [
   {name: "cloud defaults reject every gate", test: test_defaults_reject_every_gate},
+  {name: "cloud shell admin has channel and api effects", test: test_admin_has_channel_and_api_effects},
+  {name: "cloud shell configure includes observe", test: test_configure_includes_observe},
+  {name: "cloud shell bind to channels", test: test_bind_to},
   {name: "cloud shell everything passes", test: test_everything_passes},
   {name: "cloud shell writes under roots", test: test_writes_under},
   {name: "cloud shell read only", test: test_read_only},

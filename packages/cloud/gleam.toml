@@ -17,7 +17,6 @@ gleam_http = ">= 4.5.0 and < 5.0.0"
 gleam_httpc = ">= 5.0.0 and < 6.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_otp = ">= 1.2.0 and < 2.0.0"
-howdy = ">= 1.0.1 and < 2.0.0"
 midas = ">= 3.1.0 and < 4.0.0"
 multiformats = ">= 4.1.0 and < 5.0.0"
 oas_generator_utils = ">= 1.1.0 and < 2.0.0"
@@ -27,6 +26,9 @@ overlay_llm = { path = "../overlay_llm" }
 simplifile = ">= 2.4.0 and < 3.0.0"
 unixfs = { path = "../unixfs" }
 touch_grass = { path = "../touch_grass" }
+howdy = ">= 1.0.1 and < 2.0.0"
+howdy_ui = ">= 1.0.0 and < 2.0.0"
+lustre = ">= 5.7.1 and < 6.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

@@ -1,5 +1,5 @@
 -module(cloud_ffi).
--export([set_https_proxy/2, read_stdin/0, parse_feed/1]).
+-export([set_https_proxy/2, read_stdin/0, parse_feed/1, priv_directory/0]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
@@ -67,4 +67,11 @@ link_href(Item) ->
 first_nonempty([<<>> | Rest]) -> first_nonempty(Rest);
 first_nonempty([Value | _]) -> Value;
 first_nonempty([]) -> <<>>.
+
+%% The cloud application's priv directory, where pages are kept.
+priv_directory() ->
+    case code:priv_dir(cloud) of
+        {error, _} -> <<"priv">>;
+        Directory -> unicode:characters_to_binary(Directory)
+    end.
 

@@ -242,6 +242,14 @@ let github = match perform Secret("GITHUB_WEBHOOK_SECRET") {
         readme: "Bluesky posts arrive here through triggers.",
         triggers: social_triggers
       } }
+    },
+    {
+      name: "founders",
+      config: (info) -> { {
+        handle: cloud.handlers.for_channel(info),
+        channel_shell: online(shell.admin),
+        readme: "The founders run the cloud from here. You can read and change its configuration with the configuration API effects, Workspaces, WorkspaceSource, Channels, Connections, WorkspaceTriggers, Secrets, Users, Shells and Traces, and their Set and Delete forms. Never print secret values. This cloud's workspace is called example."
+      } }
     }
   ], (info) -> {
     {
