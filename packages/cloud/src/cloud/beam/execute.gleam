@@ -1,10 +1,14 @@
+//// Run EYG code on the cloud platform.
+////
 //// This module is similar to loam/execute BUT it's not the beam plaform instead it's the cloud platform.
+//// Every effect is decided by a policy, see `overlay/policy`.
+//// Effects that need the cloud's services, such as posting to a channel, are implemented by a `Host`.
 
-import cloud/beam/file_system
 import cloud/system
+import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
-import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
@@ -17,28 +21,31 @@ import gleam/erlang/process
 import gleam/httpc
 import gleam/int
 import gleam/list
-import gleam/option
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import ogre/origin
-import overlay/agent
+import overlay/check
 import overlay/policy
+import touch_grass
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
+import touch_grass/env
 import touch_grass/fetch
-import touch_grass/file_system/append_file
-import touch_grass/file_system/delete_file
-import touch_grass/file_system/make_directory
-import touch_grass/file_system/read_directory
-import touch_grass/file_system/read_file
-import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
+import touch_grass/interface
 import touch_grass/now
 import touch_grass/random
 import touch_grass/sleep
 import touch_grass/standard_error
 import touch_grass/standard_out
+
+pub type Meta =
+  #(Int, Int)
+
+pub type Value =
+  state.Value(Meta)
 
 pub type Output {
   StandardOut(String)
@@ -46,157 +53,177 @@ pub type Output {
 }
 
 /// same as loam/exectue.State
+/// `root` is reserved for trusted configuration. Programs cannot read host files.
 pub type State {
-  State(origin: origin.Origin, cache: cache.Cache(Meta))
+  State(origin: origin.Origin, cache: cache.Cache(Meta), root: Option(String))
+}
+
+/// The effects a program can perform on the cloud.
+pub type Effect {
+  Computer(computer.Effect)
+  /// Post a message to the conversation the program is running for.
+  Post(text: String)
+}
+
+/// Implementations of effects that need the cloud's services.
+pub type Host {
+  Host(post: fn(String) -> Result(String, String))
 }
 
 pub type Policy =
-  policy.Policy(computer.Effect, Meta)
+  policy.Policy(Effect, Meta)
 
+const computer_effects = [
+  "DecodeJSON", "Env", "Fetch", "Flip", "Hash", "Now", "Random", "Sleep",
+  "StandardError", "StandardOut",
+]
+
+/// Every effect available on the cloud.
+pub fn harness() -> interface.Harness(Effect, Meta) {
+  computer.effects()
+  |> interface.take(computer_effects)
+  |> list.map(touch_grass.map(_, Computer))
+  |> list.append([post()])
+}
+
+fn post() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Post",
+    lift_type: t.String,
+    lower_type: t.result(t.String, t.String),
+    decode: cast.map(cast.as_string, Post),
+  )
+}
+
+/// Deterministic computations over supplied values bypass the policy.
+/// Every other effect is available only if the policy has a gate for it.
 pub const rules = [
-  #("AppendFile", policy.PolicyField("append_file")),
-  #("CWD", policy.PolicyField("cwd")),
   #("DecodeJSON", policy.Unchecked),
-  #("DeleteFile", policy.PolicyField("delete_file")),
   #("Env", policy.PolicyField("env")),
   #("Fetch", policy.PolicyField("fetch")),
   #("Flip", policy.PolicyField("flip")),
   #("Hash", policy.Unchecked),
-  #("MakeDirectory", policy.PolicyField("make_directory")),
   #("Now", policy.PolicyField("now")),
+  #("Post", policy.PolicyField("post")),
   #("Random", policy.PolicyField("random")),
-  #("ReadDirectory", policy.PolicyField("read_directory")),
-  #("ReadFile", policy.PolicyField("read_file")),
   #("Sleep", policy.PolicyField("sleep")),
   #("StandardError", policy.PolicyField("standard_error")),
   #("StandardOut", policy.PolicyField("standard_out")),
-  #("WriteFile", policy.PolicyField("write_file")),
 ]
 
-pub fn load_policy(
-  code: String,
-  state: State,
-) -> #(Result(Policy, String), State) {
-  case parser.all_from_string(code) {
-    Error(reason) -> #(Error(parser.format_error(reason, code)), state)
-    Ok(source) -> {
-      let #(value, state) = pure_loop(expression.execute(source, []), state)
-      let decoded = {
-        use value <- result.try(
-          result.map_error(value, fn(debug) { simple_debug.describe(debug.0) }),
-        )
-        policy.decode_policy(
-          policy.match_rules(computer.effects(), rules),
-          value,
-        )
-        |> result.map_error(simple_debug.describe)
+/// Check a complete policy before admitting it. Check gates independently so
+/// polymorphic request and reply types are not shared between unrelated effects.
+pub fn decode_policy(value: Value, state: State) -> Result(Policy, String) {
+  use decoded <- result.try(
+    policy.decode_policy(policy.match_rules(harness(), rules), value)
+    |> result.map_error(simple_debug.describe),
+  )
+  use _ <- result.map(
+    list.try_map(dict.values(decoded), fn(entry) {
+      case entry.condition {
+        policy.Unrestricted -> Ok(Nil)
+        policy.Gated(gate) ->
+          check.value(gate, policy.gate_type(entry.interface), #(0, 0), fn(ref) {
+            lookup(ref, state).0
+          })
+          |> result.map_error(fn(reason) {
+            entry.interface.name <> ": " <> reason
+          })
       }
-      #(decoded, state)
-    }
-  }
+    }),
+  )
+  decoded
 }
 
-pub fn block(
-  code: String,
-  state: State,
-  policy: Policy,
-  files: file_system.State,
-  emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, file_system.State) {
-  let #(outcome, state, files, _) =
-    evaluate(code, [], simple_debug.inspect, state, policy, files, emit)
-  #(outcome, state, files)
-}
-
-/// Execute an agent tool with fresh context and capture output for the model.
-/// TODO I think the agent can use block execute as well.
-pub fn run(
-  code: String,
-  state: State,
-  policy: Policy,
-  files: file_system.State,
-  emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, file_system.State, List(String)) {
-  evaluate(
-    code,
-    [#("context", v.unit())],
-    agent.inspect_result,
-    state,
-    policy,
-    files,
-    emit,
+/// Values supplied by the cloud platform to configuration and programs.
+pub fn platform() -> Value {
+  v.Record(
+    dict.from_list([
+      #(
+        "reject_all",
+        policy.reject_all(policy.match_rules(harness(), rules), #(0, 0)),
+      ),
+    ]),
   )
 }
 
-fn evaluate(code, scope, inspect, state, policy, files, emit) {
+/// A policy that performs every effect without a gate.
+pub fn unrestricted() -> Policy {
+  harness()
+  |> list.map(fn(interface) {
+    #(interface.name, policy.Interface(interface, policy.Unrestricted))
+  })
+  |> dict.from_list
+}
+
+/// The outcome of running a program.
+/// Output is held newest first.
+pub type Run {
+  Run(result: Result(Option(Value), String), output: List(Output))
+}
+
+/// Parse and run `code` with the variables in `scope`.
+pub fn run(
+  code: String,
+  scope: List(#(String, Value)),
+  policy: Policy,
+  host: Host,
+  state: State,
+) -> #(Run, State) {
   case parser.all_from_string(code) {
-    Error(reason) -> #(
-      Error(parser.format_error(reason, code)),
-      state,
-      files,
-      [],
-    )
+    Error(reason) -> #(Run(Error(parser.format_error(reason, code)), []), state)
     Ok(source) ->
       loop(
-        block.execute(source, scope),
+        expression.execute(source, [#("cloud", platform()), ..scope]),
         state,
         policy,
-        files,
-        emit,
-        inspect,
+        host,
         [],
       )
   }
 }
 
-fn loop(returned, state: State, policy, files, emit, inspect, output) {
+fn loop(returned, state: State, policy, host, output) -> #(Run, State) {
   case returned {
-    Ok(#(value, _scope)) -> #(
-      Ok(value |> option.map(inspect) |> option.unwrap("")),
+    Ok(value) -> #(Run(Ok(option.Some(value)), output), state)
+    Error(#(break.Vacant, _, _, state.Empty)) -> #(
+      Run(Ok(option.None), output),
       state,
-      files,
-      output,
     )
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       let #(action, state) = decide(policy, label, lift, meta, state)
-      let #(outcome, files, output) = case action {
-        policy.Perform(interface, input) -> {
-          let #(outcome, files) = case interface.decode(input) {
-            Ok(effect) -> perform_effect(effect, label, files, emit)
-            Error(reason) -> #(Error(simple_debug.describe(reason)), files)
+      case action {
+        policy.Perform(interface, input) ->
+          case interface.decode(input) {
+            Ok(effect) ->
+              case perform(effect, host) {
+                Ok(#(value, printed)) -> {
+                  let output = list.append(printed, output)
+                  loop(
+                    expression.resume(value, env, k),
+                    state,
+                    policy,
+                    host,
+                    output,
+                  )
+                }
+                Error(reason) -> #(Run(Error(reason), output), state)
+              }
+            Error(reason) -> #(
+              Run(Error(simple_debug.describe(reason)), output),
+              state,
+            )
           }
-          let output = case label, input, outcome {
-            "StandardOut", v.String(text), Ok(_)
-            | "StandardError", v.String(text), Ok(_)
-            -> [text, ..output]
-            _, _, _ -> output
-          }
-          #(outcome, files, output)
-        }
-        policy.Resume(value) -> #(Ok(value), files, output)
-        policy.Failed(debug) -> #(
-          Error("Policy failed: " <> simple_debug.describe(debug.0)),
-          files,
-          output,
+        policy.Resume(value) ->
+          loop(expression.resume(value, env, k), state, policy, host, output)
+        policy.Failed(#(reason, _, _, _)) -> #(
+          Run(Error("Policy failed: " <> simple_debug.describe(reason)), output),
+          state,
         )
         policy.Unavailable -> #(
-          Error("Unhandled effect: " <> label),
-          files,
-          output,
+          Run(Error("Effect " <> label <> " is not allowed by policy"), output),
+          state,
         )
-      }
-      case outcome {
-        Ok(value) ->
-          loop(
-            block.resume(value, env, k),
-            state,
-            policy,
-            files,
-            emit,
-            inspect,
-            output,
-          )
-        Error(reason) -> #(Error(reason), state, files, output)
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
@@ -204,142 +231,101 @@ fn loop(returned, state: State, policy, files, emit, inspect, output) {
       let state = State(..state, cache:)
       case value {
         Ok(value) ->
-          loop(
-            block.resume(value, env, k),
-            state,
-            policy,
-            files,
-            emit,
-            inspect,
-            output,
-          )
-        Error(reason) -> #(Error(reason), state, files, output)
+          loop(expression.resume(value, env, k), state, policy, host, output)
+        Error(reason) -> #(Run(Error(reason), output), state)
       }
     }
-    Error(debug) -> #(
-      Error(simple_debug.describe(debug.0)),
+    Error(#(reason, _, _, _)) -> #(
+      Run(Error(simple_debug.describe(reason)), output),
       state,
-      files,
-      output,
     )
   }
 }
 
-fn decide(policy, label, lift, meta, state) {
-  case resolve_policy_input(label, lift) {
-    Error(reason) -> #(policy.Resume(v.error(v.String(reason))), state)
-    Ok(input) ->
-      policy.decide(
-        policy,
-        label,
-        input,
-        meta,
-        fn(returned, then) {
-          let #(result, state) = pure_loop(returned, state)
-          #(then(result), state)
-        },
-        fn(action) { #(action, state) },
-      )
-  }
+/// Ask the policy what to do with an effect.
+/// Gates are evaluated purely, they can resolve references but not perform effects.
+pub fn decide(
+  policy: Policy,
+  label: String,
+  lift: Value,
+  meta: Meta,
+  state: State,
+) -> #(policy.Action(Meta, Effect), State) {
+  policy.decide(
+    policy,
+    label,
+    lift,
+    meta,
+    fn(returned, then) {
+      let #(result, state) = pure_loop(returned, state)
+      #(then(result), state)
+    },
+    fn(action) { #(action, state) },
+  )
 }
 
-fn resolve_policy_input(label, lift) {
-  case label, lift {
-    "ReadFile", v.Record(fields)
-    | "WriteFile", v.Record(fields)
-    | "AppendFile", v.Record(fields)
-    ->
-      case dict.get(fields, "path") {
-        Ok(v.String(path)) -> {
-          use path <- result.map(file_system.resolve_path(path))
-          v.Record(dict.insert(fields, "path", v.String(path)))
-        }
-        _ -> Ok(lift)
-      }
-    "DeleteFile", v.String(path)
-    | "MakeDirectory", v.String(path)
-    | "ReadDirectory", v.String(path)
-    -> result.map(file_system.resolve_path(path), v.String)
-    _, _ -> Ok(lift)
-  }
-}
-
-/// Policy evaluation can resolve references but cannot perform effects.
-/// TODO this should be continuation based.
-fn pure_loop(returned, state: State) {
+/// Evaluate without effects, resolving references.
+pub fn pure_loop(returned, state: State) {
   case returned {
-    Error(#(break.UndefinedReference(reference), _, env, k) as debug) -> {
+    Ok(value) -> #(Ok(value), state)
+    Error(#(break.UndefinedReference(reference), meta, env, k) as debug) -> {
       let #(value, cache) = lookup(reference, state)
       let state = State(..state, cache:)
       case value {
         Ok(value) -> pure_loop(expression.resume(value, env, k), state)
-        Error(_) -> #(Error(debug), state)
+        Error(_) -> #(Error(#(debug.0, meta, env, k)), state)
       }
     }
-    _ -> #(returned, state)
+    Error(debug) -> #(Error(debug), state)
   }
 }
 
-fn perform_effect(effect, label, files, emit) {
+fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
   case effect {
-    computer.StandardOut(text) -> {
-      emit(StandardOut(text))
-      #(Ok(standard_out.encode(Nil)), files)
-    }
-    computer.StandardError(text) -> {
-      emit(StandardError(text))
-      #(Ok(standard_error.encode(Nil)), files)
-    }
-    computer.AppendFile(input) -> {
-      let #(outcome, files) =
-        file_system.append(files, input.path, input.contents)
-      #(Ok(append_file.encode(outcome)), files)
-    }
-    computer.Cwd -> #(cwd(), files)
-    computer.DecodeJson(bytes) -> #(decode_json(bytes), files)
-    computer.DeleteFile(path) -> {
-      let #(outcome, files) = file_system.delete(files, path)
-      #(Ok(delete_file.encode(outcome)), files)
-    }
-    computer.Env(name:) -> #(get_env(name), files)
-    computer.Fetch(request) -> #(fetch(request), files)
-    computer.Flip -> #(flip(), files)
-    computer.Hash(input) -> #(hash(input), files)
-    computer.MakeDirectory(path) -> {
-      let #(outcome, files) = file_system.make_directory(files, path)
-      #(Ok(make_directory.encode(outcome)), files)
-    }
-    computer.Now -> #(now(), files)
-    computer.Random(max) -> #(random(max), files)
-    computer.ReadDirectory(path) -> #(
-      Ok(file_system.read_directory(files, path) |> read_directory.encode),
-      files,
-    )
-    computer.ReadFile(input) -> #(
-      Ok(
-        file_system.read(files, input.path, input.offset, input.limit)
-        |> read_file.encode,
-      ),
-      files,
-    )
-    computer.Sleep(milliseconds) -> #(sleep(milliseconds), files)
-    computer.WriteFile(input) -> {
-      let #(outcome, files) =
-        file_system.write(files, input.path, input.contents)
-      #(Ok(write_file.encode(outcome)), files)
-    }
-    computer.CreateKey(_)
-    | computer.Exit(_)
-    | computer.EygParse(_)
-    | computer.Sign(_)
-    | computer.StandardIn -> #(Error("Unhandled effect: " <> label), files)
+    Post(text) -> Ok(#(result_string(host.post(text)), []))
+    Computer(effect) ->
+      case effect {
+        computer.StandardOut(text) ->
+          Ok(#(standard_out.encode(Nil), [StandardOut(text)]))
+        computer.StandardError(text) ->
+          Ok(#(standard_error.encode(Nil), [StandardError(text)]))
+        computer.DecodeJson(bytes) -> Ok(#(decode_json.sync(bytes), []))
+        computer.Env(name: _) -> Ok(#(env.encode(option.None), []))
+        computer.Fetch(request) -> Ok(#(fetch(request), []))
+        computer.Flip -> Ok(#(flip.encode(flip.sync()), []))
+        computer.Hash(input) -> Ok(#(hash(input), []))
+        computer.Now -> Ok(#(now.encode(now.sync()), []))
+        computer.Random(max) -> Ok(#(random.encode(random.sync(max)), []))
+        computer.Sleep(milliseconds) -> {
+          process.sleep(int.max(0, milliseconds))
+          Ok(#(sleep.encode(Nil), []))
+        }
+        _ -> Error("Effect not implemented on the cloud")
+      }
   }
 }
 
-pub type Meta =
-  #(Int, Int)
+fn result_string(result) {
+  case result {
+    Ok(value) -> v.ok(v.String(value))
+    Error(reason) -> v.error(v.String(reason))
+  }
+}
 
 pub fn lookup(
+  reference: ir.Reference,
+  state: State,
+) -> #(Result(state.Value(#(Int, Int)), String), cache.Cache(Meta)) {
+  case reference {
+    ir.Relative(path) -> #(
+      Error("Relative import of " <> path <> " is not available"),
+      state.cache,
+    )
+    _ -> lookup_hub(reference, state)
+  }
+}
+
+fn lookup_hub(
   reference: ir.Reference,
   state: State,
 ) -> #(Result(state.Value(#(Int, Int)), String), cache.Cache(Meta)) {
@@ -398,43 +384,13 @@ fn compute(action, origin) {
   cache.compute(action, origin, system.fetch, system.hash)(fn(x) { x })
 }
 
-fn cwd() {
-  Ok(v.ok(v.String("/")))
-}
-
-fn decode_json(bytes) {
-  Ok(decode_json.sync(bytes))
-}
-
-fn get_env(_name) {
-  Ok(v.error(v.unit()))
-}
-
 fn fetch(request) {
   httpc.send_bits(request)
   |> result.map_error(string.inspect)
   |> fetch.encode
-  |> Ok
-}
-
-fn flip() {
-  Ok(flip.encode(flip.sync()))
 }
 
 fn hash(input) {
   let hash.Input(algorithm: hash.Sha256, bytes:) = input
-  Ok(hash.encode(crypto.hash(crypto.Sha256, bytes)))
-}
-
-fn now() {
-  Ok(now.encode(now.sync()))
-}
-
-fn random(max) {
-  Ok(random.encode(random.sync(max)))
-}
-
-fn sleep(milliseconds) {
-  process.sleep(int.max(0, milliseconds))
-  Ok(sleep.encode(Nil))
+  hash.encode(crypto.hash(crypto.Sha256, bytes))
 }

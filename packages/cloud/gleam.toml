@@ -6,8 +6,10 @@ gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 argv = ">= 1.1.0 and < 2.0.0"
 envoy = ">= 1.2.0 and < 2.0.0"
 eyg_interpreter = { path = "../gleam_interpreter" }
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_hub = { path = "../gleam_hub" }
-eyg_ir = ">= 3.2.0 and < 4.0.0"
+eyg_ir = { path = "../gleam_ir" }
+filepath = ">= 1.1.0 and < 2.0.0"
 eyg_parser = { path = "../gleam_parser" }
 gleam_crypto = ">= 1.6.0 and < 2.0.0"
 gleam_erlang = ">= 1.3.0 and < 2.0.0"
@@ -21,9 +23,8 @@ oas_generator_utils = ">= 1.1.0 and < 2.0.0"
 ogre = ">= 1.3.0 and < 2.0.0"
 overlay = { path = "../overlay" }
 overlay_llm = { path = "../overlay_llm" }
-simplifile = ">= 2.7.0 and < 3.0.0"
+simplifile = ">= 2.4.0 and < 3.0.0"
 touch_grass = { path = "../touch_grass" }
-unixfs = { path = "../unixfs" }
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
