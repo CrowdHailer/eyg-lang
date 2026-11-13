@@ -54,9 +54,10 @@ pub fn type_check_halts_run_test() {
     overlay.setup(input, helpers.config, [], [], helpers.state())
     |> sandbox.run(sandbox.sandbox())
   let code = "(_) -> { !int_add(1, \"2\") }"
-  let assert system.Done(#(Error(reason), _, _)) =
+  let assert #(sandbox.Returned(#(Error(reason), _, _)), _) =
     overlay.check_and_execute(session, code, state)
-  echo reason
+    |> sandbox.run(sandbox.sandbox())
+  assert reason == "type error"
 }
 
 pub fn setup_generalises_context_types_test() {
@@ -92,8 +93,12 @@ pub fn setup_generalises_context_types_test() {
 }
 
 pub fn read_file_policy_is_used_for_imports_test() {
-  // let cwd = "/user/oliver"
-  let sandbox = sandbox.sandbox()
+  let sandbox =
+    sandbox.sandbox()
+    |> sandbox.with_files([
+      #("/user/oliver/fine.eyg", "3"),
+      #("/user/oliver/secret.eyg", "4"),
+    ])
   let policy =
     "
 {
@@ -120,31 +125,29 @@ pub fn read_file_policy_is_used_for_imports_test() {
   // absolute file paths are handled correctly
   let code =
     "perform ReadFile({path: \"/user/oliver/fine.eyg\", offset: 0, limit: 100})"
-  let assert system.ReadFileRange(path:, offset:, limit:, resume:) =
+  let assert #(sandbox.Returned(#(Ok(return), _state, [])), _) =
     overlay.check_and_execute(session, code, state)
-  assert "/user/oliver/fine.eyg" == path
-  assert 0 == offset
-  assert 100 == limit
-  let assert system.Done(#(Ok(return), _state, [])) = resume(Ok(<<"hi">>))
-  let assert #(Some(value.Tagged("Ok", value.Binary(<<"hi">>))), _) = return
+    |> sandbox.run(sandbox)
+  let assert #(Some(value.Tagged("Ok", value.Binary(<<"3">>))), _) = return
 
   let code =
     "perform ReadFile({path: \"/user/oliver/secret.eyg\", offset: 0, limit: 100})"
-  let assert system.Done(#(Ok(return), _state, [])) =
+  let assert #(sandbox.Returned(#(Ok(return), _state, [])), _) =
     overlay.check_and_execute(session, code, state)
+    |> sandbox.run(sandbox)
   let assert #(Some(value.Tagged("Error", value.String("denied"))), _) = return
 
   // imports are resolved to be absolute
   let code = "import \"/user/oliver/fine.eyg\""
-  let assert system.ReadFile("/user/oliver/fine.eyg", resume) =
+  let assert #(sandbox.Returned(#(Ok(return), _state, [])), _) =
     overlay.check_and_execute(session, code, state)
-  let assert system.ReadFile("/user/oliver/fine.eyg", resume) = resume(Ok("3"))
-  let assert system.Done(#(Ok(return), _state, [])) = resume(Ok("3"))
+    |> sandbox.run(sandbox)
   let assert #(Some(value.Integer(3)), _) = return
 
   let code = "import \"/user/oliver/secret.eyg\""
-  let assert system.Done(#(Error(reason), _state, _)) =
+  let assert #(sandbox.Returned(#(Error(reason), _state, _)), _) =
     overlay.check_and_execute(session, code, state)
+    |> sandbox.run(sandbox)
   assert string.contains(reason, "type error")
 }
 
@@ -368,7 +371,8 @@ pub fn agent_code_can_abort_test() {
     overlay.setup(input, helpers.config, [], [], helpers.state())
     |> sandbox.run(sandbox.sandbox())
   let code = "!int_add(1, !never(perform Abort(\"stop\")))"
-  let assert system.Done(#(Error(reason), _, _)) =
+  let assert #(sandbox.Returned(#(Error(reason), _, _)), _) =
     overlay.check_and_execute(session, code, state)
+    |> sandbox.run(sandbox.sandbox())
   assert string.contains(reason, "stop")
 }
