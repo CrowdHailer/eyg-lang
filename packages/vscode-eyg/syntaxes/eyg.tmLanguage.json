@@ -61,7 +61,7 @@
     },
     "keywords": {
       "name": "keyword.control.eyg",
-      "match": "\\bmask(?=\\s+[A-Z])|\\bhandle\\s+shallow\\b|\\b(let|match|perform|handle|deep|import)\\b"
+      "match": "\\bmask(?=\\s+[A-Z])|\\bhandle\\s+shallow\\b|\\b(let|match|perform|handle|deep|import|fact|rule|var|resolve)\\b"
     },
     "numbers": {
       "name": "constant.numeric.integer.eyg",
@@ -89,6 +89,7 @@
     },
     "operators": {
       "patterns": [
+        { "name": "keyword.operator.query.eyg", "match": "@(?=\\{)" },
         { "name": "keyword.operator.arrow.eyg", "match": "->" },
         { "name": "keyword.operator.spread.eyg", "match": "\\.\\." },
         { "name": "keyword.operator.assignment.eyg", "match": "=" },
