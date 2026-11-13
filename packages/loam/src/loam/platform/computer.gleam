@@ -10,6 +10,7 @@ import gleam/result
 import gleam/string
 import kryptos/eddsa
 import loam/source
+import loam/sqlite as loam_sqlite
 import loam/system
 import midas/effect as host_effect
 import simplifile
@@ -37,6 +38,8 @@ import touch_grass/prompt
 import touch_grass/random
 import touch_grass/read_key
 import touch_grass/sleep
+import touch_grass/sqlite
+import touch_grass/sqlite_query
 import touch_grass/standard_error
 import touch_grass/standard_in
 import touch_grass/standard_out
@@ -104,6 +107,10 @@ pub fn extrinsic(
     computer.Sign(request) -> system.Done(sign(request) |> sign.encode)
     computer.Sleep(milliseconds) ->
       system.map(system.wait(milliseconds), sleep.encode)
+    computer.Sqlite(input) ->
+      system.map(run_sqlite(origin, input), sqlite.encode)
+    computer.SqliteQuery(input) ->
+      system.map(run_sqlite_query(origin, input), sqlite_query.encode)
     computer.StandardError(text) ->
       system.map(system.write_stderr(text), standard_error.encode)
     computer.StandardIn -> {
@@ -201,4 +208,48 @@ pub fn sign(request) {
         Error(Nil) -> Error("invalid Ed25519 private key")
       }
   }
+}
+
+// An in memory database lasts for the process, it is shared by every perform.
+fn database_path(origin: source.Origin, database: String) {
+  case database {
+    ":memory:" -> system.Done(Ok(database))
+    _ -> source.resolve_filepath(origin, database)
+  }
+}
+
+fn sql_value(value) {
+  case value {
+    sqlite.Integer(i) -> system.SqlInteger(i)
+    sqlite.Text(s) -> system.SqlText(s)
+    sqlite.Blob(b) -> system.SqlBlob(b)
+    sqlite.Null -> system.SqlNull
+  }
+}
+
+fn sqlite_value(value) {
+  case value {
+    system.SqlInteger(i) -> sqlite.Integer(i)
+    system.SqlText(s) -> sqlite.Text(s)
+    system.SqlBlob(b) -> sqlite.Blob(b)
+    system.SqlNull -> sqlite.Null
+  }
+}
+
+pub fn run_sqlite(origin, input) {
+  let sqlite.Input(database:, sql:, parameters:) = input
+  use database <- system.then(database_path(origin, database))
+  use database <- system.try(database)
+  let parameters = list.map(parameters, sql_value)
+  use result <- system.map(system.sql(database, sql, parameters))
+  use result <- result.map(result)
+  list.map(result.rows, list.map(_, sqlite_value))
+}
+
+pub fn run_sqlite_query(origin, input) {
+  let sqlite_query.Input(database:, plan:) = input
+  use database <- system.then(database_path(origin, database))
+  use database <- system.try(database)
+  use plan <- system.try(plan)
+  loam_sqlite.resolve(database, plan)
 }
