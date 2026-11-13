@@ -6,6 +6,7 @@ import multiformats/cid/v1
 import multiformats/hashes
 import simplifile
 import unixfs
+import unixfs/mfs
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -23,6 +24,7 @@ pub fn dir_with_files_test() {
     == list.map(dir, fn(item) { item.name })
   let assert Ok(block) = unixfs.encode_directory(dir)
   assert root == cid_from_block(block)
+  assert root == mfs.identify(mfs.Directory(dir)).cid
 }
 
 pub fn cid_from_block(bytes: BitArray) -> v1.Cid {

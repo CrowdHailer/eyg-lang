@@ -12,6 +12,8 @@ A session is a shell session and/or agent session with persistent state and file
 External messages get routed to sessions to keep isolation.
 We do not yet solve inter session communication.
 
+Each session ID retains its own MFS root.
+
 ## Secrets
 
 ## Connections

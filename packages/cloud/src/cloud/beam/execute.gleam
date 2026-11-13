@@ -1,5 +1,6 @@
 //// This module is similar to loam/execute BUT it's not the beam plaform instead it's the cloud platform.
 
+import cloud/beam/file_system
 import cloud/system
 import eyg/hub/cache
 import eyg/interpreter/block
@@ -21,6 +22,12 @@ import ogre/origin
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/fetch
+import touch_grass/file_system/append_file
+import touch_grass/file_system/delete_file
+import touch_grass/file_system/make_directory
+import touch_grass/file_system/read_directory
+import touch_grass/file_system/read_file
+import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
 import touch_grass/interface
@@ -43,72 +50,101 @@ pub type State {
 pub fn block(
   code: String,
   state: State,
+  files: file_system.State,
   emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State) {
+) -> #(Result(String, String), State, file_system.State) {
   case parser.all_from_string(code) {
-    Error(reason) -> #(Error(parser.format_error(reason, code)), state)
-    Ok(source) -> loop(block.execute(source, []), state, emit)
+    Error(reason) -> #(Error(parser.format_error(reason, code)), state, files)
+    Ok(source) -> loop(block.execute(source, []), state, files, emit)
   }
 }
 
-fn loop(returned, state: State, emit) {
+fn loop(returned, state: State, files, emit) {
   case returned {
     Ok(#(value, _scope)) -> #(
       Ok(value |> option.map(simple_debug.inspect) |> option.unwrap("")),
       state,
+      files,
     )
     Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {
-      case perform(label, lift, emit) {
-        Ok(value) -> loop(block.resume(value, env, k), state, emit)
-        Error(reason) -> #(Error(reason), state)
+      let #(outcome, files) = perform(label, lift, files, emit)
+      case outcome {
+        Ok(value) -> loop(block.resume(value, env, k), state, files, emit)
+        Error(reason) -> #(Error(reason), state, files)
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
       let #(value, cache) = lookup(reference, state)
       let state = State(..state, cache:)
       case value {
-        Ok(value) -> loop(block.resume(value, env, k), state, emit)
-        Error(reason) -> #(Error(reason), state)
+        Ok(value) -> loop(block.resume(value, env, k), state, files, emit)
+        Error(reason) -> #(Error(reason), state, files)
       }
     }
-    Error(debug) -> #(Error(simple_debug.describe(debug.0)), state)
+    Error(debug) -> #(Error(simple_debug.describe(debug.0)), state, files)
   }
 }
 
-fn perform(label, lift, emit) {
-  use effect <- result.try(
-    interface.cast(computer.effects(), label, lift)
-    |> result.map_error(simple_debug.describe),
-  )
+fn perform(label, lift, files, emit) {
+  case interface.cast(computer.effects(), label, lift) {
+    Error(reason) -> #(Error(simple_debug.describe(reason)), files)
+    Ok(effect) -> perform_effect(effect, label, files, emit)
+  }
+}
+
+fn perform_effect(effect, label, files, emit) {
   case effect {
     computer.StandardOut(text) -> {
       emit(StandardOut(text))
-      Ok(standard_out.encode(Nil))
+      #(Ok(standard_out.encode(Nil)), files)
     }
     computer.StandardError(text) -> {
       emit(StandardError(text))
-      Ok(standard_error.encode(Nil))
+      #(Ok(standard_error.encode(Nil)), files)
     }
-    computer.AppendFile(_) -> Error("Unhandled effect: " <> label)
-    computer.CreateKey(_) -> Error("Unhandled effect: " <> label)
-    computer.Cwd -> cwd()
-    computer.DecodeJson(bytes) -> decode_json(bytes)
-    computer.DeleteFile(path: _) -> Error("Unhandled effect: " <> label)
-    computer.Env(name:) -> get_env(name)
-    computer.Exit(status: _) -> Error("Unhandled effect: " <> label)
-    computer.EygParse(source: _) -> Error("Unhandled effect: " <> label)
-    computer.Fetch(request) -> fetch(request)
-    computer.Flip -> flip()
-    computer.Hash(input) -> hash(input)
-    computer.MakeDirectory(path: _) -> Error("Unhandled effect: " <> label)
-    computer.Now -> now()
-    computer.Random(max) -> random(max)
-    computer.ReadDirectory(path: _) -> Error("Unhandled effect: " <> label)
-    computer.ReadFile(_) -> Error("Unhandled effect: " <> label)
-    computer.Sign(_) -> Error("Unhandled effect: " <> label)
-    computer.Sleep(milliseconds) -> sleep(milliseconds)
-    computer.StandardIn -> Error("Unhandled effect: " <> label)
-    computer.WriteFile(_) -> Error("Unhandled effect: " <> label)
+    computer.AppendFile(input) -> {
+      let #(outcome, files) =
+        file_system.append(files, input.path, input.contents)
+      #(Ok(append_file.encode(outcome)), files)
+    }
+    computer.Cwd -> #(cwd(), files)
+    computer.DecodeJson(bytes) -> #(decode_json(bytes), files)
+    computer.DeleteFile(path) -> {
+      let #(outcome, files) = file_system.delete(files, path)
+      #(Ok(delete_file.encode(outcome)), files)
+    }
+    computer.Env(name:) -> #(get_env(name), files)
+    computer.Fetch(request) -> #(fetch(request), files)
+    computer.Flip -> #(flip(), files)
+    computer.Hash(input) -> #(hash(input), files)
+    computer.MakeDirectory(path) -> {
+      let #(outcome, files) = file_system.make_directory(files, path)
+      #(Ok(make_directory.encode(outcome)), files)
+    }
+    computer.Now -> #(now(), files)
+    computer.Random(max) -> #(random(max), files)
+    computer.ReadDirectory(path) -> #(
+      Ok(file_system.read_directory(files, path) |> read_directory.encode),
+      files,
+    )
+    computer.ReadFile(input) -> #(
+      Ok(
+        file_system.read(files, input.path, input.offset, input.limit)
+        |> read_file.encode,
+      ),
+      files,
+    )
+    computer.Sleep(milliseconds) -> #(sleep(milliseconds), files)
+    computer.WriteFile(input) -> {
+      let #(outcome, files) =
+        file_system.write(files, input.path, input.contents)
+      #(Ok(write_file.encode(outcome)), files)
+    }
+    computer.CreateKey(_)
+    | computer.Exit(_)
+    | computer.EygParse(_)
+    | computer.Sign(_)
+    | computer.StandardIn -> #(Error("Unhandled effect: " <> label), files)
   }
 }
 

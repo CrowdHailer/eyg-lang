@@ -1,8 +1,11 @@
 //// Mutable operations on a UnixFS tree.
 
+import gleam/bit_array
+import gleam/crypto
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import multiformats/cid/v1
+import multiformats/hashes
 import simplifile.{type FileError}
 import unixfs
 
@@ -15,6 +18,21 @@ pub type Entry {
 /// the stored node itself.
 pub type Stored {
   Stored(cid: v1.Cid, size: Int)
+}
+
+/// Compute an entry's content identifier and cumulative encoded DAG size.
+pub fn identify(entry: Entry) -> Stored {
+  let #(codec, bytes, children_size) = case entry {
+    File(contents) -> #(unixfs.raw_code, contents, 0)
+    Directory(links) -> {
+      let assert Ok(bytes) = unixfs.encode_directory(links)
+      let size = list.fold(links, 0, fn(size, link) { size + link.size })
+      #(unixfs.dag_pb_code, bytes, size)
+    }
+  }
+  let digest = crypto.hash(crypto.Sha256, bytes)
+  let cid = v1.Cid(codec, hashes.Multihash(hashes.Sha256, digest))
+  Stored(cid, bit_array.byte_size(bytes) + children_size)
 }
 
 pub type Effect(t) {
