@@ -279,8 +279,7 @@ pub fn lookup_package(
   package: String,
   state: State,
 ) -> system.Effect(#(Result(Module, Reason), State)) {
-  let cache = cache.pull(state.cache)
-  use state <- system.then(update(State(..state, cache:)))
+  use state <- system.then(pulled(state, cache.package(state.cache, package)))
   case cache.package(state.cache, package) {
     Ok(cache.Entry(module:, ..)) -> lookup_reference(module, state)
     Error(Nil) ->
@@ -293,8 +292,10 @@ pub fn lookup_version(
   version: Int,
   state: State,
 ) -> system.Effect(#(Result(Module, Reason), State)) {
-  let cache = cache.pull(state.cache)
-  use state <- system.then(update(State(..state, cache:)))
+  use state <- system.then(pulled(
+    state,
+    cache.unbound_release(state.cache, package, version),
+  ))
   case cache.unbound_release(state.cache, package, version) {
     Ok(module) -> lookup_reference(module, state)
     Error(Nil) ->
@@ -305,12 +306,51 @@ pub fn lookup_version(
   }
 }
 
+/// The latest release of a package, pulling the package index when the package is unknown.
+/// The module is not fetched.
+pub fn latest_release(
+  package: String,
+  state: State,
+) -> system.Effect(#(Result(ir.Release, Nil), State)) {
+  use state <- system.map(pulled(state, cache.package(state.cache, package)))
+  let release = {
+    use cache.Entry(version:, module:, ..) <- result.map(cache.package(
+      state.cache,
+      package,
+    ))
+    ir.Release(package:, version:, module:)
+  }
+  #(release, state)
+}
+
+/// The module of a package version, pulling the package index when the version is unknown.
+pub fn version_module(
+  package: String,
+  version: Int,
+  state: State,
+) -> system.Effect(#(Result(v1.Cid, Nil), State)) {
+  use state <- system.map(pulled(
+    state,
+    cache.unbound_release(state.cache, package, version),
+  ))
+  #(cache.unbound_release(state.cache, package, version), state)
+}
+
+fn pulled(state: State, known: Result(a, Nil)) -> system.Effect(State) {
+  case known {
+    Ok(_) -> system.Done(state)
+    Error(Nil) -> update(State(..state, cache: cache.pull(state.cache)))
+  }
+}
+
 pub fn lookup_pinned(
   release: ir.Release,
   state: State,
 ) -> system.Effect(#(Result(Module, Reason), State)) {
-  let cache = cache.pull(state.cache)
-  use state <- system.then(update(State(..state, cache:)))
+  use state <- system.then(pulled(
+    state,
+    cache.unbound_release(state.cache, release.package, release.version),
+  ))
 
   case cache.release(state.cache, release) {
     cache.Available(resolved) -> lookup_reference(resolved, state)
