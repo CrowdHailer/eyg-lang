@@ -29,6 +29,13 @@ gate’s type. There is no separate rejection protocol or runtime value checker.
 Configured adapter implementations land after deployment. Main’s basic native
 adapters remain available throughout the branch.
 
+Configured connections now support `ExampleChat({origin})` and
+`WhatsApp({token, phone_number_id, app_secret, verify_token})` sources in
+`{name, source}` records. WhatsApp listens at
+`/connections/<name>/webhook`; the adapter verifies incoming signatures. Each
+adapter supplies its native event type to the configured `on_input` function.
+The standalone example chat application is a separate later commit.
+
 ## State
 
 Session file roots, history, pending observations, users, secrets, edited

@@ -18,6 +18,8 @@ import cloud/handler
 import cloud/invocation
 import cloud/operation
 import cloud/overlay as agent
+import cloud/plugins/example_chat
+import cloud/plugins/whatsapp
 import cloud/schedule as cron_schedule
 import cloud/session
 import cloud/shell
@@ -228,12 +230,37 @@ pub fn start_on(
 
 /// Start a connection in its own process, its events are sent to the workspace.
 fn start_connection(
-  _workspace: Subject(Message),
+  workspace: Subject(Message),
   connection: connection.Connection,
 ) -> Nil {
-  io.println_error(
-    connection.name <> ": configured adapters land after deployment",
-  )
+  let connection.Connection(name:, source:) = connection
+  let inbound = fn(event) { process.send(workspace, Inbound(event)) }
+  process.spawn(fn() {
+    let started = case source {
+      connection.ExampleChat(origin) -> {
+        let config = example_chat.Config(origin:, poll_interval: 500)
+        use outbound <- result.map(example_chat.start(config, inbound))
+        process.send(workspace, Connect(example_chat.platform, outbound))
+      }
+      connection.WhatsApp(token:, phone_number_id:, app_secret:, verify_token:) -> {
+        let config =
+          whatsapp.Config(token:, phone_number_id:, app_secret:, verify_token:)
+        use #(outbound, listener) <- result.map(whatsapp.start(config, inbound))
+        process.send(workspace, Listen(name, listener))
+        process.send(workspace, Connect(whatsapp.platform, outbound))
+      }
+      connection.Slack(_) | connection.Discord(..) ->
+        Error("Configured native adapters land in a later feature")
+    }
+    case started {
+      Ok(Nil) ->
+        io.println(
+          "Connected " <> name <> " (" <> connection.kind(source) <> ")",
+        )
+      Error(reason) -> io.println_error(name <> ": " <> reason)
+    }
+  })
+  Nil
 }
 
 fn handle(state: State, message: Message) -> actor.Next(State, Message) {

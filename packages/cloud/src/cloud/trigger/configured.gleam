@@ -7,6 +7,7 @@
 //// see `notes/cloud-process-boundaries.md`.
 
 import cloud/plugins/chat_input
+import cloud/plugins/whatsapp
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/capture
@@ -15,6 +16,7 @@ import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser
+import gleam/list
 import gleam/result
 
 /// A pure function from event to boolean,
@@ -36,7 +38,7 @@ pub type Script {
 
 /// Tagged chat payloads supplied to configured triggers.
 pub fn event_type() {
-  t.union(chat_input.event_types())
+  t.union(list.append(chat_input.event_types(), whatsapp.event_types()))
 }
 
 pub fn type_() {

@@ -1,0 +1,56 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "102290129340398",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15550783881",
+              "phone_number_id": "106540352242922"
+            },
+            "contacts": [
+              {"profile": {"name": "Sheena Nelson"}, "wa_id": "16505551234"}
+            ],
+            "messages": [
+              {
+                "from": "16505551234",
+                "id": "wamid.text1",
+                "timestamp": "1749416383",
+                "type": "text",
+                "text": {"body": "Does it come in another color?"}
+              },
+              {
+                "from": "16505551234",
+                "id": "wamid.reaction1",
+                "timestamp": "1749416390",
+                "type": "reaction",
+                "reaction": {"message_id": "wamid.text1", "emoji": "📚"}
+              },
+              {
+                "from": "16505551234",
+                "id": "wamid.image1",
+                "timestamp": "1749416400",
+                "type": "image",
+                "image": {"caption": "This one", "mime_type": "image/jpeg", "id": "1003383421387256"}
+              }
+            ]
+          }
+        },
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {"display_phone_number": "15550000000", "phone_number_id": "999"},
+            "messages": [
+              {"from": "1", "id": "wamid.other", "timestamp": "1", "type": "text", "text": {"body": "not ours"}}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
