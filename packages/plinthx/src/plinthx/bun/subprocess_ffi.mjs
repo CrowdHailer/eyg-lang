@@ -1,5 +1,12 @@
 import { Result$Ok, Result$Error } from "../../gleam.mjs";
 
+export function spawn(bun, options) {
+  try {
+    return Result$Ok(bun.spawn({ cmd: Array.from(options.cmd), cwd: options.cwd, env: Object.fromEntries(options.env),
+      stdin: options.stdin, stdout: options.stdout, stderr: options.stderr }));
+  } catch (error) { return Result$Error(String(error)); }
+}
+
 export function spawnWithInput(bun, options, input) {
   try {
     return Result$Ok(bun.spawn({ cmd: Array.from(options.cmd), cwd: options.cwd, env: Object.fromEntries(options.env),
