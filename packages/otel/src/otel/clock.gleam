@@ -3,18 +3,20 @@
 import gleam/int
 import gleam/result
 import gleam/string
-import gleam/time/timestamp
 
 pub type Time {
   Time(seconds: Int, nanoseconds: Int)
 }
 
-/// The current time, from the system clock.
+/// The current time, from the high resolution clock on JavaScript and the system clock on Erlang.
 pub fn now() -> Time {
-  let #(seconds, nanoseconds) =
-    timestamp.system_time() |> timestamp.to_unix_seconds_and_nanoseconds
+  let #(seconds, nanoseconds) = system_time()
   Time(seconds, nanoseconds)
 }
+
+@external(erlang, "otel_ffi", "system_time")
+@external(javascript, "../otel_ffi.mjs", "system_time")
+fn system_time() -> #(Int, Int)
 
 pub fn difference(end: Time, start: Time) -> Int {
   { end.seconds - start.seconds }
