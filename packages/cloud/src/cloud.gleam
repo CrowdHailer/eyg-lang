@@ -1,4 +1,5 @@
 import cloud/discord/discord
+import cloud/session
 import cloud/slack/slack
 import envoy
 import gleam/erlang/process
@@ -26,7 +27,8 @@ pub fn main() -> Nil {
   case discord_token {
     Ok(token) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
-      let assert Ok(_) = discord.start_channel(hub, token, guild)
+      let assert Ok(sessions) = session.start(hub)
+      let assert Ok(_) = discord.start_channel(sessions.data, token, guild)
       Nil
     }
     Error(_) -> Nil

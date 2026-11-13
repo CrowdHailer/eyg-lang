@@ -6,6 +6,12 @@ A place to run EYG code away from your local machine
 (set -a; source .env; set +a; gleam dev)
 ```
 
+## Sessions
+
+A session is a shell session and/or agent session with persistent state and file system.
+External messages get routed to sessions to keep isolation.
+We do not yet solve inter session communication.
+
 ## Secrets
 
 ## Connections

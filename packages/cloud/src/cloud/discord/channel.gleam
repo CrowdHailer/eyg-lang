@@ -6,6 +6,7 @@ import cloud/discord/api/operations
 import cloud/discord/api/schema
 import cloud/discord/client
 import cloud/discord/command
+import cloud/session
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/float
@@ -29,7 +30,7 @@ pub opaque type State {
     subject: Subject(Message),
     bot_user: String,
     conversations: Dict(String, List(schema.Message)),
-    execute_state: execute.State,
+    sessions: Subject(session.Message),
   )
 }
 
@@ -37,7 +38,7 @@ pub fn start(
   bot_token: String,
   guild: schema.Guild,
   bot_user: String,
-  execute_state: execute.State,
+  sessions: Subject(session.Message),
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
     // Full histories can exceed the init timeout; load in the message handler.
@@ -48,7 +49,7 @@ pub fn start(
       subject,
       bot_user,
       dict.new(),
-      execute_state,
+      sessions,
     ))
     |> actor.returning(subject)
     |> Ok
@@ -109,45 +110,50 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           }
         })
       // History is newest-first; process `fresh` in chronological order.
-      let execute_state = case loaded {
+      case loaded {
         False -> {
           io.println(
             "Loaded "
             <> int.to_string(list.length(fresh))
             <> " Discord messages",
           )
-          state.execute_state
         }
-        True ->
-          list.fold(fresh, state.execute_state, fn(execute_state, message) {
+        True -> {
+          let session_id = "Discord:" <> state.guild.id <> ":" <> channel.id
+          case fresh {
+            [] -> Nil
+            _ ->
+              io.println(
+                "processing discord messages from server: "
+                <> state.guild.name
+                <> " channel: "
+                <> channel.name,
+              )
+          }
+          list.each(fresh, fn(message) {
             // Install/server ID and name: state.guild.id and state.guild.name.
             // Conversation ID and name: channel.id and channel.name.
-            // This is where a hook would fit in
+            // This is where a configured hook would fit in.
             case command.source(message.data, state.bot_user) {
-              Error(Nil) -> execute_state
+              Error(Nil) -> Nil
               Ok(code) -> {
-                let #(outcome, session) =
-                  execute.block(code, execute_state, print_output(
-                    state.bot_token,
-                    channel.id,
-                    message.id,
-                    _,
-                  ))
-                case outcome {
-                  Ok(value) ->
-                    print_output(
+                process.send(
+                  state.sessions,
+                  session.Message(
+                    id: session_id,
+                    payload: session.Code(code),
+                    print: print_output(
                       state.bot_token,
                       channel.id,
                       message.id,
-                      execute.StandardOut(value),
-                    )
-                  Error(reason) ->
-                    io.println_error("Discord " <> channel.id <> ": " <> reason)
-                }
-                session
+                      _,
+                    ),
+                  ),
+                )
               }
             }
           })
+        }
       }
       State(
         ..state,
@@ -156,7 +162,6 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           channel.id,
           list.append(list.reverse(fresh), previous),
         ),
-        execute_state:,
       )
     }
   }
