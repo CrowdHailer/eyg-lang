@@ -1,0 +1,3 @@
+// Empty cloud by default. Supply workspace registrations as startup configuration.
+// Keep the service private or put authentication in front of the name-only login.
+{workspaces: [], shells: {pure: cloud.mock_all}}
