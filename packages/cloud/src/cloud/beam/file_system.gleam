@@ -64,6 +64,13 @@ fn path_parts(path: String) -> Result(List(String), FileError) {
   }
 }
 
+/// Use the same canonical path for policy checks and filesystem operations.
+pub fn resolve_path(path: String) -> Result(String, String) {
+  path_parts(path)
+  |> result.map(fn(parts) { "/" <> string.join(parts, "/") })
+  |> result.map_error(simplifile.describe_error)
+}
+
 fn change(fs: State, path: String, operation) -> #(Result(Nil, String), State) {
   let updated = {
     use parts <- result.try(path_parts(path))

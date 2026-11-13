@@ -14,6 +14,7 @@ import overlay/agent
 import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/tool
+import overlay/policy
 import overlay/tools/run
 import touch_grass/harness/computer
 
@@ -30,13 +31,8 @@ pub type Session {
 pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
   let effects =
     computer.effects()
-    |> list.filter(fn(effect) {
-      // TODO write a better helper for this but maybe we need to standardise on better effects.
-      !list.contains(
-        ["CreateKey", "Exit", "EYGParse", "Sign", "StandardIn"],
-        effect.name,
-      )
-    })
+    |> policy.match_rules(execute.rules)
+    |> list.map(fn(rule) { rule.0 })
   let provider_context =
     provider.Context(
       system_prompt: agent.system_prompt(
@@ -56,6 +52,7 @@ pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
 pub fn inner_loop(
   session: Session,
   eyg_state: execute.State,
+  policy: execute.Policy,
   history: chat.History,
   files: file_system.State,
   emit: fn(execute.Output) -> Nil,
@@ -85,14 +82,14 @@ pub fn inner_loop(
             list.fold(calls, #(history, eyg_state, files), fn(acc, call) {
               let #(history, eyg_state, files) = acc
               let #(result, eyg_state, files) =
-                execute_call(call.function, eyg_state, files, emit)
+                execute_call(call.function, eyg_state, policy, files, emit)
               #(
                 [result_to_message(call.id, result), ..history],
                 eyg_state,
                 files,
               )
             })
-          inner_loop(session, eyg_state, history, files, emit)
+          inner_loop(session, eyg_state, policy, history, files, emit)
         }
       }
     }
@@ -119,7 +116,7 @@ fn result_to_message(
   }
 }
 
-fn execute_call(call, eyg_state, files, emit) {
+fn execute_call(call, eyg_state, policy, files, emit) {
   let tool.FunctionCall(name, arguments) = call
   case agent.cast_tool_call(name, arguments) {
     Error(reason) -> #(
@@ -129,7 +126,7 @@ fn execute_call(call, eyg_state, files, emit) {
     )
     Ok(agent.Run(code)) -> {
       let #(result, eyg_state, files, output) =
-        execute.run(code, eyg_state, files, emit)
+        execute.run(code, eyg_state, policy, files, emit)
       let result = case result {
         Ok(text) -> Ok(tool.Return(run.report(output, text), []))
         Error(reason) -> Error(run.report(output, reason))

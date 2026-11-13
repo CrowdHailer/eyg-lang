@@ -1,7 +1,10 @@
 //// Bind a host's effect rules to a runtime policy.
 
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/break
+import eyg/interpreter/builtin
 import eyg/interpreter/cast
+import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import gleam/dict.{type Dict}
@@ -100,6 +103,43 @@ pub type Action(m, eff) {
   Resume(state.Value(m))
   Failed(state.Debug(m))
   Unavailable
+}
+
+/// Decide an effect using the host's pure evaluator. The host owns reference
+/// resolution and state; `done` handles decisions that need no evaluation.
+pub fn decide(
+  policy: Policy(eff, meta),
+  label: String,
+  input: state.Value(meta),
+  meta: meta,
+  evaluate: fn(
+    Result(state.Value(meta), state.Debug(meta)),
+    fn(Result(state.Value(meta), state.Debug(meta))) -> Action(meta, eff),
+  ) -> output,
+  done: fn(Action(meta, eff)) -> output,
+) -> output {
+  case dict.get(policy, label) {
+    Ok(Interface(interface, Gated(gate))) -> {
+      use returned <- evaluate(expression.call(gate, [#(input, meta)]))
+      case returned {
+        Ok(value) ->
+          case decision_from_value(value) {
+            Ok(Pass(modified)) -> Perform(interface, modified)
+            Ok(Mock(value)) -> Resume(value)
+            Error(Nil) ->
+              Failed(#(
+                break.IncorrectTerm(expected: "Pass/Mock", got: value),
+                meta,
+                builtin.default([]),
+                state.Empty,
+              ))
+          }
+        Error(debug) -> Failed(debug)
+      }
+    }
+    Ok(Interface(interface, Unrestricted)) -> done(Perform(interface, input))
+    Error(Nil) -> done(Unavailable)
+  }
 }
 
 /// Decode the runtime decision value into Gleam value.

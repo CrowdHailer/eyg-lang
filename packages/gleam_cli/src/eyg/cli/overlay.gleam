@@ -16,9 +16,7 @@ import eyg/cli/internal/terminal
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
-import eyg/interpreter/builtin
 import eyg/interpreter/cast
-import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value
@@ -584,8 +582,6 @@ fn resolve_policy_input(label, lift, origin) {
 
 /// Call the gate with absolute filesystem paths. Policy redirects must also
 /// use absolute paths. Unchecked effects are always performed.
-/// This could take a call as a continuation in which case the need for state would drop out
-/// To extract to policy would require the continuation change
 fn decide(
   policy: policy.Policy(harness_computer.Effect, source.Location),
   label: String,
@@ -605,31 +601,17 @@ fn decide(
 }
 
 fn decide_resolved(policy, label, lift, meta, state) {
-  case dict.get(policy, label) {
-    Ok(policy.Interface(interface, policy.Gated(gate))) -> {
-      let return = expression.call(gate, [#(lift, meta)])
-      use #(result, state) <- system.map(execute.pure_loop(return, state))
-      let decided = case result {
-        Ok(value) ->
-          case policy.decision_from_value(value) {
-            Ok(policy.Pass(modified)) -> policy.Perform(interface, modified)
-            Ok(policy.Mock(returned)) -> policy.Resume(returned)
-            Error(Nil) ->
-              policy.Failed(#(
-                break.IncorrectTerm(expected: "Pass/Mock", got: value),
-                meta,
-                builtin.default([]),
-                state.Empty,
-              ))
-          }
-        Error(debug) -> policy.Failed(debug)
-      }
-      #(decided, state)
-    }
-    Ok(policy.Interface(interface, policy.Unrestricted)) ->
-      system.Done(#(policy.Perform(interface, lift), state))
-    Error(Nil) -> system.Done(#(policy.Unavailable, state))
-  }
+  policy.decide(
+    policy,
+    label,
+    lift,
+    meta,
+    fn(returned, then) {
+      use #(result, state) <- system.map(execute.pure_loop(returned, state))
+      #(then(result), state)
+    },
+    fn(action) { system.Done(#(action, state)) },
+  )
 }
 
 // Resolve imports before asking the ReadFile gate, matching type checking.

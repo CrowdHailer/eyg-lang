@@ -5,12 +5,14 @@ import cloud/system
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser
 import gleam/crypto
+import gleam/dict
 import gleam/erlang/process
 import gleam/httpc
 import gleam/int
@@ -20,6 +22,7 @@ import gleam/result
 import gleam/string
 import ogre/origin
 import overlay/agent
+import overlay/policy
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/fetch
@@ -31,7 +34,6 @@ import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
-import touch_grass/interface
 import touch_grass/now
 import touch_grass/random
 import touch_grass/sleep
@@ -48,14 +50,61 @@ pub type State {
   State(origin: origin.Origin, cache: cache.Cache(Meta))
 }
 
+pub type Policy =
+  policy.Policy(computer.Effect, Meta)
+
+pub const rules = [
+  #("AppendFile", policy.PolicyField("append_file")),
+  #("CWD", policy.PolicyField("cwd")),
+  #("DecodeJSON", policy.Unchecked),
+  #("DeleteFile", policy.PolicyField("delete_file")),
+  #("Env", policy.PolicyField("env")),
+  #("Fetch", policy.PolicyField("fetch")),
+  #("Flip", policy.PolicyField("flip")),
+  #("Hash", policy.Unchecked),
+  #("MakeDirectory", policy.PolicyField("make_directory")),
+  #("Now", policy.PolicyField("now")),
+  #("Random", policy.PolicyField("random")),
+  #("ReadDirectory", policy.PolicyField("read_directory")),
+  #("ReadFile", policy.PolicyField("read_file")),
+  #("Sleep", policy.PolicyField("sleep")),
+  #("StandardError", policy.PolicyField("standard_error")),
+  #("StandardOut", policy.PolicyField("standard_out")),
+  #("WriteFile", policy.PolicyField("write_file")),
+]
+
+pub fn load_policy(
+  code: String,
+  state: State,
+) -> #(Result(Policy, String), State) {
+  case parser.all_from_string(code) {
+    Error(reason) -> #(Error(parser.format_error(reason, code)), state)
+    Ok(source) -> {
+      let #(value, state) = pure_loop(expression.execute(source, []), state)
+      let decoded = {
+        use value <- result.try(
+          result.map_error(value, fn(debug) { simple_debug.describe(debug.0) }),
+        )
+        policy.decode_policy(
+          policy.match_rules(computer.effects(), rules),
+          value,
+        )
+        |> result.map_error(simple_debug.describe)
+      }
+      #(decoded, state)
+    }
+  }
+}
+
 pub fn block(
   code: String,
   state: State,
+  policy: Policy,
   files: file_system.State,
   emit: fn(Output) -> Nil,
 ) -> #(Result(String, String), State, file_system.State) {
   let #(outcome, state, files, _) =
-    evaluate(code, [], simple_debug.inspect, state, files, emit)
+    evaluate(code, [], simple_debug.inspect, state, policy, files, emit)
   #(outcome, state, files)
 }
 
@@ -64,6 +113,7 @@ pub fn block(
 pub fn run(
   code: String,
   state: State,
+  policy: Policy,
   files: file_system.State,
   emit: fn(Output) -> Nil,
 ) -> #(Result(String, String), State, file_system.State, List(String)) {
@@ -72,12 +122,13 @@ pub fn run(
     [#("context", v.unit())],
     agent.inspect_result,
     state,
+    policy,
     files,
     emit,
   )
 }
 
-fn evaluate(code, scope, inspect, state, files, emit) {
+fn evaluate(code, scope, inspect, state, policy, files, emit) {
   case parser.all_from_string(code) {
     Error(reason) -> #(
       Error(parser.format_error(reason, code)),
@@ -86,11 +137,19 @@ fn evaluate(code, scope, inspect, state, files, emit) {
       [],
     )
     Ok(source) ->
-      loop(block.execute(source, scope), state, files, emit, inspect, [])
+      loop(
+        block.execute(source, scope),
+        state,
+        policy,
+        files,
+        emit,
+        inspect,
+        [],
+      )
   }
 }
 
-fn loop(returned, state: State, files, emit, inspect, output) {
+fn loop(returned, state: State, policy, files, emit, inspect, output) {
   case returned {
     Ok(#(value, _scope)) -> #(
       Ok(value |> option.map(inspect) |> option.unwrap("")),
@@ -98,17 +157,45 @@ fn loop(returned, state: State, files, emit, inspect, output) {
       files,
       output,
     )
-    Error(#(break.UnhandledEffect(label, lift), _, env, k)) -> {
-      let #(outcome, files) = perform(label, lift, files, emit)
-      let output = case label, lift, outcome {
-        "StandardOut", v.String(text), Ok(_)
-        | "StandardError", v.String(text), Ok(_)
-        -> [text, ..output]
-        _, _, _ -> output
+    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+      let #(action, state) = decide(policy, label, lift, meta, state)
+      let #(outcome, files, output) = case action {
+        policy.Perform(interface, input) -> {
+          let #(outcome, files) = case interface.decode(input) {
+            Ok(effect) -> perform_effect(effect, label, files, emit)
+            Error(reason) -> #(Error(simple_debug.describe(reason)), files)
+          }
+          let output = case label, input, outcome {
+            "StandardOut", v.String(text), Ok(_)
+            | "StandardError", v.String(text), Ok(_)
+            -> [text, ..output]
+            _, _, _ -> output
+          }
+          #(outcome, files, output)
+        }
+        policy.Resume(value) -> #(Ok(value), files, output)
+        policy.Failed(debug) -> #(
+          Error("Policy failed: " <> simple_debug.describe(debug.0)),
+          files,
+          output,
+        )
+        policy.Unavailable -> #(
+          Error("Unhandled effect: " <> label),
+          files,
+          output,
+        )
       }
       case outcome {
         Ok(value) ->
-          loop(block.resume(value, env, k), state, files, emit, inspect, output)
+          loop(
+            block.resume(value, env, k),
+            state,
+            policy,
+            files,
+            emit,
+            inspect,
+            output,
+          )
         Error(reason) -> #(Error(reason), state, files, output)
       }
     }
@@ -117,7 +204,15 @@ fn loop(returned, state: State, files, emit, inspect, output) {
       let state = State(..state, cache:)
       case value {
         Ok(value) ->
-          loop(block.resume(value, env, k), state, files, emit, inspect, output)
+          loop(
+            block.resume(value, env, k),
+            state,
+            policy,
+            files,
+            emit,
+            inspect,
+            output,
+          )
         Error(reason) -> #(Error(reason), state, files, output)
       }
     }
@@ -130,10 +225,58 @@ fn loop(returned, state: State, files, emit, inspect, output) {
   }
 }
 
-fn perform(label, lift, files, emit) {
-  case interface.cast(computer.effects(), label, lift) {
-    Error(reason) -> #(Error(simple_debug.describe(reason)), files)
-    Ok(effect) -> perform_effect(effect, label, files, emit)
+fn decide(policy, label, lift, meta, state) {
+  case resolve_policy_input(label, lift) {
+    Error(reason) -> #(policy.Resume(v.error(v.String(reason))), state)
+    Ok(input) ->
+      policy.decide(
+        policy,
+        label,
+        input,
+        meta,
+        fn(returned, then) {
+          let #(result, state) = pure_loop(returned, state)
+          #(then(result), state)
+        },
+        fn(action) { #(action, state) },
+      )
+  }
+}
+
+fn resolve_policy_input(label, lift) {
+  case label, lift {
+    "ReadFile", v.Record(fields)
+    | "WriteFile", v.Record(fields)
+    | "AppendFile", v.Record(fields)
+    ->
+      case dict.get(fields, "path") {
+        Ok(v.String(path)) -> {
+          use path <- result.map(file_system.resolve_path(path))
+          v.Record(dict.insert(fields, "path", v.String(path)))
+        }
+        _ -> Ok(lift)
+      }
+    "DeleteFile", v.String(path)
+    | "MakeDirectory", v.String(path)
+    | "ReadDirectory", v.String(path)
+    -> result.map(file_system.resolve_path(path), v.String)
+    _, _ -> Ok(lift)
+  }
+}
+
+/// Policy evaluation can resolve references but cannot perform effects.
+/// TODO this should be continuation based.
+fn pure_loop(returned, state: State) {
+  case returned {
+    Error(#(break.UndefinedReference(reference), _, env, k) as debug) -> {
+      let #(value, cache) = lookup(reference, state)
+      let state = State(..state, cache:)
+      case value {
+        Ok(value) -> pure_loop(expression.resume(value, env, k), state)
+        Error(_) -> #(Error(debug), state)
+      }
+    }
+    _ -> #(returned, state)
   }
 }
 

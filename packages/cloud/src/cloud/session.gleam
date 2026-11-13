@@ -11,6 +11,7 @@ import multiformats/cid/v1
 import ogre/origin
 import overlay/llm/chat
 import overlay/llm/provider
+import simplifile
 import unixfs/mfs
 
 pub type Payload {
@@ -25,6 +26,7 @@ pub type Message {
 type State {
   State(
     execute_state: execute.State,
+    policy: execute.Policy,
     blocks: Dict(v1.Cid, mfs.Entry),
     sessions: Dict(String, Session),
     // session is not a good name for overlay.Session
@@ -48,8 +50,13 @@ pub fn start_with_session(
   hub: origin.Origin,
   agent_session: overlay.Session,
 ) -> actor.StartResult(Subject(Message)) {
+  let assert Ok(code) = simplifile.read("policy.eyg")
+  let #(policy, execute_state) =
+    execute.load_policy(code, execute.State(origin: hub, cache: cache.ready()))
+  let assert Ok(policy) = policy
   actor.new(State(
-    execute_state: execute.State(origin: hub, cache: cache.ready()),
+    execute_state:,
+    policy:,
     blocks: dict.new(),
     sessions: dict.new(),
     agent_config: agent_session,
@@ -73,7 +80,7 @@ fn handle_message(
   let #(history, execute_state, files) = case action {
     Code(code) -> {
       let #(outcome, execute_state, files) =
-        execute.block(code, state.execute_state, files, print)
+        execute.block(code, state.execute_state, state.policy, files, print)
       case outcome {
         Ok(value) -> print(execute.StandardOut(value))
         Error(reason) -> print(execute.StandardError(reason))
@@ -84,6 +91,7 @@ fn handle_message(
       overlay.inner_loop(
         state.agent_config,
         state.execute_state,
+        state.policy,
         [chat.UserMessage(text, []), ..history],
         files,
         print,

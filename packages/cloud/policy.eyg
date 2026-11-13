@@ -1,0 +1,27 @@
+// Paths are normalized and absolute before the policy is called.
+let writable = (path, input) -> {
+  match !string_starts_with(path, "/skills") {
+    True(_) -> { Mock(Error("Writing to /skills is denied by policy")) }
+    False(_) -> { Pass(input) }
+  }
+}
+let write = (input) -> { writable(input.path, input) }
+let change_path = (path) -> { writable(path, path) }
+let pass = (input) -> { Pass(input) }
+{
+  append_file: write,
+  cwd: pass,
+  delete_file: change_path,
+  env: pass,
+  fetch: pass,
+  flip: pass,
+  make_directory: change_path,
+  now: pass,
+  random: pass,
+  read_directory: pass,
+  read_file: pass,
+  sleep: pass,
+  standard_error: pass,
+  standard_out: pass,
+  write_file: write
+}
