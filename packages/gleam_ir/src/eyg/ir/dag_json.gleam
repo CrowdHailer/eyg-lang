@@ -120,6 +120,8 @@ pub fn decoder(meta: meta) -> d.Decoder(ir.Node(meta)) {
       use keys <- d.field("k", d.list(d.string))
       d.success(#(ir.Query(ir.Match(label, keys)), meta))
     }
+    "hs" -> label_decoder(ir.Shallow, meta)
+    "hm" -> label_decoder(ir.Mask, meta)
     "b" -> label_decoder(ir.Builtin, meta)
     "#" -> {
       use cid <- d.field("l", codec.decode_cid())
@@ -218,6 +220,8 @@ pub fn to_data_model(tree: ir.Node(meta)) -> json.Json {
         ir.Match(l, keys) ->
           node("qa", [label(l), #("k", json.array(keys, codec.string))])
       }
+    ir.Shallow(x) -> node("hs", [label(x)])
+    ir.Mask(x) -> node("hm", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
     ir.Reference(reference) ->
       case reference {

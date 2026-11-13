@@ -86,3 +86,30 @@ pub fn the_scope_is_the_blocks_after_an_effect_in_its_value_test() {
     block.resume(v.Integer(2), env, k)
   assert scope == [#("a", v.Integer(1))]
 }
+
+pub fn tail_calls_restore_original_scope_after_resumption_test() {
+  let source =
+    ir.let_(
+      "outer",
+      ir.integer(1),
+      ir.apply(
+        ir.lambda(
+          "x",
+          ir.let_(
+            "local",
+            ir.integer(2),
+            ir.apply(
+              ir.lambda("y", ir.apply(ir.perform("Ask"), ir.variable("y"))),
+              ir.variable("x"),
+            ),
+          ),
+        ),
+        ir.integer(7),
+      ),
+    )
+  let assert Error(#(break.UnhandledEffect("Ask", v.Integer(7)), _, env, k)) =
+    block.execute(source, [])
+  let assert Ok(#(Some(v.Integer(8)), scope)) =
+    block.resume(v.Integer(8), env, k)
+  assert scope == [#("outer", v.Integer(1))]
+}

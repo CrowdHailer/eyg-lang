@@ -35,7 +35,6 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
-import midas/continuation
 import ogre/origin
 import overlay/agent
 import overlay/check
@@ -1260,8 +1259,8 @@ fn program_reference(reference, state: State, policy, host, visiting) {
 
 /// Anchor imports inside returned closures as well as immediate module imports.
 fn anchor_imports(source, file) {
-  ir.rewrite(source, fn(node) {
-    let node = case node.0 {
+  ir.rewrite_pure(source, fn(node) {
+    case node.0 {
       ir.Reference(ir.Relative(path)) -> {
         let path = case filepath.is_absolute(path) {
           True -> files.normalize(path)
@@ -1272,8 +1271,7 @@ fn anchor_imports(source, file) {
       }
       _ -> node
     }
-    continuation.return(node)
-  })(fn(node) { node })
+  })
 }
 
 fn read_import(path, policy, host: Host, state: State) {

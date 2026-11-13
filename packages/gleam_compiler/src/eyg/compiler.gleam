@@ -12,14 +12,18 @@ pub fn to_js(
   refs: dict.Dict(v1.Cid, binding.Poly),
   handler: String,
 ) -> String {
-  program
-  |> infer_purity(refs)
-  |> ir.alpha
-  |> ir.k()
-  |> ir.unnest
-  |> monadic()
-  |> tree.clear_annotation()
-  |> js.render(handler)
+  case js.needs_effect_runtime(program) {
+    True -> program |> ir.alpha |> tree.clear_annotation |> js.render(handler)
+    False ->
+      program
+      |> infer_purity(refs)
+      |> ir.alpha
+      |> ir.k()
+      |> ir.unnest
+      |> monadic()
+      |> tree.clear_annotation()
+      |> js.render(handler)
+  }
 }
 
 fn infer_purity(program, refs) {

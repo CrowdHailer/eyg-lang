@@ -1,0 +1,18 @@
+// Self-contained core of increment_counter.eyg for the compiler benchmark:
+// the current compile command does not resolve local imports.
+// The host supplies an already-built list; builtin fold avoids a recursive
+// workload obscuring stack usage attributable to the handler.
+let workload = (items) -> {
+  let run = handle Increment((_, resume) -> {
+    (count) -> {
+      let next = !int_add(count, 1)
+      resume({})(next)
+    }
+  }, (_) -> {
+    let _ = !list_fold(items, {}, (_, _) -> { perform Increment({}) })
+    let finish = (count) -> { count }
+    finish
+  })
+  run(0)
+}
+workload

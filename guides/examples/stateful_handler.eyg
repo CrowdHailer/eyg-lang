@@ -1,0 +1,8 @@
+let count_calls = import "./increment_counter.eyg"
+
+count_calls((_) -> {
+  let _ = perform Increment({})
+  let _ = perform Increment({})
+  let _ = perform Increment({})
+  {}
+})

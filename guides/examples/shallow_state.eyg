@@ -1,0 +1,22 @@
+// Unlike a deep continuation, resume does not reinstall the previous state.
+let with_state = !fix((self, state, body) -> {
+  handle shallow State((operation, resume) -> {
+    let next = match operation {
+      Increment(_) -> { !int_add(state, 1) }
+      Decrement(_) -> { !int_subtract(state, 1) }
+      Get(_) -> { state }
+    }
+    self(next, (_) -> { resume(next) })
+  }, (value) -> { {state, value} }, body)
+})
+
+with_state(0, (_) -> {
+  let before = perform State(Get({}))
+  let _ = perform State(Increment({}))
+  let _ = perform State(Increment({}))
+  let middle = perform State(Get({}))
+  let _ = perform State(Decrement({}))
+  let after = perform State(Get({}))
+  [before, middle, after]
+})
+// {state: 1, value: [0, 2, 1]}

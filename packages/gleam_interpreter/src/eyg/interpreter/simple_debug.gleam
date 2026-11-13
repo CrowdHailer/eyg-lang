@@ -50,6 +50,8 @@ pub fn describe(reason) -> String {
     break.UnhandledEffect(effect, lift) ->
       "unhandled effect " <> effect <> "(" <> inspect(lift) <> ")"
     break.ImpureQuery(label) -> "effect in query rule: " <> label
+    break.ImpureEffect(effect, _) -> "effect escaped !pure: " <> effect
+    break.MaskedEffect(effect, _) -> "no unmasked handler for: " <> effect
     break.Vacant -> "tried to run a todo"
     break.Unrepresentable(..) -> "integer out of range"
   }
@@ -83,6 +85,10 @@ pub fn hint(reason) -> String {
     break.UnhandledEffect(_, _) ->
       "handle this effect or run the program in a runtime that supports it"
     break.ImpureQuery(_) -> "query rule heads and predicates must be pure"
+    break.ImpureEffect(_, _) ->
+      "handle the effect inside the function or remove the !pure constraint"
+    break.MaskedEffect(_, _) ->
+      "install an outer handler beyond the one skipped by mask"
     break.Vacant ->
       "replace the todo with an expression before running the program"
     break.Unrepresentable(..) ->

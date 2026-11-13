@@ -1,5 +1,22 @@
 [
   {
+    "name": "pure returns a callable function",
+    "source": {
+      "0": "a",
+      "f": {
+        "0": "a",
+        "f": { "0": "b", "l": "pure" },
+        "a": {
+          "0": "f",
+          "l": "x",
+          "b": { "0": "v", "l": "x" }
+        }
+      },
+      "a": { "0": "i", "v": 42 }
+    },
+    "value": { "integer": 42 }
+  },
+  {
     "name": "missing builtin",
     "source": {
       "0": "b",
