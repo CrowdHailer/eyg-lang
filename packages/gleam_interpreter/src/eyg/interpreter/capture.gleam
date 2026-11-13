@@ -6,6 +6,27 @@ import gleam/list
 import gleam/result
 import gleam/string
 
+/// Whether a value can be represented as source for type checking or publishing.
+/// Continuations have no source representation. Only free captured variables
+/// matter; unrelated values in a closure's environment are not retained.
+pub fn is_capturable(value) {
+  case value {
+    v.LinkedList(items) -> list.all(items, is_capturable)
+    v.Record(fields) -> dict.values(fields) |> list.all(is_capturable)
+    v.Tagged(_, inner) -> is_capturable(inner)
+    v.Closure(parameter, body, env) ->
+      list.all(ir.free_variables(body, [parameter]), fn(name) {
+        case list.key_find(env, name) {
+          Ok(value) -> is_capturable(value)
+          Error(_) -> True
+        }
+      })
+    v.Partial(v.Resume(_), _) -> False
+    v.Partial(_, args) -> list.all(args, is_capturable)
+    v.Binary(_) | v.Integer(_) | v.String(_) -> True
+  }
+}
+
 pub fn capture(term, meta) {
   // env is reversed with first needed deepest
   let #(exp, env) = do_capture(term, [], meta)

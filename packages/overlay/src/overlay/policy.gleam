@@ -7,13 +7,13 @@ import eyg/interpreter/cast
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
 import touch_grass/interface
 
-/// Require a user-supplied gate in the named field or
-/// expose the effect without a user-supplied gate.
+/// Require a gate in the named field or expose a deterministic effect without one.
 pub type Rule {
   PolicyField(String)
   Unchecked
@@ -52,22 +52,42 @@ pub fn type_(rules: List(#(interface.Interface(_, _), Rule))) {
     list.filter_map(rules, fn(rule) {
       let #(interface, rule) = rule
       case rule {
-        PolicyField(field) ->
-          Ok(#(
-            field,
-            t.Fun(
-              interface.lift_type,
-              t.Empty,
-              t.union([
-                #("Pass", interface.lift_type),
-                #("Mock", interface.lower_type),
-              ]),
-            ),
-          ))
+        PolicyField(field) -> Ok(#(field, gate_type(interface)))
         Unchecked -> Error(Nil)
       }
     })
   t.record(fields)
+}
+
+pub fn gate_type(interface: interface.Interface(_, _)) {
+  t.Fun(
+    interface.lift_type,
+    t.Empty,
+    t.union([
+      #("Pass", interface.lift_type),
+      #("Mock", interface.lower_type),
+      #("Reject", t.unit),
+    ]),
+  )
+}
+
+/// A complete, pure policy that refuses every gated effect. Hosts can expose
+/// this value so configuration overwrites individual gates without omitting any.
+pub fn reject_all(
+  rules: List(#(interface.Interface(_, meta), Rule)),
+  meta: meta,
+) {
+  let body = ir.tagged("Reject", ir.unit()) |> ir.map_annotation(fn(_) { meta })
+  let reject = v.Closure("_", body, [])
+  rules
+  |> list.filter_map(fn(rule) {
+    case rule.1 {
+      PolicyField(field) -> Ok(#(field, reject))
+      Unchecked -> Error(Nil)
+    }
+  })
+  |> dict.from_list
+  |> v.Record
 }
 
 pub fn decode_policy(
@@ -75,16 +95,17 @@ pub fn decode_policy(
   value: state.Value(_),
 ) {
   use fields <- result.map(
-    list.try_map(rules, fn(rule) {
+    list.try_fold(rules, [], fn(fields, rule) {
       let #(interface, rule) = rule
       let name = interface.name
       case rule {
         PolicyField(field) ->
           case cast.field(field, Ok, value) {
-            Ok(gate) -> Ok(#(name, Interface(interface, Gated(gate))))
+            Ok(gate) ->
+              Ok([#(name, Interface(interface, Gated(gate))), ..fields])
             Error(reason) -> Error(reason)
           }
-        Unchecked -> Ok(#(name, Interface(interface, Unrestricted)))
+        Unchecked -> Ok([#(name, Interface(interface, Unrestricted)), ..fields])
       }
     }),
   )
@@ -95,6 +116,7 @@ pub fn decode_policy(
 pub type Decision(meta) {
   Pass(state.Value(meta))
   Mock(state.Value(meta))
+  Reject
 }
 
 /// What to do after a decision
@@ -105,8 +127,10 @@ pub type Action(m, eff) {
   Unavailable
 }
 
-/// Decide an effect using the host's pure evaluator. The host owns reference
-/// resolution and state; `done` handles decisions that need no evaluation.
+/// Decide an effect using the host's pure evaluator. The evaluator owns reference
+/// resolution and its state or asynchronous effects; this module only interprets
+/// the gate's result. `done` lifts decisions that need no evaluation into the same
+/// host result type.
 pub fn decide(
   policy: Policy(eff, meta),
   label: String,
@@ -126,9 +150,10 @@ pub fn decide(
           case decision_from_value(value) {
             Ok(Pass(modified)) -> Perform(interface, modified)
             Ok(Mock(value)) -> Resume(value)
+            Ok(Reject) -> Unavailable
             Error(Nil) ->
               Failed(#(
-                break.IncorrectTerm(expected: "Pass/Mock", got: value),
+                break.IncorrectTerm(expected: "Pass/Mock/Reject", got: value),
                 meta,
                 builtin.default([]),
                 state.Empty,
@@ -149,6 +174,8 @@ pub fn decision_from_value(
   case value {
     v.Tagged("Pass", inner) -> Ok(Pass(inner))
     v.Tagged("Mock", inner) -> Ok(Mock(inner))
+    v.Tagged("Reject", inner) ->
+      cast.as_unit(inner, Reject) |> result.replace_error(Nil)
     _ -> Error(Nil)
   }
 }

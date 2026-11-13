@@ -582,6 +582,7 @@ fn resolve_policy_input(label, lift, origin) {
 
 /// Call the gate with absolute filesystem paths. Policy redirects must also
 /// use absolute paths. Unchecked effects are always performed.
+/// The shared decision code uses this host's pure evaluator and state.
 fn decide(
   policy: policy.Policy(harness_computer.Effect, source.Location),
   label: String,
