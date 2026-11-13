@@ -1,0 +1,8 @@
+{
+  read_file: (request) -> {
+    match !string_ends_with(request.path, ".md") {
+      True(_) -> { Pass(request) }
+      False(_) -> { Mock(Error("only markdown")) }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+import { ModelRuntime, DefaultResourceLoader, SessionManager, SettingsManager, createAgentSession } from "@earendil-works/pi-coding-agent";
+import { fauxProvider, fauxAssistantMessage, fauxToolCall, getCurrentTools } from "@earendil-works/pi-ai";
+export const modelRuntime = options => ModelRuntime.create(options);
+export const resourceLoader = options => new DefaultResourceLoader(options);
+export const sessionManager = () => SessionManager.inMemory();
+export const settingsManager = options => SettingsManager.inMemory(options);
+export const session = options => createAgentSession(options);
+export const faux = options => fauxProvider(options);
+export const assistant = (content, options) => fauxAssistantMessage(content, options);
+export const toolCall = (name, args) => fauxToolCall(name, args);
+export const currentTools = context => getCurrentTools(context.messages);

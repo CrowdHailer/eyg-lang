@@ -1,0 +1,47 @@
+// The policy used when a project has no `.opencode/eyg.eyg`.
+// EYG's computer file effects are limited to the project.
+// Native tools use OpenCode's own permissions, so an edit may still ask for approval.
+// Shell commands and the web are unavailable.
+// PROJECT is replaced with the project directory.
+let project = "PROJECT"
+
+let inside = (path) -> {
+  match !equal(path, project) {
+    True(_) -> { True({}) }
+    False(_) -> { !string_starts_with(path, !string_append(project, "/")) }
+  }
+}
+
+let within = (path_of) -> {
+  (lift) -> {
+    let path = path_of(lift)
+    match inside(path) {
+      True(_) -> { Pass(lift) }
+      False(_) -> { Mock(Error(!string_append("outside the project: ", path))) }
+    }
+  }
+}
+
+let request_path = (request) -> { request.path }
+let path = (path) -> { path }
+
+{
+  policy: {
+    append_file: within(request_path),
+    delete_file: within(path),
+    make_directory: within(path),
+    read_directory: within(path),
+    read_file: within(request_path),
+    write_file: within(request_path),
+    read: Pass,
+    glob: Pass,
+    grep: Pass,
+    edit: Pass,
+    write: Pass,
+    apply_patch: Pass,
+    todowrite: Pass,
+    question: Pass,
+    skill: Pass,
+    task: Pass
+  }
+}

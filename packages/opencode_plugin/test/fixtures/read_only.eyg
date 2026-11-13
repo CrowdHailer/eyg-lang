@@ -1,0 +1,14 @@
+{
+  policy: {
+    read_file: (request) -> { Pass(request) },
+    read_directory: Pass,
+    write_file: (_) -> { Mock(Error("read only")) },
+    task: Pass
+  },
+  context: {readme: "hello"},
+  agents: {
+    writer: {
+      write_file: Pass
+    }
+  }
+}
