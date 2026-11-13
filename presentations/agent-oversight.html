@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Know what your agents can do · EYG</title>
+<style>
+:root{color-scheme:dark;--bg:#101915;--panel:#192820;--ink:#f0f4e9;--muted:#b3c4b4;--accent:#bbf379;--line:#3b5342;--danger:#ffbca8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:20px/1.5 system-ui,sans-serif}a{color:var(--accent);text-underline-offset:.2em}button{font:inherit;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);padding:.45em .8em;cursor:pointer}button:hover,button:focus-visible{border-color:var(--accent)}button:disabled{opacity:.35;cursor:default}header,footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 3vw}header{border-bottom:1px solid var(--line);font-size:.8rem;letter-spacing:.12em;text-transform:uppercase}header b{font-size:1.4rem;color:var(--accent)}main{max-width:1280px;margin:auto}.slide{padding:5vh 5vw 3vh;min-height:calc(100svh - 155px)}.slide[hidden]{display:none}.eyebrow{font-size:.8rem;color:var(--accent);letter-spacing:.18em;text-transform:uppercase;margin:0 0 1.5rem}h1{font-size:clamp(2.7rem,6vw,5.6rem);line-height:1.04;letter-spacing:-.045em;max-width:1000px;margin:.4em 0}h2{font-size:clamp(2rem,4.1vw,3.7rem);line-height:1.13;letter-spacing:-.03em;max-width:1000px;margin:0 0 2rem}h3{font-size:1.2rem;color:var(--accent);margin-top:0}p{max-width:950px}.lead{font-size:clamp(1.2rem,2.2vw,1.7rem);color:var(--muted);max-width:870px}.accent{color:var(--accent)}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;margin:2.5rem 0}.card{padding:1.35rem;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card p{font-size:1rem;color:var(--muted);margin-bottom:0}.metric{font-size:2.5rem;color:var(--accent);font-weight:650}.flow{display:flex;align-items:stretch;gap:.6rem;margin:3rem 0}.flow .card{flex:1;min-width:0}.flow .arrow{align-self:center;color:var(--accent)}.flow h3{font-size:1rem}.small,.source{font-size:.85rem;color:var(--muted)}.source{margin-top:2rem}.source a{color:var(--muted)}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:1.05rem}th,td{padding:1rem;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--accent);font-weight:600}td{vertical-align:top}.yes{color:var(--accent)}.no{color:var(--danger)}pre{overflow:auto;background:#0a120e;border:1px solid var(--line);border-radius:12px;padding:1.35rem;font-size:clamp(.8rem,1.65vw,1.1rem);line-height:1.6}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.kw{color:#e8bdff}.str{color:var(--accent)}.num{color:#ffc785}.tag{color:#86d6fa}.proof{font-size:1.6rem;margin:2.5rem 0;padding:1.4rem;border-left:4px solid var(--accent)}li{margin:.7rem 0}.notes{border-top:1px dashed var(--line);margin-top:2rem;padding-top:1rem;color:var(--muted);font-size:.9rem}.notes[hidden]{display:none}footer{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);font-size:.85rem}.controls{display:flex;gap:.5rem;align-items:center}#position{font-variant-numeric:tabular-nums;min-width:4rem;text-align:center}.keys{color:var(--muted)}.progress{height:3px;background:var(--accent);position:fixed;bottom:0;left:0;transition:width .2s}body.all .slide{display:block;min-height:100svh;border-bottom:1px solid var(--line)}body.all footer{position:static}body.all .progress{display:none}
+@media(max-width:700px){body{font-size:17px}.slide{padding:3rem 1.25rem;min-height:calc(100svh - 160px)}header,footer{padding:.8rem 1.25rem}.cards{grid-template-columns:1fr;gap:.7rem}.flow{flex-direction:column;margin:1.5rem 0}.flow .arrow{transform:rotate(90deg)}h2{margin-bottom:1.5rem}.keys{display:none}th,td{padding:.65rem}table{font-size:.9rem}.proof{font-size:1.1rem}.source{overflow-wrap:anywhere}.controls{gap:.25rem}.controls button{padding:.4rem .65rem}}
+@media print{body{background:white;color:#111;font-size:16px}header,footer,.progress{display:none!important}.slide,.slide[hidden]{display:block!important;min-height:0;break-after:page;padding:1cm}.notes{display:none!important}.card,pre{background:#f4f6f1;color:#111;border-color:#bbb}h3,.eyebrow,.accent,.metric,th,a{color:#31570d}.lead,.card p,.source{color:#444}.kw,.str,.num,.tag,.yes,.no{color:#111}h1{font-size:54px}h2{font-size:36px}pre{white-space:pre-wrap;font-size:13px}table{font-size:14px}}
+@media screen and (max-width:700px){table{table-layout:fixed}th,td{overflow-wrap:anywhere}.table-wrap{overflow:visible}}
+</style>
+</head>
+<body>
+<header><b>EYG</b><span>Typed queries · Managed effects · Agent oversight</span></header>
+<main>
+<section class="slide" aria-labelledby="s1">
+  <p class="eyebrow">01 / The proposition</p>
+  <h1 id="s1">Know what your<br>agents <span class="accent">can do.</span></h1>
+  <p class="lead">Put the permission check where an operation becomes an effect. Keep the facts that explain the decision.</p>
+  <div class="cards">
+    <div class="card"><div class="metric">Typed</div><p>Policy and program agree on the shape of requests and results.</p></div>
+    <div class="card"><div class="metric">Explicit</div><p>The runtime decides which effects exist and how they execute.</p></div>
+    <div class="card"><div class="metric">Explainable</div><p>Queries can return the grants that justify a permitted action.</p></div>
+  </div>
+  <p class="small">An implementation-backed proposal. Examples and tests are included in this repository.</p>
+  <aside class="notes" hidden>Audience: teams building agent runtimes. EYG does not reveal an agent's private reasoning. The claim is about the operations it requests and the authority the host chooses to exercise. Authorization evidence and durable audit storage still need a host.</aside>
+</section>
+<section class="slide" aria-labelledby="s2" hidden>
+  <p class="eyebrow">02 / The enforcement point</p>
+  <h2 id="s2">An effect is a place<br>to make a decision.</h2>
+  <div class="flow" aria-label="Program requests an effect; a policy checks trusted facts; a decision gates the host; the host records its result.">
+    <div class="card"><h3>Program</h3><p>Requests WriteFile</p></div><span class="arrow" aria-hidden="true">→</span>
+    <div class="card"><h3>Policy</h3><p>Identity + current facts</p></div><span class="arrow" aria-hidden="true">→</span>
+    <div class="card"><h3>Decision</h3><p>Pass or deny</p></div><span class="arrow" aria-hidden="true">→</span>
+    <div class="card"><h3>Host</h3><p>Execute + record outcome</p></div>
+  </div>
+  <p class="lead">Overlay's gate returns <code>Pass(request)</code> or <code>Mock(result)</code>. A denied write never reaches the filesystem.</p>
+  <p class="source">Verified by <a href="../packages/gleam_cli/test/eyg/cli/authorization_test.gleam">the CLI authorization integration tests</a>. Durable receipts are a host integration responsibility.</p>
+  <aside class="notes" hidden>Tests execute the real Overlay effect handler against Loam's in-memory host and verify unchanged data after a denied write. EYG's pure code cannot independently call the operating system. This guarantee depends on the embedding runtime and its effect implementations; it is not a guarantee about arbitrary native code running alongside it.</aside>
+</section>
+<section class="slide" aria-labelledby="s3" hidden>
+  <p class="eyebrow">03 / Policy as ordinary code</p>
+  <h2 id="s3">Join the facts that<br>justify permission.</h2>
+  <pre><code><span class="kw">rule</span> <span class="tag">Permit</span>({tenant, actor, action, resource, role}) {
+  <span class="kw">var</span> role
+  <span class="tag">Member</span>({tenant, actor, role}),
+  <span class="tag">RolePermission</span>({tenant, role, action, resource})
+}</code></pre>
+  <p class="lead">The request supplies lexical constants. The query joins trusted membership and permission facts within one tenant.</p>
+  <p class="small">Empty result → deny. Unknown or caller-supplied “facts” are not authority.</p>
+  <p class="source">Excerpt from <a href="../guides/authorization.md">the executable authorization tutorial</a>; the surrounding host authenticates the principal.</p>
+  <aside class="notes" hidden>The compiler checks schemas and purity. Neither a correct type nor a Table value authenticates a fact. Never merge arbitrary untrusted rules into the policy database: an attacker could simply assert Permit. Rule creation in the examples admits data through a trusted read/write delegation template.</aside>
+</section>
+<section class="slide" aria-labelledby="s4" hidden>
+  <p class="eyebrow">04 / Explain the authority</p>
+  <h2 id="s4">“Allowed” can come<br>with a reason.</h2>
+  <div class="proof">Team policy <strong>ops-read</strong><br>→ Alice delegates <strong>alice-report</strong><br>→ Agent <strong>a1</strong> reads an Atlas report</div>
+  <pre><code>{actor: <span class="str">"a1"</span>, task: <span class="str">"report"</span>, action: <span class="str">"read"</span>,
+ expires: <span class="num">150</span>, grants: [<span class="str">"alice-report"</span>, <span class="str">"ops-read"</span>]}</code></pre>
+  <p class="small">Selected fields from a tested permission. Store the complete request, trusted snapshot revision, time, policy version, proof, and effect outcome.</p>
+  <aside class="notes" hidden>The newest delegation is first in the grants list. The proof tracks policy and delegation IDs, not every solver step. Membership, approvals, ownership and task state must remain retrievable through the recorded snapshot. Proofs are ordinary values, not signatures or portable credentials.</aside>
+</section>
+<section class="slide" aria-labelledby="s5" hidden>
+  <p class="eyebrow">05 / Long-running work</p>
+  <h2 id="s5">A task keeps running.<br>Its authority can change.</h2>
+  <div class="table-wrap"><table><thead><tr><th>Next request</th><th>Current facts</th><th>Decision</th></tr></thead><tbody>
+    <tr><td>Read report at time 100</td><td>Task running; delegation current</td><td class="yes">Permit</td></tr>
+    <tr><td>Same read at time 150</td><td>Task expired</td><td class="no">Deny</td></tr>
+    <tr><td>Same read after cancellation</td><td>Task no longer running</td><td class="no">Deny</td></tr>
+    <tr><td>Write instead of read</td><td>Read-only delegation</td><td class="no">Deny</td></tr>
+  </tbody></table></div>
+  <p class="lead">Reauthorize every effect from a fresh snapshot. Yesterday's permission is evidence, not a reusable credential.</p>
+  <aside class="notes" hidden>These are deterministic examples with logical timestamps. Production hosts supply real time and synchronize decisions with execution using transactions or snapshot-version checks when atomic revocation is required. A startup-only check would not provide these guarantees.</aside>
+</section>
+<section class="slide" aria-labelledby="s6" hidden>
+  <p class="eyebrow">06 / Organization-specific control</p>
+  <h2 id="s6">Different teams.<br>Different creation rules.</h2>
+  <div class="table-wrap"><table><thead><tr><th>Company / team</th><th>Create agent</th><th>Create automation</th></tr></thead><tbody>
+    <tr><td>Acme / operations</td><td class="yes">Automatic for engineers</td><td class="yes">Automatic for engineers</td></tr>
+    <tr><td>Acme / sales</td><td>Current project approval</td><td class="no">Denied</td></tr>
+    <tr><td>Beta / operations</td><td class="no">Denied</td><td class="no">Denied</td></tr>
+  </tbody></table></div>
+  <p class="lead">Creation does not grant data access. Each new agent still needs admitted, attenuated read/write delegations.</p>
+  <p class="source"><a href="../eyg_packages/authorization/enterprise_fixture.eyg">Fixture</a> · <a href="../eyg_packages/authorization/enterprise.eyg">Rules</a> · <a href="../eyg_packages/authorization/test.eyg">Allow and deny tests</a></p>
+  <aside class="notes" hidden>The policy decision and fixtures are implemented. Provisioning services, schedulers and databases are application infrastructure. The service must verify create_agent or create_automation in the same transaction that establishes its trusted lifecycle facts. Every relation join includes the tenant and the request selects a project.</aside>
+</section>
+<section class="slide" aria-labelledby="s7" hidden>
+  <p class="eyebrow">07 / Why this helps an executor</p>
+  <h2 id="s7">One language for<br>the action and its guard.</h2>
+  <div class="cards">
+    <div class="card"><h3>Typed composition</h3><p>Combine ordinary functions and query values. Catch inconsistent relation fields before execution.</p></div>
+    <div class="card"><h3>Controlled effects</h3><p>The host can deny, rewrite, or simulate a request through an explicit handler.</p></div>
+    <div class="card"><h3>Repeatable evidence</h3><p>Pin code dependencies, retain input snapshots, and replay pure policy decisions.</p></div>
+  </div>
+  <p class="lead">The advantage is less glue between policy evaluation and program execution.</p>
+  <aside class="notes" hidden>Content identifiers identify code bytes; they do not prove who authorized a policy. Unpinned named packages resolve to a latest version, so reproducible deployments must use pinned references. Replaying a policy decision does not replay or undo external effects.</aside>
+</section>
+<section class="slide" aria-labelledby="s8" hidden>
+  <p class="eyebrow">08 / Compare the responsibility</p>
+  <h2 id="s8">EYG and Biscuit protect<br>different boundaries.</h2>
+  <div class="table-wrap"><table><thead><tr><th>Requirement</th><th>This EYG implementation</th><th>Biscuit</th></tr></thead><tbody>
+    <tr><td>Mediate a running program's effects</td><td>Runtime + handlers</td><td>Application integrates an authorizer</td></tr>
+    <tr><td>Portable signed authority</td><td>No token protocol here</td><td>Signed bearer tokens</td></tr>
+    <tr><td>Attenuate without contacting issuer</td><td>Host-admitted fact updates</td><td>Append signed restriction blocks</td></tr>
+    <tr><td>Protect fact origins</td><td>Host owns trusted base facts</td><td>Block provenance and trust scopes</td></tr>
+  </tbody></table></div>
+  <p class="source">Biscuit primary references: <a href="https://doc.biscuitsec.org/reference/specifications">token specification</a> · <a href="https://doc.biscuitsec.org/reference/datalog">Datalog and block scoping</a>. Reviewed 2026-10-07.</p>
+  <aside class="notes" hidden>Biscuit is not merely a string-based permission check: its signed block structure and scoped facts make untrusted offline attenuation possible. EYG's ordinary Table values provide no equivalent cryptographic or origin-scoping guarantee. Do not claim the EYG admission example replaces that mechanism.</aside>
+</section>
+<section class="slide" aria-labelledby="s9" hidden>
+  <p class="eyebrow">09 / Where EYG is the better fit</p>
+  <h2 id="s9">When you own the executor,<br>enforce inside the executor.</h2>
+  <p class="lead">Choose EYG for a runtime that evaluates agent programs, mediates their effects, and computes application-specific explanations in the same typed language.</p>
+  <p>Biscuit alone does not supply that program runtime. Its authorizer can decide whether a request is permitted; the application still connects that decision to execution.</p>
+  <p>Choose Biscuit when you need a portable, verifiable delegation across services. An EYG host could verify a Biscuit token and turn selected claims into trusted policy facts.</p>
+  <p class="source">The integration described here is an architectural option, not an implemented adapter. <a href="https://www.biscuitsec.org/docs/guides/microservices/">Biscuit's microservices delegation model</a>.</p>
+  <aside class="notes" hidden>This is the scoped answer to “why is this better than Biscuit?” It is better suited to supervising execution when the team controls the interpreter and wants one policy/program model. It is not universally stronger authorization. Combining them could preserve Biscuit's cross-service credential properties while using EYG to enforce local effects.</aside>
+</section>
+<section class="slide" aria-labelledby="s10" hidden>
+  <p class="eyebrow">10 / What the host must still supply</p>
+  <h2 id="s10">Make the boundary real.</h2>
+  <ul>
+    <li>Authenticate identities and control which services assert facts.</li>
+    <li>Recheck current authority before effects; record the outcome.</li>
+    <li>Confine physical filesystem access; lexical paths cannot stop symlink escapes.</li>
+    <li>Limit computation, input sizes, and network capabilities.</li>
+  </ul>
+  <p class="lead">A pure, well-typed query can still be expensive or non-terminating. A denial is not a full audit log.</p>
+  <p class="source">Biscuit likewise leaves revocation state management to applications: <a href="https://www.biscuitsec.org/docs/why-biscuit/">goals and non-goals</a>.</p>
+  <aside class="notes" hidden>The example path policy is explicitly lexical; Loam's test filesystem contains no symlinks. The engine currently uses whole-relation rounds, not an optimized indexed solver. This slide distinguishes implementation-backed guarantees from responsibilities of a deployment.</aside>
+</section>
+<section class="slide" aria-labelledby="s11" hidden>
+  <p class="eyebrow">11 / Demonstrate it</p>
+  <h2 id="s11">Review runnable behavior.</h2>
+  <pre><code>eyg script eyg_packages/authorization/entry.eyg</code></pre>
+  <div class="cards">
+    <div class="card"><h3>Allowed</h3><p>GET to an allowed origin. A normalized write under home. A delegated report read.</p></div>
+    <div class="card"><h3>Denied</h3><p>POST. A path escaping home. Cross-tenant rights. A widened delegation.</p></div>
+    <div class="card"><h3>Revoked</h3><p>The same agent request after task cancellation, expiry, or delegation removal.</p></div>
+  </div>
+  <p class="source">Use a CLI built from the query-literals branch. <a href="../guides/authorization.md">Eight tutorial chapters</a> · <a href="../guides/query_comparison.md">Flix and Crepe comparison</a></p>
+  <aside class="notes" hidden>Run the tests live. The eleven EYG test groups contain both allowed and denied requests; the CLI tests additionally execute all nine tutorial blocks and exercise the actual Overlay handler. Avoid presenting a printed policy result as evidence that an external operation was intercepted: use the host integration tests for that claim.</aside>
+</section>
+<section class="slide" aria-labelledby="s12" hidden>
+  <p class="eyebrow">12 / The decision</p>
+  <h2 id="s12">Review the authority.<br>Gate the effect.<br><span class="accent">Keep the evidence.</span></h2>
+  <p class="lead">EYG puts these pieces in reach of the team building the agent runtime. Its strongest case is the connection between policy and execution.</p>
+  <p><a href="../guides/authorization.md">Start with the executable tutorial →</a></p>
+  <aside class="notes" hidden>Close by asking which runtime boundary the audience owns. If they only issue credentials to independent services, Biscuit may be the better first component. If they execute generated programs themselves, EYG's effects and typed policies provide a direct place to exercise oversight.</aside>
+</section>
+</main>
+<footer>
+  <span class="keys">← → slides · N notes · A all slides · print to PDF</span>
+  <div class="controls">
+    <button id="previous" type="button" aria-label="Previous slide">←</button>
+    <span id="position" aria-live="polite"></span>
+    <button id="next" type="button" aria-label="Next slide">→</button>
+    <button id="notes" type="button" aria-pressed="false">Notes</button>
+    <button id="all" type="button" aria-pressed="false">All</button>
+  </div>
+</footer>
+<div class="progress" aria-hidden="true"></div>
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+const previous = document.querySelector('#previous');
+const next = document.querySelector('#next');
+const notes = document.querySelector('#notes');
+const all = document.querySelector('#all');
+let current = 0, showNotes = false, showAll = false;
+function display(index, updateHash = true) {
+  current = Math.max(0, Math.min(slides.length - 1, index));
+  slides.forEach((slide, i) => { slide.hidden = !showAll && i !== current; });
+  document.querySelectorAll('.notes').forEach(note => { note.hidden = !showNotes; });
+  previous.disabled = current === 0; next.disabled = current === slides.length - 1;
+  document.querySelector('#position').textContent = `${current + 1} / ${slides.length}`;
+  document.querySelector('.progress').style.width = `${(current + 1) / slides.length * 100}%`;
+  notes.setAttribute('aria-pressed', String(showNotes));
+  all.setAttribute('aria-pressed', String(showAll));
+  document.body.classList.toggle('all', showAll);
+  if (updateHash) history.replaceState(null, '', `#slide-${current + 1}`);
+  if (!showAll) window.scrollTo(0, 0);
+}
+function fromHash() {
+  const match = /^#slide-(\d+)$/.exec(location.hash);
+  display(match ? Number(match[1]) - 1 : 0, false);
+}
+previous.onclick = () => display(current - 1);
+next.onclick = () => display(current + 1);
+notes.onclick = () => { showNotes = !showNotes; display(current); };
+all.onclick = () => { showAll = !showAll; display(current); };
+window.addEventListener('hashchange', fromHash);
+window.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+  if (['ArrowRight','PageDown'].includes(event.key)) { event.preventDefault(); display(current + 1); }
+  if (['ArrowLeft','PageUp'].includes(event.key)) { event.preventDefault(); display(current - 1); }
+  if (event.key === 'Home') { event.preventDefault(); display(0); }
+  if (event.key === 'End') { event.preventDefault(); display(slides.length - 1); }
+  if (event.key.toLowerCase() === 'n') notes.click();
+  if (event.key.toLowerCase() === 'a') all.click();
+});
+fromHash();
+</script>
+</body>
+</html>
