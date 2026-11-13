@@ -1,0 +1,117 @@
+// Load American films from Wikipedia into movies.sqlite.
+// Data: https://github.com/prust/wikipedia-movie-data (CC BY-SA, from Wikipedia).
+// Run from this directory: eyg script load.eyg
+let http = import "../../eyg_packages/http/index.eyg"
+let json = import "../../eyg_packages/json/index.eyg"
+let d = json.decode
+let database = "movies.sqlite"
+
+let exec = (sql, parameters) -> {
+  match perform SQLite({database, sql, parameters}) {
+    Ok(rows) -> { rows }
+    Error(reason) -> { !never(perform Abort(reason)) }
+  }
+}
+
+let print = (text) -> { perform StandardOut(!string_append(text, "\n")) }
+
+// One INSERT per batch keeps the number of effects small.
+let insert = (table, columns, rows) -> {
+  let placeholders = (row) -> {
+    !list_fold(row, "", (_, acc) -> {
+      match !equal(acc, "") { True(_) -> { "?" } | (_) -> { !string_append(acc, ", ?") } }
+    })
+  }
+  let flush = (batch) -> {
+    match !list_pop(batch) {
+      Error(_) -> { {} }
+      Ok(_) -> {
+        let values = !list_fold(batch, {sql: "", parameters: []}, (row, acc) -> {
+          let tuple = !string_append("(", !string_append(placeholders(row), ")"))
+          let sql = match !equal(acc.sql, "") { True(_) -> { tuple } | (_) -> { !string_append(acc.sql, !string_append(", ", tuple)) } }
+          {sql, parameters: !list_fold(row, acc.parameters, (value, ps) -> { [value, ..ps] })}
+        })
+        let sql = !string_append("INSERT INTO ", !string_append(table, !string_append(columns, !string_append(" VALUES ", values.sql))))
+        let parameters = !list_fold(values.parameters, [], (p, acc) -> { [p, ..acc] })
+        let _ = exec(sql, parameters)
+        {}
+      }
+    }
+  }
+  let rest = !list_fold(rows, {batch: [], size: 0}, (row, acc) -> {
+    match !equal(acc.size, 400) {
+      True(_) -> {
+        let _ = flush(acc.batch)
+        {batch: [row], size: 1}
+      }
+      False(_) -> { {batch: [row, ..acc.batch], size: !int_add(acc.size, 1)} }
+    }
+  })
+  flush(rest.batch)
+}
+
+let movie = d.object((fields) -> {
+  {
+    title: d.field("title", d.string, fields),
+    year: d.field("year", d.integer, fields),
+    cast: d.field("cast", d.list(d.string), fields),
+    genres: d.field("genres", d.list(d.string), fields)
+  }
+})
+
+{
+  script: (_) -> {
+    let _ = print("fetching movies.json")
+    let request = http.operation.to_request(
+      http.operation.get("/prust/wikipedia-movie-data/master/movies.json"),
+      http.origin.https("raw.githubusercontent.com")
+    )
+    let response = match perform Fetch(request) {
+      Ok(response) -> { response }
+      Error(reason) -> { !never(perform Abort(reason)) }
+    }
+    let movies = match json.parse_bytes(response.body, d.list(movie)) {
+      Ok(movies) -> { movies }
+      Error(reason) -> { !never(perform Abort(reason)) }
+    }
+    let _ = print(!string_append("decoded ", !string_append(!int_to_string(!list_fold(movies, 0, (_, n) -> { !int_add(n, 1) })), " movies")))
+    let _ = exec("DROP TABLE IF EXISTS Movie", [])
+    let _ = exec("DROP TABLE IF EXISTS Cast", [])
+    let _ = exec("DROP TABLE IF EXISTS Genre", [])
+    let _ = exec("CREATE TABLE Movie (id INTEGER PRIMARY KEY, title TEXT NOT NULL, year INTEGER NOT NULL) STRICT", [])
+    let _ = exec("CREATE TABLE Cast (movie INTEGER NOT NULL, actor TEXT NOT NULL) STRICT", [])
+    let _ = exec("CREATE TABLE Genre (movie INTEGER NOT NULL, genre TEXT NOT NULL) STRICT", [])
+    let _ = exec("BEGIN", [])
+    let rows = !list_fold(movies, {id: 1, movies: [], cast: [], genres: []}, (m, acc) -> {
+      let id = Integer(acc.id)
+      {
+        id: !int_add(acc.id, 1),
+        movies: [[id, Text(m.title), Integer(m.year)], ..acc.movies],
+        cast: !list_fold(m.cast, acc.cast, (actor, cast) -> { [[id, Text(actor)], ..cast] }),
+        genres: !list_fold(m.genres, acc.genres, (genre, genres) -> { [[id, Text(genre)], ..genres] })
+      }
+    })
+    let _ = insert("Movie", " (id, title, year)", rows.movies)
+    let _ = insert("Cast", " (movie, actor)", rows.cast)
+    let _ = insert("Genre", " (movie, genre)", rows.genres)
+    let _ = exec("COMMIT", [])
+    let _ = exec("CREATE INDEX cast_actor ON Cast (actor)", [])
+    let _ = exec("CREATE INDEX cast_movie ON Cast (movie)", [])
+    let _ = exec("CREATE INDEX genre_movie ON Genre (movie)", [])
+    let _ = exec("CREATE INDEX movie_title ON Movie (title)", [])
+    let first = (items) -> {
+      match !list_pop(items) {
+        Ok(popped) -> { popped.head }
+        Error(_) -> { !never(perform Abort("expected a row")) }
+      }
+    }
+    let count = (table) -> {
+      match first(first(exec(!string_append("SELECT count(*) FROM ", table), []))) {
+        Integer(n) -> { !int_to_string(n) }
+        | (_) -> { "?" }
+      }
+    }
+    let _ = print(!string_append("loaded ", !string_append(count("Movie"), !string_append(" movies, ", !string_append(count("Cast"), !string_append(" cast credits and ", !string_append(count("Genre"), " genres")))))))
+    0
+  }
+}
