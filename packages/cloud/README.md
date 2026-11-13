@@ -9,6 +9,7 @@ WORKSPACE=../../examples/cloud/workspace.eyg CHAT_ORIGIN=http://localhost:8080 g
 ```
 
 Start with the [example workspace](../../examples/cloud/README.md).
+Coming from another agent gateway, see migrating from [OpenClaw](../../guides/cloud/from_openclaw.md) or [Hermes Agent](../../guides/cloud/from_hermes.md).
 
 | Variable | Purpose |
 | --- | --- |
