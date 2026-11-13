@@ -32,6 +32,8 @@ pub type Message {
   /// A platform plugin has started, outbound operations for the platform are now available.
   Connect(platform: String, outbound: channel.Outbound)
   Inbound(channel.Event)
+  /// A file in the workspace's file system changed.
+  FileChanged(files.Change)
 }
 
 type State {
@@ -55,8 +57,19 @@ pub fn start_with(
   // Only the seed directory, a string, leaves this process.
   use seed <- result.try(load() |> result.map(fn(config) { config.files }))
   use files <- result.try(files.start(seed))
-  State(load:, platforms: dict.new(), sessions: dict.new(), files:, complete:)
-  |> actor.new
+  actor.new_with_initialiser(1000, fn(self) {
+    let changes = process.new_subject()
+    process.send(files, files.Subscribe(changes))
+    let selector =
+      process.new_selector()
+      |> process.select(self)
+      |> process.select_map(changes, FileChanged)
+    State(load:, platforms: dict.new(), sessions: dict.new(), files:, complete:)
+    |> actor.initialised
+    |> actor.selecting(selector)
+    |> actor.returning(self)
+    |> Ok
+  })
   |> actor.on_message(handle)
   |> actor.start
   |> result.map(fn(started) { started.data })
@@ -71,6 +84,12 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         platforms: dict.insert(state.platforms, platform, outbound),
       )
     Inbound(event) -> inbound(state, event)
+    FileChanged(change) -> {
+      dict.each(state.sessions, fn(_key, session) {
+        process.send(session, session.Changed(change))
+      })
+      state
+    }
   }
   |> actor.continue
 }

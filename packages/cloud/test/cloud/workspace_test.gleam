@@ -304,3 +304,27 @@ pub fn agent_actions_import_modules_from_the_session_file_system_test() {
   process.send(workspace, workspace.Inbound(message("m1", "run the module")))
   assert process.receive(posts, 1000) == Ok(#(general, "42"))
 }
+
+pub fn changes_to_files_read_are_noted_test() {
+  let #(workspace, posts, seen) = start([chat.Completion("", "Noted.", [])])
+  let notes = channel.Conversation("chat", "C2", None)
+  // The notes agent is given the skills index, so it has read the greet skill.
+  let hello = channel.Incoming(notes, native_message("m1", "hello", False))
+  process.send(workspace, workspace.Inbound(hello))
+  let assert Ok(_) = process.receive(seen, 1000)
+  process.sleep(100)
+  // The general channel changes the skill.
+  let edit =
+    message(
+      "m2",
+      "```eyg\nperform WriteFile({path: \"/skills/greet/SKILL.md\", contents: !string_to_binary(\"updated\")})\n```",
+    )
+  process.send(workspace, workspace.Inbound(edit))
+  let assert Ok(_) = process.receive(posts, 1000)
+  process.sleep(100)
+  let again = channel.Incoming(notes, native_message("m3", "again", False))
+  process.send(workspace, workspace.Inbound(again))
+  let assert Ok(input) = process.receive(seen, 1000)
+  assert string.contains(input, "/skills/greet/SKILL.md changed by #general")
+  assert string.ends_with(input, "[#notes] alice (message m3): again")
+}

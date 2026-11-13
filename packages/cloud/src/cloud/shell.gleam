@@ -8,6 +8,7 @@
 import cloud/agent
 import cloud/beam/execute
 import cloud/config
+import cloud/skills
 import eyg/interpreter/value as v
 import gleam/dict
 import gleam/list
@@ -66,6 +67,7 @@ pub fn turn(
       shell.location,
       workspace.readme,
       channel.readme,
+      skills.render(skills.index(shell.host.files)),
     ]
     |> list.filter(fn(section) { section != "" })
     |> string.join("\n\n")

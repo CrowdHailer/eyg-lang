@@ -10,12 +10,15 @@
 import cloud/agent
 import cloud/beam/execute
 import cloud/config
+import cloud/files
 import cloud/shell
+import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/io
 import gleam/list
 import gleam/otp/actor
 import gleam/result
+import gleam/set.{type Set}
 import gleam/string
 import overlay/llm/chat
 
@@ -24,6 +27,10 @@ pub type Message {
   Input(text: String)
   /// Context for the agent's next turn, it does not start a turn.
   Observe(text: String)
+  /// A file in the workspace changed.
+  Changed(files.Change)
+  /// The session's agent read a file.
+  Read(path: String)
   /// Forget the conversation so far, the next input starts a new one.
   Reset
   TurnFinished(epoch: Int, input: String, result: Result(agent.History, String))
@@ -56,6 +63,10 @@ type State {
     queue: List(String),
     /// True if the queue holds an input, so a turn should start.
     waiting: Bool,
+    /// Files read by the agent, including skills listed in its context.
+    read: Set(String),
+    /// Files read by the agent that another channel has changed since, and who changed them.
+    dirty: Dict(String, String),
     /// Increased on reset, turns started before a reset are discarded.
     epoch: Int,
   )
@@ -70,6 +81,8 @@ pub fn start(setup: Setup) -> Result(Subject(Message), actor.StartError) {
       busy: False,
       queue: [],
       waiting: False,
+      read: set.new(),
+      dirty: dict.new(),
       epoch: 0,
     )
     |> actor.initialised
@@ -83,8 +96,24 @@ pub fn start(setup: Setup) -> Result(Subject(Message), actor.StartError) {
 
 fn handle(state: State, message: Message) -> actor.Next(State, Message) {
   case message {
-    Input(text) ->
-      State(..state, queue: [text, ..state.queue], waiting: True) |> next
+    Input(text) -> {
+      // Changes are noted with the next inbound message.
+      let queue = case note(state.dirty) {
+        "" -> [text, ..state.queue]
+        note -> [text, note, ..state.queue]
+      }
+      State(..state, queue:, waiting: True, dirty: dict.new()) |> next
+    }
+    Read(path) ->
+      State(..state, read: set.insert(state.read, path)) |> actor.continue
+    Changed(files.Change(path:, by:)) -> {
+      let own = by == "#" <> state.setup.channel.name
+      case !own && set.contains(state.read, path) {
+        True -> State(..state, dirty: dict.insert(state.dirty, path, by))
+        False -> state
+      }
+      |> actor.continue
+    }
     Observe(text) ->
       State(..state, queue: [text, ..state.queue]) |> actor.continue
     Reset ->
@@ -93,6 +122,8 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         history: [],
         queue: [],
         waiting: False,
+        read: set.new(),
+        dirty: dict.new(),
         epoch: state.epoch + 1,
       )
       |> actor.continue
@@ -126,7 +157,7 @@ fn next(state: State) {
       let text = state.queue |> list.reverse |> string.join("\n\n")
       let State(setup:, self:, history:, epoch:, ..) = state
       process.spawn(fn() {
-        let result = turn(setup, history, text)
+        let result = turn(setup, self, history, text)
         process.send(self, TurnFinished(epoch, text, result))
       })
       actor.continue(State(..state, busy: True, queue: [], waiting: False))
@@ -134,13 +165,35 @@ fn next(state: State) {
   }
 }
 
-fn turn(setup: Setup, history, text) {
+fn turn(setup: Setup, self, history, text) {
+  // Record what the agent reads, so it can be told when it changes.
+  let files = setup.host.files
+  let files =
+    execute.Files(..files, read: fn(path) {
+      process.send(self, Read(path))
+      files.read(path)
+    })
+  let host = execute.Host(..setup.host, files:)
   use shell <- result.try(shell.prepare(
     setup.load,
     setup.channel,
-    setup.host,
+    host,
     setup.location,
     setup.complete,
   ))
   shell.turn(shell, history, text)
+}
+
+fn note(dirty: Dict(String, String)) -> String {
+  case dict.to_list(dirty) {
+    [] -> ""
+    changes ->
+      "Note: files you have read were changed by other channels since you read them, read them again before relying on them.\n"
+      <> {
+        list.map(changes, fn(change) {
+          "- " <> change.0 <> " changed by " <> change.1
+        })
+        |> string.join("\n")
+      }
+  }
 }
