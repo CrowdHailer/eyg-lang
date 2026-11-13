@@ -25,12 +25,22 @@ pub fn prepare(
   event_type: t.Type(#(Bool, Int)),
   state: execute.State,
 ) -> Result(#(List(Checked), execute.State), String) {
+  prepare_returning(triggers, event_type, t.unit, state)
+}
+
+/// Check triggers that produce a value for their caller.
+pub fn prepare_returning(
+  triggers: List(#(String, String)),
+  event_type: t.Type(#(Bool, Int)),
+  return_type: t.Type(Int),
+  state: execute.State,
+) -> Result(#(List(Checked), execute.State), String) {
   use #(checked, state) <- result.map(
     list.try_fold(triggers, #([], state), fn(acc, trigger) {
       let #(checked, state) = acc
       let #(name, code) = trigger
       use #(function, state) <- result.map(
-        prepare_function(code, event_type, state)
+        prepare_function(code, event_type, return_type, state)
         |> result.map_error(fn(reason) { "Trigger " <> name <> ": " <> reason }),
       )
       #([function, ..checked], state)
@@ -39,7 +49,7 @@ pub fn prepare(
   #(list.reverse(checked), state)
 }
 
-fn prepare_function(code, event_type, state) {
+fn prepare_function(code, event_type, return_type, state) {
   use source <- result.try(
     parser.all_from_string(code)
     |> result.map_error(parser.format_error(_, code)),
@@ -51,7 +61,7 @@ fn prepare_function(code, event_type, state) {
   let base =
     infer.pure()
     |> infer.with_effects(effects)
-    |> infer.with_expected_type(t.unit)
+    |> infer.with_expected_type(return_type)
   let context = infer.Context(..base, env: [#("$event", event_type)])
   // Check the call so a trigger can use any subset of the available effects.
   let call = #(ir.Apply(source, #(ir.Variable("$event"), source.1)), source.1)

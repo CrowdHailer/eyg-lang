@@ -4,6 +4,7 @@ version = "0.1.0"
 [dependencies]
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 argv = ">= 1.1.0 and < 2.0.0"
+clockwork = ">= 4.0.0 and < 5.0.0"
 envoy = ">= 1.2.0 and < 2.0.0"
 eyg_analysis = { path = "../gleam_analysis" }
 eyg_interpreter = { path = "../gleam_interpreter" }
@@ -16,6 +17,7 @@ gleam_http = ">= 4.5.0 and < 5.0.0"
 gleam_httpc = ">= 5.0.0 and < 6.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 gleam_otp = ">= 1.2.0 and < 2.0.0"
+gleam_time = ">= 1.11.0 and < 2.0.0"
 midas = ">= 3.1.0 and < 4.0.0"
 multiformats = ">= 4.1.0 and < 5.0.0"
 oas_generator_utils = ">= 1.1.0 and < 2.0.0"

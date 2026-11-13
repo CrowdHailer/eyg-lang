@@ -1,9 +1,14 @@
 import argv
+import cloud
 import cloud/discord/api/client as discord
+import cloud/schedule
+import cloud/schedules
+import cloud/session
 import cloud/slack/api/client
 import cloud/slack/api/schema
 import cloud/system
 import envoy
+import gleam/erlang/process
 import gleam/io
 import gleam/json
 import gleam/list
@@ -15,6 +20,32 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["cron", name] -> {
+      let #(state, llm) = cloud.setup()
+      let assert Ok(#(schedules, state)) = schedules.load(state)
+      let assert Ok(runtime) = schedule.runtime(state)
+      let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
+      let #(outcome, _) =
+        schedule.trigger_named(schedules, name, sessions.data, runtime)
+      case outcome {
+        Error(reason) -> io.println_error(reason)
+        Ok(Nil) -> {
+          let reply = process.new_subject()
+          // An ordinary code message acts as a barrier after the agent turn.
+          process.send(
+            sessions.data,
+            session.Message("Dev:cron", session.Code("{}"), fn(_) {
+              process.send(reply, Nil)
+            }),
+          )
+          case process.receive(reply, 300_000) {
+            Ok(Nil) -> io.println("Finished cron action: " <> name)
+            Error(_) ->
+              panic as { "Timed out waiting for cron action: " <> name }
+          }
+        }
+      }
+    }
     ["discord", "messages", channel] -> {
       let assert Ok(token) = envoy.get("DISCORD_BOT_TOKEN")
       let context = discord.Context(token, system.fetch)
@@ -85,7 +116,7 @@ fn do_main(args) {
     }
     _ ->
       io.println(
-        "Usage: gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
+        "Usage: gleam dev cron <name> | gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
       )
   }
 }

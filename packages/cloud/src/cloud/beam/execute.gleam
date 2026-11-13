@@ -141,21 +141,30 @@ fn evaluate(code, scope, inspect, state, policy, files, emit) {
       files,
       [],
     )
-    Ok(source) ->
-      loop(
-        block.execute(source, scope),
+    Ok(source) -> {
+      let #(outcome, state, files, output) =
+        loop(block.execute(source, scope), state, policy, files, emit, [])
+      #(
+        result.map(outcome, fn(value) {
+          value |> option.map(inspect) |> option.unwrap("")
+        }),
         state,
-        policy,
         files,
-        emit,
-        inspect,
-        [],
+        output,
       )
+    }
   }
 }
 
 /// Run a checked automation through the same policy-gated loop as other code.
 pub fn call(function, input, state: State, policy: Policy, files, emit) {
+  let #(outcome, state, files) =
+    call_value(function, input, state, policy, files, emit)
+  #(result.replace(outcome, Nil), state, files)
+}
+
+/// Preserve the result of a trigger while applying the normal effect policy.
+pub fn call_value(function, input, state: State, policy: Policy, files, emit) {
   let #(outcome, state, files, _) =
     loop(
       block.call(function, [#(input, #(0, 0))], builtin.default([])),
@@ -163,20 +172,14 @@ pub fn call(function, input, state: State, policy: Policy, files, emit) {
       policy,
       files,
       emit,
-      simple_debug.inspect,
       [],
     )
-  #(result.replace(outcome, Nil), state, files)
+  #(result.map(outcome, option.unwrap(_, v.unit())), state, files)
 }
 
-fn loop(returned, state: State, policy, files, emit, inspect, output) {
+fn loop(returned, state: State, policy, files, emit, output) {
   case returned {
-    Ok(#(value, _scope)) -> #(
-      Ok(value |> option.map(inspect) |> option.unwrap("")),
-      state,
-      files,
-      output,
-    )
+    Ok(#(value, _scope)) -> #(Ok(value), state, files, output)
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       let #(action, state) = decide(policy, label, lift, meta, state)
       let #(outcome, files, output) = case action {
@@ -208,15 +211,7 @@ fn loop(returned, state: State, policy, files, emit, inspect, output) {
       }
       case outcome {
         Ok(value) ->
-          loop(
-            block.resume(value, env, k),
-            state,
-            policy,
-            files,
-            emit,
-            inspect,
-            output,
-          )
+          loop(block.resume(value, env, k), state, policy, files, emit, output)
         Error(reason) -> #(Error(reason), state, files, output)
       }
     }
@@ -225,15 +220,7 @@ fn loop(returned, state: State, policy, files, emit, inspect, output) {
       let state = State(..state, cache:)
       case value {
         Ok(value) ->
-          loop(
-            block.resume(value, env, k),
-            state,
-            policy,
-            files,
-            emit,
-            inspect,
-            output,
-          )
+          loop(block.resume(value, env, k), state, policy, files, emit, output)
         Error(reason) -> #(Error(reason), state, files, output)
       }
     }
