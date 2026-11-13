@@ -1,0 +1,13 @@
+/build
+/erl_crash.dump
+/video/output/*
+!/video/output/walkthrough.mp4
+!/video/output/watch.html
+!/video/output/poster.jpg
+!/video/output/walkthrough.srt
+!/video/output/transcript.md
+!/video/output/proofs.json
+!/video/output/chapters.json
+!/video/output/contact-sheet.jpg
+!/video/output/capture.json
+/video/__pycache__/

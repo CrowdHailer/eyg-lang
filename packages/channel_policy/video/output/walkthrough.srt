@@ -1,0 +1,283 @@
+1
+00:00:00,500 --> 00:00:03,632
+Let's build access policies with Gleam and E Y G.
+
+2
+00:00:03,632 --> 00:00:08,489
+We will sign in, create commits, approve changes, and limit inference usage.
+
+3
+00:00:08,489 --> 00:00:13,729
+For every allowed policy decision, the engine will now show its actual proof tree.
+
+4
+00:00:15,542 --> 00:00:17,348
+First, write the E Y G rule.
+
+5
+00:00:17,348 --> 00:00:20,962
+Join a user's channel membership with a role permission.
+
+6
+00:00:20,962 --> 00:00:25,608
+Tenant, actor, action, and resource come from the authenticated request.
+
+7
+00:00:25,608 --> 00:00:28,124
+A matching row is the permission proof.
+
+8
+00:00:29,958 --> 00:00:31,708
+Now write the Gleam grants.
+
+9
+00:00:31,708 --> 00:00:38,384
+Platform members may open the deployments page, change infrastructure files, and approve those changes.
+
+10
+00:00:38,384 --> 00:00:40,393
+These are separate permissions.
+
+11
+00:00:40,393 --> 00:00:42,727
+Unknown paths are denied by default.
+
+12
+00:00:44,542 --> 00:00:46,749
+Ada chooses Sign in with Slack.
+
+13
+00:00:46,749 --> 00:00:49,171
+Our mock completes the login flow.
+
+14
+00:00:49,171 --> 00:00:55,296
+The Gleam host checks single use state, browser binding, nonce, workspace, and expiry.
+
+15
+00:00:55,296 --> 00:00:57,789
+Ada then links her GitHub identity.
+
+16
+00:00:59,625 --> 00:01:03,740
+Ada belongs to Platform, so deployments returns two hundred.
+
+17
+00:01:03,740 --> 00:01:05,797
+Finance returns four oh three.
+
+18
+00:01:05,797 --> 00:01:09,295
+These results come from the actual E Y G evaluator.
+
+19
+00:01:09,295 --> 00:01:13,136
+The protected data loader runs only after authorization.
+
+20
+00:01:14,958 --> 00:01:18,483
+Read the engine generated tree from the leaves upward.
+
+21
+00:01:18,483 --> 00:01:20,899
+The Member fact puts Ada in Platform.
+
+22
+00:01:20,899 --> 00:01:24,555
+The Role Permission fact lets Platform view deployments.
+
+23
+00:01:24,555 --> 00:01:28,080
+Rule zero joins those exact facts and produces Permit.
+
+24
+00:01:28,080 --> 00:01:31,474
+Session checks are performed separately by the host.
+
+25
+00:01:33,292 --> 00:01:39,104
+In an isolated local Git repository, Ada increases the worker replicas from two to three.
+
+26
+00:01:39,104 --> 00:01:42,239
+We inspect the diff, stage the file, and commit.
+
+27
+00:01:42,239 --> 00:01:46,223
+This is a real commit; the main project history is untouched.
+
+28
+00:01:48,042 --> 00:01:51,165
+The mock pull request points to that exact commit.
+
+29
+00:01:51,165 --> 00:01:53,914
+Ada has permission to change infrastructure.
+
+30
+00:01:53,914 --> 00:01:59,036
+But there is no eligible approval yet, so the channel policy check blocks merging.
+
+31
+00:02:00,875 --> 00:02:02,962
+Cal approves the pull request.
+
+32
+00:02:02,962 --> 00:02:05,536
+Cal belongs to Finance, not Platform.
+
+33
+00:02:05,536 --> 00:02:10,545
+The approval exists, but it cannot authorize this infrastructure change.
+
+34
+00:02:10,545 --> 00:02:12,215
+The check stays blocked.
+
+35
+00:02:14,042 --> 00:02:16,821
+Bea signs in and approves the current head.
+
+36
+00:02:16,821 --> 00:02:18,372
+She belongs to Platform.
+
+37
+00:02:18,372 --> 00:02:23,866
+Both submitter and reviewer permissions now have proofs, and the mock check succeeds.
+
+38
+00:02:23,866 --> 00:02:26,774
+GitHub must require this check to enforce it.
+
+39
+00:02:28,583 --> 00:02:32,113
+The passing pull request has two engine generated trees.
+
+40
+00:02:32,113 --> 00:02:35,580
+Ada's membership joins the infrastructure change grant.
+
+41
+00:02:35,580 --> 00:02:39,172
+Bea's membership joins the infrastructure approval grant.
+
+42
+00:02:39,172 --> 00:02:47,051
+The host additionally verifies the linked GitHub identities, the current commit approval, and coverage of every changed path.
+
+43
+00:02:48,875 --> 00:02:52,908
+Ada creates a second real commit, increasing replicas to four.
+
+44
+00:02:52,908 --> 00:02:55,770
+Bea's earlier approval names the old commit.
+
+45
+00:02:55,770 --> 00:03:00,583
+The current head has changed, so the policy blocks the pull request again.
+
+46
+00:03:02,417 --> 00:03:05,254
+Bea reviews the new commit and approves again.
+
+47
+00:03:05,254 --> 00:03:10,066
+The current head now has an eligible approval, so both permission checks pass.
+
+48
+00:03:11,875 --> 00:03:15,513
+Here are the proof trees returned by the new evaluation.
+
+49
+00:03:15,513 --> 00:03:18,046
+Both memberships and grants still hold.
+
+50
+00:03:18,046 --> 00:03:22,139
+The host now associates Bea's fresh review with the new commit.
+
+51
+00:03:22,139 --> 00:03:27,791
+The same policy facts explain access, while the host enforces commit specific approval.
+
+52
+00:03:29,625 --> 00:03:33,005
+Now remove Bea from Platform and refresh membership.
+
+53
+00:03:33,005 --> 00:03:37,426
+Reevaluating the same pull request removes her approval's authority.
+
+54
+00:03:37,426 --> 00:03:38,466
+The check fails.
+
+55
+00:03:38,466 --> 00:03:43,277
+Production webhooks or scheduled refreshes must trigger this reevaluation.
+
+56
+00:03:45,083 --> 00:03:47,097
+Here is a second E Y G policy.
+
+57
+00:03:47,097 --> 00:03:53,474
+Match trusted usage and quota facts for the same workspace, user, endpoint, and billing window.
+
+58
+00:03:53,474 --> 00:03:58,643
+Only permit inference when usage is nonnegative and strictly below the limit.
+
+59
+00:04:00,458 --> 00:04:03,710
+Ada has used forty nine of fifty inference requests.
+
+60
+00:04:03,710 --> 00:04:05,898
+The policy allows the next request.
+
+61
+00:04:05,898 --> 00:04:11,275
+Let's inspect the full engine generated proof before forwarding anything to the model.
+
+62
+00:04:13,083 --> 00:04:19,076
+The quota is fifty and usage is forty nine, for the same user, endpoint, and billing window.
+
+63
+00:04:19,076 --> 00:04:25,981
+Three predicates passed: the action is inference, usage is nonnegative, and forty nine is less than fifty.
+
+64
+00:04:25,981 --> 00:04:30,215
+These are actual recorded guard results, with their bound values.
+
+65
+00:04:32,042 --> 00:04:35,670
+Once the allowed request is reserved, usage reaches fifty.
+
+66
+00:04:35,670 --> 00:04:41,549
+Fifty is not less than fifty, so the next call has no Permit row and no successful proof tree.
+
+67
+00:04:41,549 --> 00:04:45,740
+The gateway must reserve usage atomically before calling the model.
+
+68
+00:04:47,542 --> 00:04:52,486
+Proof trees now come from the Datalog engine, alongside its ordinary answers.
+
+69
+00:04:52,486 --> 00:04:54,990
+Run the Gleam examples to inspect them.
+
+70
+00:04:54,990 --> 00:04:59,357
+Slack and GitHub are still mocked, and the interface is illustrated.
+
+71
+00:04:59,357 --> 00:05:03,530
+The video includes captured proof data and a readable transcript.
