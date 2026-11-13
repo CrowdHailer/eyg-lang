@@ -37,8 +37,7 @@ perform Connections("example")
 ## Bound to a channel
 
 `Bind` runs the following programs as a channel, with its `channel_shell` and its host.
-They post to the channel, read and write the files the channel may, and read the events its connections log,
-exactly what the channel's agent and triggers can do.
+They post to the channel and read the events its connections log. File effects use the channel's path policy against your own private persistent filesystem; binding never opens the channel agent's files.
 
 ```eyg
 perform Bind({workspace: "example", channel: "dev"})
@@ -53,3 +52,5 @@ match perform Events("github") {
 
 Binding is an effect too, so policies decide who may bind where, `shell.bind_to(["random"])` allows only `#random`.
 The Unbind button returns to your own shell. Each program runs on its own, variables do not carry over between them.
+
+One central actor executes web programs, HTTP API programs and all channel sessions serially. A long program or agent turn delays subsequent commands. Your filesystem belongs to your user session and survives restarts and changes of binding. Command reports are saved in the session snapshot; the browser's cell display and current binding are local to that page.

@@ -130,7 +130,7 @@ Put the instructions from `AGENTS.md` and `SOUL.md` in the workspace `readme`, a
 Copy skills to `files/skills/<name>/SKILL.md`, the frontmatter format is the same.
 Copy `MEMORY.md` and memory files into `files`, for example `files/memory/`, and tell agents in the readme to read and update them.
 OpenClaw keeps `MEMORY.md` out of group sessions, in EYG cloud use `writes_under` and the readme to decide which channels use which memory files.
-When one channel changes a file another agent has read, that agent is told with its next message.
+Each session keeps a private filesystem. Changes stay within that session; explicit sharing between sessions is future work.
 
 ### 6. Move cron jobs and hooks
 

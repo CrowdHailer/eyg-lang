@@ -1,7 +1,7 @@
 ---
 name: Cloud process boundaries
 description: Why cloud processes exchange plain input data but never EYG closures.
-date: 2026-11-12
+date: 2026-11-13
 ---
 
 EYG closures capture their whole environment.

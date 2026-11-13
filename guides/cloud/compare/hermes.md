@@ -13,7 +13,7 @@ Hermes Agent is an open source agent with a messaging gateway, profiles, platfor
 | Configuration | EYG programs | `config.yaml` profiles, `.env` files |
 | Limiting agents | Channel shells, gates over effect inputs | Toolsets per platform, write safe roots, approvals for dangerous commands |
 | Execution | EYG programs with the channel's effects, no shell | Terminal backends: local, Docker, SSH and others |
-| Memory | Files in a shared content addressed file system, agents told when files they read change | `MEMORY.md` and `USER.md` snapshots |
+| Memory | Private persistent session files and history; fresh execution scope | `MEMORY.md` and `USER.md` snapshots |
 | Automation | Pure triggers over connection events, crons, timeouts | Cron jobs delivered to home channels |
 
 ## Human agency

@@ -105,7 +105,7 @@ Values that programs used through env passthrough become network secrets, so pro
 
 Put the content of `SOUL.md`, `MEMORY.md` and `USER.md` that every agent needs in the workspace `readme`.
 Copy facts agents should update into files, for example `files/memory/MEMORY.md`, and say so in the readme.
-Unlike Hermes' frozen snapshot, an agent is told when another channel changes a file it has read.
+Each session keeps private persistent files and history. Other channels do not share that filesystem; explicit sharing is future work.
 Copy skills to `files/skills/<name>/SKILL.md`, the frontmatter is the same.
 
 ### 6. Move cron jobs

@@ -26,6 +26,7 @@ and by the HTTP API, so there is one API and every caller is gated by an EYG pol
 | `Traces` | `traces` | limit | the newest spans, see [tracing](./tracing.md) |
 
 Every effect returns `Ok(value)` or `Error(reason)`.
+Channel addresses include the installation, for example `slack/T123:C456`. A channel name is accepted only when it resolves uniquely; use the address when multiple installations contain the same name.
 Changes to a channel's configuration apply to the next message, connections and crons apply when the cloud restarts.
 
 ## Policies
