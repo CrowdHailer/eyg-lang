@@ -1,0 +1,2098 @@
+[
+  {
+    "title": "Porting EYG with an executable oracle",
+    "layout": "cover",
+    "subtitle": "A native Zig runtime, generated compatibility tests\nand measured performance",
+    "notes": "Open with Gleam and native TUI running side by side. This talk distinguishes semantics, terminal buffers and latency. The detailed optimisation section uses one-factor ablations of the final source, with historical campaigns labelled separately.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/talk.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification.json"
+  },
+  {
+    "title": "The compatibility contract",
+    "layout": "columns",
+    "leftTitle": "The reference",
+    "left": "gleam run -- tui\n\nPinned next-tui\nbe502aa03df9",
+    "rightTitle": "The native implementation",
+    "right": "./zig-out/bin/eyg\n\nZig 0.14.1\nSame observable inputs",
+    "monoLeft": true,
+    "monoRight": true,
+    "size": 27,
+    "notes": "A branch is mutable. The exact oracle is be502aa03df926a8f9df474a0a7fe16c8fb14fbd. Keep the oracle evaluator and renderer unchanged. The Git reference is real-world f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. Production native execution does not start Gleam or look up prerecorded answers.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/README.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/oracle.mjs"
+  },
+  {
+    "title": "Separate observations need separate experiments",
+    "layout": "table",
+    "rows": [
+      [
+        "Observation",
+        "Comparison",
+        "Failure example"
+      ],
+      [
+        "Language",
+        "Values and breaks",
+        "Wrong effect payload"
+      ],
+      [
+        "Terminal",
+        "Every cell after each event",
+        "Stale symbol after editing"
+      ],
+      [
+        "Latency",
+        "Wall time within a named boundary",
+        "One slow key hidden by a mean"
+      ]
+    ],
+    "widths": [
+      230,
+      450,
+      472
+    ],
+    "tableH": 305,
+    "notes": "No single observation establishes the other two. Values compare integers, strings, binary, lists, records and tags structurally. Function markers require generated application to make the behaviour observable. Timing has its own release-build experiment.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/benchmark.py"
+  },
+  {
+    "title": "The actual interpreter supplies the expected answer",
+    "layout": "flow",
+    "nodes": [
+      {
+        "text": "Seeded program\nor user trace",
+        "x": 64,
+        "y": 310,
+        "w": 270,
+        "h": 100
+      },
+      {
+        "text": "Zig evaluator\nand renderer",
+        "x": 460,
+        "y": 230,
+        "w": 320,
+        "h": 100,
+        "color": "#E6B865"
+      },
+      {
+        "text": "Gleam evaluator\nand renderer",
+        "x": 460,
+        "y": 440,
+        "w": 320,
+        "h": 100,
+        "color": "#8BD5CA"
+      },
+      {
+        "text": "Structural\ncomparison",
+        "x": 930,
+        "y": 320,
+        "w": 270,
+        "h": 100
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "caption": "The adapter handles transport. The pinned implementation computes the oracle result.",
+    "notes": "The Node adapter loads compiled Gleam modules. It decodes canonical EYG IR and invokes the existing evaluator, state reducer and renderer. It must not become a second reference implementation. Every request uses the same generated input on both sides.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/oracle.mjs\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential.py"
+  },
+  {
+    "title": "Generated programs include useful failures",
+    "layout": "code",
+    "code": "let x = {answer: !int_add(20, 22)}\nmatch Some(x.answer) {\n  Some(value) -> { value }\n  | (_) -> { 0 }\n}",
+    "caption": "Bounded IR generation tracks scope and depth. Invalid programs test language breaks.",
+    "notes": "Generate literals, applications, closures, lets, records, tags, matches and effects with a scope environment and depth budget. Deliberately include undefined names, wrong argument types, missing fields and integer boundaries. The oracle supplies the expected outcome even when the program fails. This example is illustrative of the generated constructs, not a claim that every generation succeeds.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential.py"
+  },
+  {
+    "title": "Effect requests are observable behaviour",
+    "layout": "flow",
+    "nodes": [
+      {
+        "text": "Run until\neffect request",
+        "x": 64,
+        "y": 300,
+        "w": 280,
+        "h": 110
+      },
+      {
+        "text": "Compare label\nand payload",
+        "x": 460,
+        "y": 300,
+        "w": 340,
+        "h": 110,
+        "color": "#E6B865"
+      },
+      {
+        "text": "Supply identical\nreply and resume",
+        "x": 930,
+        "y": 300,
+        "w": 285,
+        "h": 110,
+        "color": "#8BD5CA"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "caption": "A matching final value cannot excuse a different effect request.",
+    "notes": "A deterministic host script compares each effect label and payload before returning the same reply to both interpreters. Continuation and effect-cast specialist suites cover the suspend/resume boundary. One-shot effects and asynchronous tasks require different shell observations.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential_resume.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential_effect_cast.py"
+  },
+  {
+    "title": "Buffer equality includes every cell field",
+    "layout": "columns",
+    "leftTitle": "Cell contents",
+    "left": "Symbol and display width\nForeground and background\nModifier bits\nUnderline colour and link",
+    "rightTitle": "Stateful inputs",
+    "right": "Keys and bracketed paste\nTerminal resizes and ticks\nDeterministic host replies\nHistory and import workflows",
+    "size": 27,
+    "notes": "Compare the initial frame and every resulting frame. Preserve Unicode continuation cells and blank cells. Trimming rows or stripping ANSI removes observable information. Some traces sample actions uniformly, while structured traces reach editing, execution, history and import states. Real PTY tests validate the actual shell, terminal setup and cleanup.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/pty_parity.py"
+  },
+  {
+    "title": "A saved failure becomes a small experiment",
+    "layout": "flow",
+    "nodes": [
+      {
+        "text": "Seed, full trace,\nsize, oracle hash",
+        "x": 64,
+        "y": 290,
+        "w": 300,
+        "h": 120
+      },
+      {
+        "text": "Replay and remove\nevent chunks",
+        "x": 445,
+        "y": 290,
+        "w": 345,
+        "h": 120,
+        "color": "#E6B865"
+      },
+      {
+        "text": "Minimised case\nand regression",
+        "x": 930,
+        "y": 290,
+        "w": 290,
+        "h": 120,
+        "color": "#8BD5CA"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "caption": "Program reduction also replaces subtrees and constants. Paste-string shrinking remains future work.",
+    "notes": "Save all inputs and the first mismatch. Replay before debugging. The event shrinker removes entire events, while program shrinkers reduce subtrees and constants. A fixed regression complements generated tests, whose later seeds explore new transitions.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/differential.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification.json"
+  },
+  {
+    "title": "The oracle also has failure modes",
+    "layout": "table",
+    "rows": [
+      [
+        "Final campaign",
+        "Result"
+      ],
+      [
+        "Comparable main cases",
+        "7,195 matched"
+      ],
+      [
+        "Generated edits that hang the oracle",
+        "3 retained as uncomparable"
+      ],
+      [
+        "Malformed inputs that crash the oracle",
+        "56 retained"
+      ],
+      [
+        "HTTP constructor exception differences",
+        "3 retained"
+      ]
+    ],
+    "widths": [
+      780,
+      372
+    ],
+    "tableH": 340,
+    "tableY": 220,
+    "caption": "Strict compatibility qualification remains false.",
+    "notes": "The main campaign attempted 7,198 cases and compared 7,195. All comparable cases matched, but this is finite evidence, not universal equivalence. A reduced example is paste let x=1 x then Space: the pinned vacant-node walk cycles without returning to its root sentinel. Native stays responsive. The three HTTP cases involve invalid port/header injection/non-Latin1 header constructor exceptions outside the oracle Result.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/oracle-navigation-nontermination.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/http/README.md"
+  },
+  {
+    "title": "Ownership errors appear after later edits",
+    "layout": "columns",
+    "leftTitle": "Borrowed input",
+    "left": "Retained AST label\n!int_add\n\nLater typing overwrites it\n!ello λ",
+    "rightTitle": "Explicit ownership",
+    "right": "Copy retained input\ninto session storage\n\nCopy frame symbols\ninto the snapshot owner",
+    "monoLeft": true,
+    "size": 28,
+    "notes": "A real PTY sequence revealed an old !int_add label becoming !ello λ after the user typed hello. The parser retained slices into the reusable terminal input buffer. Session-owned input copies fixed that correctness failure. A second trace exposed frames borrowing analysis storage freed by the next edit. These are correctness fixes. Do not invent a throughput speedup for them.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/library-and-code-review.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/main.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/pty_parity.py"
+  },
+  {
+    "title": "Code generation has explicit boundaries",
+    "layout": "columns",
+    "leftTitle": "Generated artifacts",
+    "left": "Programs and user traces\nUnicode property tables\nBuiltin and effect declarations\nFixed inspection dictionaries",
+    "rightTitle": "Computed behaviour",
+    "right": "Evaluation and inference\nContinuations and effects\nTerminal state and layout\nGit objects and queries",
+    "size": 27,
+    "notes": "Agents drafted source module by module with file ownership and shared transport contracts. Compilation, oracle comparisons and independent review constrained those drafts. Runtime tables come from pinned regex/ICU versions or the oracle declarations. They contain no answers for generated programs or terminal frames. The production evaluator computes the changing results itself.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/scripts/generate_unicode.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/scripts/export_types.mjs\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/scripts/generate_inspector.mjs\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/talk.md"
+  },
+  {
+    "title": "The performance section uses controlled ablations",
+    "layout": "statement",
+    "body": "One mechanism changes.\nThe workload stays fixed.\nEvery sample remains.",
+    "caption": "Historical campaigns and current-code ablations answer different questions.",
+    "notes": "Before means the named optimisation is disabled or replaced in an isolated copy of final source. After means current implementation on the same probe. Each slide names workload, sample count and units. Historical before/after reports carry their original boundaries and cannot isolate a single change. A neutral result is useful evidence. Correctness and lifecycle features are not automatically performance optimisations.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/benchmark.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification.json"
+  },
+  {
+    "title": "The dispatch timer has an explicit boundary",
+    "layout": "flow",
+    "nodes": [
+      {
+        "text": "Event\ndispatch",
+        "x": 64,
+        "y": 300,
+        "w": 225,
+        "h": 100
+      },
+      {
+        "text": "Complete\ncell frame",
+        "x": 375,
+        "y": 300,
+        "w": 260,
+        "h": 100,
+        "color": "#E6B865"
+      },
+      {
+        "text": "Output arena\nreset",
+        "x": 760,
+        "y": 300,
+        "w": 260,
+        "h": 100,
+        "color": "#8BD5CA"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "caption": "Monotonic wall time includes all three. JSON encoding, transport and startup remain outside.",
+    "notes": "The final release campaign also records paired CLOCK_THREAD_CPUTIME_ID values. Wall time alone controls the latency gate. Do not replace wall outliers with CPU observations. Real PTY input-to-frame timings are separate: peak4.949743ms, ready-hub1.741612ms. Physical standalone Escape40.690598ms retains the oracle ambiguity policy.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/benchmark.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification-20261028T204149Z-67462/benchmark.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification-20261028T204149Z-67462/pty.json"
+  },
+  {
+    "title": "The final desktop campaign met its measured budget",
+    "layout": "table",
+    "rows": [
+      [
+        "12,800 retained wall samples",
+        "Milliseconds"
+      ],
+      [
+        "Median",
+        "0.356"
+      ],
+      [
+        "p99",
+        "2.465"
+      ],
+      [
+        "Maximum",
+        "8.834"
+      ],
+      [
+        "Samples at or above 10 ms",
+        "0"
+      ]
+    ],
+    "widths": [
+      790,
+      362
+    ],
+    "tableH": 330,
+    "tableY": 220,
+    "caption": "Performance passed. Strict compatibility remained false.",
+    "notes": "These are actual final c1d288 samples from the retained ReleaseFast campaign, not the new ablation probes. The workload suite covers integer input, Unicode, arithmetic, picker, history, navigation, nested editing, CJK and binary values. Every sample and outlier remains in the report. Standalone Escape is outside this dispatch timing statement.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification-20261028T204149Z-67462/benchmark.json"
+  },
+  {
+    "title": "The historical change improved observed tail latency",
+    "layout": "performance",
+    "mechanism": "Layout scratch dies after rendering.\nThe caller owns output frames.\nUnused annotation walks disappear.\n\nThis historical pair bundles changes.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.437",
+        "0.356"
+      ],
+      [
+        "p95 (ms)",
+        "1.319",
+        "1.008"
+      ],
+      [
+        "Maximum (ms)",
+        "61.891",
+        "8.834"
+      ]
+    ],
+    "kicker": "Historical campaigns, 12,800 samples in each",
+    "caption": "Final timing additionally includes output-arena reset and paired clock reads.",
+    "result": "Threshold breaches decreased from 5 to 0",
+    "notes": "Before binary2cb198 and afterc1d288. This is a bundled source change plus a stricter final timing boundary, so it cannot isolate the effect of scratch allocation from annotation removal. Some individual workloads regressed: arithmetic median .439882→.484952ms. Independent current-code ablations follow. Preserve all raw samples and avoid extrapolating observed maxima into worst-case guarantees.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification-20261028T201910Z-62368/benchmark.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification-20261028T204149Z-67462/benchmark.json"
+  },
+  {
+    "title": "The integer fast path has a workload tradeoff",
+    "layout": "performance",
+    "mechanism": "Safe integer operands use native arithmetic\nwith widened intermediates.\n\nThe ablation forces the floating\ncompatibility path for the same program.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "2.785",
+        "3.637"
+      ],
+      [
+        "p95 (ms)",
+        "7.038",
+        "9.967"
+      ],
+      [
+        "Maximum (ms)",
+        "92.937",
+        "138.712"
+      ]
+    ],
+    "kicker": "Controlled ablation, 1,000-step recursive sum, 300 samples",
+    "caption": "Already-parsed IR evaluation. Parsing, startup and arena reset are excluded.",
+    "result": "Observed median increased\nNo timing win on this workload",
+    "notes": "Engine.evalTrusted on already parsed IR, excludes parsing/process startup/JSON encoding; execution arena resets before timer and retains capacity. Ten warmup iterations per process. No samples filtered.\nWorkload: arithmetic.eyg. Expected answer 500500. No samples removed. Before variant no-i64. These are host measurements. \n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/interpreter.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/core-android.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/tail-trace-depth.json",
+    "evidence": {
+      "path": "docs/slides/evidence/core-android.json",
+      "case": "native-i64"
+    }
+  },
+  {
+    "title": "Tail-trace replacement bounds the live chain",
+    "layout": "performance",
+    "mechanism": "At a tail call, replace the current trace\ninstead of linking another frame.\n\nThe same suspended sum leaves\n2,002 live trace nodes before and 1 after.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "3.092",
+        "3.765"
+      ],
+      [
+        "p95 (ms)",
+        "10.980",
+        "10.646"
+      ],
+      [
+        "Maximum (ms)",
+        "83.669",
+        "26.606"
+      ]
+    ],
+    "kicker": "Controlled ablation, 1,000-step recursive sum, 300 samples",
+    "caption": "Already-parsed IR evaluation. Parsing, startup and arena reset are excluded.",
+    "result": "0.82× ratio of before to after medians\nSlower on this workload",
+    "notes": "Engine.evalTrusted on already parsed IR, excludes parsing/process startup/JSON encoding; execution arena resets before timer and retains capacity. Ten warmup iterations per process. No samples filtered.\nWorkload: arithmetic.eyg. Expected answer 500500. No samples removed. Before variant no-tail-trace. These are host measurements. Tail-trace experiment reduces the observable live continuation chain, but retained arena capacity is identical at6,630,200bytes. It does not prove a memory-allocation or runtime speedup.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/interpreter.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/core-android.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/tail-trace-depth.json\nThe timed workload is a completed recursive sum. A separate suspended-effect probe measures the live trace chain. Tail replacement allocates a new immutable head. It does not mutate previous nodes. Both retain the same arena capacity.",
+    "evidence": {
+      "path": "docs/slides/evidence/core-android.json",
+      "case": "tail-trace"
+    }
+  },
+  {
+    "title": "Identity checks avoid repeated IR descent",
+    "layout": "performance",
+    "mechanism": "Equal object-map pointers identify\nthe same immutable IR.\n\nReturn immediately before recursively\ncomparing its fields.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "50.142",
+        "0.481"
+      ],
+      [
+        "p95 (µs)",
+        "239.145",
+        "0.534"
+      ],
+      [
+        "Maximum (µs)",
+        "3066.408",
+        "736.562"
+      ]
+    ],
+    "kicker": "Closure compared with itself, 200-addition body, 300 samples",
+    "caption": "Already-parsed IR evaluation. Parsing, startup and arena reset are excluded.",
+    "result": "104.24× ratio of before to after medians\nMeasured on this workload",
+    "notes": "Engine.evalTrusted on already parsed IR, excludes parsing/process startup/JSON encoding; execution arena resets before timer and retains capacity. Ten warmup iterations per process. No samples filtered.\nWorkload: closure-equality.eyg. EYG result True({}), driver checksum 1. No samples removed. Before variant no-ir-identity. These are host measurements. \n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/interpreter.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/core-android.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/tail-trace-depth.json\nThis workload compares a closure with itself whose body contains 200 nested additions. Different IR still descends structurally. The measured ratio applies to the shared-body case.",
+    "evidence": {
+      "path": "docs/slides/evidence/core-android.json",
+      "case": "ir-pointer-identity"
+    }
+  },
+  {
+    "title": "Static builtin lookup has a small median difference",
+    "layout": "performance",
+    "mechanism": "Build the lookup table at compile time.\nResolve runtime names without\nscanning the builtin-name list.\n\nThe baseline scans that list linearly.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "2.706",
+        "2.579"
+      ],
+      [
+        "p95 (ms)",
+        "4.886",
+        "5.805"
+      ],
+      [
+        "Maximum (ms)",
+        "15.201",
+        "15.012"
+      ]
+    ],
+    "kicker": "Controlled ablation, 1,000-step recursive sum, 300 samples",
+    "caption": "Already-parsed IR evaluation. Parsing, startup and arena reset are excluded.",
+    "result": "1.05× ratio of before to after medians\nMeasured on this workload",
+    "notes": "Engine.evalTrusted on already parsed IR, excludes parsing/process startup/JSON encoding; execution arena resets before timer and retains capacity. Ten warmup iterations per process. No samples filtered.\nWorkload: arithmetic.eyg. Expected answer 500500. No samples removed. Before variant linear-builtins. These are host measurements. \n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/interpreter.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/core-android.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/tail-trace-depth.json",
+    "evidence": {
+      "path": "docs/slides/evidence/core-android.json",
+      "case": "static-builtin-map"
+    }
+  },
+  {
+    "title": "Streaming UTF16 comparison avoids allocations",
+    "layout": "performance",
+    "mechanism": "Decode UTF8 into UTF16 code units\nas the comparison advances.\n\nStop at the first difference.\nNo temporary UTF16 arrays.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "27.365",
+        "2.643"
+      ],
+      [
+        "p95 (µs)",
+        "34.565",
+        "4.877"
+      ],
+      [
+        "Max avg (µs)",
+        "40.795",
+        "6.747"
+      ]
+    ],
+    "kicker": "Controlled ablation, 31 alternating batches",
+    "caption": "Amortised time per stated workload. Setup excluded. Exact output bytes match.",
+    "result": "10.35× lower median cost",
+    "notes": "Monotonic wall time, 31 alternating before/after batches, one warmup per mode, no samples removed. Per-workload times divide batch elapsed by iterations; they are amortised batch timings, not individual tail latencies. Temporary arena reset is timed for allocation-producing kernels. Input/document/closure setup is outside timing.\nWorkload: 121 pair comparisons over 11 strings with ASCII, BMP, supplementary characters and combining marks.\nBefore: Materialize two UTF-16 arrays with libc allocation, then compare. After: Stream UTF-16 code units, stopping on the first difference. UTF16 baseline uses libc temporary allocation on a valid UTF8 corpus. These ratios cannot be multiplied into an end-to-end application claim.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/unicode.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/util.json",
+    "evidence": {
+      "path": "docs/slides/evidence/util.json",
+      "case": "utf16",
+      "scale": 1000,
+      "batch_averages": true
+    }
+  },
+  {
+    "title": "Binary search narrows Unicode property lookup",
+    "layout": "performance",
+    "mechanism": "Search the sorted property-range table\nby codepoint.\n\nThe baseline scans ranges linearly.\nThe segmentation result stays identical.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "9.361",
+        "1.711"
+      ],
+      [
+        "p95 (µs)",
+        "11.298",
+        "2.649"
+      ],
+      [
+        "Max avg (µs)",
+        "11.559",
+        "5.542"
+      ]
+    ],
+    "kicker": "Controlled ablation, 31 alternating batches",
+    "caption": "Amortised time per stated workload. Setup excluded. Exact output bytes match.",
+    "result": "5.47× lower median cost",
+    "notes": "Monotonic wall time, 31 alternating before/after batches, one warmup per mode, no samples removed. Per-workload times divide batch elapsed by iterations; they are amortised batch timings, not individual tail latencies. Temporary arena reset is timed for allocation-producing kernels. Input/document/closure setup is outside timing.\nWorkload: Segment one mixed-script string containing ASCII, combining sequences, emoji ZWJ, flags, Indic and CJK.\nBefore: Linear scan of sorted Unicode ranges with early stop. After: Binary search over the same generated Unicode range table. These ratios cannot be multiplied into an end-to-end application claim.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/unicode.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/util.json",
+    "evidence": {
+      "path": "docs/slides/evidence/util.json",
+      "case": "properties",
+      "scale": 1000,
+      "batch_averages": true
+    }
+  },
+  {
+    "title": "Binary search narrows Unicode case mapping",
+    "layout": "performance",
+    "mechanism": "Search the sorted case map\nfor each scalar.\n\nThe baseline scans the same map.\nBoth return identical uppercase text.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "6.588",
+        "1.546"
+      ],
+      [
+        "p95 (µs)",
+        "7.885",
+        "2.165"
+      ],
+      [
+        "Max avg (µs)",
+        "8.077",
+        "2.747"
+      ]
+    ],
+    "kicker": "Controlled ablation, 31 alternating batches",
+    "caption": "Amortised time per stated workload. Setup excluded. Exact output bytes match.",
+    "result": "4.26× lower median cost",
+    "notes": "Monotonic wall time, 31 alternating before/after batches, one warmup per mode, no samples removed. Per-workload times divide batch elapsed by iterations; they are amortised batch timings, not individual tail latencies. Temporary arena reset is timed for allocation-producing kernels. Input/document/closure setup is outside timing.\nWorkload: Uppercase one mixed-script string; same Unicode property lookup in both modes.\nBefore: Linear scan of sorted case mappings with early stop. After: Binary search over the same case map. These ratios cannot be multiplied into an end-to-end application claim.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/unicode.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/util.json",
+    "evidence": {
+      "path": "docs/slides/evidence/util.json",
+      "case": "mapping",
+      "scale": 1000,
+      "batch_averages": true
+    }
+  },
+  {
+    "title": "Stored document lengths avoid repeated traversal",
+    "layout": "performance",
+    "mechanism": "Compute a document node’s flat length\nwhen building the document.\n\nLayout reads that field instead of\nwalking the same subtree again.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "517.110",
+        "12.497"
+      ],
+      [
+        "p95 (µs)",
+        "578.985",
+        "21.947"
+      ],
+      [
+        "Max avg (µs)",
+        "699.085",
+        "23.916"
+      ]
+    ],
+    "kicker": "Controlled ablation, 31 alternating batches",
+    "caption": "Amortised time per stated workload. Setup excluded. Exact output bytes match.",
+    "result": "41.38× lower median cost",
+    "notes": "Monotonic wall time, 31 alternating before/after batches, one warmup per mode, no samples removed. Per-workload times divide batch elapsed by iterations; they are amortised batch timings, not individual tail latencies. Temporary arena reset is timed for allocation-producing kernels. Input/document/closure setup is outside timing.\nWorkload: Render an already built shared document DAG, seven nested doubled groups, width 80; document construction excluded.\nBefore: Recursively count grapheme lengths for each text/line/group layout decision. After: Read precomputed Doc.length for each layout decision. These ratios cannot be multiplied into an end-to-end application claim.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/pretty.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/util.json",
+    "evidence": {
+      "path": "docs/slides/evidence/util.json",
+      "case": "lengths",
+      "scale": 1000,
+      "batch_averages": true
+    }
+  },
+  {
+    "title": "Early free-name deduplication avoids repeated reification",
+    "layout": "performance",
+    "mechanism": "Collect each free variable once\nbefore rebuilding captured bindings.\n\nThe baseline repeats reification\nthen deduplicates canonical definitions.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "31.990",
+        "19.222"
+      ],
+      [
+        "p95 (µs)",
+        "56.752",
+        "33.818"
+      ],
+      [
+        "Max avg (µs)",
+        "60.306",
+        "46.407"
+      ]
+    ],
+    "kicker": "Controlled ablation, 31 alternating batches",
+    "caption": "Amortised time per stated workload. Setup excluded. Exact output bytes match.",
+    "result": "1.66× lower median cost",
+    "notes": "Monotonic wall time, 31 alternating before/after batches, one warmup per mode, no samples removed. Per-workload times divide batch elapsed by iterations; they are amortised batch timings, not individual tail latencies. Temporary arena reset is timed for allocation-producing kernels. Input/document/closure setup is outside timing.\nWorkload: Capture one closure whose body contains 128 references to x; same canonical reified IR.\nBefore: Keep all repeated occurrences, reify each, then use the existing canonical definition deduplication. After: Deduplicate free names while walking IR, reify each distinct free binding once. These ratios cannot be multiplied into an end-to-end application claim.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/capture.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/util.json",
+    "evidence": {
+      "path": "docs/slides/evidence/util.json",
+      "case": "capture",
+      "scale": 1000,
+      "batch_averages": true
+    }
+  },
+  {
+    "title": "ReleaseFast reduces full evaluation time",
+    "layout": "performance",
+    "kicker": "Host full evaluation, 300 per build",
+    "mechanism": "Debug retains runtime checks.\nReleaseFast optimises the same source\nand removes those checks.\n\nThis times a full recursive evaluation.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "44.254",
+        "2.829"
+      ],
+      [
+        "p95 (ms)",
+        "81.833",
+        "5.954"
+      ],
+      [
+        "Maximum (ms)",
+        "409.071",
+        "17.055"
+      ]
+    ],
+    "result": "15.65× ratio of before to after medians\nSame source and expected answer",
+    "caption": "Parsing, startup and reset excluded. The 10 ms TUI gate is separate.",
+    "notes": "Controlled build configuration comparison on host Linux, Zig 0.14.1. This is full Engine.evalTrusted execution of a tail-recursive sum from 1 through 1000. Both builds return 500500. It is not cooperative TUI key dispatch or an Android device result.\n\nParse IR before timing. Reset the execution arena before timing and retain capacity. Exclude parser, startup, JSON encoding and arena reset. Ten warmups per process precede each 100-sample wave. Seed 20261028 chooses order across three waves. All 300 raw wall samples per build remain, including maxima.\n\nBefore Debug executable SHA256 cceb29b37e75416cbfb0687fa31a7ea2fbf5cd87b4e25ddcb2bc2302313359c6. After ReleaseFast executable SHA256 94c3520d3d2d19eb776bb109b5bcb07672907df77fb7b8de40f83987d92b99dc. Both interpreter source SHA256 7499911d154dc8f51476a42caf7be94d17eae2293709cf6665d0141ca56a2095. Workload SHA256 1098fc52b2a8ab5f66a96a2d659935f1037b7997a0b2ae5911db769171d9b587.\n\nAll raw arrays, source hashes, executable hashes, build configurations and wave ordering appear in docs/slides/evidence/debug-release.json at core[name=release-fast-build].raw_ns and the adjacent metadata.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/debug-release.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/benchmarks/core-android/README.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/build.zig",
+    "evidence": {
+      "path": "docs/slides/evidence/debug-release.json",
+      "case": "release-fast-build"
+    }
+  },
+  {
+    "title": "Cell interning avoids repeated JSON maps",
+    "layout": "performance",
+    "kicker": "Empty 80x24 frame, 400 per condition",
+    "mechanism": "Hash each cell’s symbol, width and style. Reuse one immutable JSON object for identical cells. Copy symbols into the output owner. The wire still contains every cell.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.630",
+        "0.190"
+      ],
+      [
+        "p95 (ms)",
+        "1.642",
+        "0.624"
+      ],
+      [
+        "Maximum (ms)",
+        "3.144",
+        "3.253"
+      ]
+    ],
+    "result": "Median speedup 3.32x\nWire bytes remain unchanged",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.cell_interning. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 3.144434, \"mean_ms\": 0.75911759, \"p50_ms\": 0.629638, \"p95_ms\": 1.642473, \"p99_ms\": 2.729371, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 3.253426, \"mean_ms\": 0.2815023525, \"p50_ms\": 0.189833, \"p95_ms\": 0.623641, \"p99_ms\": 1.540867, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L87. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "cell_interning"
+    }
+  },
+  {
+    "title": "Cell array reservation avoids growth copies",
+    "layout": "performance",
+    "kicker": "Empty 80x24 frame, 400 per condition",
+    "mechanism": "Reserve width × height slots before appending cells. The viewport fixes the count, so repeated capacity growth and array copies are unnecessary. JSON cell values and wire bytes remain identical.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.199",
+        "0.182"
+      ],
+      [
+        "p95 (ms)",
+        "0.599",
+        "0.569"
+      ],
+      [
+        "Maximum (ms)",
+        "2.415",
+        "1.981"
+      ]
+    ],
+    "result": "9% lower median\nTails vary across percentiles",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.cell_array_reservation. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 2.414765, \"mean_ms\": 0.275506065, \"p50_ms\": 0.199366, \"p95_ms\": 0.599461, \"p99_ms\": 1.177692, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 1.981466, \"mean_ms\": 0.257625935, \"p50_ms\": 0.181774, \"p95_ms\": 0.568566, \"p99_ms\": 1.623231, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L84. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "cell_array_reservation"
+    }
+  },
+  {
+    "title": "Frame storage separates temporary and retained data",
+    "layout": "performance",
+    "kicker": "30 history items, 400 per condition",
+    "mechanism": "Build layout in scratch storage. Copy the snapshot into caller-owned output. Reset discarded output inside the timer. Session storage retains editor history and deliberately kept frames.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.474",
+        "0.289"
+      ],
+      [
+        "p95 (ms)",
+        "1.677",
+        "1.258"
+      ],
+      [
+        "Maximum (ms)",
+        "5.499",
+        "3.480"
+      ]
+    ],
+    "result": "After 16 discarded frames\n6,437,544 retained bytes become 0",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.frame_allocation_lifetime. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 5.499299, \"mean_ms\": 0.646193135, \"p50_ms\": 0.474276, \"p95_ms\": 1.676845, \"p99_ms\": 2.998192, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 3.479567, \"mean_ms\": 0.44721604, \"p50_ms\": 0.288898, \"p95_ms\": 1.258309, \"p99_ms\": 2.208388, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L2511. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.\n\nSeparate session-capacity check after 16 discarded frames: before 6437544 bytes of additional retained arena capacity, after 0 bytes. This checks session growth after warmup and does not claim zero allocation or zero total process memory. Both timing conditions include output reset and paired clock reads.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "frame_allocation_lifetime"
+    }
+  },
+  {
+    "title": "Unused annotation walks add work to every frame",
+    "layout": "performance",
+    "kicker": "30 history items, 400 per condition",
+    "mechanism": "Read analysis directly from its owning cache. Remove full-tree annotation copy and clear walks. Both probe modes keep the legacy fields, so this comparison measures traversal cost rather than the smaller Node layout.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.497",
+        "0.483"
+      ],
+      [
+        "p95 (ms)",
+        "1.273",
+        "1.371"
+      ],
+      [
+        "Maximum (ms)",
+        "4.610",
+        "3.984"
+      ]
+    ],
+    "result": "2.9% lower median\nNo p95 improvement in this probe",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.unused_annotation_walks. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 4.610156, \"mean_ms\": 0.6249748075, \"p50_ms\": 0.497143, \"p95_ms\": 1.273327, \"p99_ms\": 2.180183, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 3.984125, \"mean_ms\": 0.6363064075, \"p50_ms\": 0.482883, \"p95_ms\": 1.370626, \"p99_ms\": 2.657793, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L2026. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.\n\nBoth conditions include restored legacy annotation fields. This isolates the old traversal work and excludes representation-size savings from removing the fields. Small median differences are not proof of a robust improvement. The mean and p95 are slightly worse after on this run.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "unused_annotation_walks"
+    }
+  },
+  {
+    "title": "Draft analysis cache reuses unchanged type analysis",
+    "layout": "performance",
+    "kicker": "50 record literals, 400 per condition",
+    "mechanism": "Hash the draft structure and immutable scope identity. Reuse inference while the key matches. Edits, scope changes or explicit invalidation rebuild analysis in its own arena. Stable frames require only the hash check.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "4.292",
+        "0.383"
+      ],
+      [
+        "p95 (ms)",
+        "6.738",
+        "0.969"
+      ],
+      [
+        "Maximum (ms)",
+        "14.978",
+        "22.576"
+      ]
+    ],
+    "result": "Median speedup 11.20x\nAn after outlier exceeds 10ms",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.draft_analysis_cache. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 3, \"max_ms\": 14.978259, \"mean_ms\": 4.5655574875, \"p50_ms\": 4.291994, \"p95_ms\": 6.738032, \"p99_ms\": 8.796989, \"samples\": 400}. After {\"breaches_10ms\": 1, \"max_ms\": 22.576379, \"mean_ms\": 0.5410544399999999, \"p50_ms\": 0.383373, \"p95_ms\": 0.969368, \"p99_ms\": 2.013368, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L2032. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.\n\nThe enabled diagnostic workload retains one 22.576379ms maximum. This new large static-frame probe differs from the original 12800-sample interaction campaign. The original under 10ms result applies only to its recorded workloads.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "draft_analysis_cache"
+    }
+  },
+  {
+    "title": "History values reuse their formatted text",
+    "layout": "performance",
+    "kicker": "50 record result, 400 per condition",
+    "mechanism": "Cache each immutable history value’s formatted text with the viewport width. Reuse it on later frames. A width change invalidates the layout. Each cached result owns its arena, so temporary formatting does not accumulate in session storage.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.827",
+        "0.604"
+      ],
+      [
+        "p95 (ms)",
+        "1.684",
+        "1.285"
+      ],
+      [
+        "Maximum (ms)",
+        "5.372",
+        "2.605"
+      ]
+    ],
+    "result": "27% lower median\nWidth changes invalidate the cache",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.history_value_pretty_cache. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 5.371877, \"mean_ms\": 0.9452339725000001, \"p50_ms\": 0.827479, \"p95_ms\": 1.683977, \"p99_ms\": 2.484523, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 2.605121, \"mean_ms\": 0.7032510825, \"p50_ms\": 0.604249, \"p95_ms\": 1.284708, \"p99_ms\": 1.866142, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L2885. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "history_value_pretty_cache"
+    }
+  },
+  {
+    "title": "Frozen scopes trade conversion for graph copying",
+    "layout": "performance",
+    "kicker": "35 bindings, 400 analyses per condition",
+    "mechanism": "Infer an immutable scope once. Clone its cached type graph for each new draft, so unification cannot mutate the cache. This replaces runtime-value conversion with graph copying. Small values may not repay lookup and copying costs.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "1.362",
+        "1.426"
+      ],
+      [
+        "p95 (ms)",
+        "2.909",
+        "2.869"
+      ],
+      [
+        "Maximum (ms)",
+        "8.819",
+        "6.225"
+      ]
+    ],
+    "result": "Small records: 4.7% slower median\nLarge values: 1.1% faster median",
+    "caption": "Fresh inference on annotated TUI IR. Includes scope and effect text. Separate from key response.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.immutable_scope_cache. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 8.819259, \"mean_ms\": 1.6355941425, \"p50_ms\": 1.361983, \"p95_ms\": 2.909253, \"p99_ms\": 4.855311, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 6.225381, \"mean_ms\": 1.6001473275, \"p50_ms\": 1.42603, \"p95_ms\": 2.869124, \"p99_ms\": 4.193911, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/inference.zig#L81. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nFresh inference on annotated TUI IR. Includes scope and effect text. Separate from key response.\n\nSecond regime, retained separately: five 50-record list values and 20 references to the same complex value. Source docs/slides/evidence/tui-large-context.json, cases.immutable_scope_cache. Exact before {\"breaches_10ms\": 0, \"max_ms\": 6.901261, \"mean_ms\": 1.646331835, \"p50_ms\": 1.401341, \"p95_ms\": 3.110116, \"p99_ms\": 4.562757, \"samples\": 400}. Exact after {\"breaches_10ms\": 0, \"max_ms\": 5.241199, \"mean_ms\": 1.5142711174999999, \"p50_ms\": 1.385542, \"p95_ms\": 2.543175, \"p99_ms\": 3.318203, \"samples\": 400}. Large report SHA256 103f57aab916f7fada5a774614cecf34f4fdcf91ccca9bdb37749fde1728adb2. Both regimes remain visible. These results do not establish a universal speedup.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "immutable_scope_cache"
+    }
+  },
+  {
+    "title": "Type text reuse adds overhead in these probes",
+    "layout": "performance",
+    "kicker": "35 bindings, 400 analyses per condition Reuse disabled versus enabled",
+    "mechanism": "Cache rendered text by resolved type pointer after inference stabilizes. Reuse it for repeated annotations. The probe disables reads while keeping cache writes in both modes. On simple types, lookup can cost more than re-rendering.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "1.350",
+        "1.399"
+      ],
+      [
+        "p95 (ms)",
+        "2.570",
+        "3.346"
+      ],
+      [
+        "Maximum (ms)",
+        "12.934",
+        "11.633"
+      ]
+    ],
+    "result": "Small records: 3.6% slower median\nLarge values: 7.6% slower median",
+    "caption": "Fresh inference on annotated TUI IR. Includes scope and effect text. Separate from key response.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.rendered_type_memoization. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 1, \"max_ms\": 12.934153, \"mean_ms\": 1.5630750775, \"p50_ms\": 1.350403, \"p95_ms\": 2.56971, \"p99_ms\": 5.133989, \"samples\": 400}. After {\"breaches_10ms\": 3, \"max_ms\": 11.632757, \"mean_ms\": 1.6967052425, \"p50_ms\": 1.399278, \"p95_ms\": 3.345967, \"p99_ms\": 6.520736, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/inference.zig#L685. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nFresh inference on annotated TUI IR. Includes scope and effect text. Separate from key response.\n\nSecond regime, retained separately: five 50-record list values and 20 references to the same complex value. Source docs/slides/evidence/tui-large-context.json, cases.rendered_type_memoization. Exact before {\"breaches_10ms\": 0, \"max_ms\": 6.771089, \"mean_ms\": 1.561812795, \"p50_ms\": 1.351265, \"p95_ms\": 2.729516, \"p99_ms\": 4.226179, \"samples\": 400}. Exact after {\"breaches_10ms\": 0, \"max_ms\": 9.331494, \"mean_ms\": 1.8068577124999998, \"p50_ms\": 1.453813, \"p95_ms\": 3.748013, \"p99_ms\": 5.364699, \"samples\": 400}. Large report SHA256 103f57aab916f7fada5a774614cecf34f4fdcf91ccca9bdb37749fde1728adb2. Both regimes remain visible. These results do not establish a universal speedup.\n\nAblation model: before disables cache READ and REUSE. Both conditions retain common cache PUT bookkeeping. This isolates reuse benefits and does not represent a completely cache-free historical implementation. The exact source diff is retained.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "rendered_type_memoization"
+    }
+  },
+  {
+    "title": "Completion scopes reuse rendered text",
+    "layout": "performance",
+    "kicker": "35 bindings, 400 analyses per condition Reuse disabled versus enabled",
+    "mechanism": "Cache completion-scope text by immutable environment pointer. Repeated nodes reuse the formatted list. The probe disables reads while keeping writes in both modes, isolating reuse rather than comparing with a completely cache-free implementation.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "2.669",
+        "1.681"
+      ],
+      [
+        "p95 (ms)",
+        "6.227",
+        "3.564"
+      ],
+      [
+        "Maximum (ms)",
+        "13.945",
+        "7.840"
+      ]
+    ],
+    "result": "37% lower median\nSame completion scope and types",
+    "caption": "Fresh inference on annotated TUI IR. Includes scope and effect text. Separate from key response.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.rendered_scope_memoization. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 4, \"max_ms\": 13.94488, \"mean_ms\": 3.230729395, \"p50_ms\": 2.668678, \"p95_ms\": 6.226738, \"p99_ms\": 8.969049, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 7.84029, \"mean_ms\": 1.9279429025, \"p50_ms\": 1.681495, \"p95_ms\": 3.563529, \"p99_ms\": 5.603969, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/inference.zig#L692. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nFresh inference on annotated TUI IR. Includes scope and effect text. Separate from key response.\n\nAblation model: before disables cache READ and REUSE. Both conditions retain common cache PUT bookkeeping. This isolates reuse benefits and does not represent a completely cache-free historical implementation. The exact source diff is retained.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "rendered_scope_memoization"
+    }
+  },
+  {
+    "title": "Ordinary frames omit unused inference projections",
+    "layout": "performance",
+    "kicker": "50 literals, 400 forced fresh analyses",
+    "mechanism": "Ordinary frames need types and paths, so skip per-node scope and effect text. Picker analyses still collect the richer data they consume. Both probe modes force fresh inference to isolate this projection choice.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "4.601",
+        "4.630"
+      ],
+      [
+        "p95 (ms)",
+        "9.350",
+        "10.958"
+      ],
+      [
+        "Maximum (ms)",
+        "16.581",
+        "39.109"
+      ]
+    ],
+    "result": "Empty scope: 0.6% slower median\nLarge scope: 3.2% faster median",
+    "caption": "Complete frame and output reset, forcing fresh inference on both sides. Setup excluded.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.omit_unused_scope_effect_projections. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 13, \"max_ms\": 16.581227, \"mean_ms\": 5.16555383, \"p50_ms\": 4.601016, \"p95_ms\": 9.350041, \"p99_ms\": 12.470608, \"samples\": 400}. After {\"breaches_10ms\": 27, \"max_ms\": 39.109414, \"mean_ms\": 5.562108125, \"p50_ms\": 4.630135, \"p95_ms\": 10.957679, \"p99_ms\": 17.494201, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L2036. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset, forcing fresh inference on both sides. Setup excluded.\n\nSecond regime, retained separately: five 50-record list values and 20 references to the same complex value. Source docs/slides/evidence/tui-large-context.json, cases.omit_unused_scope_effect_projections. Exact before {\"breaches_10ms\": 8, \"max_ms\": 25.064295, \"mean_ms\": 3.5991707925, \"p50_ms\": 2.969447, \"p95_ms\": 7.463318, \"p99_ms\": 11.102933, \"samples\": 400}. Exact after {\"breaches_10ms\": 1, \"max_ms\": 11.474559, \"mean_ms\": 3.1917060025, \"p50_ms\": 2.875014, \"p95_ms\": 5.553294, \"p99_ms\": 7.434756, \"samples\": 400}. Large report SHA256 103f57aab916f7fada5a774614cecf34f4fdcf91ccca9bdb37749fde1728adb2. Both regimes remain visible. These results do not establish a universal speedup.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "omit_unused_scope_effect_projections"
+    }
+  },
+  {
+    "title": "Picker matching folds the query once",
+    "layout": "performance",
+    "kicker": "Builtin picker, 400 frames per condition",
+    "mechanism": "Fold the query once before scanning candidates. Reuse those units for every match. The control folds the query for each candidate. Both modes use the same Unicode mapping and return identical options.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.408",
+        "0.368"
+      ],
+      [
+        "p95 (ms)",
+        "2.189",
+        "0.938"
+      ],
+      [
+        "Maximum (ms)",
+        "5.784",
+        "2.288"
+      ]
+    ],
+    "result": "10% lower median\nSame matching choices and cells",
+    "caption": "Complete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.picker_query_casefold_once. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 5.784366, \"mean_ms\": 0.628292005, \"p50_ms\": 0.408366, \"p95_ms\": 2.189, \"p99_ms\": 2.981534, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 2.288401, \"mean_ms\": 0.4544561225, \"p50_ms\": 0.368356, \"p95_ms\": 0.938433, \"p99_ms\": 1.65312, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L860. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete frame and output reset. Setup excluded. No key dispatch or JSON encoding.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "picker_query_casefold_once"
+    }
+  },
+  {
+    "title": "ANSI encoding emits style changes only",
+    "layout": "performance",
+    "kicker": "Nested program, 400 frames per condition",
+    "mechanism": "Track the current style across visible cells. Emit SGR sequences only when that style changes. The control repeats complete style sequences for each cell. Encoded bytes change, while terminal cells and style traces stay equivalent.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "0.083",
+        "0.065"
+      ],
+      [
+        "p95 (ms)",
+        "0.328",
+        "0.387"
+      ],
+      [
+        "Maximum (ms)",
+        "1.332",
+        "3.978"
+      ]
+    ],
+    "result": "10,401 bytes before\n2,235 bytes after",
+    "caption": "Complete ANSI frame generation and output reset. Setup excluded. Byte output intentionally changes.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.ansi_style_change_elision. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 0, \"max_ms\": 1.3321, \"mean_ms\": 0.1288934675, \"p50_ms\": 0.082592, \"p95_ms\": 0.327935, \"p99_ms\": 0.73184, \"samples\": 400}. After {\"breaches_10ms\": 0, \"max_ms\": 3.978095, \"mean_ms\": 0.13330010250000002, \"p50_ms\": 0.064895, \"p95_ms\": 0.386709, \"p99_ms\": 1.270278, \"samples\": 400}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig#L118. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nComplete ANSI frame generation and output reset. Setup excluded. Byte output intentionally changes.\n\nThe nested-frame byte count is 10401 before and 2235 after. Exact ANSI bytes intentionally differ. Six real TUI frames and one explicit synthetic style case passed VT-cell and effective-SGR-per-character trace equivalence. The supplementary trace covers dim, all modifier bits, RGB/indexed colors and underline colors. Pyte 0.8.2 cannot parse colon underline-color SGR. Remove those sequences only for that observer and check them in the exact supplemental trace. Evidence docs/slides/evidence/tui-ansi-parity.json, SHA256 7df32a6b014f13473f07fc27442ee16eb194e6fd80cdd14bb24b220d2506d9ab.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "ansi_style_change_elision"
+    }
+  },
+  {
+    "title": "Buffered JSON output batches system calls",
+    "layout": "performance",
+    "kicker": "One frame, 16 pipe replies per condition",
+    "mechanism": "Wrap the unchanged JSON encoder in a buffered writer. Flush once after the response newline. Batching small writes reduces system calls. Both modes return exactly the same 211,262 bytes.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "75.283",
+        "2.545"
+      ],
+      [
+        "p95 (ms)",
+        "98.936",
+        "10.191"
+      ],
+      [
+        "Maximum (ms)",
+        "98.936",
+        "10.191"
+      ]
+    ],
+    "result": "Median speedup 29.58x\n211,262 response bytes on both sides",
+    "caption": "Request send to reply newline, before JSON decoding. Includes encoding and pipe transport.",
+    "notes": "Before means one mechanism disabled in a generated standalone ReleaseFast binary. After means the mechanism enabled. These are ablations, not invented chronological measurements. Every other mechanism remains enabled. Do not multiply the speedups.\n\nFour AB/BA blocks alternate order. Every internal row has 400 samples per condition except buffered JSONL, which has 16. Preserve all samples and all threshold breaches. Source report: docs/slides/evidence/tui.json, cases.buffered_jsonl_output. Raw wall arrays: samples_ns.before and samples_ns.after. Percentiles use nearest rank.\n\nExact measured values: before {\"breaches_10ms\": 16, \"max_ms\": 98.935703, \"mean_ms\": 77.356840375, \"p50_ms\": 75.282762, \"p95_ms\": 98.935703, \"p99_ms\": 98.935703, \"samples\": 16}. After {\"breaches_10ms\": 1, \"max_ms\": 10.190638, \"mean_ms\": 3.490896875, \"p50_ms\": 2.544767, \"p95_ms\": 10.190638, \"p99_ms\": 10.190638, \"samples\": 16}.\n\nThe production executable SHA256 is c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd. The generated ablation executable SHA256 is 96bb17a1ce34e20105146a4617e7a3d61bb0fc61590ae2e941fa300e59f436f4. Standard report SHA256 is d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69.\n\nImplementation: https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/main.zig#L86. Reproduction scripts and source diffs accompany the evidence.\n\nAll canonical TUI frames, enabled-variant frames and disabled-variant frames compared exactly before timing. The standard campaign covers 354 frame states across the 12 internal probes. For type/scope diagnostics, setup includes actual retained bindings and annotated source. The unused-projection ablation intentionally changes metadata that ordinary rendering does not consume.\n\nRequest send to reply newline, before JSON decoding. Includes encoding and pipe transport.\n\nBoth conditions emit exactly 211262 response bytes. The timer ends after complete response newline reception, before json.loads. This row includes serialization and pipe transport, which the original desktop dispatch/frame benchmark excludes. All 16 before samples exceed 10ms. One enabled sample exceeds10ms at 10.190638ms.",
+    "evidence": {
+      "path": "docs/slides/evidence/tui.json",
+      "case": "buffered_jsonl_output"
+    }
+  },
+  {
+    "title": "Decoded objects and delta bases share a bounded cache",
+    "layout": "performance",
+    "kicker": "README.md history, limit 20, scan cap 200",
+    "mechanism": "Cache bytes by object ID and pack\noffset. Reuse decoded parents, trees\nand delta bases. Admit at most 512\nentries and 16 MiB of accounted bytes.\nRead mutable refs afresh.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "48.466",
+        "26.899"
+      ],
+      [
+        "p95 (ms)",
+        "476.125",
+        "330.547"
+      ],
+      [
+        "Maximum (ms)",
+        "1899.855",
+        "1086.881"
+      ]
+    ],
+    "result": "The median fell 44.5%. Current maximum remained 1,086.881 ms.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "Before removes cache admission while keeping the same decoding and validation logic. After retains immutable objects within a fresh Repository for each request. The request searches README.md history with result limit 20 and scan_limit 200 at the pinned real-world commit. Repeated tree, parent and delta-base lookups can reuse reconstructed bytes. The native cache stops admitting at 512 entries or 16 MiB accounted bytes. It is not an LRU and this budget does not cap total arena memory. HEAD, refs and config stay outside this cache. The long retained maxima are query completion costs. They cannot support an under 10 ms UI claim.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L207\nEvidence: docs/slides/evidence/git.json, case decoded-object-cache\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "decoded-object-cache"
+    }
+  },
+  {
+    "title": "One validated index load serves every object in a query",
+    "layout": "performance",
+    "kicker": "20 full commit records, fresh Repository",
+    "mechanism": "Read pack indexes once per Repository.\nKeep fanout, object IDs and offsets in\nmemory. Verify each index checksum\nonce. Reuse those bytes for every\npacked lookup in the request.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "12.473",
+        "1.847"
+      ],
+      [
+        "p95 (ms)",
+        "15.255",
+        "2.684"
+      ],
+      [
+        "Maximum (ms)",
+        "20.407",
+        "3.632"
+      ]
+    ],
+    "result": "The median fell 85.2%. Index checksum checks remain enabled.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "Before clears the loaded-index list and reloads and SHA-checks index files on every locate call. After uses the indexed flag so one Repository shares its validated index bytes. Both run the same 20-record first-parent history query and return identical full records. Each request creates a fresh Repository, so this is reuse within a query rather than a claim of a persistent cross-query index cache. Disk caches are warm. Index checksums remain enabled on both sides.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L141\nEvidence: docs/slides/evidence/git.json, case lazy-index-load\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "lazy-index-load"
+    }
+  },
+  {
+    "title": "Binary lookup did not improve this full-query median",
+    "layout": "performance",
+    "kicker": "20 full commit records, same packed corpus",
+    "mechanism": "Object IDs occupy a sorted table.\nBefore scans the complete table. After\nselects a fanout bucket and\nbinary-searches its 20-byte IDs. The\nrest of the query stays the same.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "1.750",
+        "1.818"
+      ],
+      [
+        "p95 (ms)",
+        "2.445",
+        "2.895"
+      ],
+      [
+        "Maximum (ms)",
+        "4.391",
+        "16.836"
+      ]
+    ],
+    "result": "The current median rose 3.9%. This query showed no lookup win.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "Before linearly scans each complete index table. After uses the production fanout-bounded binary search. The comparison therefore disables both the search algorithm and bucket restriction together. The separate fanout slide isolates bucket restriction alone. The asymptotic search reduces comparisons on large tables, but the measured20-record full query did not improve. Inflation, hashing, filesystem work and allocation remain in this timing boundary. Retain the negative observation and its 16.836 ms current maximum. Do not advertise an isolated logarithmic speedup from these full-query numbers.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L173\nEvidence: docs/slides/evidence/git.json, case binary-index-search\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "binary-index-search"
+    }
+  },
+  {
+    "title": "Fanout bounds did not improve this query median",
+    "layout": "performance",
+    "kicker": "20 full commit records, binary search on both sides",
+    "mechanism": "The first hash byte selects a bucket. A\n256-entry cumulative table gives its\nbounds. Binary search stays inside that\nslice. Before searches the whole sorted\nindex instead.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "1.693",
+        "1.841"
+      ],
+      [
+        "p95 (ms)",
+        "2.585",
+        "2.614"
+      ],
+      [
+        "Maximum (ms)",
+        "3.545",
+        "4.468"
+      ]
+    ],
+    "result": "The current median rose 8.7%. Fanout showed no query win here.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "Both sides use binary search. Before sets bounds to the whole object-ID table. After reads lower and upper bounds from the pack-index fanout table using the first OID byte. For evenly distributed hashes, a bucket has about 1/256 of the entries, although actual bucket sizes vary. This reduces the search interval without removing object validation. On this corpus the full-query median increased from 1.6927595 ms to 1.8406145 ms. These data establish no measured end-to-end benefit for fanout. Larger-index or lookup-only experiments would test a different claim.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L178\nEvidence: docs/slides/evidence/git.json, case fanout-bounds\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "fanout-bounds"
+    }
+  },
+  {
+    "title": "Metadata rejection avoids unnecessary tree reads",
+    "layout": "performance",
+    "kicker": "100 commits, absent author and a path filter",
+    "mechanism": "Check time, message and author first.\nReject nonmatches before path lookup.\nRead current and parent trees only for\ncommits that pass those cheap metadata\nfilters.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "7.957",
+        "5.726"
+      ],
+      [
+        "p95 (ms)",
+        "10.353",
+        "8.347"
+      ],
+      [
+        "Maximum (ms)",
+        "13.695",
+        "11.474"
+      ]
+    ],
+    "result": "The median fell 28.0%. Every request still scans 100 commits.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "The query combines path dark/git/read.eyg with an author substring __absent_slide_probe__ and scan_limit 100. No commit matches that author. Before performs current/parent path-tree work before testing metadata. After rejects each commit immediately after parsing its metadata, avoiding those path-tree reads. Both return an empty result and still traverse the same 100 commits. This intentionally selective workload demonstrates filter ordering, not a guarantee for queries whose metadata filters accept every commit. The current 11.474 ms maximum remains visible.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L568\nEvidence: docs/slides/evidence/git.json, case cheap-filters-first\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "cheap-filters-first"
+    }
+  },
+  {
+    "title": "A result limit avoids traversing the remaining history",
+    "layout": "performance",
+    "kicker": "20 records from 430 first-parent commits",
+    "mechanism": "Stop once enough matching records\nexist. Before visits the rest of the\nhistory and returns the same prefix.\nKeep scan_limit as a separate safety\nbound for selective queries.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "22.055",
+        "1.886"
+      ],
+      [
+        "p95 (ms)",
+        "29.356",
+        "2.600"
+      ],
+      [
+        "Maximum (ms)",
+        "48.885",
+        "2.901"
+      ]
+    ],
+    "result": "The median fell 91.4% by avoiding work after the twentieth record.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "The pinned real-world revision has 430 first-parent commits. The query asks for 20 unfiltered full records. Before continues visiting commits until history ends while retaining only the requested prefix. After exits as soon as 20 matching records exist. Both preserve record order and return the same prefix. This measures avoided traversal and decode work, not faster parsing of each visited commit. Filtered queries may need many more than 20 visits before accumulating 20 matches. The separate scan_limit still caps exploration.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L564\nEvidence: docs/slides/evidence/git.json, case stop-at-result-limit\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "stop-at-result-limit"
+    }
+  },
+  {
+    "title": "Object streams avoid copying an entire pack",
+    "layout": "performance",
+    "kicker": "3 packed commits at real-world revision ancestor 20",
+    "mechanism": "Seek to the packed object offset. Feed\nits compressed stream through a\nbuffered reader. Decode only that\nobject and required bases. Before\ncopies the whole pack for each packed\ndecode.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "14.622",
+        "1.016"
+      ],
+      [
+        "p95 (ms)",
+        "31.593",
+        "2.453"
+      ],
+      [
+        "Maximum (ms)",
+        "101.636",
+        "40.543"
+      ]
+    ],
+    "result": "The median fell 93.1%. The current maximum was still 40.543 ms.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "The request returns three full records from 321279a62d9dd3a144e5bed803646ddf7d2fa994, the twentieth first-parent ancestor of the pinned real-world revision. Before loads the complete containing pack into the request arena for each packed-object call, then decodes from the selected offset. After seeks to the offset and lets the buffered zlib reader consume the selected stream and required delta bases. Object checksums and returned records are identical. This ablation exposes excess read/copy/allocation work. The current 40.542576 ms maximum is retained and prevents a universal under 10 ms query-completion claim.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L238\nEvidence: docs/slides/evidence/git.json, case stream-packed-objects\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "stream-packed-objects"
+    }
+  },
+  {
+    "title": "The delta header supplies the output allocation size",
+    "layout": "performance",
+    "kicker": "1 MiB target, 64 copies of 16 KiB",
+    "mechanism": "Decode the target length first. Reserve\nits output capacity once. Copy\ncontiguous base spans into that buffer.\nBefore starts empty and grows the array\nas each span arrives.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "1.074",
+        "0.376"
+      ],
+      [
+        "p95 (ms)",
+        "2.547",
+        "0.849"
+      ],
+      [
+        "Maximum (ms)",
+        "34.895",
+        "1.541"
+      ]
+    ],
+    "result": "The median fell 65.0%. The same delta and range checks run.",
+    "caption": "100 pairs. Kernel: monotonic std.time.Timer. Allocation included. Teardown excluded.",
+    "notes": "This is a monotonic kernel benchmark using the actual applyDelta implementation. Both base and target are 1 MiB, reconstructed by 64 indexed 16 KiB copy operations. Before changes ArrayList initialization to zero capacity. After reserves target_size, read from the Git delta header. Both include target allocation, instruction processing and a full equality check inside the timer. Arena teardown falls outside the timer. Both keep base-size, target-size, copy-range and output-size validation. This fixture isolates allocation strategy and does not establish a 20-record history-query speedup.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nKernel clock is std.time.Timer, which is monotonic. Allocation is included and arena destruction is excluded. Results are validated as described.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L377\nEvidence: docs/slides/evidence/git.json, case delta-output-preallocation\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "delta-output-preallocation"
+    }
+  },
+  {
+    "title": "Incremental SHA avoids a full header and body copy",
+    "layout": "performance",
+    "kicker": "SHA-1 of one 1 MiB Git blob",
+    "mechanism": "Feed the Git header and body to SHA-1\nin chunks. Before builds one combined\nbuffer. After hashes borrowed slices\nwithout that extra allocation and full\nbody copy.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "1.963",
+        "1.623"
+      ],
+      [
+        "p95 (ms)",
+        "2.786",
+        "2.347"
+      ],
+      [
+        "Maximum (ms)",
+        "4.452",
+        "4.310"
+      ]
+    ],
+    "result": "The median fell 17.3% for this 1 MiB hashing kernel.",
+    "caption": "100 pairs. Kernel: monotonic std.time.Timer. Allocation included. Teardown excluded.",
+    "notes": "The kernel hashes the exact bytes blob 1048576 followed by NUL and a 1 MiB body, with the required space between kind and size. Before allocates and concatenates the complete header and body. After feeds the fixed complete header and body to incremental SHA-1. Python hashlib independently verifies the digest. The monotonic timer includes concatenation allocation/copy on the baseline side and SHA work on both sides. Production verifyObject also formats and streams individual header fields. This kernel isolates the copy choice and is not an end-to-end production verifier or history-query measurement.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nKernel clock is std.time.Timer, which is monotonic. Allocation is included and arena destruction is excluded. Results are validated as described.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git.zig#L457\nEvidence: docs/slides/evidence/git.json, case incremental-object-hash\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "incremental-object-hash"
+    }
+  },
+  {
+    "title": "Fast compression made only a small kernel difference",
+    "layout": "performance",
+    "kicker": "1 MiB repeated source phrase, compression only",
+    "mechanism": "Zig fast uses DEFLATE level 4. Default\nuses level 6. Smaller match-search\nbudgets can reduce compression work.\nBoth emit standard zlib streams for the\nsame input bytes.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "2.632",
+        "2.566"
+      ],
+      [
+        "p95 (ms)",
+        "3.792",
+        "3.668"
+      ],
+      [
+        "Maximum (ms)",
+        "8.888",
+        "9.674"
+      ]
+    ],
+    "result": "Median improvement was 2.5%. Both outputs occupied 3,124 bytes.",
+    "caption": "100 pairs. Kernel: monotonic std.time.Timer. Allocation included. Teardown excluded.",
+    "notes": "Both modes compress a 1 MiB highly compressible fixture built from a repeated source-code phrase. In Zig 0.14.1, .fast aliases DEFLATE level 4 and .default aliases level 6. Level4 reduces lazy and chain match-search budgets. Every encoded result decompresses back to the original bytes after the timer stops. The monotonic kernel includes output allocation and compression, while excluding filesystem calls, fsync and arena teardown. The median moved only 2.5%, encoded sizes were equal at 3,124 bytes, and the current maximum increased from 8.888425 ms to 9.673995 ms. Treat this as a small fixture-dependent difference rather than a general compression win.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nKernel clock is std.time.Timer, which is monotonic. Allocation is included and arena destruction is excluded. Results are validated as described.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git_write.zig#L101\nEvidence: docs/slides/evidence/git.json, case fast-write-compression-kernel\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "fast-write-compression-kernel"
+    }
+  },
+  {
+    "title": "The compression level also changes full write cost",
+    "layout": "performance",
+    "kicker": "Fresh 1 MiB loose object with fsync and rename",
+    "mechanism": "Keep SHA, file publication and fsync\nunchanged. Change only DEFLATE level 6\nto level 4. Remove the target object\nbefore each request so every sample\nperforms a fresh write.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "6.852",
+        "5.659"
+      ],
+      [
+        "p95 (ms)",
+        "14.758",
+        "11.512"
+      ],
+      [
+        "Maximum (ms)",
+        "43.743",
+        "13.760"
+      ]
+    ],
+    "result": "The median fell 17.4%. Both Git object files occupied 3,137 bytes.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "This uses the real write_blob request, not only the compression kernel. Both variants derive the content address, form the Git object header, compress the same 1 MiB text, write a temporary loose object, fsync and rename it. Before uses .default, level 6. After uses production .fast, level 4. The target object is removed before every measured request, outside the driver timer, so an existing-object shortcut cannot contaminate the result. Engine timing includes repository setup and full publication but excludes JSON parse, serialization and test setup. Both return the same independently calculated object ID. Encoded files are 3,137 bytes for both modes on this fixture. The current 13.760 ms maximum remains above 10 ms.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git_write.zig#L101\nEvidence: docs/slides/evidence/git.json, case fast-write-compression-end-to-end\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "fast-write-compression-end-to-end"
+    }
+  },
+  {
+    "title": "Existing immutable objects can skip publication",
+    "layout": "performance",
+    "kicker": "Same 1 MiB blob, absent object versus existing object",
+    "mechanism": "Derive the content address first. If\nits object exists, read and verify it.\nReturn the ID without recompression,\nfsync or rename. Otherwise publish the\nnew compressed object normally.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "5.392",
+        "4.959"
+      ],
+      [
+        "p95 (ms)",
+        "7.113",
+        "7.625"
+      ],
+      [
+        "Maximum (ms)",
+        "11.242",
+        "11.232"
+      ]
+    ],
+    "result": "The median improved 8.0%, while p95 increased.",
+    "caption": "100 pairs. Engine: realtime nanoTimestamp. Paired monotonic roundtrips also retained.",
+    "notes": "Both sides request the same 1 MiB blob through the current implementation. Before removes its target object before each timed call, forcing compression, fsync and rename. After keeps the identical valid object in a separate isolated repository, allowing the normal existence check to reuse it. Both compute the requested raw-object SHA first. The existing path still reads, inflates and verifies stored data, so it does not bypass integrity checks. A corrupt existing object still fails. Median fell from 5.3918925 ms to 4.9585965 ms, but p95 rose from 7.113465 ms to 7.62515 ms and maxima remained about 11.24 ms. This demonstrates a small reuse benefit with a mixed tail result.\n\nAll numbers are milliseconds from 100 randomized paired measurements after 3 warmups per side. Seed is 0x455947. Every sample, including outliers, remains in docs/slides/evidence/git.json. Before is a controlled source ablation or explicitly stated workload state, not a historical release. Complete returned values matched for each pair. Native source hashes remained unchanged. Canonical Git reference is f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9. These measurements do not establish physical-key or Android-device latency.\n\nThe standalone engine driver subtracts std.time.nanoTimestamp wall CLOCK_REALTIME readings around git.request, after JSON parse and before serialization. It assumes no realtime-clock correction during short pairs. Paired Python time.perf_counter_ns monotonic roundtrips include JSON and transport and remain alongside these engine samples. Each request starts a fresh Repository and request arena. OS file caches are warm.\n\nSource: https://github.com/CrowdHailer/eyg-lang/blob/090a8a5d4658f19f854bf55d3309650f895d5355/packages/zig_runtime/src/git_write.zig#L87\nEvidence: docs/slides/evidence/git.json, case existing-object-write-reuse\nReproduction: docs/slides/benchmarks/git/README-reproduce.md",
+    "evidence": {
+      "path": "docs/slides/evidence/git.json",
+      "case": "existing-object-write-reuse"
+    }
+  },
+  {
+    "title": "Cooperative slices bound one blocking interval",
+    "layout": "performance",
+    "mechanism": "Run the VM for a 1 ms budget.\nSave its control and continuation.\nReturn to the host, then resume.\n\nTotal computation still takes time.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "117.757",
+        "1.008"
+      ],
+      [
+        "p95 (ms)",
+        "185.500",
+        "1.215"
+      ],
+      [
+        "Maximum (ms)",
+        "277.697",
+        "6.262"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "before": "cooperative/sync",
+      "after": "cooperative/slice",
+      "stat": "blocking_statistics"
+    },
+    "kicker": "20 equal computations, 690,038 VM steps each",
+    "result": "Maximum caller block\n277.697 ms before, 6.262 ms after",
+    "caption": "Before: 20 full calls. After: 1,605 slice calls. Host responsiveness probe.",
+    "notes": "Every variant runs the same finite recursive computation, returns 112507500 and executes 690038 VM steps. The baseline runs synchronously. The production policy uses a 1 ms budget and checks the clock every 128 VM steps. Statistics describe each interval during which the caller remains blocked. The sliced variant therefore has 1605 interval samples across 20 equal computations. Total completion time is a separate measurement, and slicing does not claim to make it faster. A slice cannot preempt a long individual native builtin or a blocking external effect.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/interpreter.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/tui.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "Amortised clock checks reduce scheduler overhead",
+    "layout": "performance",
+    "mechanism": "Read the elapsed clock once per\n128 VM steps instead of every step.\n\nThe budget check costs less,\nwith coarser interruption points.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "127.616",
+        "81.104"
+      ],
+      [
+        "p95 (ms)",
+        "152.162",
+        "91.859"
+      ],
+      [
+        "Maximum (ms)",
+        "217.803",
+        "137.425"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "before": "cooperative/every-step",
+      "after": "cooperative/slice",
+      "stat": "total_statistics"
+    },
+    "kicker": "20 equal computations, total evaluation time",
+    "result": "127.616 ms before\n81.104 ms after",
+    "caption": "Controlled host observation. Variants ran in fixed phases, not randomized order.",
+    "notes": "Both variants use a 1 ms cooperative budget and execute 690038 VM steps per computation. A control added only to the scratch source changes the clock mask from 0 to 127, comparing a check on every step with a check every 128 steps. The table measures full completion time, separately from individual caller blocking intervals. Fixed phase order limits the experiment. This local run does not establish a universal causal percentage. The report retains every interval and total duration.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/interpreter.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host-source-manifest.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "Git workers release the caller while the query runs",
+    "layout": "performance",
+    "mechanism": "Copy the request into worker storage.\nPublish completion atomically.\n\nCopy the result back and resume\nthe suspended EYG computation.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "22.338",
+        "0.062"
+      ],
+      [
+        "p95 (ms)",
+        "23.676",
+        "0.331"
+      ],
+      [
+        "Maximum (ms)",
+        "26.029",
+        "0.469"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "before": "git/sync",
+      "after": "git/worker",
+      "stat": "blocking_statistics"
+    },
+    "kicker": "20 host calls with an explicit 20 ms I/O fixture delay",
+    "result": "Completion median\n22.422 ms before, 22.688 ms after",
+    "caption": "Table measures caller return. Completion remains a separate, longer operation.",
+    "notes": "Both policies execute the same real native Git operation, with the same explicit 20 ms fixture delay before the pinned-history query. The table compares synchronous caller blocking with acknowledgment that the worker has started. These are host API measurements, not physical TUI frame or Android device measurements. Query completion has separate medians and raw intervals. Reference-counted worker storage has an independent lifetime, allowing detached shutdown without freeing memory the worker still uses.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/async_git.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "Hub workers release the caller during verified fetches",
+    "layout": "performance",
+    "mechanism": "Snapshot the cache for a worker.\nFetch and verify module content.\n\nMerge after completion, then resume\nthe suspended EYG computation.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "21.909",
+        "0.072"
+      ],
+      [
+        "p95 (ms)",
+        "24.996",
+        "0.142"
+      ],
+      [
+        "Maximum (ms)",
+        "30.764",
+        "0.429"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "before": "hub/sync",
+      "after": "hub/worker",
+      "stat": "blocking_statistics"
+    },
+    "kicker": "20 host calls with an explicit 20 ms I/O fixture delay",
+    "result": "Completion median\n21.910 ms before, 22.382 ms after",
+    "caption": "Table measures caller return. Completion remains a separate, longer operation.",
+    "notes": "Both policies execute the same real native hub operation, using a local HTTP fixture with an explicit 20 ms response delay and actual content verification. The table compares synchronous caller blocking with acknowledgment that the worker has started. These are host API measurements, not physical TUI frame or Android device measurements. Completion has separate medians and raw intervals. Reference-counted worker storage has an independent lifetime, allowing detached shutdown without freeing memory the worker still uses.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/async_hub.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "Verified module reuse avoids fetch and initialization",
+    "layout": "performance",
+    "mechanism": "Cache modules under immutable content IDs.\nRetain their pure initialized values.\n\nA hit skips fetching, parsing\nand evaluating the same module.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "18953.384",
+        "0.550"
+      ],
+      [
+        "p95 (µs)",
+        "31018.194",
+        "3.211"
+      ],
+      [
+        "Maximum (µs)",
+        "51510.748",
+        "7.749"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "before": "cache/cold",
+      "after": "cache/warm",
+      "stat": "statistics",
+      "scale": 1000
+    },
+    "kicker": "20 lookups of the same pure sum(1500) module",
+    "result": "Timed module GETs\n20 before, 0 after",
+    "caption": "Controlled 2 ms GET fixture. Cold control clears the module cache before each lookup.",
+    "notes": "The module computes 1125750 in both conditions. Initial warmup occurs outside the timer. Cold mode clears cached modules while retaining the same host and interpreter, then fetches, verifies, decodes and evaluates the same source on each lookup. Warm mode resolves the cached initialized value. These controlled host lookup timings do not promise remote network latency. Failed initialization remains an observable break that must preserve oracle behaviour.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/hub.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "Known package names avoid redundant ledger pulls",
+    "layout": "performance",
+    "mechanism": "Resolve known names from the ledger view.\nAn unknown name triggers one\nincremental refresh.\n\nKeep content-pinned references stable.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (µs)",
+        "2086.932",
+        "0.081"
+      ],
+      [
+        "p95 (µs)",
+        "2199.581",
+        "0.096"
+      ],
+      [
+        "Maximum (µs)",
+        "2208.289",
+        "0.290"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "before": "refresh/always",
+      "after": "refresh/miss",
+      "stat": "statistics",
+      "scale": 1000
+    },
+    "kicker": "20 known-name lookups with a 2 ms GET fixture",
+    "result": "Known-name GETs: 20 before, 0 after\nNew release: cursor 5 advances to 6",
+    "caption": "A new-name miss makes 2 GETs. Repeating that known lookup makes 0 GETs.",
+    "notes": "The baseline forces cache.refresh before every lookup of a known package name. Production reuses its current ledger view. Both policies discover the seeded new release with two incremental GET requests, advance the cursor from 5 to 6, and make zero GET requests when the lookup repeats. This measures avoided requests. It does not guarantee that every lookup of an already-known name polls for every possible upstream publication. Explicit version and content pins provide reproducibility.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/hub.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "The self-pipe wakes a blocked event loop",
+    "layout": "performance",
+    "mechanism": "The signal handler writes a byte.\nPoll watches the pipe and terminal.\n\nA resize wakes the loop immediately\ninstead of awaiting a periodic timeout.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "97.039",
+        "0.151"
+      ],
+      [
+        "p95 (ms)",
+        "186.260",
+        "0.497"
+      ],
+      [
+        "Maximum (ms)",
+        "446.474",
+        "0.632"
+      ]
+    ],
+    "evidence": {
+      "path": "docs/slides/evidence/host.json",
+      "resize": true
+    },
+    "kicker": "20 OS signal trials, 100 ms periodic-poll control",
+    "result": "Signal-to-return median\n97.039 ms before, 0.151 ms after",
+    "caption": "Python OS mechanism probe with actual SIGWINCH and select. No physical-display claim.",
+    "notes": "This controlled counterfactual compares 100 ms periodic polling with a self-pipe, using actual SIGWINCH and select in a Python host probe. It does not claim that a historical Zig release used this exact polling policy. The native event loop uses a nonblocking resize self-pipe and polls terminal and pipe descriptors, with short polling while work remains pending. Escape retains the oracle-compatible 40 ms ambiguity deadline. All scheduling outliers remain in the report, including 446.474 ms for the periodic control.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/main.zig\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/host.json"
+  },
+  {
+    "title": "Nonjoining close returns while native IO waits",
+    "layout": "performance",
+    "kicker": "25 ms blocked IO, 30 calls per policy",
+    "mechanism": "Before close waits for active calls.\nAfter close retires IDs immediately.\nThe active call keeps its pointer\nuntil its worker returns.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "25.823",
+        "0.184"
+      ],
+      [
+        "p95 (ms)",
+        "51.195",
+        "0.780"
+      ],
+      [
+        "Maximum (ms)",
+        "73.920",
+        "1.038"
+      ]
+    ],
+    "result": "The caller returns before IO completes",
+    "caption": "Host JVM fixture. Device untested. Call return only, not IO completion.",
+    "notes": "Controlled lifecycle-policy ablation on host JVM17. Both variants use the actual NativeSessions ownership manager and the same deterministic NativeBackend fixture. The baseline waits for each active session lock before retiring IDs. Production close retires IDs and marks active calls for cancellation without joining their native IO. The active call owns its pointer until it returns.\n\nThe fixture releases an already-entered native call after a scheduled 25 ms delay. It does not model faster networking. Measure the close caller return, not the eventual IO completion. Run 30 samples per policy after five warmups. All raw wall samples remain. Hardware, Android UI scheduling and phone latency are untested.\n\nProduction Kotlin SHA256 7ea9ce6d58ecd8f8bf03cbaf077c4378cf970a54ac69902f6b493dcc7274ea34. Blocking baseline Kotlin SHA256 7d4b13c2fbabbfd265db3f604d7475be8825454b495e67356ac2340ba21165af. Fixture source SHA256 7b54870a0aadaa7d79715a64465d4853a742d2ee5ebe54ce998f07d993a089f8. The reproduction scripts generate the single-policy source variation without modifying canonical source.\n\nAll raw arrays and summary values appear in docs/slides/evidence/core-android.json at lifecycle[workload=active].raw_ns. The report preserves production Kotlin SHA256. The source generator and build logs identify the host classes.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/core-android.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/benchmarks/core-android/prepare_lifecycle.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/android/modules/eyg-runtime/android/src/main/java/expo/modules/eyg/NativeSessions.kt",
+    "evidence": {
+      "path": "docs/slides/evidence/core-android.json",
+      "case": "active"
+    }
+  },
+  {
+    "title": "Worker disposal removes idle cleanup from close",
+    "layout": "performance",
+    "kicker": "Caller return, 30 calls per policy",
+    "mechanism": "Before close frees idle sessions.\nAfter close queues their disposal\non a worker outside the caller thread.",
+    "rows": [
+      [
+        "Metric",
+        "Before",
+        "After"
+      ],
+      [
+        "Median (ms)",
+        "25.203",
+        "0.398"
+      ],
+      [
+        "p95 (ms)",
+        "25.808",
+        "1.393"
+      ],
+      [
+        "Maximum (ms)",
+        "34.734",
+        "1.506"
+      ]
+    ],
+    "result": "The caller returns before destruction\ncompletes",
+    "caption": "Host JVM fixture. Device untested. The fixture destructor waits 25 ms.",
+    "notes": "Controlled idle-disposal-policy ablation on host JVM17. Both variants use the actual NativeSessions ownership manager. The baseline runs idle native.destroy directly in close. Production uses its dedicated disposer executor after retiring session IDs. This shifts cleanup latency away from the close caller. It does not reduce the destructor work or claim that memory is already freed when close returns.\n\nThe deterministic NativeBackend destructor sleeps 25 ms. Measure caller return only. Await destruction after each observation so no sessions leak into later samples. Run 30 samples per policy after five warmups. Preserve all raw wall samples. Android device performance and actual arena-deallocation latency are untested.\n\nProduction Kotlin SHA256 7ea9ce6d58ecd8f8bf03cbaf077c4378cf970a54ac69902f6b493dcc7274ea34. Synchronous-free baseline Kotlin SHA256 b44d0543b41a0f1c0679fbae44950fce7e0ec047d295dc1a72e5408186fee5de. Fixture source SHA256 7b54870a0aadaa7d79715a64465d4853a742d2ee5ebe54ce998f07d993a089f8.\n\nAll raw arrays and summary values appear in docs/slides/evidence/core-android.json at lifecycle[workload=idle].raw_ns. The report preserves production Kotlin SHA256. The source generator and build logs identify the host classes.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/core-android.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/benchmarks/core-android/prepare_lifecycle.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/android/modules/eyg-runtime/android/src/main/java/expo/modules/eyg/NativeSessions.kt",
+    "evidence": {
+      "path": "docs/slides/evidence/core-android.json",
+      "case": "idle"
+    }
+  },
+  {
+    "title": "The native Git backend has a separate comparison",
+    "layout": "table",
+    "rows": [
+      [
+        "20 full commit records",
+        "Median ms",
+        "Samples"
+      ],
+      [
+        "Actual EYG, cold decoded cache",
+        "899.000",
+        "3"
+      ],
+      [
+        "Actual EYG, warm decoded cache",
+        "22.000",
+        "3"
+      ],
+      [
+        "Native, fresh decoded cache and JSONL",
+        "2.782",
+        "100"
+      ]
+    ],
+    "widths": [
+      710,
+      230,
+      212
+    ],
+    "tableH": 310,
+    "caption": "Different timing boundaries. Warm OS caches. This compares backends, not isolated kernels.",
+    "notes": "The pinned real-world EYG oracle actually ran. Its query timing uses the Now effect measured in milliseconds. Native timings include repository and index setup, zlib decoding, SHA1 verification, full structured records and the JSONL roundtrip. Native median latency was 2.7819 ms, p95 was 10.8517 ms, and the maximum was 139.364 ms. The EYG series has only three samples per mode, so it cannot support a universal speedup claim. Ref freshness, object checks and result agreement remain correctness conditions. Native production execution starts no Git or Gleam subprocesses.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/git-benchmark.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/git/README.md"
+  },
+  {
+    "title": "The earlier EYG work identified the hot layers",
+    "layout": "columns",
+    "leftTitle": "Algorithm and allocation changes",
+    "left": "Constant powers and Huffman trees\nWindowed back-reference copying\nIndexed binary slices and fanout\nSmaller short-read backing buffers",
+    "rightTitle": "Historical reported observations",
+    "right": "Interpreted inflate\n6.208 s before, 3.703 s after\n\nCompiled inflater-only history\nabout 2.1 s before, 0.440 s after\nwith compiled parsers",
+    "size": 27,
+    "url": "https://github.com/CrowdHailer/eyg-lang/blob/f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9/dark/git/PERFORMANCE.md",
+    "linkText": "Historical EYG performance review",
+    "notes": "These historical observations come from PERFORMANCE.md on the real-world branch. They are not new controlled ablations of individual changes. That work removed repeated power construction, built a chronological match window that reduces roughly O(length × distance) work to O(length + distance), precomputed fixed Huffman trees, used pack-index fanout, deferred writer and configuration imports, fixed compiler blockers, and copied only bytes returned by short reads. Later work compiled pure inflate, delta and parsing kernels and introduced bounded decoded-object caches. Compiler fixes enable correct compiled execution and do not themselves establish a runtime speedup. Each historical aggregate combines changes or measurement boundaries. It cannot assign a separate gain to every listed change. The preceding native ablations measure this implementation's own mechanisms.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9/dark/git/PERFORMANCE.md\n"
+  },
+  {
+    "title": "The real TUI separates feedback from completion",
+    "layout": "image",
+    "image": "history",
+    "alt": "Actual native EYG TUI executing pinned Git-history queries",
+    "body": "Message query\n\nFirst feedback\n3.638 ms\n\nCompleted result\n26.149 ms",
+    "url": "https://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/recordings/git-history/eyg-git-history.mp4",
+    "linkText": "Watch the recorded Git-history session",
+    "notes": "The capture shows the actual native TUI on the pinned real-world revision. The full recording queries the current commit, commit messages, author and time window, and path history, then selects and expands history. Message search produces first feedback in 3.6376 ms and completes in 26.149 ms. The author and time query gives feedback in 0.8493 ms and completes in 9.3755 ms. The path query gives feedback in 2.7158 ms and completes in 23.0226 ms. Terminal cleanup exits with code 0, restores termios and disables bracketed paste. Use the recording when live resources differ.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/recordings/git-history/verification.json"
+  },
+  {
+    "title": "Android retains the language and replaces the host",
+    "layout": "flow",
+    "nodes": [
+      {
+        "text": "Shared\nZig VM",
+        "x": 64,
+        "y": 290,
+        "w": 210,
+        "h": 110
+      },
+      {
+        "text": "JNI and\nsession ownership",
+        "x": 340,
+        "y": 290,
+        "w": 310,
+        "h": 110,
+        "color": "#E6B865"
+      },
+      {
+        "text": "Expo effects\nand lifecycles",
+        "x": 810,
+        "y": 290,
+        "w": 360,
+        "h": 110,
+        "color": "#8BD5CA"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ]
+    ],
+    "caption": "ARM64 and x86_64 libraries built. APK assembly and device validation remain blocked.",
+    "notes": "The SDK inventory classifies 124 entries: 90 registered SDK dependencies, 34 explicit exclusions and zero unclassified entries. The full registry contains 91 packages, including a local widget adapter. Generic handlers cover calls, object handles, promises, subscriptions, callback returns, nested views, widgets and durable background entrypoints defined by source. These are capability and lifecycle boundaries. Host integration fixtures do not validate phone hardware. Dependency access blocks APK assembly and device execution.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/android/capabilities.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/android/validation.json"
+  },
+  {
+    "title": "Phone callback bounds are a resource contract",
+    "layout": "table",
+    "rows": [
+      [
+        "Host C ABI, 10,000 samples each",
+        "Median ms",
+        "Maximum ms"
+      ],
+      [
+        "Evaluate",
+        "0.003416",
+        "1.451397"
+      ],
+      [
+        "Resume continuation",
+        "0.001767",
+        "0.602198"
+      ],
+      [
+        "Fresh isolated pure callback",
+        "0.005045",
+        "2.202104"
+      ]
+    ],
+    "widths": [
+      710,
+      230,
+      212
+    ],
+    "tableH": 310,
+    "caption": "Host observations only. These are boundary costs, not before-and-after speedups or device guarantees.",
+    "notes": "Pure callbacks use a fixed 4 MiB heap, a 4096-byte source limit, 64 KiB request and output caps, lexical depth 64, IR depth 128, and 10000 steps shared by definition and invocation. They reject effects, references and four unmetered builtins. These limits bound resources without proving a wall-time deadline. Background tasks restart explicit source entrypoints with an input binding and durable slot identities, rather than serializing live continuations. Restrictions on the APK dependency host repo.reactnative.dev and the Boost publisher prevent a complete Android device experiment.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/android/native-benchmark.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/android/validation.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/src/android_bridge.zig"
+  },
+  {
+    "title": "Harness corrections are separate from optimisation",
+    "layout": "columns",
+    "leftTitle": "Observer corrections",
+    "left": "Timestamp before VT decoding\nDrain queued and partial frames\nMatch startup cache profiles\nIsolate native and oracle phases",
+    "rightTitle": "Interpretation",
+    "right": "The same binary can measure\ndifferently under a changed harness.\n\nWall and CPU clocks help diagnose.\nWall time controls the latency gate.",
+    "size": 27,
+    "notes": "Process isolation changed historical measurements of the same 2cb binary. That corrected the harness rather than speeding up the implementation. Decoding PTY output between reads had also changed a timestamp boundary. Correct framing and cache profiles prevent false mismatches. Loaded and quiet Android runs differ in scheduling, and earlier bridge revisions differ in features, so those differences cannot establish an optimisation. Generated fixed inspector dictionaries preserve oracle compatibility. No equivalent dynamic native baseline exists for an isolated runtime comparison. Correctness copies, source provenance, sticky cancellation and compiler bug fixes do not automatically justify before-and-after speed claims.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/library-and-code-review.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/terminal.py\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/tests/benchmark.py"
+  },
+  {
+    "title": "Every claim has a replayable experiment",
+    "layout": "code",
+    "code": "./scripts/verify --setup\n\npython3 docs/book_sources.py --check\n\n# Controlled ablations and retained raw timings\ndocs/slides/benchmarks/\ndocs/slides/evidence/",
+    "codeSize": 28,
+    "caption": "The slide source, raw samples, probe generators and speaker notes live beside the talk.",
+    "notes": "Copy reproduction bundles into ignored work directories before preparing or compiling them. Compile all variants first, then run CPU measurements one at a time. Preserve source and binary hashes, seeds, workloads, negative outcomes and clock boundaries. The complete book source appendix reconstructs and builds a separate tree. Ablations of current source complement strict oracle comparisons. They do not introduce another oracle implementation.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/README.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/book.md\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/book-validation.json"
+  },
+  {
+    "title": "Compatibility and performance remain bounded claims",
+    "layout": "statement",
+    "body": "Pin the reference.\nGenerate observations.\nKeep counterexamples.\nMeasure each change.",
+    "caption": "A finite experiment supports a specific claim. The next workload can still falsify it.",
+    "url": "https://github.com/CrowdHailer/eyg-lang/tree/tui-zig",
+    "linkText": "Source, book, talk, recordings and measurement evidence",
+    "notes": "The final retained campaign has 12800 dispatch samples, all below 10 ms within its named timing boundary. New diagnostics that force analysis and probes of query completion retain larger outliers. Standalone Escape uses the oracle's 40 ms ambiguity policy. Three oracle hangs, 56 malformed-input oracle crashes and three HTTP constructor differences keep strict qualification false. Some isolated optimisations show neutral or negative performance on the selected workloads. The useful result is a versioned, replayable measurement contract. Finite observations do not establish a perfect clone.\n\nSources\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/reports/verification.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/tui.json\nhttps://github.com/CrowdHailer/eyg-lang/blob/tui-zig/packages/zig_runtime/docs/slides/evidence/git.json"
+  }
+]

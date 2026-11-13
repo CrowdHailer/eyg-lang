@@ -1,0 +1,23 @@
+{
+  "kind": "untimed structural observation at identical unhandled effect",
+  "workload": "1000 tail calls accumulate sum500500, perform Probe(sum), resume42",
+  "note": "Arena capacity is total retained allocation capacity, not live continuation-chain bytes. No time or memory speedup is inferred from this single observation.",
+  "variants": {
+    "no-tail-trace": {
+      "continuation_nodes": 2002,
+      "trace_nodes": 2002,
+      "arena_capacity_bytes_at_effect": 6630200,
+      "effect_sum": 500500,
+      "resumed_result": 42,
+      "binary_sha256": "3c077925873fb0a3d8297798335ceea1654b859808d8100bb1709b8404b65385"
+    },
+    "optimized": {
+      "continuation_nodes": 1,
+      "trace_nodes": 1,
+      "arena_capacity_bytes_at_effect": 6630200,
+      "effect_sum": 500500,
+      "resumed_result": 42,
+      "binary_sha256": "a3b266cbb44975815004db31c8efc5157a444f0bcb405b8c7ea704e8ddd8d810"
+    }
+  }
+}

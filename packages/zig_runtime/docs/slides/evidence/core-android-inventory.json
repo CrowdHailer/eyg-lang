@@ -1,0 +1,144 @@
+{
+  "kind": "source optimisation inventory and controlled measurements",
+  "rows": [
+    {
+      "name": "native-i64",
+      "source": "src/interpreter.zig:426",
+      "mechanism": "Fast safe integers use i128 intermediates and return native i64. The slow path converts to floating values, truncates/checks the result and reclassifies it. Both retain JavaScript integer semantics.",
+      "qualification": "Negative wall-time point estimate for this recursive workload. Do not call it a demonstrated speedup or general regression.",
+      "samples_per_policy": 300,
+      "before_p50_ms": 2.7847095,
+      "after_p50_ms": 3.637338,
+      "median_speedup": 0.7655899726668238,
+      "report": "evidence.json"
+    },
+    {
+      "name": "tail-trace",
+      "source": "src/interpreter.zig:241",
+      "mechanism": "A tail call replaces the current head trace instead of pushing another trace. Old immutable nodes still belong to the arena.",
+      "qualification": "No measured speedup here. Separate structural probe shows live trace length 2002 to1, but arena capacity stays6630200bytes.",
+      "samples_per_policy": 300,
+      "before_p50_ms": 3.091771,
+      "after_p50_ms": 3.7652475,
+      "median_speedup": 0.8211335377023689,
+      "report": "evidence.json"
+    },
+    {
+      "name": "ir-pointer-identity",
+      "source": "src/interpreter.zig:935",
+      "mechanism": "Closure equality returns equal when both IR object maps share their exact key-storage pointer and count, bypassing recursive IR structural equality.",
+      "qualification": "Favourable self-comparison workload with a 200-addition shared closure body. Different closure bodies still require structural comparison.",
+      "samples_per_policy": 300,
+      "before_p50_ms": 0.0501415,
+      "after_p50_ms": 0.000481,
+      "median_speedup": 104.24428274428274,
+      "report": "evidence.json"
+    },
+    {
+      "name": "static-builtin-map",
+      "source": "src/interpreter.zig:1041",
+      "mechanism": "Compile-time std.StaticStringMap replaces linear string comparisons over builtin names.",
+      "qualification": "Small median benefit in this arithmetic workload, slower p99. Do not claim universal improvement.",
+      "samples_per_policy": 300,
+      "before_p50_ms": 2.7058675,
+      "after_p50_ms": 2.578647,
+      "median_speedup": 1.0493361441096822,
+      "report": "evidence.json"
+    },
+    {
+      "name": "release-fast-build",
+      "source": "build.zig:6",
+      "mechanism": "Zig ReleaseFast enables compiler optimisation and removes Debug runtime checks.",
+      "qualification": "Same source and full recursive evaluator workload, not TUI-dispatch timing or Android hardware.",
+      "samples_per_policy": 300,
+      "before_p50_ms": 44.253681,
+      "after_p50_ms": 2.8285695,
+      "median_speedup": 15.645251424792638,
+      "report": "debug-evidence.json"
+    },
+    {
+      "name": "nonjoining-close",
+      "source": "android/modules/eyg-runtime/android/src/main/java/expo/modules/eyg/NativeSessions.kt:74",
+      "mechanism": "Retire IDs, atomically cancel active calls, let active owners free after return; dispose idle sessions on dedicated worker.",
+      "samples_per_policy": 30,
+      "before_p50_ms": 25.8230625,
+      "after_p50_ms": 0.183987,
+      "median_speedup": 140.35264719789984,
+      "report": "evidence.json",
+      "qualification": "NativeBackend deterministic 25ms release delay for active calls; deterministic 25ms destroy for idle cleanup. Actual production NativeSessions class vs a single-policy source ablation, runs on host JVM17 not Android."
+    },
+    {
+      "name": "deferred-idle-free",
+      "source": "android/modules/eyg-runtime/android/src/main/java/expo/modules/eyg/NativeSessions.kt:74",
+      "mechanism": "Move idle arena destruction onto the disposer executor instead of blocking close.",
+      "samples_per_policy": 30,
+      "before_p50_ms": 25.202557,
+      "after_p50_ms": 0.3978335,
+      "median_speedup": 63.349509279635825,
+      "report": "evidence.json",
+      "qualification": "NativeBackend deterministic 25ms release delay for active calls; deterministic 25ms destroy for idle cleanup. Actual production NativeSessions class vs a single-policy source ablation, runs on host JVM17 not Android."
+    }
+  ],
+  "non_optimisation_features": [
+    {
+      "feature": "Bounded pure synchronous Expo callbacks",
+      "kind": "capability and safety boundary",
+      "source": "src/android_bridge.zig:89",
+      "reason": "New callback execution mode with memory/step/input/output limits. Existing final host costs are not a before/after comparison."
+    },
+    {
+      "feature": "Durable background entrypoints",
+      "kind": "capability and lifecycle correctness",
+      "source": "android/src/background.mjs",
+      "reason": "Persisted source entrypoints and fresh sessions replace unsupported live-continuation persistence. No runtime speedup claim."
+    },
+    {
+      "feature": "Sticky cancellation and late disposal",
+      "kind": "correctness plus responsiveness",
+      "source": "src/android_bridge.zig:63",
+      "reason": "Prevent post-cancel effects and use-after-free. Close-call scheduling has separate quantified ablations."
+    },
+    {
+      "feature": "Shared engine/JNI bridge",
+      "kind": "architecture reuse",
+      "source": "android/modules/eyg-runtime/android/src/main/cpp/eyg_jni.c",
+      "reason": "No separate mobile language implementation or child-process execution in production, but no historical mobile-before runtime exists."
+    },
+    {
+      "feature": "Generated builtin inspector dictionary",
+      "kind": "fixed compatibility data",
+      "source": "scripts/generate_inspector.mjs",
+      "reason": "It precomputes invariant text, but no dynamic native dictionary predecessor exists. A fabricated dynamic baseline would not isolate an implemented optimisation."
+    },
+    {
+      "feature": "Agent-generated source and source appendix",
+      "kind": "development and reproducibility tooling",
+      "source": "docs/book_sources.py",
+      "reason": "No runtime speedup follows from the origin or export format of source code."
+    }
+  ],
+  "do_not_compare": [
+    {
+      "before": "android/native-benchmark-loaded.json",
+      "after": "android/native-benchmark.json",
+      "reason": "Host scheduling differs, and later features change source. Not an isolated optimisation."
+    },
+    {
+      "before": "android/native-benchmark-before-mobile-extensions.json",
+      "after": "android/native-benchmark.json",
+      "reason": "Normal evaluator sources are unchanged; extra capabilities and measurement conditions differ."
+    }
+  ],
+  "reproducible_files": [
+    "prepare_probes.py",
+    "build_probes.py",
+    "prepare_lifecycle.py",
+    "run_probes.py",
+    "trace_depth.zig",
+    "run_trace_depth.py",
+    "README.md",
+    "evidence.json",
+    "debug-evidence.json",
+    "trace-depth.json"
+  ]
+}

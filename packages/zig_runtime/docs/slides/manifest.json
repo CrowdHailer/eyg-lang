@@ -1,0 +1,300 @@
+{
+  "created_at": "2026-10-28T22:35:20.297222+00:00",
+  "title": "Porting EYG with an executable oracle",
+  "slides": 67,
+  "controlled_comparisons": 44,
+  "historical_comparisons": 1,
+  "native_page": "https://chatgpt.com/space/page_38b0eecb8da081919a205d2a9b6931cf",
+  "native_page_sequence": 21,
+  "desktop_binary_unchanged": true,
+  "source_readback_passed": true,
+  "all_slides_rendered_and_reviewed": true,
+  "book_appendix_check_passed": true,
+  "files": [
+    {
+      "path": "docs/slides/README.md",
+      "bytes": 5349,
+      "sha256": "00facd67c41923587b9c159a92c9e1e75a69a0a94b82e1f3e5ed017cd077af0a"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/README.md",
+      "bytes": 5594,
+      "sha256": "824610f203e5dbaabbf57abe584676e240d8c033b8dbb5b609a81b96f7a9aa18"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/build_probes.py",
+      "bytes": 1864,
+      "sha256": "10287ca9c30200e28a57567ba7b707afe43a017d099a819652c9e5c8a2f9f0b8"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/prepare_lifecycle.py",
+      "bytes": 5592,
+      "sha256": "3454a107f37258180689d12248ea39e8afbfcb551c0204f31799ec0c2731db23"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/prepare_probes.py",
+      "bytes": 4264,
+      "sha256": "dfda7477708974980b7a76a92f877eed4ceaacf1e0fbf3500f84f0757f5eabbe"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/run_probes.py",
+      "bytes": 4452,
+      "sha256": "20a20036ec8fea2b474f85972ba15ab11d5942f020a3d0643ac9a22a95bddd13"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/run_trace_depth.py",
+      "bytes": 1385,
+      "sha256": "003ec4b822ab845771a99b544f083f0f047607fc133d4156ece926b8a1b9a8cd"
+    },
+    {
+      "path": "docs/slides/benchmarks/core-android/trace_depth.zig",
+      "bytes": 1336,
+      "sha256": "d5f10c334bf89dbfb7fd63f29511b21010f24fe060c9f496c73b3d7d4ff09e51"
+    },
+    {
+      "path": "docs/slides/benchmarks/git/README-reproduce.md",
+      "bytes": 2173,
+      "sha256": "fcc78024f53c563d8d06b459420b26ea81b9c18e53c42249936214731a5b09a3"
+    },
+    {
+      "path": "docs/slides/benchmarks/git/build_ablations.py",
+      "bytes": 5849,
+      "sha256": "3e991953065928418162aafc3cba522c859ce96d6c4816247be377387ae88007"
+    },
+    {
+      "path": "docs/slides/benchmarks/git/kernel.zig",
+      "bytes": 2914,
+      "sha256": "a94ac61e088b1d1995dc09f08fccb5a0c7e52ada005df1d685503f007ec72cbc"
+    },
+    {
+      "path": "docs/slides/benchmarks/git/run_ablations.py",
+      "bytes": 11467,
+      "sha256": "8b892b924858f420215fcc85a4306a34b64614af8451360587cbd7734d12145a"
+    },
+    {
+      "path": "docs/slides/benchmarks/git/run_ablations_measured.py",
+      "bytes": 11331,
+      "sha256": "21dfea9720ef1a07c77ef0e97471ed7185414503dd53a80885dbae0002972bf7"
+    },
+    {
+      "path": "docs/slides/benchmarks/host/README.md",
+      "bytes": 2215,
+      "sha256": "d207d5850a753cd79fd529249197218b48a9f5c6563de4bed98d73492349e7d6"
+    },
+    {
+      "path": "docs/slides/benchmarks/host/host_probe.zig",
+      "bytes": 11598,
+      "sha256": "19493c83cf8eedc4d689396b0345ec73ef8d7db542799bae9fb0865ef117573b"
+    },
+    {
+      "path": "docs/slides/benchmarks/host/prepare.py",
+      "bytes": 1753,
+      "sha256": "ea91d632297c011cf2420bc734046a388ffa39530a3b704f41ca3b04d9afa0d1"
+    },
+    {
+      "path": "docs/slides/benchmarks/host/run.py",
+      "bytes": 6249,
+      "sha256": "3c489f8d811f137ba93ac73c6600bd85926ba1c7efc764b7d495267384ade8a1"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/README.md",
+      "bytes": 4181,
+      "sha256": "ed4730078a5b7aa8c27957ad5f424aacb67fb86cd9b201749b73c5b0a8f32b87"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/ansi_qa.zig",
+      "bytes": 1563,
+      "sha256": "f1a727e60088c2397754044912447760d31e213f179ecf2aa9467d14acc86569"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/bundle-manifest.json",
+      "bytes": 8688,
+      "sha256": "13057f14e5863133a82605ede2daf8b461579022f5ed2082310b7c9d832611a2"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/check_ansi.py",
+      "bytes": 4564,
+      "sha256": "9b63916b4310c6de764a52851d39a7f8826d6ea0a69f0c82ca174b0d9854735e"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/inference.zig.diff",
+      "bytes": 1431,
+      "sha256": "3b20af632d6accfd3c0b129def6d7ce30de3e577258be2d67379ab9317adb63b"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/main.zig.diff",
+      "bytes": 6290,
+      "sha256": "e8a89003e3e9b02082538419dff892fbaf41e3df046b820e876f053e2f3b2b91"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/measure.py",
+      "bytes": 10405,
+      "sha256": "44f709ad50ad96db633e4aa38904264dbaad8beb01349c18cab5744e471af213"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/prepare.py",
+      "bytes": 11152,
+      "sha256": "2faa545f02ef786fe44f57fc1d268e324bb28edc7df01461c13020f2d9b1aadd"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/source-locations.json",
+      "bytes": 1087,
+      "sha256": "21fd01af6a54a1df6c98373af569aa8ce2288a7e452af564bab555f4daeb656b"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/source-provenance.json",
+      "bytes": 1227,
+      "sha256": "604fdbf0b80bd821b4850f3ad5f5ea4561c03ef77572b597b78d137be1b795cf"
+    },
+    {
+      "path": "docs/slides/benchmarks/tui/tui.zig.diff",
+      "bytes": 10620,
+      "sha256": "d078536b536bfc89c385e969f1e4e8fb1c7199f688f51c968f12bc8f892096a4"
+    },
+    {
+      "path": "docs/slides/benchmarks/util/README.md",
+      "bytes": 1597,
+      "sha256": "e78bfee69c0abdd886babebf4a2debd232f73487dbf75073523c00982729d36d"
+    },
+    {
+      "path": "docs/slides/benchmarks/util/driver.zig",
+      "bytes": 5662,
+      "sha256": "d3175067d9eeadb6f55aa39e1b759aed8fa200f4d8f2514bec4c443ba4ed7627"
+    },
+    {
+      "path": "docs/slides/benchmarks/util/prepare.py",
+      "bytes": 3104,
+      "sha256": "3d0b8d893c6e22191510316ffb8c8827dd9c06f282160efcaf62b9d03b73b448"
+    },
+    {
+      "path": "docs/slides/benchmarks/util/run.py",
+      "bytes": 1726,
+      "sha256": "417517e370dbbbcf89d87071427fefb88118badaaa5d547bdb8c0c0827def387"
+    },
+    {
+      "path": "docs/slides/benchmarks/util/summarize.py",
+      "bytes": 3920,
+      "sha256": "31bb9e3235ac68d2871f15142f4e7fa6116787191e9fdf8f2d82f02314b2bc7c"
+    },
+    {
+      "path": "docs/slides/build-slides.mjs",
+      "bytes": 5223,
+      "sha256": "141a3b24b1d60533bc2f78e12a0aef0bfd818dbe80d33fd6e3b29d1e0c205f4f"
+    },
+    {
+      "path": "docs/slides/deck.json",
+      "bytes": 139922,
+      "sha256": "740b2bed968178bde35cbaf0de9f34002b1f884b3924af5de76bbcfceeb077eb"
+    },
+    {
+      "path": "docs/slides/evidence/core-android-inventory.json",
+      "bytes": 6902,
+      "sha256": "bad687c25852e1d3fb7c62de4bbfc315c4a8c12fad592b22e524abf4c28d6bf5"
+    },
+    {
+      "path": "docs/slides/evidence/core-android.json",
+      "bytes": 56049,
+      "sha256": "d3155cb74e1858c93db176c26a969db8ccaf9754f1e7b07d5d55d3738a4afd7a"
+    },
+    {
+      "path": "docs/slides/evidence/debug-release.json",
+      "bytes": 14392,
+      "sha256": "bd34f80b0b53e7ec64c07f44353a23a8562e60f9ff314ab92c21c668ae7c47ce"
+    },
+    {
+      "path": "docs/slides/evidence/git-extra-variant.json",
+      "bytes": 297,
+      "sha256": "5994cfd6285dae105b1d86be38db62d40807b2d4cf20660b52fa6eb49203c38f"
+    },
+    {
+      "path": "docs/slides/evidence/git-inventory.json",
+      "bytes": 5507,
+      "sha256": "fde68175dcae7d31ed7abc7b4e57832aafa1ac7f0a42b5a37c165177084112a9"
+    },
+    {
+      "path": "docs/slides/evidence/git-summary.json",
+      "bytes": 11126,
+      "sha256": "096f4fd687823a690574d641a36b972b0b6474f1ce4871eaf596af2bb7b0ca41"
+    },
+    {
+      "path": "docs/slides/evidence/git-variants.json",
+      "bytes": 2956,
+      "sha256": "9a5afb8de43a44a17804267f8b5c613a2f99af823a3e7d0d02291816515194e8"
+    },
+    {
+      "path": "docs/slides/evidence/git.json",
+      "bytes": 165921,
+      "sha256": "19bad23f3d3bcd3e1aecfc5158878806fc720a35162294a36e83e18a8e4daef3"
+    },
+    {
+      "path": "docs/slides/evidence/historical-and-oracle.json",
+      "bytes": 6257,
+      "sha256": "4170316125d2d83fb36e143f0d1e7ce18e439b21a22d886aff38365bd3b2564b"
+    },
+    {
+      "path": "docs/slides/evidence/host-source-manifest.json",
+      "bytes": 3695,
+      "sha256": "4d6ae253cd58aab9d3d06f07b023bcdb85bc0051e3fe571ab7748fccbf8c2434"
+    },
+    {
+      "path": "docs/slides/evidence/host-summary.json",
+      "bytes": 2484,
+      "sha256": "43f7f7292dc35a80022f99a9383ca1d65384ca85829239eb5f093b25a8bb9a05"
+    },
+    {
+      "path": "docs/slides/evidence/host.json",
+      "bytes": 97079,
+      "sha256": "eb14175b3744f43ef3b98ad96d65de161d7f8716f65e9cdc9a2903d35fdc8adc"
+    },
+    {
+      "path": "docs/slides/evidence/tail-trace-depth.json",
+      "bytes": 913,
+      "sha256": "05f32661b525a9d708b9c5ee1f36cf7920c6653be2a040d8c2f5cda58b4aa133"
+    },
+    {
+      "path": "docs/slides/evidence/tui-ansi-parity.json",
+      "bytes": 3276,
+      "sha256": "7df32a6b014f13473f07fc27442ee16eb194e6fd80cdd14bb24b220d2506d9ab"
+    },
+    {
+      "path": "docs/slides/evidence/tui-large-context.json",
+      "bytes": 167733,
+      "sha256": "103f57aab916f7fada5a774614cecf34f4fdcf91ccca9bdb37749fde1728adb2"
+    },
+    {
+      "path": "docs/slides/evidence/tui-source-provenance.json",
+      "bytes": 1227,
+      "sha256": "604fdbf0b80bd821b4850f3ad5f5ea4561c03ef77572b597b78d137be1b795cf"
+    },
+    {
+      "path": "docs/slides/evidence/tui.json",
+      "bytes": 483025,
+      "sha256": "d427455fccf369b91900f3883a035a1ac27481b358a8ff06df13de8f0f6a1c69"
+    },
+    {
+      "path": "docs/slides/evidence/util-raw.json",
+      "bytes": 2840,
+      "sha256": "52a6be9093505e90b65a9999f49364f9cef48b414ab85cdb63d1475e1414fbbb"
+    },
+    {
+      "path": "docs/slides/evidence/util.json",
+      "bytes": 15565,
+      "sha256": "610d79370d48c4fe8d6178d32a23bc91eb30bd2f66f65b6bf887618c3346eff4"
+    },
+    {
+      "path": "docs/slides/native-validation.json",
+      "bytes": 13317,
+      "sha256": "60971191bc69e2892b8d84198a58acd1b5b5c8114a2ab637e4db0ed6aff53bbb"
+    },
+    {
+      "path": "docs/slides/validate.py",
+      "bytes": 9571,
+      "sha256": "2594f411e45d09f6eda8ee64683c3765aa7db4fce9d2cc931fd78ab8539d890a"
+    },
+    {
+      "path": "docs/talk.md",
+      "bytes": 105733,
+      "sha256": "da75a662756a988ab43f1b941cb369079b5008c87d0bb3779470b69e34842031"
+    }
+  ]
+}

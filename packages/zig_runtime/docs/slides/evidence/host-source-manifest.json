@@ -1,0 +1,48 @@
+{
+  "canonical_source_sha256": {
+    "sandbox.zig": "e8a69b3db5cc44eff88450159dffb5be18742d6eadad0c55b1de6e02d56e5754",
+    "hub.zig": "5a051507b41f7097f8a17b9b45020c126c45591b53bb1d72f746a826fb166d82",
+    "capture.zig": "dc28bb83e46305faf7bc4cf1bd09f1fcbf82b8b89cc16b029ef849039986085e",
+    "async_hub.zig": "4ffaf3686cea1aacb8ff9e3b1a803e8ac5a8e873329dea37e783bc9c02c76e20",
+    "resume_inspect.zig": "0e654956ddeb9edadf95cd8101647ed787fc451a97fc9f39db60edc9703856c6",
+    "json_wire.zig": "e7a52184ab2bbf6286c3811567fb31357bbc9509d2e2ec5768079ffb0c7466ba",
+    "tests.zig": "4b000bdde5d26c79ebae794e2ee1b19690bf5af4ad3c0a577b98f241f9970575",
+    "unicode_data.zig": "4323de4a76674cbbd0b36945329529d804875875d72c16ebc3fb65ea02e8af1a",
+    "computer.zig": "2e03a83b92540cf3768bcdfb16ae188589a92ad46cd72ff75f9c9cbdeacaa3a4",
+    "inference.zig": "5c62453576ccb0c95d3ae5a545f25d3c92988c4b00fb8dfe46fddeaa9b677ec2",
+    "tui.zig": "b79e6041fb05933daed8c7fd75d26cc2e38b7ec7422c156900cb7fb382cf069f",
+    "parser.zig": "7a400b85e7973c9b5029e76bbe5b065307325db260a54bbe75a3cac229db2393",
+    "frame_test.zig": "122194c870084b1b6f29e8e6f97729c067c26ea9c1c0bb9623ba3558078b7213",
+    "generated_builtins_inspect.zig": "cb3cd5f21147698bb4d2005bc6ecaf0002c2bed2b2203853b219a78c4ef415fb",
+    "tui_patterns.zig": "0e8c17de224220cf8ae13798520601508feef15312a0a95200bae8756ed9ad1f",
+    "inspection.zig": "8324a20a5462a1dee21728e4364fc10fa5f74ea2fdbae09ad0280a10975f55fe",
+    "effect_cast.zig": "4aa18496543c9bc55fe9695cf71f99b5e4a4c967a0c71efd7061967c050188db",
+    "computer_types.json": "dbef35e14110dabfce847cbb359bba51511344972ebabe7c2474390bff6c191d",
+    "http.zig": "a25fe2c70fb5c414c81e72a28a72ce981bde3004bb8cc1cc5f2d58988e386973",
+    "unicode.zig": "a97ae32f1dd421c23d806e7d2445d85ea849d15404bddd20b542a8ebe109865a",
+    "ir_codec.zig": "a915c047734a60a3ddfa6885e8319c6ed18e530275971adb864a9c0dafe44e2c",
+    "git_config.zig": "46dacb4b8925faa404c7ee5c29aac96a81a2225b2af0479c405b738a8d4c85c6",
+    "pretty.zig": "fa6b95062c3bc1e94135ca33b3b77f8466b2f9287bd7fabf1e33268a5f1cecbb",
+    "input.zig": "5a217c15a59e4f4f95ac9b59b5d6cb6cc370a6179ec8643cc6a5ca71631b2213",
+    "main.zig": "0bdf99e00997866a5ecaf40a376053cae23215f5aa97cd07a8700fb0fe96284e",
+    "oracle_order.zig": "efa88b609a50cf69bb4d23995474737d0b55a6113684861c867c641122eddc0f",
+    "async_git.zig": "18de5bfb31dc04237bf615f9a0231626b2d0cd52399a7ba4e6186e16a26d0ed7",
+    "git.zig": "8df63d12697b0691aa6fef0d0a75146e880ec4c25cd373859e1874e9f149af3b",
+    "builtin_types.json": "132961d8efbb8dec0215824669d3dc0edca86ff78275a09befd79e78549e71aa",
+    "git_write.zig": "8b2c7c201393bfa806cc759b686fb765e469ac4e5da65d2e07f326b3c5838be0",
+    "platform.zig": "30f162daf6e65575518f8ddd2ceecd37dfd642dca57e3e9cc958c40e9e333ec1",
+    "interpreter.zig": "7499911d154dc8f51476a42caf7be94d17eae2293709cf6665d0141ca56a2095",
+    "source.zig": "47e3a7dd6d7fc7f8815d46790509a4700308d7ca0a13b43d6da1cfbcab16f157",
+    "lib.zig": "1ee97260f2590805c57afaf8018c26980616f6704084a0e7b62a4aee70364652",
+    "async_tui_test.zig": "ffa2a12035211d93c87e6d0be21e9ea22bd53eae11b25383a69fe7e49714b35d",
+    "android_bridge.zig": "831841069e71e2a8d9a646218d60fd337e9f4c76530fff3704d5a08a6884e186"
+  },
+  "scratch_only_changes": [
+    "interpreter.Engine.probe_clock_mask changes check frequency; default127 matches production",
+    "async_git.probe_delay_ns injects the same20ms fixture latency before git.request as synchronous control"
+  ],
+  "patched_source_sha256": {
+    "interpreter.zig": "9fa278bd3acb446cdabaa006ea28264113a04549c9f9522abd2a53420ed76204",
+    "async_git.zig": "828c370ee215e4e75af771161eda9aa94d2b87767d1a152753d1006630cd6522"
+  }
+}
