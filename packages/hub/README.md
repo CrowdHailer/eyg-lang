@@ -10,6 +10,8 @@ Requires the following environment variables to be set
 - `POSTGRES_PASSWORD`
 - `SECRET_KEY_BASE`
 
+The server listens on port 8080 unless `PORT` is set.
+
 I use the following script to temporarity set environment variables
 
 ```sh

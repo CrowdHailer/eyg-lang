@@ -1,0 +1,50 @@
+let common = import "./common.eyg"
+let build = !fix((self, items, bounds, path, axis) -> {
+  let {origin, size} = bounds
+  match !list_pop(items) {
+    Error(_) -> { [] }
+    Ok({head: item, tail}) -> {
+      match !list_pop(tail) {
+        Error(_) -> { [Tile({path, item, origin, size})] }
+        Ok(_) -> {
+          let halves = match axis {
+            Horizontal(_) -> {
+              let width = common.divide(size.x, 2)
+              let _ = common.positive(width)
+              {
+                first: {origin, size: {x: width, y: size.y}},
+                rest: {origin: {x: !int_add(origin.x, width), y: origin.y}, size: {x: !int_subtract(size.x, width), y: size.y}},
+                next: Vertical({})
+              }
+            }
+            Vertical(_) -> {
+              let height = common.divide(size.y, 2)
+              let _ = common.positive(height)
+              {
+                first: {origin, size: {x: size.x, y: height}},
+                rest: {origin: {x: origin.x, y: !int_add(origin.y, height)}, size: {x: size.x, y: !int_subtract(size.y, height)}},
+                next: Horizontal({})
+              }
+            }
+          }
+          [Split({path, axis, origin, size}),
+            Tile({path: !string_append(path, "/0"), item, origin: halves.first.origin, size: halves.first.size}),
+            ..self(tail, halves.rest, !string_append(path, "/1"), halves.next)]
+        }
+      }
+    }
+  }
+})
+let tree = (items, bounds) -> { build(items, common.check(bounds), "root", Horizontal({})) }
+let layout = (items, bounds) -> {
+  common.reverse(!list_fold(tree(items, bounds), [], (node, acc) -> {
+    match node {
+      Split(_) -> { acc }
+      Tile({item, origin, size}) -> { [{item, origin, size}, ..acc] }
+    }
+  }))
+}
+{
+  readme: "Dwindle binary-tree tiling. Pure functions tree(items, bounds) and layout(items, bounds), where bounds={origin:{x:Int,y:Int},size:{x:Int,y:Int}}. Use a 1000x1000 canvas for Overlay. Each split gives the first item half the remaining rectangle, then recursively splits the remainder, alternating Horizontal (left/right) and Vertical (top/bottom). Integer remainders stay in the remaining tile: no gaps or overlaps. tree returns a preorder, path-indexed binary tree: Split({path,axis,origin,size}) or Tile({path,item,origin,size}). Child paths append /0 and /1. The flat representation avoids recursive data types while retaining explicit tree structure. layout returns [{item,origin,size}] in input order. Empty input yields []; singleton fills bounds. Abort is raised for nonpositive dimensions or too many items to give every tile positive area. show(placements) calls Show, aborting on the first error. Example: let tiles=layout([Artifact(\"map\"),Artifact(\"buses\")],{origin:{x:0,y:0},size:{x:1000,y:1000}}) show(tiles).",
+  tree, layout, show: common.show
+}

@@ -64,7 +64,7 @@ Migrations are saved in the [hub package](./packages/hub/)
 
 ```sh
 # packages/hub
-(set -a; source ../eyg.run/.env; POSTGRES_HOST=localhost; set +a; gleam dev migrate)
+(set -a; source ../eyg.run/.env; POSTGRES_HOST=localhost; set +a; gleam run -m hub_dev -- migrate)
 ```
 Check the migrations have run by running the hub tests.
 ```sh
@@ -73,6 +73,8 @@ Check the migrations have run by running the hub tests.
 ```
 
 Setting the `POSTGRES_HOST` to localhost is for the migrations to be run outside the docker containers.
+Use `POSTGRES_PORT` when the database is exposed on a port other than 5432.
+The hub HTTP port is set with `PORT` and defaults to 8080.
 
 ## Connect to the database
 ```sh

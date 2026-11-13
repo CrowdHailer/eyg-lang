@@ -32,13 +32,17 @@ import overlay/llm/provider
 import overlay/llm/provider/ollama
 import overlay/llm/tool
 import overlay/policy
+import overlay/web/artifact
+import overlay/web/artifact/session as artifact_session
 import overlay/web/context
 import overlay/web/provider_setup
+import overlay/web/puppet
 import overlay/web/tools
 import overlay/web/trace
+import overlay/web/workspace
 import pal/system
+import plinth/browser/file
 import touch_grass/download
-import touch_grass/harness/browser as harness
 import touch_grass/now
 
 pub type Config {
@@ -54,17 +58,24 @@ pub type State {
     context: context.Status,
     status: AgentStatus,
     history: List(chat.Message(tool.Call)),
+    runs: List(tools.Progress),
+    workspace: Option(workspace.Workspace),
     input: String,
     input_error: Option(String),
     origin: origin.Origin,
     cache: cache.Cache(tools.Meta),
     counter: Int,
     expanded: set.Set(Int),
+    artifacts: artifact.Store,
+    artifact_storage: artifact_session.Status,
+    artifacts_dirty: Bool,
+    artifact_save_revision: Int,
+    artifact_import_error: Option(String),
     /// Rounds of tool calls since the last prompt.
     steps: Int,
     /// The policy as written by the user, applied with `UserAppliedPolicy`.
     policy_source: String,
-    policy: Option(policy.Policy(harness.Effect, tools.Meta)),
+    policy: Option(policy.Policy(Nil, tools.Meta)),
     policy_error: Option(String),
     /// The session recorded so far, it can be downloaded and opened in the Glasshouse debugger.
     trace: trace.Trace,
@@ -103,12 +114,19 @@ pub fn new(config: Config) -> State {
     context: status,
     status: Waiting,
     history: [],
+    runs: [],
+    workspace: None,
     input: "",
     input_error: None,
     origin: origin,
     cache:,
     counter: 0,
     expanded: set.new(),
+    artifacts: artifact.new(),
+    artifact_storage: artifact_session.Saved,
+    artifacts_dirty: False,
+    artifact_save_revision: 0,
+    artifact_import_error: None,
     steps: 0,
     policy_source: "",
     policy: None,
@@ -125,7 +143,25 @@ pub fn init(config) {
   let #(state, effects) = flush(state)
   let provider_effects =
     list.map(provider_effects, system.map(_, ProviderSetupMessage))
-  #(state, list.flatten([provider_effects, effects, [load_history()]]))
+  #(
+    state,
+    list.flatten([provider_effects, effects, [load_history(), load_artifacts()]]),
+  )
+}
+
+const artifacts_key = "overlay.artifacts"
+
+fn load_artifacts() {
+  use stored <- system.GetSessionStorageItem(artifacts_key)
+  system.Done(ArtifactsLoaded(stored))
+}
+
+fn save_artifacts(store, revision) {
+  use result <- system.SetSessionStorageItem(
+    artifacts_key,
+    artifact_session.encode(store),
+  )
+  system.Done(ArtifactsSaved(revision, result))
 }
 
 const history_key = "overlay.history"
@@ -180,6 +216,14 @@ pub type Message {
   UserClickedExpand(Int)
   UserClickedShrink(Int)
   UserClickedDownloadTrace
+  UserClosedArtifact(artifact.Item)
+  UserShowedArtifact(artifact.Placement)
+  ArtifactsLoaded(Result(Option(String), String))
+  ArtifactsSaved(revision: Int, result: Result(Nil, String))
+  UserRetriedArtifactSave
+  UserExportedArtifacts
+  UserSelectedArtifactFile(file.File)
+  ArtifactFileRead(Result(String, String))
   // run messages
   EffectHandled(task_id: Int, value: istate.Value(tools.Meta))
   CacheMessage(cache.ActionCompleted)
@@ -201,6 +245,33 @@ pub fn update(
   message: Message,
 ) -> #(State, List(system.Effect(Message))) {
   let #(next, effects) = do_update(state, message)
+  let dirty = case message {
+    ArtifactsLoaded(_) -> next.artifacts_dirty
+    _ -> next.artifacts_dirty || next.artifacts != state.artifacts
+  }
+  let next = State(..next, artifacts_dirty: dirty)
+  // Save a completed turn once, rather than serializing every tool result.
+  // A returned share secret must survive a refresh even while the agent is busy.
+  let persist = case next.status, message {
+    Waiting, _ -> True
+    _, UserRetriedArtifactSave -> True
+    _, _ -> False
+  }
+  let #(next, effects) = case persist, dirty {
+    True, True -> {
+      let revision = next.artifact_save_revision + 1
+      #(
+        State(
+          ..next,
+          artifacts_dirty: False,
+          artifact_storage: artifact_session.Saving,
+          artifact_save_revision: revision,
+        ),
+        [save_artifacts(next.artifacts, revision), ..effects],
+      )
+    }
+    _, _ -> #(next, effects)
+  }
   case next.status, next.history != state.history {
     Waiting, True -> #(next, [save_history(next.history), ..effects])
     _, _ -> #(next, effects)
@@ -212,6 +283,107 @@ fn do_update(
   message: Message,
 ) -> #(State, List(system.Effect(Message))) {
   case message {
+    UserExportedArtifacts -> {
+      let content = artifact_session.export(state.artifacts)
+      let action =
+        system.Download(
+          download.Input("eyg-artifacts.json", <<content:utf8>>),
+          fn() { system.Done(Ignore) },
+        )
+      #(state, [action])
+    }
+    UserSelectedArtifactFile(file) ->
+      case can_import_artifacts(state), file.size(file) <= 33_554_432 {
+        False, _ -> #(
+          State(
+            ..state,
+            artifact_import_error: Some(
+              "Open an empty, idle tab to import artifacts",
+            ),
+          ),
+          [],
+        )
+        True, False -> #(
+          State(
+            ..state,
+            artifact_import_error: Some(
+              "Choose a workspace file no larger than 32 MiB",
+            ),
+          ),
+          [],
+        )
+        True, True -> {
+          let action =
+            system.ReadTextFile(file, fn(result) {
+              system.Done(ArtifactFileRead(result))
+            })
+          #(State(..state, artifact_import_error: None), [action])
+        }
+      }
+    ArtifactFileRead(result) -> {
+      let restored = case can_import_artifacts(state) {
+        False ->
+          Error("Work has started in this tab. Import into a new, empty tab")
+        True -> result.try(result, artifact_session.import_copy)
+      }
+      case restored {
+        Ok(artifacts) -> #(
+          State(..state, artifacts:, artifact_import_error: None),
+          [],
+        )
+        Error(reason) -> #(
+          State(..state, artifact_import_error: Some(reason)),
+          [],
+        )
+      }
+    }
+    ArtifactsLoaded(stored) -> {
+      // A late storage read must not replace work already created this session.
+      case state.artifacts == artifact.new(), stored {
+        False, _ -> #(state, [])
+        True, Ok(Some(stored)) ->
+          case artifact_session.restore(stored) {
+            Ok(artifacts) -> #(State(..state, artifacts:), [])
+            Error(reason) -> #(
+              State(
+                ..state,
+                artifact_storage: artifact_session.RestoreFailed(reason),
+              ),
+              [],
+            )
+          }
+        True, Error(reason) -> #(
+          State(
+            ..state,
+            artifact_storage: artifact_session.RestoreFailed(reason),
+          ),
+          [],
+        )
+        True, Ok(None) -> #(state, [])
+      }
+    }
+    ArtifactsSaved(revision, result) ->
+      case revision == state.artifact_save_revision {
+        False -> #(state, [])
+        True -> {
+          let status = case result {
+            Ok(Nil) -> artifact_session.Saved
+            Error(reason) -> artifact_session.SaveFailed(reason)
+          }
+          #(State(..state, artifact_storage: status), [])
+        }
+      }
+    UserRetriedArtifactSave -> #(State(..state, artifacts_dirty: True), [])
+    UserClosedArtifact(item) -> #(
+      State(..state, artifacts: artifact.close(state.artifacts, item)),
+      [],
+    )
+    UserShowedArtifact(placement) -> {
+      case artifact.show(state.artifacts, placement) {
+        Ok(artifacts) -> #(State(..state, artifacts:), [])
+        Error(_) -> #(state, [])
+      }
+    }
     ProviderSetupMessage(message) -> {
       let can_save = case state.status {
         Waiting -> True
@@ -409,6 +581,7 @@ fn do_update(
           State(
             ..state,
             history: [],
+            runs: [],
             steps: 0,
             input_error: None,
             expanded: set.new(),
@@ -429,7 +602,9 @@ fn do_update(
     UserClickedExport -> #(state, [export_history(state)])
     UserUpdatedPolicy(policy_source) -> #(State(..state, policy_source:), [])
     UserAppliedPolicy ->
-      case load_policy(state.policy_source, state.cache) {
+      case
+        load_workspace_policy(state.policy_source, state.cache, state.workspace)
+      {
         Ok(policy) -> #(State(..state, policy:, policy_error: None), [])
         Error(reason) -> #(State(..state, policy_error: Some(reason)), [])
       }
@@ -483,6 +658,8 @@ fn current_context(state: State) {
     counter:,
     effects: [],
     context: context.module(context),
+    artifacts: state.artifacts,
+    workspace: state.workspace,
     policy: state.policy,
     trace:,
   )
@@ -493,8 +670,16 @@ fn current_context(state: State) {
 fn run_effects_if_any_remain_to_do(return, state: State) {
   let #(ctx, calls) = return
 
-  let tools.Context(cache:, counter:, effects: inner, context: _, trace:, ..) =
-    ctx
+  let tools.Context(
+    cache:,
+    counter:,
+    effects: inner,
+    context: _,
+    trace:,
+    artifacts:,
+    workspace:,
+    ..,
+  ) = ctx
   let effects =
     list.map(
       inner,
@@ -504,7 +689,7 @@ fn run_effects_if_any_remain_to_do(return, state: State) {
       }),
     )
 
-  let state = State(..state, cache:, counter:, trace:)
+  let state = State(..state, cache:, counter:, trace:, artifacts:, workspace:)
   let #(state, cache_effects) = flush(state)
   let effects = list.append(cache_effects, effects)
 
@@ -513,6 +698,8 @@ fn run_effects_if_any_remain_to_do(return, state: State) {
     Error(Nil) -> #(State(..state, status: Executing(calls)), effects)
     Ok(messages) -> {
       let state = record_tool_calls(state, calls, messages)
+      let runs = list.fold(calls, state.runs, fn(runs, call) { [call, ..runs] })
+      let state = State(..state, runs:)
       case state.steps >= max_steps {
         True -> {
           let reason =
@@ -584,8 +771,11 @@ fn stream_next_chunk(provider, reader, remaining) {
 fn system_prompt(state: State) {
   agent.system_prompt(
     state.origin,
-    tools.effects(),
-    context.instructions(state.context_source, state.context),
+    tools.session_effects(state.workspace),
+    context.instructions(state.context_source, state.context)
+      <> workspace_instructions(state.workspace)
+      <> artifact.instructions
+      <> puppet.instructions,
     option.is_some(state.policy),
   )
 }
@@ -602,7 +792,11 @@ fn completion_request(state: State, messages: List(chat.Message(tool.Call))) {
 pub fn load_policy(
   source: String,
   cache: cache.Cache(tools.Meta),
-) -> Result(Option(policy.Policy(harness.Effect, tools.Meta)), String) {
+) -> Result(Option(policy.Policy(Nil, tools.Meta)), String) {
+  load_workspace_policy(source, cache, None)
+}
+
+fn load_workspace_policy(source, cache, workspace) {
   case string.trim(source) {
     "" -> Ok(None)
     code -> {
@@ -614,7 +808,9 @@ pub fn load_policy(
       // Each gate must accept its browser effect's input and decide Pass or Mock.
       let analysis =
         infer.pure()
-        |> infer.with_expected_type(policy.type_(tools.policy_rules()))
+        |> infer.with_expected_type(
+          policy.type_(tools.policy_rules_for(workspace)),
+        )
         |> infer.check(source)
         |> cache.infer_sync(cache)
       use Nil <- result.try(case infer.all_errors(analysis) {
@@ -629,7 +825,7 @@ pub fn load_policy(
         |> cache.static_loop(cache, expression.resume)
         |> result.map_error(fn(debug) { simple_debug.describe(debug.0) }),
       )
-      policy.decode_policy(tools.policy_rules(), value)
+      policy.decode_policy(tools.policy_rules_for(workspace), value)
       |> result.map(Some)
       |> result.map_error(simple_debug.describe)
     }
@@ -765,4 +961,21 @@ fn ask(state: State, messages) -> #(State, system.Effect(Message)) {
     State(..state, asked: Some(#(request, trace.now()))),
     fetch_completion(request),
   )
+}
+
+fn workspace_instructions(files) {
+  case files {
+    Some(_) ->
+      "
+This session has a workspace file system. Use file effects to read and change it. Paths are relative to its root and cannot leave it.
+"
+    None -> ""
+  }
+}
+
+fn can_import_artifacts(state: State) -> Bool {
+  case state.status {
+    Waiting -> state.artifacts == artifact.new()
+    _ -> False
+  }
 }

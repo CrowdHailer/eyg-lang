@@ -1,0 +1,94 @@
+let {assert} = @aok
+let effects = {
+  abort: (f, arg) -> {
+    handle Abort((lift, resume) -> { {lift, resume} }, (_) -> {
+      let _ = f(arg)
+      !never(perform Abort("expected `Abort` effect, none was performed"))
+    })
+  }
+}
+let pw = import "./index.eyg"
+
+// Every request performed by exec, each answered with reply.
+let requests = (reply, exec) -> {
+  handle Puppet((request, resume) -> { [request, ..resume(Ok(reply))] }, (_) -> {
+    let _ = exec({})
+    []
+  })
+}
+let answer = (reply, exec) -> {
+  handle Puppet((_, resume) -> { resume(reply) }, exec)
+}
+let board = pw.page("board")
+
+[
+  {name: "playwright locators narrow the document in order", test: (_) -> {
+    let target = pw.first(pw.filter(pw.get_by_role(pw.locator(board, "main"), "button", "Next"), "arrow"))
+    let _ = assert.equal([Css("main"), Role({role: "button", name: "Next"}), HasText("arrow"), Nth(0)], target.locator)
+    let _ = assert.equal([Text("a"), Label("b"), Placeholder("c"), TestId("d"), Nth(-1)], pw.last(pw.get_by_test_id(pw.get_by_placeholder(pw.get_by_label(pw.get_by_text(board, "a"), "b"), "c"), "d")).locator)
+    let _ = assert.equal(Revision({name: "board", version: 2}), pw.revision("board", 2).page)
+    assert.equal(100, pw.with_timeout(board, 100).timeout)
+  }},
+  {name: "playwright actions perform a puppet request", test: (_) -> {
+    let next = pw.locator(board, "#next")
+    let sent = requests(Done({}), (_) -> {
+      let _ = pw.click(next)
+      let _ = pw.fill(next, "214")
+      let _ = pw.press(next, "Enter")
+      let _ = pw.check(next)
+      let _ = pw.uncheck(next)
+      let _ = pw.select_option(next, "South")
+      let _ = pw.hover(next)
+      let _ = pw.focus(next)
+      pw.scroll_into_view_if_needed(next)
+    })
+    let actions = !list_fold(sent, [], (request, acc) -> { [request.action, ..acc] })
+    let _ = assert.equal([ScrollIntoView({}), Focus({}), Hover({}), SelectOption("South"), SetChecked(False({})), SetChecked(True({})), Press("Enter"), Fill("214"), Click({})], actions)
+    let {head: click} = assert.ok(!list_pop(sent))
+    assert.equal({page: Artifact("board"), locator: [Css("#next")], action: Click({}), timeout: 5000}, click)
+  }},
+  {name: "playwright queries return reply values", test: (_) -> {
+    let heading = pw.get_by_role(board, "heading", "")
+    let _ = assert.equal_string("Departures", answer(Ok(Text("Departures")), (_) -> { pw.text_content(heading) }))
+    let _ = assert.equal_string("<b>1</b>", answer(Ok(Text("<b>1</b>")), (_) -> { pw.inner_html(heading) }))
+    let _ = assert.equal(Some("n"), answer(Ok(Text("n")), (_) -> { pw.get_attribute(heading, "data-stop") }))
+    let _ = assert.equal(None({}), answer(Ok(Missing({})), (_) -> { pw.get_attribute(heading, "data-stop") }))
+    let _ = assert.equal(3, answer(Ok(Count(3)), (_) -> { pw.count(heading) }))
+    let _ = assert.equal(["a", "b"], answer(Ok(Texts(["a", "b"])), (_) -> { pw.all_text_contents(heading) }))
+    let _ = assert.equal(True({}), answer(Ok(Flag(True({}))), (_) -> { pw.is_visible(heading) }))
+    assert.equal(!string_to_binary("png"), answer(Ok(Image(!string_to_binary("png"))), (_) -> { pw.screenshot(board) }))
+  }},
+  {name: "playwright expectations send conditions", test: (_) -> {
+    let rows = pw.locator(board, "li")
+    let sent = requests(Done({}), (_) -> {
+      let assertions = pw.expect(rows)
+      let _ = assertions.to_have_text("214")
+      let _ = assertions.to_contain_text("21")
+      let _ = assertions.to_have_count(2)
+      let _ = assertions.to_be_hidden({})
+      let _ = assertions.to_have_value("x")
+      let _ = assertions.to_have_attribute("data-route", "214")
+      let _ = assertions.to_be_checked({})
+      let _ = assertions.not_to_be_checked({})
+      pw.wait_for(rows)
+    })
+    let actions = !list_fold(sent, [], (request, acc) -> { [request.action, ..acc] })
+    assert.equal([
+      Expect(ToBeVisible({})),
+      Expect(ToBeChecked(False({}))),
+      Expect(ToBeChecked(True({}))),
+      Expect(ToHaveAttribute({name: "data-route", value: "214"})),
+      Expect(ToHaveValue("x")),
+      Expect(ToBeHidden({})),
+      Expect(ToHaveCount(2)),
+      Expect(ToContainText("21")),
+      Expect(ToHaveText("214"))
+    ], actions)
+  }},
+  {name: "playwright failures abort with the reason", test: (_) -> {
+    let {lift: reason} = effects.abort((_) -> { answer(Error("css=\"li\" matched no elements"), (_) -> { pw.click(pw.locator(board, "li")) }) }, {})
+    let _ = assert.equal_string("css=\"li\" matched no elements", reason)
+    let {lift: reason} = effects.abort((_) -> { answer(Ok(Count(1)), (_) -> { pw.text_content(board) }) }, {})
+    assert.equal_string("unexpected reply from artifact", reason)
+  }}
+]

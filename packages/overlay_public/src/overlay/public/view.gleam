@@ -11,6 +11,7 @@ import lustre/event
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
+import overlay/public/artifacts
 import overlay/public/cache_status
 import overlay/public/input
 import overlay/public/provider_setup as provider_view
@@ -23,54 +24,68 @@ import splitter
 pub fn render(model: state.State) {
   // let state = demo()
   let messages = view.messages(model)
-  h.div([a.class("layout")], [
-    h.div([a.class("chat")], [
-      h.header(
-        [
-          a.class("heading"),
-          a.classes([#("hero", list.is_empty(messages))]),
-        ],
-        [
-          h.h1([a.class("impact-heading")], [h.text("Overlay")]),
-          h.div([a.class("session-settings")], [
-            provider_view.render(model),
-            render_context(view.context(model)),
-            render_policy(model),
-          ]),
-        ],
-      ),
-      case messages {
-        [] -> element.none()
-        history ->
-          h.div(
-            [a.class("messages")],
-            list.flat_map(history, render_chat(_, model.expanded)),
-          )
-      },
-      case model.input_error {
-        Some(error) -> h.div([a.class("failure-message")], [h.text(error)])
-        None -> element.none()
-      },
-      render_activity(model),
-      case messages, model.status {
-        [_, ..], state.Waiting ->
-          h.div([a.class("chat-actions")], [
-            action_button("Export", state.UserClickedExport),
-            action_button("New chat", state.UserClickedNewChat),
-          ])
-        _, _ -> element.none()
-      },
-      cache_status.render(model),
-      input.render(
-        model.input,
-        "Ask anything...",
-        state.UserUpdatedInput,
-        state.UserSubmittedPrompt,
-        state.Ignore,
-      ),
-    ]),
-    render_trace(view.trace(model)),
-  ])
+  h.div(
+    [
+      a.class("layout"),
+      a.attribute("data-agent-status", case model.status {
+        state.Waiting -> "waiting"
+        state.Asking(_) -> "asking"
+        state.Streaming(..) -> "streaming"
+        state.Executing(_) -> "executing"
+      }),
+    ],
+    [
+      h.div([a.class("chat")], [
+        h.header(
+          [
+            a.class("heading"),
+            a.classes([#("hero", list.is_empty(messages))]),
+          ],
+          [
+            h.h1([a.class("impact-heading")], [h.text("Overlay")]),
+            h.div([a.class("session-settings")], [
+              provider_view.render(model),
+              render_context(view.context(model)),
+              render_policy(model),
+            ]),
+          ],
+        ),
+        case messages {
+          [] -> element.none()
+          history ->
+            h.div(
+              [a.class("messages")],
+              list.flat_map(history, render_chat(_, model.expanded)),
+            )
+        },
+        case model.input_error {
+          Some(error) -> h.div([a.class("failure-message")], [h.text(error)])
+          None -> element.none()
+        },
+        render_activity(model),
+        case messages, model.status {
+          [_, ..], state.Waiting ->
+            h.div([a.class("chat-actions")], [
+              action_button("Export", state.UserClickedExport),
+              action_button("New chat", state.UserClickedNewChat),
+            ])
+          _, _ -> element.none()
+        },
+        cache_status.render(model),
+        input.render(
+          model.input,
+          "Ask anything...",
+          state.UserUpdatedInput,
+          state.UserSubmittedPrompt,
+          state.Ignore,
+        ),
+      ]),
+      h.div([a.class("workspace-and-trace")], [
+        artifacts.render(model),
+        render_trace(view.trace(model)),
+      ]),
+    ],
+  )
 }
 
 // Every effect of the session is recorded, the trace opens in the Glasshouse debugger.
@@ -242,7 +257,20 @@ fn render_chat(message: #(Int, chat.Message(tool.Call)), expanded) {
       ]
       |> list.reverse
     }
-    chat.ToolResultMessage(tool_call_id: _, text:, images: _) -> [
+    chat.ToolResultMessage(tool_call_id: _, text:, images:) -> [
+      case images {
+        [] -> element.none()
+        images ->
+          h.div(
+            [a.class("tool-images")],
+            list.map(images, fn(image) {
+              h.img([
+                a.src("data:image/png;base64," <> image),
+                a.alt("Screenshot taken by the agent"),
+              ])
+            }),
+          )
+      },
       case expand {
         True ->
           h.div(

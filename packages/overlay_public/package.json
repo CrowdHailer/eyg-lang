@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "gleam build && vite",
+    "build": "gleam build && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "eyg-gleam-vite": "file:../gleam_vite",
     "vite": "^8.1.5",
     "vite-gleam": "^1.7.1"
   }
