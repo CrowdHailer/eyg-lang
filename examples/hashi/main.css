@@ -1,0 +1,155 @@
+/* The board is styled by the original project, vendor/hashi.css.
+   This sheet lays out the page around it and styles the console. */
+
+:root {
+  --console-colour: #fdf6ee;
+  --code-font: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+body {
+  padding: 0;
+  min-height: 100vh;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(24rem, 38rem) 1fr;
+  min-height: 100vh;
+}
+
+.page * {
+  max-inline-size: none;
+}
+
+.console {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  height: 100vh;
+  padding: var(--s0);
+  background: var(--console-colour);
+  border-inline-end: var(--s-4) solid var(--bridge-colour);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--s-1);
+}
+
+.tab[aria-pressed="true"] {
+  background: var(--bridge-colour);
+  color: var(--console-colour);
+  box-shadow: none;
+}
+
+.transcript {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  display: flex;
+  /* Newest entry first in the markup, shown last and kept in view. */
+  flex-direction: column-reverse;
+  gap: var(--s-1);
+  padding-inline-end: var(--s-2);
+}
+
+.transcript li {
+  border-radius: var(--s-2);
+  padding: var(--s-2) var(--s-1);
+  font-size: var(--s0);
+  font-weight: normal;
+}
+
+.run {
+  background: white;
+  border-inline-start: var(--s-3) solid var(--complete-island-colour);
+}
+
+.run.failed {
+  border-inline-start-color: var(--wrong-island-colour);
+}
+
+.run.by-model {
+  border-inline-start-color: var(--unreachable-island-colour);
+}
+
+.said {
+  background: var(--island-colour);
+  align-self: flex-end;
+  max-inline-size: 85%;
+}
+
+.said.by-model {
+  background: var(--disabled-island-colour);
+  align-self: flex-start;
+}
+
+.problem {
+  background: var(--wrong-island-colour);
+  color: white;
+}
+
+pre,
+textarea,
+input,
+select {
+  font-family: var(--code-font);
+  font-size: 0.85rem;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+pre.code {
+  color: var(--bridge-colour);
+  padding-block-end: var(--s-2);
+  border-block-end: 1px dashed var(--disabled-island-colour);
+  margin-block-end: var(--s-2);
+}
+
+pre.output {
+  color: var(--faded-bridge-colour);
+}
+
+.input,
+.prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.input button[type="submit"] {
+  align-self: flex-end;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+  padding: var(--s-2);
+  border: var(--s-5) solid var(--bridge-colour);
+  border-radius: var(--s-2);
+  background: white;
+  resize: vertical;
+}
+
+.settings {
+  display: grid;
+  grid-template-columns: 8rem 1fr 8rem 8rem;
+  gap: var(--s-2);
+}
+
+.game {
+  padding: var(--s1);
+  align-content: start;
+}
+
+.game .hashi-grid {
+  width: min(70vh, 100%);
+}
+
+.solved {
+  color: var(--dark-green-colour);
+}

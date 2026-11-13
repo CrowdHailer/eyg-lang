@@ -1,0 +1,24 @@
+name = "todomvc_native"
+version = "1.0.0"
+target = "javascript"
+
+[javascript]
+runtime = "bun"
+
+[dependencies]
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+gleam_http = ">= 4.3.0 and < 5.0.0"
+javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
+lustre = ">= 5.7.1 and < 6.0.0"
+ogre = ">= 1.1.0 and < 2.0.0"
+overlay_llm = { path = "../../packages/overlay_llm" }
+eyg_embed = { path = "../../packages/gleam_embed" }
+plinthx = { path = "../../packages/plinthx" }
+todomvc = { path = "../todomvc_lustre" }
+
+[dev_dependencies]
+gleeunit = ">= 1.0.0 and < 2.0.0"
+simplifile = ">= 2.7.0 and < 3.0.0"
+example_tools = { path = "../../packages/example_tools" }

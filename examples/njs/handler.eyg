@@ -1,0 +1,22 @@
+// An nginx request handler written in EYG and compiled to JavaScript for njs.
+// It can log and make subrequests, the host decides what those do.
+let count = (items) -> { !list_fold(items, 0, (_, n) -> { !int_add(n, 1) }) }
+
+let describe = (request) -> {
+  !string_append(!int_to_string(count(request.headers)), !string_append(" headers, path ", request.path))
+}
+
+let respond = (request) -> {
+  let _ = perform Log(describe(request))
+  match request.method {
+    GET(_) -> {
+      let upstream = perform Subrequest("/upstream")
+      {
+        status: 200,
+        body: !string_append("EYG handled ", !string_append(describe(request), !string_append(". Upstream said: ", upstream.body)))
+      }
+    }
+    | (_) -> { {status: 405, body: "Only GET is handled by EYG"} }
+  }
+}
+respond

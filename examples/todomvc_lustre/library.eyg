@@ -1,0 +1,69 @@
+// Helpers for the todo list, in scope as `todos` in the shell and for the agent.
+// This module is pure: its functions perform the task effects when they are called.
+let {list, string} = @standard:1:baguqeerahlbgfg7wjjdjguypivmsdcvh3e2vs4lhiafdbbtl3duxfuzv2eja
+
+let readme = "The user keeps a todo list. Each task is {id: Integer, title: String, completed: True({}) or False({})}.
+
+The task effects are:
+- ListTasks({}) returns every task, oldest first.
+- CreateTask(title) adds an active task and returns its id.
+- RenameTask({id, title}) returns Ok({}) or Error(NotFound({})).
+- SetCompleted({id, completed}) marks a task done with True({}) or active with False({}), it returns Ok({}) or Error(NotFound({})).
+- Print(text) shows a line of text to the user.
+Tasks cannot be deleted from a program, only the user can delete them.
+
+The variable `todos` is a record of helpers, prefer them to raw effects:
+- todos.all({}), todos.active({}) and todos.completed({}) list tasks.
+- todos.add(title) creates a task and returns its id.
+- todos.complete(task), todos.reopen(task) and todos.rename(task, title) change a task.
+- todos.tags(task) lists the words of a title that start with #, todos.tagged(tag) lists the tasks with that tag.
+- todos.matching(text) lists the tasks whose title contains text, ignoring case.
+
+The standard library is available as @standard, for example `let {list, string} = @standard`.
+Take care with argument order:
+- list.map(items, f), list.flat_map(items, f), list.contains(items, item), list.length(items), list.fold(items, initial, (item, acc) -> { .. })
+- list.filter(predicate, items), list.find(predicate, items), list.filter_map(f, items)
+- string.split(text, separator) returns {head, tail}, string.split_once(text, separator) returns Ok({pre, post}) or Error({})
+- string.join(strings, separator), string.lowercase(text), string.starts_with(text, prefix) returns True({}) or False({})"
+
+let not = (value) -> {
+  match value {
+    True(_) -> { False({}) }
+    False(_) -> { True({}) }
+  }
+}
+
+let all = (_) -> { perform ListTasks({}) }
+
+let active = (_) -> { list.filter((task) -> { not(task.completed) }, all({})) }
+
+let completed = (_) -> { list.filter((task) -> { task.completed }, all({})) }
+
+let add = (title) -> { perform CreateTask(title) }
+
+let complete = (task) -> { perform SetCompleted({id: task.id, completed: True({})}) }
+
+let reopen = (task) -> { perform SetCompleted({id: task.id, completed: False({})}) }
+
+let rename = (task, title) -> { perform RenameTask({id: task.id, title}) }
+
+let words = (text) -> {
+  let {head, tail} = string.split(text, " ")
+  [head, ..tail]
+}
+
+let tags = (task) -> { list.filter((word) -> { string.starts_with(word, "#") }, words(task.title)) }
+
+let tagged = (tag) -> { list.filter((task) -> { list.contains(tags(task), tag) }, all({})) }
+
+let matching = (text) -> {
+  let needle = string.lowercase(text)
+  list.filter((task) -> {
+    match string.split_once(string.lowercase(task.title), needle) {
+      Ok(_) -> { True({}) }
+      Error(_) -> { False({}) }
+    }
+  }, all({}))
+}
+
+{readme, all, active, completed, add, complete, reopen, rename, tags, tagged, matching}

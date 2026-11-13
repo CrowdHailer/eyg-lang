@@ -15,6 +15,12 @@ export async function send(fetch, url, init) {
   } catch (error) { return Result$Error(String(error)); }
 }
 export const status = response => response.status;
+export function sendBits(fetch, url, init) {
+  const bits = init.body;
+  if (bits.bitSize % 8 !== 0) return Promise.resolve(Result$Error("request body must contain whole bytes"));
+  const body = bits.bitOffset === 0 ? bits.rawBuffer : Uint8Array.from({ length: bits.byteSize }, (_, i) => bits.byteAt(i));
+  return send(fetch, url, { ...init, body });
+}
 export const requestUrl = request => request.url;
 export const requestMethod = request => request.method;
 export const requestHeaders = request => toList(Array.from(request.headers.entries()));
