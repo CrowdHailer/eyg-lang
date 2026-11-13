@@ -1,6 +1,7 @@
 // The guides published on eyg.run.
 
 let index = [
+  {slug: "querying-sqlite", title: "Querying SQLite", summary: "Resolve EYG query tables inside a SQLite database, with rules run as SQL joins.", keywords: "query sqlite database sql join"},
   {slug: "query-comparison", title: "Query literals compared with Flix and Crepe", summary: "Compare typed positive queries and the query features outside their scope.", keywords: "query datalog flix crepe comparison"},
   {slug: "authorization", title: "Authorization with query literals", summary: "Build and test role, relationship, delegation, and agent policies with typed EYG queries.", keywords: "authorization policy role relationship delegation agent tenant"},
   {slug: "embedding-eyg-on-raspberry-pi", title: "Embedding EYG on Raspberry Pi", summary: "Build a Pi image, check HDMI and serial input, and reuse content-addressed packages from the SD card.", keywords: "embedding eyg on raspberry pi"},

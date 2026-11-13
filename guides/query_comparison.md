@@ -80,11 +80,11 @@ escaped effects in query heads and predicates.
 [Crepe syntax extensions](https://docs.rs/crepe/0.2.0/crepe/macro.crepe.html#datalog-syntax-extensions).
 
 Crepe documents semi-naive evaluation and automatically generated indices.
-EYG currently re-evaluates all rules against an immutable snapshot each round,
-using structural equality to deduplicate lists. Repeated closure evaluation,
-joins over whole relations, and linear duplicate searches can dominate large
-queries. Compiling the same algorithm to JavaScript does not remove those
-costs. No measured throughput comparison is claimed here.
+EYG evaluates rules in rounds against an immutable snapshot. Each clause finds
+rows through a hash index on its bound fields, facts are sets, and a rule only
+runs again when a relation it read grew. It is not semi-naive: a rule that runs
+again recomputes all of its facts. Large data belongs in SQLite, where the same
+rules run as joins (see the [SQLite guide](sqlite.md)). No throughput comparison with Crepe is claimed.
 [Crepe project](https://github.com/ekzhang/crepe).
 
 | Concern | EYG | Crepe |
@@ -92,7 +92,7 @@ costs. No measured throughput comparison is claimed here.
 | Rule composition | Ordinary `Table` values | Rules fixed by macro expansion |
 | Relation representation | Structurally typed values in named rows | Generated tuple structs |
 | Host code in rules | Statically pure EYG; runtime escaped-effect check | Rust expressions and functions |
-| Solver implementation | Whole-relation rounds, linear deduplication | Semi-naive evaluation with indices |
+| Solver implementation | Indexed rounds, rules rerun when inputs grow | Semi-naive evaluation with indices |
 | Negation | No relation negation | Stratified negation |
 | Application boundary | Effects supplied by the embedding runtime | Rust application APIs |
 
