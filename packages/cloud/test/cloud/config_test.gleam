@@ -13,7 +13,9 @@ import gleam/string
 
 fn load() {
   let assert Ok(workspace) =
-    config.load("test/fixtures/workspace.eyg", test_helpers.state())
+    config.load("test/fixtures/workspace.eyg", test_helpers.state(), fn(_) {
+      Error("no secrets")
+    })
   workspace
 }
 

@@ -2,15 +2,16 @@
 ////
 //// - `WORKSPACE` the workspace configuration file, defaults to `workspace.eyg`.
 //// - `CHAT_ORIGIN` connect the example chat app at this origin, i.e. `http://localhost:8080`.
-//// - `SLACK_BOT_TOKEN` run EYG commands posted in Slack.
-//// - `DISCORD_BOT_TOKEN` and `DISCORD_GUILD_ID` run EYG commands posted in Discord.
+//// - `SLACK_BOT_TOKEN` connect the Slack workspace the bot is installed in.
+//// - `DISCORD_BOT_TOKEN` and `DISCORD_GUILD_ID` connect the Discord server (guild) the bot is installed in.
 //// - `EYG_ORIGIN` the hub packages are loaded from, defaults to `https://eyg.run`.
 
 import cloud/beam/execute
 import cloud/config
-import cloud/discord/discord
+import cloud/plugins/discord
 import cloud/plugins/example_chat
-import cloud/slack/slack
+import cloud/plugins/slack
+import cloud/secrets
 import cloud/system
 import cloud/workspace
 import envoy
@@ -29,7 +30,8 @@ pub fn main() -> Nil {
     |> origin.from_string_strict
   let file = envoy.get("WORKSPACE") |> result.unwrap("workspace.eyg")
   let state = execute.State(origin: hub, cache: cache.ready(), root: None)
-  let load = config.loader(file, state)
+  let data = secrets.data_directory(file)
+  let load = config.loader(file, state, secrets.get(data, _))
   let workspace = case workspace.start(load) {
     Ok(workspace) -> workspace
     Error(reason) -> panic as reason
@@ -52,8 +54,10 @@ pub fn main() -> Nil {
 
   case envoy.get("SLACK_BOT_TOKEN") {
     Ok(token) -> {
-      let assert Ok(_) = slack.start_channel(hub, token)
-      Nil
+      let emit = fn(event) { process.send(workspace, workspace.Inbound(event)) }
+      let assert Ok(outbound) = slack.start(token, emit)
+      process.send(workspace, workspace.Connect(slack.platform, outbound))
+      io.println("Connected to Slack")
     }
     Error(Nil) -> Nil
   }
@@ -61,8 +65,10 @@ pub fn main() -> Nil {
   case envoy.get("DISCORD_BOT_TOKEN") {
     Ok(token) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
-      let assert Ok(_) = discord.start_channel(hub, token, guild)
-      Nil
+      let emit = fn(event) { process.send(workspace, workspace.Inbound(event)) }
+      let assert Ok(outbound) = discord.start(token, guild, emit)
+      process.send(workspace, workspace.Connect(discord.platform, outbound))
+      io.println("Connected to Discord")
     }
     Error(Nil) -> Nil
   }

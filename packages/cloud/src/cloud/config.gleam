@@ -13,7 +13,8 @@
 //// - `readme` context given to the channel's agent.
 //// - `handle` a pure function from the plugin's native input type to a list of work.
 ////
-//// The configuration is trusted, it is evaluated with every effect available.
+//// The configuration is trusted, it is evaluated with every effect available
+//// and can read the workspace's secrets with the `Secret` effect.
 
 import cloud/beam/execute
 import cloud/handler
@@ -45,8 +46,12 @@ pub type Workspace {
 pub type Loader =
   fn() -> Result(Workspace, String)
 
-pub fn loader(file: String, state: execute.State) -> Loader {
-  fn() { load(file, state) }
+pub fn loader(
+  file: String,
+  state: execute.State,
+  secret: fn(String) -> Result(String, String),
+) -> Loader {
+  fn() { load(file, state, secret) }
 }
 
 /// The identity of a channel passed to the workspace's `channel` function.
@@ -64,7 +69,12 @@ pub type Channel {
 }
 
 /// Evaluate a workspace file, its relative imports are read from its directory.
-pub fn load(file: String, state: execute.State) -> Result(Workspace, String) {
+/// The `Secret` effect reads from `secret`.
+pub fn load(
+  file: String,
+  state: execute.State,
+  secret: fn(String) -> Result(String, String),
+) -> Result(Workspace, String) {
   use code <- result.try(
     simplifile.read(file)
     |> result.map_error(fn(reason) {
@@ -72,9 +82,10 @@ pub fn load(file: String, state: execute.State) -> Result(Workspace, String) {
     }),
   )
   let state = execute.State(..state, root: Some(filepath.directory_name(file)))
-  let host = execute.Host(post: fn(_) { Error("Configuration cannot post") })
+  let host =
+    execute.Host(post: fn(_) { Error("Configuration cannot post") }, secret:)
   let #(execute.Run(result:, ..), state) =
-    execute.run_configuration(code, execute.unrestricted(), host, state)
+    execute.run_configuration(code, execute.configuration(), host, state)
   case result {
     Ok(Some(value)) -> decode(value, state)
     Ok(None) -> Error(file <> " has no value")

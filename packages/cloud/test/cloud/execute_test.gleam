@@ -12,7 +12,7 @@ pub fn state() {
 
 /// Evaluate EYG source to a value, for building policies in tests.
 pub fn evaluate(code) {
-  let host = execute.Host(post: fn(_) { Error("no posting") })
+  let host = execute.channel_host(fn(_) { Error("no posting") })
   let #(execute.Run(result:, ..), _) =
     execute.run(code, [], execute.unrestricted(), host, state())
   let assert Ok(Some(value)) = result
@@ -27,7 +27,7 @@ fn policy(code) {
 fn recording_host() {
   let posts = process.new_subject()
   let host =
-    execute.Host(post: fn(text) {
+    execute.channel_host(fn(text) {
       process.send(posts, text)
       Ok("m1")
     })
@@ -157,7 +157,7 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
     execute.run_configuration(
       "import \"../../eyg_packages/cloud/platform.eyg\".reject_all",
       execute.unrestricted(),
-      execute.Host(post: fn(_) { Error("Configuration cannot post") }),
+      execute.channel_host(fn(_) { Error("Configuration cannot post") }),
       state,
     )
   let assert Ok(Some(package)) = run.result
@@ -166,4 +166,30 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
   let assert Ok(native_fields) = cast.as_record(native)
   assert dict.keys(package_fields) == dict.keys(native_fields)
   let assert Ok(_) = execute.decode_policy(package, state)
+}
+
+pub fn configuration_reads_secrets_test() {
+  let host =
+    execute.Host(post: fn(_) { Error("no posting") }, secret: fn(name) {
+      Ok("value of " <> name)
+    })
+  let #(execute.Run(result:, ..), _) =
+    execute.run_configuration(
+      "perform Secret(\"KEY\")",
+      execute.configuration(),
+      host,
+      state(),
+    )
+  assert result == Ok(Some(v.ok(v.String("value of KEY"))))
+}
+
+pub fn channels_cannot_read_secrets_test() {
+  let host =
+    execute.Host(post: fn(_) { Error("no posting") }, secret: fn(_) {
+      Ok("leaked")
+    })
+  let shell = policy("cloud.reject_all")
+  let #(execute.Run(result:, ..), _) =
+    execute.run("perform Secret(\"KEY\")", [], shell, host, state())
+  assert result == Error("Effect Secret is not allowed by policy")
 }

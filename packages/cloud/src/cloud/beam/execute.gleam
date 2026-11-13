@@ -68,11 +68,21 @@ pub type Effect {
   Computer(computer.Effect)
   /// Post a message to the conversation the program is running for.
   Post(text: String)
+  /// Read a secret from the workspace's secrets store, only available to the workspace configuration.
+  Secret(name: String)
 }
 
 /// Implementations of effects that need the cloud's services.
 pub type Host {
-  Host(post: fn(String) -> Result(String, String))
+  Host(
+    post: fn(String) -> Result(String, String),
+    secret: fn(String) -> Result(String, String),
+  )
+}
+
+/// A host for programs run from a channel, they have no access to secrets.
+pub fn channel_host(post: fn(String) -> Result(String, String)) -> Host {
+  Host(post:, secret: fn(_) { Error("Secrets are not available") })
 }
 
 pub type Policy =
@@ -89,6 +99,20 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
   |> interface.take(computer_effects)
   |> list.map(touch_grass.map(_, Computer))
   |> list.append([post()])
+}
+
+/// Every effect available to the workspace configuration, the channel effects and `Secret`.
+pub fn configuration_harness() -> interface.Harness(Effect, Meta) {
+  list.append(harness(), [secret()])
+}
+
+fn secret() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Secret",
+    lift_type: t.String,
+    lower_type: t.result(t.String, t.String),
+    decode: cast.map(cast.as_string, Secret),
+  )
 }
 
 fn post() -> interface.Interface(Effect, Meta) {
@@ -152,9 +176,18 @@ pub fn platform() -> Value {
   )
 }
 
-/// A policy that performs every effect without a gate.
+/// A policy that performs every effect available to channels without a gate.
 pub fn unrestricted() -> Policy {
-  harness()
+  without_gates(harness())
+}
+
+/// The policy the trusted workspace configuration is evaluated with.
+pub fn configuration() -> Policy {
+  without_gates(configuration_harness())
+}
+
+fn without_gates(harness: interface.Harness(Effect, Meta)) -> Policy {
+  harness
   |> list.map(fn(interface) {
     #(interface.name, policy.Interface(interface, policy.Unrestricted))
   })
@@ -327,6 +360,7 @@ pub fn pure_loop(returned, state: State) {
 fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
   case effect {
     Post(text) -> Ok(#(result_string(host.post(text)), []))
+    Secret(name) -> Ok(#(result_string(host.secret(name)), []))
     Computer(effect) ->
       case effect {
         computer.StandardOut(text) ->

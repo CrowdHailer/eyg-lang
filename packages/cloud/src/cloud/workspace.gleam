@@ -253,7 +253,7 @@ fn option_thread(conversation: Conversation) {
 
 /// The host for programs run from a conversation.
 fn host(outbound: channel.Outbound, conversation) {
-  execute.Host(post: outbound.post(conversation, _))
+  execute.channel_host(outbound.post(conversation, _))
 }
 
 /// Run a direct invocation, post its output and return a description for the agent.

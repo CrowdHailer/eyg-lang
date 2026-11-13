@@ -86,7 +86,11 @@ fn detach(workspace) {
 
 fn start(completions) {
   let load =
-    config.loader("test/fixtures/workspace_native.eyg", test_helpers.state())
+    config.loader(
+      "test/fixtures/workspace_native.eyg",
+      test_helpers.state(),
+      fn(_) { Error("no secrets") },
+    )
   let #(completer, seen) = model(completions)
   let assert Ok(workspace) = workspace.start_with(load, completer)
   detach(workspace)
@@ -137,7 +141,11 @@ pub fn direct_invocations_run_with_the_shell_test() {
 
 pub fn new_forgets_the_conversation_test() {
   let load =
-    config.loader("test/fixtures/workspace_native.eyg", test_helpers.state())
+    config.loader(
+      "test/fixtures/workspace_native.eyg",
+      test_helpers.state(),
+      fn(_) { Error("no secrets") },
+    )
   let histories = process.new_subject()
   let completer = fn(_llm, _context) {
     fn(history) {
@@ -168,7 +176,11 @@ pub fn new_forgets_the_conversation_test() {
 fn custom_loader(handle, policy) {
   fn() {
     let assert Ok(config) =
-      config.load("test/fixtures/workspace_native.eyg", test_helpers.state())
+      config.load(
+        "test/fixtures/workspace_native.eyg",
+        test_helpers.state(),
+        fn(_) { Error("no secrets") },
+      )
     let channel =
       execute_test.evaluate(
         "(_) -> { {handle: " <> handle <> ", channel_shell: " <> policy <> "} }",
