@@ -17,9 +17,10 @@ pub fn main() -> Nil {
     envoy.get("EYG_ORIGIN")
     |> result.unwrap("https://eyg.run")
     |> origin.from_string_strict
+  let assert Ok(sessions) = session.start(hub)
   case slack_token {
     Ok(token) -> {
-      let assert Ok(_) = slack.start_channel(hub, token)
+      let assert Ok(_) = slack.start_channel(sessions.data, token)
       Nil
     }
     Error(_) -> Nil
@@ -27,7 +28,6 @@ pub fn main() -> Nil {
   case discord_token {
     Ok(token) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
-      let assert Ok(sessions) = session.start(hub)
       let assert Ok(_) = discord.start_channel(sessions.data, token, guild)
       Nil
     }

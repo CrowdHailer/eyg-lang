@@ -1,6 +1,7 @@
 //// One actor owns all cached channel histories and performs polling serially.
 
 import cloud/beam/execute
+import cloud/session
 import cloud/slack/api/schema
 import cloud/slack/client
 import cloud/slack/command
@@ -25,7 +26,7 @@ pub opaque type State {
     subject: Subject(Message),
     identity: schema.Identity,
     conversations: Dict(String, Conversation),
-    execute_state: execute.State,
+    sessions: Subject(session.Message),
   )
 }
 
@@ -37,18 +38,12 @@ pub type Conversation {
 pub fn start(
   bot_token: String,
   identity: schema.Identity,
-  execute_state: execute.State,
+  sessions: Subject(session.Message),
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
     // Load in the message handler: full histories can exceed the init timeout.
     process.send(subject, Poll)
-    actor.initialised(State(
-      bot_token,
-      subject,
-      identity,
-      dict.new(),
-      execute_state,
-    ))
+    actor.initialised(State(bot_token, subject, identity, dict.new(), sessions))
     |> actor.returning(subject)
     |> Ok
   })
@@ -112,43 +107,34 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           }
         })
       // History is newest-first; process `fresh` in chronological order.
-      let execute_state = case loaded {
+      case loaded {
         False -> {
           let count = list.length(fresh)
           io.println("Loaded " <> int.to_string(count) <> " Slack messages")
-          state.execute_state
         }
-        True ->
-          list.fold(fresh, state.execute_state, fn(execute_state, message) {
+        True -> {
+          let session_id =
+            "Slack:" <> state.identity.team_id <> ":" <> channel.id
+          list.each(fresh, fn(message) {
             // Conversation ID: channel.id; workspace ID: state.identity.team_id.
             // The optional thread ID is message.thread_ts (Option(String)).
             case command.source(message.data, state.identity.user_id) {
-              Error(Nil) -> execute_state
+              Error(Nil) -> Nil
               Ok(code) -> {
                 // Reply in the existing thread, or start one on this message.
                 let ts = option.unwrap(message.thread_ts, message.ts)
-                let #(outcome, session) =
-                  execute.block(code, execute_state, print_output(
-                    state.bot_token,
-                    channel.id,
-                    ts,
-                    _,
-                  ))
-                case outcome {
-                  Ok(value) ->
-                    print_output(
-                      state.bot_token,
-                      channel.id,
-                      ts,
-                      execute.StandardOut(value),
-                    )
-                  Error(reason) ->
-                    io.println_error("Slack " <> channel.id <> ": " <> reason)
-                }
-                session
+                process.send(
+                  state.sessions,
+                  session.Message(
+                    id: session_id,
+                    payload: session.Code(code),
+                    print: print_output(state.bot_token, channel.id, ts, _),
+                  ),
+                )
               }
             }
           })
+        }
       }
       let messages = list.append(list.reverse(fresh), previous)
       State(
@@ -158,7 +144,6 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
           channel.id,
           Conversation(messages),
         ),
-        execute_state:,
       )
     }
   }
