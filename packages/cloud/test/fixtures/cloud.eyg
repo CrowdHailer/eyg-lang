@@ -1,0 +1,11 @@
+let support = import "./support.eyg"
+let cloud = support(cloud.mock_all)
+let shell = cloud.shell
+
+{
+  workspaces: [{name: "test", file: "./chat_workspace.eyg"}],
+  shells: {
+    observer: {workspaces: shell.pass, bind: shell.bind_to(["general"]), ..cloud.mock_all},
+    pure: shell.pure
+  }
+}

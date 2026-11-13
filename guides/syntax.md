@@ -219,6 +219,9 @@ outer(inner(value))
 ## Records
 
 Records are ordered collections of named fields, written with `{}`.
+Keywords are reserved in record fields as well as variable names, as in Gleam.
+Use `{on_input: (value) -> { value }}` and `config.on_input`;
+`{handle: ...}`, `config.handle` and `{handle: on_input}` are invalid.
 
 ```eyg
 let _ = {}

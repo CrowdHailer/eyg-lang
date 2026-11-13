@@ -71,7 +71,10 @@ pub fn cast(
 }
 
 // cast is the wrong term, we need a decode API
-fn cast_llm(value: state.Value(m)) -> Result(provider.Llm, state.Reason(m)) {
+/// Decode the `{provider, model}` record of an llm configuration.
+pub fn cast_llm(
+  value: state.Value(m),
+) -> Result(provider.Llm, state.Reason(m)) {
   use provider <- result.try(cast.field("provider", cast_provider, value))
   use model <- result.try(cast.field("model", cast.as_string, value))
   Ok(provider.Llm(provider:, model:))

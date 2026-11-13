@@ -52,22 +52,23 @@ pub fn type_(rules: List(#(interface.Interface(_, _), Rule))) {
     list.filter_map(rules, fn(rule) {
       let #(interface, rule) = rule
       case rule {
-        PolicyField(field) ->
-          Ok(#(
-            field,
-            t.Fun(
-              interface.lift_type,
-              t.Empty,
-              t.union([
-                #("Pass", interface.lift_type),
-                #("Mock", interface.lower_type),
-              ]),
-            ),
-          ))
+        PolicyField(field) -> Ok(#(field, gate_type(interface)))
         Unchecked -> Error(Nil)
       }
     })
   t.record(fields)
+}
+
+/// Check each evaluated gate against the same type used for policy records.
+pub fn gate_type(interface: interface.Interface(_, _)) {
+  t.Fun(
+    interface.lift_type,
+    t.Empty,
+    t.union([
+      #("Pass", interface.lift_type),
+      #("Mock", interface.lower_type),
+    ]),
+  )
 }
 
 pub fn decode_policy(

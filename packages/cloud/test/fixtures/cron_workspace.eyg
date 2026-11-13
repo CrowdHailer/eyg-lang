@@ -1,0 +1,8 @@
+let support = import "./support.eyg"
+let cloud = support(cloud.mock_all)
+
+{
+  llm: {provider: Ollama({origin: "http://localhost:11434", api_key: None({})}), model: "test"},
+  crons: [{name: "standup", schedule: "* * * * *", channel: "general", message: "Time for standup."}],
+  channel: (info) -> { {on_input: cloud.handlers.for_channel(info), channel_shell: cloud.shell.everything} }
+}

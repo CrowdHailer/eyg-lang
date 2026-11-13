@@ -1,0 +1,64 @@
+let support = import "./support.eyg"
+let cloud = support(cloud.mock_all)
+let shell = cloud.shell
+
+let books = {
+  name: "summarise-links",
+  pattern: cloud.triggers.reaction("books"),
+  script: match {
+    ChatReacted(reacted) -> { perform Post(!string_append("summary of ", reacted.message.text)) }
+    | (_) -> { Error("not a reaction") }
+  }
+}
+
+let research = {
+  name: "research",
+  pattern: match {
+    ChatPosted(posted) -> { !string_starts_with(posted.text, "research:") }
+    | (_) -> { False({}) }
+  },
+  script: match {
+    ChatPosted(posted) -> {
+      match perform Delegate(posted.text) {
+        Ok(reply) -> { perform Post(reply) }
+        Error(reason) -> { perform Post(reason) }
+      }
+    }
+    | (_) -> { Error("not a message") }
+  }
+}
+
+
+{
+  llm: {
+    provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
+    model: "test-model"
+  },
+  readme: "The test workspace.",
+  files: "./files",
+  channel: ({name}) -> {
+    let defaults = {
+      on_input: (_) -> { [] },
+      channel_shell: cloud.mock_all,
+      readme: "",
+      triggers: [],
+      llm: {provider: Ollama({origin: "http://localhost:11434", api_key: None({})}), model: "test-model"}
+    }
+    match !equal(name, "general") {
+      True(_) -> { {on_input: ({text}) -> { [Post({thread: None({}), text})] }, channel_shell: shell.everything, readme: "Be helpful.", triggers: [books, research], ..defaults} }
+      False(_) -> {
+        match !equal(name, "notes") {
+          True(_) -> { {channel_shell: shell.writes_under(["/channels/notes"], shell.everything), ..defaults} }
+          False(_) -> {
+            {
+              on_input: (_) -> { [] },
+              channel_shell: {post: shell.pass, ..cloud.mock_all},
+              llm: {provider: Mistral({api_key: "k"}), model: "small"},
+              ..defaults
+            }
+          }
+        }
+      }
+    }
+  }
+}

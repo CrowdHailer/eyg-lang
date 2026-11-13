@@ -6,6 +6,7 @@ import cloud/system
 import gleam/http/request
 import gleam/http/response
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import midas/continuation
 import midas/effect
@@ -28,23 +29,52 @@ pub type Session {
   )
 }
 
+pub type History =
+  chat.History
+
+pub type Complete =
+  fn(History) -> Result(chat.Completion(tool.Call), String)
+
+pub type Completer =
+  fn(provider.Llm, provider.Context) -> Complete
+
 pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
   let effects =
     computer.effects()
-    |> policy.match_rules(execute.rules)
+    |> policy.match_rules(execute.basic_rules)
     |> list.map(fn(rule) { rule.0 })
   let provider_context =
     provider.Context(
       system_prompt: agent.system_prompt(
         hub,
         effects,
-        "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports are unavailable; use ReadFile to inspect files. Env reads configured workspace secrets and returns Some(value) or None({}) when missing. Respond using the chat platform's Markdown formatting.",
+        "context is an empty record. The working directory is /. Files belong to this session and are shared with direct code execution. Each command starts with fresh lexical scope. Env only returns secrets explicitly supplied at startup; host environment variables are not exposed. Respond using the chat platform's Markdown formatting.",
       ),
       tools: agent.tools(),
     )
   Session(llm:, provider_context:, fetch: fn(request) {
     system.fetch(request)(fn(x) { x })
   })
+}
+
+pub fn context(origin, effects, readme) -> provider.Context {
+  provider.Context(
+    system_prompt: agent.system_prompt(
+      origin,
+      effects,
+      "You are part of a chat workspace. Your replies are delivered directly to the person who requested this turn. Programs run with fresh lexical scope and private in-memory session files retained between turns. Use Post when a program needs to send an additional message.\n"
+        <> readme,
+    ),
+    tools: agent.tools(),
+  )
+}
+
+pub fn complete(llm: provider.Llm, context: provider.Context) -> Complete {
+  fn(history) {
+    provider.completion(llm, context, list.reverse(history), system.fetch)(
+      fn(x) { x },
+    )
+  }
 }
 
 /// History is newest-first, matching the CLI loop. Keep completed tool results
@@ -57,17 +87,40 @@ pub fn inner_loop(
   files: file_system.State,
   emit: fn(execute.Output) -> Nil,
 ) -> #(chat.History, execute.State, file_system.State) {
-  let completion =
+  let complete = fn(history) {
     provider.completion(
       session.llm,
       session.provider_context,
       list.reverse(history),
       fn(request) { continuation.return(session.fetch(request)) },
     )(fn(x) { x })
-  case completion {
+  }
+  let #(history, #(eyg_state, files), _) =
+    complete_loop(
+      history,
+      complete,
+      fn(code, state) {
+        let #(eyg_state, files) = state
+        let #(result, eyg_state, files, output) =
+          execute.run(code, eyg_state, policy, files, emit)
+        let result = case result {
+          Ok(text) -> Ok(run.report(output, text))
+          Error(reason) -> Error(run.report(output, reason))
+        }
+        #(result, #(eyg_state, files))
+      },
+      emit,
+      #(eyg_state, files),
+    )
+  #(history, eyg_state, files)
+}
+
+/// Configured channels, delegates and main's basic agent share this loop.
+pub fn complete_loop(history, complete: Complete, run_code, emit, state) {
+  case complete(history) {
     Error(reason) -> {
       emit(execute.StandardError(reason))
-      #(history, eyg_state, files)
+      #(history, state, Some(reason))
     }
     Ok(completion) -> {
       case string.trim(completion.content) {
@@ -76,62 +129,64 @@ pub fn inner_loop(
       }
       let history = [chat.from_completion(completion), ..history]
       case completion.tool_calls {
-        [] -> #(history, eyg_state, files)
+        [] -> #(history, state, None)
         calls -> {
-          let #(history, eyg_state, files) =
-            list.fold(calls, #(history, eyg_state, files), fn(acc, call) {
-              let #(history, eyg_state, files) = acc
-              let #(result, eyg_state, files) =
-                execute_call(call.function, eyg_state, policy, files, emit)
+          let #(history, state) =
+            list.fold(calls, #(history, state), fn(acc, call) {
+              let #(history, state) = acc
+              let tool.FunctionCall(name, arguments) = call.function
+              let #(result, state) = case
+                agent.cast_tool_call(name, arguments)
+              {
+                Error(reason) -> #(
+                  Error(agent.describe_failure(reason, name, arguments)),
+                  state,
+                )
+                Ok(agent.Run(code)) -> run_code(code, state)
+              }
+              let text = case result {
+                Ok(text) | Error(text) -> text
+              }
               #(
-                [result_to_message(call.id, result), ..history],
-                eyg_state,
-                files,
+                [
+                  chat.ToolResultMessage(
+                    call.id,
+                    agent.tool_result_text(text),
+                    [],
+                  ),
+                  ..history
+                ],
+                state,
               )
             })
-          inner_loop(session, eyg_state, policy, history, files, emit)
+          complete_loop(history, complete, run_code, emit, state)
         }
       }
     }
   }
 }
 
-fn result_to_message(
-  call_id: String,
-  result: Result(tool.Return, String),
-) -> chat.Message(a) {
-  case result {
-    Ok(tool.Return(text, images)) ->
-      chat.ToolResultMessage(
-        tool_call_id: call_id,
-        text: agent.tool_result_text(text),
-        images:,
-      )
-    Error(reason) ->
-      chat.ToolResultMessage(
-        tool_call_id: call_id,
-        text: agent.tool_result_text(reason),
-        images: [],
-      )
+/// Keep complete user turns so tool calls retain their results.
+pub fn trim(history: History, max: Int) -> History {
+  case list.length(history) > max {
+    False -> history
+    True ->
+      history
+      |> list.take(max)
+      |> list.reverse
+      |> list.drop_while(fn(message) {
+        case message {
+          chat.UserMessage(..) -> False
+          _ -> True
+        }
+      })
+      |> list.reverse
   }
 }
 
-fn execute_call(call, eyg_state, policy, files, emit) {
-  let tool.FunctionCall(name, arguments) = call
-  case agent.cast_tool_call(name, arguments) {
-    Error(reason) -> #(
-      Error(agent.describe_failure(reason, name, arguments)),
-      eyg_state,
-      files,
-    )
-    Ok(agent.Run(code)) -> {
-      let #(result, eyg_state, files, output) =
-        execute.run(code, eyg_state, policy, files, emit)
-      let result = case result {
-        Ok(text) -> Ok(tool.Return(run.report(output, text), []))
-        Error(reason) -> Error(run.report(output, reason))
-      }
-      #(result, eyg_state, files)
-    }
+pub fn last_reply(history: History) -> String {
+  case history {
+    [chat.AssistantMessage(text:, ..), ..] -> string.trim(text)
+    _ -> ""
   }
 }

@@ -1,0 +1,68 @@
+// Small test policies and a synthetic chat handler, not a published helper API.
+(mock_all) -> {
+  let pass = (value) -> { Pass(value) }
+  let everything = {
+    add_trigger: pass, append_file: pass, artifact: pass, cancel_schedule: pass,
+    cron: pass, cwd: pass, delegate: pass, delete_file: pass, delete_trigger: pass,
+    env: pass, fetch: pass, flip: pass, list_triggers: pass, make_directory: pass,
+    now: pass, post: pass, random: pass, read_directory: pass, read_file: pass,
+    share_artifact: pass, sleep: pass, standard_error: pass, standard_out: pass,
+    start_trigger: pass, stop_trigger: pass, timeout: pass, write_file: pass,
+    ..mock_all
+  }
+  let under = (request) -> {
+    match !string_starts_with(request.path, "/channels/notes/") {
+      True(_) -> { Pass(request) }
+      False(_) -> { Mock(Error(!string_append("write_file denied by policy: ", request.path))) }
+    }
+  }
+  let thread = (parent, id) -> {
+    match parent { Some(_) -> { parent } None(_) -> { Some(id) } }
+  }
+  let chat = (info) -> {
+    match {
+      ChatPosted(message) -> {
+        match !equal(message.author.id, "cloud") {
+          True(_) -> { [] }
+          False(_) -> {
+            let reply = thread(message.thread, message.id)
+            let suffix = match message.thread {
+              Some(id) -> { !string_append(", in the thread started by message ", id) }
+              None(_) -> { "" }
+            }
+            let description = !list_fold([
+              "[#", info.name, suffix, "] ", message.author.name,
+              " (message ", message.id, "): ", message.text
+            ], "", (part, acc) -> { !string_append(acc, part) })
+            [Trigger(reply), Submit({session: message.thread, reply, text: message.text, description})]
+          }
+        }
+      }
+      ChatReacted(reaction) -> {
+        match !equal(reaction.by.id, "cloud") {
+          True(_) -> { [] }
+          False(_) -> { [Trigger(thread(reaction.message.thread, reaction.message.id))] }
+        }
+      }
+    }
+  }
+  {
+    mock_all,
+    shell: {
+      pass, everything, pure: mock_all,
+      writes_under: (_, shell) -> { {write_file: under, append_file: under, ..shell} },
+      bind_to: (_) -> {
+        (target) -> {
+          match !equal(target.channel, "general") {
+            True(_) -> { Pass(target) }
+            False(_) -> { Mock(Error(!string_append("binding to #", !string_append(target.channel, " is not allowed")))) }
+          }
+        }
+      }
+    },
+    handlers: {for_channel: (info) -> { {chat: chat(info), fallback: (_) -> { [] }} }},
+    triggers: {reaction: (_) -> {
+      match { ChatReacted(event) -> { !equal(event.emoji, "books") } | (_) -> { False({}) } }
+    }}
+  }
+}

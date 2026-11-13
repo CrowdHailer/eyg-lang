@@ -1,0 +1,46 @@
+let support = import "./support.eyg"
+let cloud = support(cloud.mock_all)
+let books = {
+  name: "summarise-links",
+  pattern: cloud.triggers.reaction("books"),
+  script: match {
+    ChatReacted(reacted) -> { perform Post(!string_append("summary of ", reacted.message.text)) }
+    | (_) -> { Error("not a reaction") }
+  }
+}
+
+let research = {
+  name: "research",
+  pattern: match {
+    ChatPosted(posted) -> { !string_starts_with(posted.text, "research:") }
+    | (_) -> { False({}) }
+  },
+  script: match {
+    ChatPosted(posted) -> {
+      match perform Delegate(posted.text) {
+        Ok(reply) -> { perform Post(reply) }
+        Error(reason) -> { perform Post(reason) }
+      }
+    }
+    | (_) -> { Error("not a message") }
+  }
+}
+
+
+{
+  files: "./files",
+  llm: {
+    provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
+    model: "test-model"
+  },
+  channel: (info) -> {
+    {
+      on_input: cloud.handlers.for_channel(info),
+      triggers: [books, research],
+      channel_shell: match !equal(info.name, "notes") {
+        True(_) -> { cloud.shell.writes_under(["/channels/notes"], cloud.shell.everything) }
+        False(_) -> { cloud.shell.everything }
+      }
+    }
+  }
+}

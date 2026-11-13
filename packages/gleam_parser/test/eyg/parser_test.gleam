@@ -34,6 +34,18 @@ pub fn literal_test() {
   // |> should.equal(#(ir.String("hello"), #(0, 7)))
 }
 
+pub fn keywords_are_reserved_in_record_fields_test() {
+  let assert Error(_) = parser.all_from_string("{handle: 1}")
+  let assert Error(_) = parser.all_from_string("config.handle")
+  let assert Error(_) =
+    parser.all_from_string("let {handle: on_input} = config on_input")
+  let assert Error(_) = parser.all_from_string("{import: 1}")
+  let assert Error(_) = parser.all_from_string("config.match")
+  let assert Error(_) =
+    parser.all_from_string("let {perform: value} = config value")
+  let assert Error(_) = parser.all_from_string("let handle = 1 handle")
+}
+
 pub fn todo_test() {
   "  todo"
   |> parser.all_from_string()
