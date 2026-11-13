@@ -8,16 +8,29 @@ pub const basic =
   "(label, value) => ({Alert: (x) => window.alert(x), Ask: (_) => 10, Log: (x) => console.log(x)})[label](value)"
 
 pub fn render(exp: ir.Node(Nil), handler: String) -> String {
+  render_with(exp, handler, do_render, "")
+}
+
+pub fn render_expression(exp: ir.Node(Nil), handler: String) -> String {
+  "(() => {\n" <> render_with(exp, handler, render_body, "return ") <> ";\n})()"
+}
+
+fn render_with(
+  exp: ir.Node(Nil),
+  handler: String,
+  render_program,
+  prefix,
+) -> String {
   let used = query_builtins(exp)
   let #(definitions, program) = case needs_effect_runtime(exp) {
-    False -> #(list.map(used, render_builtin), do_render(exp))
+    False -> #(list.map(used, render_builtin), render_program(exp))
     True -> #(
       [
         "const extrinsic = " <> handler,
         "const $runtime = (" <> runtime.source <> ").create(extrinsic)",
         ..runtime_bindings(used)
       ],
-      "$run(" <> stack_expression(exp) <> ")",
+      prefix <> "$run(" <> stack_expression(exp) <> ")",
     )
   }
   list.append(definitions, [program])
@@ -164,7 +177,7 @@ fn do_render(source) {
       let #(fields, tail) = gather_extends(rest, [#(label, value)])
       let fields =
         list.map(fields, fn(field) {
-          string.concat([field.0, ": ", do_render(field.1)])
+          string.concat([record_key(field.0), ": ", do_render(field.1)])
         })
         |> list.intersperse(", ")
         |> string.concat
@@ -179,7 +192,7 @@ fn do_render(source) {
       let #(fields, tail) = gather_overwrites(rest, [#(label, value)])
       let fields =
         list.map(fields, fn(field) {
-          string.concat([field.0, ": ", do_render(field.1)])
+          string.concat([record_key(field.0), ": ", do_render(field.1)])
         })
         |> list.intersperse(", ")
         |> string.concat
@@ -226,6 +239,14 @@ fn do_render(source) {
     _ -> {
       panic as "unsupported compilation expression"
     }
+  }
+}
+
+fn record_key(label) {
+  case label {
+    // Object literal syntax otherwise sets the prototype instead of a field.
+    "__proto__" -> "[\"__proto__\"]"
+    _ -> label
   }
 }
 
