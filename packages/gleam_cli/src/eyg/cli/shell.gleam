@@ -3,18 +3,26 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug as type_debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/cli/internal/config
+import eyg/cli/internal/traces
 import eyg/hub/cache
 import eyg/interpreter/break
 import eyg/interpreter/simple_debug
 import eyg/ir/tree
 import eyg/parser
 import eyg/parser/parser.{UnexpectEnd} as _
+import glasshouse/archive
+import glasshouse/recorder.{type Recorder}
+import glasshouse/run
+import glasshouse/session as trace
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import loam/execute
 import loam/ir
+import loam/pin
+import loam/record
 import loam/source
 import loam/system
 
@@ -88,6 +96,204 @@ fn loop(buffer, scope, defs, state: execute.State) -> system.Effect(_) {
     }
     Error(Nil) -> system.Done(Error("failed input."))
   }
+}
+
+/// Everything recorded in a shell session.
+type Recording {
+  Recording(
+    id: String,
+    started: Int,
+    cwd: String,
+    recorder: Recorder,
+    /// Newest first.
+    events: List(trace.Event),
+  )
+}
+
+/// A shell where every input is pinned and its effects recorded.
+/// The session is saved after each input so it can be replayed, even when the shell is stopped.
+pub fn record(config: config.Config) -> system.Effect(Result(Int, String)) {
+  use cwd <- system.then(system.cwd())
+  use cwd <- system.try(cwd)
+  use started <- system.then(system.now())
+  use id <- system.then(traces.new_id(started))
+  let state = execute.State(config.client.origin, cache.empty())
+  let recording =
+    Recording(
+      id:,
+      started:,
+      cwd:,
+      recorder: recorder.new(traces.sha256),
+      events: [],
+    )
+  use Nil <- system.then(system.stdout(
+    "recording to " <> id <> ", type /help for shell commands",
+  ))
+  record_loop("", [], [], state, recording)
+}
+
+fn record_loop(buffer, scope, defs, state, recording: Recording) {
+  use input <- system.then(system.prompt("> "))
+  case input {
+    Ok("") -> {
+      use saved <- system.then(save(recording))
+      use path <- system.try(saved)
+      use Nil <- system.then(system.stdout("trace saved to " <> path))
+      system.Done(Ok(0))
+    }
+    Ok(code) -> {
+      let code = case buffer {
+        "" -> code
+        _ -> buffer <> "\n" <> code
+      }
+      use #(output, #(buffer, scope, defs, state), recording) <- system.then(
+        case code {
+          "/" <> command -> {
+            use #(output, next) <- system.map(handle_meta(
+              command,
+              scope,
+              defs,
+              state,
+            ))
+            #(output, next, recording)
+          }
+          _ -> record_cell(code, scope, defs, state, recording)
+        },
+      )
+      use _ <- system.then(
+        system.traverse(output, fn(line) {
+          case line {
+            Ok(line) -> system.stdout(line)
+            Error(line) -> system.write_stderr(line <> "\n")
+          }
+        }),
+      )
+      record_loop(buffer, scope, defs, state, recording)
+    }
+    Error(Nil) -> system.Done(Error("failed input."))
+  }
+}
+
+fn record_cell(code, scope, defs, state, recording: Recording) {
+  case parser.block_from_string(code) {
+    Error(UnexpectEnd) ->
+      system.Done(#([], #(code, scope, defs, state), recording))
+    Error(reason) ->
+      system.Done(#(
+        [Error(parser.format_error(reason, code))],
+        #("", scope, defs, state),
+        recording,
+      ))
+    Ok(#(#(assignments, tail), _)) -> {
+      let tail = option.unwrap(tail, #(tree.Vacant, #(0, 0)))
+      let located =
+        list.fold_right(assignments, tail, fn(acc, assignment) {
+          let #(label, value, at) = assignment
+          #(tree.Let(label, value, acc), at)
+        })
+        |> tree.map_annotation(fn(span) {
+          source.Location(source.Repl, source.Text(code, span))
+        })
+      let Recording(cwd:, ..) = recording
+      let recorder = recorder.restart(recording.recorder)
+      use started <- system.then(system.now())
+      use #(pinned, state, recorder) <- system.then(pin.pin(
+        located,
+        cwd,
+        state,
+        recorder,
+        pin.allow,
+      ))
+      case pinned {
+        Error(reason) ->
+          system.Done(#([Error(reason)], #("", scope, defs, state), recording))
+        Ok(pinned) -> {
+          use #(outcome, recorder, Nil) <- system.then(record.run_block(
+            located,
+            scope,
+            pinned,
+            cwd,
+            recorder,
+            record.computer,
+            Nil,
+          ))
+          use ended <- system.then(system.now())
+          let #(output, next, outcome, recorder) = case outcome {
+            record.Completed(#(Some(value), scope)) -> {
+              let #(encoded, recorder) = recorder.encode(recorder, value)
+              #(
+                [Ok(simple_debug.inspect(value))],
+                #("", scope, list.append(defs, assignments), state),
+                run.Returned(encoded),
+                recorder,
+              )
+            }
+            record.Completed(#(None, scope)) -> #(
+              [],
+              #("", scope, list.append(defs, assignments), state),
+              run.Finished,
+              recorder,
+            )
+            record.Raised(#(reason, location, _env, k)) -> {
+              let rendered = execute.render_error(reason, location, k, cwd)
+              #(
+                [Error(rendered)],
+                #("", scope, defs, state),
+                run.Failed(recorder.redact_text(recorder, rendered)),
+                recorder,
+              )
+            }
+            record.Exited(status:) -> #(
+              [Error("exited with status " <> int.to_string(status))],
+              #("", scope, defs, state),
+              run.Exited(status),
+              recorder,
+            )
+          }
+          let cell =
+            run.Run(
+              id: "cell-" <> int.to_string(list.length(recording.events) + 1),
+              kind: run.Cell,
+              code:,
+              origin: run.Repl,
+              program: Some(pinned.program),
+              lock: recorder.lock_secrets(recorder, pinned.lock),
+              cwd:,
+              journal: recorder.journal(recorder),
+              outcome:,
+              started:,
+              ended:,
+            )
+          let recording =
+            Recording(..recording, recorder:, events: [
+              trace.Execution(cell),
+              ..recording.events
+            ])
+          use saved <- system.then(save(recording))
+          let output = case saved {
+            Ok(_) -> output
+            Error(reason) -> list.append(output, [Error(reason)])
+          }
+          system.Done(#(output, next, recording))
+        }
+      }
+    }
+  }
+}
+
+fn save(recording: Recording) {
+  let Recording(id:, started:, cwd:, recorder:, events:) = recording
+  use ended <- system.then(system.now())
+  let session =
+    trace.Session(
+      id:,
+      started:,
+      ended:,
+      cwd:,
+      agent: None,
+      events: list.reverse(events),
+    )
+  traces.save(archive.new(session, recorder.store(recorder)), cwd)
 }
 
 pub fn handle(code, scope, defs, state) {

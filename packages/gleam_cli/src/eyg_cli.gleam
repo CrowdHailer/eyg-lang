@@ -113,6 +113,7 @@ fn with_config(parsed: args.Args) {
       }
       record.execute(input, mode, config)
     }
+    args.RecordShell -> shell.record(config)
     args.Replay(path) -> replay.execute(path, config)
     args.Inspect(path, step) -> inspect.execute(path, step, config)
     args.Upload(path) -> upload.execute(path, config)
