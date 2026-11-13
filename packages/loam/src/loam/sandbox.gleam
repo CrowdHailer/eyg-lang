@@ -270,6 +270,8 @@ pub fn run(
       let sandbox = Sandbox(..sandbox, stdout: [text, ..sandbox.stdout])
       run(resume(Nil), sandbox)
     }
+    system.Sql(_, _, _, resume) ->
+      run(resume(Error("the sandbox has no databases")), sandbox)
     system.WriteStderr(text, resume) -> {
       run(resume(Nil), Sandbox(..sandbox, stderr: [text, ..sandbox.stderr]))
     }

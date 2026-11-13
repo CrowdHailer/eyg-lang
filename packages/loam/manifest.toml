@@ -67,6 +67,7 @@ packages = [
 [requirements]
 birdie = { version = ">= 2.0.0 and < 3.0.0" }
 envoy = { version = ">= 1.2.0 and < 2.0.0" }
+eyg_compiler = { path = "../gleam_compiler" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_ir = { path = "../gleam_ir" }

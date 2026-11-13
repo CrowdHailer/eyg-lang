@@ -147,6 +147,11 @@ fn step(effect, machine: Machine) {
   case effect {
     system.SpanStart(_, _, resume) | system.SpanEnd(_, resume) ->
       run(resume(Nil), machine)
+    system.Sql(_, _, _, resume) ->
+      run(
+        resume(Error("host SQLite databases are not mounted in the sandbox")),
+        machine,
+      )
     system.TemporaryDirectory(_) ->
       stop(
         "scratch directories are only available to trusted acquisition adapters",
