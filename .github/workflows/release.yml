@@ -29,11 +29,11 @@ jobs:
 
       - name: Build binaries and checksums
         run: |
-          ./bin/compile bun-linux-x64    ./dist/eyg-linux-x64
-          ./bin/compile bun-linux-arm64  ./dist/eyg-linux-arm64
-          ./bin/compile bun-darwin-x64   ./dist/eyg-macos-x64
-          ./bin/compile bun-darwin-arm64 ./dist/eyg-macos-arm64
-          ./bin/compile bun-windows-x64  ./dist/eyg-windows-x64.exe
+          gleam run -m compile -- bun-linux-x64    ./dist/eyg-linux-x64
+          gleam run -m compile -- bun-linux-arm64  ./dist/eyg-linux-arm64
+          gleam run -m compile -- bun-darwin-x64   ./dist/eyg-macos-x64
+          gleam run -m compile -- bun-darwin-arm64 ./dist/eyg-macos-arm64
+          gleam run -m compile -- bun-windows-x64  ./dist/eyg-windows-x64.exe
           cd dist && sha256sum eyg-* > SHA256SUMS
 
       - name: Check the binary reports the tagged version

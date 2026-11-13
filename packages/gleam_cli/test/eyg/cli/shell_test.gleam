@@ -212,7 +212,11 @@ pub fn type_of_of_a_pure_expression_has_no_effects_test() {
 }
 
 fn state() -> execute.State {
-  execute.State(origin: helpers.config.client.origin, cache: cache.empty())
+  execute.State(
+    origin: helpers.config.client.origin,
+    cache: cache.empty(),
+    store: None,
+  )
 }
 
 pub fn frontend_initialization_does_not_take_terminal_input_test() {

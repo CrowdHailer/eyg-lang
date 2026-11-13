@@ -1,5 +1,7 @@
 //// Evaluate the actual EYG viewer constructors, then send their bundles to web Overlay.
 
+import gleam/option
+
 import eyg/hub/cache
 import eyg/interpreter/cast
 import eyg/interpreter/expression
@@ -25,7 +27,7 @@ pub fn render(code) {
   let effect =
     execute.pure_loop(
       expression.execute(tree, []),
-      execute.State(origin.https("unused.invalid"), cache.ready()),
+      execute.State(origin.https("unused.invalid"), cache.ready(), option.None),
     )
   use rendered <- promise.map(system.run(effect))
   let assert #(Ok(bundle), _) = rendered
@@ -241,7 +243,7 @@ pub fn layout(kind) {
   use rendered <- promise.map(
     system.run(execute.pure_loop(
       expression.execute(tree, []),
-      execute.State(origin.https("unused.invalid"), cache.ready()),
+      execute.State(origin.https("unused.invalid"), cache.ready(), option.None),
     )),
   )
   let assert #(Ok(placements), _) = rendered

@@ -13,6 +13,7 @@ import eyg/parser/parser
 import eyg/parser/token
 import gleam/int
 import gleam/list
+import gleam/option
 import gleam/pair
 import gleam/result
 import gleam/string
@@ -48,7 +49,7 @@ pub fn with_run(state, active, occured) {
 }
 
 pub fn execute_state() {
-  execute.State(origin.https("eyg.test"), cache.empty())
+  execute.State(origin.https("eyg.test"), cache.empty(), option.None)
 }
 
 pub fn block_from_string(src) {

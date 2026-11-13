@@ -1,5 +1,4 @@
 import eyg/cli/internal/config
-import eyg/hub/cache
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/ir/tree as ir
@@ -21,7 +20,7 @@ pub fn execute(
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
 
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = config.state(config)
   let user_meta = source.1
   let source = call(source, arguments)
 

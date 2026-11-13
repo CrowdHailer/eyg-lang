@@ -3,7 +3,6 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/cli/internal/config
-import eyg/hub/cache
 import eyg/ir/tree as ir
 import eyg/parser
 import filepath
@@ -31,7 +30,7 @@ pub fn execute(
 
   let context =
     infer.pure() |> infer.with_effects(interface.types(computer.effects()))
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = config.state(config)
 
   use #(_poly, type_, errors, _) <- system.then(check_from(
     source,

@@ -40,7 +40,8 @@ jobs:
           gleam build --warnings-as-errors
           gleam test
       - name: Build the current CLI
-        run: packages/gleam_cli/bin/compile
+        working-directory: packages/gleam_cli
+        run: gleam run --runtime bun -m compile
       - name: Test EYG packages from the repository root
         run: packages/gleam_cli/dist/eyg script entry.eyg
       - name: Build cloud image
