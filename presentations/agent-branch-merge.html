@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EYG · Bringing the agent branch into main</title>
+<style>
+:root{--paper:#f4f2e9;--ink:#182f28;--green:#285c46;--lime:#d8ef93;--muted:#607168;--line:#c9d0c1;--red:#a64b32;--blue:#315d85;--scale:1;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:#dfe4da;color:var(--ink);font-family:Inter,Arial,Helvetica,sans-serif}button,a{touch-action:manipulation}button{font:inherit;cursor:pointer}a{color:inherit;text-underline-offset:3px}button:focus-visible,a:focus-visible{outline:3px solid #db8b36;outline-offset:4px}header{height:64px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #bac5b7;font-size:12px;letter-spacing:1px}header b{font-size:23px;letter-spacing:-1px}header span{color:var(--muted)}#viewport{width:calc(1280px * var(--scale));height:calc(720px * var(--scale));margin:24px auto}main{width:1280px;height:720px;transform:scale(var(--scale));transform-origin:top left;box-shadow:0 14px 45px #182f281c}.slide{display:none;position:relative;width:1280px;height:720px;padding:42px 58px 37px;background:var(--paper);overflow:hidden;flex-direction:column}.slide.active{display:flex}.kicker{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin:0 0 25px}.kicker span:last-child{font-weight:400;letter-spacing:1px;color:var(--muted)}h1,h2,h3,p{margin:0}h1{font-size:72px;line-height:1.04;letter-spacing:-3.5px;font-weight:650;max-width:930px}h2{font-size:46px;line-height:1.09;letter-spacing:-1.8px;max-width:1100px;font-weight:650;margin-bottom:13px}h3{font-size:22px;line-height:1.2;letter-spacing:-.4px;margin-bottom:12px}.intro{font-size:21px;line-height:1.4;color:var(--muted);max-width:1050px}.accent{color:var(--green)}.body{flex:1;min-height:0;margin-top:28px}.row{display:grid;grid-template-columns:1fr 1fr;gap:30px}.thirds{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:#e9eddf;border:1px solid var(--line);padding:23px 25px;border-radius:3px}.card p,.copy{font-size:19px;line-height:1.45;color:#43574c}.label{font-size:11px;text-transform:uppercase;font-weight:700;letter-spacing:1.6px;margin-bottom:12px;display:block;color:var(--muted)}.label.hard{color:var(--red)}.label.review{color:var(--blue)}.callout{padding:17px 21px;border-left:4px solid var(--green);background:#e9eddf;font-size:19px;line-height:1.4;margin-top:22px}.gate{border-left-color:var(--blue);background:#e5ebed}.gate b{color:var(--blue)}.hardline{border-left-color:var(--red);background:#f0e4d9}.hardline b{color:var(--red)}.source{border-top:1px solid var(--line);padding-top:12px;margin-top:auto;display:flex;justify-content:space-between;gap:16px;color:var(--muted);font-size:11px;line-height:1.35}.source a{color:var(--muted)}.source .num{font-size:14px;font-weight:700;color:var(--green)}.small{font-size:15px;line-height:1.4;color:var(--muted)}.mono,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{font-size:.88em}.big{font-size:48px;line-height:1;letter-spacing:-2px;font-weight:650}.divider{height:1px;background:var(--line);margin:20px 0}.flow{display:flex;align-items:stretch;gap:12px}.flow .node{flex:1;padding:21px 19px;border:1px solid var(--line);background:#e9eddf}.flow h3{font-size:20px}.flow p{font-size:17px;line-height:1.4;color:#43574c}.arrow{align-self:center;font-size:24px;color:var(--green)}.node.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}.node.dark p{color:#d4dece}.pill{display:inline-block;font-size:12px;padding:6px 9px;border:1px solid var(--line);border-radius:20px;margin:7px 4px 0 0;color:#43574c}.stage-no{color:var(--green);font-size:12px;font-weight:700;margin-bottom:14px}.list{display:grid;gap:16px}.item{display:grid;grid-template-columns:32px 1fr;gap:10px}.item b{font-size:20px;line-height:1.3}.item p{font-size:17px;line-height:1.4;color:#43574c;margin-top:4px}.dot{font-size:13px;width:26px;height:26px;border-radius:50%;background:var(--green);color:white;display:grid;place-items:center}.timeline{margin-top:37px;display:grid;grid-template-columns:repeat(4,1fr);gap:0}.timeline>div{border-top:3px solid var(--green);padding:19px 20px 0 0;position:relative}.timeline>div:before{content:"";position:absolute;top:-7px;left:0;width:11px;height:11px;background:var(--green);border-radius:50%}.timeline h3{font-size:20px}.timeline p{font-size:16px;line-height:1.4;color:var(--muted)}.hero-bottom{display:flex;gap:46px;align-items:end;margin-top:30px}.hero-bottom .stat{display:flex;gap:12px;align-items:center}.hero-bottom .stat p{font-size:13px;line-height:1.4;color:var(--muted)}.title .kicker{margin-bottom:37px}.title .intro{max-width:850px;margin-top:21px}.mini-table{width:100%;border-collapse:collapse;font-size:17px;line-height:1.35}.mini-table th{text-align:left;color:var(--muted);font-size:11px;letter-spacing:1.3px;text-transform:uppercase;padding:0 15px 11px}.mini-table td{border-top:1px solid var(--line);padding:14px 15px;vertical-align:top}.mini-table td:first-child{font-weight:700;padding-left:0;width:24%}.mini-table th:first-child{padding-left:0}.mini-table td code{font-size:12px;color:var(--muted);font-weight:400}.mini-table .end{width:22%}.split{display:grid;grid-template-columns:1.12fr 1fr;gap:34px}.decision{padding:18px 21px;background:var(--ink);color:var(--paper);font-size:19px;line-height:1.4;margin-top:20px}.decision b{color:var(--lime)}.path{background:var(--ink);color:var(--paper);padding:22px 25px}.path .label{color:var(--lime)}.path p{font-size:18px;line-height:1.5;color:#dae4d5}.path .rule{color:var(--lime);font-size:24px;line-height:1.4;margin:17px 0}.proof{font-size:19px;line-height:1.5;padding:20px 24px;background:#e9eddf;border:1px solid var(--line)}.proof .indent{padding-left:25px;border-left:2px solid #9baa91;margin-left:5px}.matrix{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:19px}.matrix>div{border:1px solid var(--line);padding:15px 18px}.matrix b{font-size:27px;display:block;margin-bottom:5px}.matrix span{font-size:14px;line-height:1.35;color:var(--muted)}aside.notes{display:none}footer{display:flex;align-items:center;justify-content:space-between;max-width:1280px;margin:0 auto;padding:0 24px 20px;gap:16px;font-size:12px;color:var(--muted)}.controls{display:flex;gap:7px;align-items:center}button{border:1px solid #b9c5b2;background:transparent;color:var(--ink);padding:9px 13px;border-radius:4px;font-size:12px}button:hover{background:#f4f2e9}button:disabled{opacity:.3;cursor:default}#position{font-variant-numeric:tabular-nums;min-width:48px;text-align:center}#notes-panel{display:none;max-width:1000px;margin:12px auto 30px;background:var(--paper);border:1px solid var(--line);padding:24px 30px;font-size:17px;line-height:1.6}#notes-panel.open{display:block}#notes-panel h3{font-size:16px;color:var(--green)}#notes-panel p+p{margin-top:13px}#notes-panel a{color:var(--blue)}dialog{border:1px solid var(--line);background:var(--paper);color:var(--ink);width:590px;max-width:92vw;padding:28px}dialog::backdrop{background:#182f2877}dialog h3{margin:0 0 20px}dialog ol{padding-left:26px;line-height:1.4}dialog li{padding:6px}dialog a{text-decoration:none}dialog a:hover{text-decoration:underline}dialog .close{float:right}.progress{position:fixed;bottom:0;left:0;height:3px;background:var(--green);width:10%}.nojs{padding:20px;background:#fff0c7}.merge .body{margin-top:18px}.merge .callout{font-size:17px;margin-top:15px}.merge .mini-table td{padding-top:12px;padding-bottom:12px}
+.body{margin-top:22px}.intro{font-size:20px;line-height:1.35}.card{padding:20px 23px}.card p{font-size:18px;line-height:1.4}.callout{padding:14px 18px;font-size:18px;line-height:1.35;margin-top:16px}.path{padding:18px 25px}.path .rule{margin:12px 0}.decision{padding:14px 18px;font-size:17px;line-height:1.35;margin-top:16px}.merge .mini-table td{font-size:16px;padding-top:10px;padding-bottom:10px}.source{flex-shrink:0}
+@media(max-width:700px){header{padding:0 16px;height:52px}header span{font-size:9px;max-width:220px;text-align:right}footer{padding:0 12px 18px;flex-wrap:wrap;justify-content:center}.hint{display:none}button{padding:9px}#notes-panel{margin:15px 12px;font-size:16px;padding:20px}#viewport{margin:18px auto}.desktop-only{display:none}}
+@page{size:13.333333in 7.5in;margin:0}
+@media print{html,body{margin:0;padding:0;background:var(--paper);-webkit-print-color-adjust:exact;print-color-adjust:exact}header,footer,#notes-panel,dialog,.progress,.nojs{display:none!important}#viewport{width:auto;height:auto;margin:0}main{width:auto;height:auto;transform:none;box-shadow:none}.slide,.slide.active{display:flex;width:1280px;height:720px;margin:0;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}}
+</style>
+</head>
+<body>
+<header><b>EYG<span style="color:var(--green)">.</span></b><span>AGENT → MAIN &nbsp; / &nbsp; BRANCH REVIEW &nbsp; / &nbsp; 13 NOV 2026</span></header>
+<noscript><p class="nojs">Enable JavaScript for slide navigation, or print this document to read all ten slides.</p></noscript>
+<div id="viewport"><main aria-label="Agent branch merge presentation">
+
+<section class="slide title active" id="slide-1" aria-labelledby="title-1">
+  <p class="kicker">A branch walkthrough <span>01 / The whole story</span></p>
+  <h1 id="title-1">Bringing the <span class="accent">agent</span><br>branch into main.</h1>
+  <p class="intro">From agents in chat channels to controlled execution, replayable work and explainable authorization.</p>
+  <div class="timeline">
+    <div><h3>01 · Run in the cloud</h3><p>Sessions, channel policies,<br>events, data and deployment.</p></div>
+    <div><h3>02 · Retain the work</h3><p>Bounded execution, trajectories,<br>artifacts and embedded agents.</p></div>
+    <div><h3>03 · Explain authority</h3><p>Typed queries, SQLite hosts<br>and policy proof trees.</p></div>
+    <div><h3>04 · Go native</h3><p>Zig interpreter, terminal and Git;<br>a separate compatibility track.</p></div>
+  </div>
+  <div class="hero-bottom"><div class="stat"><span class="big">89</span><p>commits after review<br>and history cleanup</p></div><div class="stat"><span class="big">4</span><p>proposed review slices<br>with explicit merge gates</p></div><p class="small">This deck separates implemented work,<br>hard problems solved, and decisions still open.</p></div>
+  <div class="source"><span>Snapshot: <a href="https://github.com/CrowdHailer/eyg-lang/compare/bc5185fe9fde3d7dcb20aaa9b77814efdf060bd7...ea23c6e118b6f6dfd652aab74f193e0130c1ab5b">main bc5185f → agent ea23c6e</a> · Review sequence proposed here; branch has not been merged.</span><span class="num">01</span></div>
+  <aside class="notes"><p>The branch joins two bodies of work: a hosted agent system and a broader roadmap of runtime, tooling, query and native implementation work. The organizing principle is the repository's existing goal: stronger guarantees through explicit constraints, particularly at the point where a program requests an effect.</p><p>The rewrite reduced 101 original commits to 89. Repeated design changes and integration repairs were folded into the relevant introductions. Cloud dependencies and a deployable checkpoint now come first. The four slices in this presentation are a proposed review and landing strategy, not four existing PRs. Read the staged history rather than attempting to review the entire diff as one feature.</p><p>All evidence is a snapshot of the reviewed branch on 13 November 2026. Existing green checks must be rerun on the eventual merge candidate. Source links use the reviewed commit wherever possible.</p></aside>
+</section>
+
+<section class="slide" id="slide-2" aria-labelledby="title-2">
+  <p class="kicker">Stage 01 / Cloud foundations <span>Conversations → sessions → policies</span></p>
+  <h2 id="title-2">Give every conversation a bounded agent<br>and an explicit policy.</h2>
+  <p class="intro">Plugins publish native input types; checked handlers choose sessions and work.</p>
+  <div class="body">
+    <div class="flow" aria-label="A native plugin value enters a checked channel handler, which chooses session work under a complete channel policy.">
+      <div class="node"><h3>Native input</h3><p>Plugin-owned value<br>Published EYG type</p></div><span class="arrow" aria-hidden="true">→</span>
+      <div class="node"><h3>Checked handler</h3><p>Select session + work<br>Bounded history + reset</p></div><span class="arrow" aria-hidden="true">→</span>
+      <div class="node"><h3>Overlay agent</h3><p>Bounded turns<br>Produces EYG programs</p></div><span class="arrow" aria-hidden="true">→</span>
+      <div class="node dark"><h3>Channel shell</h3><p>Gate each effect<br>Then execute on host</p></div>
+    </div>
+    <div class="row" style="margin-top:27px">
+      <div><span class="label">What develops</span><p class="copy">Complete policies are checked when set. Start with <code>cloud.reject_all</code> and override gates. CLI and cloud share the decision core.</p></div>
+      <div><span class="label hard">Hardest problem</span><p class="copy">Keep native message data intact while sharing sessions and work. Preserve conversation history; discard lexical bindings after each execution.</p></div>
+    </div>
+    <div class="callout gate"><b>Merge review:</b> trace native input → checked handler → session work → effect gate; check reset and inherited authority.</div>
+  </div>
+  <div class="source"><span>Read: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/cloud/README.md">cloud model and effects</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/cloud/channel_plugins.md">channel plugin contract</a></span><span class="num">02</span></div>
+  <aside class="notes"><p>A plugin preserves its native message value and publishes an EYG input type. Each configured channel supplies a pure handle function checked against that type. Its work requests select sessions, observations, invocations, posts and triggers. Conversation history is retained; program lexical scope is not. The model's ordinary reply is not automatically posted: the agent must run an EYG program that performs Post. This makes speaking to the channel an explicit, controllable effect too.</p><p>A channel shell is a complete record of effect gates, type checked whenever it is set. Missing fields are configuration errors. Start from cloud.reject_all, then override selected gates. A gate can pass or modify a request, mock a result, or explicitly reject the effect. Workspace configuration is trusted EYG and is reevaluated for turns, triggers and direct invocations. This gives live configuration changes a well-defined entry point.</p><p>The review should follow reset and queue behavior through asynchronous execution, then verify that direct code blocks, triggers and delegates cannot bypass the shell. The example chat uses howdy and Lustre live components, with browser checks for composition, threads and reactions. Session tests cover selected sessions, resets, policy-controlled posts and agent imports.</p></aside>
+</section>
+
+<section class="slide" id="slide-3" aria-labelledby="title-3">
+  <p class="kicker">Stage 01 / A useful hosted workspace <span>Capabilities + durable state</span></p>
+  <h2 id="title-3">Expand what agents can do<br>without losing the enforcement point.</h2>
+  <p class="intro">Connections, persistent workspace resources and a control surface grow around the same shell.</p>
+  <div class="body">
+    <div class="thirds">
+      <div class="card"><span class="stage-no">INPUTS</span><h3>React to the world</h3><p>GitHub, feeds, Bluesky, HN and Lobsters; webhooks and Sentry; triggers and scheduled messages.</p></div>
+      <div class="card"><span class="stage-no">RESOURCES</span><h3>Keep useful work</h3><p>Workspace secrets, session-backed imports, skills and file-change tracking, channel-owned artifacts.</p></div>
+      <div class="card"><span class="stage-no">OPERATIONS</span><h3>Inspect and configure</h3><p>A policy-gated API and web shell, with OpenTelemetry spans around programs and effects.</p></div>
+    </div>
+    <div class="callout hardline"><b>Hardest problem:</b> keep active policy and persisted policy consistent. A failed user-policy write must leave the in-memory registry unchanged.</div>
+    <div class="callout gate"><b>Merge review:</b> inspect state transitions, channel ownership and secret handling. Shared artifact validation now has one implementation in the hub.</div>
+  </div>
+  <div class="source"><span>Evidence: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/cloud/test/cloud/web_test.gleam">failed-policy-write regression</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/cloud/trigger_events.md">trigger events</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/cloud/tracing.md">tracing</a></span><span class="num">03</span></div>
+  <aside class="notes"><p>Script and agent imports are introduced only after session filesystems. They read through the session ReadFile gate, including nested, deferred, redirected and mocked imports; a trusted configuration root never grants scripts host filesystem access.</p><p>This stage turns a chat demo into a workspace that can respond to events and keep useful state. The breadth of integrations is less important than the repeated contract: each connection converts external activity into channel events, and the resulting program still runs through its channel policy.</p><p>A concrete bug exposed the importance of transactional thinking. Updating a user's shell could change the in-memory registry even when writing the user configuration failed. The corrected order persists successfully before activating the new shell. The regression checks that the old policy remains active after a failed write.</p><p>Artifact validation was consolidated with the hub instead of maintaining a cloud copy. The original history also changed server implementation later; the rewritten history introduces the final server dependency with the first artifact server. This makes review about capability growth rather than temporary infrastructure choices.</p><p>For merge review, concentrate on ownership, path boundaries, the lifecycle of secrets, and the relationship between a logged policy decision and the operation actually performed. A shared gate is only as effective as each host adapter's enforcement.</p></aside>
+</section>
+
+<section class="slide" id="slide-4" aria-labelledby="title-4">
+  <p class="kicker">Stage 01 / The dependency knot <span>Queries arrive before the cloud checkpoint</span></p>
+  <h2 id="title-4">Cloud databases pull part of<br>the language roadmap forward.</h2>
+  <p class="intro">Move the minimum complete query foundation ahead of deployment; add later host integrations in their own stages.</p>
+  <div class="body split">
+    <div>
+      <div class="path"><span class="label">Dependency order in the rewritten branch</span><p>Typed query tables + indexed fixed-point evaluation</p><div class="rule">↓</div><p>SQLite planner + shared effect interfaces</p><div class="rule">↓</div><p>Workspace databases + policy-gated dataclips</p></div>
+      <p class="small" style="margin-top:13px">The cloud handles SQLite effects directly.<br>It does not depend on the later local CLI host implementation.</p>
+    </div>
+    <div>
+      <span class="label hard">Hardest problem / preserve set semantics</span><h3>An empty record is still one fact.</h3><p class="copy">A zero-field relation needs a unique unit column in SQLite. Otherwise repeated derivation can insert duplicates and prevent a fixed point.</p>
+      <div class="callout"><code>"$unit" INTEGER UNIQUE DEFAULT 0</code><p class="small" style="margin-top:9px">Seed and deduplicate the same unit value.<br>Planner and cloud regressions cover this case.</p></div>
+      <div class="callout gate"><b>Merge review:</b> check table semantics, SQL seeding and rule scheduling together.</div>
+    </div>
+  </div>
+  <div class="source"><span>Read: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/gleam_compiler/test/eyg/compile/sql_test.gleam">SQL planner regressions</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/cloud/test/cloud/database_test.gleam">cloud database tests</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/cloud/dataclips.md">dataclips</a></span><span class="num">04</span></div>
+  <aside class="notes"><p>Cloud databases were originally near the end of the combined branch, but a coherent cloud checkpoint needs them. They rely on typed tables in the IR, parser, analysis and evaluator, plus the compiler's SQLite planner and shared SQLite effect definitions. Those are genuine dependencies, so they move forward with the cloud feature.</p><p>The rewrite introduces the final indexed evaluator and the planner for evaluated query tables directly. It avoids asking reviewers to approve an earlier SQL compilation design and then its replacement. Query awareness is added to later serializers, native tool adapters and compiled execution when those components are introduced.</p><p>The zero-column relation is the useful edge case: the empty record is a value, so a set containing it has one member. SQL needs a representation that preserves that identity. A unique unit column and consistent seeding restore set behavior; this fixes a particular duplicate-driven nontermination case, not every possible recursive query termination problem.</p><p>Review this as one semantic boundary spanning language values, the SQL representation and the cloud scheduler. Check that dataclip authority is explicit and that local host support is not accidentally required by the early cloud checkpoint.</p></aside>
+</section>
+
+<section class="slide" id="slide-5" aria-labelledby="title-5">
+  <p class="kicker">Stage 01 / A deployable checkpoint <span>12a4047 · Commit 38 of 89</span></p>
+  <h2 id="title-5">Prove the cloud can stand on its own.</h2>
+  <p class="intro">The first review slice ends with tests, an exported BEAM image and a verified private Railway deployment.</p>
+  <div class="body row">
+    <div>
+      <span class="label">Evidence recorded during branch review</span>
+      <div class="matrix"><div><b>157</b><span>cloud tests after the<br>native-input policy review</span></div><div><b>65 / 65</b><span>jobs in the prior CI run;<br>rerun after publishing</span></div><div><b>288 / 288</b><span>EYG tests on the rewrite,<br>run from the repository root</span></div><div><b>Healthy</b><span>pathfinder / cloud deployment;<br>Docker boot and HTTP checks</span></div></div>
+      <p class="small" style="margin-top:17px">Verification also exposed CI-only gaps: missing Rebar3, Hex rate limits, stale guide indexing and binary files in the guide loader.</p>
+    </div>
+    <div>
+      <span class="label hard">Hardest problem / reproducible integration</span><p class="copy">Local tools and caches hid missing CI setup. Dependencies, manifests, generated runtime assets and browser workflows had to agree at the same revision.</p>
+      <div class="callout gate"><b>Rollout gate:</b> keep the service private until real authentication fronts it. The example login accepts a name; the first user becomes admin.</div>
+      <p class="small" style="margin-top:16px">Manual GitHub deployment needs a project-scoped <code>RAILWAY_TOKEN</code> in environment <code>pathfinder</code>. CLI deployment was exercised; the workflow deploy job was skipped on push.</p>
+    </div>
+  </div>
+  <div class="source"><span>Evidence snapshot, 13 Nov 2026: <a href="https://github.com/CrowdHailer/eyg-lang/actions/runs/43337835211">65-job CI run</a> · <a href="https://github.com/CrowdHailer/eyg-lang/actions/runs/43337835332">cloud verification</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/cloud/deploy/README.md">deployment contract</a></span><span class="num">05</span></div>
+  <aside class="notes"><p>The checkpoint at 12a4047 is deliberately before the remaining runtime and agent features. It demonstrates that the cloud package can be built, tested and deployed independently. Docker uses the repository root as its context because the cloud has sibling package dependencies. Persistent configuration, files, secrets and databases belong under the mounted /data volume.</p><p>Keep current and historical evidence separate: the current rewrite passes 157 cloud, 198 CLI and 288 EYG tests. Its browser checks cover native chat interactions and all seven generated trigger programs. The prior branch passed all 65 main-workflow jobs and had a successful Railway deployment via the authenticated CLI; those remote checks must be rerun on this rewrite. The cloud workflow's verify job passed, while its manual deploy job was skipped on the push event. Confirm the GitHub secret and exercise workflow deployment before relying on that path operationally.</p><p>Final deployment record: <a href="https://railway.com/project/14407b70-834a-4981-a9d3-2f6312904a9c/service/469224e4-693e-4d9e-8706-9298b7567d94?id=a749136c-5a32-43b2-be99-3bd0c56ad266">pathfinder / cloud, deployment a749136c</a>. It was private when verified. These are recorded outcomes, not a claim that live status has been rechecked while preparing this deck.</p><p>Integration fixes included an explicit Rebar3 install, bounded retries for Hex API rate limiting, guide catalogue updates, and filtering the website guide loader to Markdown so it did not decode recording MP4s as text. Public authentication is a rollout prerequisite; it need not prevent a clearly documented private development merge.</p></aside>
+</section>
+
+<section class="slide" id="slide-6" aria-labelledby="title-6">
+  <p class="kicker">Stage 02 / Runtime semantics <span>Pause · resume · retain · observe</span></p>
+  <h2 id="title-6">Make execution interruptible<br>without changing what programs mean.</h2>
+  <p class="intro">Bounded runs, retained shell cells, compiled execution and tracing must share one semantic model.</p>
+  <div class="body">
+    <div class="flow"><div class="node"><h3>Typed cell</h3><p>Keep lexical binding order<br>Retain session state</p></div><span class="arrow" aria-hidden="true">→</span><div class="node dark"><h3>Execution slice</h3><p>Reduction budget<br>Resume continuation</p></div><span class="arrow" aria-hidden="true">→</span><div class="node"><h3>Effect boundary</h3><p>Handlers and masks<br>Record + trace outcome</p></div><span class="arrow" aria-hidden="true">↺</span></div>
+    <div class="row" style="margin-top:25px"><div><span class="label">What develops</span><p class="copy">Recorded effects, OTLP export, function profiles, shallow handlers, scoped masks and a retained typed shell exposed through a host API.</p></div><div><span class="label hard">Hardest problem</span><p class="copy">Queries and profile returns must survive suspension. Compiled query callbacks must enter the trampoline; standalone modules need the same query builtins.</p></div></div>
+    <div class="callout gate"><b>Merge review:</b> follow one suspended effect through interpreter and compiler. Check callback resumption, handler scope and replay order against the spec fixtures.</div>
+  </div>
+  <div class="source"><span>Read: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/compiled_modules.md">compiled modules</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/shallow_effect_handlers.md">shallow handlers</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/tracing.md">tracing</a></span><span class="num">06</span></div>
+  <aside class="notes"><p>The branch's second major stage is execution infrastructure. A bounded interpreter returns control after a finite reduction slice and can resume later. Retained shells carry typed cells and state forward. Shallow handlers and masks add scope-sensitive behavior. Tracing and recorded effects must follow the same lifecycle, including cancellation and suspension.</p><p>The integration difficulty is that query callbacks and profiling add their own return contexts. They cannot bypass the continuation machinery. The compiled path therefore invokes query callbacks through its trampoline, and query builtins are included in both ordinary program output and ES-module output. A regression exercises an exported compiled query; the generated runtime was refreshed when the host API was introduced.</p><p>Validation from the branch review includes 49 compiler tests plus 138 spec fixtures and 97 JavaScript interpreter tests. Soundness search later generates typed programs and exposed duplicate record-label validation needs. These checks support semantic review, but do not replace reading the handler and continuation transitions.</p><p>Related CLI improvements preserve subsequent stdin bytes, edit prompts by grapheme, stop recorded turns safely and cache verified package responses. They fit this stage because they make retained execution usable without damaging its inputs or history.</p></aside>
+</section>
+
+<section class="slide" id="slide-7" aria-labelledby="title-7">
+  <p class="kicker">Stage 02 / Portable work and hosts <span>From a live session to inspectable evidence</span></p>
+  <h2 id="title-7">Carry the work between tools<br>without carrying hidden authority.</h2>
+  <p class="intro">Trajectories, sandbox acquisition and host adapters extend the execution model beyond one chat UI.</p>
+  <div class="body">
+    <div class="thirds"><div class="card"><span class="stage-no">RECORD</span><h3>Replayable sessions</h3><p>Pinned CLI trajectories, retained browser chats, verified replay and secret redaction.</p></div><div class="card"><span class="stage-no">ISOLATE</span><h3>Inspect and evaluate</h3><p>Sealed acquisition, isolated forks, offline evaluations and versioned artifact workspaces.</p></div><div class="card"><span class="stage-no">EMBED</span><h3>Reuse the boundary</h3><p>Portable model transports, checked agents, EYG scripts, Pi / OpenCode policies and host examples.</p></div></div>
+    <div class="callout hardline"><b>Hardest problem:</b> make archives portable and verifiable while preserving secret redaction, captured query values and artifact ownership.</div>
+    <div class="callout gate"><b>Merge review:</b> follow acquire → run → export → replay across a real host. Check that native tools use the policy too; a second unrestricted tool path defeats the boundary.</div>
+  </div>
+  <div class="source"><span>Read: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/trajectories.md">trajectories</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/sandbox.md">sandbox</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/opencode_dispatcher.md">OpenCode dispatcher</a></span><span class="num">07</span></div>
+  <aside class="notes"><p>Portable trajectories contain enough pinned program and effect history to inspect and verify a session. Secret redaction and verified acquisition are part of the format's usefulness, not optional presentation features. The shared portable SHA-256 implementation was introduced with the first trajectory work so later provider transports reuse it.</p><p>Artifact workspaces add isolated previews, reusable typed viewers, revision history, import/export and sharing. Host integrations include TodoMVC, Hashi and nginx, Raspberry Pi boot support, and terminal components. These examples exercise the host API rather than each inventing an independent execution model.</p><p>Pi and OpenCode bring a specific authority problem: policy on the EYG tool is insufficient if the surrounding harness still offers equivalent unrestricted native tools. Shared native tool policies and the OpenCode dispatcher make this an integration question that can be tested through the actual upstream path.</p><p>Branch validation included real browser artifact workflows, offline agent evaluations and an upstream OpenCode dispatcher run. Cloud-wide trajectory recording, shared policy libraries and offline evaluation of recorded cloud events remain integration opportunities described in the roadmap note; do not infer that every cloud turn is already exported as a trajectory.</p></aside>
+</section>
+
+<section class="slide" id="slide-8" aria-labelledby="title-8">
+  <p class="kicker">Stage 03 / Queries become authorization <span>Reuse the core introduced for cloud data</span></p>
+  <h2 id="title-8">Explain why an operation is allowed.</h2>
+  <p class="intro">Local SQLite hosts, executable policy examples and proof trees build on the earlier typed query foundation.</p>
+  <div class="body row">
+    <div><span class="label">Illustrative explanation shape</span><div class="proof"><b>Allow submitter to act on a repository</b><div class="indent" style="margin-top:15px">Trusted identity mapping<div class="indent">Submitter belongs to the required channel</div>Policy rule connects membership to permission</div></div><p class="small" style="margin-top:14px">A conceptual reading of the channel-policy example,<br>not a literal proof-tree serialization.</p><div class="pill">Roles + delegation</div><div class="pill">SQLite movie demo</div><div class="pill">Editor highlighting</div></div>
+    <div><span class="label hard">Hardest problem / trust the inputs</span><h3>A derivation explains a result.<br>The host must establish authority.</h3><p class="copy">Typed facts and successful guards are useful evidence. They do not authenticate a caller or prove where facts came from.</p><div class="callout gate"><b>Merge review:</b> verify trusted fact construction, tenant / resource scope and the effect-time check. The channel integration is a mocked prototype.</div></div>
+  </div>
+  <div class="source"><span>Read: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/authorization.md">authorization tutorial</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/guides/query_proofs.md">proof trees</a> · <a href="https://github.com/CrowdHailer/eyg-lang/tree/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/channel_policy">channel-policy prototype</a></span><span class="num">08</span></div>
+  <aside class="notes"><p>This stage should not be presented as a second query engine. The language and planner support already arrived before the cloud checkpoint. Later commits implement local SQLite effects, add a large movie-data example, document query model trade-offs, cover essay examples and integrate highlighting. Authorization examples then use these ordinary typed query values to express roles, delegation and agent permissions.</p><p>Proof trees return facts, derivations and successful guards behind answers. They are explanations of evaluation, not cryptographic attestations of fact origin. The host must own trusted identity and lifecycle facts, apply tenant and resource boundaries, and enforce the decision when performing an effect.</p><p>The channel-policy package demonstrates Slack-channel-based page access and GitHub PR authorization with mocked integrations. The cloud already has Slack and GitHub connections, so connecting the prototype to live channel triggers is a plausible next step, but it is not completed merely by having both pieces in this branch.</p><p>Review policy fixtures and failure cases alongside the documentation. Keep claims about query purity separate from claims about computational cost or termination: a well-typed pure recursive query can still be expensive or non-terminating.</p></aside>
+</section>
+
+<section class="slide" id="slide-9" aria-labelledby="title-9">
+  <p class="kicker">Stage 04 / Native implementation <span>Independent scope · explicit compatibility</span></p>
+  <h2 id="title-9">Treat the Zig runtime as<br>its own merge decision.</h2>
+  <p class="intro">Native evaluation, structural terminal UI, Git and an Android host arrive with pinned-oracle evidence.</p>
+  <div class="body row">
+    <div><span class="label">What develops</span><div class="list"><div class="item"><span class="dot">1</span><div><b>Native interpreter + inference</b><p>Parser, effects, continuations and Unicode operations in Zig.</p></div></div><div class="item"><span class="dot">2</span><div><b>Terminal and Git runtime</b><p>Differential fixtures, event-by-event UI checks and measured performance reports.</p></div></div><div class="item"><span class="dot">3</span><div><b>Android + implementation material</b><p>JNI / Expo host, book, source listings and an oracle-testing talk.</p></div></div></div></div>
+    <div><span class="label hard">Hardest problem / define parity precisely</span><p class="copy">The oracle is pinned to <code>be502aa</code> on <code>next-tui</code>. This runtime does <b>not</b> support newer root-spec Datalog queries.</p><div class="callout hardline"><b>Evidence limit:</b> this branch review reran native unit tests and a release smoke test. It did not rerun the full differential campaigns or assemble an Android APK.</div><div class="callout gate"><b>Merge decision:</b> accept an explicitly experimental package, or land it separately after refreshed parity and device evidence.</div></div>
+  </div>
+  <div class="source"><span>Read: <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/zig_runtime/README.md">runtime scope and oracle</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/zig_runtime/android/README.md">Android build blocker</a> · <a href="https://github.com/CrowdHailer/eyg-lang/tree/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/zig_runtime/reports">saved reports</a></span><span class="num">09</span></div>
+  <aside class="notes"><p>The native package is a large independent addition, not a prerequisite for the cloud or the JavaScript/BEAM toolchain. It targets Zig 0.14.1 and compares against a pinned Gleam implementation on next-tui. Its own fixtures deliberately match that oracle rather than claiming all current root-spec features.</p><p>The hard part of native optimization is making a correctness and latency claim refer to the same executable and workload. The package records seeds and reduced counterexamples, compares terminal buffers after individual events, and separates dispatch/frame timings from physical key latency. The documented Escape ambiguity timer alone rules out a universal sub-10 ms key latency claim.</p><p>The prior branch review built and tested the native runtime and checked a simple release evaluation. Full differential campaigns and benchmark reproduction were not repeated as part of that review. Existing reports should be treated as versioned evidence to inspect and reproduce for any release claim.</p><p>The Android documentation records successful native cross-compilation but an APK assembly blocker fetching the React Native Android artifact from repo.reactnative.dev. No APK or device launch is claimed. Decide whether this package lands as explicitly experimental or moves to a separately gated PR; either choice should preserve its documented compatibility limits.</p></aside>
+</section>
+
+<section class="slide merge" id="slide-10" aria-labelledby="title-10">
+  <p class="kicker">The merge plan <span>Four slices · one dependency order</span></p>
+  <h2 id="title-10">A concrete path into main.</h2>
+  <p class="intro">Use these as sequential PR boundaries, or as four approval gates within one PR.</p>
+  <div class="body">
+    <table class="mini-table"><thead><tr><th>Review slice</th><th>Acceptance focus</th><th class="end">End checkpoint</th></tr></thead><tbody>
+      <tr><td>A · Cloud + query core</td><td>Session / policy transitions, SQLite semantics,<br>persistent image and private deployment.</td><td><a href="https://github.com/CrowdHailer/eyg-lang/commit/12a4047">12a4047</a><br><code>cloud deployment</code></td></tr>
+      <tr><td>B · Execution + tooling</td><td>Continuation parity, replay / redaction, actual host<br>policy enforcement and browser workflows.</td><td><a href="https://github.com/CrowdHailer/eyg-lang/commit/2e9560f">2e9560f</a><br><code>integration / query design</code></td></tr>
+      <tr><td>C · Policy applications</td><td>Local SQLite behavior, trusted facts and proof claims;<br>keep mocked examples clearly labeled.</td><td><a href="https://github.com/CrowdHailer/eyg-lang/commit/653a2d8">653a2d8</a><br><code>channel policies + proofs</code></td></tr>
+      <tr><td>D · Native track</td><td>Decide experimental scope or a separate PR;<br>document oracle gaps and Android evidence.</td><td><a href="https://github.com/CrowdHailer/eyg-lang/commit/ea23c6e">ea23c6e</a><br><code>native work + roadmap</code></td></tr>
+    </tbody></table>
+    <div class="callout gate"><b>Before merge:</b> compare with current main, resolve any drift, and run required checks on the actual candidate. Assign reviewers for runtime semantics, cloud state and the native track.</div>
+    <div class="decision"><b>Before public rollout:</b> provide authentication, exercise the GitHub deployment path with its scoped token, and verify persistence / recovery for the deployed workspace.</div>
+  </div>
+  <div class="source"><span>Recommended landing sequence; no merge or public rollout performed. <a href="https://github.com/CrowdHailer/eyg-lang/compare/bc5185fe9fde3d7dcb20aaa9b77814efdf060bd7...ea23c6e118b6f6dfd652aab74f193e0130c1ab5b">Reviewed branch</a> · <a href="https://github.com/CrowdHailer/eyg-lang/blob/ea23c6e118b6f6dfd652aab74f193e0130c1ab5b/packages/cloud/deploy/README.md">deployment requirements</a></span><span class="num">10</span></div>
+  <aside class="notes"><p>These boundaries are contiguous checkpoints in the existing rewritten history. Slice A ends at the cloud deployment commit. Slice B adds recording, bounded execution, trajectories, sandboxes, compiled and embedded hosts, native tool policies, broader CI and soundness work, ending with the integration/query design document. Slice C adds authorization applications, local SQLite hosts, examples, highlighting and proof trees. Slice D contains the independent Zig work, its talk/measurements and the final roadmap note.</p><p>Do not extract cloud databases without their typed query and SQLite dependencies, or replay later runtime changes without their query adaptations. If the branch is split, preserve that dependency order and verify each chosen base. If it stays one PR, use the same checkpoints to make reviewer responsibility concrete.</p><p>The previous green CI run is historical evidence. Local review suites pass on this rewrite, and main still points to bc5185f at verification. Publish the rewritten candidate and run the required CI checks before landing. The historical roadmap note still describes the pre-rewrite provenance and calls queries independent; use it for future integration ideas, and reconcile that wording if it is used as the final merge narrative.</p><p>Distinguish merge blockers from production launch prerequisites. Private cloud development can land with its documented login limitations. Public access requires authentication in front of the example login, the correct public origin, and operational persistence/recovery checks. Verify the GitHub environment's project-scoped Railway token rather than assuming it exists from the successful local CLI deployment. Choose whether the native package's compatibility gaps are acceptable for an experimental merge before approving its slice.</p></aside>
+</section>
+</main></div>
+<footer><span class="hint">← → navigate &nbsp; · &nbsp; N notes &nbsp; · &nbsp; C contents</span><div class="controls"><button id="previous" aria-label="Previous slide">←</button><span id="position" aria-live="polite">1 / 10</span><button id="next" aria-label="Next slide">→</button><button id="contents">Contents</button><button id="notes-toggle" aria-expanded="false" aria-controls="notes-panel">Notes</button><button id="print">Print / PDF</button><button id="fullscreen" class="desktop-only">Fullscreen</button></div></footer>
+<section id="notes-panel" aria-label="Speaker notes"></section>
+<dialog id="contents-dialog" aria-labelledby="contents-title"><button class="close" aria-label="Close contents">Close</button><h3 id="contents-title">The ten-slide walkthrough</h3><ol id="contents-list"></ol></dialog>
+<div class="progress" aria-hidden="true"></div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const panel = document.querySelector('#notes-panel');
+  const toggle = document.querySelector('#notes-toggle');
+  const dialog = document.querySelector('#contents-dialog');
+  let current = 0;
+  function titleOf(slide) {
+    const title = slide.querySelector('h1,h2').cloneNode(true);
+    title.querySelectorAll('br').forEach(br => br.replaceWith(' '));
+    return title.textContent.replace(/\s+/g, ' ').trim();
+  }
+  function resize() {
+    const scale = Math.max(.2, Math.min((innerWidth - 32) / 1280, (innerHeight - 158) / 720, 1.3));
+    document.documentElement.style.setProperty('--scale', scale);
+  }
+  function show(index, updateHash = true) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === current);
+      slide.setAttribute('aria-hidden', String(i !== current));
+    });
+    document.querySelector('#position').textContent = `${current + 1} / ${slides.length}`;
+    document.querySelector('#previous').disabled = current === 0;
+    document.querySelector('#next').disabled = current === slides.length - 1;
+    document.querySelector('.progress').style.width = `${(current + 1) / slides.length * 100}%`;
+    panel.innerHTML = `<h3>Speaker notes · ${current + 1} / ${slides.length}</h3>` + slides[current].querySelector('.notes').innerHTML;
+    document.title = `EYG · ${current + 1}/10 · ${titleOf(slides[current])}`;
+    if (updateHash) history.replaceState(null, '', `#slide-${current + 1}`);
+  }
+  function fromHash() {
+    const match = location.hash.match(/^#slide-(\d+)$/);
+    show(match ? Number(match[1]) - 1 : 0, false);
+  }
+  function notes() {
+    const open = panel.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) panel.scrollIntoView({block:'nearest', behavior:'smooth'});
+  }
+  slides.forEach((slide, i) => {
+    const li = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = `#slide-${i + 1}`;
+    link.textContent = titleOf(slide);
+    link.addEventListener('click', event => {event.preventDefault();show(i);dialog.close();});
+    li.append(link);document.querySelector('#contents-list').append(li);
+  });
+  document.querySelector('#previous').onclick = () => show(current - 1);
+  document.querySelector('#next').onclick = () => show(current + 1);
+  document.querySelector('#contents').onclick = () => dialog.showModal();
+  dialog.querySelector('.close').onclick = () => dialog.close();
+  toggle.onclick = notes;
+  document.querySelector('#print').onclick = () => print();
+  document.querySelector('#fullscreen').onclick = async () => {
+    try {if (document.fullscreenElement) await document.exitFullscreen();else await document.documentElement.requestFullscreen();} catch (_) { /* Fullscreen may be unavailable in embedded viewers. */ }
+  };
+  document.addEventListener('keydown', event => {
+    if (dialog.open || event.altKey || event.ctrlKey || event.metaKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+    if (event.key === 'ArrowRight' || event.key === 'PageDown') {event.preventDefault();show(current + 1);}
+    if (event.key === 'ArrowLeft' || event.key === 'PageUp') {event.preventDefault();show(current - 1);}
+    if (event.key === 'Home') {event.preventDefault();show(0);}
+    if (event.key === 'End') {event.preventDefault();show(slides.length - 1);}
+    if (event.key.toLowerCase() === 'n') notes();
+    if (event.key.toLowerCase() === 'c') dialog.showModal();
+  });
+  addEventListener('resize', resize);addEventListener('hashchange', fromHash);
+  fromHash();resize();
+})();
+</script>
+</body>
+</html>
