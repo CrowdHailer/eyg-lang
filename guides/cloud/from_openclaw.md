@@ -18,7 +18,7 @@ Read the [cloud README](../../packages/cloud/README.md) and run the [example wor
 | --- | --- |
 | Gateway | A cloud process running one workspace |
 | Agent, its workspace and `agentDir` | A workspace. A channel can set its own `llm` and `readme` to act as a different agent. Agents that must not share files or secrets are separate workspaces |
-| Channel plugin and account (`channels.slack`) | A [channel plugin](./channel_plugins.md), configured by environment variables such as `SLACK_BOT_TOKEN` |
+| Channel plugin and account (`channels.slack`) | A [channel plugin](./channel_plugins.md), configured in `connections` in `workspace.eyg` |
 | `bindings` | The workspace's `channel` function, which matches on `{platform, id, name}` |
 | Session key, `dmScope`, `groupScope` | One session per conversation: each channel, DM and thread has its own. DMs are not merged into a main session |
 | `visibleReplies: "message_tool"`, `message(action=send)` | The `Post` effect, agents never reply automatically |

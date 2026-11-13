@@ -1,0 +1,14 @@
+{
+  "action": "closed",
+  "pull_request": {
+    "number": 413,
+    "title": "Allow trailing commas in record updates",
+    "body": "Fixes #412",
+    "merged": true,
+    "html_url": "https://github.com/CrowdHailer/eyg-lang/pull/413",
+    "head": {"ref": "trailing-commas"},
+    "base": {"ref": "main"}
+  },
+  "repository": {"full_name": "CrowdHailer/eyg-lang", "html_url": "https://github.com/CrowdHailer/eyg-lang"},
+  "sender": {"login": "octocat"}
+}

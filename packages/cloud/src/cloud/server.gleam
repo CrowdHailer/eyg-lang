@@ -10,8 +10,11 @@
 //// so scripts in a bundle run in an opaque origin without network access.
 
 import cloud/artifacts
+import cloud/connections/github
+import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/process.{type Subject}
+import gleam/http/request
 import gleam/http/response.{type Response}
 import gleam/int
 import gleam/list
@@ -23,14 +26,24 @@ import howdy
 import howdy/content.{type Content}
 import howdy/controller.{type Context as Request}
 
-pub fn start(port: Int, store: Subject(artifacts.Message)) {
-  app(store)
+pub type Context {
+  Context(
+    artifacts: Subject(artifacts.Message),
+    webhook: fn(github.Delivery) -> Result(Nil, String),
+  )
+}
+
+const max_body = 26_214_400
+
+pub fn start(port: Int, context: Context) {
+  app(context)
   |> howdy.bind(to: "0.0.0.0")
   |> howdy.listening(on: port)
   |> howdy.start
 }
 
-pub fn app(store: Subject(artifacts.Message)) -> howdy.App {
+pub fn app(context: Context) -> howdy.App {
+  let store = context.artifacts
   let routes =
     controller.new("/")
     |> controller.get("/", fn(_) { index(store) })
@@ -47,6 +60,9 @@ pub fn app(store: Subject(artifacts.Message)) -> howdy.App {
     })
     |> controller.get("/artifacts/:name", fn(ctx) {
       serve(store, param(ctx, "name"), None, "")
+    })
+    |> controller.post("/connections/:name/webhook", fn(ctx) {
+      webhook(ctx, param(ctx, "name"), context)
     })
     |> controller.build
   howdy.new() |> howdy.controller(routes)
@@ -125,4 +141,31 @@ fn html(body) -> Response(Content) {
 fn text(status, body) -> Response(Content) {
   response.new(status)
   |> response.set_body(content.Text(body))
+}
+
+fn webhook(ctx: Request, name: String, context: Context) {
+  let header = fn(key) {
+    request.get_header(ctx.request, key) |> result.unwrap("")
+  }
+  case controller.read_body(ctx, limit: max_body) {
+    Error(_) -> text(413, "body too large")
+    Ok(body) ->
+      case bit_array.to_string(body) {
+        Error(Nil) -> text(400, "body is not utf8")
+        Ok(body) -> {
+          let delivery =
+            github.Delivery(
+              connection: name,
+              kind: header("x-github-event"),
+              delivery: header("x-github-delivery"),
+              signature: header("x-hub-signature-256"),
+              body:,
+            )
+          case context.webhook(delivery) {
+            Ok(Nil) -> text(202, "accepted")
+            Error(reason) -> text(400, reason)
+          }
+        }
+      }
+  }
 }

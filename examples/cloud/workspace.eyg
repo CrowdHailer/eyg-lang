@@ -52,6 +52,120 @@ let summarise_links = {
   }
 }
 
+// GitHub events go to #dev. GitHub is not a chat, nothing posted on GitHub runs code,
+// its events only reach these triggers.
+let github_triggers = [
+  {
+    name: "triage-issues",
+    pattern: triggers.issue_opened,
+    script: match {
+      GitHubIssue(issue) -> {
+        let task = !string_append(
+          "A GitHub issue was opened. Post one message: the issue number, title and url, a one line summary and a suggested label. Issue: ",
+          !string_append(issue.title, !string_append(" ", !string_append(issue.url, !string_append(" ", issue.body))))
+        )
+        match perform Delegate(task) {
+          Ok(_) -> { {} }
+          Error(_) -> { post(["New issue: ", issue.url]) }
+        }
+      }
+      | (_) -> { {} }
+    }
+  },
+  {
+    name: "merged",
+    pattern: triggers.pull_request_merged,
+    script: match {
+      GitHubPullRequest(pull) -> { post(["🎉 Merged: ", pull.title, " by ", pull.actor, " ", pull.url]) }
+      | (_) -> { {} }
+    }
+  },
+  {
+    name: "stars",
+    pattern: match { GitHubStar(_) -> { True({}) } | (_) -> { False({}) } },
+    script: match {
+      GitHubStar(star) -> { post(["⭐ ", star.actor, " starred ", star.repository]) }
+      | (_) -> { {} }
+    }
+  },
+  {
+    name: "ci-failed",
+    pattern: match {
+      GitHubWorkflowRun(run) -> {
+        match !equal(run.conclusion, "failure") {
+          True(_) -> { !equal(run.branch, "main") }
+          False(_) -> { False({}) }
+        }
+      }
+      | (_) -> { False({}) }
+    },
+    script: match {
+      GitHubWorkflowRun(run) -> { post(["❌ ", run.name, " failed on main ", run.url]) }
+      | (_) -> { {} }
+    }
+  }
+]
+
+// Stories about the languages we use go to #news.
+let news_triggers = [
+  {
+    name: "gleam-news",
+    pattern: (event) -> {
+      match triggers.title_contains("gleam")(event) {
+        True(_) -> { True({}) }
+        False(_) -> { triggers.title_contains("erlang")(event) }
+      }
+    },
+    script: match {
+      FeedItem(item) -> { post(["📰 ", item.title, " ", item.link]) }
+      HackerNewsStory(story) -> { post(["📰 ", story.title, " ", story.link]) }
+      LobstersStory(story) -> { post(["📰 ", story.title, " ", story.link]) }
+      | (_) -> { {} }
+    }
+  }
+]
+
+// When Gleam posts on Bluesky, say how many of its posts are in the log.
+// The script reads the connection's event log with the Events effect.
+let social_triggers = [
+  {
+    name: "gleam-posts",
+    pattern: match {
+      BskyPost(post) -> { !equal(post.account, "gleam.run") }
+      | (_) -> { False({}) }
+    },
+    script: match {
+      BskyPost(bsky) -> {
+        let seen = match perform Events("bsky") {
+          Ok(events) -> {
+            !list_fold(events, 0, (event, count) -> {
+              match event {
+                BskyPost(other) -> {
+                  match !equal(other.account, bsky.account) {
+                    True(_) -> { !int_add(count, 1) }
+                    False(_) -> { count }
+                  }
+                }
+                | (_) -> { count }
+              }
+            })
+          }
+          Error(_) -> { 0 }
+        }
+        post(["🦋 @gleam.run posted, ", !int_to_string(seen), " of their posts are in the log: ", bsky.url])
+      }
+      | (_) -> { {} }
+    }
+  }
+]
+
+// Webhooks are accepted when a secret is saved, the repository is also polled every minute.
+let repositories = ["CrowdHailer/eyg-lang"]
+let github = match perform Secret("GITHUB_WEBHOOK_SECRET") {
+  Ok(secret) -> { GitHub({repositories, secret, every: 60}) }
+  Error(_) -> { GitHub({repositories, every: 60}) }
+}
+
 {
   llm: {
     provider: Ollama({origin: "https://ollama.com", api_key}),
@@ -59,6 +173,22 @@ let summarise_links = {
   },
   readme: "This is the example workspace of the EYG team. Be brief, friendly and helpful.",
   files: "./files",
+  connections: [
+    {name: "chat", source: ExampleChat({origin: "http://localhost:8080"})},
+    {name: "github", source: github, channel: "dev"},
+    {
+      name: "bsky",
+      source: Bsky({
+        actors: ["gleam.run"],
+        feeds: ["at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot"],
+        every: 30
+      }),
+      channel: "social"
+    },
+    {name: "blogs", source: Rss({feeds: ["https://gleam.run/feed.xml", "https://erlangforums.com/latest.rss"]}), channel: "news"},
+    {name: "hn", source: HackerNews({lists: ["top", "new"], every: 60}), channel: "news"},
+    {name: "lobsters", source: Lobsters({lists: ["newest"]}), channel: "news"}
+  ],
   crons: [
     {
       name: "standup",
@@ -84,6 +214,33 @@ let summarise_links = {
         channel_shell: online(shell.writes_under(["/channels/links"], shell.everything)),
         readme: "People share links here. Only post when someone asks you something.",
         triggers: [summarise_links]
+      } }
+    },
+    {
+      name: "dev",
+      config: (info) -> { {
+        handle: cloud.handlers.for_channel(info),
+        channel_shell: online(shell.writes_under(["/channels/dev"], shell.everything)),
+        readme: "Development of eyg-lang, GitHub events arrive here through triggers.",
+        triggers: github_triggers
+      } }
+    },
+    {
+      name: "news",
+      config: (info) -> { {
+        handle: cloud.handlers.for_channel(info),
+        channel_shell: online(shell.writes_under(["/channels/news"], shell.everything)),
+        readme: "Stories from feeds, Hacker News and Lobsters arrive here through triggers.",
+        triggers: news_triggers
+      } }
+    },
+    {
+      name: "social",
+      config: (info) -> { {
+        handle: cloud.handlers.for_channel(info),
+        channel_shell: online(shell.writes_under(["/channels/social"], shell.everything)),
+        readme: "Bluesky posts arrive here through triggers.",
+        triggers: social_triggers
       } }
     }
   ], (info) -> {

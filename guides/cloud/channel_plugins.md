@@ -130,6 +130,11 @@ Discord polls the latest 50 messages in channels and active threads, using snowf
 Discord's outbound operation creates a thread when needed.
 These transport choices do not determine how an event is handled.
 
+## Connect the plugin
+
+Add the source to [cloud/connection](../../packages/cloud/src/cloud/connection.gleam) and start it from [cloud/workspace](../../packages/cloud/src/cloud/workspace.gleam).
+The workspace's `connections` select which plugins start. Each plugin's `channels` operation lists channel IDs and names so service connections can route events by channel name.
+
 ## Testing
 
 Test decoding and polling comparisons with recorded platform payloads.

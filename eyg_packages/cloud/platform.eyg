@@ -21,6 +21,7 @@ let reject = (_) -> { Reject({}) }
     read_file: reject,
     write_file: reject,
     env: reject,
+    events: reject,
     fetch: reject,
     flip: reject,
     now: reject,

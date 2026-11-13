@@ -1,0 +1,11 @@
+{
+  "action": "completed",
+  "workflow_run": {
+    "name": "CI",
+    "conclusion": "failure",
+    "head_branch": "main",
+    "html_url": "https://github.com/CrowdHailer/eyg-lang/actions/runs/1"
+  },
+  "repository": {"full_name": "CrowdHailer/eyg-lang", "html_url": "https://github.com/CrowdHailer/eyg-lang"},
+  "sender": {"login": "octocat"}
+}

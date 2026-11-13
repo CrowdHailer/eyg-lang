@@ -38,12 +38,150 @@ pub type Script {
 }
 
 /// The type of the `event` value given to patterns and scripts, a union of every event.
+/// Chat platforms retain their native tags and payloads;
+/// other connections report events tagged with their source, see `guides/cloud/trigger_events.md`.
 pub fn event_type() {
+  let github = fn(fields) {
+    t.record([
+      #("connection", t.String),
+      #("repository", t.String),
+      #("actor", t.String),
+      #("url", t.String),
+      ..fields
+    ])
+  }
   t.union(
     list.flatten([
       chat_input.event_types(),
       slack_input.event_types(),
       discord_input.event_types(),
+      [
+        #(
+          "GitHubIssue",
+          github([
+            #("action", t.String),
+            #("number", t.Integer),
+            #("title", t.String),
+            #("body", t.String),
+            #("labels", t.List(t.String)),
+          ]),
+        ),
+        #(
+          "GitHubComment",
+          github([
+            #("action", t.String),
+            #("number", t.Integer),
+            #("title", t.String),
+            #("body", t.String),
+          ]),
+        ),
+        #(
+          "GitHubPullRequest",
+          github([
+            #("action", t.String),
+            #("number", t.Integer),
+            #("title", t.String),
+            #("body", t.String),
+            #("merged", t.boolean),
+            #("branch", t.String),
+            #("base", t.String),
+          ]),
+        ),
+        #(
+          "GitHubPush",
+          github([
+            #("branch", t.String),
+            #(
+              "commits",
+              t.List(
+                t.record([
+                  #("id", t.String),
+                  #("message", t.String),
+                  #("author", t.String),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+        #("GitHubStar", github([])),
+        #("GitHubFork", github([#("fork", t.String)])),
+        #(
+          "GitHubRelease",
+          github([
+            #("action", t.String),
+            #("tag", t.String),
+            #("name", t.String),
+            #("body", t.String),
+          ]),
+        ),
+        #(
+          "GitHubWorkflowRun",
+          github([
+            #("name", t.String),
+            #("conclusion", t.String),
+            #("branch", t.String),
+          ]),
+        ),
+        #("GitHubEvent", github([#("type", t.String)])),
+        #(
+          "BskyPost",
+          t.record([
+            #("connection", t.String),
+            #("uri", t.String),
+            #("url", t.String),
+            #("author", t.String),
+            #("account", t.String),
+            #("text", t.String),
+            #("created_at", t.String),
+            #("reply", t.boolean),
+            #("likes", t.Integer),
+            #("reposts", t.Integer),
+            #("replies", t.Integer),
+            #("source", t.String),
+          ]),
+        ),
+        #(
+          "FeedItem",
+          t.record([
+            #("connection", t.String),
+            #("feed", t.String),
+            #("id", t.String),
+            #("title", t.String),
+            #("link", t.String),
+            #("summary", t.String),
+            #("published", t.String),
+          ]),
+        ),
+        #(
+          "HackerNewsStory",
+          t.record([
+            #("connection", t.String),
+            #("list", t.String),
+            #("id", t.Integer),
+            #("title", t.String),
+            #("url", t.String),
+            #("link", t.String),
+            #("by", t.String),
+            #("score", t.Integer),
+            #("comments", t.Integer),
+          ]),
+        ),
+        #(
+          "LobstersStory",
+          t.record([
+            #("connection", t.String),
+            #("list", t.String),
+            #("id", t.String),
+            #("title", t.String),
+            #("url", t.String),
+            #("link", t.String),
+            #("tags", t.List(t.String)),
+            #("submitter", t.String),
+            #("score", t.Integer),
+            #("comments", t.Integer),
+          ]),
+        ),
+      ],
     ]),
   )
 }
@@ -58,7 +196,7 @@ pub fn type_() {
   ])
 }
 
-/// Decode a trigger, its pattern must be a function and its script a function or source that parses.
+/// Decode a trigger, its pattern must be a function and its script must parse.
 pub fn decode(
   value: state.Value(#(Int, Int)),
 ) -> Result(Trigger, state.Reason(#(Int, Int))) {
@@ -66,13 +204,6 @@ pub fn decode(
   use pattern <- result.try(cast.field("pattern", as_function, value))
   use script <- result.try(cast.field("script", as_script, value))
   Ok(Trigger(name:, pattern:, script:, active: True))
-}
-
-fn as_function(value) {
-  case value {
-    v.Closure(..) | v.Partial(..) -> Ok(capture.capture(value, #(0, 0)))
-    _ -> Error(break.IncorrectTerm("a function", value))
-  }
 }
 
 /// A function, or source text that parses.
@@ -90,6 +221,13 @@ fn as_script(value) {
         "a function or source text",
         value,
       ))
+  }
+}
+
+fn as_function(value) {
+  case value {
+    v.Closure(..) | v.Partial(..) -> Ok(capture.capture(value, #(0, 0)))
+    _ -> Error(break.IncorrectTerm("a function", value))
   }
 }
 

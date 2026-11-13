@@ -4,19 +4,31 @@
 //// A plugin's native input goes to the channel's checked handler. Its work requests
 //// choose sessions, observations, invocations and policy-controlled posts.
 ////
-//// The workspace holds no EYG values, configuration is evaluated by the processes
-//// that run programs, see `notes/cloud-process-boundaries.md`.
+//// Connections that are not chats, such as GitHub or RSS, report events that are logged
+//// and given to the triggers of the channel the connection names, see `cloud/connection`.
+////
+//// The workspace holds no EYG closures, configuration is evaluated by the processes
+//// that run programs and events are plain data, see `notes/cloud-process-boundaries.md`.
 
 import cloud/agent
 import cloud/artifacts
 import cloud/beam/execute
 import cloud/channel.{type Conversation}
 import cloud/config
+import cloud/connection
+import cloud/connections/bsky
+import cloud/connections/github
+import cloud/connections/hacker_news
+import cloud/connections/lobsters
+import cloud/connections/rss
 import cloud/cron
 import cloud/data
 import cloud/files
 import cloud/handler
 import cloud/invocation
+import cloud/plugins/discord
+import cloud/plugins/example_chat
+import cloud/plugins/slack
 import cloud/session
 import cloud/shell
 import cloud/trigger.{type Trigger}
@@ -67,7 +79,18 @@ pub type Message {
   )
   /// A timeout has elapsed.
   Fire(session: String, name: String)
+  /// A connection that is not a chat reported an event.
+  Observed(connection.Event)
+  ReadEvents(
+    connection: String,
+    reply: Subject(Result(List(data.Value), String)),
+  )
+  /// A webhook delivery for a connection.
+  Webhook(delivery: github.Delivery, reply: Subject(Result(Nil, String)))
 }
+
+/// The most events kept per connection.
+const max_log = 500
 
 pub type Timing {
   Repeating(cron.Schedule)
@@ -103,6 +126,9 @@ type State {
     channels: Dict(String, String),
     artifacts: Subject(artifacts.Message),
     complete: agent.Completer,
+    connections: List(connection.Connection),
+    /// The latest events of each connection, newest first.
+    log: Dict(String, List(connection.Event)),
   )
 }
 
@@ -119,8 +145,11 @@ pub fn start_with(
   complete: agent.Completer,
 ) -> Result(Subject(Message), String) {
   // Only Gleam data, not EYG values, leaves this process.
-  use #(seed, crons) <- result.try(
-    load() |> result.map(fn(config) { #(config.files, config.crons) }),
+  use #(seed, crons, connections) <- result.try(
+    load()
+    |> result.map(fn(config) {
+      #(config.files, config.crons, config.connections)
+    }),
   )
   use schedules <- result.try(
     list.try_map(crons, fn(c) {
@@ -150,6 +179,8 @@ pub fn start_with(
       channels: dict.new(),
       artifacts:,
       complete:,
+      connections:,
+      log: dict.new(),
     )
     |> actor.initialised
     |> actor.selecting(selector)
@@ -158,8 +189,56 @@ pub fn start_with(
   })
   |> actor.on_message(handle)
   |> actor.start
-  |> result.map(fn(started) { started.data })
+  |> result.map(fn(started) {
+    list.each(connections, start_connection(started.data, _))
+    started.data
+  })
   |> result.map_error(string.inspect)
+}
+
+/// Start a connection in its own process, its events are sent to the workspace.
+fn start_connection(
+  workspace: Subject(Message),
+  connection: connection.Connection,
+) -> Nil {
+  let connection.Connection(name:, source:, ..) = connection
+  let observe = fn(event) { process.send(workspace, Observed(event)) }
+  let inbound = fn(event) { process.send(workspace, Inbound(event)) }
+  process.spawn(fn() {
+    let started = case source {
+      connection.ExampleChat(origin) -> {
+        let config = example_chat.Config(origin:, poll_interval: 500)
+        use outbound <- result.map(example_chat.start(config, inbound))
+        process.send(workspace, Connect(example_chat.platform, outbound))
+      }
+      connection.Slack(token) -> {
+        use outbound <- result.map(slack.start(token, inbound))
+        process.send(workspace, Connect(slack.platform, outbound))
+      }
+      connection.Discord(token:, guild:) -> {
+        use outbound <- result.map(discord.start(token, guild, inbound))
+        process.send(workspace, Connect(discord.platform, outbound))
+      }
+      connection.GitHub(repositories:, every:, ..) ->
+        Ok(github.start(name, repositories, every, observe))
+      connection.Bsky(actors:, feeds:, every:) ->
+        Ok(bsky.start(name, actors, feeds, every, observe))
+      connection.Rss(feeds:, every:) ->
+        Ok(rss.start(name, feeds, every, observe))
+      connection.HackerNews(lists:, every:) ->
+        Ok(hacker_news.start(name, lists, every, observe))
+      connection.Lobsters(lists:, every:) ->
+        Ok(lobsters.start(name, lists, every, observe))
+    }
+    case started {
+      Ok(Nil) ->
+        io.println(
+          "Connected " <> name <> " (" <> connection.kind(source) <> ")",
+        )
+      Error(reason) -> io.println_error(name <> ": " <> reason)
+    }
+  })
+  Nil
 }
 
 fn handle(state: State, message: Message) -> actor.Next(State, Message) {
@@ -274,8 +353,106 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         // Cancelled, or replaced by a repeating schedule.
         _ -> state
       }
+    Observed(event) -> {
+      let log =
+        dict.upsert(state.log, event.connection, fn(log) {
+          connection.append_log(option.unwrap(log, []), event, max_log)
+        })
+      let state = State(..state, log:)
+      case event.live {
+        True -> observed(state, event)
+        False -> state
+      }
+    }
+    Webhook(delivery:, reply:) -> {
+      let event = webhook(state, delivery)
+      process.send(reply, result.replace(event, Nil))
+      case event {
+        Ok(event) -> {
+          let log =
+            dict.upsert(state.log, event.connection, fn(log) {
+              connection.append_log(option.unwrap(log, []), event, max_log)
+            })
+          observed(State(..state, log:), event)
+        }
+        Error(_) -> state
+      }
+    }
+    ReadEvents(connection: name, reply:) -> {
+      case list.any(state.connections, fn(c) { c.name == name }) {
+        True -> {
+          let events = dict.get(state.log, name) |> result.unwrap([])
+          Ok(list.map(events, fn(event) { event.value }))
+        }
+        False -> Error("no connection named " <> name)
+      }
+      |> process.send(reply, _)
+      state
+    }
   }
   |> actor.continue
+}
+
+/// Check and convert a webhook delivery, only GitHub connections with a secret accept webhooks.
+fn webhook(
+  state: State,
+  delivery: github.Delivery,
+) -> Result(connection.Event, String) {
+  let github.Delivery(connection: name, kind:, delivery: id, signature:, body:) =
+    delivery
+  let found = list.find(state.connections, fn(c) { c.name == name })
+  case found {
+    Ok(connection.Connection(
+      source: connection.GitHub(secret: Some(secret), ..),
+      ..,
+    )) ->
+      case github.verify(secret, body, signature) {
+        True -> github.from_webhook(name, kind, id, body)
+        False -> Error("invalid signature")
+      }
+    Ok(_) -> Error(name <> " does not accept webhooks")
+    Error(Nil) -> Error("no connection named " <> name)
+  }
+}
+
+/// Give a live event to the triggers of the channel its connection names.
+fn observed(state: State, event: connection.Event) -> State {
+  let target =
+    list.find_map(state.connections, fn(c) {
+      case c.name == event.connection, c.channel {
+        True, Some(channel) -> Ok(channel)
+        _, _ -> Error(Nil)
+      }
+    })
+  case result.try(target, find_channel(state, _)) {
+    Ok(#(outbound, info)) -> {
+      let state = install(state, info)
+      let conversation = channel.Conversation(info.platform, info.id, None)
+      let started = "a " <> event.connection <> " event, " <> event.summary
+      run_triggers(state, event.value, started, conversation, outbound, info)
+      state
+    }
+    Error(Nil) -> {
+      io.println_error(
+        event.connection <> ": no channel to send " <> event.summary <> " to",
+      )
+      state
+    }
+  }
+}
+
+/// Find a channel by name on any connected chat.
+fn find_channel(state: State, name: String) {
+  dict.to_list(state.platforms)
+  |> list.find_map(fn(platform) {
+    let #(platform, outbound) = platform
+    use channels <- result.try(outbound.channels() |> result.replace_error(Nil))
+    use #(id, _) <- result.map(list.find(channels, fn(c) { c.1 == name }))
+    #(
+      outbound,
+      config.ChannelInfo(platform:, id:, name:, input_type: outbound.input_type),
+    )
+  })
 }
 
 fn inbound(state: State, event: channel.Event) -> State {
@@ -335,7 +512,14 @@ fn perform_work(
     }
     work.Trigger(thread) -> {
       let conversation = channel.Conversation(..origin, thread:)
-      run_triggers(state, value, conversation, outbound, info)
+      run_triggers(
+        state,
+        value,
+        "a native channel event",
+        conversation,
+        outbound,
+        info,
+      )
       state
     }
     work.Post(thread, text) -> {
@@ -496,13 +680,21 @@ fn deliver(state: State, name, scheduled: Scheduled) -> Nil {
   }
 }
 
-/// Run the script of each active trigger whose pattern matches the event, in the event message's thread.
+/// Run the script of each active trigger whose pattern matches the event.
+/// Scripts post to `conversation`, the thread of a chat message or the channel.
 /// Each trigger is matched and run in its own process.
-fn run_triggers(state: State, event, conversation, outbound, info) -> Nil {
+fn run_triggers(
+  state: State,
+  event: data.Value,
+  started: String,
+  conversation: Conversation,
+  outbound: channel.Outbound,
+  info: config.ChannelInfo,
+) -> Nil {
+  let key = channel.key(conversation)
   channel_triggers(state, trigger_key(info))
   |> list.filter(fn(t) { t.active })
   |> list.each(fn(t) {
-    let key = channel.key(conversation)
     let host = host(state, outbound, conversation, info, key)
     let #(load, complete) = #(state.load, state.complete)
     process.spawn(fn() {
@@ -510,6 +702,8 @@ fn run_triggers(state: State, event, conversation, outbound, info) -> Nil {
         location(info, conversation)
         <> "\nYou were started by the trigger "
         <> t.name
+        <> " for "
+        <> started
         <> "."
       let outcome = {
         use shell <- result.try(shell.prepare(
@@ -613,13 +807,17 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
         process.call(self, 5000, CancelSchedule(session, name, _))
       },
     )
-  execute.channel_host(
-    outbound.post(conversation, _),
-    execute.files(state.files, "#" <> name),
-    triggers,
-    schedules,
-    execute.artifacts(state.artifacts, artifacts.Channel(key, name)),
-  )
+  let host =
+    execute.channel_host(
+      outbound.post(conversation, _),
+      execute.files(state.files, "#" <> name),
+      triggers,
+      schedules,
+      execute.artifacts(state.artifacts, artifacts.Channel(key, name)),
+    )
+  execute.Host(..host, events: fn(connection) {
+    process.call(self, 5000, ReadEvents(connection, _))
+  })
 }
 
 /// Run a direct invocation, post its output and return a description for the agent.

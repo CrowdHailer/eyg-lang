@@ -1,0 +1,12 @@
+{
+  "action": "opened",
+  "issue": {
+    "number": 412,
+    "title": "Parser rejects trailing comma in record update",
+    "body": "Writing `{a: 1, ..rest,}` fails with `unexpected }`. Lists allow a trailing comma so I expected records to as well.",
+    "html_url": "https://github.com/CrowdHailer/eyg-lang/issues/412",
+    "labels": []
+  },
+  "repository": {"full_name": "CrowdHailer/eyg-lang", "html_url": "https://github.com/CrowdHailer/eyg-lang"},
+  "sender": {"login": "octocat"}
+}

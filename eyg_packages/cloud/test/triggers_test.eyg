@@ -9,6 +9,18 @@ let reacted = (text, emoji) -> {
   ChatReacted({message: message(text), emoji, by: {id: "U2", name: "bob", bot: False({})}})
 }
 
+let issue = (action) -> {
+  GitHubIssue({connection: "github", repository: "eyg/eyg", actor: "alice", url: "", action, number: 1, title: "Bug", body: "", labels: []})
+}
+
+let pull = (action, merged) -> {
+  GitHubPullRequest({connection: "github", repository: "eyg/eyg", actor: "alice", url: "", action, number: 2, title: "Fix", body: "", merged, branch: "fix", base: "main"})
+}
+
+let story = (title) -> {
+  HackerNewsStory({connection: "hn", list: "top", id: 1, title, url: "", link: "", by: "pg", score: 1, comments: 0})
+}
+
 let test_posted = (_) -> {
   let _ = assert.equal(True({}), triggers.posted(posted("hi")))
   let _ = assert.equal(False({}), triggers.posted(reacted("hi", "books")))
@@ -44,9 +56,34 @@ let test_native_platforms = (_) -> {
   {}
 }
 
+let test_issue_opened = (_) -> {
+  let _ = assert.equal(True({}), triggers.issue_opened(issue("opened")))
+  let _ = assert.equal(False({}), triggers.issue_opened(issue("closed")))
+  let _ = assert.equal(False({}), triggers.issue_opened(posted("opened")))
+  {}
+}
+
+let test_pull_request_merged = (_) -> {
+  let _ = assert.equal(True({}), triggers.pull_request_merged(pull("closed", True({}))))
+  let _ = assert.equal(False({}), triggers.pull_request_merged(pull("closed", False({}))))
+  let _ = assert.equal(False({}), triggers.pull_request_merged(pull("opened", False({}))))
+  {}
+}
+
+let test_title_contains = (_) -> {
+  let gleam = triggers.title_contains("Gleam")
+  let _ = assert.equal(True({}), gleam(story("Why I like gleam")))
+  let _ = assert.equal(False({}), gleam(story("Rust 2.0")))
+  let _ = assert.equal(False({}), gleam(posted("gleam")))
+  {}
+}
+
 [
   {name: "triggers retain native platform values", test: test_native_platforms},
   {name: "triggers posted", test: test_posted},
   {name: "triggers reaction", test: test_reaction},
-  {name: "triggers contains", test: test_contains}
+  {name: "triggers contains", test: test_contains},
+  {name: "triggers issue opened", test: test_issue_opened},
+  {name: "triggers pull request merged", test: test_pull_request_merged},
+  {name: "triggers title contains", test: test_title_contains}
 ]

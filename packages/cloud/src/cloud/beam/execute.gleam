@@ -88,6 +88,8 @@ pub type Effect {
   ListTriggers
   /// Run a subagent with the channel shell to complete a task, returns its final reply.
   Delegate(task: String)
+  /// Read the logged events of a connection, newest first.
+  Events(connection: String)
   /// Send a message to the program's session on a cron schedule.
   Cron(name: String, schedule: String, message: String)
   /// Send a message to the program's session once, after a number of milliseconds.
@@ -109,7 +111,13 @@ pub type Host {
     subagent: fn(String) -> Result(String, String),
     schedules: Schedules,
     artifacts: Artifacts,
+    /// The logged events of a connection, newest first.
+    events: fn(String) -> Result(List(Value), String),
   )
+}
+
+fn no_events(_connection) {
+  Error("Events are not available")
 }
 
 /// The artifacts of the program's channel.
@@ -234,6 +242,7 @@ pub fn channel_host(
     subagent: no_subagent,
     schedules:,
     artifacts:,
+    events: no_events,
   )
 }
 
@@ -249,6 +258,7 @@ pub fn configuration_host(
     subagent: no_subagent,
     schedules: no_schedules(),
     artifacts: no_artifacts(),
+    events: no_events,
   )
 }
 
@@ -274,6 +284,7 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
     trigger_update("DeleteTrigger", DeleteTrigger),
     list_triggers(),
     delegate_interface(),
+    events(),
     cron(),
     timeout(),
     cancel_schedule(),
@@ -411,6 +422,15 @@ fn delegate_interface() -> interface.Interface(Effect, Meta) {
   )
 }
 
+fn events() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Events",
+    lift_type: t.String,
+    lower_type: t.result(t.List(trigger.event_type()), t.String),
+    decode: cast.map(cast.as_string, Events),
+  )
+}
+
 /// Every effect available to the workspace configuration, the channel effects and `Secret`.
 pub fn configuration_harness() -> interface.Harness(Effect, Meta) {
   list.append(harness(), [secret()])
@@ -448,6 +468,7 @@ pub const rules = [
   #("DeleteFile", policy.PolicyField("delete_file")),
   #("DeleteTrigger", policy.PolicyField("delete_trigger")),
   #("Env", policy.PolicyField("env")),
+  #("Events", policy.PolicyField("events")),
   #("Fetch", policy.PolicyField("fetch")),
   #("Flip", policy.PolicyField("flip")),
   #("Hash", policy.Unchecked),
@@ -744,6 +765,12 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
       Ok(#(v.LinkedList(list.map(described, v.String)), []))
     }
     Delegate(task) -> Ok(#(result_string(host.subagent(task)), []))
+    Events(connection) ->
+      case host.events(connection) {
+        Ok(events) -> v.ok(v.LinkedList(events))
+        Error(reason) -> v.error(v.String(reason))
+      }
+      |> no_output
     Cron(name:, schedule:, message:) ->
       Ok(#(result_unit(host.schedules.cron(name, schedule, message)), []))
     Timeout(name:, after:, message:) ->

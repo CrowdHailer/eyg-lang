@@ -57,6 +57,7 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.events("github"))
   let _ = expect_reject(s.artifact({name: "x", bundle: []}))
   let _ = expect_reject(s.share_artifact("x"))
   let _ = expect_reject(s.cancel_schedule("x"))

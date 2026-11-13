@@ -29,6 +29,7 @@ let everything = {
   delete_file: pass,
   delete_trigger: pass,
   env: pass,
+  events: pass,
   fetch: pass,
   flip: pass,
   list_triggers: pass,

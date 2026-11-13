@@ -9,6 +9,8 @@
 ////   workspace's shared file system starts with.
 //// - `crons` optional, a list of `{name, schedule, channel, message}` records,
 ////   the message is sent to the named channel's session on the cron schedule, see `cloud/cron`.
+//// - `connections` optional, a list of `{name, source, channel}` records, the chats
+////   and other services the workspace is connected to, see `cloud/connection`.
 ////
 //// The channel configuration is a record with:
 ////
@@ -23,6 +25,7 @@
 //// and can read the workspace's secrets with the `Secret` effect.
 
 import cloud/beam/execute
+import cloud/connection
 import cloud/handler
 import cloud/trigger
 import eyg/analysis/type_/binding
@@ -46,6 +49,7 @@ pub type Workspace {
     /// The host directory the workspace's file system starts with.
     files: Option(String),
     crons: List(Cron),
+    connections: List(connection.Connection),
     state: execute.State,
   )
 }
@@ -128,7 +132,11 @@ fn decode(value, directory, state) {
     Ok(_) -> field("crons", cast.as_list_of(_, decode_cron), value)
     Error(_) -> Ok([])
   })
-  Ok(Workspace(llm:, readme:, channel:, files:, crons:, state:))
+  use connections <- result.try(case cast.field("connections", Ok, value) {
+    Ok(_) -> field("connections", cast.as_list_of(_, connection.decode), value)
+    Error(_) -> Ok([])
+  })
+  Ok(Workspace(llm:, readme:, channel:, files:, crons:, connections:, state:))
 }
 
 fn decode_cron(value) {

@@ -1,10 +1,15 @@
 import cloud/artifacts
 import cloud/channel
 import cloud/config
+import cloud/connection
+import cloud/connections/github
+import cloud/data
 import cloud/execute_test
 import cloud/plugins/chat_input
 import cloud/test_helpers
 import cloud/workspace
+import gleam/bit_array
+import gleam/crypto
 import gleam/dict
 import gleam/erlang/process
 import gleam/list
@@ -42,7 +47,6 @@ fn platform() {
   let outbound =
     channel.Outbound(
       input_type: chat_input.input_type(),
-      channels: fn() { Ok([#("C1", "general")]) },
       post: fn(conversation, text) {
         process.send(posts, #(conversation, text))
         Ok("posted")
@@ -53,6 +57,7 @@ fn platform() {
           _ -> "general"
         }
       },
+      channels: fn() { Ok([#("C1", "general"), #("C2", "notes")]) },
     )
   #(outbound, posts)
 }
@@ -490,4 +495,73 @@ pub fn artifacts_belong_to_their_channel_test() {
   process.send(workspace, workspace.Inbound(attempt))
   let assert Ok(#(_, updated)) = process.receive(posts, 1000)
   assert string.contains(updated, "version: 2")
+}
+
+fn issue_event(id, title, live) {
+  let value =
+    data.tagged(
+      "GitHubIssue",
+      data.record([
+        #("connection", data.string("github")),
+        #("repository", data.string("eyg/eyg")),
+        #("actor", data.string("alice")),
+        #("url", data.string("https://github.com/eyg/eyg/issues/1")),
+        #("action", data.string("opened")),
+        #("number", data.int(1)),
+        #("title", data.string(title)),
+        #("body", data.string("")),
+        #("labels", data.strings([])),
+      ]),
+    )
+  connection.Event("github", id, value, "issue " <> title, live)
+}
+
+pub fn connection_events_run_the_channels_triggers_test() {
+  let #(workspace, posts, seen) = start([chat.Completion("", "", [])])
+  process.send(workspace, workspace.Observed(issue_event("e1", "Old", False)))
+  process.send(workspace, workspace.Observed(issue_event("e2", "Crash", True)))
+  // Posted in the channel, not a thread, and the agent is not told.
+  assert process.receive(posts, 1000) == Ok(#(general, "New issue: Crash"))
+  assert process.receive(posts, 200) == Error(Nil)
+  assert process.receive(seen, 200) == Error(Nil)
+}
+
+pub fn programs_read_the_event_log_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  process.send(workspace, workspace.Observed(issue_event("e1", "Old", False)))
+  invoke(
+    workspace,
+    "m1",
+    "match perform Events(\"github\") {\n  Ok(events) -> { !list_fold(events, 0, (_event, count) -> { !int_add(count, 1) }) }\n  Error(reason) -> { 0 }\n}",
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "1"))
+  invoke(workspace, "m2", "perform Events(\"nope\")")
+  assert process.receive(posts, 1000)
+    == Ok(#(thread("m2"), "Error(\"no connection named nope\")"))
+}
+
+fn sign(body) {
+  "sha256="
+  <> {
+    crypto.hmac(<<body:utf8>>, crypto.Sha256, <<"s3cret":utf8>>)
+    |> bit_array.base16_encode
+    |> string.lowercase
+  }
+}
+
+pub fn signed_webhooks_run_triggers_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  let body =
+    "{\"action\":\"opened\",\"repository\":{\"full_name\":\"eyg/eyg\"},\"sender\":{\"login\":\"bob\"},\"issue\":{\"number\":3,\"title\":\"Docs\"}}"
+  let delivery = fn(connection, signature) {
+    github.Delivery(connection, "issues", "d1", signature, body)
+  }
+  let call = fn(delivery) {
+    process.call(workspace, 1000, workspace.Webhook(delivery, _))
+  }
+  assert call(delivery("github", "sha256=bad")) == Error("invalid signature")
+  assert call(delivery("nope", sign(body))) == Error("no connection named nope")
+  assert process.receive(posts, 200) == Error(Nil)
+  assert call(delivery("github", sign(body))) == Ok(Nil)
+  assert process.receive(posts, 1000) == Ok(#(general, "New issue: Docs"))
 }

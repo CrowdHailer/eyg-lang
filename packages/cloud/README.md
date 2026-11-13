@@ -1,11 +1,12 @@
 # EYG Cloud
 
 A place to run EYG code and agents away from your local machine.
-People talk to agents in chat platforms such as Slack or the [example chat app](../example_chat/README.md).
-Everything a workspace does, which model it uses and what each channel may do, is configured in EYG.
+People talk to agents in chat platforms such as Slack or the [example chat app](../example_chat/README.md),
+and events from GitHub, Bluesky, RSS feeds, Hacker News and Lobsters run triggers.
+Everything a workspace does, which model it uses, what it connects to and what each channel may do, is configured in EYG.
 
 ```sh
-WORKSPACE=../../examples/cloud/workspace.eyg CHAT_ORIGIN=http://localhost:8080 gleam run
+WORKSPACE=../../examples/cloud/workspace.eyg gleam run
 ```
 
 Start with the [example workspace](../../examples/cloud/README.md).
@@ -14,9 +15,7 @@ Coming from another agent gateway, see migrating from [OpenClaw](../../guides/cl
 | Variable | Purpose |
 | --- | --- |
 | `WORKSPACE` | The workspace configuration, defaults to `workspace.eyg` |
-| `CHAT_ORIGIN` | Connect the example chat app at this origin |
-| `SLACK_BOT_TOKEN` | Connect the Slack workspace the bot is installed in |
-| `PORT` / `CLOUD_ORIGIN` | Where artifacts are served, defaults to port 8081 |
+| `PORT` / `CLOUD_ORIGIN` | Where artifacts and webhooks are served, defaults to port 8081 |
 | `CLOUD_DATA` | The data directory holding secrets, defaults to `.data` next to the workspace file |
 | `EYG_ORIGIN` | The hub packages are loaded from, defaults to `https://eyg.run` |
 
@@ -47,6 +46,7 @@ and its output posted in the message's thread. The agent sees the program and it
 | `readme` | Context for every agent in the workspace |
 | `files` | Directory, relative to the workspace file, the shared file system starts with |
 | `crons` | `[{name, schedule, channel, message}]` messages sent to a channel's session on a schedule |
+| `connections` | `[{name, source, channel}]` chats and services, see [connections](../../guides/cloud/connections.md) |
 | `channel` | Function from `{platform, id, name}` to `{handle, channel_shell, readme, triggers, llm}`; `handle` and `channel_shell` are required |
 
 The configuration is trusted. It can read the workspace's secrets with the `Secret` effect.
@@ -72,6 +72,7 @@ and `shell.writes_under(roots, shell)`, and network secrets in `secrets`.
 | `Fetch`, `Env`, `Now`, `Random`, `Flip`, `Sleep`, `StandardOut`, `StandardError` | `fetch` ... | As on a computer, `Env` returns nothing unless a gate answers it |
 | `AddTrigger`, `StopTrigger`, `StartTrigger`, `DeleteTrigger`, `ListTriggers` | `add_trigger` ... | The channel's triggers |
 | `Delegate(task)` | `delegate` | Run a subagent with the channel shell, returns its final reply |
+| `Events(connection)` | `events` | The logged events of a connection, newest first |
 | `Cron`, `Timeout`, `CancelSchedule` | `cron` ... | Messages sent to the program's session later |
 | `Artifact({name, bundle})`, `ShareArtifact(name)` | `artifact`, `share_artifact` | Versioned HTML pages served by the cloud |
 | `DecodeJSON`, `Hash` | | Always available |
@@ -90,7 +91,8 @@ When another channel changes a file an agent has read, including skills, the cha
 A trigger runs an EYG script when its pattern matches an event in its channel.
 A pattern is a pure function from the original native event to a boolean. Events keep tags such as `ChatPosted`, `SlackReaction` and `DiscordMessage`; see the [native schemas](../../guides/cloud/channel_plugins.md#native-schemas).
 Patterns that perform an effect fail, the cloud EYG package has `triggers.posted`, `triggers.reaction(emoji)` and `triggers.contains(text)`.
-The script is a function of the event, it posts to the thread of the event's message.
+Service connections add events such as `GitHubIssue`, `BskyPost` and `FeedItem`; see [trigger events](../../guides/cloud/trigger_events.md).
+The script is a function of the event, it posts to the selected chat thread or the channel for service events.
 Triggers come from the channel configuration or the `AddTrigger` effect.
 
 ### Schedules
@@ -110,10 +112,10 @@ Only the workspace configuration can read them.
 `Artifact` saves a version of an HTML bundle and returns its URL.
 An artifact belongs to the channel that created it, other channels can save versions once it is shared with `ShareArtifact`.
 
-## Channels
+## Connections
 
-Chat platforms plug into the [channel interface](./src/cloud/channel.gleam),
-see the [channel plugin guide](../../guides/cloud/channel_plugins.md).
+Chats plug into the [channel interface](./src/cloud/channel.gleam), see the [channel plugin guide](../../guides/cloud/channel_plugins.md).
+GitHub, Bluesky, RSS, Hacker News and Lobsters only report events, they are not chats, see [connections](../../guides/cloud/connections.md).
 
 This [article](https://weli.dev/blog/the-valley-of-webhooks/) discusses the reliability problems of webhooks.
 Channels are connections that can start a session/chat etc.
@@ -121,7 +123,8 @@ Most of their complexity is in solving the problem described in the article
 
 ### Slack
 
-With `SLACK_BOT_TOKEN` exported, `gleam run` connects the workspace to Slack with the [Slack plugin](./src/cloud/plugins/slack.gleam).
+`{name: "slack", source: Slack({token})}` connects the workspace to Slack with the [Slack plugin](./src/cloud/plugins/slack.gleam),
+read the token from the secrets store with `perform Secret("SLACK_BOT_TOKEN")`.
 The bot needs `channels:read` and `channels:history` for public channels,
 `groups:read` and `groups:history` for private channels, and `chat:write` to post.
 With the standard handler, messages in a channel the bot is a member of go to that conversation's agent.
@@ -175,7 +178,8 @@ Editing the slash command message does not rerun the command.
 
 *Guilds in Discord represent an isolated collection of users and channels, and are often referred to as “servers” in the UI.
 
-With `DISCORD_BOT_TOKEN` and `DISCORD_GUILD_ID` exported, `gleam run` connects the workspace to that server with the [Discord plugin](./src/cloud/plugins/discord.gleam).
+`{name: "discord", source: Discord({token, guild})}` connects the workspace to the server with id `guild` using the [Discord plugin](./src/cloud/plugins/discord.gleam),
+read the token from the secrets store with `perform Secret("DISCORD_BOT_TOKEN")`.
 The plugin polls the latest messages of every text and announcement channel and of every active thread.
 Messages sent after the cloud started are given to the conversation's agent,
 and new reactions on the latest messages are reported to triggers.
@@ -214,9 +218,9 @@ channels with:
 
 #### Storage
 
-Messages retain the complete Discord object, including attachment metadata and
-URLs; attachments are not downloaded. Message IDs (snowflakes) remain strings
-to avoid losing precision. Ordering and cursor positions are per channel.
+The plugin keeps the newest message id, reaction counts and reacting users of the latest messages in each channel,
+messages themselves live in the workspace's sessions. Attachments are not downloaded.
+Message IDs (snowflakes) remain strings to avoid losing precision. Ordering is per channel.
 
 #### Notes
 

@@ -24,6 +24,15 @@ let research = {
   }
 }
 
+let issues = {
+  name: "new-issues",
+  pattern: cloud.triggers.issue_opened,
+  script: match {
+    GitHubIssue(issue) -> { perform Post(!string_append("New issue: ", issue.title)) }
+    | (_) -> { Error("not an issue") }
+  }
+}
+
 {
   llm: {
     provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
@@ -31,9 +40,10 @@ let research = {
   },
   readme: "The test workspace.",
   files: "./files",
+  connections: [{name: "github", source: GitHub({repositories: [], secret: "s3cret", every: 0}), channel: "general"}],
   channel: ({name}) -> {
     match !equal(name, "general") {
-      True(_) -> { {handle: ({text}) -> { [Post({thread: None({}), text})] }, channel_shell: shell.everything, readme: "Be helpful.", triggers: [books, research]} }
+      True(_) -> { {handle: ({text}) -> { [Post({thread: None({}), text})] }, channel_shell: shell.everything, readme: "Be helpful.", triggers: [books, research, issues]} }
       False(_) -> {
         match !equal(name, "notes") {
           True(_) -> { {handle: (_) -> { [] }, channel_shell: shell.writes_under(["/channels/notes"], shell.everything)} }
