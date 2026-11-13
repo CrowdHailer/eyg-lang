@@ -5,6 +5,7 @@ import cloud/system
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/builtin
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
@@ -153,6 +154,21 @@ fn evaluate(code, scope, inspect, state, policy, files, emit) {
   }
 }
 
+/// Run a checked automation through the same policy-gated loop as other code.
+pub fn call(function, input, state: State, policy: Policy, files, emit) {
+  let #(outcome, state, files, _) =
+    loop(
+      block.call(function, [#(input, #(0, 0))], builtin.default([])),
+      state,
+      policy,
+      files,
+      emit,
+      simple_debug.inspect,
+      [],
+    )
+  #(result.replace(outcome, Nil), state, files)
+}
+
 fn loop(returned, state: State, policy, files, emit, inspect, output) {
   case returned {
     Ok(#(value, _scope)) -> #(
@@ -272,7 +288,7 @@ fn resolve_policy_input(label, lift) {
 
 /// Policy evaluation can resolve references but cannot perform effects.
 /// TODO this should be continuation based.
-fn pure_loop(returned, state: State) {
+pub fn pure_loop(returned, state: State) {
   case returned {
     Error(#(break.UndefinedReference(reference), _, env, k) as debug) -> {
       let #(value, cache) = lookup(reference, state)

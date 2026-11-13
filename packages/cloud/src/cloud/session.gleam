@@ -3,9 +3,12 @@
 import cloud/beam/execute
 import cloud/beam/file_system
 import cloud/overlay
+import cloud/trigger
 import eyg/hub/cache
+import eyg/interpreter/state
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
+import gleam/io
 import gleam/otp/actor
 import multiformats/cid/v1
 import ogre/origin
@@ -21,6 +24,7 @@ pub type Payload {
 
 pub type Message {
   Message(id: String, payload: Payload, print: fn(execute.Output) -> Nil)
+  Trigger(function: trigger.Checked, value: state.Value(execute.Meta))
 }
 
 type State {
@@ -52,6 +56,7 @@ pub fn start_with_session(
   agent_session: overlay.Session,
   secrets: Dict(String, String),
 ) -> actor.StartResult(Subject(Message)) {
+  // policy.eyg could be moved to shared startup configuration later.
   let assert Ok(code) = simplifile.read("policy.eyg")
   let #(policy, execute_state) =
     execute.load_policy(
@@ -74,7 +79,29 @@ fn handle_message(
   state: State,
   message: Message,
 ) -> actor.Next(State, Message) {
-  let Message(id, action, print) = message
+  case message {
+    Trigger(function, value) -> {
+      let #(outcome, execute_state, _) =
+        execute.call(
+          function,
+          value,
+          state.execute_state,
+          // TODO triggers shouldn't need the same as an individual channel policy.
+          state.policy,
+          file_system.new(dict.new()),
+          fn(_) { Nil },
+        )
+      case outcome {
+        Ok(Nil) -> Nil
+        Error(reason) -> io.println_error("Trigger failed: " <> reason)
+      }
+      actor.continue(State(..state, execute_state:))
+    }
+    Message(id, action, print) -> handle_session(state, id, action, print)
+  }
+}
+
+fn handle_session(state: State, id, action, print) {
   let #(files, history) = case dict.get(state.sessions, id) {
     Ok(Session(root:, history:)) -> #(
       file_system.State(root, state.blocks),

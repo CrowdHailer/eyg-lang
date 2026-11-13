@@ -1,13 +1,17 @@
+import cloud/beam/execute
 import cloud/discord/discord
 import cloud/session
 import cloud/slack/slack
+import cloud/trigger
 import envoy
+import eyg/hub/cache
 import gleam/dict
 import gleam/erlang/process
 import gleam/result
 import ogre/origin
 import overlay/llm/provider
 import overlay/llm/provider/ollama
+import simplifile
 
 pub fn main() -> Nil {
   let slack_token = envoy.get("SLACK_BOT_TOKEN")
@@ -31,6 +35,15 @@ pub fn main() -> Nil {
     Ok(token) -> dict.from_list([#("DISCORD_BOT_TOKEN", token)])
     Error(_) -> dict.new()
   }
+  let assert Ok(code) = simplifile.read("right_on.eyg")
+  let discord_triggers = [#("Right on", code)]
+  // TODO keep this execute_state
+  let assert Ok(#(discord_triggers, _)) =
+    trigger.prepare(
+      discord_triggers,
+      discord.trigger_type(),
+      execute.State(origin: hub, cache: cache.ready(), secrets:),
+    )
   let assert Ok(sessions) = session.start(hub, llm, secrets)
   case slack_token {
     Ok(token) -> {
@@ -42,7 +55,8 @@ pub fn main() -> Nil {
   case discord_token {
     Ok(token) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
-      let assert Ok(_) = discord.start_channel(sessions.data, token, guild)
+      let assert Ok(_) =
+        discord.start_channel(sessions.data, token, guild, discord_triggers)
       Nil
     }
     Error(_) -> Nil

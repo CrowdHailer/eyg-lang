@@ -1,0 +1,54 @@
+let append = (a, b) -> { !string_append(a, b) }
+
+let run = ({channel_name, event}) -> {
+  match event {
+    MessageCreate(message) -> {
+      match !equal(channel_name, "noise") {
+        False(_) -> { {} }
+        True(_) -> {
+          match !string_split_once(!string_lowercase(message.content), "rocket") {
+            Error(_) -> { {} }
+            Ok(_) -> {
+              match perform Env("DISCORD_BOT_TOKEN") {
+                None(_) -> {
+                  let _ = perform StandardError("Right on: DISCORD_BOT_TOKEN is not configured")
+                  {}
+                }
+                Some(token) -> {
+                  let response = perform Fetch({
+                    method: POST({}),
+                    scheme: HTTPS({}),
+                    host: "discord.com",
+                    port: None({}),
+                    path: append("/api/v10/channels/", append(message.channel_id, "/messages")),
+                    query: None({}),
+                    headers: [
+                      {key: "authorization", value: append("Bot ", token)},
+                      {key: "content-type", value: "application/json"}
+                    ],
+                    body: !string_to_binary(append(
+                      "{\"content\":\"🚀🚀🚀\",\"message_reference\":{\"message_id\":\"",
+                      append(message.id, "\"},\"allowed_mentions\":{\"parse\":[],\"replied_user\":false}}")
+                    ))
+                  })
+                  let _ = match response {
+                    Ok(response) -> {
+                      match !int_compare(response.status, 300) {
+                        Lt(_) -> { {} }
+                        | (_) -> { perform StandardError(append("Right on: Discord returned ", !int_to_string(response.status))) }
+                      }
+                    }
+                    Error(reason) -> { perform StandardError(append("Right on: ", reason)) }
+                  }
+                  {}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    | (_) -> { {} }
+  }
+}
+run

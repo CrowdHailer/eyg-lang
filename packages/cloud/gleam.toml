@@ -5,6 +5,7 @@ version = "0.1.0"
 gleam_stdlib = ">= 1.0.0 and < 2.0.0"
 argv = ">= 1.1.0 and < 2.0.0"
 envoy = ">= 1.2.0 and < 2.0.0"
+eyg_analysis = { path = "../gleam_analysis" }
 eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_ir = ">= 3.2.0 and < 4.0.0"

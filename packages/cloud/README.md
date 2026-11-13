@@ -16,8 +16,7 @@ Each session ID retains its own MFS root and agent history in memory. Slack
 sessions are scoped to a workspace/channel and Discord sessions to a guild/channel.
 
 The sessions process loads `policy.eyg` from the working directory at startup.
-Both direct code and agent tools use this policy.
-
+Direct code, agent tools, and triggers use this policy.
 
 ## Secrets
 

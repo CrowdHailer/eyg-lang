@@ -6,7 +6,9 @@ import cloud/discord/api/operations
 import cloud/discord/api/schema
 import cloud/discord/client
 import cloud/discord/command
+import cloud/discord/event
 import cloud/session
+import cloud/trigger
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/float
@@ -31,6 +33,7 @@ pub opaque type State {
     bot_user: String,
     conversations: Dict(String, List(schema.Message)),
     sessions: Subject(session.Message),
+    triggers: List(trigger.Checked),
   )
 }
 
@@ -39,6 +42,7 @@ pub fn start(
   guild: schema.Guild,
   bot_user: String,
   sessions: Subject(session.Message),
+  triggers: List(trigger.Checked),
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
     // Full histories can exceed the init timeout; load in the message handler.
@@ -50,6 +54,7 @@ pub fn start(
       bot_user,
       dict.new(),
       sessions,
+      triggers,
     ))
     |> actor.returning(subject)
     |> Ok
@@ -131,20 +136,22 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
               )
           }
           list.each(fresh, fn(message) {
-            // Install/server ID and name: state.guild.id and state.guild.name.
-            // Conversation ID and name: channel.id and channel.name.
-            // This is where a configured hook would fit in.
+            let print = print_output(state.bot_token, channel.id, message.id, _)
+            case event.from_message(message) {
+              Ok(event) -> {
+                let value = event.to_eyg(channel.name, event)
+                list.each(state.triggers, fn(function) {
+                  process.send(state.sessions, session.Trigger(function, value))
+                })
+              }
+              Error(reason) -> io.println_error(reason)
+            }
             case command.payload(message.data, state.bot_user) {
               Error(Nil) -> Nil
               Ok(payload) -> {
                 process.send(
                   state.sessions,
-                  session.Message(id: session_id, payload:, print: print_output(
-                    state.bot_token,
-                    channel.id,
-                    message.id,
-                    _,
-                  )),
+                  session.Message(id: session_id, payload:, print:),
                 )
               }
             }
