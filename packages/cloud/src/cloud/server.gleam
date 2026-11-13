@@ -2,7 +2,7 @@
 ////
 //// | Request | Response |
 //// | --- | --- |
-//// | `GET /` | Redirects to the web shell |
+//// | `GET /` | What the cloud is for, with quick trigger widgets |
 //// | `GET /login`, `POST /login` | Sign in by name, the first person is the admin |
 //// | `GET /shell` | The web shell, a live view at `/live/shell` |
 //// | `GET /admin` | The admin page, it only uses the HTTP API |
@@ -71,7 +71,7 @@ pub fn start(port: Int, context: Context) {
 pub fn app(context: Context) -> howdy.App {
   let routes =
     controller.new("/")
-    |> controller.get("/", fn(_) { redirect("/shell") })
+    |> controller.get("/", fn(ctx) { priv_page(ctx, "product.html") })
     |> controller.get("/artifacts", fn(_) { index(context.artifacts) })
     |> controller.get("/artifacts/:name/v/:version/*path", fn(ctx) {
       let name = param(ctx, "name")
@@ -90,7 +90,7 @@ pub fn app(context: Context) -> howdy.App {
     |> controller.post("/connections/:name/webhook", fn(ctx) {
       webhook(ctx, param(ctx, "name"), context)
     })
-    |> controller.get("/login", fn(ctx) { login_page(ctx, "") })
+    |> controller.get("/login", fn(ctx) { login_page(ctx, next(ctx), "") })
     |> controller.post("/login", fn(ctx) { with_web(context, sign_in(ctx, _)) })
     |> controller.get("/shell", fn(ctx) {
       with_user(context, ctx, fn(_web, _user) { shell_page(ctx) })
@@ -98,7 +98,17 @@ pub fn app(context: Context) -> howdy.App {
     |> controller.get("/live/shell", fn(ctx) {
       with_user(context, ctx, fn(web, user) {
         let shells = process.call(web.registry, 5000, registry.Shells)
-        live.serve(ctx, shell.app(), with: shell.Args(web, user, shells))
+        let query = request.get_query(ctx.request) |> result.unwrap([])
+        let code = list.key_find(query, "code") |> result.unwrap("")
+        let bind = case
+          list.key_find(query, "workspace"),
+          list.key_find(query, "channel")
+        {
+          Ok(workspace), Ok(channel) -> Some(runner.Binding(workspace, channel))
+          _, _ -> None
+        }
+        let args = shell.Args(web, user, shells, code, bind)
+        live.serve(ctx, shell.app(), with: args)
       })
     })
     |> controller.get("/admin", fn(ctx) {
@@ -150,7 +160,13 @@ fn with_user(context: Context, ctx: Request, then) {
   use web <- with_web(context)
   case user(web, ctx) {
     Ok(user) -> then(web, user)
-    Error(Nil) -> redirect("/login")
+    Error(Nil) -> {
+      let here = case ctx.request.query {
+        Some(query) -> ctx.request.path <> "?" <> query
+        None -> ctx.request.path
+      }
+      redirect("/login?next=" <> uri.percent_encode(here))
+    }
   }
 }
 
@@ -162,6 +178,14 @@ fn with_api_user(context: Context, ctx: Request, then) {
   }
 }
 
+/// Where to go after signing in, only paths on this server.
+fn next(ctx: Request) {
+  case request.get_query(ctx.request) |> result.try(list.key_find(_, "next")) {
+    Ok("/" <> _ as next) -> next
+    _ -> "/shell"
+  }
+}
+
 fn sign_in(ctx: Request, web: runner.Context) {
   let form =
     controller.read_body(ctx, limit: 100_000)
@@ -170,9 +194,13 @@ fn sign_in(ctx: Request, web: runner.Context) {
     |> result.try(uri.parse_query)
     |> result.unwrap([])
   let name = list.key_find(form, "name") |> result.unwrap("")
+  let next = case list.key_find(form, "next") {
+    Ok("/" <> _ as next) -> next
+    _ -> "/shell"
+  }
   case process.call(web.registry, 5000, registry.SignIn(name, _)) {
     Ok(user) ->
-      redirect("/shell")
+      redirect(next)
       |> response.set_cookie(
         session_cookie,
         user.token,
@@ -181,7 +209,8 @@ fn sign_in(ctx: Request, web: runner.Context) {
           max_age: Some(31_536_000),
         ),
       )
-    Error(reason) -> login_page(ctx, reason) |> controller.with_status(400)
+    Error(reason) ->
+      login_page(ctx, next, reason) |> controller.with_status(400)
   }
 }
 
@@ -299,7 +328,7 @@ fn index(store) {
   )
 }
 
-fn login_page(ctx: Request, error: String) {
+fn login_page(ctx: Request, next: String, error: String) {
   let error = case error {
     "" -> ""
     error -> "<p class=error>" <> escape(error) <> "</p>"
@@ -313,14 +342,21 @@ input,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #45475
 button{background:#89b4fa;color:#11111b;border:0;font-weight:600}.error{color:#f38ba8}p{margin:0;color:#a6adc8}</style>
 <form method=post action=/login><h1>EYG cloud</h1><p>The first person to sign in to a new cloud is its admin, with every effect. Everyone after chooses a shell from cloud.eyg.</p><p>This example signs people in by name only, run it behind your own authentication.</p>"
       <> error
-      <> "<input name=name placeholder='Your name' autofocus><button>Sign in</button></form>",
+      <> "<input type=hidden name=next value=\""
+      <> escape(next) |> string.replace("\"", "&quot;")
+      <> "\"><input name=name placeholder='Your name' autofocus><button>Sign in</button></form>",
   )
 }
 
+/// The query, code and a channel to bind to, is passed on to the live view.
 fn shell_page(ctx: Request) {
+  let route = case ctx.request.query {
+    Some(query) -> "/live/shell?" <> query
+    None -> "/live/shell"
+  }
   page.new("EYG shell")
   |> page.live
-  |> page.body([live.mount("/live/shell")])
+  |> page.body([live.mount(route)])
   |> page.respond(ctx)
 }
 

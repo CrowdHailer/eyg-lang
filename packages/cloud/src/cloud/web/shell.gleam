@@ -25,7 +25,15 @@ import lustre/event
 import lustre/server_component
 
 pub type Args {
-  Args(context: Context, user: User, shells: List(String))
+  Args(
+    context: Context,
+    user: User,
+    shells: List(String),
+    /// Code to start the textarea with, from `/shell?code=...`.
+    code: String,
+    /// A channel to bind to when the shell starts, from `/shell?workspace=...&channel=...`.
+    bind: Option(Binding),
+  )
 }
 
 pub type Cell {
@@ -64,6 +72,20 @@ pub fn app() -> lustre.App(Args, Model, Msg) {
 }
 
 fn init(args: Args) -> #(Model, Effect(Msg)) {
+  let start = case args.bind {
+    Some(runner.Binding(workspace:, channel:)) ->
+      run(
+        args,
+        args.user,
+        None,
+        "perform Bind({workspace: \""
+          <> workspace
+          <> "\", channel: \""
+          <> channel
+          <> "\"})",
+      )
+    None -> effect.none()
+  }
   #(
     Model(
       args:,
@@ -74,7 +96,7 @@ fn init(args: Args) -> #(Model, Effect(Msg)) {
       running: False,
       runs: 0,
     ),
-    effect.none(),
+    start,
   )
 }
 
@@ -127,6 +149,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
       #(Model(..model, user:), effect.none())
     }
+  }
+}
+
+/// The code the Run button runs, the starting code until something is typed.
+fn current(model: Model) -> String {
+  case model.input, model.runs {
+    "", 0 -> model.args.code
+    input, _ -> input
   }
 }
 
@@ -219,6 +249,10 @@ fn prompt(model: Model) -> Element(Msg) {
         a.name("code"),
         a.placeholder("EYG, Ctrl+Enter to run"),
         a.attribute("spellcheck", "false"),
+        a.value(case model.runs {
+          0 -> model.args.code
+          _ -> ""
+        }),
         event.on("input", {
           use value <- decode.subfield(["target", "value"], decode.string)
           decode.success(Typed(value))
@@ -238,11 +272,14 @@ fn prompt(model: Model) -> Element(Msg) {
             "key", "ctrlKey", "metaKey", "target.value",
           ]),
       ],
-      "",
+      case model.runs {
+        0 -> model.args.code
+        _ -> ""
+      },
     )
   h.div([a.class("prompt")], [
     keyed.div([a.class("editor")], [#(int.to_string(model.runs), textarea)]),
-    h.button([a.disabled(model.running), event.on_click(Run(model.input))], [
+    h.button([a.disabled(model.running), event.on_click(Run(current(model)))], [
       h.text(case model.running {
         True -> "Running…"
         False -> "Run"

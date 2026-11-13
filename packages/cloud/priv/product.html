@@ -1,0 +1,307 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EYG cloud</title>
+<style>
+  :root { color-scheme: dark; --bg: #1e1e2e; --panel: #181825; --line: #313244; --text: #cdd6f4; --muted: #a6adc8; --accent: #89b4fa; --pink: #f5c2e7; --code: #f9e2af; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  a { color: var(--accent); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  nav { display: flex; gap: 20px; align-items: center; padding: 18px 0; }
+  nav strong { font-size: 20px; margin-right: auto; }
+  .hero { padding: 56px 0 40px; }
+  .hero h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.1; margin: 0 0 18px; }
+  .hero p { font-size: 20px; color: var(--muted); max-width: 760px; }
+  .button { display: inline-block; background: var(--accent); color: #11111b; padding: 10px 18px; border-radius: 10px; font-weight: 650; text-decoration: none; border: 0; cursor: pointer; font: inherit; font-weight: 650; }
+  .button.secondary { background: var(--line); color: var(--text); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; }
+  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+  .status { font-size: 13px; margin-top: 8px; } .status.ready { color: #a6e3a1; } .status.missing { color: #fab387; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; } dt { color: var(--pink); font-weight: 600; } dd { margin: 0; color: var(--muted); }
+  select { font: 15px ui-monospace, Menlo, monospace; background: #11111b; color: var(--text); border: 1px solid #45475a; border-radius: 8px; padding: 8px 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .card h3 { margin: 0 0 8px; color: var(--pink); font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  h2 { font-size: 28px; margin: 56px 0 8px; }
+  .lead { color: var(--muted); margin: 0 0 22px; }
+  .widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 18px; }
+  @media (max-width: 520px) { .widgets { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input { width: 100%; font: 15px ui-monospace, Menlo, monospace; background: #11111b; color: var(--text); border: 1px solid #45475a; border-radius: 8px; padding: 8px 10px; }
+  pre { background: #11111b; border-radius: 10px; padding: 12px; font: 12.5px/1.45 ui-monospace, Menlo, monospace; color: var(--code); white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; margin: 14px 0; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .note { font-size: 13px; color: var(--muted); }
+  .principles li { margin-bottom: 10px; }
+  .principles strong { color: var(--pink); }
+  footer { padding: 48px 0; color: var(--muted); font-size: 14px; }
+  code { font: 14px ui-monospace, Menlo, monospace; color: var(--code); }
+</style>
+<div class="wrap">
+  <nav>
+    <strong>EYG cloud</strong>
+    <a href="/shell">Shell</a>
+    <a href="/admin">Configuration</a>
+    <a href="/artifacts">Artifacts</a>
+    <a href="https://github.com/CrowdHailer/eyg-lang/tree/agent/guides/cloud">Docs</a>
+  </nav>
+
+  <section class="hero">
+    <h1>Agents and automations you can read.</h1>
+    <p>EYG cloud puts agents in your team chat, Slack, Discord or WhatsApp, and runs triggers on what happens in GitHub, Sentry, your server logs,
+      Bluesky, feeds and any service that can call a webhook.
+      Everything it may do is written in <a href="https://eyg.run">EYG</a>, a small language for programs whose every side effect can be checked,
+      and checked by policies you own, so the people stay in charge.</p>
+    <div class="row">
+      <a class="button" href="/shell">Sign in to the shell</a>
+      <a class="button secondary" href="#quick-triggers">Set up a trigger</a>
+    </div>
+  </section>
+
+  <div class="grid">
+    <div class="card"><h3>Agents that choose to speak</h3><p>Each channel’s checked handler decides which events reach its agent. It only posts when it has something to say, by running a program that performs <code>Post</code>.</p></div>
+    <div class="card"><h3>Triggers on everything</h3><p>A trigger is a pure EYG function from an event to true or false, and a script to run. Events come from chats, GitHub, Sentry, webhooks such as log drains, Bluesky, RSS, Hacker News and Lobsters.</p></div>
+    <div class="card"><h3>Policies, not permissions screens</h3><p>Each channel has a shell: a record of gates, one per effect. Gates are functions you can read and test. Every gate is required and type checked; start with <code>cloud.reject_all</code> and override the effects to allow.</p></div>
+    <div class="card"><h3>Answers without access</h3><p>Dataclips are named functions with their own policy. A channel with no database access calls one to answer a question, and its author decides which rows ever leave the database.</p></div>
+    <div class="card"><h3>One API for people and agents</h3><p>The cloud is configured with effects. You use them in the web shell, your scripts use them over HTTP and a trusted channel's agent uses them for you.</p></div>
+  </div>
+
+  <h2>Words used here</h2>
+  <dl>
+    <dt>EYG</dt><dd>The language everything here is written in. Programs reach the world only through effects, so what a program may do can be decided before it runs.</dd>
+    <dt>Effect</dt><dd>One thing a program asks the cloud to do, such as <code>Post</code>, <code>Fetch</code>, <code>WriteFile</code> or <code>SQLite</code>.</dd>
+    <dt>Gate</dt><dd>A function that receives an effect's value and passes it on, changes it, answers it without performing it, or rejects it.</dd>
+    <dt>Workspace</dt><dd>One team's agents, files, secrets and connections, configured by its <code>workspace.eyg</code>.</dd>
+    <dt>Channel</dt><dd>A chat channel, each has its own agent conversation, triggers and shell.</dd>
+    <dt>Connection</dt><dd>A chat the workspace is in, the example chat, Slack, Discord or WhatsApp, or a service whose events reach a channel's triggers: GitHub, Sentry, webhooks, Bluesky, feeds, Hacker News, Lobsters.</dd>
+    <dt>Shell</dt><dd>A policy, the record of gates a program runs with, one per effect it may use. Each channel has one, and so does each person.</dd>
+    <dt>Web shell</dt><dd>The page where you type and run EYG with your shell, at <a href="/shell">/shell</a>.</dd>
+    <dt>Trigger</dt><dd>A pattern, a pure function from an event to true or false, and a script, a function run when the pattern is true.</dd>
+    <dt>Binding</dt><dd>Running the web shell as one channel, with that channel's shell instead of yours, to do what its agent could. Your own shell decides which channels you may bind to.</dd>
+    <dt>Dataclip</dt><dd>A named function in <code>workspace.eyg</code> with its own shell, that channels call to read data they cannot reach directly.</dd>
+    <dt>cloud.eyg</dt><dd>The cloud's configuration: its workspaces and the shells people can be given.</dd>
+    <dt>workspace.eyg</dt><dd>One workspace's configuration: model, connections, channels, their shells and triggers, and dataclips.</dd>
+  </dl>
+
+  <h2 id="quick-triggers">Quick triggers</h2>
+  <p class="lead">Fill in a card and open it in the web shell. The shell binds to the channel, so the trigger is installed with that channel's policy.
+    Press Ctrl+Enter, or Cmd+Enter on a Mac, to install it, the shell then lists the channel's triggers.
+    A card adds a trigger while the cloud runs, with <code>AddTrigger</code>. To keep it after a restart, and review it like code, copy it into the channel's <code>triggers</code> in <code>workspace.eyg</code>.</p>
+  <label for="workspace">Workspace</label>
+  <select id="workspace"><option>example</option></select>
+  <p class="note" id="signed-in">Sign in to see which connections each card needs are ready.</p>
+  <div class="widgets" id="widgets" style="margin-top: 18px"></div>
+
+  <h2>You stay in charge</h2>
+  <ul class="principles">
+    <li><strong>Configuration is code you own.</strong> Workspaces, channels, connections and policies are EYG files, never YAML. They are evaluated, so a mistake is an error before it is a surprise.</li>
+    <li><strong>Every effect is gated.</strong> Agents, triggers, subagents and people in the shell all run through the same channel shells. Secrets are never shown to programs, network secrets are added on the way out.</li>
+    <li><strong>Agents propose, people decide.</strong> Agents must choose to post, trigger patterns cannot act at all, and anything an agent sets up is visible in the shell and the admin page.</li>
+    <li><strong>No hidden API.</strong> The admin page uses the same HTTP API you can call, which runs the same effects your agents can be allowed to use.</li>
+    <li><strong>Run it yourself.</strong> One process, your files, your keys, any model provider.</li>
+  </ul>
+
+  <h2>How it compares</h2>
+  <p class="lead">Comparisons with agent gateways, OpenClaw, Hermes Agent, nanobot, NanoClaw and ElizaOS, automation services, n8n, Zapier, Lindy, IFTTT and Microsoft Copilot Studio,
+    assistants, Claude and ChatGPT agents, and workflow, event and data platforms, Pipedream, Windmill, Trigger.dev, Inngest, Temporal, Retool Workflows, Hookdeck, Heroku Dataclips, Supabase and Databricks, are in the <a href="https://github.com/CrowdHailer/eyg-lang/tree/agent/guides/cloud/compare">comparison guides</a>.
+    <a href="https://github.com/CrowdHailer/eyg-lang/tree/agent/guides/cloud/errors_and_logs.md">Errors and logs as triggers</a> explains acting on events instead of copying everything into one database.</p>
+
+  <h2>Run your own</h2>
+  <p class="lead">You need <a href="https://gleam.run">Gleam</a> and Erlang/OTP, and a key for a model provider, the example uses Ollama Cloud.</p>
+  <pre>git clone https://github.com/CrowdHailer/eyg-lang && cd eyg-lang/packages/cloud
+echo -n "$OLLAMA_API_KEY" | gleam run -m cloud/secrets -- set ../../examples/cloud/workspace.eyg OLLAMA_API_KEY
+(cd ../example_chat && PORT=8080 gleam run) &
+CLOUD=../../examples/cloud/cloud.eyg gleam run</pre>
+  <p class="note">Then open <code>http://localhost:8081</code> and sign in first. The <a href="https://github.com/CrowdHailer/eyg-lang/tree/agent/examples/cloud">example workspace</a> explains every channel.</p>
+  <p class="lead"><strong>Signing in.</strong> The first person to sign in to a new cloud is its admin, with every effect. Everyone after picks one of the shells in <code>cloud.eyg</code>.
+    This example signs people in by name only, put the cloud behind your own authentication before others can reach it.</p>
+
+  <footer>EYG cloud is part of <a href="https://eyg.run">EYG</a>.</footer>
+</div>
+<script>
+const eygString = (text) => '"' + text.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+const indent = (text, spaces) => text.split('\n').join('\n' + ' '.repeat(spaces));
+// Install the trigger, then list the channel's triggers so the result shows it.
+const trigger = (name, pattern, script) =>
+  `match perform AddTrigger({\n  name: ${eygString(name)},\n  pattern: ${indent(pattern, 2)},\n  script: ${indent(script, 2)}\n}) {\n  Ok(_) -> { perform ListTriggers({}) }\n  Error(reason) -> { [reason] }\n}`;
+const join = (parts) => parts.reduceRight((rest, part) => rest === null ? part : `!string_append(${part}, ${rest})`, null);
+
+
+// Generate explicit native cases; the channel interface never rewrites payloads.
+const textCases = (body, fallback) => `match {
+  ChatPosted(message) -> { ${body('message.text')} }
+  SlackMessage(event) -> { ${body('event.message.text')} }
+  DiscordMessage(event) -> { ${body('event.message.content')} }
+  | (_) -> { ${fallback} }
+}`;
+const reactionCases = (body, fallback) => `match {
+  ChatReacted(event) -> { ${body('event.emoji', 'event.message.text')} }
+  SlackReaction(event) -> { ${body('event.reaction', 'event.message.text')} }
+  DiscordReaction(event) -> { ${body('event.emoji', 'event.message.content')} }
+  | (_) -> { ${fallback} }
+}`;
+
+const widgets = [
+  {
+    title: 'Summarise links on 👀',
+    description: 'React to a message and a subagent summarises its links in the thread. Use the platform’s emoji value: eyes on Slack or 👀 on Discord.',
+    needs: [],
+    fields: [['channel', 'links'], ['emoji', 'eyes'], ['task', 'Fetch each link in this message and post a two sentence summary of each link.']],
+    code: ({ emoji, task }) => trigger('summarise-on-' + emoji,
+      reactionCases((nativeEmoji) => `!equal(${nativeEmoji}, ${eygString(emoji)})`, 'False({})'),
+      reactionCases((_emoji, text) => `match perform Delegate(${join([eygString(task + ' Message: '), text])}) {
+        Ok(_) -> { {} }
+        Error(reason) -> { let _ = perform Post(reason) {} }
+      }`, '{}')),
+  },
+  {
+    title: 'Answer from a dataclip',
+    description: 'When someone asks for links, call a dataclip and post how many there are. The channel needs no database access.',
+    needs: [],
+    fields: [['channel', 'general'], ['question', 'any links?'], ['dataclip', 'recent_links']],
+    code: ({ question, dataclip }) => trigger('ask-' + dataclip,
+      textCases((text) => `match !string_split_once(${text}, ${eygString(question)}) {
+        Ok(_) -> { True({}) }
+        Error(_) -> { False({}) }
+      }`, 'False({})'),
+      `(_event) -> {
+        match perform Dataclip({name: ${eygString(dataclip)}, input: {limit: 50}}) {
+          Ok(returned) -> {
+            match returned {
+              Ok(rows) -> { perform Post(${join(['"Links shared recently: "', '!int_to_string(!list_fold(rows, 0, (_, n) -> { !int_add(n, 1) }))'])}) }
+              Error(reason) -> { perform Post(reason) }
+            }
+          }
+          Error(reason) -> { perform Post(reason) }
+        }
+      }`),
+  },
+  {
+    title: '404s from a log drain',
+    description: 'Post the path of every 404 in the lines a log drain sends to a webhook connection with split on.',
+    needs: ['Webhook'],
+    fields: [['channel', 'dev'], ['status', '404']],
+    code: ({ status }) => trigger('status-' + status,
+      `match {\n  WebhookRequest(request) -> {\n    !list_fold(request.fields, False({}), (field, found) -> {\n      match found {\n        True(_) -> { True({}) }\n        False(_) -> {\n          match !equal(field.path, "status") {\n            True(_) -> { !equal(field.value, ${eygString(status)}) }\n            False(_) -> { False({}) }\n          }\n        }\n      }\n    })\n  }\n  | (_) -> { False({}) }\n}`,
+      `match {\n  WebhookRequest(request) -> { perform Post(${join([eygString(status + ' '), 'request.body'])}) }\n  | (_) -> { {} }\n}`),
+  },
+  {
+    title: 'Sentry regressions',
+    description: 'When a resolved Sentry issue comes back, a subagent posts what changed and who to ask.',
+    needs: ['Sentry'],
+    fields: [['channel', 'dev']],
+    code: () => trigger('regressions',
+      `match {\n  SentryIssue(issue) -> { !equal(issue.action, "unresolved") }\n  | (_) -> { False({}) }\n}`,
+      `match {\n  SentryIssue(issue) -> {\n    match perform Delegate(${join(['"A resolved Sentry issue has come back. Post one message with the issue, a likely cause and the next step: "', 'issue.title', '" "', 'issue.url'])}) {\n      Ok(_) -> { {} }\n      Error(_) -> { perform Post(${join(['"Regression: "', 'issue.url'])}) }\n    }\n  }\n  | (_) -> { {} }\n}`),
+  },
+  {
+    title: 'Keyword alerts',
+    description: 'Post stories from feeds, Hacker News and Lobsters whose title mentions a word.',
+    needs: ['Rss', 'HackerNews', 'Lobsters'],
+    fields: [['channel', 'news'], ['keyword', 'elixir']],
+    code: ({ keyword }) => {
+      const lower = keyword.toLowerCase();
+      const check = (title) => `match !string_split_once(!string_lowercase(${title}), ${eygString(lower)}) {\n    Ok(_) -> { True({}) }\n    Error(_) -> { False({}) }\n  }`;
+      const post = (title, link) => `perform Post(${join([title, '" "', link])})`;
+      return trigger('alert-' + lower,
+        `match {\n  FeedItem(item) -> {\n  ${check('item.title')}\n  }\n  HackerNewsStory(story) -> {\n  ${check('story.title')}\n  }\n  LobstersStory(story) -> {\n  ${check('story.title')}\n  }\n  | (_) -> { False({}) }\n}`,
+        `match {\n  FeedItem(item) -> { ${post('item.title', 'item.link')} }\n  HackerNewsStory(story) -> { ${post('story.title', 'story.link')} }\n  LobstersStory(story) -> { ${post('story.title', 'story.link')} }\n  | (_) -> { {} }\n}`);
+    },
+  },
+  {
+    title: 'Watch a Bluesky account',
+    description: 'Post every new post by an account the Bluesky connection follows.',
+    needs: ['Bsky'],
+    fields: [['channel', 'social'], ['account', 'bsky.app']],
+    code: ({ account }) => trigger('watch-' + account,
+      `match {\n  BskyPost(post) -> { !equal(post.account, ${eygString(account)}) }\n  | (_) -> { False({}) }\n}`,
+      `match {\n  BskyPost(post) -> { perform Post(${join(['"New from @"', 'post.account', '": "', 'post.url'])}) }\n  | (_) -> { {} }\n}`),
+  },
+  {
+    title: 'Announce GitHub releases',
+    description: 'Post each published release with its name and link.',
+    needs: ['GitHub'],
+    fields: [['channel', 'dev']],
+    code: () => trigger('releases',
+      `match {\n  GitHubRelease(release) -> { !equal(release.action, "published") }\n  | (_) -> { False({}) }\n}`,
+      `match {\n  GitHubRelease(release) -> { perform Post(${join(['"🚀 "', 'release.repository', '" "', 'release.tag', '" "', 'release.url'])}) }\n  | (_) -> { {} }\n}`),
+  },
+];
+
+// The connections of the chosen workspace, read with the configuration API when signed in.
+let connections = null;
+const root = document.getElementById('widgets');
+const workspace = document.getElementById('workspace');
+const updaters = widgets.map((widget) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<h3></h3><p></p>`;
+  card.querySelector('h3').textContent = widget.title;
+  card.querySelector('p').textContent = widget.description;
+  const inputs = {};
+  for (const [name, value] of widget.fields) {
+    const label = document.createElement('label');
+    label.textContent = name;
+    const input = document.createElement('input');
+    input.value = value;
+    input.addEventListener('input', () => update());
+    inputs[name] = input;
+    card.append(label, input);
+  }
+  const status = document.createElement('p');
+  status.className = 'status';
+  card.append(status);
+  const pre = document.createElement('pre');
+  const row = document.createElement('div');
+  row.className = 'row';
+  const open = document.createElement('a');
+  open.className = 'button';
+  open.textContent = 'Open in the shell';
+  const copy = document.createElement('button');
+  copy.className = 'button secondary';
+  copy.textContent = 'Copy';
+  copy.onclick = () => navigator.clipboard.writeText(pre.textContent).then(() => { copy.textContent = 'Copied'; setTimeout(() => copy.textContent = 'Copy', 1500) });
+  row.append(open, copy);
+  card.append(pre, row);
+  root.append(card);
+  const update = () => {
+    const values = Object.fromEntries(Object.entries(inputs).map(([k, i]) => [k, i.value.trim()]));
+    const code = widget.code(values);
+    pre.textContent = code;
+    const query = new URLSearchParams({ workspace: workspace.value.trim(), channel: values.channel, code });
+    open.href = '/shell?' + query.toString();
+    if (connections === null || widget.needs.length === 0) { status.textContent = ''; return; }
+    const sending = connections.filter(c => c.channel.Some === values.channel && widget.needs.includes(c.kind));
+    if (sending.length) {
+      status.className = 'status ready';
+      status.textContent = '✓ ' + sending.map(c => c.name).join(', ') + ' sends events to #' + values.channel;
+    } else {
+      status.className = 'status missing';
+      status.textContent = 'No ' + widget.needs.join(' or ') + ' connection sends events to #' + values.channel + ' yet, add one to connections in workspace.eyg';
+    }
+  };
+  update();
+  return update;
+});
+// Dogfood the API: the same requests as the configuration page, gated by your shell.
+async function api(operation, input) {
+  const response = await fetch('/api/' + operation, { method: 'POST', headers: { accept: 'application/json' }, body: input === undefined ? '' : JSON.stringify(input) });
+  if (!response.ok) throw new Error(response.status);
+  const body = await response.json();
+  if (body && body.Ok !== undefined) return body.Ok;
+  throw new Error('failed');
+}
+async function loadConnections() {
+  try { connections = await api('Connections', workspace.value); } catch (_) { connections = null; }
+  updaters.forEach((u) => u());
+}
+workspace.addEventListener('change', loadConnections);
+(async () => {
+  try {
+    const workspaces = await api('Workspaces');
+    workspace.replaceChildren(...workspaces.map(w => { const o = document.createElement('option'); o.textContent = w.name; return o; }));
+    document.getElementById('signed-in').textContent = 'Each card checks the workspace has the connections it needs.';
+    await loadConnections();
+  } catch (_) {}
+})();
+</script>
