@@ -337,3 +337,19 @@ jobs:
         with:
           name: artifact-browser-checks
           path: packages/tracing/.recordings
+
+  test-zig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test the pinned native runtime
+        working-directory: packages/zig_runtime
+        run: ./scripts/zig build test
+      - name: Build and smoke test the native executable
+        working-directory: packages/zig_runtime
+        run: |
+          ./scripts/zig build -Doptimize=ReleaseFast
+          test "$(./zig-out/bin/eyg eval -c '!int_add(20, 22)')" = 42

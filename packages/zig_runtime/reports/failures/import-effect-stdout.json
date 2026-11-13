@@ -1,0 +1,18 @@
+{
+  "request": {
+    "op": "tui",
+    "width": 80,
+    "height": 24,
+    "files": {
+      "ask.eyg": "perform StandardOut(\"hello\")"
+    },
+    "events": [
+      {
+        "paste": "import \"ask.eyg\""
+      },
+      {
+        "key": "enter"
+      }
+    ]
+  }
+}

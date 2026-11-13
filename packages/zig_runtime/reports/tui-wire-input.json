@@ -1,0 +1,458 @@
+[
+  {
+    "name": "surrogate-ghost",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {
+        "\u03bb\ud83d\ude00a": "42",
+        "\u03bb\ud83d\ude00b": "42"
+      },
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "q"
+        },
+        {
+          "paste": "\u03bb"
+        },
+        {
+          "key": "tab"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+left",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+left"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+right",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+right"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+backspace",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+backspace"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+delete",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+delete"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+a",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+a"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+tab",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+tab"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ctrl+backspace",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "ctrl+backspace"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "backtab",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "backtab"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ctrl+h",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "ctrl+h"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ctrl+d",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "ctrl+d"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "space",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "space"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+home",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+home"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "shift+end",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "shift+end"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ctrl+shift+a",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "ctrl+shift+a"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "alt+x",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "alt+x"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "f1",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "f1"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "escape",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "escape"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "return",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "ab\u754cc"
+        },
+        {
+          "key": "return"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  }
+]

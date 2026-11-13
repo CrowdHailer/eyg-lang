@@ -1,0 +1,7 @@
+node_modules/
+.expo/
+/android/
+dist/
+modules/eyg-runtime/android/src/main/jniLibs/
+/work/
+modules/**/android/build/

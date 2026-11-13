@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/workspace/eyg-lang/packages/zig_runtime/git/verify_writes.py", line 60, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/workspace/eyg-lang/packages/zig_runtime/git/verify_writes.py", line 19, in main
+    native.call(repo,'init',branch='main');checks+=1
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/eyg-lang/packages/zig_runtime/git/verify_native.py", line 21, in call
+    self.last_duration_ns = result.get('duration_ns')
+                            ^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'get'

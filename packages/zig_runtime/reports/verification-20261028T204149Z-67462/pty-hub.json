@@ -1,0 +1,79 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "fixture": {
+    "cid": "baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+    "program": {
+      "0": "i",
+      "v": 42
+    },
+    "module_delay_ms": 500
+  },
+  "passed": true,
+  "failures": [],
+  "requests": [
+    {
+      "phase": "gleam",
+      "path": "/packages/pull?",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "gleam",
+      "path": "/packages/pull?since=1",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "gleam",
+      "path": "/modules/baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+      "user_agent": "Bun/1.3.13"
+    },
+    {
+      "phase": "native",
+      "path": "/packages/pull",
+      "user_agent": "zig/0.14.1 (std.http)"
+    },
+    {
+      "phase": "native",
+      "path": "/packages/pull?since=1",
+      "user_agent": "zig/0.14.1 (std.http)"
+    },
+    {
+      "phase": "native",
+      "path": "/modules/baguqeerav7573zvsbhxirlmt7vqixxn5frippicgputyjumyzekzi2md4usa",
+      "user_agent": "zig/0.14.1 (std.http)"
+    }
+  ],
+  "native_samples_ns": [
+    278028,
+    1208326,
+    1665764,
+    1741612,
+    600444,
+    761952,
+    503695
+  ],
+  "gleam_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l"
+  },
+  "native_cleanup": {
+    "exit_code": 0,
+    "termios_restored": true,
+    "paste_disabled": true,
+    "cleanup": "\u001b[?2026l\u001b[?2004l\u001b[0m\u001b[?25h"
+  },
+  "checked": 10,
+  "parity_passed": true,
+  "cleanup_passed": true,
+  "key_to_frame": {
+    "samples": 7,
+    "p50_ms": 0.761952,
+    "p95_ms": 1.741612,
+    "p99_ms": 1.741612,
+    "max_ms": 1.741612,
+    "mean_ms": 0.9656887142857143,
+    "under_10ms": true
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "a7889736c1d8643e64a3f16e391b30bcd228e47bda268df959e0fc6d3eb948d2",
+  "build_info": {
+    "zig": "0.14.1",
+    "mode": "ReleaseFast",
+    "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+    "git_reference": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+    "protocol": 1
+  },
+  "binary_bytes": 2438248,
+  "machine": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "processor": "",
+    "cpu_count": 5
+  },
+  "measurement": "monotonic native event dispatch plus complete JSON cell-frame construction; excludes JSON serialization, terminal transport, startup; sandboxed effects in Gleam",
+  "warmup_iterations": 2,
+  "iterations": 10,
+  "parity_passed": false,
+  "correctness_gates": {
+    "release_fast_build": true,
+    "same_binary_full_differential": false,
+    "same_binary_raw_input": false,
+    "same_binary_pty_parity_cleanup": false,
+    "same_binary_pty_under_10ms": false,
+    "same_binary_ready_hub_parity_cleanup": false,
+    "same_binary_ready_hub_under_10ms": false
+  },
+  "parity_report": "reports/tui-hub-broad.json",
+  "workloads": {
+    "integer-input": {
+      "native": {
+        "samples": 90,
+        "p50_ms": 2.419251,
+        "p95_ms": 3.563936,
+        "p99_ms": 5.516462,
+        "max_ms": 5.516462,
+        "mean_ms": 2.543229466666667,
+        "under_10ms": true
+      },
+      "events_per_iteration": 9
+    },
+    "unicode-input": {
+      "native": {
+        "samples": 40,
+        "p50_ms": 2.556397,
+        "p95_ms": 5.926347,
+        "p99_ms": 14.024022,
+        "max_ms": 14.024022,
+        "mean_ms": 3.243282125,
+        "under_10ms": false
+      },
+      "events_per_iteration": 4
+    },
+    "arithmetic": {
+      "native": {
+        "samples": 20,
+        "p50_ms": 2.288744,
+        "p95_ms": 5.246533,
+        "p99_ms": 6.193453,
+        "max_ms": 6.193453,
+        "mean_ms": 2.81877235,
+        "under_10ms": true
+      },
+      "events_per_iteration": 2
+    },
+    "picker": {
+      "native": {
+        "samples": 100,
+        "p50_ms": 2.242421,
+        "p95_ms": 4.207395,
+        "p99_ms": 4.902699,
+        "max_ms": 5.158255,
+        "mean_ms": 2.50603106,
+        "under_10ms": true
+      },
+      "events_per_iteration": 10
+    },
+    "history-30": {
+      "native": {
+        "samples": 660,
+        "p50_ms": 2.53623,
+        "p95_ms": 4.237297,
+        "p99_ms": 6.706804,
+        "max_ms": 17.712251,
+        "mean_ms": 2.823893212121212,
+        "under_10ms": false
+      },
+      "events_per_iteration": 66
+    },
+    "structural-navigation": {
+      "native": {
+        "samples": 100,
+        "p50_ms": 1.946906,
+        "p95_ms": 3.361373,
+        "p99_ms": 7.071624,
+        "max_ms": 7.604326,
+        "mean_ms": 2.20503064,
+        "under_10ms": true
+      },
+      "events_per_iteration": 10
+    }
+  },
+  "performance_passed": false,
+  "passed": false
+}

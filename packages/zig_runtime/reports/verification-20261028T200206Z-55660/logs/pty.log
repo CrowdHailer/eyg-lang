@@ -1,0 +1,5 @@
+FAIL PTY integer-open: {'path': '$.cells[815].data', 'expected': '╭', 'got': ' '}
+FAIL PTY integer-type: {'path': '$.cells[897].data', 'expected': '7', 'got': ' '}
+FAIL PTY integer-apply: {'path': '$.cells[815].data', 'expected': ' ', 'got': '╭'}
+FAIL PTY integer-run: {'path': '$.cells[1600].data', 'expected': '7', 'got': ' '}
+{"checked": 21, "parity_passed": false, "cleanup_passed": true, "key_to_frame": {"samples": 16, "p50_ms": 0.099852, "p95_ms": 0.930639, "p99_ms": 0.930639, "max_ms": 0.930639, "mean_ms": 0.1957635625, "under_10ms": true}}

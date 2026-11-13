@@ -1,0 +1,203 @@
+[
+  {
+    "name": "file-greek",
+    "difference": {
+      "path": "$.frames[2].cells[97].symbol",
+      "expected": "b",
+      "got": "a"
+    },
+    "request": {
+      "op": "tui",
+      "files": {
+        "λabc.eyg": "42",
+        "λabd.eyg": "42"
+      },
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "q"
+        },
+        {
+          "paste": "λ"
+        },
+        {
+          "key": "tab"
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": "left"
+        },
+        {
+          "key": "backspace"
+        },
+        {
+          "key": "tab"
+        }
+      ]
+    }
+  },
+  {
+    "name": "file-dotted-i",
+    "difference": {
+      "path": "$.frames[2].cells[97].symbol",
+      "expected": "b",
+      "got": "a"
+    },
+    "request": {
+      "op": "tui",
+      "files": {
+        "İabc.eyg": "42",
+        "İabd.eyg": "42",
+        "i̇abc.eyg": "42"
+      },
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "q"
+        },
+        {
+          "paste": "i̇"
+        },
+        {
+          "key": "tab"
+        }
+      ]
+    }
+  },
+  {
+    "name": "file-utf16-sort",
+    "difference": {
+      "path": "$.frames[1].cells[97].symbol",
+      "expected": " ",
+      "got": "."
+    },
+    "request": {
+      "op": "tui",
+      "files": {
+        "a": null,
+        "a.": "42",
+        "𐀀.eyg": "42",
+        ".eyg": "42"
+      },
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "q"
+        },
+        {
+          "key": "down"
+        }
+      ]
+    }
+  },
+  {
+    "name": "input-cjk-edit",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "A界B"
+        },
+        {
+          "key": "left"
+        },
+        {
+          "key": "backspace"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "home"
+        },
+        {
+          "key": "delete"
+        },
+        {
+          "key": "enter"
+        }
+      ]
+    }
+  },
+  {
+    "name": "input-join",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "👩💻"
+        },
+        {
+          "key": "left"
+        },
+        {
+          "paste": "‍"
+        },
+        {
+          "key": "left"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "delete"
+        },
+        {
+          "key": "backspace"
+        }
+      ]
+    }
+  },
+  {
+    "name": "input-zero",
+    "difference": null,
+    "request": {
+      "op": "tui",
+      "files": {},
+      "width": 80,
+      "height": 10,
+      "events": [
+        {
+          "key": "s"
+        },
+        {
+          "paste": "́A"
+        },
+        {
+          "key": "home"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "delete"
+        },
+        {
+          "key": "end"
+        },
+        {
+          "key": "backspace"
+        }
+      ]
+    }
+  }
+]

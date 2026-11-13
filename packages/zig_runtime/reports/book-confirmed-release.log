@@ -1,0 +1,4 @@
+Build Summary: 3/3 steps succeeded
+install success
++- install eyg success
+   +- zig build-exe eyg ReleaseFast native success 2m MaxRSS:445M

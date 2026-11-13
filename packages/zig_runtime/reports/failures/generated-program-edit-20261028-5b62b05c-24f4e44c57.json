@@ -1,0 +1,229 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "5b62b05ca384ad2b390e2a22f9f028b4978c6dd1a4fe868aaee6c2a360bb3d66",
+  "category": "generated-program-edit",
+  "name": "22",
+  "request": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 40,
+    "events": [
+      {
+        "paste": "let x = let {x, y: z} = {x: {answer: -97, name: \"e\u0301\"}.answer, y: match Some(41) { Some(x) -> { x } | (_) -> { 0 } }} !int_add(x, z) !int_multiply(x, 2)"
+      },
+      {
+        "key": "tab"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": "x"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "o"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "a"
+      }
+    ]
+  },
+  "minimized": {
+    "files": {},
+    "op": "tui",
+    "width": 80,
+    "height": 40,
+    "events": [
+      {
+        "paste": "let x = let {x, y: z} = {x: {answer: -97, name: \"e\u0301\"}.answer, y: match Some(41) { Some(x) -> { x } | (_) -> { 0 } }} !int_add(x, z) !int_multiply(x, 2)"
+      },
+      {
+        "key": "tab"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "a"
+      },
+      {
+        "key": ">"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": " "
+      },
+      {
+        "key": "esc"
+      },
+      {
+        "key": "E"
+      },
+      {
+        "key": "k"
+      },
+      {
+        "key": "x"
+      },
+      {
+        "key": "down"
+      },
+      {
+        "key": "o"
+      },
+      {
+        "key": "right"
+      },
+      {
+        "key": "a"
+      }
+    ]
+  },
+  "failure": {
+    "category": "generated-program-edit",
+    "name": "22",
+    "request": {
+      "files": {},
+      "op": "tui",
+      "width": 80,
+      "height": 40,
+      "events": [
+        {
+          "paste": "let x = let {x, y: z} = {x: {answer: -97, name: \"e\u0301\"}.answer, y: match Some(41) { Some(x) -> { x } | (_) -> { 0 } }} !int_add(x, z) !int_multiply(x, 2)"
+        },
+        {
+          "key": "tab"
+        },
+        {
+          "key": "E"
+        },
+        {
+          "key": "a"
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": "esc"
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": "a"
+        },
+        {
+          "key": ">"
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": " "
+        },
+        {
+          "key": "esc"
+        },
+        {
+          "key": "E"
+        },
+        {
+          "key": "k"
+        },
+        {
+          "key": "x"
+        },
+        {
+          "key": "down"
+        },
+        {
+          "key": "o"
+        },
+        {
+          "key": "right"
+        },
+        {
+          "key": "a"
+        }
+      ]
+    },
+    "native_error": null,
+    "oracle_error": {
+      "kind": "timeout",
+      "error": "/workspace/tooling/bin/bun did not answer within 5.0s"
+    }
+  }
+}

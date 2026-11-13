@@ -1,0 +1,41 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "22d79763176bef4fafce5d2fc933f8e51b6fddf67119d6d916f060c28506b9b8",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "/workspace/eyg-lang/work/tui-dev/bin/eyg",
+    "--only",
+    "tui",
+    "--traces",
+    "0",
+    "--no-shrink",
+    "--report",
+    "reports/tui-stable.json"
+  ],
+  "counts": {
+    "tui-scenario": {
+      "checked": 18,
+      "passed": 18,
+      "failed": 0
+    }
+  },
+  "failures": [],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "passed": true,
+  "elapsed_seconds": 23.607339407999916
+}

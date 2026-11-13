@@ -1,0 +1,39 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "4020ed5b6b6bc8e09d69f270a9c5ec7ef42b5d2a1c7e6e64404c7635e97ddb8d",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "counts": {
+    "tui-scenario": {
+      "checked": 18,
+      "passed": 17,
+      "failed": 1
+    }
+  },
+  "failures": [
+    {
+      "category": "tui-scenario",
+      "name": "delete-undo",
+      "difference": {
+        "path": "$.frames[4].cells[1842].symbol",
+        "expected": "N",
+        "got": "A"
+      }
+    }
+  ],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true
+  },
+  "coverage": {
+    "ir_nodes": {},
+    "builtins": {}
+  },
+  "passed": false,
+  "elapsed_seconds": 81.3291614740001
+}

@@ -1,0 +1,18 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "request": {
+    "op": "eval",
+    "program": {
+      "0": ".",
+      "i": "./module.eyg"
+    }
+  },
+  "minimized": {
+    "op": "eval",
+    "program": {
+      "0": ".",
+      "i": "./module.eyg"
+    }
+  }
+}

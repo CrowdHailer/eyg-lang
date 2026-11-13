@@ -1,0 +1,1 @@
+{"passed": true, "checks": 21, "features": ["SHA1 object names", "zlib objects", "canonical tree ordering", "commit headers", "nested complete snapshots", "branch create", "packed refs", "stale-tip CAS", "exclusive writer locks", "concurrent CAS", "git fsck --strict"], "mutates_worktree": false}

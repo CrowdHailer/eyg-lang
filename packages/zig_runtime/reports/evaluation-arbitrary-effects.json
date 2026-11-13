@@ -1,0 +1,109 @@
+{
+  "seed": 20261028,
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "binary_sha256": "ccbfcf5b994ff669a0cde0d224c9886f2f6cca7386945ffd97d1a3dffc9ecee1",
+  "oracle_manifest_sha256": "f1331ee4b2e52c26bd67b591485c8cac57d2a10578af0d2a8f84c2ef8ed09ae1",
+  "command": [
+    "tests/differential.py",
+    "--binary",
+    "work/eval-runner",
+    "--only",
+    "eval",
+    "--programs",
+    "1000",
+    "--report",
+    "reports/evaluation-arbitrary-effects.json"
+  ],
+  "counts": {
+    "spec": {
+      "checked": 107,
+      "passed": 107,
+      "failed": 0
+    },
+    "generated-program": {
+      "checked": 1000,
+      "passed": 1000,
+      "failed": 0
+    },
+    "generated-external-effects": {
+      "checked": 100,
+      "passed": 100,
+      "failed": 0
+    },
+    "generated-external-values": {
+      "checked": 50,
+      "passed": 50,
+      "failed": 0
+    }
+  },
+  "failures": [],
+  "sensitivity": {
+    "symbol": true,
+    "fg": true,
+    "modifiers": true,
+    "width": true,
+    "underline_color": true,
+    "link": true,
+    "json_types": true
+  },
+  "coverage": {
+    "ir_nodes": {
+      "#": 17,
+      ".": 23,
+      "@": 61,
+      "a": 10943,
+      "b": 3888,
+      "c": 368,
+      "e": 662,
+      "f": 1174,
+      "g": 432,
+      "h": 96,
+      "i": 3435,
+      "l": 696,
+      "m": 188,
+      "n": 106,
+      "o": 2,
+      "p": 402,
+      "s": 641,
+      "t": 118,
+      "ta": 197,
+      "u": 544,
+      "v": 1665,
+      "x": 50,
+      "z": 1
+    },
+    "builtins": {
+      "binary_compare": 11,
+      "binary_concat": 10,
+      "binary_fold": 4,
+      "binary_from_integers": 4,
+      "binary_size": 6,
+      "equal": 35,
+      "fix": 81,
+      "int_absolute": 444,
+      "int_add": 1230,
+      "int_compare": 113,
+      "int_divide": 24,
+      "int_multiply": 304,
+      "int_parse": 5,
+      "int_subtract": 353,
+      "int_to_string": 362,
+      "list_fold": 12,
+      "list_pop": 7,
+      "not_a_real_builtin": 1,
+      "string_append": 419,
+      "string_ends_with": 9,
+      "string_from_binary": 8,
+      "string_length": 13,
+      "string_lowercase": 178,
+      "string_replace": 10,
+      "string_split": 7,
+      "string_split_once": 7,
+      "string_starts_with": 13,
+      "string_to_binary": 48,
+      "string_uppercase": 170
+    }
+  },
+  "passed": true,
+  "elapsed_seconds": 3.0279533130001255
+}

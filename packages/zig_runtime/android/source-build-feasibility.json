@@ -1,0 +1,77 @@
+{
+  "reactNative": "0.88.1",
+  "supportedCompositeBuild": true,
+  "proof": {
+    "file": "node_modules/react-native/settings.gradle.kts",
+    "description": "Installed settings file explicitly documents includeBuild source builds and declares ReactAndroid and hermes-engine projects"
+  },
+  "availableSources": [
+    "React",
+    "ReactAndroid",
+    "ReactCommon"
+  ],
+  "requiredUpstreamSourcesNotBundled": {
+    "boost": "1.83.0",
+    "double-conversion": "1.1.6",
+    "fast_float": "8.0.0",
+    "fmt": "12.1.0",
+    "folly": "2024.11.18.00",
+    "glog": "0.3.5",
+    "hermes": "full source tree absent; only engine podspec/utilities and prebuilt compiler installed"
+  },
+  "cachedHermesAndroidAar": "260318099.0.5-debug present; source ReactAndroid preBuild still depends on Hermes source project",
+  "cmake": {
+    "default": "3.30.5",
+    "installed": [
+      "3.22.1"
+    ],
+    "supportedOverride": "CMAKE_VERSION environment variable"
+  },
+  "localOnlySourceBuildReady": false,
+  "networkAttempted": false,
+  "blockedArtifactRetried": false,
+  "canonicalSourceOrGradleEdits": false,
+  "sourceEvidenceSha256": {
+    "settings.gradle.kts": "fec57d2259331405ced72328804bbb5c9d9060e41048aabe43d9d6c8280d4466",
+    "build.gradle.kts": "b066c931658550c458ef1a8810395d086e4f8254be99acb6ffc947df26b9b72b",
+    "ReactAndroid/build.gradle.kts": "22bafae482e537acd5ec55701f31ec85cf06268af1152f8b25fc427ab9510b92",
+    "ReactAndroid/hermes-engine/build.gradle.kts": "b75f516f9a716c97d1d34423c51dcf9b3b1bd97ea692dc80cad861953af0e698",
+    "gradle/libs.versions.toml": "2d8189b893ec8179a8f27b0ecb2b946799d72bb7ad5c3d8584c18edd7483e933"
+  },
+  "offlineCompositeDryRun": {
+    "status": "failed before task graph; required Gradle plugin marker is not cached",
+    "command": "JAVA_HOME=/path/to/jdk ANDROID_HOME=/path/to/sdk GRADLE_USER_HOME=/path/to/cache CMAKE_VERSION=3.22.1 ./gradlew :app:assembleDebug --offline --dry-run --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a",
+    "missingPlugin": "org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin:2.2.0",
+    "requiredBy": "expo-updates/expo-updates-gradle-plugin/build.gradle.kts:4",
+    "publisherRepository": "https://plugins.gradle.org/m2/",
+    "log": "work/source-build-offline.log",
+    "isolatedSettings": "work/source-build/android/settings.gradle",
+    "canonicalProjectModified": false
+  },
+  "publisherSourceUrls": {
+    "boost": "https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.gz",
+    "double-conversion": "https://github.com/google/double-conversion/archive/v1.1.6.tar.gz",
+    "fast_float": "https://github.com/fastfloat/fast_float/archive/v8.0.0.tar.gz",
+    "fmt": "https://github.com/fmtlib/fmt/archive/12.1.0.tar.gz",
+    "folly": "https://github.com/facebook/folly/archive/v2024.11.18.00.tar.gz",
+    "glog": "https://github.com/google/glog/archive/v0.3.5.tar.gz",
+    "hermes": "https://github.com/facebook/hermes/tarball/hermes-v260318099.0.5"
+  },
+  "policyAssessment": {
+    "source": "environment_status enforced restricted policy revision1",
+    "allowedSourceHosts": [
+      "github.com",
+      "codeload.github.com"
+    ],
+    "allowedToolchainHosts": [
+      "plugins.gradle.org",
+      "plugins-artifacts.gradle.org",
+      "dl.google.com",
+      "repo.maven.apache.org"
+    ],
+    "missingAllowedHost": "archives.boost.io",
+    "sourceDownloadAttempted": false,
+    "reasonStopped": "Required normal Boost publisher is outside enforced allowed hosts; no mirror/alternate used"
+  },
+  "artifactPreservation": "validated app/runtime sources, native libraries and reports remain unchanged by isolated Gradle configuration"
+}

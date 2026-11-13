@@ -1,0 +1,14 @@
+{
+  "oracle": "be502aa03df926a8f9df474a0a7fe16c8fb14fbd",
+  "seed": 20261028,
+  "binary_sha256": "a057fee71d2ec235d6d870f99473abaf5021149561117ae2681b1c467f200f6f",
+  "failures": [],
+  "passed": true,
+  "counts": {
+    "DecodeJSON": 3538,
+    "unsafe-program": 510,
+    "EYGParse": 1016,
+    "Sign": 1107,
+    "CreateKey": 102
+  }
+}

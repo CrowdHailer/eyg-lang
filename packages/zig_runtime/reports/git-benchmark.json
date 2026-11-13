@@ -1,0 +1,48 @@
+{
+  "repo": "/workspace/eyg-lang",
+  "count": 20,
+  "native_roundtrip": {
+    "samples": 100,
+    "min_ms": 1.3213,
+    "p50_ms": 2.7819,
+    "p95_ms": 10.8517,
+    "p99_ms": 16.9163,
+    "max_ms": 139.364
+  },
+  "native_includes": [
+    "JSONL roundtrip",
+    "repository and pack-index setup",
+    "zlib decoding",
+    "SHA-1 object and index checks",
+    "full structured commit records"
+  ],
+  "cache": "OS file caches warm; native decoded cache starts empty each query",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "logical_cpus": 5,
+  "binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "oracle_commit": "f1e32bad77d7ffdef6c416cb7ccbf7b23ec0bbd9",
+  "gleam_cold_query": {
+    "samples": 3,
+    "min_ms": 786,
+    "p50_ms": 899,
+    "p95_ms": 918,
+    "p99_ms": 918,
+    "max_ms": 918
+  },
+  "gleam_warm_query": {
+    "samples": 3,
+    "min_ms": 20,
+    "p50_ms": 22,
+    "p95_ms": 26,
+    "p99_ms": 26,
+    "max_ms": 26
+  },
+  "gleam_fresh_process": {
+    "samples": 3,
+    "min_ms": 1850.9109,
+    "p50_ms": 1994.1146,
+    "p95_ms": 2647.6986,
+    "p99_ms": 2647.6986,
+    "max_ms": 2647.6986
+  }
+}
