@@ -17,6 +17,7 @@
 //// - `readme` optional, context given to the channel's agent.
 //// - `triggers` optional, a list of `{name, pattern, script}` triggers installed in the channel, see `cloud/trigger`.
 //// - `handle` a pure function from the plugin's native input type to a list of work.
+//// - `llm` optional, the model for the channel's agents instead of the workspace's.
 ////
 //// The configuration is trusted, it is evaluated with every effect available
 //// and can read the workspace's secrets with the `Secret` effect.
@@ -84,6 +85,8 @@ pub type Channel {
     shell: execute.Policy,
     readme: String,
     triggers: List(trigger.Trigger),
+    /// The model for the channel's agents, the workspace's unless the channel sets one.
+    llm: provider.Llm,
   )
 }
 
@@ -172,7 +175,11 @@ pub fn channel(
         Ok(_) -> field("triggers", cast.as_list_of(_, trigger.decode), value)
         Error(_) -> Ok([])
       })
-      Ok(Channel(handle:, shell:, readme:, triggers:))
+      use llm <- result.try(case cast.field("llm", Ok, value) {
+        Ok(_) -> field("llm", overlay.cast_llm, value)
+        Error(_) -> Ok(workspace.llm)
+      })
+      Ok(Channel(handle:, shell:, readme:, triggers:, llm:))
     }
     Error(#(reason, _, _, _)) ->
       Error("channel " <> name <> ": " <> simple_debug.describe(reason))

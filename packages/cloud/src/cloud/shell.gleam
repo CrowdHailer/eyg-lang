@@ -129,7 +129,7 @@ pub fn turn(
     |> list.filter(fn(section) { section != "" })
     |> string.join("\n\n")
   let context = agent.context(workspace.state.origin, effects, readme)
-  let complete = shell.completer(workspace.llm, context)
+  let complete = shell.completer(channel.llm, context)
   let scope = [
     #(
       "context",

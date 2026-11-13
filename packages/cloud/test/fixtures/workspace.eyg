@@ -37,7 +37,13 @@ let research = {
       False(_) -> {
         match !equal(name, "notes") {
           True(_) -> { {handle: (_) -> { [] }, channel_shell: shell.writes_under(["/channels/notes"], shell.everything)} }
-          False(_) -> { {handle: (_) -> { [] }, channel_shell: {post: shell.pass, ..cloud.reject_all}} }
+          False(_) -> {
+            {
+              handle: (_) -> { [] },
+              channel_shell: {post: shell.pass, ..cloud.reject_all},
+              llm: {provider: Mistral({api_key: "k"}), model: "small"}
+            }
+          }
         }
       }
     }

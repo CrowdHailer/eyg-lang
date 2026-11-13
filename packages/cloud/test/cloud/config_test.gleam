@@ -151,3 +151,25 @@ pub fn secrets_are_placeholders_in_channels_test() {
     |> string.lowercase
   assert result == Ok(Some(v.some(v.String("eyg-secret-" <> digest))))
 }
+
+pub fn channels_can_choose_a_model_test() {
+  let workspace = load()
+  let general =
+    config.ChannelInfo(
+      platform: "chat",
+      id: "C1",
+      name: "general",
+      input_type: t.record([#("text", t.String)]),
+    )
+  let assert Ok(config.Channel(llm:, ..)) = config.channel(workspace, general)
+  assert llm.model == "test-model"
+  let random =
+    config.ChannelInfo(
+      platform: "chat",
+      id: "C3",
+      name: "random",
+      input_type: t.record([#("text", t.String)]),
+    )
+  let assert Ok(config.Channel(llm:, ..)) = config.channel(workspace, random)
+  assert llm.model == "small"
+}

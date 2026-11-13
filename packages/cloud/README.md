@@ -46,7 +46,7 @@ and its output posted in the message's thread. The agent sees the program and it
 | `readme` | Context for every agent in the workspace |
 | `files` | Directory, relative to the workspace file, the shared file system starts with |
 | `crons` | `[{name, schedule, channel, message}]` messages sent to a channel's session on a schedule |
-| `channel` | Function from `{platform, id, name}` to `{handle, channel_shell, readme, triggers}`; `handle` and `channel_shell` are required |
+| `channel` | Function from `{platform, id, name}` to `{handle, channel_shell, readme, triggers, llm}`; `handle` and `channel_shell` are required |
 
 The configuration is trusted. It can read the workspace's secrets with the `Secret` effect.
 It is evaluated again for each turn, trigger and invocation, so changes apply without a restart.
