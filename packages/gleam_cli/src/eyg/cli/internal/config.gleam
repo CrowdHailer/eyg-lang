@@ -1,13 +1,34 @@
 import eyg/cli/internal/client
 import eyg/cli/internal/terminal
+import eyg/hub/cache
+import gleam/bit_array
+import gleam/crypto
 import gleam/option
 import gleam/result
+import loam/execute
 import loam/os
 import loam/system
 import ogre/origin
 
 pub type Config {
   Config(client: client.Client, dirs: os.Directories, styled: Bool)
+}
+
+/// A separate response store for each complete hub origin, including its scheme.
+pub fn hub_store(config: Config) {
+  let url = origin.to_string(config.client.origin)
+  let identity =
+    crypto.hash(crypto.Sha256, bit_array.from_string(url))
+    |> bit_array.base16_encode
+  config.dirs.cache_dir <> "/eyg/hub/" <> identity
+}
+
+pub fn state(config: Config) {
+  execute.State(
+    config.client.origin,
+    cache.empty(),
+    option.Some(hub_store(config)),
+  )
 }
 
 pub fn load() -> system.Effect(Result(Config, Nil)) {

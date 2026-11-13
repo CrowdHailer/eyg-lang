@@ -36,7 +36,7 @@ pub fn execute(input, config: config.Config) {
 /// Prepare a shell without taking ownership of terminal input or output.
 /// Frontends can then call `handle` while retaining the returned scope and cache.
 pub fn initialize(input, config: config.Config) {
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = config.state(config)
   read_input(input, state)
 }
 
@@ -117,7 +117,7 @@ pub fn record(config: config.Config) -> system.Effect(Result(Int, String)) {
   use cwd <- system.try(cwd)
   use started <- system.then(system.now())
   use id <- system.then(traces.new_id(started))
-  let state = execute.State(config.client.origin, cache.empty())
+  let state = config.state(config)
   let recording =
     Recording(
       id:,

@@ -10,6 +10,7 @@ import glasshouse/store
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import loam/execute
@@ -370,5 +371,5 @@ pub fn execution_state(environment: Environment, origin) -> execute.State {
         _, _ -> cache
       }
     })
-  execute.State(origin, cache)
+  execute.State(origin, cache, option.None)
 }
