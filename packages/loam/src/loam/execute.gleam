@@ -46,7 +46,13 @@ pub type State {
 }
 
 pub fn block(source, scope, state) {
-  loop(block.execute(source, scope), state)
+  use #(result, state, _) <- system.map(block_recorded(source, scope, state))
+  #(result, state)
+}
+
+/// Also return each EYG effect performed, its label, input and reply, in order.
+pub fn block_recorded(source, scope, state) {
+  loop_recorded(block.execute(source, scope), state, [])
 }
 
 /// Rebuild a failed reason back into full debug information
@@ -68,31 +74,49 @@ pub fn loop(
   return: Result(#(Option(Value), Scope), Debug),
   state: State,
 ) -> system.Effect(#(Result(#(Option(Value), Scope), Debug), State)) {
+  use #(result, state, _) <- system.map(loop_recorded(return, state, []))
+  #(result, state)
+}
+
+fn loop_recorded(
+  return: Result(#(Option(Value), Scope), Debug),
+  state: State,
+  records: List(#(String, Value, Value)),
+) {
+  let stop = fn(result) { system.Done(#(result, state, list.reverse(records))) }
   case return {
-    Ok(return) -> system.Done(#(Ok(return), state))
+    Ok(return) -> stop(Ok(return))
     Error(#(reason, meta, env, k)) ->
       case reason {
         break.UnhandledEffect(label, lift) ->
           case computer.cast(label, lift) {
             Ok(effect) -> {
               use value <- system.then(computer.extrinsic(effect, meta.origin))
-              loop(block.resume(value, env, k), state)
+              let records = [#(label, lift, value), ..records]
+              loop_recorded(block.resume(value, env, k), state, records)
             }
 
-            Error(reason) ->
-              system.Done(#(Error(#(reason, meta, env, k)), state))
+            Error(reason) -> stop(Error(#(reason, meta, env, k)))
           }
         break.UndefinedReference(reference) -> {
-          use value, state <- try_await(
-            lookup(reference, meta.origin, state),
-            meta,
-            env,
-            k,
-          )
-          loop(block.resume(value, env, k), state)
+          use #(result, state) <- system.then(lookup(
+            reference,
+            meta.origin,
+            state,
+          ))
+          case result {
+            Ok(value) ->
+              loop_recorded(block.resume(value, env, k), state, records)
+            Error(reason) ->
+              system.Done(#(
+                Error(#(reason, meta, env, k)),
+                state,
+                list.reverse(records),
+              ))
+          }
         }
 
-        _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
+        _ -> stop(Error(#(reason, meta, env, k)))
       }
   }
 }
