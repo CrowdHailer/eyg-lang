@@ -3,6 +3,7 @@ import eyg/interpreter/expression
 import eyg/interpreter/state.{Delimit, Empty, Stack, Trace}
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
+import gleam/option.{None}
 
 pub fn tail_resumption_reuses_trace_test() {
   // handle Ping((_, resume) -> { resume({}) }, (_) -> {
@@ -24,7 +25,7 @@ pub fn tail_resumption_reuses_trace_test() {
   let assert Error(#(break.Vacant, _, _, stack)) =
     expression.execute(source, [])
   let assert Stack(Trace(_, _), _, stack) = stack
-  let assert Stack(Delimit("Ping", _, _, False), _, stack) = stack
+  let assert Stack(Delimit("Ping", _, _, None), _, stack) = stack
   // The tail resumption replaces the handler's Trace instead of adding one.
   let assert Stack(Trace(_, _), _, Empty) = stack
 }

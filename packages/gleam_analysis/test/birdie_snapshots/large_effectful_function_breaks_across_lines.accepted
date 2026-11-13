@@ -42,6 +42,8 @@ title: large effectful function breaks across lines
           NoCases: {} |
           Perform: String |
           Handle: String |
+          Shallow: String |
+          Mask: String |
           Builtin: String |
           Reference: [
             Content: String |
@@ -99,6 +101,8 @@ title: large effectful function breaks across lines
           NoCases: {} |
           Perform: String |
           Handle: String |
+          Shallow: String |
+          Mask: String |
           Builtin: String |
           Reference: [
             Content: String |

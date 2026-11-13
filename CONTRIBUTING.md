@@ -11,7 +11,7 @@ done
 ```
 To test all the packages on the JavaScript environment.
 ```sh
-for pkg in packages/{gleam_analysis,gleam_cli,gleam_compiler,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,morph,overlay_llm,topological,touch_grass,untethered,website}; do
+for pkg in packages/{glasshouse,gleam_analysis,gleam_cli,gleam_compiler,gleam_compiled_runtime,gleam_hub,gleam_interpreter,gleam_ir,gleam_parser,gleam_x,intelligence,loam,morph,otel,overlay_llm,overlay_web,plinthx,topological,touch_grass,untethered,website}; do
   ( cd "$pkg" && gleam format --check src test && gleam build --target javascript --warnings-as-errors && gleam test --target javascript --runtime bun )
 done
 ```

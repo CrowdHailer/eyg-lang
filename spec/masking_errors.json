@@ -1,0 +1,27 @@
+[
+  {
+    "name": "pure blocks effects before an enclosing handler",
+    "source": "handle Ping((_, k) -> { k(42) }, (_) -> { !pure((_) -> { perform Ping({}) })({}) })",
+    "error": "ImpureEffect"
+  },
+  {
+    "name": "pure blocks effects before platform dispatch",
+    "source": "!pure((_) -> { perform StandardOut(\"must not print\") })({})",
+    "error": "ImpureEffect"
+  },
+  {
+    "name": "mask cannot bypass a pure boundary",
+    "source": "handle Ping((_, k) -> { k(42) }, (_) -> { !pure((_) -> { mask Ping((_) -> { perform Ping({}) }) })({}) })",
+    "error": "ImpureEffect"
+  },
+  {
+    "name": "pure guards captured resumptions",
+    "source": "handle Log((n, k) -> { k(n) }, (_) -> { handle Ping((_, k) -> { !pure(k)({}) }, (_) -> { let _ = perform Ping({}) perform Log(42) }) })",
+    "error": "ImpureEffect"
+  },
+  {
+    "name": "mask without an EYG handler does not dispatch to the platform",
+    "source": "mask StandardOut((_) -> { perform StandardOut(\"must not print\") })",
+    "error": "MaskedEffect"
+  }
+]

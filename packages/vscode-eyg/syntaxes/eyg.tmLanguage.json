@@ -61,7 +61,7 @@
     },
     "keywords": {
       "name": "keyword.control.eyg",
-      "match": "\\b(let|match|perform|handle|deep|import)\\b"
+      "match": "\\bmask(?=\\s+[A-Z])|\\bhandle\\s+shallow\\b|\\b(let|match|perform|handle|deep|import)\\b"
     },
     "numbers": {
       "name": "constant.numeric.integer.eyg",

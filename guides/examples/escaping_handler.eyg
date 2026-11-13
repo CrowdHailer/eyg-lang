@@ -1,0 +1,12 @@
+// Intentionally invalid: the smallest scope failure needs only two operations.
+// check: missing row 'Outer'; eval/run: unhandled Outer.
+let run = handle Outer((_, resume) -> { resume({}) }, (_) -> {
+  handle Inner((_, resume, state) -> { resume({})(state) }, (_) -> {
+    let _ = perform Inner({})
+    let _ = perform Outer({})
+    let finish = (state) -> { state }
+    finish
+  })
+})
+// The Outer handler has exited before this invokes the Inner continuation.
+run(0)

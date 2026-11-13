@@ -1,0 +1,27 @@
+// Self-contained stress fixture; handlers preserve both state and body result.
+let with_counter = (handler, f) -> {
+  let run = handler((_, resume) -> {
+    (state) -> {
+      let next = !int_add(state, 1)
+      resume(next)(next)
+    }
+  }, (_) -> {
+    let value = f({})
+    let finish = (state) -> { {state, value} }
+    finish
+  })
+  run(0)
+}
+
+let workload = (items) -> {
+  with_counter(handle IncrementLeft, (_) -> {
+    with_counter(handle IncrementRight, (_) -> {
+      !list_fold(items, 0, (_, _) -> {
+        let a = perform IncrementLeft({})
+        let b = perform IncrementRight({})
+        !int_add(a, b)
+      })
+    })
+  })
+}
+workload

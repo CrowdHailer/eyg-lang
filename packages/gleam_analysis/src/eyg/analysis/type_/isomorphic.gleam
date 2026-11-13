@@ -93,6 +93,8 @@ pub fn ast() {
       #("NoCases", unit),
       #("Perform", String),
       #("Handle", String),
+      #("Shallow", String),
+      #("Mask", String),
       #("Builtin", String),
       #("Reference", reference()),
     ]),

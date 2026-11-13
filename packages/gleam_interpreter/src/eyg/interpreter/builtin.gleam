@@ -48,6 +48,17 @@ pub fn do_never(arg, _meta, _env, _k) {
   Error(break.IncorrectTerm(expected: "Never", got: arg))
 }
 
+pub const pure = state.Arity1(do_pure)
+
+fn do_pure(function, _meta, env, k) {
+  // Guard each application as well as constraining it statically.
+  case function {
+    v.Closure(..) | v.Partial(..) ->
+      Ok(#(state.V(v.Partial(v.Pure, [function])), env, k))
+    _ -> Error(break.IncorrectTerm(expected: "Function", got: function))
+  }
+}
+
 pub const int_compare = state.Arity2(do_int_compare)
 
 fn do_int_compare(left, right, _meta, env, k) {
@@ -400,6 +411,7 @@ fn all() {
   |> dict.insert("fix", fix)
   |> dict.insert("fixed", fixed)
   |> dict.insert("never", never)
+  |> dict.insert("pure", pure)
   // integer
   |> dict.insert("int_compare", int_compare)
   |> dict.insert("int_add", add)

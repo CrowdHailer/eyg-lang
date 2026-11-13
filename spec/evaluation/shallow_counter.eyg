@@ -1,0 +1,12 @@
+// Export a workload so the host can prepare inputs outside the measured run.
+let count = !fix((self, n, body) -> {
+  handle shallow Increment((_, resume) -> {
+    self(!int_add(n, 1), resume)
+  }, (_) -> { n }, body)
+})
+let workload = (items) -> {
+  count(0, (_) -> {
+    !list_fold(items, {}, (_, _) -> { perform Increment({}) })
+  })
+}
+workload

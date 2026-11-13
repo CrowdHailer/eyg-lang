@@ -1,0 +1,77 @@
+[
+  {
+    "name": "mask skips a shallow handler but preserves its normal return",
+    "source": "handle Ping((_, k) -> { k(100) }, (_) -> { handle shallow Ping((_, _) -> { 0 }, (x) -> { !int_add(x, 1) }, (_) -> { mask Ping((_) -> { perform Ping({}) }) }) })",
+    "value": 101
+  },
+  {
+    "name": "normal completion converts the raw body result",
+    "source": "handle shallow Ping((_, _) -> { 0 }, (value) -> { !string_length(value) }, (_) -> { \"hello\" })",
+    "value": 5
+  },
+  {
+    "name": "an operation callback bypasses the return clause and abandons the body",
+    "source": "handle Abort((_, _) -> { -1 }, (_) -> { handle shallow Ping((_, _) -> { 42 }, (_) -> { !never(perform Abort(\"return clause ran\")) }, (_) -> { let _ = perform Ping({}) !never(perform Abort(\"body resumed\")) }) })",
+    "value": 42
+  },
+  {
+    "name": "escaped raw resumption uses the caller's handler for subsequent operations",
+    "source": "let k = handle shallow Ping((_, resume) -> { resume }, (value) -> { (_) -> { value } }, (_) -> { let a = perform Ping({}) let b = perform Ping({}) !int_add(a, b) }) handle Ping((_, resume) -> { resume(100) }, (_) -> { k(1) })",
+    "value": 101
+  },
+  {
+    "name": "raw resumption omits the return clause and remains multi-shot",
+    "source": "let k = handle shallow Choice((_, resume) -> { resume }, (_) -> { (_) -> { 999 } }, (_) -> { !int_multiply(perform Choice({}), 10) }) handle Choice((_, _) -> { -1 }, (_) -> { !int_add(k(1), k(2)) })",
+    "value": 30
+  },
+  {
+    "name": "shallow capture preserves an intervening deep handler",
+    "source": "let k = handle shallow Pause((_, resume) -> { resume }, (_) -> { (_) -> { -1 } }, (_) -> { handle Ping((_, resume) -> { resume(10) }, (_) -> { let _ = perform Pause({}) perform Ping({}) }) }) handle Pause((_, _) -> { -1 }, (_) -> { k({}) })",
+    "value": 10
+  },
+  {
+    "name": "shallow capture preserves an intervening shallow return clause",
+    "source": "let k = handle shallow Pause((_, resume) -> { resume }, (_) -> { (_) -> { -1 } }, (_) -> { handle shallow Ping((_, _) -> { -10 }, (value) -> { !int_add(value, 1) }, (_) -> { let _ = perform Pause({}) 10 }) }) handle Pause((_, _) -> { -1 }, (_) -> { k({}) })",
+    "value": 11
+  },
+  {
+    "name": "operation callback forwards outside its own delimiter",
+    "source": "handle Ping((_, resume) -> { resume(100) }, (_) -> { handle shallow Ping((_, _) -> { perform Ping({}) }, (x) -> { x }, (_) -> { perform Ping({}) }) })",
+    "value": 100
+  },
+  {
+    "name": "return callback runs outside its own delimiter",
+    "source": "handle Ping((_, resume) -> { resume(100) }, (_) -> { handle shallow Ping((_, _) -> { 1 }, (_) -> { perform Ping({}) }, (_) -> { 0 }) })",
+    "value": 100
+  },
+  {
+    "name": "recursive reinstatement replaces the state rather than shadowing it",
+    "source": "let count = !fix((self, n, body) -> { handle shallow Increment((_, resume) -> { self(!int_add(n, 1), resume) }, (_) -> { n }, body) }) count(0, (_) -> { let _ = perform Increment({}) let _ = perform Increment({}) let _ = perform Increment({}) {} })",
+    "value": 3
+  },
+  {
+    "name": "shallow state supports reads and updates on one shared state",
+    "source": "let state = !fix((self, n, body) -> { handle shallow State((op, resume) -> { let next = match op { Increment(_) -> { !int_add(n, 1) } Decrement(_) -> { !int_subtract(n, 1) } Get(_) -> { n } } self(next, (_) -> { resume(next) }) }, (value) -> { value }, body) }) state(0, (_) -> { let before = perform State(Get({})) let _ = perform State(Increment({})) let _ = perform State(Increment({})) let middle = perform State(Get({})) let _ = perform State(Decrement({})) let after = perform State(Get({})) !int_add(!int_multiply(middle, 10), !int_add(before, after)) })",
+    "value": 21
+  },
+  {
+    "name": "multi-shot resumption replays shallow state independently",
+    "source": "let count = !fix((self, n, body) -> { handle shallow Increment((_, resume) -> { self(!int_add(n, 1), resume) }, (value) -> { !int_add(n, value) }, body) }) handle Choose((_, resume) -> { !int_add(resume(10), resume(20)) }, (_) -> { count(0, (_) -> { let choice = perform Choose({}) let _ = perform Increment({}) choice }) })",
+    "value": 32
+  },
+  {
+    "name": "deep handling can be defined by shallow reinstallation",
+    "source": "let deep_ping = (handler, body) -> { let run = !fix((self, body) -> { handle shallow Ping((lift, resume) -> { handler(lift, (reply) -> { self((_) -> { resume(reply) }) }) }, (value) -> { value }, body) }) run(body) } deep_ping((_, resume) -> { resume(1) }, (_) -> { let a = perform Ping({}) let b = perform Ping({}) !int_add(a, b) })",
+    "value": 2
+  },
+  {
+    "name": "first-class shallow handlers can be partially applied",
+    "source": "let handler = handle shallow Ping let apply = handler((value, _) -> { value }) let run = apply((value) -> { !int_add(value, 1) }) !int_add(run((_) -> { 10 }), run((_) -> { perform Ping(20) }))",
+    "value": 31
+  },
+  {
+    "name": "a shallow first-effect record has a finite type and raw resume",
+    "source": "let first = (body) -> { handle shallow Ping((lift, resume) -> { {lift, resume} }, (_) -> { !never(perform Abort(\"missing Ping\")) }, body) } handle Abort((_, _) -> { -1 }, (_) -> { let a = first((_) -> { let x = perform Ping(1) let y = perform Ping(2) !int_add(x, y) }) let b = first((_) -> { a.resume(10) }) handle Ping((_, _) -> { -2 }, (_) -> { b.resume(20) }) })",
+    "value": 30
+  }
+]

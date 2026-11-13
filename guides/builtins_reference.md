@@ -23,6 +23,42 @@ Conventions:
 | `!equal`    | `(a, a) -> True({}) | False` | Returns `True({})` or `False({})`.                     |
 | `!fix`      | `((self) -> self) -> self`, where `self` is `(a) -> b` | Y-combinator. Use for self-recursive closures. The constructor is passed the function it builds, so it has to return a function. |
 | `!never`    | `(Never) -> a`               | Conventionally used with `!never(perform Abort(msg))`.         |
+| `!pure`     | `(a ->[] b) -> (a ->[] b)`    | Checks and guards a pure function application. `[]` denotes an empty effect row. |
+
+### Constrain a function to be pure
+
+`!pure(f)` checks that applying `f` once is effect-free and returns a guarded wrapper.
+It is useful for functions received through an effect: the received function's
+effect row stays empty, while its use can be widened to the calling context.
+
+```eyg
+handle Get((_, resume) -> {
+  resume((x) -> { !int_add(x, 1) })
+}, (_) -> {
+  let f = !pure(perform Get({}))
+  f(41)
+})
+// 42
+```
+
+The `Get` operation still occurs. `!pure` constrains the returned function, not
+the computation used to obtain it. In a tagged expectation, apply the constraint
+before calling the extracted callback: `!pure(assertion)(request)`.
+
+Functions with unhandled effects, including `Abort`, are rejected by type checking,
+even if the caller has a handler for those effects. A callback can instead return
+validation data for its caller to check. Effects handled inside the function do
+not prevent it from being pure. Purity applies to one application: a
+pure function can return another function whose own application has effects.
+
+At runtime each application installs a purity boundary. An effect escaping it
+fails with `ImpureEffect` before any outer handler or platform operation runs,
+including during unchecked execution. Effects handled inside the function are
+allowed. Non-function arguments are rejected. The wrapper need not compare equal
+to the original function.
+
+Use [masking](./masking_effects.md) when a callback should be independent of one
+internal handler but may still perform effects such as `Abort`.
 
 ## Integers
 
