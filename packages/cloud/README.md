@@ -36,6 +36,11 @@ Configured connections now support `ExampleChat({origin})` and
 adapter supplies its native event type to the configured `on_input` function.
 The standalone example chat application is a separate later commit.
 
+Configured `Slack({token})` and `Discord({token, guild})` sources extend main's
+adapters with thread/reaction routing. Installation-qualified channel IDs keep
+equal channel IDs from different teams separate. Main's checked startup triggers
+remain available in basic mode.
+
 ## State
 
 Session file roots, history, pending observations, users, secrets, edited

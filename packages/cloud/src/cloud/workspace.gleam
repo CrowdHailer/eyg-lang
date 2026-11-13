@@ -14,6 +14,9 @@ import cloud/channel
 import cloud/config
 import cloud/connection
 import cloud/data
+import cloud/discord/channel as discord
+import cloud/discord/client as discord_client
+import cloud/discord/input as discord_input
 import cloud/handler
 import cloud/invocation
 import cloud/operation
@@ -23,6 +26,9 @@ import cloud/plugins/whatsapp
 import cloud/schedule as cron_schedule
 import cloud/session
 import cloud/shell
+import cloud/slack/channel as slack
+import cloud/slack/client as slack_client
+import cloud/slack/input as slack_input
 import cloud/tracing
 import cloud/trigger/configured.{type Trigger} as trigger
 import cloud/webhook
@@ -222,7 +228,7 @@ pub fn start_on(
   |> actor.on_message(handle)
   |> actor.start
   |> result.map(fn(started) {
-    list.each(connections, start_connection(started.data, _))
+    list.each(connections, start_connection(started.data, executor, _))
     started.data
   })
   |> result.map_error(string.inspect)
@@ -231,6 +237,7 @@ pub fn start_on(
 /// Start a connection in its own process, its events are sent to the workspace.
 fn start_connection(
   workspace: Subject(Message),
+  executor: Subject(session.Message),
   connection: connection.Connection,
 ) -> Nil {
   let connection.Connection(name:, source:) = connection
@@ -249,8 +256,64 @@ fn start_connection(
         process.send(workspace, Listen(name, listener))
         process.send(workspace, Connect(whatsapp.platform, outbound))
       }
-      connection.Slack(_) | connection.Discord(..) ->
-        Error("Configured native adapters land in a later feature")
+      connection.Slack(token) -> {
+        use identity <- result.try(
+          slack_client.auth_test(token) |> result.map_error(string.inspect),
+        )
+        let installation = channel.installation("slack", identity.team_id)
+        let hook = fn(event) { inbound(channel.at(event, installation)) }
+        use poller <- result.map(
+          slack.start_with_hook(token, identity, executor, Some(hook))
+          |> result.map_error(string.inspect),
+        )
+        let outbound =
+          channel.Outbound(
+            input_type: slack_input.input_type(),
+            post: fn(id, reply, text) {
+              slack_client.chat_post_message(token, id, reply, text, None)
+              |> result.map_error(string.inspect)
+            },
+            channel_name: fn(id) {
+              process.call(poller.data, 5000, slack.Name(id, _))
+            },
+            channels: fn() {
+              Ok(process.call(poller.data, 5000, slack.Channels))
+            },
+          )
+        process.send(workspace, Connect(installation, outbound))
+      }
+      connection.Discord(token:, guild:) -> {
+        use identity <- result.try(
+          discord_client.current_user(token) |> result.map_error(string.inspect),
+        )
+        use guild <- result.try(
+          discord_client.guild(token, guild) |> result.map_error(string.inspect),
+        )
+        let installation = channel.installation("discord", guild.id)
+        let hook = fn(event) { inbound(channel.at(event, installation)) }
+        use poller <- result.map(
+          discord.start_with_hook(
+            token,
+            guild,
+            identity.id,
+            executor,
+            Some(hook),
+          )
+          |> result.map_error(string.inspect),
+        )
+        let outbound =
+          channel.Outbound(
+            input_type: discord_input.input_type(),
+            post: fn(id, reply, text) { discord.post(token, id, reply, text) },
+            channel_name: fn(id) {
+              process.call(poller.data, 5000, discord.Name(id, _))
+            },
+            channels: fn() {
+              Ok(process.call(poller.data, 5000, discord.Channels))
+            },
+          )
+        process.send(workspace, Connect(installation, outbound))
+      }
     }
     case started {
       Ok(Nil) ->

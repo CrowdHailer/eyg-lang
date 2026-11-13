@@ -6,8 +6,10 @@
 //// Patterns and function scripts are kept as captured expressions, source scripts as text,
 //// see `notes/cloud-process-boundaries.md`.
 
+import cloud/discord/input as discord_input
 import cloud/plugins/chat_input
 import cloud/plugins/whatsapp
+import cloud/slack/input as slack_input
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/capture
@@ -38,7 +40,14 @@ pub type Script {
 
 /// Tagged chat payloads supplied to configured triggers.
 pub fn event_type() {
-  t.union(list.append(chat_input.event_types(), whatsapp.event_types()))
+  t.union(
+    list.flatten([
+      chat_input.event_types(),
+      whatsapp.event_types(),
+      slack_input.event_types(),
+      discord_input.event_types(),
+    ]),
+  )
 }
 
 pub fn type_() {

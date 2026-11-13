@@ -35,11 +35,11 @@ pub fn auth_test_response(
 }
 
 /// https://docs.slack.dev/reference/methods/chat.postMessage/
-/// Post text in a thread without broadcasting it to the channel.
+/// Post text to a channel, or in a thread without broadcasting it to the channel.
 pub fn chat_post_message_request(
   base: request.Request(BitArray),
   channel: String,
-  thread_ts: String,
+  thread_ts: Option(String),
   text: String,
   color color: Option(String),
 ) -> request.Request(BitArray) {
@@ -61,8 +61,8 @@ pub fn chat_post_message_request(
   let body =
     json.object([
       #("channel", json.string(channel)),
-      #("thread_ts", json.string(thread_ts)),
-      #("mrkdwn", json.bool(False)),
+      #("thread_ts", json.nullable(thread_ts, json.string)),
+      #("mrkdwn", json.bool(True)),
       #("unfurl_links", json.bool(False)),
       #("unfurl_media", json.bool(False)),
       ..content
@@ -74,10 +74,11 @@ pub fn chat_post_message_request(
   |> utils.set_body("application/json; charset=utf-8", <<body:utf8>>)
 }
 
+/// Returns the timestamp of the posted message, Slack's message id.
 pub fn chat_post_message_response(
   response: response.Response(BitArray),
-) -> Result(Result(Nil, Failure), json.DecodeError) {
-  decode_response(response, decode.success(Nil))
+) -> Result(Result(String, Failure), json.DecodeError) {
+  decode_response(response, decode.field("ts", decode.string, decode.success))
 }
 
 /// https://docs.slack.dev/reference/methods/conversations.list/
