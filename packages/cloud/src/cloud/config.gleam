@@ -39,6 +39,16 @@ pub type Workspace {
   )
 }
 
+/// Evaluates the workspace configuration.
+/// Configuration contains EYG values that must not be sent between processes,
+/// each process that needs the configuration evaluates it, see `notes/cloud-process-boundaries.md`.
+pub type Loader =
+  fn() -> Result(Workspace, String)
+
+pub fn loader(file: String, state: execute.State) -> Loader {
+  fn() { load(file, state) }
+}
+
 /// The identity of a channel passed to the workspace's `channel` function.
 pub type ChannelInfo {
   ChannelInfo(

@@ -21,6 +21,10 @@ pub type History =
 pub type Complete =
   fn(History) -> Result(chat.Completion(tool.Call), String)
 
+/// Create the completion function for an llm, replaced in tests.
+pub type Completer =
+  fn(provider.Llm, provider.Context) -> Complete
+
 /// Run a program for the agent, returning the report given back to the model.
 pub type RunCode =
   fn(String) -> Result(String, String)
@@ -120,6 +124,24 @@ fn call_tool(id, function, run_code: RunCode) {
     text: overlay.tool_result_text(text),
     images: [],
   )
+}
+
+/// Keep at most `max` of the newest messages of a history.
+/// The kept history starts at a user message, so tool calls keep their results.
+pub fn trim(history: History, max: Int) -> History {
+  case list.length(history) > max {
+    False -> history
+    True ->
+      list.take(history, max)
+      |> list.reverse
+      |> list.drop_while(fn(message) {
+        case message {
+          chat.UserMessage(..) -> False
+          _ -> True
+        }
+      })
+      |> list.reverse
+  }
 }
 
 /// The last thing the agent said, for logs.

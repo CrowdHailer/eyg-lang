@@ -67,3 +67,17 @@ pub fn unknown_tool_is_reported_to_the_agent_test() {
     agent.turn([], "hello", complete, fn(_) { Ok("") })
   assert text == "Failed to call tool `shell` it is not setup."
 }
+
+pub fn trim_keeps_whole_turns_test() {
+  let history = [
+    chat.AssistantMessage("", "done", []),
+    chat.ToolResultMessage("c", "ok", []),
+    chat.AssistantMessage("", "", [run_call("x")]),
+    chat.UserMessage("second", []),
+    chat.AssistantMessage("", "first done", []),
+    chat.UserMessage("first", []),
+  ]
+  assert agent.trim(history, 10) == history
+  assert agent.trim(history, 5) == list.take(history, 4)
+  assert agent.trim(history, 3) == []
+}

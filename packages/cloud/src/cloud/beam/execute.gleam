@@ -161,6 +161,13 @@ pub fn unrestricted() -> Policy {
   |> dict.from_list
 }
 
+pub fn output_text(output: Output) -> String {
+  case output {
+    StandardOut(text) -> text
+    StandardError(text) -> text
+  }
+}
+
 /// The outcome of running a program.
 /// Output is held newest first.
 pub type Run {

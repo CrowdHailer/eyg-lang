@@ -124,3 +124,6 @@ to avoid losing precision. Ordering and cursor positions are per channel.
 #### Notes
 
 Rate limits return HTTP 429 with a `retry_after` delay in seconds https://discord.com/developers/docs/topics/rate-limits
+
+Each conversation has a session with queued inputs and a bounded agent history.
+The message `/new` resets that conversation; sessions retain at most 200 messages.
