@@ -5,6 +5,8 @@
 //// - `llm` the `{provider, model}` the workspace's agents use, as in overlay.
 //// - `readme` context given to every agent in the workspace.
 //// - `channel` a function from `{platform, id, name}` to the channel's configuration.
+//// - `files` optional, a directory relative to the workspace file that the
+////   workspace's shared file system starts with.
 ////
 //// The channel configuration is a record with:
 ////
@@ -25,7 +27,7 @@ import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
 import filepath
 import gleam/dict
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import overlay/config as overlay
 import overlay/llm/provider
@@ -36,6 +38,8 @@ pub type Workspace {
     llm: provider.Llm,
     readme: String,
     channel: execute.Value,
+    /// The host directory the workspace's file system starts with.
+    files: Option(String),
     state: execute.State,
   )
 }
@@ -83,21 +87,31 @@ pub fn load(
   )
   let state = execute.State(..state, root: Some(filepath.directory_name(file)))
   let host =
-    execute.Host(post: fn(_) { Error("Configuration cannot post") }, secret:)
+    execute.Host(
+      post: fn(_) { Error("Configuration cannot post") },
+      secret:,
+      files: execute.no_files(),
+    )
   let #(execute.Run(result:, ..), state) =
     execute.run_configuration(code, execute.configuration(), host, state)
   case result {
-    Ok(Some(value)) -> decode(value, state)
+    Ok(Some(value)) -> decode(value, filepath.directory_name(file), state)
     Ok(None) -> Error(file <> " has no value")
     Error(reason) -> Error(file <> ": " <> reason)
   }
 }
 
-fn decode(value, state) {
+fn decode(value, directory, state) {
   use llm <- result.try(field("llm", overlay.cast_llm, value))
   use readme <- result.try(optional_string("readme", value))
   use channel <- result.try(field("channel", Ok, value))
-  Ok(Workspace(llm:, readme:, channel:, state:))
+  use files <- result.try(case cast.field("files", Ok, value) {
+    Ok(_) ->
+      field("files", cast.as_string, value)
+      |> result.map(fn(path) { Some(filepath.join(directory, path)) })
+    Error(_) -> Ok(None)
+  })
+  Ok(Workspace(llm:, readme:, channel:, files:, state:))
 }
 
 /// Call the workspace's `channel` function for one channel.

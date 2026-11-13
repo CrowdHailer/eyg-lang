@@ -5,6 +5,7 @@ import eyg/interpreter/value as v
 import gleam/dict
 import gleam/erlang/process
 import gleam/option.{Some}
+import gleam/result
 
 pub fn state() {
   test_helpers.state()
@@ -12,7 +13,8 @@ pub fn state() {
 
 /// Evaluate EYG source to a value, for building policies in tests.
 pub fn evaluate(code) {
-  let host = execute.channel_host(fn(_) { Error("no posting") })
+  let host =
+    execute.channel_host(fn(_) { Error("no posting") }, execute.no_files())
   let #(execute.Run(result:, ..), _) =
     execute.run(code, [], execute.unrestricted(), host, state())
   let assert Ok(Some(value)) = result
@@ -27,10 +29,13 @@ fn policy(code) {
 fn recording_host() {
   let posts = process.new_subject()
   let host =
-    execute.channel_host(fn(text) {
-      process.send(posts, text)
-      Ok("m1")
-    })
+    execute.channel_host(
+      fn(text) {
+        process.send(posts, text)
+        Ok("m1")
+      },
+      execute.no_files(),
+    )
   #(host, posts)
 }
 
@@ -103,7 +108,7 @@ pub fn relative_import_is_unavailable_without_session_files_test() {
   let #(host, _posts) = recording_host()
   let #(execute.Run(result:, ..), _) =
     execute.run("import \"./x.eyg\"", [], execute.unrestricted(), host, state())
-  assert result == Error("Relative import of ./x.eyg is not available")
+  assert result == Error("There is no file system")
 }
 
 pub fn script_import_cannot_read_a_configured_host_root_test() {
@@ -117,7 +122,7 @@ pub fn script_import_cannot_read_a_configured_host_root_test() {
       host,
       state,
     )
-  assert result == Error("Relative import of ./index.eyg is not available")
+  assert result == Error("There is no file system")
 }
 
 pub fn missing_or_invalid_policy_gates_are_rejected_when_set_test() {
@@ -157,7 +162,10 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
     execute.run_configuration(
       "import \"../../eyg_packages/cloud/platform.eyg\".reject_all",
       execute.unrestricted(),
-      execute.channel_host(fn(_) { Error("Configuration cannot post") }),
+      execute.channel_host(
+        fn(_) { Error("Configuration cannot post") },
+        execute.no_files(),
+      ),
       state,
     )
   let assert Ok(Some(package)) = run.result
@@ -170,9 +178,11 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
 
 pub fn configuration_reads_secrets_test() {
   let host =
-    execute.Host(post: fn(_) { Error("no posting") }, secret: fn(name) {
-      Ok("value of " <> name)
-    })
+    execute.Host(
+      post: fn(_) { Error("no posting") },
+      secret: fn(name) { Ok("value of " <> name) },
+      files: execute.no_files(),
+    )
   let #(execute.Run(result:, ..), _) =
     execute.run_configuration(
       "perform Secret(\"KEY\")",
@@ -185,11 +195,116 @@ pub fn configuration_reads_secrets_test() {
 
 pub fn channels_cannot_read_secrets_test() {
   let host =
-    execute.Host(post: fn(_) { Error("no posting") }, secret: fn(_) {
-      Ok("leaked")
-    })
+    execute.Host(
+      post: fn(_) { Error("no posting") },
+      secret: fn(_) { Ok("leaked") },
+      files: execute.no_files(),
+    )
   let shell = policy("cloud.reject_all")
   let #(execute.Run(result:, ..), _) =
     execute.run("perform Secret(\"KEY\")", [], shell, host, state())
   assert result == Error("Effect Secret is not allowed by policy")
+}
+
+fn module_host(modules) {
+  let #(host, _) = recording_host()
+  let modules = dict.from_list(modules)
+  let reads = process.new_subject()
+  let files =
+    execute.Files(..host.files, read: fn(path) {
+      process.send(reads, path)
+      dict.get(modules, path)
+      |> result.replace_error("missing session file " <> path)
+    })
+  #(execute.Host(..host, files:), reads)
+}
+
+pub fn scripts_read_session_files_even_with_a_host_root_test() {
+  let #(host, reads) = module_host([#("/etc/passwd", <<"42":utf8>>)])
+  let state = execute.State(..state(), root: Some("/"))
+  let #(execute.Run(result:, ..), _) =
+    execute.run(
+      "import \"/etc/passwd\"",
+      [],
+      execute.unrestricted(),
+      host,
+      state,
+    )
+  assert result == Ok(Some(v.Integer(42)))
+  assert process.receive(reads, 0) == Ok("/etc/passwd")
+}
+
+pub fn import_denial_never_reads_the_file_test() {
+  let #(host, reads) = module_host([#("/private.eyg", <<"42":utf8>>)])
+  let #(execute.Run(result:, ..), _) =
+    execute.run(
+      "import \"./private.eyg\"",
+      [],
+      policy("cloud.reject_all"),
+      host,
+      state(),
+    )
+  assert result == Error("Effect ReadFile is not allowed by policy")
+  assert process.receive(reads, 0) == Error(Nil)
+}
+
+pub fn nested_and_deferred_imports_follow_the_redirected_session_path_test() {
+  let #(host, reads) =
+    module_host([
+      #("/lib/module.eyg", <<"(_) -> { import \"./answer.eyg\" }":utf8>>),
+      #("/lib/answer.eyg", <<"42":utf8>>),
+    ])
+  let shell =
+    policy(
+      "{read_file: (request) -> { match !equal(request.path, \"/entry.eyg\") { True(_) -> { Pass({path: \"/lib/module.eyg\", ..request}) } False(_) -> { Pass(request) } } }, ..cloud.reject_all}",
+    )
+  let #(execute.Run(result:, ..), _) =
+    execute.run(
+      "let module = import \"./entry.eyg\"\nmodule({})",
+      [],
+      shell,
+      host,
+      state(),
+    )
+  assert result == Ok(Some(v.Integer(42)))
+  assert process.receive(reads, 0) == Ok("/lib/module.eyg")
+  assert process.receive(reads, 0) == Ok("/lib/answer.eyg")
+}
+
+pub fn import_mock_returns_a_module_without_reading_test() {
+  let #(host, reads) = module_host([])
+  let shell =
+    policy(
+      "{read_file: (_) -> { Mock(Ok(!string_to_binary(\"42\"))) }, ..cloud.reject_all}",
+    )
+  let #(execute.Run(result:, ..), _) =
+    execute.run("import \"./virtual.eyg\"", [], shell, host, state())
+  assert result == Ok(Some(v.Integer(42)))
+  assert process.receive(reads, 0) == Error(Nil)
+}
+
+pub fn cyclic_session_import_fails_without_recursing_forever_test() {
+  let #(host, _) =
+    module_host([#("/cycle.eyg", <<"import \"./cycle.eyg\"":utf8>>)])
+  let #(execute.Run(result:, ..), _) =
+    execute.run(
+      "import \"./cycle.eyg\"",
+      [],
+      execute.unrestricted(),
+      host,
+      state(),
+    )
+  assert result == Error("Cyclic session import: /cycle.eyg")
+}
+
+pub fn import_honours_the_gates_read_range_test() {
+  let #(host, reads) = module_host([#("/wrapped.eyg", <<"xx42yy":utf8>>)])
+  let shell =
+    policy(
+      "{read_file: (request) -> { Pass({offset: 2, limit: 2, ..request}) }, ..cloud.reject_all}",
+    )
+  let #(execute.Run(result:, ..), _) =
+    execute.run("import \"/wrapped.eyg\"", [], shell, host, state())
+  assert result == Ok(Some(v.Integer(42)))
+  assert process.receive(reads, 0) == Ok("/wrapped.eyg")
 }

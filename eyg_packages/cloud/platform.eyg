@@ -2,6 +2,13 @@
 let reject = (_) -> { Reject({}) }
 {
   reject_all: {
+    append_file: reject,
+    cwd: reject,
+    delete_file: reject,
+    make_directory: reject,
+    read_directory: reject,
+    read_file: reject,
+    write_file: reject,
     env: reject,
     fetch: reject,
     flip: reject,

@@ -43,7 +43,12 @@ fn platform() {
         process.send(posts, #(conversation, text))
         Ok("posted")
       },
-      channel_name: fn(_) { "general" },
+      channel_name: fn(id) {
+        case id {
+          "C2" -> "notes"
+          _ -> "general"
+        }
+      },
     )
   #(outbound, posts)
 }
@@ -251,4 +256,51 @@ pub fn handler_selects_sessions_and_observations_test() {
   process.send(workspace, workspace.Inbound(message("s1", "again")))
   let assert Ok(history) = process.receive(histories, 1000)
   assert list.length(history) == 3
+}
+
+pub fn channels_write_under_their_root_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  let notes = channel.Conversation("chat", "C2", None)
+  let thread = channel.Conversation(..notes, thread: option.Some("m1"))
+  let run = fn(id, code) {
+    let message =
+      channel.Incoming(
+        notes,
+        native_message(id, "```eyg\n" <> code <> "\n```", False),
+      )
+    process.send(workspace, workspace.Inbound(message))
+  }
+  run(
+    "m1",
+    "perform WriteFile({path: \"/skills/x.md\", contents: !string_to_binary(\"x\")})",
+  )
+  let assert Ok(#(_, denied)) = process.receive(posts, 1000)
+  assert denied == "Error(\"write_file denied by policy: /skills/x.md\")"
+  run(
+    "m1",
+    "let _ = perform MakeDirectory(\"/channels\")\nperform MakeDirectory(\"/channels/notes\")",
+  )
+  let assert Ok(#(_, _)) = process.receive(posts, 1000)
+  run(
+    "m1",
+    "perform WriteFile({path: \"channels/notes/todo.md\", contents: !string_to_binary(\"buy milk\")})",
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread, "Ok({})"))
+  let read =
+    message(
+      "m2",
+      "```eyg\nperform ReadFile({path: \"/channels/notes/todo.md\", offset: 0, limit: 100})\n```",
+    )
+  process.send(workspace, workspace.Inbound(read))
+  let assert Ok(#(_, text)) = process.receive(posts, 1000)
+  assert string.contains(text, "Ok(")
+}
+
+pub fn agent_actions_import_modules_from_the_session_file_system_test() {
+  let code =
+    "let _ = perform WriteFile({path: \"/program.eyg\", contents: !string_to_binary(\"42\")})\nlet answer = import \"/program.eyg\"\nperform Post(!int_to_string(answer))"
+  let #(workspace, posts, _) =
+    start([chat.Completion("", "", [run_call(code)])])
+  process.send(workspace, workspace.Inbound(message("m1", "run the module")))
+  assert process.receive(posts, 1000) == Ok(#(general, "42"))
 }

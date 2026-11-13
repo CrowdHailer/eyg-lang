@@ -57,6 +57,13 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.append_file({path: "/a", contents: !string_to_binary("x")}))
+  let _ = expect_reject(s.cwd({}))
+  let _ = expect_reject(s.delete_file("/a"))
+  let _ = expect_reject(s.make_directory("/a"))
+  let _ = expect_reject(s.read_directory("/"))
+  let _ = expect_reject(s.read_file({path: "/a", offset: 0, limit: 100}))
+  let _ = expect_reject(s.write_file({path: "/a", contents: !string_to_binary("x")}))
   let _ = expect_reject(s.env("KEY"))
   let _ = expect_reject(s.fetch(request))
   let _ = expect_reject(s.flip({}))
@@ -69,8 +76,34 @@ let test_defaults_reject_every_gate = (_) -> {
   {}
 }
 
+let write = (path) -> {
+  {path, contents: !string_to_binary("x")}
+}
+
+let test_writes_under = (_) -> {
+  let s = shell.writes_under(["/channels/general"], shell.everything)
+  let _ = assert.equal_string("/channels/general/a.txt", expect_pass(s.write_file(write("/channels/general/a.txt"))).path)
+  let _ = assert.equal_string(
+    "write_file denied by policy: /skills/a.md",
+    assert.error(expect_mock(s.write_file(write("/skills/a.md"))))
+  )
+  let _ = assert.error(expect_mock(s.delete_file("/channels/random")))
+  let _ = assert.error(expect_mock(s.make_directory("/other")))
+  let _ = assert.equal_string("/skills/a.md", expect_pass(s.read_file({path: "/skills/a.md", offset: 0, limit: 10})).path)
+  {}
+}
+
+let test_read_only = (_) -> {
+  let s = shell.read_only
+  let _ = assert.error(expect_mock(s.write_file(write("/a.txt"))))
+  let _ = assert.equal_string("/", expect_pass(s.read_directory("/")))
+  {}
+}
+
 [
   {name: "cloud defaults reject every gate", test: test_defaults_reject_every_gate},
   {name: "cloud shell everything passes", test: test_everything_passes},
+  {name: "cloud shell writes under roots", test: test_writes_under},
+  {name: "cloud shell read only", test: test_read_only},
   {name: "cloud shell offline denies fetch", test: test_offline_denies_fetch}
 ]

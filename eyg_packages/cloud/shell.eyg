@@ -17,16 +17,24 @@ let pass = policy.pass
 
 // Every effect available on the cloud, each performed unchanged.
 // Start from this record and overwrite the fields to restrict.
+// File paths given to gates are absolute paths in the workspace's shared file system.
 let everything = {
+  append_file: pass,
+  cwd: pass,
+  delete_file: pass,
   env: pass,
   fetch: pass,
   flip: pass,
+  make_directory: pass,
   now: pass,
   post: pass,
   random: pass,
+  read_directory: pass,
+  read_file: pass,
   sleep: pass,
   standard_error: pass,
   standard_out: pass,
+  write_file: pass,
   ..reject_all
 }
 
@@ -39,9 +47,34 @@ let offline = {
   ..everything
 }
 
+let request_path = (request) -> {
+  request.path
+}
+
+let path = (path) -> {
+  path
+}
+
+// Allow changes to the file system only under the absolute roots, other gates are from `shell`.
+// Reads are unchanged, so the channel can read the whole shared file system.
+let writes_under = (roots, shell) -> {
+  {
+    append_file: policy.under("append_file", roots, request_path),
+    delete_file: policy.under("delete_file", roots, path),
+    make_directory: policy.under("make_directory", roots, path),
+    write_file: policy.under("write_file", roots, request_path),
+    ..shell
+  }
+}
+
+// Everything except changing files.
+let read_only = writes_under([], everything)
+
 {
   reject_all,
   everything,
+  read_only,
+  writes_under,
   offline,
   deny,
   pass,

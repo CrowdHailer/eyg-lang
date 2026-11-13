@@ -5,6 +5,7 @@ let cloud = import "../../../../eyg_packages/cloud/index.eyg"
     provider: Ollama({origin: "http://localhost:11434", api_key: None({})}),
     model: "test-model"
   },
+  files: "./files",
   channel: ({name}) -> {
     {
       handle: (event) -> {
@@ -20,7 +21,10 @@ let cloud = import "../../../../eyg_packages/cloud/index.eyg"
           }
         }
       },
-      channel_shell: cloud.shell.everything
+      channel_shell: match !equal(name, "notes") {
+        True(_) -> { cloud.shell.writes_under(["/channels/notes"], cloud.shell.everything) }
+        False(_) -> { cloud.shell.everything }
+      }
     }
   }
 }

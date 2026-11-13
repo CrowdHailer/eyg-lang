@@ -12,6 +12,7 @@ import cloud/beam/execute
 import cloud/channel.{type Conversation}
 import cloud/config
 import cloud/data
+import cloud/files
 import cloud/handler
 import cloud/invocation
 import cloud/session
@@ -38,6 +39,7 @@ type State {
     load: config.Loader,
     platforms: Dict(String, channel.Outbound),
     sessions: Dict(String, Subject(session.Message)),
+    files: Subject(files.Message),
     complete: agent.Completer,
   )
 }
@@ -50,9 +52,10 @@ pub fn start_with(
   load: config.Loader,
   complete: agent.Completer,
 ) -> Result(Subject(Message), String) {
-  // Check the configuration before starting, its value is not kept.
-  use _ <- result.try(load())
-  State(load:, platforms: dict.new(), sessions: dict.new(), complete:)
+  // Only the seed directory, a string, leaves this process.
+  use seed <- result.try(load() |> result.map(fn(config) { config.files }))
+  use files <- result.try(files.start(seed))
+  State(load:, platforms: dict.new(), sessions: dict.new(), files:, complete:)
   |> actor.new
   |> actor.on_message(handle)
   |> actor.start
@@ -128,7 +131,7 @@ fn perform_work(
     }
     work.Post(thread, text) -> {
       let conversation = channel.Conversation(..origin, thread:)
-      let host = host(outbound, conversation)
+      let host = host(state, outbound, conversation, info)
       case
         shell.prepare(
           state.load,
@@ -187,7 +190,7 @@ fn perform_work(
       let conversation = channel.Conversation(..origin, thread:)
       let #(session, state) = session_for(state, conversation, outbound, info)
       let reply = channel.Conversation(..origin, thread: reply)
-      let host = host(outbound, reply)
+      let host = host(state, outbound, reply, info)
       let #(load, complete) = #(state.load, state.complete)
       // Only plain data and host operations cross this boundary, never the handler closure.
       process.spawn(fn() {
@@ -231,7 +234,7 @@ fn session_for(
           location: location(info, conversation),
           load: state.load,
           complete: state.complete,
-          host: host(outbound, conversation),
+          host: host(state, outbound, conversation, info),
         )
       let assert Ok(session) = session.start(setup)
       let sessions = dict.insert(state.sessions, key, session)
@@ -251,9 +254,13 @@ fn option_thread(conversation: Conversation) {
   }
 }
 
-/// The host for programs run from a conversation.
-fn host(outbound: channel.Outbound, conversation) {
-  execute.channel_host(outbound.post(conversation, _))
+/// The host for programs run from a conversation, file changes are made as the channel.
+fn host(state: State, outbound: channel.Outbound, conversation, info) {
+  let config.ChannelInfo(name:, ..) = info
+  execute.channel_host(
+    outbound.post(conversation, _),
+    execute.files(state.files, "#" <> name),
+  )
 }
 
 /// Run a direct invocation, post its output and return a description for the agent.

@@ -1,4 +1,5 @@
 let cloud = import "../../../../eyg_packages/cloud/index.eyg"
+let shell = cloud.shell
 
 {
   llm: {
@@ -6,10 +7,16 @@ let cloud = import "../../../../eyg_packages/cloud/index.eyg"
     model: "test-model"
   },
   readme: "The test workspace.",
+  files: "./files",
   channel: ({name}) -> {
     match !equal(name, "general") {
-      True(_) -> { {handle: ({text}) -> { [Post({thread: None({}), text})] }, channel_shell: cloud.shell.everything, readme: "Be helpful."} }
-      False(_) -> { {handle: (_) -> { [] }, channel_shell: {post: cloud.shell.pass, ..cloud.reject_all}} }
+      True(_) -> { {handle: ({text}) -> { [Post({thread: None({}), text})] }, channel_shell: shell.everything, readme: "Be helpful."} }
+      False(_) -> {
+        match !equal(name, "notes") {
+          True(_) -> { {handle: (_) -> { [] }, channel_shell: shell.writes_under(["/channels/notes"], shell.everything)} }
+          False(_) -> { {handle: (_) -> { [] }, channel_shell: {post: shell.pass, ..cloud.reject_all}} }
+        }
+      }
     }
   }
 }

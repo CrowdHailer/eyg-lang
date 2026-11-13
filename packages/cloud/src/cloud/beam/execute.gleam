@@ -4,6 +4,7 @@
 //// Every effect is decided by a policy, see `overlay/policy`.
 //// Effects that need the cloud's services, such as posting to a channel, are implemented by a `Host`.
 
+import cloud/files
 import cloud/system
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
@@ -20,7 +21,7 @@ import filepath
 import gleam/bit_array
 import gleam/crypto
 import gleam/dict
-import gleam/erlang/process
+import gleam/erlang/process.{type Subject}
 import gleam/httpc
 import gleam/int
 import gleam/json
@@ -28,6 +29,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
+import midas/continuation
 import ogre/origin
 import overlay/check
 import overlay/policy
@@ -37,6 +39,12 @@ import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env
 import touch_grass/fetch
+import touch_grass/file_system/append_file
+import touch_grass/file_system/delete_file
+import touch_grass/file_system/make_directory
+import touch_grass/file_system/read_directory
+import touch_grass/file_system/read_file
+import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
 import touch_grass/interface
@@ -77,20 +85,57 @@ pub type Host {
   Host(
     post: fn(String) -> Result(String, String),
     secret: fn(String) -> Result(String, String),
+    files: Files,
+  )
+}
+
+/// Access to the workspace's file system, paths are absolute.
+pub type Files {
+  Files(
+    read: fn(String) -> Result(BitArray, String),
+    read_directory: fn(String) ->
+      Result(List(#(String, read_directory.Entry)), String),
+    update: fn(files.Operation, String) -> Result(Nil, String),
+  )
+}
+
+/// Files for a program run by `by`, changes are reported as made by `by`.
+pub fn files(system: Subject(files.Message), by: String) -> Files {
+  Files(
+    read: fn(path) { files.call(system, files.Read(path, _)) },
+    read_directory: fn(path) {
+      files.call(system, files.ReadDirectory(path, _))
+    },
+    update: fn(operation, path) {
+      files.call(system, files.Update(operation, path, by, _))
+    },
+  )
+}
+
+/// No file system, every file effect fails.
+pub fn no_files() -> Files {
+  Files(
+    read: fn(_) { Error("There is no file system") },
+    read_directory: fn(_) { Error("There is no file system") },
+    update: fn(_, _) { Error("There is no file system") },
   )
 }
 
 /// A host for programs run from a channel, they have no access to secrets.
-pub fn channel_host(post: fn(String) -> Result(String, String)) -> Host {
-  Host(post:, secret: fn(_) { Error("Secrets are not available") })
+pub fn channel_host(
+  post: fn(String) -> Result(String, String),
+  files: Files,
+) -> Host {
+  Host(post:, secret: fn(_) { Error("Secrets are not available") }, files:)
 }
 
 pub type Policy =
   policy.Policy(Effect, Meta)
 
 const computer_effects = [
-  "DecodeJSON", "Env", "Fetch", "Flip", "Hash", "Now", "Random", "Sleep",
-  "StandardError", "StandardOut",
+  "AppendFile", "CWD", "DecodeJSON", "DeleteFile", "Env", "Fetch", "Flip",
+  "Hash", "MakeDirectory", "Now", "Random", "ReadDirectory", "ReadFile", "Sleep",
+  "StandardError", "StandardOut", "WriteFile",
 ]
 
 /// Every effect available on the cloud.
@@ -127,17 +172,24 @@ fn post() -> interface.Interface(Effect, Meta) {
 /// Deterministic computations over supplied values bypass the policy.
 /// Every other effect is available only if the policy has a gate for it.
 pub const rules = [
+  #("AppendFile", policy.PolicyField("append_file")),
+  #("CWD", policy.PolicyField("cwd")),
   #("DecodeJSON", policy.Unchecked),
+  #("DeleteFile", policy.PolicyField("delete_file")),
   #("Env", policy.PolicyField("env")),
   #("Fetch", policy.PolicyField("fetch")),
   #("Flip", policy.PolicyField("flip")),
   #("Hash", policy.Unchecked),
+  #("MakeDirectory", policy.PolicyField("make_directory")),
   #("Now", policy.PolicyField("now")),
   #("Post", policy.PolicyField("post")),
   #("Random", policy.PolicyField("random")),
+  #("ReadDirectory", policy.PolicyField("read_directory")),
+  #("ReadFile", policy.PolicyField("read_file")),
   #("Sleep", policy.PolicyField("sleep")),
   #("StandardError", policy.PolicyField("standard_error")),
   #("StandardOut", policy.PolicyField("standard_out")),
+  #("WriteFile", policy.PolicyField("write_file")),
 ]
 
 /// Check a complete policy before admitting it. Check gates independently so
@@ -215,7 +267,9 @@ pub fn run(
   host: Host,
   state: State,
 ) -> #(Run, State) {
-  run_with_lookup(code, scope, policy, host, state, program_reference)
+  run_with_lookup(code, scope, policy, host, state, fn(reference, state) {
+    program_reference(reference, state, policy, host, [])
+  })
 }
 
 /// Only trusted workspace configuration can import modules from the host.
@@ -253,6 +307,7 @@ fn loop(
       state,
     )
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+      let lift = absolute_paths(label, lift)
       let #(action, state) = decide(policy, label, lift, meta, state)
       case action {
         policy.Perform(interface, input) ->
@@ -319,6 +374,26 @@ fn loop(
   }
 }
 
+/// Policies decide on absolute file paths, relative paths are from the root.
+fn absolute_paths(label, lift) {
+  case label, lift {
+    "ReadFile", v.Record(fields)
+    | "WriteFile", v.Record(fields)
+    | "AppendFile", v.Record(fields)
+    ->
+      case dict.get(fields, "path") {
+        Ok(v.String(path)) ->
+          v.Record(dict.insert(fields, "path", v.String(files.normalize(path))))
+        _ -> lift
+      }
+    "DeleteFile", v.String(path)
+    | "MakeDirectory", v.String(path)
+    | "ReadDirectory", v.String(path)
+    -> v.String(files.normalize(path))
+    _, _ -> lift
+  }
+}
+
 /// Ask the policy what to do with an effect.
 /// Gates are evaluated purely, they can resolve references but not perform effects.
 pub fn decide(
@@ -374,6 +449,30 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
         computer.Hash(input) -> Ok(#(hash(input), []))
         computer.Now -> Ok(#(now.encode(now.sync()), []))
         computer.Random(max) -> Ok(#(random.encode(random.sync(max)), []))
+        computer.Cwd -> Ok(#(v.ok(v.String("/")), []))
+        computer.ReadFile(read_file.Input(path:, offset:, limit:)) ->
+          host.files.read(path)
+          |> result.map(files.slice(_, offset, limit))
+          |> read_file.encode
+          |> no_output
+        computer.ReadDirectory(path:) ->
+          host.files.read_directory(path) |> read_directory.encode |> no_output
+        computer.WriteFile(write_file.Input(path:, contents:)) ->
+          host.files.update(files.Write(contents), path)
+          |> write_file.encode
+          |> no_output
+        computer.AppendFile(append_file.Input(path:, contents:)) ->
+          host.files.update(files.Append(contents), path)
+          |> append_file.encode
+          |> no_output
+        computer.DeleteFile(path:) ->
+          host.files.update(files.Delete, path)
+          |> delete_file.encode
+          |> no_output
+        computer.MakeDirectory(path:) ->
+          host.files.update(files.MakeDirectory, path)
+          |> make_directory.encode
+          |> no_output
         computer.Sleep(milliseconds) -> {
           process.sleep(int.max(0, milliseconds))
           Ok(#(sleep.encode(Nil), []))
@@ -383,6 +482,10 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
   }
 }
 
+fn no_output(value) {
+  Ok(#(value, []))
+}
+
 fn result_string(result) {
   case result {
     Ok(value) -> v.ok(v.String(value))
@@ -390,17 +493,90 @@ fn result_string(result) {
   }
 }
 
-fn program_reference(
-  reference: ir.Reference,
-  state: State,
-) -> #(Result(state.Value(#(Int, Int)), String), cache.Cache(Meta)) {
+/// Resolve file imports only through the session filesystem and its ReadFile gate.
+fn program_reference(reference, state: State, policy, host, visiting) {
   case reference {
-    ir.Relative(path) -> #(
-      Error("Relative import of " <> path <> " is not available"),
-      state.cache,
-    )
+    ir.Relative(path) -> {
+      let path = files.normalize(path)
+      let #(loaded, state) = read_import(path, policy, host, state)
+      let #(result, state) = case loaded {
+        Error(reason) -> #(Error(reason), state)
+        Ok(#(bytes, file)) ->
+          case list.contains(visiting, file) {
+            True -> #(Error("Cyclic session import: " <> file), state)
+            False ->
+              case parse_module(bytes, file) {
+                Error(reason) -> #(Error(reason), state)
+                Ok(source) -> {
+                  let source = anchor_imports(source, file)
+                  module_loop(
+                    expression.execute(source, []),
+                    state,
+                    fn(ref, state) {
+                      program_reference(ref, state, policy, host, [
+                        file,
+                        ..visiting
+                      ])
+                    },
+                  )
+                }
+              }
+          }
+      }
+      #(result, state.cache)
+    }
     _ -> lookup_hub(reference, state)
   }
+}
+
+/// Anchor imports inside returned closures as well as immediate module imports.
+fn anchor_imports(source, file) {
+  ir.rewrite(source, fn(node) {
+    let node = case node.0 {
+      ir.Reference(ir.Relative(path)) -> {
+        let path = case filepath.is_absolute(path) {
+          True -> files.normalize(path)
+          False ->
+            files.normalize(filepath.join(filepath.directory_name(file), path))
+        }
+        #(ir.Reference(ir.Relative(path)), node.1)
+      }
+      _ -> node
+    }
+    continuation.return(node)
+  })(fn(node) { node })
+}
+
+fn read_import(path, policy, host: Host, state: State) {
+  let input =
+    v.Record(
+      dict.from_list([
+        #("path", v.String(path)),
+        #("offset", v.Integer(0)),
+        #("limit", v.Integer(100_000_000)),
+      ]),
+    )
+  let #(action, state) = decide(policy, "ReadFile", input, #(0, 0), state)
+  let loaded = case action {
+    policy.Perform(interface, input) -> {
+      use effect <- result.try(
+        interface.decode(input) |> result.map_error(simple_debug.describe),
+      )
+      case effect {
+        Computer(computer.ReadFile(read_file.Input(path:, offset:, limit:))) ->
+          host.files.read(path)
+          |> result.map(fn(bytes) { #(files.slice(bytes, offset, limit), path) })
+        _ -> Error("Import policy did not return a ReadFile request")
+      }
+    }
+    policy.Resume(v.Tagged("Ok", v.Binary(bytes))) -> Ok(#(bytes, path))
+    policy.Resume(v.Tagged("Error", v.String(reason))) -> Error(reason)
+    policy.Resume(_) -> Error("Import policy must return file bytes")
+    policy.Unavailable -> Error("Effect ReadFile is not allowed by policy")
+    policy.Failed(#(reason, _, _, _)) ->
+      Error("Policy failed: " <> simple_debug.describe(reason))
+  }
+  #(loaded, state)
 }
 
 /// Resolve references for trusted configuration and its pure checked closures.
