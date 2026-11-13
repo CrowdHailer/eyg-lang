@@ -42,7 +42,7 @@ pub fn start(
   Ok(
     channel.Outbound(
       input_type: input_type(),
-      post: fn(conversation, text) { post(config, conversation, text) },
+      post: fn(channel, reply, text) { post(config, channel, reply, text) },
       channel_name: fn(id) { channel_name(config, id) |> result.unwrap(id) },
       channels: fn() { channels(config) },
     ),
@@ -122,17 +122,14 @@ fn participant_decoder() {
 }
 
 fn incoming(message: chat_input.Message, value) {
-  channel.Incoming(
-    channel.Conversation(platform, message.channel, message.thread),
-    value,
-  )
+  channel.Incoming(platform, message.channel, message.thread, value)
 }
 
-fn post(config: Config, conversation: channel.Conversation, text: String) {
+fn post(config: Config, channel: String, reply, text: String) {
   let body =
     json.object([
-      #("channel", json.string(conversation.channel)),
-      #("thread", json.nullable(conversation.thread, json.string)),
+      #("channel", json.string(channel)),
+      #("thread", json.nullable(reply, json.string)),
       #(
         "author",
         json.object([

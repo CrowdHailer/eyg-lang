@@ -4,9 +4,9 @@
 ////
 //// - `llm` the `{provider, model}` the workspace's agents use, as in overlay.
 //// - `readme` context given to every agent in the workspace.
-//// - `channel` a function from `{platform, id, name}` to the channel's configuration.
+//// - `channel` a function from `{platform, installation, id, name}` to the channel's configuration.
 //// - `files` optional, a directory relative to the workspace file that the
-////   workspace's shared file system starts with.
+////   private session file systems are seeded from once.
 //// - `crons` optional, a list of `{name, schedule, channel, message}` records,
 ////   the message is sent to the named channel's session on the cron schedule, see `cloud/cron`.
 //// - `connections` optional, a list of `{name, source, channel}` records, the chats
@@ -27,6 +27,7 @@
 //// and can read the workspace's secrets with the `Secret` effect.
 
 import cloud/beam/execute
+import cloud/channel
 import cloud/connection
 import cloud/handler
 import cloud/secrets
@@ -234,7 +235,8 @@ pub fn channel(
   let argument =
     v.Record(
       dict.from_list([
-        #("platform", v.String(platform)),
+        #("platform", v.String(channel.platform(platform))),
+        #("installation", v.String(platform)),
         #("id", v.String(id)),
         #("name", v.String(name)),
       ]),

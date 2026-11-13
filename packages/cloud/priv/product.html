@@ -95,7 +95,7 @@
   <h2>You stay in charge</h2>
   <ul class="principles">
     <li><strong>Configuration is code you own.</strong> Workspaces, channels, connections and policies are EYG files, never YAML. They are evaluated, so a mistake is an error before it is a surprise.</li>
-    <li><strong>Every effect is gated.</strong> Agents, triggers, subagents and people in the shell all run through the same channel shells. Secrets are never shown to programs, network secrets are added on the way out.</li>
+    <li><strong>Every effect is gated.</strong> Agents, triggers, subagents and people in the shell all run through the same channel shells. Only trusted configuration can read workspace secrets.</li>
     <li><strong>Agents propose, people decide.</strong> Agents must choose to post, trigger patterns cannot act at all, and anything an agent sets up is visible in the shell and the admin page.</li>
     <li><strong>No hidden API.</strong> The admin page uses the same HTTP API you can call, which runs the same effects your agents can be allowed to use.</li>
     <li><strong>Run it yourself.</strong> One process, your files, your keys, any model provider.</li>

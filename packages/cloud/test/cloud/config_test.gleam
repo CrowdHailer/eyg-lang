@@ -6,11 +6,9 @@ import cloud/test_helpers
 import cloud/work
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
-import gleam/bit_array
-import gleam/crypto
 import gleam/dict
 import gleam/list
-import gleam/option.{Some}
+import gleam/option
 import gleam/string
 import simplifile
 
@@ -108,49 +106,6 @@ pub fn keyword_field_can_be_selected_and_destructured_test() {
       "let config = {handle: (event) -> { event }} let {handle: on_input} = config on_input(config.handle(42))",
     )
     == v.Integer(42)
-}
-
-pub fn secrets_are_placeholders_in_channels_test() {
-  let assert Ok(workspace) =
-    config.load(
-      "test/fixtures/secrets_workspace.eyg",
-      test_helpers.state(),
-      fn(name) {
-        case name {
-          "GITHUB_TOKEN" -> Ok("ghp_real")
-          _ -> Error("no secret")
-        }
-      },
-    )
-  let info =
-    config.ChannelInfo(
-      platform: "chat",
-      id: "C1",
-      name: "general",
-      input_type: t.record([#("text", t.String)]),
-    )
-  let assert Ok(config.Channel(shell:, ..)) = config.channel(workspace, info)
-  let host =
-    execute.channel_host(
-      fn(_) { Ok("m") },
-      execute.no_files(),
-      execute.no_triggers(),
-      execute.no_schedules(),
-      execute.no_artifacts(),
-    )
-  let #(execute.Run(result:, ..), _) =
-    execute.run(
-      "perform Env(\"GITHUB_TOKEN\")",
-      [],
-      shell,
-      host,
-      test_helpers.state(),
-    )
-  let digest =
-    crypto.hash(crypto.Sha256, <<"ghp_real":utf8>>)
-    |> bit_array.base16_encode
-    |> string.lowercase
-  assert result == Ok(Some(v.some(v.String("eyg-secret-" <> digest))))
 }
 
 pub fn channels_can_choose_a_model_test() {

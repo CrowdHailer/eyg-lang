@@ -1,17 +1,20 @@
-//// The workspace's shared file system.
+//// A session's private content addressed file system.
 ////
-//// Every session in a workspace reads and writes one content addressed file system,
-//// built with the `unixfs/mfs` module on an in memory block store.
+//// Each session has its own block store and an atomic snapshot on disk,
+//// built with the `unixfs/mfs` module.
 //// Paths are absolute, policies decide which paths a channel can read and write.
-//// Every change is reported to subscribers with who made it, so sessions can be told
-//// when a file they read has changed.
+//// Subscribers may observe changes within this filesystem.
 
+import cloud/beam/file_system
+import cloud/session_store
 import filepath
 import gleam/bit_array
 import gleam/crypto
 import gleam/dict.{type Dict}
+import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
@@ -57,16 +60,35 @@ type State {
     root: mfs.Entry,
     root_cid: v1.Cid,
     subscribers: List(Subject(Change)),
+    snapshot: Option(String),
   )
 }
 
 /// Start a file system with the files and directories under `seed` on the host.
 pub fn start(seed: Option(String)) -> Result(Subject(Message), String) {
+  start_persistent(seed, None)
+}
+
+/// Restore a snapshot, or copy the seed exactly once for a new session.
+pub fn start_persistent(
+  seed: Option(String),
+  snapshot: Option(String),
+) -> Result(Subject(Message), String) {
   let state = store_root(dict.new(), mfs.Directory([]), [])
-  use state <- result.try(case seed {
-    Some(directory) -> copy_in(state, directory, "/")
-    None -> Ok(state)
+  use restored <- result.try(case snapshot {
+    None -> Ok(None)
+    Some(path) -> restore(path)
   })
+  use state <- result.try(case restored {
+    Some(state) -> Ok(state)
+    None ->
+      case seed {
+        Some(directory) -> copy_in(state, directory, "/")
+        None -> Ok(state)
+      }
+  })
+  let state = State(..state, snapshot:)
+  use _ <- result.try(persist(state))
   actor.new(state)
   |> actor.on_message(handle)
   |> actor.start
@@ -92,7 +114,10 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
       actor.continue(state)
     }
     Update(operation:, path:, by:, reply:) ->
-      case update(state, operation, path) {
+      case
+        update(state, operation, path)
+        |> result.try(fn(next) { persist(next) |> result.replace(next) })
+      {
         Ok(state) -> {
           process.send(reply, Ok(Nil))
           let change = Change(path: normalize(path), by:)
@@ -122,14 +147,80 @@ fn update(state: State, operation, path) -> Result(State, String) {
   }
   let #(result, blocks) = run(effect, state.blocks)
   case result {
-    Ok(root) -> Ok(store_root(blocks, root, state.subscribers))
+    Ok(root) ->
+      Ok(
+        State(
+          ..store_root(blocks, root, state.subscribers),
+          snapshot: state.snapshot,
+        ),
+      )
     Error(reason) -> Error(describe(path, reason))
   }
 }
 
 fn store_root(blocks, root, subscribers) {
   let #(cid, blocks) = put(blocks, root)
-  State(blocks:, root:, root_cid: cid, subscribers:)
+  State(blocks:, root:, root_cid: cid, subscribers:, snapshot: None)
+}
+
+fn persist(state: State) {
+  case state.snapshot {
+    None -> Ok(Nil)
+    Some(path) -> {
+      let content =
+        json.object([
+          #("root", json.string(v1.to_string(state.root_cid))),
+          #(
+            "blocks",
+            json.object(
+              dict.to_list(state.blocks)
+              |> list.map(fn(pair) {
+                #(pair.0, json.string(bit_array.base64_encode(pair.1, True)))
+              }),
+            ),
+          ),
+        ])
+        |> json.to_string
+      session_store.write(path, content)
+    }
+  }
+}
+
+fn restore(path: String) {
+  case simplifile.read(path) {
+    Error(simplifile.Enoent) -> Ok(None)
+    Error(reason) -> Error(simplifile.describe_error(reason))
+    Ok(content) -> {
+      let decoder = {
+        use root <- decode.field("root", decode.string)
+        use blocks <- decode.field(
+          "blocks",
+          decode.dict(decode.string, decode.string),
+        )
+        decode.success(#(root, blocks))
+      }
+      use #(root, encoded) <- result.try(
+        json.parse(content, decoder)
+        |> result.replace_error("invalid filesystem snapshot: " <> path),
+      )
+      use #(cid, _) <- result.try(
+        v1.from_string(root)
+        |> result.replace_error("invalid filesystem root: " <> path),
+      )
+      use blocks <- result.try(
+        list.try_map(dict.to_list(encoded), fn(pair) {
+          bit_array.base64_decode(pair.1)
+          |> result.map(fn(bytes) { #(pair.0, bytes) })
+          |> result.replace_error("invalid filesystem block: " <> path)
+        }),
+      )
+      let blocks = dict.from_list(blocks)
+      use root <- result.map(
+        get(blocks, cid) |> result.map_error(simplifile.describe_error),
+      )
+      Some(store_root(blocks, root, []))
+    }
+  }
 }
 
 /// Interpret file system effects against the block store.
@@ -255,4 +346,61 @@ pub fn slice(bytes: BitArray, offset: Int, limit: Int) -> BitArray {
 fn is_raw(cid: v1.Cid) {
   let v1.Cid(codec, _) = cid
   codec == unixfs.raw_code
+}
+
+/// Restore a session root into the central actor's shared block store.
+pub fn load_snapshot(seed, snapshot, blocks) {
+  use restored <- result.try(restore(snapshot))
+  use stored <- result.try(case restored {
+    Some(stored) -> Ok(stored)
+    None -> {
+      let stored = store_root(dict.new(), mfs.Directory([]), [])
+      case seed {
+        Some(directory) -> copy_in(stored, directory, "/")
+        None -> Ok(stored)
+      }
+    }
+  })
+  use entries <- result.try(
+    list.try_map(dict.keys(stored.blocks), fn(key) {
+      use #(cid, _) <- result.try(
+        v1.from_string(key) |> result.replace_error("Invalid block identifier"),
+      )
+      use entry <- result.map(
+        get(stored.blocks, cid) |> result.map_error(simplifile.describe_error),
+      )
+      #(cid, entry)
+    }),
+  )
+  let fs =
+    file_system.State(
+      stored.root_cid,
+      dict.merge(blocks, dict.from_list(entries)),
+    )
+  use _ <- result.map(save_snapshot(snapshot, fs))
+  fs
+}
+
+/// Persist only blocks reachable from this root, never another session's data.
+pub fn save_snapshot(path, fs: file_system.State) {
+  let blocks = collect(fs.root, fs.blocks, dict.new())
+  let assert Ok(root) = dict.get(fs.blocks, fs.root)
+  persist(State(blocks, root, fs.root, [], Some(path)))
+}
+
+fn collect(cid, entries, blocks) {
+  case dict.has_key(blocks, v1.to_string(cid)) {
+    True -> blocks
+    False -> {
+      let assert Ok(entry) = dict.get(entries, cid)
+      let #(_, blocks) = put(blocks, entry)
+      case entry {
+        mfs.File(_) -> blocks
+        mfs.Directory(links) ->
+          list.fold(links, blocks, fn(blocks, link) {
+            collect(link.cid, entries, blocks)
+          })
+      }
+    }
+  }
 }

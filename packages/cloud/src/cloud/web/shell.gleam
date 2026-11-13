@@ -100,7 +100,7 @@ fn init(args: Args) -> #(Model, Effect(Msg)) {
   )
 }
 
-/// Run code in a new process and report the cell and the binding after it.
+/// Wait for the central executor without blocking the live component's updates.
 fn run(args: Args, user: User, binding: Option(Binding), code: String) {
   effect.from(fn(dispatch) {
     process.spawn(fn() {

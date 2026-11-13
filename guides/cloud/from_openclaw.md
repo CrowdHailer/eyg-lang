@@ -21,12 +21,12 @@ Read the [cloud README](../../packages/cloud/README.md) and run the [example wor
 | Channel plugin and account (`channels.slack`) | A [channel plugin](./channel_plugins.md), configured in `connections` in `workspace.eyg` |
 | `bindings` | The workspace's `channel` function, which matches on `{platform, id, name}` |
 | Session key, `dmScope`, `groupScope` | One session per conversation: each channel, DM and thread has its own. DMs are not merged into a main session |
-| `visibleReplies: "message_tool"`, `message(action=send)` | The `Post` effect, agents never reply automatically |
+| `visibleReplies: "message_tool"`, `message(action=send)` | Ordinary replies are sent directly; additional messages use the policy-checked `Post` effect |
 | `NO_REPLY` | Not posting |
 | Mention gating, `requireMention`, ambient room events | Every message reaches the agent, as OpenClaw's room events. The channel `readme` tells the agent when to speak |
 | `tools.allow`/`deny`, `tools.profile`, sandbox, `groups.*.tools` | The channel's `channel_shell` policy. Gates are functions over effect inputs, so they can check paths and hosts, not just tool names |
 | Workspace files `AGENTS.md`, `SOUL.md`, `USER.md` | The workspace `readme` and channel `readme` in `workspace.eyg`, re-evaluated every turn |
-| `MEMORY.md` and memory files | Files in the shared file system, agents read and write them with file effects |
+| `MEMORY.md` and memory files | Files in the session's private persistent file system, agents read and write them with file effects |
 | Skills | `/skills/<name>/SKILL.md` in the workspace's starting files |
 | Auth profiles and secrets | The workspace secrets store, read only by the configuration |
 | Cron jobs and heartbeats | `crons` in `workspace.eyg`, and the `Cron` and `Timeout` effects |
@@ -110,19 +110,7 @@ Save each secret in the workspace's store, it is kept in the workspace's `.data`
 gleam run -m cloud/secrets -- set path/to/workspace.eyg GITHUB_TOKEN < token.txt
 ```
 
-Credentials that programs need for an API become network secrets: programs see a placeholder and the policy adds the real value to requests to the API's host.
-
-```eyg
-let github = match cloud.secrets.load("GITHUB_TOKEN", ["api.github.com"]) {
-  Ok(token) -> { [token] }
-  Error(_) -> { [] }
-}
-let shell_with_github = {
-  env: cloud.secrets.env(github),
-  fetch: cloud.secrets.fetch(github, shell.pass),
-  ..shell.everything
-}
-```
+Networked secrets are added after the deployment checkpoint.
 
 ### 5. Move workspace files, memory and skills
 

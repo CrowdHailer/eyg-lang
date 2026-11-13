@@ -1,7 +1,9 @@
-import cloud/agent
+import cloud/beam/execute
+import cloud/overlay as agent
 import gleam/dict
 import gleam/erlang/process
 import gleam/list
+import gleam/option.{Some}
 import oas/generator/utils
 import overlay/llm/chat
 import overlay/llm/tool
@@ -80,4 +82,29 @@ pub fn trim_keeps_whole_turns_test() {
   assert agent.trim(history, 10) == history
   assert agent.trim(history, 5) == list.take(history, 4)
   assert agent.trim(history, 3) == []
+}
+
+pub fn completed_tools_and_state_survive_a_later_provider_failure_test() {
+  let complete =
+    scripted([chat.Completion("", "working", [run_call("change")])])
+  let emitted = process.new_subject()
+  let #(history, state, error) =
+    agent.complete_loop(
+      [chat.UserMessage("start", [])],
+      complete,
+      fn(_, state) { #(Ok("saved"), state + 1) },
+      process.send(emitted, _),
+      0,
+      agent.max_steps,
+    )
+  assert state == 1
+  assert error == Some("script finished")
+  let assert [
+    chat.ToolResultMessage(text: "saved", ..),
+    chat.AssistantMessage(..),
+    chat.UserMessage(..),
+  ] = history
+  assert process.receive(emitted, 0) == Ok(execute.StandardOut("working"))
+  assert process.receive(emitted, 0)
+    == Ok(execute.StandardError("script finished"))
 }

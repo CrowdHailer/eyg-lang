@@ -1,4 +1,5 @@
 import cloud/beam/execute
+import cloud/beam/file_system
 import cloud/test_helpers
 import eyg/interpreter/cast
 import eyg/interpreter/value as v
@@ -6,6 +7,30 @@ import gleam/dict
 import gleam/erlang/process
 import gleam/option.{Some}
 import gleam/result
+import simplifile
+
+pub fn basic_policy_checks_code_and_agent_tools_with_canonical_paths_test() {
+  let assert Ok(code) = simplifile.read("policy.eyg")
+  let assert #(Ok(policy), state) = execute.load_policy(code, state())
+  let files = file_system.new(dict.new())
+  let code =
+    "perform WriteFile({path: \"/tmp/../skills/answer\", contents: !string_to_binary(\"42\")})"
+  let assert #(Ok(result), state, files) =
+    execute.block(code, state, policy, files, fn(_) { Nil })
+  assert result == "Error(\"Writing to /skills is denied by policy\")"
+  let assert #(Ok(result), state, files, _) =
+    execute.run(code, state, policy, files, fn(_) { Nil })
+  assert result == "Error(\"Writing to /skills is denied by policy\")"
+  let assert Error(_) = file_system.read(files, "/skills/answer", 0, 100)
+  let assert #(Ok(result), _, _) =
+    execute.block("42", state, policy, files, fn(_) { Nil })
+  assert result == "42"
+}
+
+pub fn basic_policy_rejects_invalid_and_effectful_configuration_test() {
+  let assert #(Error(_), _) = execute.load_policy("{}", state())
+  let assert #(Error(_), _) = execute.load_policy("perform Now({})", state())
+}
 
 pub fn state() {
   test_helpers.state()
@@ -22,7 +47,7 @@ pub fn evaluate(code) {
       execute.no_artifacts(),
     )
   let #(execute.Run(result:, ..), _) =
-    execute.run(code, [], execute.unrestricted(), host, state())
+    execute.checked(code, [], execute.unrestricted(), host, state())
   let assert Ok(Some(value)) = result
   value
 }
@@ -52,7 +77,7 @@ pub fn allowed_post_test() {
   let #(host, posts) = recording_host()
   let policy = policy("{post: (text) -> { Pass(text) }, ..cloud.reject_all}")
   let #(execute.Run(result:, ..), _) =
-    execute.run("perform Post(\"hi\")", [], policy, host, state())
+    execute.checked("perform Post(\"hi\")", [], policy, host, state())
   assert result == Ok(Some(v.ok(v.String("m1"))))
   assert process.receive(posts, 0) == Ok("hi")
 }
@@ -63,7 +88,7 @@ pub fn gate_can_change_input_test() {
     policy(
       "{post: (text) -> { Pass(!string_append(\"bot: \", text)) }, ..cloud.reject_all}",
     )
-  let _ = execute.run("perform Post(\"hi\")", [], policy, host, state())
+  let _ = execute.checked("perform Post(\"hi\")", [], policy, host, state())
   assert process.receive(posts, 0) == Ok("bot: hi")
 }
 
@@ -72,7 +97,7 @@ pub fn gate_can_mock_test() {
   let policy =
     policy("{post: (_) -> { Mock(Error(\"muted\")) }, ..cloud.reject_all}")
   let #(execute.Run(result:, ..), _) =
-    execute.run("perform Post(\"hi\")", [], policy, host, state())
+    execute.checked("perform Post(\"hi\")", [], policy, host, state())
   assert result == Ok(Some(v.error(v.String("muted"))))
   assert process.receive(posts, 0) == Error(Nil)
 }
@@ -81,14 +106,14 @@ pub fn reject_all_makes_effects_unavailable_test() {
   let #(host, _posts) = recording_host()
   let policy = policy("cloud.reject_all")
   let #(execute.Run(result:, ..), _) =
-    execute.run("perform Post(\"hi\")", [], policy, host, state())
+    execute.checked("perform Post(\"hi\")", [], policy, host, state())
   assert result == Error("Effect Post is not allowed by policy")
 }
 
 pub fn unchecked_effects_need_no_gate_test() {
   let #(host, _posts) = recording_host()
   let #(execute.Run(result:, ..), _) =
-    execute.run(
+    execute.checked(
       "perform DecodeJSON(!string_to_binary(\"1\"))",
       [],
       policy("cloud.reject_all"),
@@ -103,7 +128,7 @@ pub fn output_is_captured_test() {
   let policy =
     policy("{standard_out: (text) -> { Pass(text) }, ..cloud.reject_all}")
   let #(execute.Run(output:, ..), _) =
-    execute.run(
+    execute.checked(
       "let _ = perform StandardOut(\"a\")\nperform StandardOut(\"b\")",
       [],
       policy,
@@ -116,7 +141,13 @@ pub fn output_is_captured_test() {
 pub fn relative_import_is_unavailable_without_session_files_test() {
   let #(host, _posts) = recording_host()
   let #(execute.Run(result:, ..), _) =
-    execute.run("import \"./x.eyg\"", [], execute.unrestricted(), host, state())
+    execute.checked(
+      "import \"./x.eyg\"",
+      [],
+      execute.unrestricted(),
+      host,
+      state(),
+    )
   assert result == Error("There is no file system")
 }
 
@@ -124,7 +155,7 @@ pub fn script_import_cannot_read_a_configured_host_root_test() {
   let #(host, _) = recording_host()
   let state = execute.State(..state(), root: Some("../../eyg_packages/overlay"))
   let #(execute.Run(result:, ..), _) =
-    execute.run(
+    execute.checked(
       "import \"./index.eyg\"",
       [],
       execute.unrestricted(),
@@ -152,7 +183,7 @@ pub fn missing_or_invalid_policy_gates_are_rejected_when_set_test() {
 pub fn successive_programs_do_not_retain_scope_test() {
   let #(host, _) = recording_host()
   let #(execute.Run(result: first, ..), next) =
-    execute.run(
+    execute.checked(
       "let retained = 42\nretained",
       [],
       execute.unrestricted(),
@@ -161,7 +192,7 @@ pub fn successive_programs_do_not_retain_scope_test() {
     )
   assert first == Ok(Some(v.Integer(42)))
   let #(execute.Run(result: second, ..), _) =
-    execute.run("retained", [], execute.unrestricted(), host, next)
+    execute.checked("retained", [], execute.unrestricted(), host, next)
   let assert Error(_) = second
 }
 
@@ -204,7 +235,7 @@ pub fn channels_cannot_read_secrets_test() {
   let host = execute.configuration_host(fn(_) { Ok("leaked") })
   let shell = policy("cloud.reject_all")
   let #(execute.Run(result:, ..), _) =
-    execute.run("perform Secret(\"KEY\")", [], shell, host, state())
+    execute.checked("perform Secret(\"KEY\")", [], shell, host, state())
   assert result == Error("Effect Secret is not allowed by policy")
 }
 
@@ -225,7 +256,7 @@ pub fn scripts_read_session_files_even_with_a_host_root_test() {
   let #(host, reads) = module_host([#("/etc/passwd", <<"42":utf8>>)])
   let state = execute.State(..state(), root: Some("/"))
   let #(execute.Run(result:, ..), _) =
-    execute.run(
+    execute.checked(
       "import \"/etc/passwd\"",
       [],
       execute.unrestricted(),
@@ -239,7 +270,7 @@ pub fn scripts_read_session_files_even_with_a_host_root_test() {
 pub fn import_denial_never_reads_the_file_test() {
   let #(host, reads) = module_host([#("/private.eyg", <<"42":utf8>>)])
   let #(execute.Run(result:, ..), _) =
-    execute.run(
+    execute.checked(
       "import \"./private.eyg\"",
       [],
       policy("cloud.reject_all"),
@@ -261,7 +292,7 @@ pub fn nested_and_deferred_imports_follow_the_redirected_session_path_test() {
       "{read_file: (request) -> { match !equal(request.path, \"/entry.eyg\") { True(_) -> { Pass({path: \"/lib/module.eyg\", ..request}) } False(_) -> { Pass(request) } } }, ..cloud.reject_all}",
     )
   let #(execute.Run(result:, ..), _) =
-    execute.run(
+    execute.checked(
       "let module = import \"./entry.eyg\"\nmodule({})",
       [],
       shell,
@@ -280,7 +311,7 @@ pub fn import_mock_returns_a_module_without_reading_test() {
       "{read_file: (_) -> { Mock(Ok(!string_to_binary(\"42\"))) }, ..cloud.reject_all}",
     )
   let #(execute.Run(result:, ..), _) =
-    execute.run("import \"./virtual.eyg\"", [], shell, host, state())
+    execute.checked("import \"./virtual.eyg\"", [], shell, host, state())
   assert result == Ok(Some(v.Integer(42)))
   assert process.receive(reads, 0) == Error(Nil)
 }
@@ -289,7 +320,7 @@ pub fn cyclic_session_import_fails_without_recursing_forever_test() {
   let #(host, _) =
     module_host([#("/cycle.eyg", <<"import \"./cycle.eyg\"":utf8>>)])
   let #(execute.Run(result:, ..), _) =
-    execute.run(
+    execute.checked(
       "import \"./cycle.eyg\"",
       [],
       execute.unrestricted(),
@@ -306,7 +337,7 @@ pub fn import_honours_the_gates_read_range_test() {
       "{read_file: (request) -> { Pass({offset: 2, limit: 2, ..request}) }, ..cloud.reject_all}",
     )
   let #(execute.Run(result:, ..), _) =
-    execute.run("import \"/wrapped.eyg\"", [], shell, host, state())
+    execute.checked("import \"/wrapped.eyg\"", [], shell, host, state())
   assert result == Ok(Some(v.Integer(42)))
   assert process.receive(reads, 0) == Ok("/wrapped.eyg")
 }

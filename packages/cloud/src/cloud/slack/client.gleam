@@ -12,10 +12,10 @@ pub fn auth_test(token: String) -> Result(schema.Identity, client.Failure) {
 pub fn chat_post_message(
   token: String,
   channel: String,
-  thread_ts: String,
+  thread_ts: Option(String),
   text: String,
   color color: Option(String),
-) -> Result(Nil, client.Failure) {
+) -> Result(String, client.Failure) {
   client.chat_post_message(
     client.Context(token:, fetch: system.fetch),
     channel,
@@ -41,6 +41,20 @@ pub fn conversations_history_since(
   client.conversations_history_since(
     client.Context(token:, fetch: system.fetch),
     channel_id,
+    oldest,
+  )(identity)
+}
+
+pub fn conversations_replies_since(
+  token: String,
+  channel_id: String,
+  thread_ts: String,
+  oldest: Option(String),
+) -> Result(List(schema.Message), client.Failure) {
+  client.conversations_replies_since(
+    client.Context(token:, fetch: system.fetch),
+    channel_id,
+    thread_ts,
     oldest,
   )(identity)
 }

@@ -3,6 +3,7 @@ import cloud/discord/api/pagination
 import cloud/discord/api/schema
 import gleam/http
 import gleam/http/request
+import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option
@@ -160,4 +161,84 @@ fn history_page(
       }
     Error(reason) -> Error(RequestFailed(reason))
   }
+}
+
+fn call(
+  context: Context(t),
+  request: request.Request(BitArray),
+  decode: fn(response.Response(BitArray)) ->
+    Result(Result(a, operations.Failure), json.DecodeError),
+) -> K(t, Result(a, Failure)) {
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case decode(response) {
+        Ok(Ok(value)) -> Ok(value)
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
+}
+
+/// Post a message and return its id.
+pub fn post_message(
+  context: Context(t),
+  channel: String,
+  text: String,
+) -> K(t, Result(String, Failure)) {
+  base_request(context.token)
+  |> operations.post_message_request(channel, text)
+  |> call(context, _, operations.post_message_response)
+}
+
+pub fn recent_messages(
+  context: Context(t),
+  channel: String,
+  limit: Int,
+) -> K(t, Result(List(schema.Post), Failure)) {
+  base_request(context.token)
+  |> operations.recent_messages_request(channel, limit)
+  |> call(context, _, operations.recent_messages_response)
+}
+
+pub fn get_message(
+  context: Context(t),
+  channel: String,
+  message: String,
+) -> K(t, Result(schema.Post, Failure)) {
+  base_request(context.token)
+  |> operations.get_message_request(channel, message)
+  |> call(context, _, operations.get_message_response)
+}
+
+pub fn active_threads(
+  context: Context(t),
+  guild: String,
+) -> K(t, Result(List(schema.Thread), Failure)) {
+  base_request(context.token)
+  |> operations.active_threads_request(guild)
+  |> call(context, _, operations.active_threads_response)
+}
+
+pub fn start_thread(
+  context: Context(t),
+  channel: String,
+  message: String,
+  name: String,
+) -> K(t, Result(Nil, Failure)) {
+  base_request(context.token)
+  |> operations.start_thread_request(channel, message, name)
+  |> call(context, _, operations.start_thread_response)
+}
+
+pub fn reactions(
+  context: Context(t),
+  channel: String,
+  message: String,
+  emoji: String,
+) -> K(t, Result(List(schema.User), Failure)) {
+  base_request(context.token)
+  |> operations.reactions_request(channel, message, emoji)
+  |> call(context, _, operations.reactions_response)
 }

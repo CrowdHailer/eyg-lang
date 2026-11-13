@@ -5,9 +5,9 @@
 //// Preparing a shell evaluates the workspace configuration in the current process,
 //// see `notes/cloud-process-boundaries.md`.
 
-import cloud/agent
 import cloud/beam/execute
 import cloud/config
+import cloud/overlay as agent
 import cloud/skills
 import cloud/tracing
 import cloud/trigger
@@ -21,6 +21,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import overlay/agent as overlay
+import overlay/llm/chat
 import overlay/tools/run
 
 pub type Shell {
@@ -48,9 +49,10 @@ pub fn prepare(
   use channel <- result.try(config.channel(workspace, info))
   let state = execute.State(..workspace.state, root: option.None)
   let shell = Shell(workspace:, channel:, host:, state:, location:, completer:)
-  let subagent = fn(task, trace) {
+  let subagent = fn(task, trace, state) {
     let shell = Shell(..shell, host: execute.Host(..shell.host, trace:))
-    turn(shell, [], task) |> result.map(agent.last_reply)
+    let #(history, state) = turn(shell, [], task, state, fn(_) { Nil })
+    #(Ok(agent.last_reply(history)), state)
   }
   Ok(Shell(..shell, host: execute.Host(..host, subagent:)))
 }
@@ -60,8 +62,9 @@ pub fn run(
   shell: Shell,
   code: String,
   scope: List(#(String, execute.Value)),
-) -> execute.Run {
-  execute.run(code, scope, shell.channel.shell, shell.host, shell.state).0
+  state: execute.State,
+) -> #(execute.Run, execute.State) {
+  execute.checked(code, scope, shell.channel.shell, shell.host, state)
 }
 
 /// Run a trigger's script for an event.
@@ -69,10 +72,11 @@ pub fn run_script(
   shell: Shell,
   script: trigger.Script,
   event: execute.Value,
-) -> execute.Run {
+  state: execute.State,
+) -> #(execute.Run, execute.State) {
   let scope = [#("event", event)]
   case script {
-    trigger.Source(code) -> run(shell, code, scope)
+    trigger.Source(code) -> run(shell, code, scope, state)
     trigger.Function(function) -> {
       let call = #(
         ir.Apply(function, #(ir.Variable("event"), #(0, 0))),
@@ -83,8 +87,8 @@ pub fn run_script(
         scope,
         shell.channel.shell,
         shell.host,
-        shell.state,
-      ).0
+        state,
+      )
     }
   }
 }
@@ -117,7 +121,9 @@ pub fn turn(
   shell: Shell,
   history: agent.History,
   input: String,
-) -> Result(agent.History, String) {
+  state: execute.State,
+  emit: fn(execute.Output) -> Nil,
+) -> #(agent.History, execute.State) {
   let Shell(workspace:, channel:, ..) = shell
   let effects =
     dict.values(channel.shell) |> list.map(fn(entry) { entry.interface })
@@ -126,7 +132,12 @@ pub fn turn(
       shell.location,
       workspace.readme,
       channel.readme,
-      skills.render(skills.index(shell.host.files)),
+      skills.render(
+        skills.index(case state.files {
+          Some(files) -> execute.session_files(files.state)
+          None -> shell.host.files
+        }),
+      ),
     ]
     |> list.filter(fn(section) { section != "" })
     |> string.join("\n\n")
@@ -168,22 +179,29 @@ pub fn turn(
       ),
     ),
   ]
-  let turn =
-    agent.turn(history, input, complete, fn(code) {
-      let execute.Run(result:, output:) = run(shell, code, scope)
-      let printed = list.map(output, execute.output_text)
-      case result {
-        Ok(value) ->
-          Ok(run.report(
-            printed,
-            value |> option.map(overlay.inspect_result) |> option.unwrap(""),
-          ))
-        Error(reason) -> Error(run.report(printed, reason))
-      }
-    })
-  tracing.end(span, [], case turn {
-    Ok(_) -> None
-    Error(reason) -> Some(reason)
-  })
-  turn
+  let #(history, state, failure) =
+    agent.complete_loop(
+      [chat.UserMessage(input, []), ..history],
+      complete,
+      fn(code, state) {
+        let #(execute.Run(result:, output:), state) =
+          run(shell, code, scope, state)
+        let printed = list.map(output, execute.output_text)
+        list.reverse(output) |> list.each(emit)
+        let result = case result {
+          Ok(value) ->
+            Ok(run.report(
+              printed,
+              value |> option.map(overlay.inspect_result) |> option.unwrap(""),
+            ))
+          Error(reason) -> Error(run.report(printed, reason))
+        }
+        #(result, state)
+      },
+      emit,
+      state,
+      agent.max_steps,
+    )
+  tracing.end(span, [], failure)
+  #(history, state)
 }

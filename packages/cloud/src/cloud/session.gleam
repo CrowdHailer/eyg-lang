@@ -1,199 +1,410 @@
-//// One session per conversation, it holds the agent's history.
-////
-//// Inputs are queued while a turn runs and given to the agent together in the next turn.
-//// Observations are added to the next turn without starting one.
-////
-//// Each turn prepares the channel shell in its own process,
-//// so configuration changes apply from the next turn.
-//// EYG values are never sent between processes, see `notes/cloud-process-boundaries.md`.
+//// A single actor executes queued code and agent turns in each session.
 
-import cloud/agent
 import cloud/beam/execute
+import cloud/beam/file_system
 import cloud/config
 import cloud/files
+import cloud/overlay
+import cloud/session_store
 import cloud/shell
+import eyg/hub/cache
+import filepath
 import gleam/dict.{type Dict}
+import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/io
+import gleam/json
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import gleam/result
-import gleam/set.{type Set}
 import gleam/string
+import multiformats/cid/v1
+import ogre/origin
 import overlay/llm/chat
+import overlay/llm/provider
+import overlay/llm/provider/ollama
+import simplifile
+import unixfs/mfs
 
-pub type Message {
-  /// Something the agent should respond to, starts a turn.
-  Input(text: String)
-  /// Context for the agent's next turn, it does not start a turn.
-  Observe(text: String)
-  /// A file in the workspace changed.
-  Changed(files.Change)
-  /// The session's agent read a file.
-  Read(path: String)
-  /// Forget the conversation so far, the next input starts a new one.
-  Reset
-  TurnFinished(epoch: Int, input: String, result: Result(agent.History, String))
-}
-
-/// The most messages kept in a session's history.
 pub const max_history = 200
 
-/// Everything about a session that is fixed when it starts.
+pub type Payload {
+  Code(String)
+  UserPrompt(String)
+}
+
+/// Channel services and trusted configuration are supplied with a command.
+/// Evaluated EYG closures never cross the actor boundary.
 pub type Setup {
   Setup(
-    /// The conversation key, used in logs.
     name: String,
     channel: config.ChannelInfo,
-    /// Where the agent is, given to the agent with the workspace and channel readmes.
     location: String,
     load: config.Loader,
-    complete: agent.Completer,
+    complete: overlay.Completer,
     host: execute.Host,
+    directory: String,
+    seed: Option(String),
+  )
+}
+
+pub type Reply =
+  fn(String) -> Result(String, String)
+
+pub type Action {
+  Input(String)
+  Observe(String)
+  Reset
+  Run(fn(execute.Host, execute.State) -> #(Option(String), execute.State))
+}
+
+pub type Message {
+  Message(id: String, payload: Payload, print: fn(execute.Output) -> Nil)
+  Dispatch(
+    id: String,
+    setup: Option(Setup),
+    action: Action,
+    reply: Option(Reply),
+  )
+  WithFiles(
+    directory: String,
+    identity: String,
+    seed: Option(String),
+    run: fn(Result(execute.State, String)) -> #(String, execute.State),
   )
 }
 
 type State {
   State(
-    setup: Setup,
-    self: Subject(Message),
-    history: agent.History,
-    busy: Bool,
-    /// Inputs and observations for the next turn, newest first.
-    queue: List(String),
-    /// True if the queue holds an input, so a turn should start.
-    waiting: Bool,
-    /// Files read by the agent, including skills listed in its context.
-    read: Set(String),
-    /// Files read by the agent that another channel has changed since, and who changed them.
-    dirty: Dict(String, String),
-    /// Increased on reset, turns started before a reset are discarded.
-    epoch: Int,
+    execute_state: execute.State,
+    policy: execute.Policy,
+    blocks: Dict(v1.Cid, mfs.Entry),
+    sessions: Dict(String, Session),
+    agent_config: overlay.Session,
+    setups: Dict(String, Setup),
+    storage: Option(String),
   )
 }
 
-pub fn start(setup: Setup) -> Result(Subject(Message), actor.StartError) {
-  actor.new_with_initialiser(1000, fn(self) {
-    State(
-      setup:,
-      self:,
-      history: [],
-      busy: False,
-      queue: [],
-      waiting: False,
-      read: set.new(),
-      dirty: dict.new(),
-      epoch: 0,
-    )
-    |> actor.initialised
-    |> actor.returning(self)
-    |> Ok
-  })
-  |> actor.on_message(handle)
-  |> actor.start
-  |> result.map(fn(started) { started.data })
+pub type Session {
+  Session(root: v1.Cid, history: chat.History, pending: List(String))
 }
 
-fn handle(state: State, message: Message) -> actor.Next(State, Message) {
+pub fn start(hub: origin.Origin, llm: provider.Llm) {
+  start_with_session(hub, overlay.setup(hub, llm))
+}
+
+pub fn start_with_session(hub: origin.Origin, agent_session: overlay.Session) {
+  start_actor(hub, agent_session, None)
+}
+
+pub fn start_persistent(hub, llm, directory) {
+  start_actor(hub, overlay.setup(hub, llm), Some(directory))
+}
+
+fn start_actor(hub, agent_session, storage) {
+  let assert Ok(code) = simplifile.read("policy.eyg")
+  let #(policy, execute_state) =
+    execute.load_policy(code, execute.State(hub, cache.ready(), None, None))
+  let assert Ok(policy) = policy
+  actor.new(State(
+    execute_state:,
+    policy:,
+    blocks: dict.new(),
+    sessions: dict.new(),
+    agent_config: agent_session,
+    setups: dict.new(),
+    storage:,
+  ))
+  |> actor.on_message(handle_message)
+  |> actor.start
+}
+
+/// Configured channels select their own model and hub when preparing a turn.
+pub fn start_configured() -> Result(Subject(Message), String) {
+  let assert Ok(hub) = origin.from_string_strict("https://eyg.run")
+  start(
+    hub,
+    provider.Llm(provider.Ollama(ollama.local()), "devstral-small-2:24b"),
+  )
+  |> result.map(fn(started) { started.data })
+  |> result.map_error(string.inspect)
+}
+
+pub fn send(executor, id, action) {
+  process.send(executor, Dispatch(id, None, action, None))
+}
+
+pub fn submit(executor, id, setup, action, reply) {
+  process.send(executor, Dispatch(id, Some(setup), action, reply))
+}
+
+fn handle_message(state: State, message: Message) {
   case message {
-    Input(text) -> {
-      // Changes are noted with the next inbound message.
-      let queue = case note(state.dirty) {
-        "" -> [text, ..state.queue]
-        note -> [text, note, ..state.queue]
-      }
-      State(..state, queue:, waiting: True, dirty: dict.new()) |> next
+    Message(id, action, print) -> {
+      actor.continue(basic_message(state, id, action, print))
     }
-    Read(path) ->
-      State(..state, read: set.insert(state.read, path)) |> actor.continue
-    Changed(files.Change(path:, by:)) -> {
-      let own = by == "#" <> state.setup.channel.name
-      case !own && set.contains(state.read, path) {
-        True -> State(..state, dirty: dict.insert(state.dirty, path, by))
-        False -> state
+    Dispatch(id, supplied, action, reply) -> {
+      let state = case supplied {
+        None -> state
+        Some(setup) ->
+          State(..state, setups: dict.insert(state.setups, id, setup))
       }
-      |> actor.continue
+      let outcome = {
+        use setup <- result.try(
+          dict.get(state.setups, id)
+          |> result.replace_error("unknown session " <> id),
+        )
+        use #(stored, execution) <- result.map(open(
+          state,
+          id,
+          setup.directory,
+          setup.seed,
+        ))
+        let host = case reply {
+          None -> setup.host
+          Some(post) -> execute.Host(..setup.host, post:)
+        }
+        let #(stored, execution) =
+          perform(stored, Setup(..setup, host:), action, execution)
+        save(
+          setup.directory,
+          setup.name,
+          setup.channel.platform,
+          setup.channel.id,
+          setup.location,
+          stored,
+        )
+        retain(state, id, stored, execution)
+      }
+      case outcome {
+        Error(reason) -> {
+          io.println_error(reason)
+          actor.continue(state)
+        }
+        Ok(state) -> actor.continue(state)
+      }
     }
-    Observe(text) ->
-      State(..state, queue: [text, ..state.queue]) |> actor.continue
-    Reset ->
+    WithFiles(directory, id, seed, run) -> {
+      case open(state, id, directory, seed) {
+        Error(reason) -> {
+          let _ = run(Error(reason))
+          actor.continue(state)
+        }
+        Ok(#(stored, execution)) -> {
+          let #(report, execution) = run(Ok(execution))
+          let stored =
+            Session(
+              ..stored,
+              history: overlay.trim(
+                [chat.UserMessage(report, []), ..stored.history],
+                max_history,
+              ),
+            )
+          save(directory, id, "web", "", "web shell", stored)
+          actor.continue(retain(state, id, stored, execution))
+        }
+      }
+    }
+  }
+}
+
+fn basic_message(state: State, id, action, print) {
+  let opened = case state.storage {
+    Some(directory) ->
+      open(state, id, session_store.directory(directory, id), None)
+    None -> {
+      let #(fs, stored) = case dict.get(state.sessions, id) {
+        Ok(stored) -> #(file_system.State(stored.root, state.blocks), stored)
+        Error(Nil) -> {
+          let fs = file_system.new(state.blocks)
+          #(fs, Session(fs.root, [], []))
+        }
+      }
+      Ok(#(
+        stored,
+        execute.State(
+          ..state.execute_state,
+          files: Some(execute.SessionFiles(fs, fn(_) { Ok(Nil) })),
+        ),
+      ))
+    }
+  }
+  case opened {
+    Error(reason) -> {
+      print(execute.StandardError(reason))
+      state
+    }
+    Ok(#(stored, execution)) -> {
+      let assert Some(files) = execution.files
+      let #(history, execution, fs) = case action {
+        Code(code) -> {
+          let #(outcome, execution, fs) =
+            execute.block(code, execution, state.policy, files.state, print)
+          case outcome {
+            Ok(value) -> print(execute.StandardOut(value))
+            Error(reason) -> print(execute.StandardError(reason))
+          }
+          #(stored.history, execution, fs)
+        }
+        UserPrompt(text) ->
+          overlay.inner_loop(
+            state.agent_config,
+            execution,
+            state.policy,
+            [chat.UserMessage(text, []), ..stored.history],
+            files.state,
+            print,
+          )
+      }
+      let stored =
+        Session(fs.root, overlay.trim(history, max_history), stored.pending)
+      case state.storage {
+        Some(directory) ->
+          save(session_store.directory(directory, id), id, "", "", "", stored)
+        None -> Nil
+      }
       State(
         ..state,
-        history: [],
-        queue: [],
-        waiting: False,
-        read: set.new(),
-        dirty: dict.new(),
-        epoch: state.epoch + 1,
+        execute_state: execute.State(..execution, files: None),
+        blocks: fs.blocks,
+        sessions: dict.insert(state.sessions, id, stored),
       )
-      |> actor.continue
-    TurnFinished(epoch:, ..) if epoch != state.epoch ->
-      State(..state, busy: False) |> next
-    TurnFinished(input:, result:, ..) -> {
-      let history = case result {
-        Ok(history) -> {
-          io.println(
-            state.setup.name <> " agent: " <> agent.last_reply(history),
-          )
-          history
-        }
+    }
+  }
+}
+
+fn retain(state: State, id, stored: Session, execution: execute.State) {
+  let assert Some(files) = execution.files
+  State(
+    ..state,
+    execute_state: execute.State(..execution, files: None),
+    blocks: files.state.blocks,
+    sessions: dict.insert(
+      state.sessions,
+      id,
+      Session(..stored, root: files.state.root),
+    ),
+  )
+}
+
+fn open(state: State, id, directory, seed) {
+  let path = filepath.join(directory, "files.json")
+  let opened = case dict.get(state.sessions, id) {
+    Ok(stored) -> Ok(#(stored, file_system.State(stored.root, state.blocks)))
+    Error(Nil) -> {
+      use #(history, pending) <- result.try(read_history(directory))
+      use fs <- result.map(files.load_snapshot(seed, path, state.blocks))
+      #(Session(fs.root, history, pending), fs)
+    }
+  }
+  use #(stored, fs) <- result.map(opened)
+  #(
+    stored,
+    execute.State(
+      ..state.execute_state,
+      root: None,
+      files: Some(execute.SessionFiles(fs, files.save_snapshot(path, _))),
+    ),
+  )
+}
+
+fn perform(
+  stored: Session,
+  setup: Setup,
+  action: Action,
+  execution: execute.State,
+) {
+  let assert Some(files) = execution.files
+  let host =
+    execute.Host(..setup.host, files: execute.session_files(files.state))
+  case action {
+    Reset -> #(Session(..stored, history: [], pending: []), execution)
+    Observe(text) -> #(
+      Session(..stored, pending: [text, ..stored.pending]),
+      execution,
+    )
+    Run(run) -> {
+      let #(report, execution) = run(host, execution)
+      let stored = case report {
+        None -> stored
+        Some(text) -> Session(..stored, pending: [text, ..stored.pending])
+      }
+      #(stored, execution)
+    }
+    Input(text) -> {
+      let text = [text, ..stored.pending] |> list.reverse |> string.join("\n\n")
+      case
+        shell.prepare(
+          setup.load,
+          setup.channel,
+          host,
+          setup.location,
+          setup.complete,
+        )
+      {
         Error(reason) -> {
-          io.println_error(state.setup.name <> " turn failed: " <> reason)
-          // Keep the input so the next turn still sees it.
-          [chat.UserMessage(input, []), ..state.history]
+          let _ = host.post(reason)
+          #(
+            Session(
+              ..stored,
+              history: [chat.UserMessage(text, []), ..stored.history],
+              pending: [],
+            ),
+            execution,
+          )
+        }
+        Ok(shell) -> {
+          let execution = execute.State(..shell.state, files: execution.files)
+          let #(history, execution) =
+            shell.turn(shell, stored.history, text, execution, fn(output) {
+              let _ = host.post(execute.output_text(output))
+              Nil
+            })
+          #(
+            Session(
+              ..stored,
+              history: overlay.trim(history, max_history),
+              pending: [],
+            ),
+            execution,
+          )
         }
       }
-      let history = agent.trim(history, max_history)
-      State(..state, history:, busy: False) |> next
     }
   }
 }
 
-/// Start a turn with every queued input, if the agent is not already busy.
-fn next(state: State) {
-  case state.busy, state.waiting {
-    True, _ | False, False -> actor.continue(state)
-    False, True -> {
-      let text = state.queue |> list.reverse |> string.join("\n\n")
-      let State(setup:, self:, history:, epoch:, ..) = state
-      process.spawn(fn() {
-        let result = turn(setup, self, history, text)
-        process.send(self, TurnFinished(epoch, text, result))
-      })
-      actor.continue(State(..state, busy: True, queue: [], waiting: False))
-    }
+fn save(directory, identity, platform, channel, location, next: Session) {
+  let content =
+    json.object([
+      #("identity", json.string(identity)),
+      #("platform", json.string(platform)),
+      #("channel", json.string(channel)),
+      #("location", json.string(location)),
+      #("history", chat.history_to_json(next.history)),
+      #("pending", json.array(next.pending, json.string)),
+    ])
+    |> json.to_string
+  case session_store.write(filepath.join(directory, "session.json"), content) {
+    Ok(_) -> Nil
+    Error(reason) -> io.println_error(identity <> " saving session: " <> reason)
   }
 }
 
-fn turn(setup: Setup, self, history, text) {
-  // Record what the agent reads, so it can be told when it changes.
-  let files = setup.host.files
-  let files =
-    execute.Files(..files, read: fn(path) {
-      process.send(self, Read(path))
-      files.read(path)
-    })
-  let host = execute.Host(..setup.host, files:)
-  use shell <- result.try(shell.prepare(
-    setup.load,
-    setup.channel,
-    host,
-    setup.location,
-    setup.complete,
-  ))
-  shell.turn(shell, history, text)
-}
-
-fn note(dirty: Dict(String, String)) -> String {
-  case dict.to_list(dirty) {
-    [] -> ""
-    changes ->
-      "Note: files you have read were changed by other channels since you read them, read them again before relying on them.\n"
-      <> {
-        list.map(changes, fn(change) {
-          "- " <> change.0 <> " changed by " <> change.1
-        })
-        |> string.join("\n")
+fn read_history(directory) {
+  case simplifile.read(filepath.join(directory, "session.json")) {
+    Error(simplifile.Enoent) -> Ok(#([], []))
+    Error(reason) -> Error(simplifile.describe_error(reason))
+    Ok(content) -> {
+      let decoder = {
+        use history <- decode.field("history", chat.history_decoder())
+        use pending <- decode.field("pending", decode.list(decode.string))
+        decode.success(#(history, pending))
       }
+      json.parse(content, decoder)
+      |> result.replace_error("invalid session snapshot: " <> directory)
+    }
   }
 }

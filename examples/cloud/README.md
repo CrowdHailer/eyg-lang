@@ -5,7 +5,7 @@ Everything about it, the model, the policies of each channel, triggers and sched
 
 | Channel | Channel shell |
 | --- | --- |
-| `#general` | Every effect, writes only under `/channels/general` and `/skills`, network secret for httpbin.org |
+| `#general` | Every effect, writes only under `/channels/general` and `/skills` |
 | `#links` | Every effect, writes only under `/channels/links`, a `:books:` reaction summarises the message's links |
 | `#dev` | GitHub events of eyg-lang: new issues are triaged by a subagent, merges, stars and failed CI runs are posted |
 | `#social` | Bluesky posts by `gleam.run` and in What's Hot, a trigger counts an account's posts in the event log |
@@ -22,7 +22,6 @@ Save the secrets, they are kept in `.data`, which is not committed.
 ```sh
 # packages/cloud
 gleam run -m cloud/secrets -- set ../../examples/cloud/workspace.eyg OLLAMA_API_KEY < ollama_key.txt
-echo -n "demo-token" | gleam run -m cloud/secrets -- set ../../examples/cloud/workspace.eyg DEMO_TOKEN
 echo -n "demo-webhook-secret" | gleam run -m cloud/secrets -- set ../../examples/cloud/workspace.eyg GITHUB_WEBHOOK_SECRET
 ```
 

@@ -61,7 +61,23 @@ pub type Message {
     reply_count: Int,
     subtype: Option(String),
     deleted_ts: Option(String),
+    user: Option(String),
+    bot_id: Option(String),
+    text: String,
+    /// The latest reply in the thread this message started.
+    latest_reply: Option(String),
+    reactions: List(Reaction),
   )
+}
+
+pub type Reaction {
+  Reaction(name: String, users: List(String))
+}
+
+fn reaction_decoder() -> decode.Decoder(Reaction) {
+  use name <- decode.field("name", decode.string)
+  use users <- decode.optional_field("users", [], decode.list(decode.string))
+  decode.success(Reaction(name, users))
 }
 
 pub fn message_decoder() -> decode.Decoder(Message) {
@@ -82,8 +98,32 @@ pub fn message_decoder() -> decode.Decoder(Message) {
     None,
     decode.optional(decode.string),
   )
+  let optional_string = fn(field, next) {
+    decode.optional_field(field, None, decode.optional(decode.string), next)
+  }
+  use user <- optional_string("user")
+  use bot_id <- optional_string("bot_id")
+  use latest_reply <- optional_string("latest_reply")
+  use text <- decode.optional_field("text", "", decode.string)
+  use reactions <- decode.optional_field(
+    "reactions",
+    [],
+    decode.list(reaction_decoder()),
+  )
   use data <- decode.then(jsonx.decoder())
-  decode.success(Message(ts, data, thread_ts, reply_count, subtype, deleted_ts))
+  decode.success(Message(
+    ts:,
+    data:,
+    thread_ts:,
+    reply_count:,
+    subtype:,
+    deleted_ts:,
+    user:,
+    bot_id:,
+    text:,
+    latest_reply:,
+    reactions:,
+  ))
 }
 
 pub type ApiError {

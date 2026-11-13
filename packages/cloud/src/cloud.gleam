@@ -9,9 +9,12 @@
 import cloud/api
 import cloud/artifacts
 import cloud/beam/execute
+import cloud/discord/discord
 import cloud/instance
 import cloud/registry
 import cloud/server
+import cloud/session
+import cloud/slack/slack
 import cloud/system
 import cloud/tracing
 import cloud/web/runner
@@ -26,6 +29,8 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import ogre/origin
+import overlay/llm/provider
+import overlay/llm/provider/ollama
 import simplifile
 
 pub fn main() -> Nil {
@@ -34,7 +39,52 @@ pub fn main() -> Nil {
     envoy.get("EYG_ORIGIN")
     |> result.unwrap("https://eyg.run")
     |> origin.from_string_strict
-  let state = execute.State(origin: hub, cache: cache.ready(), root: None)
+  let cloud_file = envoy.get("CLOUD") |> result.unwrap("cloud.eyg")
+  let workspace_file = envoy.get("WORKSPACE") |> result.unwrap("workspace.eyg")
+  case simplifile.is_file(cloud_file), simplifile.is_file(workspace_file) {
+    Ok(True), _ | _, Ok(True) -> configured(hub)
+    _, _ -> basic(hub)
+  }
+}
+
+/// Keep main's environment-only Slack/Discord entry point.
+fn basic(hub) {
+  let slack_token = envoy.get("SLACK_BOT_TOKEN")
+  let discord_token = envoy.get("DISCORD_BOT_TOKEN")
+  let llm = case envoy.get("OLLAMA_API_KEY") {
+    Ok(token) ->
+      provider.Llm(provider.Ollama(ollama.cloud(token)), "glm-5.3:cloud")
+    Error(_) ->
+      provider.Llm(provider.Ollama(ollama.local()), "devstral-small-2:24b")
+  }
+  case slack_token, discord_token {
+    Error(_), Error(_) ->
+      panic as "Set SLACK_BOT_TOKEN or DISCORD_BOT_TOKEN, or supply a cloud/workspace configuration"
+    _, _ -> Nil
+  }
+  let directory = envoy.get("CLOUD_DATA") |> result.unwrap(".data")
+  let assert Ok(sessions) = session.start_persistent(hub, llm, directory)
+  case slack_token {
+    Ok(token) -> {
+      let assert Ok(_) = slack.start_channel(sessions.data, token)
+      Nil
+    }
+    Error(_) -> Nil
+  }
+  case discord_token {
+    Ok(token) -> {
+      let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
+      let assert Ok(_) = discord.start_channel(sessions.data, token, guild)
+      Nil
+    }
+    Error(_) -> Nil
+  }
+  process.sleep_forever()
+}
+
+fn configured(hub) {
+  let state =
+    execute.State(origin: hub, cache: cache.ready(), root: None, files: None)
   let cloud_file = envoy.get("CLOUD") |> result.unwrap("cloud.eyg")
   let #(load, instance) = case simplifile.is_file(cloud_file) {
     Ok(True) -> {

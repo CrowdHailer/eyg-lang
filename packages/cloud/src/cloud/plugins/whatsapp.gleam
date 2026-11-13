@@ -126,19 +126,11 @@ pub fn start(
   let outbound =
     channel.Outbound(
       input_type: input_type(),
-      post: fn(conversation, text) {
-        use id <- result.map(post(config, conversation, text))
+      post: fn(channel, reply, text) {
+        use id <- result.map(post(config, channel, reply, text))
         process.send(
           plugin,
-          Sent(Incoming(
-            id,
-            conversation.channel,
-            Some("cloud"),
-            Text(text),
-            "",
-            None,
-            "{}",
-          )),
+          Sent(Incoming(id, channel, Some("cloud"), Text(text), "", None, "{}")),
         )
         id
       },
@@ -350,7 +342,6 @@ pub fn receive(
       case dict.has_key(store.messages, id) {
         True -> acc
         False -> {
-          let conversation = channel.Conversation(platform, from, None)
           let referenced = case content {
             Reaction(message: target, ..) ->
               dict.get(store.messages, target) |> option.from_result
@@ -366,7 +357,7 @@ pub fn receive(
             )
           let events = case content {
             Reaction(emoji: "", ..) -> events
-            _ -> [channel.Incoming(conversation, value), ..events]
+            _ -> [channel.Incoming(platform, from, None, value), ..events]
           }
           #(events, remember(store, incoming))
         }
@@ -387,8 +378,7 @@ fn remember(store: Store, message: Incoming) -> Store {
   }
 }
 
-fn post(config: Config, conversation: channel.Conversation, text: String) {
-  let channel.Conversation(channel: to, thread:, ..) = conversation
+fn post(config: Config, to: String, thread, text: String) {
   chunks(text, max_text)
   |> list.try_fold("", fn(_, part) {
     send(message_request(config, to, part, thread))

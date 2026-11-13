@@ -3,6 +3,7 @@
 Build from the repository root with `docker build -f packages/cloud/Dockerfile -t eyg-cloud .`.
 The image starts the exported BEAM application, listens on `PORT` (8081 by default), and
 initializes an empty `/data/cloud.eyg` on first boot. Mount a persistent volume at `/data`.
+The image includes main's `policy.eyg` in the application working directory for the session process to load at startup.
 The cloud configuration, users, workspace files, secrets and databases should all live
 under that volume; configurations can import other files placed there.
 

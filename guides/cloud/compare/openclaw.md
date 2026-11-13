@@ -12,7 +12,7 @@ OpenClaw is an open source gateway that runs personal and team agents in chat pl
 | Where agents live | Chat channels, one session per conversation | Chat channels and DMs, sessions per peer, channel or group |
 | Configuration | `workspace.eyg` and `cloud.eyg`, evaluated programs | `openclaw.json` (JSON5) and markdown workspace files |
 | Limiting agents | A channel shell: one gate function per effect, over the effect's input | Tool allow and deny lists, profiles, sandbox modes, per group tool settings |
-| Replying | Only by performing `Post` | Automatic replies, or a message tool with `visibleReplies` |
+| Replying | Direct agent replies; explicit `Post` is policy checked | Automatic replies, or a message tool with `visibleReplies` |
 | Automation | Pure trigger patterns over events from chats, GitHub, Sentry, webhooks, Bluesky, feeds and news sites, crons, timeouts | Hooks, cron jobs and heartbeats |
 | Code from people | `eyg` code blocks run with the channel shell | Slash commands and tools |
 | Size | One BEAM process, a few thousand lines of Gleam and EYG | A large TypeScript codebase with many plugins |

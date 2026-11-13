@@ -16,17 +16,17 @@ Read the [cloud README](../../packages/cloud/README.md) and run the [example wor
 | Hermes | EYG cloud |
 | --- | --- |
 | Profile (`~/.hermes/profiles/<name>`) | A workspace, its `workspace.eyg`, starting files and secrets |
-| Multiplexed profiles, `profile_routes` | One workspace per process. Within a workspace the `channel` function gives channels their own `llm`, `readme` and policy |
+| Multiplexed profiles, `profile_routes` | One central executor serves all workspaces. Within a workspace the `channel` function gives channels their own `llm`, `readme` and policy |
 | Platform adapters and their tokens | [Channel plugins](./channel_plugins.md), configured by environment variables |
-| `SessionSource` and `build_session_key` | A `Conversation`: platform, channel and thread |
+| `SessionSource` and `build_session_key` | An explicit session ID, namespaced by workspace, installation and channel, independent of the reply destination |
 | `group_sessions_per_user` (default true) | One shared session per channel, every member talks to the same agent. Threads have their own session, as in Hermes |
 | `require_mention`, free response channels | Every message reaches the agent. The channel `readme` tells the agent when to speak, and it posts only by choice |
-| Final response sent to the chat | The agent must run the `Post` effect, its replies are not delivered |
+| Final response sent to the chat | Ordinary replies are sent directly; explicit `Post` effects are checked by channel policy |
 | `platform_toolsets`, `disabled_toolsets` | The channel's `channel_shell` policy, per channel rather than per platform |
 | Terminal backends, Docker sandbox | No shell. Programs are EYG and only have the effects their channel shell allows |
 | `HERMES_WRITE_SAFE_ROOT` | `shell.writes_under(roots, shell)` |
-| `.env`, env passthrough, `docker_forward_env` | The workspace secrets store, read only by the configuration, and network secrets for programs |
-| `MEMORY.md`, `USER.md` frozen at session start | The workspace and channel `readme`, re-evaluated every turn, and files in the shared file system |
+| `.env`, env passthrough, `docker_forward_env` | The workspace secrets store, read only by the configuration |
+| `MEMORY.md`, `USER.md` frozen at session start | The workspace and channel `readme`, re-evaluated every turn, and files in the session's private persistent file system |
 | Skills | `/skills/<name>/SKILL.md` in the workspace's starting files |
 | Cron jobs and home channels | `crons` in `workspace.eyg` name the channel to send to, and the `Cron` and `Timeout` effects |
 | `delegate_task` | The `Delegate` effect, the subagent has the same channel shell |
@@ -98,8 +98,7 @@ Copy each value from the profile's `.env` into the workspace's store.
 gleam run -m cloud/secrets -- set path/to/workspace.eyg OLLAMA_API_KEY < key.txt
 ```
 
-Values that programs used through env passthrough become network secrets, so programs never see them:
-`cloud.secrets.load(name, hosts)` in the configuration, with `secrets.env` and `secrets.fetch` in the channel shell.
+Networked secrets are added after the deployment checkpoint.
 
 ### 5. Move memory and skills
 

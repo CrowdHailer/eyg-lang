@@ -6,7 +6,9 @@
 import cloud/artifacts
 import cloud/beam/execute
 import cloud/config
+import cloud/overlay as agent
 import cloud/secrets
+import cloud/session
 import cloud/users.{type User}
 import cloud/workspace
 import gleam/bit_array
@@ -27,6 +29,7 @@ pub type Handle {
 }
 
 pub type Message {
+  Executor(reply: Subject(#(Subject(session.Message), String)))
   Workspaces(reply: Subject(List(Handle)))
   Users(reply: Subject(List(User)))
   Shells(reply: Subject(List(String)))
@@ -41,6 +44,7 @@ type State {
     users: List(User),
     shells: List(String),
     data: String,
+    executor: Subject(session.Message),
   )
 }
 
@@ -53,20 +57,21 @@ pub fn start(
   artifacts: Subject(artifacts.Message),
   data: String,
 ) -> Result(Subject(Message), String) {
+  use executor <- result.try(session.start_configured())
   use handles <- result.try(
     list.try_map(entries, fn(entry) {
       let #(name, file) = entry
       let directory = secrets.data_directory(file)
       let load = config.loader(file, state, secrets.get(directory, _))
       use workspace <- result.map(
-        workspace.start(load, artifacts)
+        workspace.start_on(load, artifacts, agent.complete, executor, name)
         |> result.map_error(fn(reason) { name <> ": " <> reason }),
       )
       Handle(name:, file:, load:, workspace:)
     }),
   )
   use users <- result.try(users.read(data))
-  State(handles:, users:, shells:, data:)
+  State(handles:, users:, shells:, data:, executor:)
   |> actor.new
   |> actor.on_message(handle)
   |> actor.start
@@ -76,6 +81,10 @@ pub fn start(
 
 fn handle(state: State, message: Message) -> actor.Next(State, Message) {
   case message {
+    Executor(reply:) -> {
+      process.send(reply, #(state.executor, state.data))
+      actor.continue(state)
+    }
     Workspaces(reply:) -> {
       process.send(reply, state.handles)
       actor.continue(state)

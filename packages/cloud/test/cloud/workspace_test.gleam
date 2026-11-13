@@ -1,10 +1,14 @@
 import cloud/artifacts
+import cloud/beam/execute
 import cloud/channel
 import cloud/config
 import cloud/connection
 import cloud/data
 import cloud/execute_test
+import cloud/files
 import cloud/plugins/chat_input
+import cloud/session
+import cloud/session_store
 import cloud/test_helpers
 import cloud/webhook
 import cloud/workspace
@@ -22,10 +26,14 @@ import overlay/llm/chat
 import overlay/llm/tool
 import simplifile
 
-const general = channel.Conversation("chat", "C1", None)
+const general = #("C1", None)
+
+fn incoming(address: #(String, option.Option(String)), value) {
+  channel.Incoming("chat", address.0, address.1, value)
+}
 
 fn message(id, text) {
-  channel.Incoming(general, native_message(id, text, False))
+  incoming(general, native_message(id, text, False))
 }
 
 fn native_message(id, text, own) {
@@ -41,7 +49,7 @@ fn chat_message(id, text, own) {
 }
 
 fn reaction(message, by, emoji) {
-  channel.Incoming(general, chat_input.reacted(message, by, emoji))
+  incoming(general, chat_input.reacted(message, by, emoji))
 }
 
 /// A platform that records everything posted to it.
@@ -50,8 +58,8 @@ fn platform() {
   let outbound =
     channel.Outbound(
       input_type: chat_input.input_type(),
-      post: fn(conversation, text) {
-        process.send(posts, #(conversation, text))
+      post: fn(channel, reply, text) {
+        process.send(posts, #(#(channel, reply), text))
         Ok("posted")
       },
       channel_name: fn(id) {
@@ -119,6 +127,7 @@ fn start(completions) {
 fn start_file(file, completions) {
   let load =
     config.loader(file, test_helpers.state(), fn(_) { Error("no secrets") })
+    |> test_helpers.isolated
   let #(completer, seen) = model(completions)
   let assert Ok(artifacts) = artifacts.start("http://cloud.test")
   let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
@@ -137,17 +146,17 @@ pub fn messages_go_to_the_agent_test() {
   assert process.receive(posts, 1000) == Ok(#(general, "hello alice"))
 }
 
-pub fn the_agent_chooses_not_to_post_test() {
+pub fn ordinary_agent_replies_are_delivered_directly_test() {
   let #(workspace, posts, seen) =
     start([chat.Completion("", "Nothing to add.", [])])
   process.send(workspace, workspace.Inbound(message("m1", "lunch?")))
   let assert Ok(_) = process.receive(seen, 1000)
-  assert process.receive(posts, 200) == Error(Nil)
+  assert process.receive(posts, 1000) == Ok(#(general, "Nothing to add."))
 }
 
 pub fn own_messages_are_ignored_test() {
   let #(workspace, _posts, seen) = start([chat.Completion("", "", [])])
-  let mine = channel.Incoming(general, native_message("m1", "hello", True))
+  let mine = incoming(general, native_message("m1", "hello", True))
   process.send(workspace, workspace.Inbound(mine))
   assert process.receive(seen, 200) == Error(Nil)
 }
@@ -156,7 +165,7 @@ pub fn direct_invocations_run_with_the_shell_test() {
   let #(workspace, posts, seen) = start([chat.Completion("", "", [])])
   let code = message("m1", "```eyg\n!int_add(1, 2)\n```")
   process.send(workspace, workspace.Inbound(code))
-  let thread = channel.Conversation(..general, thread: option.Some("m1"))
+  let thread = #(general.0, option.Some("m1"))
   assert process.receive(posts, 1000) == Ok(#(thread, "3"))
   // The agent sees the invocation with the next message.
   assert process.receive(seen, 200) == Error(Nil)
@@ -176,6 +185,7 @@ pub fn new_forgets_the_conversation_test() {
       test_helpers.state(),
       fn(_) { Error("no secrets") },
     )
+    |> test_helpers.isolated
   let histories = process.new_subject()
   let completer = fn(_llm, _context) {
     fn(history) {
@@ -192,8 +202,10 @@ pub fn new_forgets_the_conversation_test() {
   }
   send("m1", "one")
   assert process.receive(histories, 1000) == Ok(1)
+  assert process.receive(posts, 1000) == Ok(#(general, "ok"))
   send("m2", "two")
   assert process.receive(histories, 1000) == Ok(3)
+  assert process.receive(posts, 1000) == Ok(#(general, "ok"))
   send("m3", "/new")
   let assert Ok(#(
     _,
@@ -204,6 +216,7 @@ pub fn new_forgets_the_conversation_test() {
 }
 
 fn custom_loader(handle, policy) {
+  let directory = test_helpers.directory()
   fn() {
     let assert Ok(config) =
       config.load(
@@ -219,7 +232,7 @@ fn custom_loader(handle, policy) {
         <> policy
         <> "} }\nchannel",
       )
-    Ok(config.Workspace(..config, channel:))
+    Ok(config.Workspace(..config, channel:, data: directory))
   }
 }
 
@@ -237,10 +250,7 @@ pub fn handler_posts_are_subject_to_the_channel_policy_test() {
   process.send(workspace, workspace.Connect("chat", outbound))
   process.send(workspace, workspace.Inbound(message("m1", "hello")))
   assert process.receive(posts, 1000)
-    == Ok(#(
-      channel.Conversation(..general, thread: option.Some("m1")),
-      "checked: hello",
-    ))
+    == Ok(#(#(general.0, option.Some("m1")), "checked: hello"))
   assert process.receive(seen, 100) == Error(Nil)
 }
 
@@ -290,16 +300,106 @@ pub fn handler_selects_sessions_and_observations_test() {
   assert list.length(history) == 3
 }
 
-pub fn channels_write_under_their_root_test() {
+pub fn selected_session_names_are_not_reply_destinations_test() {
+  let #(completer, _) =
+    model([chat.Completion("", "", [run_call("perform Post(\"answer\")")])])
+  let load =
+    custom_loader(
+      "(event) -> { [Input({session: Some(\"research-task\"), text: event.text})] }",
+      "{post: (text) -> { Pass(text) }, ..cloud.reject_all}",
+    )
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
+  detach(workspace)
+  let #(outbound, posts) = platform()
+  process.send(workspace, workspace.Connect("chat", outbound))
+  let address = #("C1", option.Some("native-thread"))
+  process.send(
+    workspace,
+    workspace.Inbound(incoming(address, native_message("m1", "hello", False))),
+  )
+  assert process.receive(posts, 1000) == Ok(#(address, "answer"))
+}
+
+pub fn final_agent_and_script_values_do_not_require_post_permission_test() {
+  let #(completer, _) = model([chat.Completion("", "direct reply", [])])
+  let load =
+    custom_loader(
+      "(event) -> { [Submit({session: None({}), reply: None({}), text: event.text, description: event.text})] }",
+      "cloud.reject_all",
+    )
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
+  detach(workspace)
+  let #(outbound, posts) = platform()
+  process.send(workspace, workspace.Connect("chat", outbound))
+  process.send(workspace, workspace.Inbound(message("m1", "hello")))
+  assert process.receive(posts, 1000) == Ok(#(general, "direct reply"))
+  process.send(workspace, workspace.Inbound(message("m2", "```eyg\n42\n```")))
+  assert process.receive(posts, 1000) == Ok(#(general, "42"))
+  process.send(
+    workspace,
+    workspace.Inbound(message("m3", "```eyg\nperform Post(\"forbidden\")\n```")),
+  )
+  let assert Ok(#(_, error)) = process.receive(posts, 1000)
+  assert string.contains(error, "Policy") || string.contains(error, "policy")
+  assert process.receive(posts, 50) == Error(Nil)
+}
+
+pub fn scripts_keep_selected_session_files_across_reply_destinations_test() {
+  let #(completer, _) = model([chat.Completion("", "done", [])])
+  let load =
+    custom_loader(
+      "(event) -> { [Run({session: Some(\"research-task\"), reply: Some(event.id), code: event.text, description: event.text})] }",
+      "{post: (text) -> { Pass(text) }, read_file: (input) -> { Pass(input) }, write_file: (input) -> { Pass(input) }, ..cloud.reject_all}",
+    )
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
+  detach(workspace)
+  let #(outbound, posts) = platform()
+  process.send(workspace, workspace.Connect("chat", outbound))
+  process.send(
+    workspace,
+    workspace.Inbound(message(
+      "m1",
+      "perform WriteFile({path: \"/answer.eyg\", contents: !string_to_binary(\"42\")})",
+    )),
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "Ok({})"))
+  process.send(
+    workspace,
+    workspace.Inbound(message("m2", "import \"/answer.eyg\"")),
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m2"), "42"))
+}
+
+pub fn reset_posts_to_the_requested_reply_not_the_selected_session_test() {
+  let #(completer, _) = model([chat.Completion("", "done", [])])
+  let load =
+    custom_loader(
+      "(event) -> { [Submit({session: Some(\"research-task\"), reply: Some(event.id), text: event.text, description: event.text})] }",
+      "{post: (text) -> { Pass(text) }, ..cloud.reject_all}",
+    )
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
+  detach(workspace)
+  let #(outbound, posts) = platform()
+  process.send(workspace, workspace.Connect("chat", outbound))
+  process.send(workspace, workspace.Inbound(message("m1", "/new")))
+  assert process.receive(posts, 1000)
+    == Ok(#(
+      thread("m1"),
+      "Started a new conversation, earlier messages are forgotten.",
+    ))
+}
+
+pub fn channels_have_private_files_and_still_enforce_path_policies_test() {
   let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
-  let notes = channel.Conversation("chat", "C2", None)
-  let thread = channel.Conversation(..notes, thread: option.Some("m1"))
+  let notes = #("C2", None)
+  let thread = #(notes.0, option.Some("m1"))
   let run = fn(id, code) {
     let message =
-      channel.Incoming(
-        notes,
-        native_message(id, "```eyg\n" <> code <> "\n```", False),
-      )
+      incoming(notes, native_message(id, "```eyg\n" <> code <> "\n```", False))
     process.send(workspace, workspace.Inbound(message))
   }
   run(
@@ -325,7 +425,7 @@ pub fn channels_write_under_their_root_test() {
     )
   process.send(workspace, workspace.Inbound(read))
   let assert Ok(#(_, text)) = process.receive(posts, 1000)
-  assert string.contains(text, "Ok(")
+  assert string.contains(text, "No such file or directory")
 }
 
 pub fn agent_actions_import_modules_from_the_session_file_system_test() {
@@ -337,11 +437,152 @@ pub fn agent_actions_import_modules_from_the_session_file_system_test() {
   assert process.receive(posts, 1000) == Ok(#(general, "42"))
 }
 
-pub fn changes_to_files_read_are_noted_test() {
+pub fn invocations_and_agents_use_the_same_selected_session_files_test() {
+  let #(workspace, posts, _) =
+    start([
+      chat.Completion("", "", [
+        run_call(
+          "let answer = import \"/answer.eyg\"\nperform Post(!int_to_string(answer))",
+        ),
+      ]),
+    ])
+  invoke(
+    workspace,
+    "m1",
+    "perform WriteFile({path: \"/answer.eyg\", contents: !string_to_binary(\"42\")})",
+  )
+  let assert Ok(_) = process.receive(posts, 1000)
+  process.send(workspace, workspace.Inbound(message("m2", "read the answer")))
+  assert process.receive(posts, 1000) == Ok(#(general, "42"))
+}
+
+pub fn installations_with_equal_channel_ids_keep_distinct_outbound_routes_test() {
+  let #(workspace, _, _) =
+    start([chat.Completion("", "", [run_call("perform Post(\"hello\")")])])
+  let #(first, first_posts) = platform()
+  let #(second, second_posts) = platform()
+  process.send(workspace, workspace.Connect("chat/team-a", first))
+  process.send(workspace, workspace.Connect("chat/team-b", second))
+  process.send(
+    workspace,
+    workspace.Inbound(channel.at(message("m1", "first"), "chat/team-a")),
+  )
+  process.send(
+    workspace,
+    workspace.Inbound(channel.at(message("m2", "second"), "chat/team-b")),
+  )
+  assert process.receive(first_posts, 1000) == Ok(#(#("C1", None), "hello"))
+  assert process.receive(second_posts, 1000) == Ok(#(#("C1", None), "hello"))
+  let assert Error(_) =
+    process.call(workspace, 1000, workspace.ChannelHost("general", _))
+  let assert Ok(_) =
+    process.call(workspace, 1000, workspace.ChannelHost("chat/team-a:C1", _))
+}
+
+pub fn web_timeouts_retain_their_files_policy_and_reply_after_rebinding_test() {
+  let load =
+    config.loader(
+      "test/fixtures/chat_workspace.eyg",
+      test_helpers.state(),
+      fn(_) { Error("no secrets") },
+    )
+    |> test_helpers.isolated
+  let #(completer, _) =
+    model([
+      chat.Completion("", "", [
+        run_call(
+          "match perform WriteFile({path: \"/answer.eyg\", contents: !string_to_binary(\"43\")}) { Ok(_) -> { let answer = import \"/answer.eyg\"\nperform Post(!int_to_string(answer)) } Error(reason) -> { perform Post(reason) } }",
+        ),
+      ]),
+    ])
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(executor) = session.start_configured()
+  let assert Ok(workspace) =
+    workspace.start_on(load, artifacts, completer, executor, "test")
+  detach(workspace)
+  let #(outbound, posts) = platform()
+  process.send(workspace, workspace.Connect("chat", outbound))
+  let directory = test_helpers.directory()
+  let assert Ok(#(_, host)) =
+    process.call(workspace, 1000, workspace.WebHost(
+      "ada",
+      directory,
+      "general",
+      _,
+    ))
+  let scheduled = process.new_subject()
+  process.send(
+    executor,
+    session.WithFiles(directory, "web:ada", None, fn(result) {
+      let assert Ok(execution) = result
+      let #(run, execution) =
+        execute.checked(
+          "perform WriteFile({path: \"/answer.eyg\", contents: !string_to_binary(\"42\")})",
+          [],
+          execute.unrestricted(),
+          host,
+          execution,
+        )
+      let assert Ok(_) = run.result
+      let assert Ok(_) = host.schedules.timeout("read", 60_000, "read my file")
+      process.send(scheduled, Nil)
+      #("scheduled a read", execution)
+    }),
+  )
+  let assert Ok(_) = process.receive(scheduled, 1000)
+  let assert Ok(_) =
+    process.call(workspace, 1000, workspace.WebHost(
+      "ada",
+      directory,
+      "notes",
+      _,
+    ))
+  process.send(workspace, workspace.Fire("web:ada", "read"))
+  assert process.receive(posts, 1000) == Ok(#(general, "43"))
+  stop(workspace)
+}
+
+pub fn explicit_ids_restore_files_from_the_previous_storage_layout_test() {
+  let data = test_helpers.directory()
+  let directory =
+    session_store.directory(
+      session_store.directory(data, "workspace:standalone"),
+      "chat:C1",
+    )
+  let assert Ok(fs) =
+    files.start_persistent(None, option.Some(directory <> "/files.json"))
+  let assert Ok(_) =
+    files.call(fs, files.Update(
+      files.Write(<<"42":utf8>>),
+      "/answer.eyg",
+      "before",
+      _,
+    ))
+  let load = fn() {
+    use configured <- result.map(
+      config.load(
+        "test/fixtures/chat_workspace.eyg",
+        test_helpers.state(),
+        fn(_) { Error("no secrets") },
+      ),
+    )
+    config.Workspace(..configured, data:)
+  }
+  let #(completer, _) = model([chat.Completion("", "done", [])])
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
+  detach(workspace)
+  let #(outbound, posts) = platform()
+  process.send(workspace, workspace.Connect("chat", outbound))
+  invoke(workspace, "m1", "import \"/answer.eyg\"")
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "42"))
+}
+
+pub fn changes_in_another_session_do_not_affect_agent_context_test() {
   let #(workspace, posts, seen) = start([chat.Completion("", "Noted.", [])])
-  let notes = channel.Conversation("chat", "C2", None)
+  let notes = #("C2", None)
   // The notes agent is given the skills index, so it has read the greet skill.
-  let hello = channel.Incoming(notes, native_message("m1", "hello", False))
+  let hello = incoming(notes, native_message("m1", "hello", False))
   process.send(workspace, workspace.Inbound(hello))
   let assert Ok(_) = process.receive(seen, 1000)
   process.sleep(100)
@@ -354,11 +595,10 @@ pub fn changes_to_files_read_are_noted_test() {
   process.send(workspace, workspace.Inbound(edit))
   let assert Ok(_) = process.receive(posts, 1000)
   process.sleep(100)
-  let again = channel.Incoming(notes, native_message("m3", "again", False))
+  let again = incoming(notes, native_message("m3", "again", False))
   process.send(workspace, workspace.Inbound(again))
   let assert Ok(input) = process.receive(seen, 1000)
-  assert string.contains(input, "/skills/greet/SKILL.md changed by #general")
-  assert string.ends_with(input, "[#notes] alice (message m3): again")
+  assert input == "[#notes] alice (message m3): again"
 }
 
 fn invoke(workspace, id, code) {
@@ -367,7 +607,7 @@ fn invoke(workspace, id, code) {
 }
 
 fn thread(id) {
-  channel.Conversation(..general, thread: option.Some(id))
+  #(general.0, option.Some(id))
 }
 
 pub fn reaction_triggers_run_in_the_thread_test() {
@@ -445,7 +685,7 @@ pub fn timeouts_message_the_session_test() {
 }
 
 pub fn crons_repeat_until_cancelled_test() {
-  let #(workspace, posts, seen) = start([chat.Completion("", "Quiet.", [])])
+  let #(workspace, posts, seen) = start([chat.Completion("", "", [])])
   invoke(
     workspace,
     "m1",
@@ -488,12 +728,9 @@ pub fn artifacts_belong_to_their_channel_test() {
       thread("m1"),
       "Ok({url: \"http://cloud.test/artifacts/plan/\", version: 1})",
     ))
-  let notes = channel.Conversation("chat", "C2", None)
+  let notes = #("C2", None)
   let attempt =
-    channel.Incoming(
-      notes,
-      native_message("n1", "```eyg\n" <> save <> "\n```", False),
-    )
+    incoming(notes, native_message("n1", "```eyg\n" <> save <> "\n```", False))
   process.send(workspace, workspace.Inbound(attempt))
   let assert Ok(#(_, refused)) = process.receive(posts, 1000)
   assert string.contains(refused, "belongs to #general")
@@ -642,7 +879,7 @@ pub fn dataclips_query_databases_channels_cannot_test() {
     ])
   let run = fn(conversation, code) {
     let event =
-      channel.Incoming(
+      incoming(
         conversation,
         native_message("m1", "```eyg\n" <> code <> "\n```", False),
       )
@@ -650,7 +887,7 @@ pub fn dataclips_query_databases_channels_cannot_test() {
     let assert Ok(#(_, output)) = process.receive(posts, 1000)
     output
   }
-  let notes = channel.Conversation("chat", "C2", None)
+  let notes = #("C2", None)
   // #general is trusted with the notes database.
   assert run(
       general,

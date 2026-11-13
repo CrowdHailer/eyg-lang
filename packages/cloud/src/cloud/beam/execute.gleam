@@ -5,6 +5,7 @@
 //// Effects that need the cloud's services, such as posting to a channel, are implemented by a `Host`.
 
 import cloud/artifacts
+import cloud/beam/file_system
 import cloud/database
 import cloud/files
 import cloud/operation
@@ -36,6 +37,7 @@ import gleam/result
 import gleam/string
 import midas/continuation
 import ogre/origin
+import overlay/agent
 import overlay/check
 import overlay/policy
 import simplifile
@@ -75,7 +77,21 @@ pub type Output {
 /// same as loam/exectue.State
 /// `root` is reserved for trusted configuration. Programs cannot read host files.
 pub type State {
-  State(origin: origin.Origin, cache: cache.Cache(Meta), root: Option(String))
+  State(
+    origin: origin.Origin,
+    cache: cache.Cache(Meta),
+    root: Option(String),
+    files: Option(SessionFiles),
+  )
+}
+
+/// The central session actor supplies the root and receives the updated root.
+/// Persist before accepting a mutation so a failed write leaves state unchanged.
+pub type SessionFiles {
+  SessionFiles(
+    state: file_system.State,
+    save: fn(file_system.State) -> Result(Nil, String),
+  )
 }
 
 /// The effects a program can perform on the cloud.
@@ -123,7 +139,8 @@ pub type Host {
     files: Files,
     triggers: Triggers,
     /// Run a subagent with a task, its spans are children of the given span.
-    subagent: fn(String, Option(tracing.Context)) -> Result(String, String),
+    subagent: fn(String, Option(tracing.Context), State) ->
+      #(Result(String, String), State),
     schedules: Schedules,
     artifacts: Artifacts,
     /// The logged events of a connection, newest first.
@@ -231,8 +248,8 @@ pub fn no_triggers() -> Triggers {
   )
 }
 
-fn no_subagent(_task, _trace) {
-  Error("Delegation is not available")
+fn no_subagent(_task, _trace, state) {
+  #(Error("Delegation is not available"), state)
 }
 
 /// Access to the workspace's file system, paths are absolute.
@@ -316,6 +333,44 @@ pub fn configuration_host(
 
 pub type Policy =
   policy.Policy(Effect, Meta)
+
+/// Main's standalone agent exposes only these computer effects.
+pub const basic_rules = [
+  #("AppendFile", policy.PolicyField("append_file")),
+  #("CWD", policy.PolicyField("cwd")),
+  #("DecodeJSON", policy.Unchecked),
+  #("DeleteFile", policy.PolicyField("delete_file")),
+  #("Env", policy.PolicyField("env")),
+  #("Fetch", policy.PolicyField("fetch")),
+  #("Flip", policy.PolicyField("flip")),
+  #("Hash", policy.Unchecked),
+  #("MakeDirectory", policy.PolicyField("make_directory")),
+  #("Now", policy.PolicyField("now")),
+  #("Random", policy.PolicyField("random")),
+  #("ReadDirectory", policy.PolicyField("read_directory")),
+  #("ReadFile", policy.PolicyField("read_file")),
+  #("Sleep", policy.PolicyField("sleep")),
+  #("StandardError", policy.PolicyField("standard_error")),
+  #("StandardOut", policy.PolicyField("standard_out")),
+  #("WriteFile", policy.PolicyField("write_file")),
+]
+
+/// Load the standalone policy purely, as main does at session startup.
+pub fn load_policy(code: String, state: State) {
+  case parser.all_from_string(code) {
+    Error(reason) -> #(Error(parser.format_error(reason, code)), state)
+    Ok(source) -> {
+      let #(value, state) = pure_loop(expression.execute(source, []), state)
+      let decoded = {
+        use value <- result.try(
+          result.map_error(value, fn(debug) { simple_debug.describe(debug.0) }),
+        )
+        decode_rules(value, state, basic_rules)
+      }
+      #(decoded, state)
+    }
+  }
+}
 
 const computer_effects = [
   "AppendFile", "CWD", "DecodeJSON", "DeleteFile", "Env", "Fetch", "Flip",
@@ -618,6 +673,10 @@ const operation_rules = [
 /// Check a complete policy before admitting it. Check gates independently so
 /// polymorphic request and reply types are not shared between unrelated effects.
 pub fn decode_policy(value: Value, state: State) -> Result(Policy, String) {
+  decode_rules(value, state, rules)
+}
+
+fn decode_rules(value: Value, state: State, rules) -> Result(Policy, String) {
   use decoded <- result.try(
     policy.decode_policy(policy.match_rules(harness(), rules), value)
     |> result.map_error(simple_debug.describe),
@@ -682,8 +741,54 @@ pub type Run {
   Run(result: Result(Option(Value), String), output: List(Output))
 }
 
+/// Main's direct-code entry point. Every block begins with fresh scope.
+pub fn block(
+  code,
+  state: State,
+  policy: Policy,
+  files: file_system.State,
+  emit,
+) {
+  let #(outcome, state, files, _) =
+    basic(code, [], simple_debug.inspect, state, policy, files, emit)
+  #(outcome, state, files)
+}
+
+/// Main's agent tool entry point, with output included in the tool report.
+pub fn run(code, state: State, policy: Policy, files: file_system.State, emit) {
+  basic(
+    code,
+    [#("context", v.unit())],
+    agent.inspect_result,
+    state,
+    policy,
+    files,
+    emit,
+  )
+}
+
+fn basic(code, scope, inspect, state: State, policy, files, emit) {
+  let host =
+    configuration_host(fn(_) {
+      Error("Secrets are only available to configuration")
+    })
+  let files = case state.files {
+    option.Some(session) -> SessionFiles(..session, state: files)
+    option.None -> SessionFiles(files, fn(_) { Ok(Nil) })
+  }
+  let state = State(..state, root: option.None, files: option.Some(files))
+  let #(outcome, state) = checked(code, scope, policy, host, state)
+  list.reverse(outcome.output) |> list.each(emit)
+  let result =
+    result.map(outcome.result, fn(value) {
+      value |> option.map(inspect) |> option.unwrap("")
+    })
+  let assert option.Some(files) = state.files
+  #(result, state, files.state, list.map(outcome.output, output_text))
+}
+
 /// Parse and run `code` with the variables in `scope`.
-pub fn run(
+pub fn checked(
   code: String,
   scope: List(#(String, Value)),
   policy: Policy,
@@ -785,36 +890,48 @@ fn loop(
       state,
     )
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      let lift = absolute_paths(label, lift)
-      let #(action, state) = decide(policy, label, lift, meta, state)
+      let #(action, state) = case absolute_paths(label, lift) {
+        Ok(input) -> decide(policy, label, input, meta, state)
+        Error(reason) -> #(policy.Resume(v.error(v.String(reason))), state)
+      }
       // Each effect is a span, the program continues after it ends.
-      let next = {
+      let #(next, state) = {
         use host <- effect_span(label, host)
         case action {
           policy.Perform(interface, input) ->
             case interface.decode(input) {
-              Ok(effect) ->
-                case perform(effect, host) {
+              Ok(effect) -> {
+                let #(outcome, state) = perform_with_state(effect, host, state)
+                case outcome {
                   Ok(#(value, printed)) -> #(
                     "pass",
                     failure(value),
-                    Ok(#(value, printed)),
+                    #(Ok(#(value, printed)), state),
                   )
-                  Error(reason) -> #("pass", option.Some(reason), Error(reason))
+                  Error(reason) -> #(
+                    "pass",
+                    option.Some(reason),
+                    #(Error(reason), state),
+                  )
                 }
+              }
               Error(reason) -> {
                 let reason = simple_debug.describe(reason)
-                #("pass", option.Some(reason), Error(reason))
+                #("pass", option.Some(reason), #(Error(reason), state))
               }
             }
-          policy.Resume(value) -> #("mock", failure(value), Ok(#(value, [])))
+          policy.Resume(value) -> #(
+            "mock",
+            failure(value),
+            #(Ok(#(value, [])), state),
+          )
           policy.Failed(#(reason, _, _, _)) -> {
             let reason = "Policy failed: " <> simple_debug.describe(reason)
-            #("failed", option.Some(reason), Error(reason))
+            #("failed", option.Some(reason), #(Error(reason), state))
           }
           policy.Unavailable -> {
             let reason = "Effect " <> label <> " is not allowed by policy"
-            #("unavailable", option.Some(reason), Error(reason))
+            #("unavailable", option.Some(reason), #(Error(reason), state))
           }
         }
       }
@@ -864,15 +981,17 @@ fn absolute_paths(label, lift) {
     | "AppendFile", v.Record(fields)
     ->
       case dict.get(fields, "path") {
-        Ok(v.String(path)) ->
-          v.Record(dict.insert(fields, "path", v.String(files.normalize(path))))
-        _ -> lift
+        Ok(v.String(path)) -> {
+          use path <- result.map(file_system.resolve_path(path))
+          v.Record(dict.insert(fields, "path", v.String(path)))
+        }
+        _ -> Ok(lift)
       }
     "DeleteFile", v.String(path)
     | "MakeDirectory", v.String(path)
     | "ReadDirectory", v.String(path)
-    -> v.String(files.normalize(path))
-    _, _ -> lift
+    -> result.map(file_system.resolve_path(path), v.String)
+    _, _ -> Ok(lift)
   }
 }
 
@@ -914,6 +1033,64 @@ pub fn pure_loop(returned, state: State) {
   }
 }
 
+fn perform_with_state(effect, host: Host, state: State) {
+  case effect, state.files {
+    Delegate(task), _ -> {
+      let #(outcome, state) = host.subagent(task, host.trace, state)
+      #(Ok(#(result_string(outcome), [])), state)
+    }
+    Computer(effect), option.Some(session) -> {
+      let fs = session.state
+      case effect {
+        computer.WriteFile(input) ->
+          update_files(
+            file_system.write(fs, input.path, input.contents),
+            session,
+            state,
+          )
+        computer.AppendFile(input) ->
+          update_files(
+            file_system.append(fs, input.path, input.contents),
+            session,
+            state,
+          )
+        computer.DeleteFile(path) ->
+          update_files(file_system.delete(fs, path), session, state)
+        computer.MakeDirectory(path) ->
+          update_files(file_system.make_directory(fs, path), session, state)
+        _ -> #(
+          perform(Computer(effect), Host(..host, files: session_files(fs))),
+          state,
+        )
+      }
+    }
+    _, _ -> #(perform(effect, host), state)
+  }
+}
+
+fn update_files(outcome, session: SessionFiles, state: State) {
+  let #(result, next) = outcome
+  case result.try(result, fn(_) { session.save(next) }) {
+    Ok(_) -> #(
+      Ok(#(v.ok(v.unit()), [])),
+      State(..state, files: option.Some(SessionFiles(..session, state: next))),
+    )
+    Error(reason) -> #(Ok(#(v.error(v.String(reason)), [])), state)
+  }
+}
+
+/// Read-only view for skill discovery and imports; mutation is threaded through
+/// the executor, never through a second actor or a captured callback.
+pub fn session_files(fs: file_system.State) -> Files {
+  Files(
+    read: fn(path) { file_system.read(fs, path, 0, 100_000_000) },
+    read_directory: file_system.read_directory(fs, _),
+    update: fn(_, _) {
+      Error("Session mutations must run through the executor")
+    },
+  )
+}
+
 fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
   case effect {
     Post(text) -> Ok(#(result_string(host.post(text)), []))
@@ -929,7 +1106,7 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
       let described = list.map(host.triggers.list(), trigger.describe)
       Ok(#(v.LinkedList(list.map(described, v.String)), []))
     }
-    Delegate(task) -> Ok(#(result_string(host.subagent(task, host.trace)), []))
+    Delegate(_) -> Error("Delegation requires execution state")
     Operate(operation) ->
       case host.api(operation) {
         Ok(value) -> v.ok(value)
@@ -1100,6 +1277,10 @@ fn anchor_imports(source, file) {
 }
 
 fn read_import(path, policy, host: Host, state: State) {
+  let host = case state.files {
+    option.Some(session) -> Host(..host, files: session_files(session.state))
+    option.None -> host
+  }
   let input =
     v.Record(
       dict.from_list([

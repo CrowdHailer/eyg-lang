@@ -32,7 +32,7 @@ fn run(code, policy) {
   let root = tracing.start("test", None, [])
   let context = tracing.context(root)
   let host = execute.Host(..host(), trace: Some(context))
-  let _ = execute.run(code, [], policy, host, test_helpers.state())
+  let _ = execute.checked(code, [], policy, host, test_helpers.state())
   tracing.end(root, [], None)
   // The tracer records spans in order, a call returns after every earlier record.
   let _ = tracing.recent(1)

@@ -3,11 +3,11 @@
 import cloud/beam/execute
 import cloud/config
 import cloud/database
+import cloud/discord/events as discord
 import cloud/execute_test
 import cloud/plugins/chat_input
-import cloud/plugins/discord
-import cloud/plugins/slack
 import cloud/plugins/whatsapp
+import cloud/slack/events as slack
 import cloud/test_helpers
 import cloud/trigger
 import eyg/interpreter/capture
@@ -109,9 +109,9 @@ pub fn link_summaries_project_each_platforms_native_reaction_test() {
       execute.no_artifacts(),
     )
   let host =
-    execute.Host(..host, subagent: fn(task, _trace) {
+    execute.Host(..host, subagent: fn(task, _trace, state) {
       process.send(tasks, task)
-      Ok("done")
+      #(Ok("done"), state)
     })
   list.each(
     [

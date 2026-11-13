@@ -6,9 +6,14 @@ import cloud/operation
 import cloud/plugins/chat_input
 import cloud/registry
 import cloud/server
+import cloud/session
 import cloud/test_helpers
+import cloud/users
 import cloud/web/runner
 import cloud/workspace
+import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
+import eyg/interpreter/value as v
 import gleam/erlang/process
 import gleam/http
 import gleam/json
@@ -132,8 +137,8 @@ pub fn bound_shells_run_as_the_channel_test() {
   let outbound =
     channel.Outbound(
       input_type: chat_input.input_type(),
-      post: fn(conversation, text) {
-        process.send(posts, #(conversation, text))
+      post: fn(channel, reply, text) {
+        process.send(posts, #(#(channel, reply), text))
         Ok("m1")
       },
       channel_name: fn(_) { "general" },
@@ -156,8 +161,7 @@ pub fn bound_shells_run_as_the_channel_test() {
   assert string.inspect(run.result)
     |> string.contains("Bind to a channel to post")
   let #(_, binding) = runner.run(web, ada, binding, "perform Post(\"hi\")", [])
-  assert process.receive(posts, 1000)
-    == Ok(#(channel.Conversation("chat", "C1", None), "hi"))
+  assert process.receive(posts, 1000) == Ok(#(#("C1", None), "hi"))
   assert binding == Some(runner.Binding("test", "general"))
 }
 
@@ -167,7 +171,7 @@ pub fn adding_a_trigger_keeps_configured_triggers_test() {
   let outbound =
     channel.Outbound(
       input_type: chat_input.input_type(),
-      post: fn(_, _) { Ok("m1") },
+      post: fn(_, _, _) { Ok("m1") },
       channel_name: fn(_) { "general" },
       channels: fn() { Ok([#("C1", "general")]) },
     )
@@ -206,13 +210,91 @@ pub fn failed_policy_write_keeps_the_active_policy_test() {
   let assert Ok(_) = simplifile.delete(file)
 }
 
+pub fn web_files_are_private_persistent_and_scope_is_fresh_test() {
+  let #(_, web) = start()
+  let assert Ok(ada) =
+    process.call(web.registry, 1000, registry.SignIn("ada", _))
+  let #(write, _) =
+    runner.run(
+      web,
+      ada,
+      None,
+      "let remembered = 42\nperform WriteFile({path: \"/note\", contents: !string_to_binary(\"saved\")})",
+      [],
+    )
+  let assert Ok(Some(_)) = write.result
+  let #(fresh, _) = runner.run(web, ada, None, "remembered", [])
+  let assert Error(_) = fresh.result
+  let read = "perform ReadFile({path: \"/note\", offset: 0, limit: 100})"
+  let #(own, _) = runner.run(web, ada, None, read, [])
+  let assert Ok(Some(value)) = own.result
+  assert value == v.Tagged("Ok", v.Binary(<<"saved":utf8>>))
+  // Equal policy does not grant another user access to Ada's files.
+  let other = users.User(..ada, name: "another person")
+  let #(other, _) = runner.run(web, other, None, read, [])
+  let assert Ok(Some(value)) = other.result
+  assert string.contains(simple_debug.inspect(value), "No such file")
+  let #(_, data) = process.call(web.registry, 1000, registry.Executor)
+  let assert Ok(store) = artifacts.start("http://localhost")
+  let assert Ok(registry) = registry.start([], [], web.state, store, data)
+  let restarted = runner.Context(..web, registry:)
+  let #(restored, _) = runner.run(restarted, ada, None, read, [])
+  let assert Ok(Some(value)) = restored.result
+  assert value == v.Tagged("Ok", v.Binary(<<"saved":utf8>>))
+}
+
+pub fn web_programs_wait_for_the_central_executor_test() {
+  let #(_, web) = start()
+  let assert Ok(ada) =
+    process.call(web.registry, 1000, registry.SignIn("ada", _))
+  let #(executor, _) = process.call(web.registry, 1000, registry.Executor)
+  let gates = process.new_subject()
+  process.send(
+    executor,
+    session.WithFiles(test_helpers.directory(), "blocker", None, fn(result) {
+      let assert Ok(execution) = result
+      let gate = process.new_subject()
+      process.send(gates, gate)
+      let assert Ok(Nil) = process.receive(gate, 1000)
+      #("finished", execution)
+    }),
+  )
+  let assert Ok(gate) = process.receive(gates, 1000)
+  let responses = process.new_subject()
+  process.spawn(fn() {
+    let #(run, _) = runner.run(web, ada, None, "42", [])
+    process.send(responses, run.result)
+  })
+  assert process.receive(responses, 50) == Error(Nil)
+  process.send(gate, Nil)
+  let assert Ok(Ok(Some(value))) = process.receive(responses, 1000)
+  assert simple_debug.inspect(value) == "42"
+}
+
+pub fn returned_closures_are_captured_across_the_session_boundary_test() {
+  let #(_, web) = start()
+  let assert Ok(ada) =
+    process.call(web.registry, 1000, registry.SignIn("ada", _))
+  let #(run, _) =
+    runner.run(
+      web,
+      ada,
+      None,
+      "let x = 40\nlet f = (y) -> { !int_add(x, y) }\nf",
+      [],
+    )
+  let assert Ok(Some(function)) = run.result
+  assert expression.call(function, [#(v.Integer(2), #(0, 0))])
+    == Ok(v.Integer(42))
+}
+
 pub fn invalid_uploaded_channel_handlers_and_policies_keep_the_previous_source_test() {
   let #(_app, web) = start()
   let assert [handle] = process.call(web.registry, 1000, registry.Workspaces)
   let outbound =
     channel.Outbound(
       input_type: chat_input.input_type(),
-      post: fn(_, _) { panic as "validation must not post" },
+      post: fn(_, _, _) { panic as "validation must not post" },
       channel_name: fn(_) { "general" },
       channels: fn() { Ok([#("C1", "general")]) },
     )

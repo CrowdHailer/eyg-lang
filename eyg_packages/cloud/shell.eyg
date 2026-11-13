@@ -17,7 +17,7 @@ let pass = policy.pass
 
 // Every channel effect available on the cloud, each performed unchanged.
 // Start from this record and overwrite the fields to restrict.
-// File paths given to gates are absolute paths in the workspace's shared file system.
+// File paths given to gates are absolute paths in the session's private file system.
 // Raw database access is denied, `with_databases` allows it for trusted channels,
 // every channel can call the workspace's dataclips, which run with their own shell.
 let no_database = policy.deny("raw database access is not in this shell, use a dataclip")
@@ -75,7 +75,7 @@ let path = (path) -> {
 }
 
 // Allow changes to the file system only under the absolute roots, other gates are from `shell`.
-// Reads are unchanged, so the channel can read the whole shared file system.
+// Reads are unchanged, so the program can read its whole session file system.
 let writes_under = (roots, shell) -> {
   {
     append_file: policy.under("append_file", roots, request_path),

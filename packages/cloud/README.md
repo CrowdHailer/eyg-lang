@@ -10,6 +10,8 @@ CLOUD=../../examples/cloud/cloud.eyg gleam run
 ```
 
 A cloud runs the workspaces listed in `cloud.eyg`, see [`cloud/instance`](./src/cloud/instance.gleam).
+Without a cloud or workspace file, the existing `SLACK_BOT_TOKEN` / `DISCORD_BOT_TOKEN` startup runs the basic agent. It uses the same central session actor and Overlay loop; `CLOUD_DATA` selects its persistent store.
+The session process loads `policy.eyg` from the working directory at startup. Direct code and agent tools in basic mode both use it. Configured workspace channels use their checked `channel_shell` policies instead. Ordinary replies and final return values are delivered directly in both modes.
 People sign in at `/login` to the [web shell](../../guides/cloud/web_shell.md), the first person is the admin.
 Everything can be read and changed with the [configuration API](../../guides/cloud/api.md),
 from the web shell, from a channel whose shell allows it and over HTTP.
@@ -34,11 +36,13 @@ We do not yet solve inter session communication.
 
 Every conversation, a channel or a thread in a channel, has a session with an agent.
 A checked `handle` function receives each platform's native EYG payload and returns work for sessions, scripts, posting or triggers.
+The workspace submits that work with an explicit session ID and a separate reply callback. A handler may select a task session while replying in a different chat thread. Session state lives only in the central process; there are no conversation objects or per-workspace session handles.
 The standard handlers give posted messages to the conversation's agent with who sent them.
 The agent is an [overlay](../overlay/README.md) agent, it acts only by running EYG programs.
-Nothing the agent replies is shown, it must run a program that performs `Post` to say something in the conversation.
-Messages that arrive while the agent is working are given to it together when it finishes.
-A session keeps the newest 200 messages, the message `/new` starts a new conversation.
+Ordinary agent replies and direct-code return values are delivered to the caller without a policy gate. An explicit `Post` effect still requires the channel policy's permission.
+The central actor retains each session's MFS root and history over a shared content-addressed block store. Execution threads updated filesystem state back to that actor; sessions do not start filesystem workers. Snapshots contain only blocks reachable from the session's own root.
+One central actor executes all sessions across every workspace, including agent turns, direct invocations, triggers, handler posts and web shell commands. Inputs wait in mailbox order while a program runs. Observations accumulate until the next input for their session. A slow model or program delays all sessions; delegates execute inside the current turn.
+A session persists the newest 200 history messages, pending observations and identity metadata. The message `/new` clears history and observations while retaining files and session identity. Every execution starts with fresh lexical scope.
 
 A message that is a single code block tagged `eyg` is a direct invocation, it is run with the channel shell
 and its output posted in the message's thread. The agent sees the program and its result with its next message.
@@ -51,14 +55,15 @@ and its output posted in the message's thread. The agent sees the program and it
 | --- | --- |
 | `llm` | `{provider, model}`, as overlay, i.e. `{provider: Ollama({origin: "https://ollama.com", api_key}), model: "glm-5.3"}` |
 | `readme` | Context for every agent in the workspace |
-| `files` | Directory, relative to the workspace file, the shared file system starts with |
+| `files` | Directory, relative to the workspace file, copied into each new session's private file system |
 | `crons` | `[{name, schedule, channel, message}]` messages sent to a channel's session on a schedule |
 | `connections` | `[{name, source, channel}]` chats and services, see [connections](../../guides/cloud/connections.md) |
 | `dataclips` | `[{name, description, shell, clip}]` named functions channels call with `Dataclip`, see [dataclips](../../guides/cloud/dataclips.md) |
-| `channel` | Function from `{platform, id, name}` to `{handle, channel_shell, readme, triggers, llm}`; `handle` and `channel_shell` are required |
+| `channel` | Function from `{platform, installation, id, name}` to `{handle, channel_shell, readme, triggers, llm}`; `handle` and `channel_shell` are required |
 
 The configuration is trusted. It can read the workspace's secrets with the `Secret` effect.
 It is evaluated again for each turn, trigger and invocation, so changes apply without a restart.
+`platform` remains `slack` or `discord`; `installation` includes the Slack team or Discord guild ID. Routing and storage keys include that installation, the workspace name, channel and selected session/thread, so equal channel IDs in different installations do not share state.
 
 ### Channel shells
 
@@ -69,14 +74,14 @@ Gates return `Pass(input)` to perform an effect, `Mock(reply)` to answer without
 Start with `cloud.reject_all` and overwrite the gates to allow. This platform value is available directly in configuration and programs; the cloud EYG package exports the same complete defaults.
 
 The [cloud EYG package](../../eyg_packages/cloud/) has helpers, `shell.everything`, `shell.offline`, `shell.read_only`,
-`shell.writes_under(roots, shell)` and `shell.with_databases(names, shell)`, and network secrets in `secrets`.
+`shell.writes_under(roots, shell)` and `shell.with_databases(names, shell)`.
 
 ### Effects
 
 | Effect | Field | |
 | --- | --- | --- |
 | `Post(text)` | `post` | Post to the conversation |
-| `ReadFile`, `WriteFile`, `AppendFile`, `DeleteFile`, `MakeDirectory`, `ReadDirectory`, `CWD` | `read_file` ... | The workspace's shared file system |
+| `ReadFile`, `WriteFile`, `AppendFile`, `DeleteFile`, `MakeDirectory`, `ReadDirectory`, `CWD` | `read_file` ... | The session's private persistent file system |
 | `Fetch`, `Env`, `Now`, `Random`, `Flip`, `Sleep`, `StandardOut`, `StandardError` | `fetch` ... | As on a computer, `Env` returns nothing unless a gate answers it |
 | `AddTrigger`, `StopTrigger`, `StartTrigger`, `DeleteTrigger`, `ListTriggers` | `add_trigger` ... | The channel's triggers |
 | `Delegate(task)` | `delegate` | Run a subagent with the channel shell, returns its final reply |
@@ -92,12 +97,15 @@ The [cloud EYG package](../../eyg_packages/cloud/) has helpers, `shell.everythin
 
 ### Files and skills
 
-A workspace has one shared, content addressed file system built on [`unixfs/mfs`](../unixfs/).
-Channel shells decide which paths a channel can change, `shell.writes_under` limits writes to a channel's directories.
+Each session has a private, content addressed file system built on [`unixfs/mfs`](../unixfs/). The configured seed is copied once; restoring a session never overwrites its files or restores deleted seed files. Sharing files between sessions is deferred.
+Channel shells still decide which paths a program can change; `shell.writes_under` limits writes within that session's filesystem.
 Scripts and agent actions resolve imports through the session file system and its `ReadFile` gate, including nested imports and imports inside returned functions. Only trusted configuration imports use the host file system.
 Each channel execution discards its lexical scope after returning, matching agent executions.
 Skills are `/skills/<name>/SKILL.md` files, agents are given an index of them.
-When another channel changes a file an agent has read, including skills, the change is noted with the agent's next message.
+Another session's writes cannot change these files or skills. A web user's shell has its own persistent filesystem, shared by that user's commands across bindings. Binding changes the channel policy and outbound destination; it does not grant access to that channel's agent files.
+
+Session snapshots live under `sessions/` in the data directory, with hashed workspace and session identities. File mutations are saved by atomic replacement before success is returned. Invalid snapshots fail to load instead of being silently reset. Keep the data directory on persistent storage and back it up. Snapshots currently retain all content blocks; garbage collection is deferred.
+Completed history and observations survive restart. This is not an event log: queued or interrupted executions, dynamic triggers and timers are not recovered, and history updates are not atomic with external effects. Configured triggers and crons are loaded again. File sharing, durable scheduling and replay belong to the event-sourcing work below.
 
 ### Triggers
 
@@ -117,8 +125,8 @@ Cron schedules have five fields, or six with a leading seconds field, and are ev
 
 Secrets are stored per workspace with `gleam run -m cloud/secrets`, see [`cloud/secrets`](./src/cloud/secrets.gleam).
 Only the workspace configuration can read them.
-`secrets.load(name, hosts)` in the cloud EYG package gives channel shells network secrets:
-`Env` returns a hash placeholder and `Fetch` to one of the hosts gets the real value.
+
+Networked secrets are a later feature, after the deployment checkpoint.
 
 ### Databases and dataclips
 
@@ -137,13 +145,18 @@ Chats plug into the [channel interface](./src/cloud/channel.gleam), see the [cha
 GitHub, Sentry, webhooks, Bluesky, RSS, Hacker News and Lobsters only report events, they are not chats, see [connections](../../guides/cloud/connections.md).
 [Errors and logs as triggers](../../guides/cloud/errors_and_logs.md) explains acting on Sentry reports and server logs without copying everything into one database.
 
+## Event sourcing
+
+The cloud is to be rebuilt on event sourcing for durable runs and a complete audit record.
+[Event sourcing the EYG cloud](../../guides/cloud/event_sourcing/README.md) records the event storming session that designed it, the agreed events and decisions, and the implementation plan.
+
 This [article](https://weli.dev/blog/the-valley-of-webhooks/) discusses the reliability problems of webhooks.
 Channels are connections that can start a session/chat etc.
 Most of their complexity is in solving the problem described in the article
 
 ### Slack
 
-`{name: "slack", source: Slack({token})}` connects the workspace to Slack with the [Slack plugin](./src/cloud/plugins/slack.gleam),
+`{name: "slack", source: Slack({token})}` extends the existing [Slack adapter](./src/cloud/slack/channel.gleam) with configured handlers and triggers,
 read the token from the secrets store with `perform Secret("SLACK_BOT_TOKEN")`.
 The bot needs `channels:read` and `channels:history` for public channels,
 `groups:read` and `groups:history` for private channels, and `chat:write` to post.
@@ -198,7 +211,7 @@ Editing the slash command message does not rerun the command.
 
 *Guilds in Discord represent an isolated collection of users and channels, and are often referred to as “servers” in the UI.
 
-`{name: "discord", source: Discord({token, guild})}` connects the workspace to the server with id `guild` using the [Discord plugin](./src/cloud/plugins/discord.gleam),
+`{name: "discord", source: Discord({token, guild})}` connects the workspace to the server with id `guild` using the existing [Discord adapter](./src/cloud/discord/channel.gleam),
 read the token from the secrets store with `perform Secret("DISCORD_BOT_TOKEN")`.
 The plugin polls the latest messages of every text and announcement channel and of every active thread.
 Messages sent after the cloud started are given to the conversation's agent,

@@ -1,4 +1,3 @@
-import cloud/channel
 import cloud/native_input as input
 import cloud/plugins/whatsapp
 import cloud/webhook
@@ -124,8 +123,9 @@ pub fn messages_are_posted_and_reactions_name_their_message_test() {
   let assert Ok(incoming) = whatsapp.parse(body, config.phone_number_id)
   let #(events, store) = whatsapp.receive(whatsapp.new_store(), incoming)
   let assert [posted, reacted, _image] = events
-  assert posted.conversation
-    == channel.Conversation("whatsapp", "16505551234", None)
+  assert posted.platform == "whatsapp"
+  assert posted.channel == "16505551234"
+  assert posted.reply == None
   let posted = input.event(posted, "WhatsAppMessage", whatsapp.input_type())
   let reacted = input.event(reacted, "WhatsAppMessage", whatsapp.input_type())
   assert input.text(input.field(posted, "message"), "from") == "16505551234"

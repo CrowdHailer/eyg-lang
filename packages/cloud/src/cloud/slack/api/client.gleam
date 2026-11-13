@@ -46,14 +46,15 @@ pub fn auth_test(
   }
 }
 
-/// Post text as a reply to a thread's parent message.
+/// Post text to a channel or as a reply to a thread's parent message.
+/// Returns the timestamp of the new message.
 pub fn chat_post_message(
   context: Context(t),
   channel: String,
-  thread_ts: String,
+  thread_ts: option.Option(String),
   text: String,
   color color: option.Option(String),
-) -> K(t, Result(Nil, Failure)) {
+) -> K(t, Result(String, Failure)) {
   let request =
     operations.chat_post_message_request(
       base_request(context.token),
@@ -120,6 +121,49 @@ pub fn conversations_history_since(
     pagination.fetch_all(history_page(context, channel, oldest, _)),
   )
   continuation.done(list.flat_map(pages, fn(page) { page.messages }))
+}
+
+/// Fetch every reply in a thread newer than `oldest`, excluding the boundary message.
+/// The thread's parent message is included when it is newer than `oldest`.
+pub fn conversations_replies_since(
+  context: Context(t),
+  channel: String,
+  thread_ts: String,
+  oldest: option.Option(String),
+) -> K(t, Result(List(schema.Message), Failure)) {
+  use pages <- continuation.try_then(
+    pagination.fetch_all(replies_page(context, channel, thread_ts, oldest, _)),
+  )
+  continuation.done(list.flat_map(pages, fn(page) { page.messages }))
+}
+
+fn replies_page(
+  context: Context(t),
+  channel: String,
+  thread_ts: String,
+  oldest: option.Option(String),
+  cursor: option.Option(String),
+) -> K(t, Result(pagination.Page(schema.History), Failure)) {
+  let request =
+    operations.conversations_replies_request(
+      base_request(context.token),
+      channel,
+      thread_ts,
+      oldest: oldest,
+      latest: None,
+      cursor: cursor,
+      limit: Some(100),
+    )
+  use response <- continuation.map(context.fetch(request))
+  case response {
+    Ok(response) ->
+      case operations.conversations_replies_response(response) {
+        Ok(Ok(page)) -> Ok(page)
+        Ok(Error(reason)) -> Error(ApiFailure(reason))
+        Error(reason) -> Error(InvalidResponse(reason))
+      }
+    Error(reason) -> Error(RequestFailed(reason))
+  }
 }
 
 fn history_page(

@@ -39,9 +39,10 @@ jobs:
           gleam format --check src test
           gleam build --warnings-as-errors
           gleam test
-      - name: Test EYG packages with the current CLI
-        working-directory: packages/gleam_cli
-        run: gleam run -- script ../../entry.eyg
+      - name: Build the current CLI
+        run: packages/gleam_cli/bin/compile
+      - name: Test EYG packages from the repository root
+        run: packages/gleam_cli/dist/eyg script entry.eyg
       - name: Build cloud image
         run: docker build -f packages/cloud/Dockerfile -t eyg-cloud:test .
       - name: Smoke test the exported application

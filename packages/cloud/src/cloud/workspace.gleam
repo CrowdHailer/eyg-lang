@@ -10,10 +10,9 @@
 //// The workspace holds no EYG closures, configuration is evaluated by the processes
 //// that run programs and events are plain data, see `notes/cloud-process-boundaries.md`.
 
-import cloud/agent
 import cloud/artifacts
 import cloud/beam/execute
-import cloud/channel.{type Conversation}
+import cloud/channel
 import cloud/config
 import cloud/connection
 import cloud/connections/bsky
@@ -27,16 +26,21 @@ import cloud/cron
 import cloud/data
 import cloud/database
 import cloud/dataclip
-import cloud/files
+import cloud/discord/channel as discord
+import cloud/discord/client as discord_client
+import cloud/discord/input as discord_input
 import cloud/handler
 import cloud/invocation
 import cloud/operation
-import cloud/plugins/discord
+import cloud/overlay as agent
 import cloud/plugins/example_chat
-import cloud/plugins/slack
 import cloud/plugins/whatsapp
 import cloud/session
+import cloud/session_store
 import cloud/shell
+import cloud/slack/channel as slack
+import cloud/slack/client as slack_client
+import cloud/slack/input as slack_input
 import cloud/tracing
 import cloud/trigger.{type Trigger}
 import cloud/webhook
@@ -49,6 +53,7 @@ import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/int
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor
@@ -60,8 +65,6 @@ pub type Message {
   /// A platform plugin has started, outbound operations for the platform are now available.
   Connect(platform: String, outbound: channel.Outbound)
   Inbound(channel.Event)
-  /// A file in the workspace's file system changed.
-  FileChanged(files.Change)
   AddTrigger(
     channel: config.ChannelInfo,
     trigger: Trigger,
@@ -77,7 +80,7 @@ pub type Message {
   /// Check cron schedules, sent every second.
   Tick
   AddSchedule(
-    session: String,
+    delivery: Delivery,
     name: String,
     timing: Timing,
     message: String,
@@ -123,6 +126,13 @@ pub type Message {
     channel: String,
     reply: Subject(Result(#(config.ChannelInfo, execute.Host), String)),
   )
+  /// Bind a user's private session to a channel, including scheduled work.
+  WebHost(
+    user: String,
+    directory: String,
+    channel: String,
+    reply: Subject(Result(#(config.ChannelInfo, execute.Host), String)),
+  )
 }
 
 /// The most events kept per connection.
@@ -137,13 +147,24 @@ pub type Timing {
 /// Who a scheduled message is sent to.
 type Target {
   /// The session with this key.
-  Session(String)
+  Session(Delivery)
   /// The session of the channel with this name, if it has one.
   ChannelNamed(String)
 }
 
 type Scheduled {
   Scheduled(target: Target, timing: Timing, message: String)
+}
+
+/// A timer retains its policy context and reply destination even if the user
+/// later binds their session elsewhere. This is schedule data, not session state.
+pub type Delivery {
+  Delivery(
+    id: String,
+    channel: config.ChannelInfo,
+    reply: option.Option(String),
+    directory: String,
+  )
 }
 
 type State {
@@ -153,17 +174,17 @@ type State {
     platforms: Dict(String, channel.Outbound),
     /// The directory of the workspace's databases.
     data: String,
+    session_data: String,
+    namespace: String,
     /// Plugins that answer webhook requests, by connection name.
     listeners: Dict(String, webhook.Listener),
-    sessions: Dict(String, Subject(session.Message)),
-    files: Subject(files.Message),
+    executor: Subject(session.Message),
+    seed: option.Option(String),
     /// Triggers per channel, keyed by `platform:channel`.
     /// A channel's configured triggers are installed when its first event arrives.
     triggers: Dict(String, List(Trigger)),
     /// Scheduled messages, keyed by the session that scheduled them and a name.
     schedules: Dict(#(String, String), Scheduled),
-    /// The session key of each channel's top level conversation, by channel name.
-    channels: Dict(String, String),
     artifacts: Subject(artifacts.Message),
     complete: agent.Completer,
     connections: List(connection.Connection),
@@ -185,6 +206,18 @@ pub fn start_with(
   artifacts: Subject(artifacts.Message),
   complete: agent.Completer,
 ) -> Result(Subject(Message), String) {
+  use executor <- result.try(session.start_configured())
+  start_on(load, artifacts, complete, executor, "standalone")
+}
+
+/// All production workspaces share the registry's executor.
+pub fn start_on(
+  load: config.Loader,
+  artifacts: Subject(artifacts.Message),
+  complete: agent.Completer,
+  executor: Subject(session.Message),
+  namespace: String,
+) -> Result(Subject(Message), String) {
   // Only Gleam data, not EYG values, leaves this process.
   use #(seed, crons, connections, data) <- result.try(
     load()
@@ -200,26 +233,20 @@ pub fn start_with(
       #(#("workspace", c.name), scheduled)
     }),
   )
-  use files <- result.try(files.start(seed))
   actor.new_with_initialiser(1000, fn(self) {
-    let changes = process.new_subject()
-    process.send(files, files.Subscribe(changes))
-    let selector =
-      process.new_selector()
-      |> process.select(self)
-      |> process.select_map(changes, FileChanged)
     process.send_after(self, until_next_second(), Tick)
     State(
       self:,
       load:,
       platforms: dict.new(),
       data:,
+      session_data: session_store.directory(data, "workspace:" <> namespace),
+      namespace:,
       listeners: dict.new(),
-      sessions: dict.new(),
-      files:,
+      executor:,
+      seed:,
       triggers: dict.new(),
       schedules: dict.from_list(schedules),
-      channels: dict.new(),
       artifacts:,
       complete:,
       connections:,
@@ -227,14 +254,13 @@ pub fn start_with(
       api: fn(_) { Error("The configuration API is not available") },
     )
     |> actor.initialised
-    |> actor.selecting(selector)
     |> actor.returning(self)
     |> Ok
   })
   |> actor.on_message(handle)
   |> actor.start
   |> result.map(fn(started) {
-    list.each(connections, start_connection(started.data, _))
+    list.each(connections, start_connection(started.data, executor, _))
     started.data
   })
   |> result.map_error(string.inspect)
@@ -243,6 +269,7 @@ pub fn start_with(
 /// Start a connection in its own process, its events are sent to the workspace.
 fn start_connection(
   workspace: Subject(Message),
+  executor: Subject(session.Message),
   connection: connection.Connection,
 ) -> Nil {
   let connection.Connection(name:, source:, ..) = connection
@@ -256,12 +283,62 @@ fn start_connection(
         process.send(workspace, Connect(example_chat.platform, outbound))
       }
       connection.Slack(token) -> {
-        use outbound <- result.map(slack.start(token, inbound))
-        process.send(workspace, Connect(slack.platform, outbound))
+        use identity <- result.try(
+          slack_client.auth_test(token) |> result.map_error(string.inspect),
+        )
+        let installation = channel.installation("slack", identity.team_id)
+        let hook = fn(event) { inbound(channel.at(event, installation)) }
+        use poller <- result.map(
+          slack.start_with_hook(token, identity, executor, Some(hook))
+          |> result.map_error(string.inspect),
+        )
+        let outbound =
+          channel.Outbound(
+            input_type: slack_input.input_type(),
+            post: fn(id, reply, text) {
+              slack_client.chat_post_message(token, id, reply, text, None)
+              |> result.map_error(string.inspect)
+            },
+            channel_name: fn(id) {
+              process.call(poller.data, 5000, slack.Name(id, _))
+            },
+            channels: fn() {
+              Ok(process.call(poller.data, 5000, slack.Channels))
+            },
+          )
+        process.send(workspace, Connect(installation, outbound))
       }
       connection.Discord(token:, guild:) -> {
-        use outbound <- result.map(discord.start(token, guild, inbound))
-        process.send(workspace, Connect(discord.platform, outbound))
+        use identity <- result.try(
+          discord_client.current_user(token) |> result.map_error(string.inspect),
+        )
+        use guild <- result.try(
+          discord_client.guild(token, guild) |> result.map_error(string.inspect),
+        )
+        let installation = channel.installation("discord", guild.id)
+        let hook = fn(event) { inbound(channel.at(event, installation)) }
+        use poller <- result.map(
+          discord.start_with_hook(
+            token,
+            guild,
+            identity.id,
+            executor,
+            Some(hook),
+          )
+          |> result.map_error(string.inspect),
+        )
+        let outbound =
+          channel.Outbound(
+            input_type: discord_input.input_type(),
+            post: fn(id, reply, text) { discord.post(token, id, reply, text) },
+            channel_name: fn(id) {
+              process.call(poller.data, 5000, discord.Name(id, _))
+            },
+            channels: fn() {
+              Ok(process.call(poller.data, 5000, discord.Channels))
+            },
+          )
+        process.send(workspace, Connect(installation, outbound))
       }
       connection.WhatsApp(token:, phone_number_id:, app_secret:, verify_token:) -> {
         let config =
@@ -302,12 +379,6 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
         platforms: dict.insert(state.platforms, platform, outbound),
       )
     Inbound(event) -> inbound(state, event)
-    FileChanged(change) -> {
-      dict.each(state.sessions, fn(_key, session) {
-        process.send(session, session.Changed(change))
-      })
-      state
-    }
     AddTrigger(channel: info, trigger:, reply:) -> {
       // Configured triggers are installed first, so they are not lost.
       let state = install(state, info)
@@ -367,14 +438,15 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
       })
       state
     }
-    AddSchedule(session:, name:, timing:, message:, reply:) -> {
+    AddSchedule(delivery:, name:, timing:, message:, reply:) -> {
+      let session = delivery.id
       process.send(reply, Ok(Nil))
       case timing {
         Once(after) ->
           process.send_after(state.self, int.max(after, 0), Fire(session, name))
         Repeating(_) -> process.send_after(state.self, 0, Tick)
       }
-      let scheduled = Scheduled(Session(session), timing, message)
+      let scheduled = Scheduled(Session(delivery), timing, message)
       State(
         ..state,
         schedules: dict.insert(state.schedules, #(session, name), scheduled),
@@ -475,14 +547,32 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
     ChannelHost(channel: name, reply:) -> {
       case find_channel(state, name) {
         Ok(#(outbound, info)) -> {
-          let conversation = channel.Conversation(info.platform, info.id, None)
-          let key = channel.key(conversation)
-          Ok(#(info, host(state, outbound, conversation, info, key)))
+          let id = session_id(state, info, None)
+          let directory =
+            session_store.directory(
+              state.session_data,
+              session_name(info, None),
+            )
+          Ok(#(info, host(state, outbound, info, None, id, directory)))
         }
         Error(Nil) -> Error("no channel named " <> name)
       }
       |> process.send(reply, _)
       state
+    }
+    WebHost(user:, directory:, channel: name, reply:) -> {
+      case find_channel(state, name) {
+        Error(Nil) -> {
+          process.send(reply, Error("no unique channel named " <> name))
+          state
+        }
+        Ok(#(outbound, info)) -> {
+          let id = "web:" <> user
+          let host = host(state, outbound, info, None, id, directory)
+          process.send(reply, Ok(#(info, host)))
+          state
+        }
+      }
     }
     ReadEvents(connection: name, reply:) -> {
       case list.any(state.connections, fn(c) { c.name == name }) {
@@ -615,9 +705,8 @@ fn observed(state: State, event: connection.Event) -> State {
   case result.try(target, find_channel(state, _)) {
     Ok(#(outbound, info)) -> {
       let state = install(state, info)
-      let conversation = channel.Conversation(info.platform, info.id, None)
       let started = "a " <> event.connection <> " event, " <> event.summary
-      run_triggers(state, event.value, started, conversation, outbound, info)
+      run_triggers(state, event.value, started, None, outbound, info)
       state
     }
     Error(Nil) -> {
@@ -631,27 +720,46 @@ fn observed(state: State, event: connection.Event) -> State {
 
 /// Find a channel by name on any connected chat.
 fn find_channel(state: State, name: String) {
-  dict.to_list(state.platforms)
-  |> list.find_map(fn(platform) {
-    let #(platform, outbound) = platform
-    use channels <- result.try(outbound.channels() |> result.replace_error(Nil))
-    use #(id, _) <- result.map(list.find(channels, fn(c) { c.1 == name }))
-    #(
-      outbound,
-      config.ChannelInfo(platform:, id:, name:, input_type: outbound.input_type),
-    )
-  })
+  let matches =
+    dict.to_list(state.platforms)
+    |> list.flat_map(fn(platform) {
+      let #(platform, outbound) = platform
+      outbound.channels()
+      |> result.unwrap([])
+      |> list.filter(fn(c) { c.1 == name || platform <> ":" <> c.0 == name })
+      |> list.map(fn(c) {
+        #(
+          outbound,
+          config.ChannelInfo(
+            platform:,
+            id: c.0,
+            name: c.1,
+            input_type: outbound.input_type,
+          ),
+        )
+      })
+    })
+  case matches {
+    [found] -> Ok(found)
+    _ -> Error(Nil)
+  }
 }
 
 fn inbound(state: State, event: channel.Event) -> State {
-  let channel.Incoming(conversation, value) = event
-  case dict.get(state.platforms, conversation.platform) {
+  let channel.Incoming(platform, channel_id, _, value) = event
+  case dict.get(state.platforms, platform) {
     Error(Nil) -> {
-      io.println_error(channel.key(conversation) <> ": not connected")
+      io.println_error(platform <> ":" <> channel_id <> ": not connected")
       state
     }
     Ok(outbound) -> {
-      let info = channel_info(outbound, conversation)
+      let info =
+        config.ChannelInfo(
+          platform,
+          channel_id,
+          outbound.channel_name(channel_id),
+          outbound.input_type,
+        )
       let requests = {
         use workspace <- result.try(state.load())
         use configured <- result.try(config.channel(workspace, info))
@@ -664,9 +772,10 @@ fn inbound(state: State, event: channel.Event) -> State {
         }
         Ok(requests) -> {
           let state = install(state, info)
-          list.fold(requests, state, fn(state, request) {
+          list.each(requests, fn(request) {
             perform_work(state, request, event, outbound, info)
           })
+          state
         }
       }
     }
@@ -679,134 +788,136 @@ fn perform_work(
   event: channel.Event,
   outbound,
   info,
-) -> State {
-  let channel.Incoming(origin, value) = event
+) -> Nil {
+  let channel.Incoming(_, _, default_reply, value) = event
   case request {
     work.Submit(session, reply, text, description) -> {
       let requests = case string.trim(text), invocation.parse(text) {
         "/new", _ -> [
           work.Reset(session),
           work.Post(
-            session,
+            reply,
             "Started a new conversation, earlier messages are forgotten.",
           ),
         ]
         _, Ok(code) -> [work.Run(session, reply, code, description)]
         _, Error(Nil) -> [work.Input(session, description)]
       }
-      list.fold(requests, state, fn(state, request) {
+      list.each(requests, fn(request) {
         perform_work(state, request, event, outbound, info)
       })
     }
     work.Trigger(thread) -> {
-      let conversation = channel.Conversation(..origin, thread:)
       run_triggers(
         state,
         value,
         "a native channel event",
-        conversation,
+        thread,
         outbound,
         info,
       )
-      state
     }
     work.Post(thread, text) -> {
-      let conversation = channel.Conversation(..origin, thread:)
-      let host =
-        host(state, outbound, conversation, info, channel.key(conversation))
-      case
-        shell.prepare(
-          state.load,
-          info,
-          host,
-          location(info, conversation),
-          state.complete,
-        )
-      {
-        Ok(shell) -> {
-          let _ =
-            shell.run(shell, "perform Post(text)", [
-              #("text", data.string(text)),
-            ])
-          Nil
-        }
-        Error(reason) ->
-          io.println_error("#" <> info.name <> " post: " <> reason)
-      }
-      state
+      let #(id, setup) = setup_for(state, info, None, outbound, default_reply)
+      let #(load, complete) = #(state.load, state.complete)
+      process.send(
+        state.executor,
+        session.Dispatch(
+          id,
+          Some(setup),
+          session.Run(fn(host, execution) {
+            case
+              shell.prepare(load, info, host, location(info, None), complete)
+            {
+              Ok(shell) -> {
+                let #(_, execution) =
+                  shell.run(
+                    shell,
+                    "perform Post(text)",
+                    [
+                      #("text", data.string(text)),
+                    ],
+                    execute.State(..shell.state, files: execution.files),
+                  )
+                #(None, execution)
+              }
+              Error(reason) -> {
+                io.println_error("#" <> info.name <> " post: " <> reason)
+                #(None, execution)
+              }
+            }
+          }),
+          Some(outbound.post(info.id, thread, _)),
+        ),
+      )
     }
-    work.Input(thread, text) -> {
-      let #(session, state) =
-        session_for(
-          state,
-          channel.Conversation(..origin, thread:),
-          outbound,
-          info,
-        )
-      process.send(session, session.Input(text))
-      state
+    work.Input(selected, text) -> {
+      let #(id, setup) =
+        setup_for(state, info, selected, outbound, default_reply)
+      session.submit(state.executor, id, setup, session.Input(text), None)
     }
-    work.Observe(thread, text) -> {
-      let #(session, state) =
-        session_for(
-          state,
-          channel.Conversation(..origin, thread:),
-          outbound,
-          info,
-        )
-      process.send(session, session.Observe(text))
-      state
+    work.Observe(selected, text) -> {
+      let #(id, setup) =
+        setup_for(state, info, selected, outbound, default_reply)
+      session.submit(state.executor, id, setup, session.Observe(text), None)
     }
-    work.Reset(thread) -> {
-      let #(session, state) =
-        session_for(
-          state,
-          channel.Conversation(..origin, thread:),
-          outbound,
-          info,
-        )
-      process.send(session, session.Reset)
-      state
+    work.Reset(selected) -> {
+      let #(id, setup) =
+        setup_for(state, info, selected, outbound, default_reply)
+      session.submit(state.executor, id, setup, session.Reset, None)
     }
-    work.Run(thread, reply, code, description) -> {
-      let conversation = channel.Conversation(..origin, thread:)
-      let #(session, state) = session_for(state, conversation, outbound, info)
-      let reply = channel.Conversation(..origin, thread: reply)
-      let host = host(state, outbound, reply, info, channel.key(conversation))
+    work.Run(selected, reply, code, description) -> {
+      let #(id, setup) =
+        setup_for(state, info, selected, outbound, default_reply)
       let #(load, complete) = #(state.load, state.complete)
       // Only plain data and host operations cross this boundary, never the handler closure.
-      process.spawn(fn() {
-        let observed = case
-          shell.prepare(load, info, host, location(info, reply), complete)
-        {
-          Ok(shell) -> {
-            let attributes = [
-              #("eyg.cloud.channel", tracing.text(info.name)),
-            ]
-            use trace <-
-              tracing.span("eyg.cloud.invocation", None, attributes, _, fn(_) {
-                None
-              })
-            let host = execute.Host(..shell.host, trace: Some(trace))
-            invoke(shell.Shell(..shell, host:), code, description)
-          }
-          Error(reason) -> description <> "\nError: " <> reason
-        }
-        process.send(session, session.Observe(observed))
-      })
-      state
+      process.send(
+        state.executor,
+        session.Dispatch(
+          id,
+          Some(setup),
+          session.Run(fn(host, execution) {
+            let #(observed, execution) = case
+              shell.prepare(
+                load,
+                info,
+                host,
+                location(info, selected),
+                complete,
+              )
+            {
+              Ok(shell) -> {
+                let attributes = [
+                  #("eyg.cloud.channel", tracing.text(info.name)),
+                ]
+                use trace <-
+                  tracing.span(
+                    "eyg.cloud.invocation",
+                    None,
+                    attributes,
+                    _,
+                    fn(_) { None },
+                  )
+                let host = execute.Host(..shell.host, trace: Some(trace))
+                invoke(
+                  shell.Shell(..shell, host:),
+                  code,
+                  description,
+                  execute.State(..shell.state, files: execution.files),
+                )
+              }
+              Error(reason) -> #(
+                description <> "\nError: " <> reason,
+                execution,
+              )
+            }
+            #(Some(observed), execution)
+          }),
+          Some(outbound.post(info.id, reply, _)),
+        ),
+      )
     }
   }
-}
-
-fn channel_info(outbound: channel.Outbound, conversation: Conversation) {
-  let channel.Conversation(platform:, channel: id, ..) = conversation
-  config.ChannelInfo(
-    platform:,
-    id:,
-    name: outbound.channel_name(id),
-    input_type: outbound.input_type,
-  )
 }
 
 fn trigger_key(info: config.ChannelInfo) {
@@ -860,90 +971,138 @@ fn until_next_second() {
 
 /// Send a scheduled message to its session, if the session exists.
 fn deliver(state: State, name, scheduled: Scheduled) -> Nil {
-  let key = case scheduled.target {
-    Session(key) -> Ok(key)
-    ChannelNamed(channel) -> dict.get(state.channels, channel)
+  let kind = case scheduled.timing {
+    Repeating(_) -> "cron"
+    Once(_) -> "timeout"
   }
-  case result.try(key, dict.get(state.sessions, _)) {
-    Ok(session) -> {
-      let kind = case scheduled.timing {
-        Repeating(_) -> "cron"
-        Once(_) -> "timeout"
-      }
-      let text = "[" <> kind <> " " <> name <> "] " <> scheduled.message
-      process.send(session, session.Input(text))
+  let text = "[" <> kind <> " " <> name <> "] " <> scheduled.message
+  let sent = case scheduled.target {
+    Session(Delivery(id, info, reply, directory)) -> {
+      use outbound <- result.map(dict.get(state.platforms, info.platform))
+      let host = host(state, outbound, info, reply, id, directory)
+      let setup =
+        session.Setup(
+          name: id,
+          channel: info,
+          location: location(info, None),
+          load: state.load,
+          complete: state.complete,
+          host:,
+          directory:,
+          seed: None,
+        )
+      session.submit(state.executor, id, setup, session.Input(text), None)
     }
+    ChannelNamed(channel) -> {
+      use #(outbound, info) <- result.map(find_channel(state, channel))
+      let id = session_id(state, info, None)
+      process.send(
+        state.executor,
+        session.Dispatch(
+          id,
+          None,
+          session.Input(text),
+          Some(outbound.post(info.id, None, _)),
+        ),
+      )
+    }
+  }
+  case sent {
+    Ok(_) -> Nil
     Error(Nil) ->
-      io.println_error("schedule " <> name <> " has no session to send to")
+      io.println_error("schedule " <> name <> " has no channel to send to")
   }
 }
 
 /// Run the script of each active trigger whose pattern matches the event.
-/// Scripts post to `conversation`, the thread of a chat message or the channel.
-/// Each trigger is matched and run in its own process.
+/// The plugin's reply callback is independent of the selected session's state.
+/// Matching and execution use the same central queue as agent turns.
 fn run_triggers(
   state: State,
   event: data.Value,
   started: String,
-  conversation: Conversation,
+  selected: option.Option(String),
   outbound: channel.Outbound,
   info: config.ChannelInfo,
 ) -> Nil {
-  let key = channel.key(conversation)
+  let #(id, setup) = setup_for(state, info, selected, outbound, selected)
   channel_triggers(state, trigger_key(info))
   |> list.filter(fn(t) { t.active })
   |> list.each(fn(t) {
-    let host = host(state, outbound, conversation, info, key)
     let #(load, complete) = #(state.load, state.complete)
-    process.spawn(fn() {
-      let location =
-        location(info, conversation)
-        <> "\nYou were started by the trigger "
-        <> t.name
-        <> " for "
-        <> started
-        <> "."
-      let outcome = {
-        use shell <- result.try(shell.prepare(
-          load,
-          info,
-          host,
-          location,
-          complete,
-        ))
-        use matched <- result.try(
-          shell.matches(shell, t.pattern, event)
-          |> result.map_error(fn(reason) { "pattern: " <> reason }),
-        )
-        case matched {
-          True -> {
-            let attributes = [
-              #("eyg.trigger.name", tracing.text(t.name)),
-              #("eyg.cloud.channel", tracing.text(info.name)),
-              #("eyg.trigger.event", tracing.text(event_tag(event))),
-            ]
-            use trace <-
-              tracing.span("eyg.cloud.trigger", None, attributes, _, fn(result) {
-                case result {
-                  Ok(_) -> None
-                  Error(reason) -> Some(reason)
-                }
-              })
-            let host = execute.Host(..shell.host, trace: Some(trace))
-            let execute.Run(result:, ..) =
-              shell.run_script(shell.Shell(..shell, host:), t.script, event)
-            result.replace(result, True)
-          }
-          False -> Ok(False)
+    session.submit(
+      state.executor,
+      id,
+      setup,
+      session.Run(fn(host, execution) {
+        let location =
+          location(info, selected)
+          <> "\nYou were started by the trigger "
+          <> t.name
+          <> " for "
+          <> started
+          <> "."
+        let prepared = {
+          use shell <- result.try(shell.prepare(
+            load,
+            info,
+            host,
+            location,
+            complete,
+          ))
+          use matched <- result.map(
+            shell.matches(shell, t.pattern, event)
+            |> result.map_error(fn(reason) { "pattern: " <> reason }),
+          )
+          #(shell, matched)
         }
-      }
-      case outcome {
-        Ok(True) -> io.println("trigger " <> t.name <> " ran in #" <> info.name)
-        Ok(False) -> Nil
-        Error(reason) ->
-          io.println_error("trigger " <> t.name <> " failed: " <> reason)
-      }
-    })
+        let #(outcome, execution) = case prepared {
+          Error(reason) -> #(Error(reason), execution)
+          Ok(#(shell, matched)) ->
+            case matched {
+              True -> {
+                let attributes = [
+                  #("eyg.trigger.name", tracing.text(t.name)),
+                  #("eyg.cloud.channel", tracing.text(info.name)),
+                  #("eyg.trigger.event", tracing.text(event_tag(event))),
+                ]
+                use trace <-
+                  tracing.span(
+                    "eyg.cloud.trigger",
+                    None,
+                    attributes,
+                    _,
+                    fn(result) {
+                      case result.0 {
+                        Ok(_) -> None
+                        Error(reason) -> Some(reason)
+                      }
+                    },
+                  )
+                let host = execute.Host(..shell.host, trace: Some(trace))
+                let #(execute.Run(result:, ..), execution) =
+                  shell.run_script(
+                    shell.Shell(..shell, host:),
+                    t.script,
+                    event,
+                    execute.State(..shell.state, files: execution.files),
+                  )
+                #(result.replace(result, True), execution)
+              }
+              False -> #(Ok(False), execution)
+            }
+        }
+        case outcome {
+          Ok(True) ->
+            io.println("trigger " <> t.name <> " ran in #" <> info.name)
+          Ok(False) -> Nil
+          Error(reason) ->
+            io.println_error("trigger " <> t.name <> " failed: " <> reason)
+        }
+        #(None, execution)
+      }),
+      None,
+    )
   })
 }
 
@@ -954,55 +1113,60 @@ fn event_tag(event: data.Value) -> String {
   }
 }
 
-fn session_for(
-  state: State,
-  conversation: Conversation,
-  outbound: channel.Outbound,
-  info: config.ChannelInfo,
-) -> #(Subject(session.Message), State) {
-  let key = channel.key(conversation)
-  case dict.get(state.sessions, key) {
-    Ok(session) -> #(session, state)
-    Error(Nil) -> {
-      let setup =
-        session.Setup(
-          name: key,
-          channel: info,
-          location: location(info, conversation),
-          load: state.load,
-          complete: state.complete,
-          host: host(state, outbound, conversation, info, key),
-        )
-      let assert Ok(session) = session.start(setup)
-      let sessions = dict.insert(state.sessions, key, session)
-      let channels = case conversation.thread {
-        None -> dict.insert(state.channels, info.name, key)
-        Some(_) -> state.channels
-      }
-      #(session, State(..state, sessions:, channels:))
-    }
+fn session_name(info: config.ChannelInfo, selected) {
+  let base = info.platform <> ":" <> info.id
+  case selected {
+    None -> base
+    Some(name) -> base <> ":" <> name
   }
 }
 
-fn location(info: config.ChannelInfo, conversation) {
-  "You are in the channel #" <> info.name <> option_thread(conversation) <> "."
+fn session_id(state: State, info, selected) {
+  // This ID is independent of both the reply address and the host storage path.
+  json.array([state.namespace, session_name(info, selected)], json.string)
+  |> json.to_string
 }
 
-fn option_thread(conversation: Conversation) {
-  case conversation.thread {
-    Some(thread) -> ", in the thread started by message " <> thread
+fn setup_for(state: State, info, selected, outbound, reply) {
+  let id = session_id(state, info, selected)
+  let key = session_name(info, selected)
+  let directory = session_store.directory(state.session_data, key)
+  let setup =
+    session.Setup(
+      name: key,
+      channel: info,
+      location: location(info, selected),
+      load: state.load,
+      complete: state.complete,
+      host: host(state, outbound, info, reply, id, directory),
+      directory:,
+      seed: state.seed,
+    )
+  #(id, setup)
+}
+
+fn location(info: config.ChannelInfo, selected) {
+  let selected = case selected {
+    Some(name) -> ", using session " <> name
     None -> ""
   }
+  "You are in the channel #" <> info.name <> selected <> "."
 }
 
-/// The host for programs run from a conversation, posts go to `conversation`.
-/// File changes are made as the channel, triggers are added to the channel
-/// and scheduled messages are sent to the session with key `session`.
-fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
+/// Bind channel services to an explicit session ID and a separate reply target.
+fn host(
+  state: State,
+  outbound: channel.Outbound,
+  info,
+  reply,
+  session,
+  directory,
+) {
   let config.ChannelInfo(name:, ..) = info
   let key = trigger_key(info)
   let self = state.self
   let load = state.load
+  let delivery = Delivery(session, info, reply, directory)
   let triggers =
     execute.Triggers(
       add: fn(t) { process.call(self, 5000, AddTrigger(info, t, _)) },
@@ -1016,11 +1180,11 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
       cron: fn(name, spec, message) {
         use schedule <- result.try(cron.parse(spec))
         let timing = Repeating(schedule)
-        process.call(self, 5000, AddSchedule(session, name, timing, message, _))
+        process.call(self, 5000, AddSchedule(delivery, name, timing, message, _))
       },
       timeout: fn(name, after, message) {
         let timing = Once(after)
-        process.call(self, 5000, AddSchedule(session, name, timing, message, _))
+        process.call(self, 5000, AddSchedule(delivery, name, timing, message, _))
       },
       cancel: fn(name) {
         process.call(self, 5000, CancelSchedule(session, name, _))
@@ -1028,8 +1192,8 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
     )
   let host =
     execute.channel_host(
-      outbound.post(conversation, _),
-      execute.files(state.files, "#" <> name),
+      outbound.post(info.id, reply, _),
+      execute.no_files(),
       triggers,
       schedules,
       execute.artifacts(state.artifacts, artifacts.Channel(key, name)),
@@ -1050,8 +1214,9 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
 }
 
 /// Run a direct invocation, post its output and return a description for the agent.
-fn invoke(shell: shell.Shell, code, description: String) -> String {
-  let execute.Run(result:, output:) = shell.run(shell, code, [])
+fn invoke(shell: shell.Shell, code, description: String, execution) {
+  let #(execute.Run(result:, output:), execution) =
+    shell.run(shell, code, [], execution)
   let printed = list.reverse(output) |> list.map(execute.output_text)
   let returned = case result {
     Ok(value) -> value |> option.map(simple_debug.inspect) |> option.unwrap("")
@@ -1065,5 +1230,5 @@ fn invoke(shell: shell.Shell, code, description: String) -> String {
     "" -> ""
     printed -> "\nIt printed:\n" <> printed
   }
-  description <> output <> "\nIt returned: " <> returned
+  #(description <> output <> "\nIt returned: " <> returned, execution)
 }

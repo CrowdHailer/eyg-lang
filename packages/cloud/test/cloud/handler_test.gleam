@@ -1,10 +1,10 @@
 import cloud/config
+import cloud/discord/events as discord
 import cloud/handler
 import cloud/plugins/chat_input
-import cloud/plugins/discord
 import cloud/plugins/example_chat
-import cloud/plugins/slack
 import cloud/plugins/whatsapp
+import cloud/slack/events as slack
 import cloud/test_helpers
 import cloud/work
 import gleam/option.{None}

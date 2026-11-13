@@ -6,10 +6,10 @@
 //// Patterns and function scripts are kept as captured expressions, source scripts as text,
 //// see `notes/cloud-process-boundaries.md`.
 
+import cloud/discord/input as discord_input
 import cloud/plugins/chat_input
-import cloud/plugins/discord_input
-import cloud/plugins/slack_input
 import cloud/plugins/whatsapp
+import cloud/slack/input as slack_input
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/capture
