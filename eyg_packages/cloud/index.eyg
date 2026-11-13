@@ -4,5 +4,6 @@ let platform = import "./platform.eyg"
   handlers: import "./handlers.eyg",
   shell: import "./shell.eyg",
   secrets: import "./secrets.eyg",
-  triggers: import "./triggers.eyg"
+  triggers: import "./triggers.eyg",
+  channels: import "./channels.eyg"
 }

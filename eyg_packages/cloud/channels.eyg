@@ -1,0 +1,23 @@
+// Configure a workspace's channels by name.
+//
+// `named(channels, otherwise)` is a workspace `channel` function.
+// `channels` is a list of `{name, config}` factories. Each factory receives the full channel info; unmatched channels use `otherwise(info)`.
+//
+//   channel: cloud.channels.named([
+//     {name: "general", config: (info) -> { {handle: cloud.handlers.for_channel(info), channel_shell: shell.everything} }},
+//     {name: "links", config: (info) -> { {handle: cloud.handlers.for_channel(info), channel_shell: shell.read_only} }}
+//   ], (info) -> { {handle: cloud.handlers.for_channel(info), channel_shell: shell.offline} })
+
+let named = (channels, otherwise) -> {
+  (info) -> {
+    let configure = !list_fold(channels, otherwise, (channel, found) -> {
+      match !equal(channel.name, info.name) {
+        True(_) -> { channel.config }
+        False(_) -> { found }
+      }
+    })
+    configure(info)
+  }
+}
+
+{named}

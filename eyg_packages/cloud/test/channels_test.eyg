@@ -1,0 +1,23 @@
+let {assert} = @aok
+let channels = import "../channels.eyg"
+
+let configure = channels.named(
+  [{name: "general", config: (_) -> { {readme: "main"} }}, {name: "links", config: (_) -> { {readme: "links"} }}],
+  (info) -> { {readme: !string_append("other ", info.name)} }
+)
+
+let test_named = (_) -> {
+  let _ = assert.equal_string("main", configure({platform: "chat", id: "C1", name: "general"}).readme)
+  let _ = assert.equal_string("links", configure({platform: "chat", id: "C3", name: "links"}).readme)
+  {}
+}
+
+let test_otherwise = (_) -> {
+  let _ = assert.equal_string("other random", configure({platform: "chat", id: "C2", name: "random"}).readme)
+  {}
+}
+
+[
+  {name: "cloud channels named", test: test_named},
+  {name: "cloud channels otherwise", test: test_otherwise}
+]

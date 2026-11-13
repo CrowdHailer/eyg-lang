@@ -1,0 +1,96 @@
+// An example EYG cloud workspace, see README.md.
+let cloud = import "../../eyg_packages/cloud/index.eyg"
+let shell = cloud.shell
+let triggers = cloud.triggers
+let secrets = cloud.secrets
+
+// The model's key is only read here, agents never see it.
+let api_key = match perform Secret("OLLAMA_API_KEY") {
+  Ok(key) -> { Some(key) }
+  Error(_) -> { None({}) }
+}
+
+// Network secrets: programs see a placeholder from Env,
+// requests to httpbin.org get the real value.
+let network = match secrets.load("DEMO_TOKEN", ["httpbin.org"]) {
+  Ok(token) -> { [token] }
+  Error(_) -> { [] }
+}
+
+let online = (base) -> {
+  {env: secrets.env(network), fetch: secrets.fetch(network, shell.pass), ..base}
+}
+
+let post = (parts) -> { perform Post(!list_fold(parts, "", (part, text) -> { !string_append(text, part) })) }
+
+// React with :books: to a message with links to get a summary in its thread.
+let summarise_links = {
+  name: "summarise-links",
+  pattern: (event) -> {
+    match triggers.reaction("books")(event) {
+      True(_) -> { True({}) }
+      False(_) -> { triggers.reaction("📚")(event) }
+    }
+  },
+  script: (event) -> {
+    let text = match event {
+      ChatReacted(event) -> { Some(event.message.text) }
+      SlackReaction(event) -> { Some(event.message.text) }
+      DiscordReaction(event) -> { Some(event.message.content) }
+      | (_) -> { None({}) }
+    }
+    match text {
+      Some(text) -> {
+        let task = !string_append("Fetch each link in this message and post a two sentence summary of each link. Message: ", text)
+        match perform Delegate(task) {
+          Ok(_) -> { {} }
+          Error(reason) -> { let _ = post(["Could not summarise the links: ", reason]) {} }
+        }
+      }
+      None(_) -> { {} }
+    }
+  }
+}
+
+{
+  llm: {
+    provider: Ollama({origin: "https://ollama.com", api_key}),
+    model: "glm-5.3"
+  },
+  readme: "This is the example workspace of the EYG team. Be brief, friendly and helpful.",
+  files: "./files",
+  crons: [
+    {
+      name: "standup",
+      schedule: "0 9 * * 1-5",
+      channel: "general",
+      message: "It is 9am UTC. If people were active yesterday, post a one line standup reminder."
+    }
+  ],
+  // Each channel's shell is the policy for everything run from it.
+  channel: cloud.channels.named([
+    {
+      name: "general",
+      config: (info) -> { {
+        handle: cloud.handlers.for_channel(info),
+        channel_shell: online(shell.writes_under(["/channels/general", "/skills"], shell.everything)),
+        readme: "The team's main channel, answer questions when people ask you."
+      } }
+    },
+    {
+      name: "links",
+      config: (info) -> { {
+        handle: cloud.handlers.for_channel(info),
+        channel_shell: online(shell.writes_under(["/channels/links"], shell.everything)),
+        readme: "People share links here. Only post when someone asks you something.",
+        triggers: [summarise_links]
+      } }
+    }
+  ], (info) -> {
+    {
+      handle: cloud.handlers.for_channel(info),
+      channel_shell: shell.writes_under([!string_append("/channels/", info.name)], shell.offline),
+      readme: "This channel has no network access."
+    }
+  })
+}
