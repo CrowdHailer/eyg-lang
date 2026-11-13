@@ -24,7 +24,9 @@ pub type Guide {
 
 fn all(root) -> List(Guide) {
   let assert Ok(paths) = simplifile.get_files(root)
-  list.filter_map(paths, fn(path) {
+  paths
+  |> list.filter(string.ends_with(_, ".md"))
+  |> list.filter_map(fn(path) {
     let assert Ok(raw) = simplifile.read(path)
     let #(front, document) = pamphlet.parse(raw)
 

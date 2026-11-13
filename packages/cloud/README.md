@@ -15,7 +15,7 @@ Everything can be read and changed with the [configuration API](../../guides/clo
 from the web shell, from a channel whose shell allows it and over HTTP.
 Every program and every effect is [traced](../../guides/cloud/tracing.md) as OpenTelemetry spans.
 
-Start with the [example workspace](../../examples/cloud/README.md).
+Start with the [example workspace](../../examples/cloud/README.md) and the [recordings](../../guides/cloud/recordings/README.md) of it working.
 Coming from another agent gateway, see migrating from [OpenClaw](../../guides/cloud/from_openclaw.md) or [Hermes Agent](../../guides/cloud/from_hermes.md).
 
 | Variable | Purpose |
