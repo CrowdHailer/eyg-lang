@@ -3,6 +3,10 @@ import gleam/option.{None, Some}
 import gleam/string
 import loam/source
 
+pub fn recorded_shell_test() {
+  assert args.parse(["record", "shell"]) == args.RecordShell
+}
+
 pub fn run_test() {
   let file = "example.eyg.json"
   assert args.Run(source.File(file)) == args.parse(["run", file])
