@@ -14,6 +14,7 @@ eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { path = "../gleam_interpreter" }
 eyg_ir = { path = "../gleam_ir" }
 eyg_parser = { path = "../gleam_parser" }
+glasshouse = { path = "../glasshouse" }
 filepath = ">= 1.1.2 and < 2.0.0"
 gleam_crypto = ">= 1.6.0 and < 2.0.0"
 gleam_fetch = ">= 1.4.1 and < 2.0.0"
