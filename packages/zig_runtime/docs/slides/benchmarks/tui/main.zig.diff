@@ -1,0 +1,110 @@
+--- canonical/main.zig
++++ ablation/main.zig
+@@ -8,6 +8,7 @@
+ const platform = @import("platform.zig");
+ const input = @import("input.zig");
+ const json_wire = @import("json_wire.zig");
++var bench_unbuffered_json = false;
+ const J = std.json.Value;
+ const A = std.mem.Allocator;
+ var resize_write_fd: std.posix.fd_t = -1;
+@@ -83,6 +84,7 @@
+     return error.CliFailure;
+ }
+ fn printJson(value: J) !void {
++    if (bench_unbuffered_json) { try json_wire.write(value, std.io.getStdOut().writer()); try std.io.getStdOut().writeAll("\n"); return; }
+     var output = std.io.bufferedWriter(std.io.getStdOut().writer());
+     try json_wire.write(value, output.writer());
+     try output.writer().writeByte('\n');
+@@ -106,6 +108,20 @@
+ }
+ 
+ pub fn request(a: A, req: J) !J {
++    const ablation = str(field(req, "ablation"));
++    tui.bench_no_cell_reserve = equal(ablation, "no_cell_reserve");
++    tui.bench_no_cell_intern = equal(ablation, "no_cell_intern");
++    tui.bench_retained_frames = equal(ablation, "retained_frames");
++    tui.bench_dead_annotation_walks = equal(ablation, "dead_annotation_walks");
++    tui.bench_no_analysis_cache = equal(ablation, "no_analysis_cache");
++    tui.bench_no_history_cache = equal(ablation, "no_history_cache");
++    tui.bench_no_scope_cache = equal(ablation, "no_scope_cache");
++    tui.bench_full_analysis_projection = equal(ablation, "full_analysis_projection");
++    @import("inference.zig").bench_no_type_text_cache = equal(ablation, "no_type_text_cache");
++    @import("inference.zig").bench_no_scope_text_cache = equal(ablation, "no_scope_text_cache");
++    tui.bench_repeat_casefold = equal(ablation, "repeat_casefold");
++    tui.bench_no_ansi_style_runs = equal(ablation, "no_ansi_style_runs");
++    bench_unbuffered_json = equal(ablation, "unbuffered_json");
+     const op = str(field(req, "op"));
+     if (equal(op, "info")) return parser.object(a, &.{
+         .{ "zig", .{ .string = builtin.zig_version_string } },
+@@ -158,6 +174,70 @@
+             try frames.append(try shell.frame(width, height));
+         };
+         return parser.object(a, &.{.{ "frames", .{ .array = frames } }});
++    }
++    if (equal(op, "bench_ansi") or equal(op, "bench_static") or equal(op, "bench_analysis") or equal(op, "frame_memory")) {
++        const width = number(field(req, "width"), 80);
++        const height = number(field(req, "height"), 24);
++        const events = field(req, "events");
++        var samples = std.ArrayList(J).init(a);
++        var sizes = std.ArrayList(J).init(a);
++        var output = std.heap.ArenaAllocator.init(std.heap.page_allocator);
++        defer output.deinit();
++        const iterations = number(field(req, "iterations"), 100);
++        for (0..iterations) |_| {
++            var iteration = std.heap.ArenaAllocator.init(std.heap.page_allocator);
++            defer iteration.deinit();
++            var shell = tui.Tui.init(iteration.allocator());
++            defer shell.shutdown();
++            shell.sandboxed = true;
++            if (events == .array) for (events.array.items) |event| { try shell.event(event); };
++            if (equal(op, "frame_memory")) {
++                _ = try shell.frameAlloc(output.allocator(), width, height);
++                _ = output.reset(.retain_capacity);
++                const before = iteration.queryCapacity();
++                for (0..16) |_| { _ = try shell.frameAlloc(output.allocator(), width, height); _ = output.reset(.retain_capacity); }
++                try sizes.append(.{ .integer = @intCast(iteration.queryCapacity() - before) });
++            } else if (equal(op, "bench_analysis")) {
++                const inf = @import("inference.zig");
++                try shell.event(try parser.object(a, &.{ .{ "paste", field(req, "source") } }));
++                const program = try shell.toIR(shell.root);
++                for (0..20) |_| {
++                    var analysis_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
++                    defer analysis_arena.deinit();
++                    var timer = try std.time.Timer.start();
++                    const analysis = try inf.analyzeWithOptions(analysis_arena.allocator(), program, shell.engine.scope, .{ .scope_cache = if (tui.bench_no_scope_cache) null else &shell.scope_cache, .collect_paths = true });
++                    try samples.append(.{ .integer = @intCast(timer.read()) });
++                    try sizes.append(.{ .integer = @intCast(analysis.info.count()) });
++                }
++            } else if (equal(op, "bench_static")) {
++                _ = try shell.frameAlloc(output.allocator(), width, height);
++                _ = output.reset(.retain_capacity);
++                for (0..20) |_| {
++                    var timer = try std.time.Timer.start();
++                    const cpu_start = try threadCpuNanoseconds();
++                    const force = field(req, "force_analysis");
++                    if (force == .bool and force.bool) shell.cached_analysis = null;
++                    _ = try shell.frameAlloc(output.allocator(), width, height);
++                    _ = output.reset(.retain_capacity);
++                    _ = (try threadCpuNanoseconds()) - cpu_start;
++                    try samples.append(.{ .integer = @intCast(timer.read()) });
++                }
++            } else {
++                _ = try shell.renderAnsiAlloc(output.allocator(), width, height);
++                _ = output.reset(.retain_capacity);
++                for (0..20) |_| {
++                    var timer = try std.time.Timer.start();
++                    const cpu_start = try threadCpuNanoseconds();
++                    const bytes = try shell.renderAnsiAlloc(output.allocator(), width, height);
++                    const size = bytes.len;
++                    _ = output.reset(.retain_capacity);
++                    _ = (try threadCpuNanoseconds()) - cpu_start;
++                    try samples.append(.{ .integer = @intCast(timer.read()) });
++                    try sizes.append(.{ .integer = @intCast(size) });
++                }
++            }
++        }
++        return parser.object(a, &.{ .{ "samples_ns", .{ .array = samples } }, .{ "sizes", .{ .array = sizes } } });
+     }
+     if (equal(op, "bench_tui")) {
+         const width = number(field(req, "width"), 80);

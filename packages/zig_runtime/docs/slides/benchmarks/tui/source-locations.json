@@ -1,0 +1,54 @@
+{
+  "cell_interning": {
+    "source": "src/tui.zig",
+    "line": 87
+  },
+  "cell_array_reservation": {
+    "source": "src/tui.zig",
+    "line": 84
+  },
+  "frame_allocation_lifetime": {
+    "source": "src/tui.zig",
+    "line": 2511
+  },
+  "unused_annotation_walks": {
+    "source": "src/tui.zig",
+    "line": 2026
+  },
+  "draft_analysis_cache": {
+    "source": "src/tui.zig",
+    "line": 2032
+  },
+  "history_value_pretty_cache": {
+    "source": "src/tui.zig",
+    "line": 2885
+  },
+  "immutable_scope_cache": {
+    "source": "src/inference.zig",
+    "line": 81
+  },
+  "rendered_type_memoization": {
+    "source": "src/inference.zig",
+    "line": 685
+  },
+  "rendered_scope_memoization": {
+    "source": "src/inference.zig",
+    "line": 692
+  },
+  "omit_unused_scope_effect_projections": {
+    "source": "src/tui.zig",
+    "line": 2036
+  },
+  "picker_query_casefold_once": {
+    "source": "src/tui.zig",
+    "line": 860
+  },
+  "ansi_style_change_elision": {
+    "source": "src/tui.zig",
+    "line": 118
+  },
+  "buffered_jsonl_output": {
+    "source": "src/main.zig",
+    "line": 86
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "historical_bundle": {
+    "before_report": "reports/verification-20261028T201910Z-62368/benchmark.json",
+    "after_report": "reports/verification-20261028T204149Z-67462/benchmark.json",
+    "before_binary_sha256": "2cb198a80f5e89398fd79ac313732fec8d07c01b5c6a125933e449400a5dc67e",
+    "after_binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+    "before": {
+      "samples": 12800,
+      "p50_ms": 0.436866,
+      "p95_ms": 1.319125,
+      "p99_ms": 3.144902,
+      "max_ms": 61.89061,
+      "breaches_10ms": 5
+    },
+    "after": {
+      "samples": 12800,
+      "p50_ms": 0.356304,
+      "p95_ms": 1.008371,
+      "p99_ms": 2.464721,
+      "max_ms": 8.833814,
+      "breaches_10ms": 0
+    },
+    "confounds": [
+      "Same event traces, viewport,100 iterations and native/Gleam phase isolation.",
+      "Before excludes output-arena reset and paired CPU clock reads. After includes both.",
+      "Implementation bundle changes temporary layout/output lifetime and removes unused annotation fields/tree walks. Do not attribute full change to one mechanism.",
+      "Different wall-clock runs, shared managed host. No sample filtering."
+    ]
+  },
+  "native_vs_gleam": {
+    "integer-input": {
+      "native": {
+        "samples": 900,
+        "p50_ms": 0.200223,
+        "p95_ms": 0.767598,
+        "p99_ms": 1.252978,
+        "max_ms": 3.942924,
+        "mean_ms": 0.3100459511111111,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 900,
+        "p50_ms": 1.267906,
+        "p95_ms": 4.320986,
+        "p99_ms": 6.410744,
+        "max_ms": 9.818127,
+        "mean_ms": 1.6446386566666666,
+        "under_10ms": true
+      },
+      "median_speedup": 6.332469296734141,
+      "events_per_iteration": 9
+    },
+    "unicode-input": {
+      "native": {
+        "samples": 400,
+        "p50_ms": 0.308571,
+        "p95_ms": 0.743803,
+        "p99_ms": 1.03982,
+        "max_ms": 2.553829,
+        "mean_ms": 0.35972088750000003,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 400,
+        "p50_ms": 1.318571,
+        "p95_ms": 4.602991,
+        "p99_ms": 8.482489,
+        "max_ms": 32.364877,
+        "mean_ms": 1.847974685,
+        "under_10ms": false
+      },
+      "median_speedup": 4.2731526941935565,
+      "events_per_iteration": 4
+    },
+    "arithmetic": {
+      "native": {
+        "samples": 200,
+        "p50_ms": 0.484952,
+        "p95_ms": 1.095321,
+        "p99_ms": 1.463017,
+        "max_ms": 1.542497,
+        "mean_ms": 0.555809355,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 200,
+        "p50_ms": 1.318135,
+        "p95_ms": 3.597827,
+        "p99_ms": 4.879848,
+        "max_ms": 5.040461,
+        "mean_ms": 1.5343808600000002,
+        "under_10ms": true
+      },
+      "median_speedup": 2.718073128886983,
+      "events_per_iteration": 2
+    },
+    "picker": {
+      "native": {
+        "samples": 1000,
+        "p50_ms": 0.307221,
+        "p95_ms": 0.922124,
+        "p99_ms": 1.622959,
+        "max_ms": 2.691728,
+        "mean_ms": 0.412212337,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 1000,
+        "p50_ms": 2.584187,
+        "p95_ms": 7.094297,
+        "p99_ms": 9.203361,
+        "max_ms": 16.524456,
+        "mean_ms": 3.1220790860000003,
+        "under_10ms": false
+      },
+      "median_speedup": 8.41149205295211,
+      "events_per_iteration": 10
+    },
+    "history-30": {
+      "native": {
+        "samples": 6600,
+        "p50_ms": 0.400686,
+        "p95_ms": 0.946474,
+        "p99_ms": 1.60333,
+        "max_ms": 5.917891,
+        "mean_ms": 0.4825890515151515,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 6600,
+        "p50_ms": 2.431456,
+        "p95_ms": 5.767704,
+        "p99_ms": 9.697789,
+        "max_ms": 51.626896,
+        "mean_ms": 2.8792588845454548,
+        "under_10ms": false
+      },
+      "median_speedup": 6.068232980438547,
+      "events_per_iteration": 66
+    },
+    "structural-navigation": {
+      "native": {
+        "samples": 1000,
+        "p50_ms": 0.122672,
+        "p95_ms": 0.661524,
+        "p99_ms": 1.223043,
+        "max_ms": 2.519557,
+        "mean_ms": 0.22600335200000002,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 1000,
+        "p50_ms": 1.12958,
+        "p95_ms": 4.809305,
+        "p99_ms": 8.963523,
+        "max_ms": 142.615144,
+        "mean_ms": 1.894070041,
+        "under_10ms": false
+      },
+      "median_speedup": 9.208132255119343,
+      "events_per_iteration": 10
+    },
+    "nested-program-edit": {
+      "native": {
+        "samples": 1800,
+        "p50_ms": 0.173387,
+        "p95_ms": 2.081529,
+        "p99_ms": 3.240493,
+        "max_ms": 8.833814,
+        "mean_ms": 0.4025897938888889,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 1800,
+        "p50_ms": 2.36291,
+        "p95_ms": 7.58554,
+        "p99_ms": 12.720007,
+        "max_ms": 93.648821,
+        "mean_ms": 3.2768294694444444,
+        "under_10ms": false
+      },
+      "median_speedup": 13.627953652811339,
+      "events_per_iteration": 18
+    },
+    "long-cjk-input": {
+      "native": {
+        "samples": 700,
+        "p50_ms": 0.323131,
+        "p95_ms": 2.838969,
+        "p99_ms": 4.177272,
+        "max_ms": 6.010268,
+        "mean_ms": 0.6943858857142856,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 700,
+        "p50_ms": 1.460726,
+        "p95_ms": 17.089931,
+        "p99_ms": 24.083962,
+        "max_ms": 29.695803,
+        "mean_ms": 3.893583597142857,
+        "under_10ms": false
+      },
+      "median_speedup": 4.520538109930647,
+      "events_per_iteration": 7
+    },
+    "binary-value": {
+      "native": {
+        "samples": 200,
+        "p50_ms": 0.419092,
+        "p95_ms": 0.892698,
+        "p99_ms": 1.329923,
+        "max_ms": 2.395924,
+        "mean_ms": 0.498540215,
+        "under_10ms": true
+      },
+      "gleam": {
+        "samples": 200,
+        "p50_ms": 0.53269,
+        "p95_ms": 1.055825,
+        "p99_ms": 2.719908,
+        "max_ms": 3.572899,
+        "mean_ms": 0.62804275,
+        "under_10ms": true
+      },
+      "median_speedup": 1.2710574289177554,
+      "events_per_iteration": 2
+    }
+  }
+}

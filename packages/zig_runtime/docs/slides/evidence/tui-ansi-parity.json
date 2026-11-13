@@ -1,0 +1,85 @@
+{
+  "passed": true,
+  "model": "pyte0.8.2 (unsupported underline-color SGR removed before that observer only) plus exact effective-SGR-per-character/cursor trace including dim,underline colors,all modifier bits",
+  "native_binary_sha256": "c1d28826315b4e8fc353157c2f3c1c363e889a2f90a545c60980451a268a0edd",
+  "qa_binary_sha256": "43441e37b22542cb0ac4274b0a08f8b02677ba1c4583763d9ee7da876787488e",
+  "checks": [
+    {
+      "name": "empty",
+      "synthetic": false,
+      "cell_count": 1920,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 10639,
+      "after_bytes": 2251,
+      "before_sha256": "e827055c3cc876f09f5f59872106d1c64418541b3a0bfae9b1c0ba410816631d",
+      "after_sha256": "54e4eae1359ae789d4cb861d34111a2728d25241ce8e8dba65d876db801f277d"
+    },
+    {
+      "name": "arithmetic",
+      "synthetic": false,
+      "cell_count": 1920,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 9865,
+      "after_bytes": 2219,
+      "before_sha256": "3905825188b73f6a00cd91b632e6209db96c2d29013a314473ee589e2427c95b",
+      "after_sha256": "5d642b63ea7853e91cccbfd87eafefa596eece9592732cd95949d3415aca85f2"
+    },
+    {
+      "name": "unicode",
+      "synthetic": false,
+      "cell_count": 1920,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 9845,
+      "after_bytes": 2223,
+      "before_sha256": "efcd5a45697bcdfbb1d8b275cfc947264a5d37b98e0c78e51382d62e63de5867",
+      "after_sha256": "9bebdc7a32038b0b5fe4517bc0dc08be55f588837632bb713bc6ce46639c648a"
+    },
+    {
+      "name": "picker",
+      "synthetic": false,
+      "cell_count": 1920,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 19271,
+      "after_bytes": 2916,
+      "before_sha256": "a6de8219f6f685bcbb0dc20b2c8c2e86eb5a7b6ebbaf7cea133d4826e53d6337",
+      "after_sha256": "99aba341435498fc2481591c47b1865781f2b6fd606a32cacd003576488136fc"
+    },
+    {
+      "name": "nested",
+      "synthetic": false,
+      "cell_count": 1920,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 10401,
+      "after_bytes": 2235,
+      "before_sha256": "384820328a215dbb2ee4a61f8dbfe1cb6754004dfcd0748455c754a0e54a3b57",
+      "after_sha256": "04830be897e28eff9e3a30f8d66f48dea17bfb673294244535021e66503e892b"
+    },
+    {
+      "name": "history",
+      "synthetic": false,
+      "cell_count": 1920,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 10253,
+      "after_bytes": 2261,
+      "before_sha256": "a390bcd11aa3b7cf7a0209cfb62615b016d64921c97f036923df12bccab3ae8c",
+      "after_sha256": "4bee9b26b98bc9ff7718d70b3d28ab55dde15d8cccd00838385091beda2491a8"
+    },
+    {
+      "name": "synthetic-all-styles",
+      "synthetic": true,
+      "cell_count": 12,
+      "vt_cells_equal": true,
+      "extended_effective_style_trace_equal": true,
+      "before_bytes": 518,
+      "after_bytes": 161,
+      "before_sha256": "2f76a15e23c4b534fa7787516faa2856d957d4976c0c1f05ce604262bc3dc79e",
+      "after_sha256": "0cb6c19f821746554131e27e46d04fbc159a43d6a552a134690befd8071f5911"
+    }
+  ]
+}
