@@ -7,16 +7,48 @@ let message = {id: "m1", channel: "C1", thread: None({}), author: alice, text: "
 let chat = (_) -> {
   let handle_message = handlers.for_channel(info("chat"))
   let _ = assert.equal([
+    Trigger(Some("m1")),
     Submit({session: None({}), reply: Some("m1"), text: "hello", description: "[#general] alice (message m1): hello"})
   ], handle_message(ChatPosted(message)))
   let threaded = {thread: Some("root"), ..message}
   let _ = assert.equal([
+    Trigger(Some("root")),
     Submit({session: Some("root"), reply: Some("root"), text: "hello", description: "[#general, in the thread started by message root] alice (message m1): hello"})
   ], handle_message(ChatPosted(threaded)))
-  let _ = assert.equal([], handle_message(ChatReacted({message: threaded, by: alice, emoji: "books"})))
+  let _ = assert.equal([Trigger(Some("root"))], handle_message(ChatReacted({message: threaded, by: alice, emoji: "books"})))
   let bot = {id: "cloud", ..alice}
   let _ = assert.equal([], handle_message(ChatPosted({author: bot, ..message})))
   assert.equal([], handle_message(ChatReacted({message, by: bot, emoji: "books"})))
+}
+
+let submitted = (requests, text) -> {
+  let first = assert.ok(!list_pop(requests))
+  let second = assert.ok(!list_pop(first.tail))
+  match second.head {
+    Submit(work) -> { assert.equal_string(text, work.text) }
+    | (_) -> { !never(perform Abort("expected submitted work")) }
+  }
+}
+
+let slack = (_) -> {
+  let handler = handlers.for_channel(info("slack"))
+  let event = {channel: "C1", thread_ts: None({}), is_self: False({}), message: {ts: "1.2", user: Some("U1"), text: "a &amp; &lt;b&gt;"}}
+  let _ = submitted(handler(SlackMessage(event)), "a & <b>")
+  let _ = submitted(handler(SlackMessage({message: {user: None({}), ..event.message}, ..event})), "a & <b>")
+  let _ = assert.equal([], handler(SlackMessage({is_self: True({}), ..event})))
+  let reaction = {channel: "C1", thread_ts: Some("root"), is_self: False({}), message: event.message, user: "U2", reaction: "books"}
+  let _ = assert.equal([Trigger(Some("root"))], handler(SlackReaction(reaction)))
+  assert.equal([], handler(SlackReaction({is_self: True({}), ..reaction})))
+}
+
+let discord = (_) -> {
+  let handler = handlers.for_channel(info("discord"))
+  let event = {thread: None({}), is_self: False({}), message: {id: "m1", author: {id: "42"}, content: "hello"}}
+  let _ = submitted(handler(DiscordMessage(event)), "hello")
+  let _ = assert.equal([], handler(DiscordMessage({is_self: True({}), ..event})))
+  let reaction = {thread: None({}), is_self: False({}), message: event.message, user: {id: "43"}, emoji: "📚"}
+  let _ = assert.equal([Trigger(Some("m1"))], handler(DiscordReaction(reaction)))
+  assert.equal([], handler(DiscordReaction({is_self: True({}), ..reaction})))
 }
 
 let unknown = (_) -> {
@@ -25,5 +57,7 @@ let unknown = (_) -> {
 
 [
   {name: "cloud chat handler", test: chat},
+  {name: "cloud slack handler", test: slack},
+  {name: "cloud discord handler", test: discord},
   {name: "cloud unknown platform handler", test: unknown}
 ]

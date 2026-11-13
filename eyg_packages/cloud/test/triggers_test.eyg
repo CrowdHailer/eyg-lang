@@ -1,0 +1,52 @@
+let {assert} = @aok
+let triggers = import "../triggers.eyg"
+
+let message = (text) -> { {id: "m1", channel: "general", thread: None({}), text, author: {id: "U1", name: "alice", bot: False({})}} }
+
+let posted = (text) -> { ChatPosted(message(text)) }
+
+let reacted = (text, emoji) -> {
+  ChatReacted({message: message(text), emoji, by: {id: "U2", name: "bob", bot: False({})}})
+}
+
+let test_posted = (_) -> {
+  let _ = assert.equal(True({}), triggers.posted(posted("hi")))
+  let _ = assert.equal(False({}), triggers.posted(reacted("hi", "books")))
+  {}
+}
+
+let test_reaction = (_) -> {
+  let books = triggers.reaction("books")
+  let _ = assert.equal(True({}), books(reacted("hi", "books")))
+  let _ = assert.equal(False({}), books(reacted("hi", "eyes")))
+  let _ = assert.equal(False({}), books(posted("books")))
+  {}
+}
+
+let test_contains = (_) -> {
+  let please = triggers.contains("please")
+  let _ = assert.equal(True({}), please(posted("yes please")))
+  let _ = assert.equal(False({}), please(posted("no thanks")))
+  let _ = assert.equal(False({}), please(reacted("yes please", "books")))
+  {}
+}
+
+let test_native_platforms = (_) -> {
+  let slack = SlackMessage({message: {text: "yes please"}})
+  let discord = DiscordMessage({message: {content: "yes please"}})
+  let _ = assert.equal(True({}), triggers.posted(slack))
+  let _ = assert.equal(True({}), triggers.posted(discord))
+  let _ = assert.equal(True({}), triggers.contains("please")(slack))
+  let _ = assert.equal(True({}), triggers.contains("please")(discord))
+  let _ = assert.equal(True({}), triggers.reaction("books")(SlackReaction({reaction: "books"})))
+  let _ = assert.equal(True({}), triggers.reaction("📚")(DiscordReaction({emoji: "📚"})))
+  let _ = assert.equal(False({}), triggers.reaction("books")(DiscordReaction({emoji: "📚"})))
+  {}
+}
+
+[
+  {name: "triggers retain native platform values", test: test_native_platforms},
+  {name: "triggers posted", test: test_posted},
+  {name: "triggers reaction", test: test_reaction},
+  {name: "triggers contains", test: test_contains}
+]

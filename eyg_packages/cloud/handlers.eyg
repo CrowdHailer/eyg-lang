@@ -12,7 +12,7 @@ let submit = (channel, session, id, author, text) -> {
   let description = !list_fold([
     "[#", channel, suffix, "] ", author, " (message ", id, "): ", text
   ], "", (part, acc) -> { !string_append(acc, part) })
-  [Submit({session, reply, text, description})]
+  [Trigger(reply), Submit({session, reply, text, description})]
 }
 
 let chat = (info) -> {
@@ -26,7 +26,49 @@ let chat = (info) -> {
     ChatReacted(reaction) -> {
       match !equal(reaction.by.id, "cloud") {
         True(_) -> { [] }
-        False(_) -> { [] }
+        False(_) -> { [Trigger(thread(reaction.message.thread, reaction.message.id))] }
+      }
+    }
+  }
+}
+
+let slack = (info) -> {
+  match {
+    SlackMessage(event) -> {
+      match event.is_self {
+        True(_) -> { [] }
+        False(_) -> {
+          let user = match event.message.user { Some(id) -> { id } None(_) -> { "" } }
+          let author = !string_append("<@", !string_append(user, ">"))
+          let text = !string_replace(!string_replace(!string_replace(event.message.text, "&lt;", "<"), "&gt;", ">"), "&amp;", "&")
+          submit(info.name, event.thread_ts, event.message.ts, author, text)
+        }
+      }
+    }
+    SlackReaction(event) -> {
+      match event.is_self {
+        True(_) -> { [] }
+        False(_) -> { [Trigger(thread(event.thread_ts, event.message.ts))] }
+      }
+    }
+  }
+}
+
+let discord = (info) -> {
+  match {
+    DiscordMessage(event) -> {
+      match event.is_self {
+        True(_) -> { [] }
+        False(_) -> {
+          let author = !string_append("<@", !string_append(event.message.author.id, ">"))
+          submit(info.name, event.thread, event.message.id, author, event.message.content)
+        }
+      }
+    }
+    DiscordReaction(event) -> {
+      match event.is_self {
+        True(_) -> { [] }
+        False(_) -> { [Trigger(thread(event.thread, event.message.id))] }
       }
     }
   }
@@ -35,8 +77,18 @@ let chat = (info) -> {
 let for_channel = (info) -> {
   match !equal(info.platform, "chat") {
     True(_) -> { chat(info) }
-    False(_) -> { (_) -> { [] } }
+    False(_) -> {
+      match !equal(info.platform, "slack") {
+        True(_) -> { slack(info) }
+        False(_) -> {
+          match !equal(info.platform, "discord") {
+            True(_) -> { discord(info) }
+            False(_) -> { (_) -> { [] } }
+          }
+        }
+      }
+    }
   }
 }
 
-{chat, for_channel}
+{chat, slack, discord, for_channel}

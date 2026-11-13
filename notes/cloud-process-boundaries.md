@@ -14,5 +14,6 @@ The cloud package therefore sends only strings, Gleam data, subjects and native 
 Each process that runs EYG code evaluates the workspace configuration itself with a `config.Loader`.
 Evaluating `workspace.eyg` takes milliseconds and has the benefit that configuration changes apply to the next turn without a restart.
 
-Values from EYG programs that must cross a process boundary, for example a trigger's script, are kept as source text.
+Values from EYG programs that must cross a process boundary are kept as source text,
+or captured with `eyg/interpreter/capture`, which keeps only the variables a function uses, as trigger patterns and scripts are.
 Capturing only free variables in interpreter closures would remove this restriction.

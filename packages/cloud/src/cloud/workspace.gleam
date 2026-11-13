@@ -17,6 +17,7 @@ import cloud/handler
 import cloud/invocation
 import cloud/session
 import cloud/shell
+import cloud/trigger.{type Trigger}
 import cloud/work
 import eyg/interpreter/simple_debug
 import gleam/dict.{type Dict}
@@ -34,14 +35,30 @@ pub type Message {
   Inbound(channel.Event)
   /// A file in the workspace's file system changed.
   FileChanged(files.Change)
+  AddTrigger(
+    channel: config.ChannelInfo,
+    trigger: Trigger,
+    reply: Subject(Result(Nil, String)),
+  )
+  UpdateTrigger(
+    channel: config.ChannelInfo,
+    name: String,
+    update: execute.TriggerUpdate,
+    reply: Subject(Result(Nil, String)),
+  )
+  ListTriggers(channel: config.ChannelInfo, reply: Subject(List(Trigger)))
 }
 
 type State {
   State(
+    self: Subject(Message),
     load: config.Loader,
     platforms: Dict(String, channel.Outbound),
     sessions: Dict(String, Subject(session.Message)),
     files: Subject(files.Message),
+    /// Triggers per channel, keyed by `platform:channel`.
+    /// A channel's configured triggers are installed when its first event arrives.
+    triggers: Dict(String, List(Trigger)),
     complete: agent.Completer,
   )
 }
@@ -64,7 +81,15 @@ pub fn start_with(
       process.new_selector()
       |> process.select(self)
       |> process.select_map(changes, FileChanged)
-    State(load:, platforms: dict.new(), sessions: dict.new(), files:, complete:)
+    State(
+      self:,
+      load:,
+      platforms: dict.new(),
+      sessions: dict.new(),
+      files:,
+      triggers: dict.new(),
+      complete:,
+    )
     |> actor.initialised
     |> actor.selecting(selector)
     |> actor.returning(self)
@@ -88,6 +113,50 @@ fn handle(state: State, message: Message) -> actor.Next(State, Message) {
       dict.each(state.sessions, fn(_key, session) {
         process.send(session, session.Changed(change))
       })
+      state
+    }
+    AddTrigger(channel: info, trigger:, reply:) -> {
+      // Configured triggers are installed first, so they are not lost.
+      let state = install(state, info)
+      let channel = trigger_key(info)
+      let triggers = channel_triggers(state, channel)
+      case list.any(triggers, fn(t) { t.name == trigger.name }) {
+        True -> {
+          process.send(
+            reply,
+            Error("a trigger named " <> trigger.name <> " exists"),
+          )
+          state
+        }
+        False -> {
+          process.send(reply, Ok(Nil))
+          set_triggers(state, channel, list.append(triggers, [trigger]))
+        }
+      }
+    }
+    UpdateTrigger(channel: info, name:, update:, reply:) -> {
+      let state = install(state, info)
+      let channel = trigger_key(info)
+      let triggers = channel_triggers(state, channel)
+      case list.any(triggers, fn(t) { t.name == name }) {
+        False -> {
+          process.send(reply, Error("no trigger named " <> name))
+          state
+        }
+        True -> {
+          process.send(reply, Ok(Nil))
+          let triggers = case update {
+            execute.Delete -> list.filter(triggers, fn(t) { t.name != name })
+            execute.Stop -> set_active(triggers, name, False)
+            execute.Start -> set_active(triggers, name, True)
+          }
+          set_triggers(state, channel, triggers)
+        }
+      }
+    }
+    ListTriggers(channel: info, reply:) -> {
+      let state = install(state, info)
+      process.send(reply, channel_triggers(state, trigger_key(info)))
       state
     }
   }
@@ -114,6 +183,7 @@ fn inbound(state: State, event: channel.Event) -> State {
           state
         }
         Ok(requests) -> {
+          let state = install(state, info)
           list.fold(requests, state, fn(state, request) {
             perform_work(state, request, event, outbound, info)
           })
@@ -130,7 +200,7 @@ fn perform_work(
   outbound,
   info,
 ) -> State {
-  let channel.Incoming(origin, _) = event
+  let channel.Incoming(origin, value) = event
   case request {
     work.Submit(session, reply, text, description) -> {
       let requests = case string.trim(text), invocation.parse(text) {
@@ -147,6 +217,11 @@ fn perform_work(
       list.fold(requests, state, fn(state, request) {
         perform_work(state, request, event, outbound, info)
       })
+    }
+    work.Trigger(thread) -> {
+      let conversation = channel.Conversation(..origin, thread:)
+      run_triggers(state, value, conversation, outbound, info)
+      state
     }
     work.Post(thread, text) -> {
       let conversation = channel.Conversation(..origin, thread:)
@@ -236,6 +311,94 @@ fn channel_info(outbound: channel.Outbound, conversation: Conversation) {
   )
 }
 
+fn trigger_key(info: config.ChannelInfo) {
+  info.platform <> ":" <> info.id
+}
+
+/// Install a channel's configured triggers the first time the channel is seen.
+fn install(state: State, info: config.ChannelInfo) -> State {
+  let key = trigger_key(info)
+  case dict.has_key(state.triggers, key) {
+    True -> state
+    False -> {
+      let configured = {
+        use workspace <- result.try(state.load())
+        use channel <- result.map(config.channel(workspace, info))
+        channel.triggers
+      }
+      case configured {
+        Ok(triggers) -> set_triggers(state, key, triggers)
+        Error(reason) -> {
+          io.println_error("#" <> info.name <> " configuration: " <> reason)
+          state
+        }
+      }
+    }
+  }
+}
+
+fn channel_triggers(state: State, key) {
+  dict.get(state.triggers, key) |> result.unwrap([])
+}
+
+fn set_triggers(state: State, key, triggers) {
+  State(..state, triggers: dict.insert(state.triggers, key, triggers))
+}
+
+fn set_active(triggers: List(Trigger), name, active) {
+  list.map(triggers, fn(t) {
+    case t.name == name {
+      True -> trigger.Trigger(..t, active:)
+      False -> t
+    }
+  })
+}
+
+/// Run the script of each active trigger whose pattern matches the event, in the event message's thread.
+/// Each trigger is matched and run in its own process.
+fn run_triggers(state: State, event, conversation, outbound, info) -> Nil {
+  channel_triggers(state, trigger_key(info))
+  |> list.filter(fn(t) { t.active })
+  |> list.each(fn(t) {
+    let host = host(state, outbound, conversation, info)
+    let #(load, complete) = #(state.load, state.complete)
+    process.spawn(fn() {
+      let location =
+        location(info, conversation)
+        <> "\nYou were started by the trigger "
+        <> t.name
+        <> "."
+      let outcome = {
+        use shell <- result.try(shell.prepare(
+          load,
+          info,
+          host,
+          location,
+          complete,
+        ))
+        use matched <- result.try(
+          shell.matches(shell, t.pattern, event)
+          |> result.map_error(fn(reason) { "pattern: " <> reason }),
+        )
+        case matched {
+          True -> {
+            let execute.Run(result:, ..) =
+              shell.run_script(shell, t.script, event)
+            result.replace(result, True)
+          }
+          False -> Ok(False)
+        }
+      }
+      case outcome {
+        Ok(True) -> io.println("trigger " <> t.name <> " ran in #" <> info.name)
+        Ok(False) -> Nil
+        Error(reason) ->
+          io.println_error("trigger " <> t.name <> " failed: " <> reason)
+      }
+    })
+  })
+}
+
 fn session_for(
   state: State,
   conversation: Conversation,
@@ -273,12 +436,23 @@ fn option_thread(conversation: Conversation) {
   }
 }
 
-/// The host for programs run from a conversation, file changes are made as the channel.
+/// The host for programs run from a conversation.
+/// File changes are made as the channel and triggers are added to the channel.
 fn host(state: State, outbound: channel.Outbound, conversation, info) {
   let config.ChannelInfo(name:, ..) = info
+  let self = state.self
+  let triggers =
+    execute.Triggers(
+      add: fn(t) { process.call(self, 5000, AddTrigger(info, t, _)) },
+      update: fn(name, update) {
+        process.call(self, 5000, UpdateTrigger(info, name, update, _))
+      },
+      list: fn() { process.call(self, 5000, ListTriggers(info, _)) },
+    )
   execute.channel_host(
     outbound.post(conversation, _),
     execute.files(state.files, "#" <> name),
+    triggers,
   )
 }
 

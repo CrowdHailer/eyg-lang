@@ -1,0 +1,36 @@
+// Pure patterns over the native events published by each chat plugin.
+let false = (_) -> { False({}) }
+
+let posted = match {
+  ChatPosted(_) -> { True({}) }
+  SlackMessage(_) -> { True({}) }
+  DiscordMessage(_) -> { True({}) }
+  | false
+}
+
+let reaction = (emoji) -> {
+  match {
+    ChatReacted(event) -> { !equal(event.emoji, emoji) }
+    SlackReaction(event) -> { !equal(event.reaction, emoji) }
+    DiscordReaction(event) -> { !equal(event.emoji, emoji) }
+    | false
+  }
+}
+
+let includes = (text, part) -> {
+  match !string_split_once(text, part) {
+    Ok(_) -> { True({}) }
+    Error(_) -> { False({}) }
+  }
+}
+
+let contains = (text) -> {
+  match {
+    ChatPosted(message) -> { includes(message.text, text) }
+    SlackMessage(event) -> { includes(event.message.text, text) }
+    DiscordMessage(event) -> { includes(event.message.content, text) }
+    | false
+  }
+}
+
+{posted, reaction, contains}

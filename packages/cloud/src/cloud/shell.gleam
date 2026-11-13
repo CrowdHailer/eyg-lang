@@ -1,7 +1,7 @@
 //// A channel shell prepared for the current process.
 ////
-//// Every program run for a channel, posted by a person or run by the channel's agent,
-//// is run with the channel's `channel_shell` policy.
+//// Every program run for a channel, posted by a person, run by the channel's agent,
+//// run by a trigger or by a subagent, is run with the channel's `channel_shell` policy.
 //// Preparing a shell evaluates the workspace configuration in the current process,
 //// see `notes/cloud-process-boundaries.md`.
 
@@ -9,7 +9,11 @@ import cloud/agent
 import cloud/beam/execute
 import cloud/config
 import cloud/skills
+import cloud/trigger
+import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
 import gleam/option
@@ -31,6 +35,7 @@ pub type Shell {
 }
 
 /// Prepare the shell for a channel.
+/// The host's subagents are run in the same shell, a subagent cannot start another.
 pub fn prepare(
   load: config.Loader,
   info: config.ChannelInfo,
@@ -41,7 +46,11 @@ pub fn prepare(
   use workspace <- result.try(load())
   use channel <- result.try(config.channel(workspace, info))
   let state = execute.State(..workspace.state, root: option.None)
-  Ok(Shell(workspace:, channel:, host:, state:, location:, completer:))
+  let shell = Shell(workspace:, channel:, host:, state:, location:, completer:)
+  let subagent = fn(task) {
+    turn(shell, [], task) |> result.map(agent.last_reply)
+  }
+  Ok(Shell(..shell, host: execute.Host(..host, subagent:)))
 }
 
 /// Run a program, the variables in scope are given.
@@ -51,6 +60,54 @@ pub fn run(
   scope: List(#(String, execute.Value)),
 ) -> execute.Run {
   execute.run(code, scope, shell.channel.shell, shell.host, shell.state).0
+}
+
+/// Run a trigger's script for an event.
+pub fn run_script(
+  shell: Shell,
+  script: trigger.Script,
+  event: execute.Value,
+) -> execute.Run {
+  let scope = [#("event", event)]
+  case script {
+    trigger.Source(code) -> run(shell, code, scope)
+    trigger.Function(function) -> {
+      let call = #(
+        ir.Apply(function, #(ir.Variable("event"), #(0, 0))),
+        #(0, 0),
+      )
+      execute.run_expression(
+        call,
+        scope,
+        shell.channel.shell,
+        shell.host,
+        shell.state,
+      ).0
+    }
+  }
+}
+
+/// Call a trigger's pattern with an event.
+/// Patterns are pure, a pattern that performs an effect fails.
+pub fn matches(
+  shell: Shell,
+  pattern: trigger.Pattern,
+  event: execute.Value,
+) -> Result(Bool, String) {
+  let argument = #(event, #(0, 0))
+  let #(function, state) =
+    execute.pure_loop(expression.execute(pattern, []), shell.state)
+  let #(returned, _state) = case function {
+    Ok(function) ->
+      execute.pure_loop(expression.call(function, [argument]), state)
+    Error(debug) -> #(Error(debug), state)
+  }
+  case returned {
+    Ok(v.Tagged("True", _)) -> Ok(True)
+    Ok(v.Tagged("False", _)) -> Ok(False)
+    Ok(value) -> Error("pattern returned " <> simple_debug.inspect(value))
+    Error(#(reason, _, _, _)) -> Error(simple_debug.describe(reason))
+  }
 }
 
 /// Run one turn of an agent working in the shell.

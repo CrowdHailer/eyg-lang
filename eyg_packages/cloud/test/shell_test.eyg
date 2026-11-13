@@ -57,6 +57,12 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.add_trigger({name: "x", pattern: (_) -> { True({}) }, script: (_) -> { {} }}))
+  let _ = expect_reject(s.start_trigger("x"))
+  let _ = expect_reject(s.stop_trigger("x"))
+  let _ = expect_reject(s.delete_trigger("x"))
+  let _ = expect_reject(s.list_triggers({}))
+  let _ = expect_reject(s.delegate("task"))
   let _ = expect_reject(s.append_file({path: "/a", contents: !string_to_binary("x")}))
   let _ = expect_reject(s.cwd({}))
   let _ = expect_reject(s.delete_file("/a"))

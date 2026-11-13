@@ -14,7 +14,11 @@ pub fn state() {
 /// Evaluate EYG source to a value, for building policies in tests.
 pub fn evaluate(code) {
   let host =
-    execute.channel_host(fn(_) { Error("no posting") }, execute.no_files())
+    execute.channel_host(
+      fn(_) { Error("no posting") },
+      execute.no_files(),
+      execute.no_triggers(),
+    )
   let #(execute.Run(result:, ..), _) =
     execute.run(code, [], execute.unrestricted(), host, state())
   let assert Ok(Some(value)) = result
@@ -35,6 +39,7 @@ fn recording_host() {
         Ok("m1")
       },
       execute.no_files(),
+      execute.no_triggers(),
     )
   #(host, posts)
 }
@@ -165,6 +170,7 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
       execute.channel_host(
         fn(_) { Error("Configuration cannot post") },
         execute.no_files(),
+        execute.no_triggers(),
       ),
       state,
     )
@@ -177,12 +183,7 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
 }
 
 pub fn configuration_reads_secrets_test() {
-  let host =
-    execute.Host(
-      post: fn(_) { Error("no posting") },
-      secret: fn(name) { Ok("value of " <> name) },
-      files: execute.no_files(),
-    )
+  let host = execute.configuration_host(fn(name) { Ok("value of " <> name) })
   let #(execute.Run(result:, ..), _) =
     execute.run_configuration(
       "perform Secret(\"KEY\")",
@@ -194,12 +195,7 @@ pub fn configuration_reads_secrets_test() {
 }
 
 pub fn channels_cannot_read_secrets_test() {
-  let host =
-    execute.Host(
-      post: fn(_) { Error("no posting") },
-      secret: fn(_) { Ok("leaked") },
-      files: execute.no_files(),
-    )
+  let host = execute.configuration_host(fn(_) { Ok("leaked") })
   let shell = policy("cloud.reject_all")
   let #(execute.Run(result:, ..), _) =
     execute.run("perform Secret(\"KEY\")", [], shell, host, state())

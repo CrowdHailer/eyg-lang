@@ -19,12 +19,16 @@ let pass = policy.pass
 // Start from this record and overwrite the fields to restrict.
 // File paths given to gates are absolute paths in the workspace's shared file system.
 let everything = {
+  add_trigger: pass,
   append_file: pass,
   cwd: pass,
+  delegate: pass,
   delete_file: pass,
+  delete_trigger: pass,
   env: pass,
   fetch: pass,
   flip: pass,
+  list_triggers: pass,
   make_directory: pass,
   now: pass,
   post: pass,
@@ -34,6 +38,8 @@ let everything = {
   sleep: pass,
   standard_error: pass,
   standard_out: pass,
+  start_trigger: pass,
+  stop_trigger: pass,
   write_file: pass,
   ..reject_all
 }

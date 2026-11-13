@@ -6,6 +6,7 @@
 
 import cloud/files
 import cloud/system
+import cloud/trigger
 import eyg/analysis/type_/isomorphic as t
 import eyg/hub/cache
 import eyg/interpreter/break
@@ -78,6 +79,14 @@ pub type Effect {
   Post(text: String)
   /// Read a secret from the workspace's secrets store, only available to the workspace configuration.
   Secret(name: String)
+  /// Install a trigger in the program's channel.
+  AddTrigger(trigger.Trigger)
+  StopTrigger(name: String)
+  StartTrigger(name: String)
+  DeleteTrigger(name: String)
+  ListTriggers
+  /// Run a subagent with the channel shell to complete a task, returns its final reply.
+  Delegate(task: String)
 }
 
 /// Implementations of effects that need the cloud's services.
@@ -86,7 +95,37 @@ pub type Host {
     post: fn(String) -> Result(String, String),
     secret: fn(String) -> Result(String, String),
     files: Files,
+    triggers: Triggers,
+    subagent: fn(String) -> Result(String, String),
   )
+}
+
+/// The triggers of the program's channel.
+pub type Triggers {
+  Triggers(
+    add: fn(trigger.Trigger) -> Result(Nil, String),
+    /// Stop, start or delete the named trigger.
+    update: fn(String, TriggerUpdate) -> Result(Nil, String),
+    list: fn() -> List(trigger.Trigger),
+  )
+}
+
+pub type TriggerUpdate {
+  Stop
+  Start
+  Delete
+}
+
+pub fn no_triggers() -> Triggers {
+  Triggers(
+    add: fn(_) { Error("Triggers are not available") },
+    update: fn(_, _) { Error("Triggers are not available") },
+    list: fn() { [] },
+  )
+}
+
+fn no_subagent(_task) {
+  Error("Delegation is not available")
 }
 
 /// Access to the workspace's file system, paths are absolute.
@@ -122,11 +161,32 @@ pub fn no_files() -> Files {
 }
 
 /// A host for programs run from a channel, they have no access to secrets.
+/// Delegation is added when the channel shell is prepared, see `cloud/shell`.
 pub fn channel_host(
   post: fn(String) -> Result(String, String),
   files: Files,
+  triggers: Triggers,
 ) -> Host {
-  Host(post:, secret: fn(_) { Error("Secrets are not available") }, files:)
+  Host(
+    post:,
+    secret: fn(_) { Error("Secrets are not available") },
+    files:,
+    triggers:,
+    subagent: no_subagent,
+  )
+}
+
+/// A host with only secrets, for evaluating configuration.
+pub fn configuration_host(
+  secret: fn(String) -> Result(String, String),
+) -> Host {
+  Host(
+    post: fn(_) { Error("Configuration cannot post") },
+    secret:,
+    files: no_files(),
+    triggers: no_triggers(),
+    subagent: no_subagent,
+  )
 }
 
 pub type Policy =
@@ -143,7 +203,51 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
   computer.effects()
   |> interface.take(computer_effects)
   |> list.map(touch_grass.map(_, Computer))
-  |> list.append([post()])
+  |> list.append([
+    post(),
+    add_trigger(),
+    trigger_update("StopTrigger", StopTrigger),
+    trigger_update("StartTrigger", StartTrigger),
+    trigger_update("DeleteTrigger", DeleteTrigger),
+    list_triggers(),
+    delegate_interface(),
+  ])
+}
+
+fn add_trigger() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "AddTrigger",
+    lift_type: trigger.type_(),
+    lower_type: t.result(t.unit, t.String),
+    decode: cast.map(trigger.decode, AddTrigger),
+  )
+}
+
+fn trigger_update(name, effect) -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name:,
+    lift_type: t.String,
+    lower_type: t.result(t.unit, t.String),
+    decode: cast.map(cast.as_string, effect),
+  )
+}
+
+fn list_triggers() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "ListTriggers",
+    lift_type: t.unit,
+    lower_type: t.List(t.String),
+    decode: cast.as_unit(_, ListTriggers),
+  )
+}
+
+fn delegate_interface() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Delegate",
+    lift_type: t.String,
+    lower_type: t.result(t.String, t.String),
+    decode: cast.map(cast.as_string, Delegate),
+  )
 }
 
 /// Every effect available to the workspace configuration, the channel effects and `Secret`.
@@ -172,14 +276,18 @@ fn post() -> interface.Interface(Effect, Meta) {
 /// Deterministic computations over supplied values bypass the policy.
 /// Every other effect is available only if the policy has a gate for it.
 pub const rules = [
+  #("AddTrigger", policy.PolicyField("add_trigger")),
   #("AppendFile", policy.PolicyField("append_file")),
   #("CWD", policy.PolicyField("cwd")),
   #("DecodeJSON", policy.Unchecked),
+  #("Delegate", policy.PolicyField("delegate")),
   #("DeleteFile", policy.PolicyField("delete_file")),
+  #("DeleteTrigger", policy.PolicyField("delete_trigger")),
   #("Env", policy.PolicyField("env")),
   #("Fetch", policy.PolicyField("fetch")),
   #("Flip", policy.PolicyField("flip")),
   #("Hash", policy.Unchecked),
+  #("ListTriggers", policy.PolicyField("list_triggers")),
   #("MakeDirectory", policy.PolicyField("make_directory")),
   #("Now", policy.PolicyField("now")),
   #("Post", policy.PolicyField("post")),
@@ -187,8 +295,10 @@ pub const rules = [
   #("ReadDirectory", policy.PolicyField("read_directory")),
   #("ReadFile", policy.PolicyField("read_file")),
   #("Sleep", policy.PolicyField("sleep")),
+  #("StartTrigger", policy.PolicyField("start_trigger")),
   #("StandardError", policy.PolicyField("standard_error")),
   #("StandardOut", policy.PolicyField("standard_out")),
+  #("StopTrigger", policy.PolicyField("stop_trigger")),
   #("WriteFile", policy.PolicyField("write_file")),
 ]
 
@@ -290,6 +400,26 @@ fn run_with_lookup(code, scope, policy, host, state, resolve) {
         resolve,
       )
   }
+}
+
+/// Run captured scripts with the same session import resolver as source programs.
+pub fn run_expression(
+  source: ir.Node(Meta),
+  scope: List(#(String, Value)),
+  policy: Policy,
+  host: Host,
+  state: State,
+) -> #(Run, State) {
+  loop(
+    expression.execute(source, scope),
+    state,
+    policy,
+    host,
+    [],
+    fn(reference, state) {
+      program_reference(reference, state, policy, host, [])
+    },
+  )
 }
 
 fn loop(
@@ -436,6 +566,18 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
   case effect {
     Post(text) -> Ok(#(result_string(host.post(text)), []))
     Secret(name) -> Ok(#(result_string(host.secret(name)), []))
+    AddTrigger(trigger) -> Ok(#(result_unit(host.triggers.add(trigger)), []))
+    StopTrigger(name) ->
+      Ok(#(result_unit(host.triggers.update(name, Stop)), []))
+    StartTrigger(name) ->
+      Ok(#(result_unit(host.triggers.update(name, Start)), []))
+    DeleteTrigger(name) ->
+      Ok(#(result_unit(host.triggers.update(name, Delete)), []))
+    ListTriggers -> {
+      let described = list.map(host.triggers.list(), trigger.describe)
+      Ok(#(v.LinkedList(list.map(described, v.String)), []))
+    }
+    Delegate(task) -> Ok(#(result_string(host.subagent(task)), []))
     Computer(effect) ->
       case effect {
         computer.StandardOut(text) ->
@@ -484,6 +626,13 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
 
 fn no_output(value) {
   Ok(#(value, []))
+}
+
+fn result_unit(result) {
+  case result {
+    Ok(Nil) -> v.ok(v.unit())
+    Error(reason) -> v.error(v.String(reason))
+  }
 }
 
 fn result_string(result) {

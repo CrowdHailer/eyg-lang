@@ -2,7 +2,9 @@ let aok = @aok
 let list = @standard.list
 let tests = list.flatten([
   import "./test/shell_test.eyg",
-  import "./test/handlers_test.eyg"
+  import "./test/handlers_test.eyg",
+  import "./test/secrets_test.eyg",
+  import "./test/triggers_test.eyg"
 ])
 
 {

@@ -26,6 +26,8 @@ pub type Work {
   )
   Reset(session: Option(String))
   Post(thread: Option(String), text: String)
+  /// Offer the unmodified native input to this channel's triggers.
+  Trigger(thread: Option(String))
 }
 
 pub fn type_() {
@@ -44,6 +46,7 @@ pub fn type_() {
       ]),
     ),
     #("Reset", session),
+    #("Trigger", session),
     #("Post", t.record([#("thread", session), #("text", t.String)])),
     #(
       "Run",
@@ -70,6 +73,7 @@ pub fn decode(value) -> Result(List(Work), String) {
         }
       }
       "Reset" -> thread(value) |> result.map(Reset)
+      "Trigger" -> thread(value) |> result.map(Trigger)
       "Post" -> {
         use thread <- result.try(cast.field("thread", thread, value))
         use text <- result.map(cast.field("text", cast.as_string, value))

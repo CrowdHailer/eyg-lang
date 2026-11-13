@@ -129,7 +129,12 @@ pub fn secrets_are_placeholders_in_channels_test() {
       input_type: t.record([#("text", t.String)]),
     )
   let assert Ok(config.Channel(shell:, ..)) = config.channel(workspace, info)
-  let host = execute.channel_host(fn(_) { Ok("m") }, execute.no_files())
+  let host =
+    execute.channel_host(
+      fn(_) { Ok("m") },
+      execute.no_files(),
+      execute.no_triggers(),
+    )
   let #(execute.Run(result:, ..), _) =
     execute.run(
       "perform Env(\"GITHUB_TOKEN\")",

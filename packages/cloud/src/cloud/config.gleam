@@ -12,7 +12,8 @@
 ////
 //// - `channel_shell` the policy for every program run from the channel,
 ////   by people, by the channel's agent and by anything the channel starts.
-//// - `readme` context given to the channel's agent.
+//// - `readme` optional, context given to the channel's agent.
+//// - `triggers` optional, a list of `{name, pattern, script}` triggers installed in the channel, see `cloud/trigger`.
 //// - `handle` a pure function from the plugin's native input type to a list of work.
 ////
 //// The configuration is trusted, it is evaluated with every effect available
@@ -20,6 +21,7 @@
 
 import cloud/beam/execute
 import cloud/handler
+import cloud/trigger
 import eyg/analysis/type_/binding
 import eyg/interpreter/cast
 import eyg/interpreter/expression
@@ -69,7 +71,12 @@ pub type ChannelInfo {
 }
 
 pub type Channel {
-  Channel(handle: execute.Value, shell: execute.Policy, readme: String)
+  Channel(
+    handle: execute.Value,
+    shell: execute.Policy,
+    readme: String,
+    triggers: List(trigger.Trigger),
+  )
 }
 
 /// Evaluate a workspace file, its relative imports are read from its directory.
@@ -86,12 +93,7 @@ pub fn load(
     }),
   )
   let state = execute.State(..state, root: Some(filepath.directory_name(file)))
-  let host =
-    execute.Host(
-      post: fn(_) { Error("Configuration cannot post") },
-      secret:,
-      files: execute.no_files(),
-    )
+  let host = execute.configuration_host(secret)
   let #(execute.Run(result:, ..), state) =
     execute.run_configuration(code, execute.configuration(), host, state)
   case result {
@@ -146,7 +148,11 @@ pub fn channel(
         |> result.map_error(fn(reason) { "channel_shell: " <> reason }),
       )
       use readme <- result.try(optional_string("readme", value))
-      Ok(Channel(handle:, shell:, readme:))
+      use triggers <- result.try(case cast.field("triggers", Ok, value) {
+        Ok(_) -> field("triggers", cast.as_list_of(_, trigger.decode), value)
+        Error(_) -> Ok([])
+      })
+      Ok(Channel(handle:, shell:, readme:, triggers:))
     }
     Error(#(reason, _, _, _)) ->
       Error("channel " <> name <> ": " <> simple_debug.describe(reason))

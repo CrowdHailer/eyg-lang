@@ -2,5 +2,7 @@ let platform = import "./platform.eyg"
 {
   reject_all: platform.reject_all,
   handlers: import "./handlers.eyg",
-  shell: import "./shell.eyg"
+  shell: import "./shell.eyg",
+  secrets: import "./secrets.eyg",
+  triggers: import "./triggers.eyg"
 }

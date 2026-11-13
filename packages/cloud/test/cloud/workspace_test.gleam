@@ -1,10 +1,9 @@
 import cloud/channel
 import cloud/config
-import cloud/data
 import cloud/execute_test
+import cloud/plugins/chat_input
 import cloud/test_helpers
 import cloud/workspace
-import eyg/analysis/type_/isomorphic as t
 import gleam/dict
 import gleam/erlang/process
 import gleam/list
@@ -21,11 +20,19 @@ fn message(id, text) {
 }
 
 fn native_message(id, text, own) {
-  data.record([
-    #("id", data.string(id)),
-    #("text", data.string(text)),
-    #("own", data.bool(own)),
-  ])
+  chat_input.posted(chat_message(id, text, own))
+}
+
+fn chat_message(id, text, own) {
+  let author = case own {
+    True -> chat_input.Author("cloud", "cloud", True)
+    False -> chat_input.Author("U1", "alice", False)
+  }
+  chat_input.Message(id, "C1", None, author, text)
+}
+
+fn reaction(message, by, emoji) {
+  channel.Incoming(general, chat_input.reacted(message, by, emoji))
 }
 
 /// A platform that records everything posted to it.
@@ -33,11 +40,7 @@ fn platform() {
   let posts = process.new_subject()
   let outbound =
     channel.Outbound(
-      input_type: t.record([
-        #("id", t.String),
-        #("text", t.String),
-        #("own", t.boolean),
-      ]),
+      input_type: chat_input.input_type(),
       channels: fn() { Ok([#("C1", "general")]) },
       post: fn(conversation, text) {
         process.send(posts, #(conversation, text))
@@ -92,7 +95,7 @@ fn detach(workspace) {
 fn start(completions) {
   let load =
     config.loader(
-      "test/fixtures/workspace_native.eyg",
+      "test/fixtures/chat_workspace.eyg",
       test_helpers.state(),
       fn(_) { Error("no secrets") },
     )
@@ -147,7 +150,7 @@ pub fn direct_invocations_run_with_the_shell_test() {
 pub fn new_forgets_the_conversation_test() {
   let load =
     config.loader(
-      "test/fixtures/workspace_native.eyg",
+      "test/fixtures/chat_workspace.eyg",
       test_helpers.state(),
       fn(_) { Error("no secrets") },
     )
@@ -182,13 +185,17 @@ fn custom_loader(handle, policy) {
   fn() {
     let assert Ok(config) =
       config.load(
-        "test/fixtures/workspace_native.eyg",
+        "test/fixtures/chat_workspace.eyg",
         test_helpers.state(),
         fn(_) { Error("no secrets") },
       )
     let channel =
       execute_test.evaluate(
-        "(_) -> { {handle: " <> handle <> ", channel_shell: " <> policy <> "} }",
+        "let on_message = "
+        <> handle
+        <> "\nlet channel = (_) -> { {handle: match { ChatPosted(message) -> { on_message(message) } ChatReacted(_) -> { [] } }, channel_shell: "
+        <> policy
+        <> "} }\nchannel",
       )
     Ok(config.Workspace(..config, channel:))
   }
@@ -327,4 +334,73 @@ pub fn changes_to_files_read_are_noted_test() {
   let assert Ok(input) = process.receive(seen, 1000)
   assert string.contains(input, "/skills/greet/SKILL.md changed by #general")
   assert string.ends_with(input, "[#notes] alice (message m3): again")
+}
+
+fn invoke(workspace, id, code) {
+  let invocation = message(id, "```eyg\n" <> code <> "\n```")
+  process.send(workspace, workspace.Inbound(invocation))
+}
+
+fn thread(id) {
+  channel.Conversation(..general, thread: option.Some(id))
+}
+
+pub fn reaction_triggers_run_in_the_thread_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  let link = chat_message("m1", "see https://eyg.run", False)
+  let bob = chat_input.Author("U2", "bob", False)
+  process.send(workspace, workspace.Inbound(reaction(link, bob, "books")))
+  assert process.receive(posts, 1000)
+    == Ok(#(thread("m1"), "summary of see https://eyg.run"))
+  // Other reactions do not match.
+  process.send(workspace, workspace.Inbound(reaction(link, bob, "eyes")))
+  assert process.receive(posts, 200) == Error(Nil)
+}
+
+pub fn triggers_can_delegate_to_a_subagent_test() {
+  let #(workspace, posts, _seen) =
+    start([chat.Completion("", "EYG is a language.", [])])
+  let question = message("m1", "research: what is eyg?")
+  process.send(workspace, workspace.Inbound(question))
+  assert process.receive(posts, 1000)
+    == Ok(#(thread("m1"), "EYG is a language."))
+}
+
+pub fn programs_manage_triggers_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  invoke(
+    workspace,
+    "m1",
+    "perform AddTrigger({name: \"polite\", pattern: match { ChatPosted(p) -> { !string_starts_with(p.text, \"please\") } | (_) -> { False({}) } }, script: (_event) -> { perform Post(\"of course\") }})",
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "Ok({})"))
+  process.send(workspace, workspace.Inbound(message("m2", "please help")))
+  assert process.receive(posts, 1000) == Ok(#(thread("m2"), "of course"))
+
+  invoke(workspace, "m3", "perform StopTrigger(\"polite\")")
+  let assert Ok(#(_, "Ok({})")) = process.receive(posts, 1000)
+  process.send(workspace, workspace.Inbound(message("m4", "please again")))
+  assert process.receive(posts, 300) == Error(Nil)
+
+  invoke(workspace, "m5", "perform ListTriggers({})")
+  let assert Ok(#(_, listed)) = process.receive(posts, 1000)
+  assert string.contains(listed, "polite (stopped)")
+
+  invoke(workspace, "m6", "perform DeleteTrigger(\"polite\")")
+  let assert Ok(#(_, "Ok({})")) = process.receive(posts, 1000)
+  invoke(workspace, "m7", "perform DeleteTrigger(\"polite\")")
+  let assert Ok(#(_, "Error(\"no trigger named polite\")")) =
+    process.receive(posts, 1000)
+}
+
+pub fn patterns_cannot_perform_effects_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  invoke(
+    workspace,
+    "m1",
+    "perform AddTrigger({name: \"sneaky\", pattern: (event) -> { let _ = perform Post(\"sneaky\")\nTrue({}) }, script: \"perform Post(\\\"ran\\\")\"})",
+  )
+  assert process.receive(posts, 1000) == Ok(#(thread("m1"), "Ok({})"))
+  process.send(workspace, workspace.Inbound(message("m2", "hello")))
+  assert process.receive(posts, 300) == Error(Nil)
 }

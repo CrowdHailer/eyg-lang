@@ -4,13 +4,13 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/capture
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
 import gleam/result
+import gleam/set
 import gleam/string
 
 pub fn value(
@@ -20,9 +20,12 @@ pub fn value(
   lookup: fn(ir.Reference) -> Result(state.Value(meta), String),
 ) -> Result(Nil, String) {
   // Instantiate the interface's type variables independently from inference's
-  // fresh variables. with_effect registers every variable in the supplied type.
-  let registered = infer.with_effect(infer.pure(), "Expected", expected, t.unit)
-  let generic = binding.gen(expected, 0, registered.bindings)
+  // fresh variables, including variables nested in callback and effect types.
+  let registered =
+    set.fold(infer.ftv(expected), dict.new(), fn(bindings, variable) {
+      dict.insert(bindings, variable, binding.Unbound(1))
+    })
+  let generic = binding.gen(expected, 0, registered)
   let #(expected, bindings) = binding.instantiate(generic, 1, dict.new())
   let context = infer.Context(..infer.pure(), bindings:)
   use source <- result.try(source(value, meta))

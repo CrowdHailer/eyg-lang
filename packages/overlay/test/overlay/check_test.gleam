@@ -1,3 +1,4 @@
+import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
@@ -90,4 +91,14 @@ pub fn complete_reject_all_has_the_required_policy_type_test() {
     check.value(v.unit(), policy.type_(rules), #(0, 0), fn(_) {
       Error("no references")
     })
+}
+
+pub fn nested_interface_variables_are_registered_without_colliding_test() {
+  let expected =
+    t.Fun(t.Fun(t.Var(17), t.Var(23), t.Var(42)), t.Empty, t.String)
+  let lookup = fn(_) { Error("no references") }
+  assert check.value(gate("(_) -> { \"allowed\" }"), expected, #(0, 0), lookup)
+    == Ok(Nil)
+  let assert Error(_) =
+    check.value(gate("(_) -> { 42 }"), expected, #(0, 0), lookup)
 }

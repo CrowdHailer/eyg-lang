@@ -32,6 +32,7 @@ pub fn example_chat_native_values_and_default_handler_match_the_plugin_type_test
     })
   assert handler.run(channel.handle, posted, workspace.state)
     == Ok([
+      work.Trigger(option.Some("m1")),
       work.Submit(
         None,
         option.Some("m1"),
@@ -39,7 +40,8 @@ pub fn example_chat_native_values_and_default_handler_match_the_plugin_type_test
         "[#general] Alice (message m1): hello",
       ),
     ])
-  assert handler.run(channel.handle, reacted, workspace.state) == Ok([])
+  assert handler.run(channel.handle, reacted, workspace.state)
+    == Ok([work.Trigger(option.Some("m1"))])
 }
 
 pub fn slack_default_handler_accepts_the_plugins_native_type_test() {
