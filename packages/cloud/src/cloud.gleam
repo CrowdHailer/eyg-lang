@@ -5,18 +5,23 @@
 //// - `SLACK_BOT_TOKEN` connect the Slack workspace the bot is installed in.
 //// - `DISCORD_BOT_TOKEN` and `DISCORD_GUILD_ID` connect the Discord server (guild) the bot is installed in.
 //// - `EYG_ORIGIN` the hub packages are loaded from, defaults to `https://eyg.run`.
+//// - `PORT` the port artifacts are served on, defaults to 8081.
+//// - `CLOUD_ORIGIN` the public origin of the server, defaults to `http://localhost:<PORT>`.
 
+import cloud/artifacts
 import cloud/beam/execute
 import cloud/config
 import cloud/plugins/discord
 import cloud/plugins/example_chat
 import cloud/plugins/slack
 import cloud/secrets
+import cloud/server
 import cloud/system
 import cloud/workspace
 import envoy
 import eyg/hub/cache
 import gleam/erlang/process
+import gleam/int
 import gleam/io
 import gleam/option.{None}
 import gleam/result
@@ -32,7 +37,14 @@ pub fn main() -> Nil {
   let state = execute.State(origin: hub, cache: cache.ready(), root: None)
   let data = secrets.data_directory(file)
   let load = config.loader(file, state, secrets.get(data, _))
-  let workspace = case workspace.start(load) {
+  let port = envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8081)
+  let origin =
+    envoy.get("CLOUD_ORIGIN")
+    |> result.unwrap("http://localhost:" <> int.to_string(port))
+  let assert Ok(artifacts) = artifacts.start(origin)
+  let assert Ok(_) = server.start(port, artifacts)
+  io.println("Artifacts served at " <> origin)
+  let workspace = case workspace.start(load, artifacts) {
     Ok(workspace) -> workspace
     Error(reason) -> panic as reason
   }

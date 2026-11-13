@@ -1,3 +1,4 @@
+import cloud/artifacts
 import cloud/channel
 import cloud/config
 import cloud/execute_test
@@ -106,7 +107,8 @@ fn start_file(file, completions) {
   let load =
     config.loader(file, test_helpers.state(), fn(_) { Error("no secrets") })
   let #(completer, seen) = model(completions)
-  let assert Ok(workspace) = workspace.start_with(load, completer)
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
   detach(workspace)
   let #(outbound, posts) = platform()
   process.send(workspace, workspace.Connect("chat", outbound))
@@ -154,6 +156,7 @@ pub fn direct_invocations_run_with_the_shell_test() {
 }
 
 pub fn new_forgets_the_conversation_test() {
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
   let load =
     config.loader(
       "test/fixtures/chat_workspace.eyg",
@@ -167,7 +170,7 @@ pub fn new_forgets_the_conversation_test() {
       Ok(chat.Completion("", "ok", []))
     }
   }
-  let assert Ok(workspace) = workspace.start_with(load, completer)
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
   detach(workspace)
   let #(outbound, posts) = platform()
   process.send(workspace, workspace.Connect("chat", outbound))
@@ -214,7 +217,8 @@ pub fn handler_posts_are_subject_to_the_channel_policy_test() {
       "(event) -> { [Post({thread: Some(event.id), text: event.text})] }",
       "{post: (text) -> { Pass(!string_append(\"checked: \", text)) }, ..cloud.reject_all}",
     )
-  let assert Ok(workspace) = workspace.start_with(load, completer)
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
   detach(workspace)
   let #(outbound, posts) = platform()
   process.send(workspace, workspace.Connect("chat", outbound))
@@ -234,7 +238,8 @@ pub fn rejected_handler_post_never_reaches_the_plugin_test() {
       "(event) -> { [Post({thread: None({}), text: event.text})] }",
       "cloud.reject_all",
     )
-  let assert Ok(workspace) = workspace.start_with(load, completer)
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
   detach(workspace)
   let #(outbound, posts) = platform()
   process.send(workspace, workspace.Connect("chat", outbound))
@@ -256,7 +261,8 @@ pub fn handler_selects_sessions_and_observations_test() {
       "(event) -> { [Observe({session: Some(event.id), text: \"observed\"}), Input({session: Some(event.id), text: event.text})] }",
       "cloud.reject_all",
     )
-  let assert Ok(workspace) = workspace.start_with(load, completer)
+  let assert Ok(artifacts) = artifacts.start("http://cloud.test")
+  let assert Ok(workspace) = workspace.start_with(load, artifacts, completer)
   detach(workspace)
   let #(outbound, _) = platform()
   process.send(workspace, workspace.Connect("chat", outbound))
@@ -457,4 +463,31 @@ pub fn configured_crons_message_existing_sessions_test() {
   let assert Ok(input) = process.receive(seen, 2000)
   assert input == "[cron standup] Time for standup."
   stop(workspace)
+}
+
+pub fn artifacts_belong_to_their_channel_test() {
+  let #(workspace, posts, _seen) = start([chat.Completion("", "", [])])
+  let save =
+    "perform Artifact({name: \"plan\", bundle: [{path: \"index.html\", media_type: \"text/html\", content: !string_to_binary(\"<h1>Plan</h1>\")}]})"
+  invoke(workspace, "m1", save)
+  assert process.receive(posts, 1000)
+    == Ok(#(
+      thread("m1"),
+      "Ok({url: \"http://cloud.test/artifacts/plan/\", version: 1})",
+    ))
+  let notes = channel.Conversation("chat", "C2", None)
+  let attempt =
+    channel.Incoming(
+      notes,
+      native_message("n1", "```eyg\n" <> save <> "\n```", False),
+    )
+  process.send(workspace, workspace.Inbound(attempt))
+  let assert Ok(#(_, refused)) = process.receive(posts, 1000)
+  assert string.contains(refused, "belongs to #general")
+  invoke(workspace, "m2", "perform ShareArtifact(\"plan\")")
+  let assert Ok(#(_, "Ok(\"http://cloud.test/artifacts/plan/\")")) =
+    process.receive(posts, 1000)
+  process.send(workspace, workspace.Inbound(attempt))
+  let assert Ok(#(_, updated)) = process.receive(posts, 1000)
+  assert string.contains(updated, "version: 2")
 }

@@ -8,6 +8,7 @@
 //// that run programs, see `notes/cloud-process-boundaries.md`.
 
 import cloud/agent
+import cloud/artifacts
 import cloud/beam/execute
 import cloud/channel.{type Conversation}
 import cloud/config
@@ -100,16 +101,21 @@ type State {
     schedules: Dict(#(String, String), Scheduled),
     /// The session key of each channel's top level conversation, by channel name.
     channels: Dict(String, String),
+    artifacts: Subject(artifacts.Message),
     complete: agent.Completer,
   )
 }
 
-pub fn start(load: config.Loader) -> Result(Subject(Message), String) {
-  start_with(load, agent.complete)
+pub fn start(
+  load: config.Loader,
+  artifacts: Subject(artifacts.Message),
+) -> Result(Subject(Message), String) {
+  start_with(load, artifacts, agent.complete)
 }
 
 pub fn start_with(
   load: config.Loader,
+  artifacts: Subject(artifacts.Message),
   complete: agent.Completer,
 ) -> Result(Subject(Message), String) {
   // Only Gleam data, not EYG values, leaves this process.
@@ -142,6 +148,7 @@ pub fn start_with(
       triggers: dict.new(),
       schedules: dict.from_list(schedules),
       channels: dict.new(),
+      artifacts:,
       complete:,
     )
     |> actor.initialised
@@ -581,6 +588,7 @@ fn option_thread(conversation: Conversation) {
 /// and scheduled messages are sent to the session with key `session`.
 fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
   let config.ChannelInfo(name:, ..) = info
+  let key = trigger_key(info)
   let self = state.self
   let triggers =
     execute.Triggers(
@@ -610,6 +618,7 @@ fn host(state: State, outbound: channel.Outbound, conversation, info, session) {
     execute.files(state.files, "#" <> name),
     triggers,
     schedules,
+    execute.artifacts(state.artifacts, artifacts.Channel(key, name)),
   )
 }
 

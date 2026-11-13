@@ -135,6 +135,7 @@ pub fn secrets_are_placeholders_in_channels_test() {
       execute.no_files(),
       execute.no_triggers(),
       execute.no_schedules(),
+      execute.no_artifacts(),
     )
   let #(execute.Run(result:, ..), _) =
     execute.run(

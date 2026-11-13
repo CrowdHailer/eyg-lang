@@ -57,6 +57,8 @@ let expect_reject = (decision) -> {
 
 let test_defaults_reject_every_gate = (_) -> {
   let s = cloud.reject_all
+  let _ = expect_reject(s.artifact({name: "x", bundle: []}))
+  let _ = expect_reject(s.share_artifact("x"))
   let _ = expect_reject(s.cancel_schedule("x"))
   let _ = expect_reject(s.cron({name: "x", schedule: "* * * * *", message: "hello"}))
   let _ = expect_reject(s.timeout({name: "x", after: 100, message: "hello"}))

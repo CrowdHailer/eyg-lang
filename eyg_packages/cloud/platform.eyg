@@ -2,6 +2,8 @@
 let reject = (_) -> { Reject({}) }
 {
   reject_all: {
+    artifact: reject,
+    share_artifact: reject,
     cancel_schedule: reject,
     cron: reject,
     timeout: reject,

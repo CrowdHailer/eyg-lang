@@ -19,6 +19,7 @@ pub fn evaluate(code) {
       execute.no_files(),
       execute.no_triggers(),
       execute.no_schedules(),
+      execute.no_artifacts(),
     )
   let #(execute.Run(result:, ..), _) =
     execute.run(code, [], execute.unrestricted(), host, state())
@@ -42,6 +43,7 @@ fn recording_host() {
       execute.no_files(),
       execute.no_triggers(),
       execute.no_schedules(),
+      execute.no_artifacts(),
     )
   #(host, posts)
 }
@@ -174,6 +176,7 @@ pub fn package_reject_all_matches_the_native_platform_contract_test() {
         execute.no_files(),
         execute.no_triggers(),
         execute.no_schedules(),
+        execute.no_artifacts(),
       ),
       state,
     )

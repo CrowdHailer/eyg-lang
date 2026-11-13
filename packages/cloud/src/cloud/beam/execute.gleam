@@ -4,6 +4,7 @@
 //// Every effect is decided by a policy, see `overlay/policy`.
 //// Effects that need the cloud's services, such as posting to a channel, are implemented by a `Host`.
 
+import cloud/artifacts
 import cloud/files
 import cloud/system
 import cloud/trigger
@@ -92,6 +93,10 @@ pub type Effect {
   /// Send a message to the program's session once, after a number of milliseconds.
   Timeout(name: String, after: Int, message: String)
   CancelSchedule(name: String)
+  /// Save a new version of an artifact owned by the program's channel.
+  SaveArtifact(name: String, bundle: artifacts.Bundle)
+  /// Let any channel in the workspace save versions of an artifact.
+  ShareArtifact(name: String)
 }
 
 /// Implementations of effects that need the cloud's services.
@@ -103,6 +108,35 @@ pub type Host {
     triggers: Triggers,
     subagent: fn(String) -> Result(String, String),
     schedules: Schedules,
+    artifacts: Artifacts,
+  )
+}
+
+/// The artifacts of the program's channel.
+pub type Artifacts {
+  Artifacts(
+    save: fn(String, artifacts.Bundle) -> Result(artifacts.Saved, String),
+    share: fn(String) -> Result(String, String),
+  )
+}
+
+/// Save and share artifacts as `channel`.
+pub fn artifacts(
+  store: Subject(artifacts.Message),
+  channel: artifacts.Channel,
+) -> Artifacts {
+  Artifacts(
+    save: fn(name, bundle) {
+      artifacts.call(store, artifacts.Save(name, bundle, channel, _))
+    },
+    share: fn(name) { artifacts.call(store, artifacts.Share(name, channel, _)) },
+  )
+}
+
+pub fn no_artifacts() -> Artifacts {
+  Artifacts(
+    save: fn(_, _) { Error("Artifacts are not available") },
+    share: fn(_) { Error("Artifacts are not available") },
   )
 }
 
@@ -190,6 +224,7 @@ pub fn channel_host(
   files: Files,
   triggers: Triggers,
   schedules: Schedules,
+  artifacts: Artifacts,
 ) -> Host {
   Host(
     post:,
@@ -198,6 +233,7 @@ pub fn channel_host(
     triggers:,
     subagent: no_subagent,
     schedules:,
+    artifacts:,
   )
 }
 
@@ -212,6 +248,7 @@ pub fn configuration_host(
     triggers: no_triggers(),
     subagent: no_subagent,
     schedules: no_schedules(),
+    artifacts: no_artifacts(),
   )
 }
 
@@ -240,7 +277,57 @@ pub fn harness() -> interface.Harness(Effect, Meta) {
     cron(),
     timeout(),
     cancel_schedule(),
+    artifact(),
+    share_artifact(),
   ])
+}
+
+fn artifact() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "Artifact",
+    lift_type: t.record([
+      #("name", t.String),
+      #(
+        "bundle",
+        t.List(
+          t.record([
+            #("path", t.String),
+            #("media_type", t.String),
+            #("content", t.Binary),
+          ]),
+        ),
+      ),
+    ]),
+    lower_type: t.result(
+      t.record([#("version", t.Integer), #("url", t.String)]),
+      t.String,
+    ),
+    decode: fn(value) {
+      use name <- result.try(cast.field("name", cast.as_string, value))
+      use bundle <- result.try(cast.field(
+        "bundle",
+        cast.as_list_of(_, decode_file),
+        value,
+      ))
+      Ok(SaveArtifact(name:, bundle:))
+    },
+  )
+}
+
+fn decode_file(value) {
+  use path <- result.try(cast.field("path", cast.as_string, value))
+  use media_type <- result.try(cast.field("media_type", cast.as_string, value))
+  use content <- result.try(cast.field("content", cast.as_binary, value))
+  Ok(artifacts.File(path:, media_type:, content:))
+}
+
+fn share_artifact() -> interface.Interface(Effect, Meta) {
+  interface.Interface(
+    name: "ShareArtifact",
+    lift_type: t.String,
+    lower_type: t.result(t.String, t.String),
+    decode: cast.map(cast.as_string, ShareArtifact),
+  )
 }
 
 fn cron() -> interface.Interface(Effect, Meta) {
@@ -352,6 +439,7 @@ fn post() -> interface.Interface(Effect, Meta) {
 pub const rules = [
   #("AddTrigger", policy.PolicyField("add_trigger")),
   #("AppendFile", policy.PolicyField("append_file")),
+  #("Artifact", policy.PolicyField("artifact")),
   #("CancelSchedule", policy.PolicyField("cancel_schedule")),
   #("Cron", policy.PolicyField("cron")),
   #("CWD", policy.PolicyField("cwd")),
@@ -370,6 +458,7 @@ pub const rules = [
   #("Random", policy.PolicyField("random")),
   #("ReadDirectory", policy.PolicyField("read_directory")),
   #("ReadFile", policy.PolicyField("read_file")),
+  #("ShareArtifact", policy.PolicyField("share_artifact")),
   #("Sleep", policy.PolicyField("sleep")),
   #("StartTrigger", policy.PolicyField("start_trigger")),
   #("StandardError", policy.PolicyField("standard_error")),
@@ -660,6 +749,21 @@ fn perform(effect, host: Host) -> Result(#(Value, List(Output)), String) {
     Timeout(name:, after:, message:) ->
       Ok(#(result_unit(host.schedules.timeout(name, after, message)), []))
     CancelSchedule(name) -> Ok(#(result_unit(host.schedules.cancel(name)), []))
+    SaveArtifact(name:, bundle:) ->
+      case host.artifacts.save(name, bundle) {
+        Ok(artifacts.Saved(version:, url:)) ->
+          v.ok(
+            v.Record(
+              dict.from_list([
+                #("version", v.Integer(version)),
+                #("url", v.String(url)),
+              ]),
+            ),
+          )
+        Error(reason) -> v.error(v.String(reason))
+      }
+      |> no_output
+    ShareArtifact(name) -> Ok(#(result_string(host.artifacts.share(name)), []))
     Computer(effect) ->
       case effect {
         computer.StandardOut(text) ->

@@ -21,6 +21,7 @@ let pass = policy.pass
 let everything = {
   add_trigger: pass,
   append_file: pass,
+  artifact: pass,
   cancel_schedule: pass,
   cron: pass,
   cwd: pass,
@@ -37,6 +38,7 @@ let everything = {
   random: pass,
   read_directory: pass,
   read_file: pass,
+  share_artifact: pass,
   sleep: pass,
   standard_error: pass,
   standard_out: pass,

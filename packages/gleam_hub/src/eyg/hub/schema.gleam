@@ -64,3 +64,8 @@ pub fn failure_decoder() {
   use reason <- decode.field("reason", decode.string)
   decode.success(reason)
 }
+
+/// A file of an artifact bundle.
+pub type ArtifactFile {
+  ArtifactFile(path: String, media_type: String, content: BitArray)
+}
