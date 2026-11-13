@@ -135,6 +135,7 @@ An artifact belongs to the channel that created it, other channels can save vers
 
 Chats plug into the [channel interface](./src/cloud/channel.gleam), see the [channel plugin guide](../../guides/cloud/channel_plugins.md).
 GitHub, Sentry, webhooks, Bluesky, RSS, Hacker News and Lobsters only report events, they are not chats, see [connections](../../guides/cloud/connections.md).
+[Errors and logs as triggers](../../guides/cloud/errors_and_logs.md) explains acting on Sentry reports and server logs without copying everything into one database.
 
 This [article](https://weli.dev/blog/the-valley-of-webhooks/) discusses the reliability problems of webhooks.
 Channels are connections that can start a session/chat etc.
