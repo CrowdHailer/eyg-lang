@@ -24,6 +24,7 @@ ogre = ">= 1.3.0 and < 2.0.0"
 overlay = { path = "../overlay" }
 overlay_llm = { path = "../overlay_llm" }
 simplifile = ">= 2.4.0 and < 3.0.0"
+unixfs = { path = "../unixfs" }
 touch_grass = { path = "../touch_grass" }
 
 [dev_dependencies]
