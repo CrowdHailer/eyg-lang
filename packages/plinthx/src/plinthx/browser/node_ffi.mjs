@@ -52,6 +52,22 @@ export const messageData = message => message.data;
 export const postToHost = message => { parent.parent.postMessage(JSON.parse(message),'*'); };
 export const postToFrame = (node, message) => { node.contentWindow.postMessage(message,'*'); };
 export const listen = (node,name,handler) => { node.addEventListener(name,handler); };
+export const unlisten = (node,name,handler) => { node.removeEventListener(name,handler); };
+export const preventDefault = event => { event.preventDefault(); };
+export const modifier = (event,name) => Boolean(event[name]);
+export const eventText = (event,name) => String(event[name] ?? '');
+export const listenGlobal = (name,handler) => { globalThis.addEventListener(name,handler); };
+export const mediaQuery = query => globalThis.matchMedia(query);
+export const mediaMatches = query => query.matches;
+export const listenMedia = (query,handler) => { query.addEventListener('change',handler); };
+export function writeStorage(storage,key,value) {
+  try { globalThis[storage].setItem(key,value); return Result$Ok(undefined); }
+  catch (error) { return Result$Error(String(error)); }
+}
+export function removeStorage(storage,key) {
+  try { globalThis[storage].removeItem(key); return Result$Ok(undefined); }
+  catch (error) { return Result$Error(String(error)); }
+}
 export const key = event => event.key;
 export const target = event => event.target;
 export const setFlag = (node,property,value) => { node[property]=value; };

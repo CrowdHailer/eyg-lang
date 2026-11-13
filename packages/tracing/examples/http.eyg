@@ -1,0 +1,37 @@
+// Shared request construction. The demo server listens only on localhost.
+let port = (_) -> {
+  match perform Env("EYG_DEMO_PORT") {
+    Some(text) -> {
+      match !int_parse(text) {
+        Ok(value) -> { value }
+        Error(_) -> { !never(perform Abort("EYG_DEMO_PORT must be an integer")) }
+      }
+    }
+    None(_) -> { 8787 }
+  }
+}
+
+let get = (port, path) -> {
+  match perform Fetch({
+    method: GET({}), scheme: HTTP({}), host: "127.0.0.1",
+    port: Some(port), path, query: None({}), headers: [],
+    body: !string_to_binary("")
+  }) {
+    Ok(response) -> { response }
+    Error(reason) -> { !never(perform Abort(reason)) }
+  }
+}
+
+let require_ok = (response) -> {
+  match !equal(response.status, 200) {
+    True(_) -> {
+      match !string_from_binary(response.body) {
+        Ok(text) -> { text }
+        Error(_) -> { !never(perform Abort("response was not UTF-8")) }
+      }
+    }
+    False(_) -> { !never(perform Abort("expected HTTP 200")) }
+  }
+}
+
+{port, get, require_ok}

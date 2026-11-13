@@ -1,0 +1,14 @@
+// An HTTP response is a successful Fetch, even when its status is 503.
+// The application decides to retry; the backoff is visible as a Sleep span.
+let http = import "./http.eyg"
+let port = http.port({})
+let first = http.get(port, "/unavailable")
+match !equal(first.status, 503) {
+  True(_) -> {
+    let _ = perform StandardOut("HTTP 503; waiting before retry\n")
+    let _ = perform Sleep(100)
+    let answer = http.require_ok(http.get(port, "/answer"))
+    perform StandardOut(answer)
+  }
+  False(_) -> { !never(perform Abort("expected the demo's HTTP 503")) }
+}

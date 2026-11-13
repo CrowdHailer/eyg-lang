@@ -1,6 +1,8 @@
 // The guides published on eyg.run.
 
 let index = [
+  {slug: "trajectories", title: "Saving and replaying trajectories", summary: "Save portable execution journals and export their observability to OpenTelemetry backends.", keywords: "trajectories"},
+  {slug: "viewing-execution-performance", title: "Viewing execution performance", summary: "Capture real effect and function spans, inspect them offline and export charts or slides.", keywords: "viewing execution performance"},
   {slug: "eyg-as-an-opencode-plugin", title: "EYG as an OpenCode plugin", summary: "Add an EYG tool with computer effects, policy-aware subagents and prompt guidance.", keywords: "eyg as an opencode plugin"},
   {slug: "eyg-as-the-opencode-tool-dispatcher", title: "EYG as the OpenCode tool dispatcher", summary: "Route native and MCP tools through EYG while retaining host permissions and child policies.", keywords: "eyg as the opencode tool dispatcher"},
   {slug: "eyg-in-pi", title: "EYG in Pi", summary: "Expose Pi tools as effects with inherited policies and usage reporting.", keywords: "eyg in pi"},
@@ -18,7 +20,6 @@ let index = [
   {slug: "json-boundaries-for-embedded-eyg", title: "JSON boundaries for embedded EYG", summary: "Exchange plain data and declare closed effect types for a host.", keywords: "json boundaries for embedded eyg"},
   {slug: "loading-module-graphs", title: "Loading module graphs", summary: "Drain a hub cache's fetch and release work before checking or running code.", keywords: "loading module graphs"},
   {slug: "masking-handlers-and-enforcing-purity", title: "Masking handlers and enforcing purity", summary: "Route effects past one enclosing handler and guard a pure function application.", keywords: "masking handlers and enforcing purity"},
-  {slug: "saving-and-replaying-trajectories", title: "Saving and replaying trajectories", summary: "Save portable execution journals and export their observability to OpenTelemetry backends.", keywords: "saving and replaying trajectories"},
   {slug: "shallow-handlers", title: "Shallow handlers", summary: "Raw resumptions, independent answer types, and explicit reinstallation.", keywords: "shallow handlers"},
   {slug: "overlay-artifacts", title: "Overlay artifacts", summary: "Create, show, control and share artifacts.", keywords: "artifact preview puppet screenshot share layout"},
   {slug: "eyg-syntax-guide", title: "EYG syntax guide", summary: "Syntax of EYG: values, functions, records, unions, match, effects and imports.", keywords: "syntax let function record union match list effect perform handle import"},

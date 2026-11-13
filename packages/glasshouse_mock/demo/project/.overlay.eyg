@@ -1,0 +1,22 @@
+// Self-contained configuration: preparation needs no host imports or hub.
+let read_text = (path) -> {
+  match perform ReadFile({path, offset: 0, limit: 100000}) {
+    Ok(bytes) -> { match !string_from_binary(bytes) { Ok(text) -> { text } Error(_) -> { "" } } }
+    Error(_) -> { "" }
+  }
+}
+let readme = !string_append(read_text("README.md"), read_text(".agents/skills/report/SKILL.md"))
+let pass = (request) -> { Pass(request) }
+let deny = (_) -> { Mock(Error("unavailable")) }
+{
+  llm: {provider: Ollama({origin: "http://localhost:4400", api_key: None({})}), model: "scripted"},
+  policy: {
+    acquire: pass, mount: pass, exit: pass, flip: pass, random: pass,
+    append_file: pass, create_key: deny, cwd: pass, delete_file: pass,
+    env: (_) -> { Mock(None({})) }, fetch: pass, make_directory: pass,
+    now: pass, read_directory: pass, read_file: pass,
+    sleep: pass, standard_error: pass, standard_in: deny,
+    standard_out: pass, write_file: pass
+  },
+  context: {readme}
+}

@@ -1,0 +1,19 @@
+// Reading a directory as a file fails deterministically.
+// The effect span is red, but handling its Error keeps the run successful.
+let text = match perform ReadFile({path: "./fixtures", offset: 0, limit: 1024}) {
+  Ok(_) -> { !never(perform Abort("expected the directory read to fail")) }
+  Error(_) -> {
+    let _ = perform StandardOut("Read failed; using the fallback\n")
+    let _ = perform Sleep(60)
+    match perform ReadFile({path: "./fixtures/fallback.txt", offset: 0, limit: 1024}) {
+      Ok(bytes) -> {
+        match !string_from_binary(bytes) {
+          Ok(text) -> { text }
+          Error(_) -> { !never(perform Abort("fallback was not UTF-8")) }
+        }
+      }
+      Error(reason) -> { !never(perform Abort(reason)) }
+    }
+  }
+}
+perform StandardOut(text)

@@ -1,0 +1,18 @@
+// Variants of the recorded newsletter session for `eyg evaluate`.
+let skill = "---
+name: signups-report
+description: Write a report of newsletter signups by source, include the total.
+---
+Count the signups for each source and write them as a markdown table to `reports/signups.md`.
+Use `unknown` for signups without a source.
+Finish the report with the total number of signups.
+"
+{
+  hosts: ["localhost"],
+  variants: [
+    {name: "same", files: [], prompts: None({})},
+    {name: "with totals", files: [{path: ".agents/skills/report/SKILL.md", contents: skill}], prompts: None({})},
+    {name: "blog only", files: [], prompts: Some(["How many signups came from the blog?"])},
+    {name: "check the website", files: [], prompts: Some(["Check the website for new signups"])}
+  ]
+}

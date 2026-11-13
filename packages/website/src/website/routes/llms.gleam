@@ -66,6 +66,7 @@ fn start_here() {
     "- [Documentation](https://eyg.run/documentation): Browser-based language and structural editor documentation.",
     "- [Editor](https://eyg.run/editor): Browser workspace for editing and running EYG programs.",
     "- [Guides](https://eyg.run/guides): Guide index for installation, syntax, effects, embedding and file operations.",
+    "- [Glasshouse](https://eyg.run/glasshouse): Record, replay, debug and evaluate EYG programs and agent sessions.",
     "- [Roadmap](https://eyg.run/roadmap): Current project direction and implementation priorities.",
     "",
   ]

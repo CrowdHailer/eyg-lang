@@ -230,6 +230,22 @@ using `eyg sandbox`; unknown historical state is never guessed from today's disk
   artifact's logical file bytes against the write budget.
 - `Now` reads the virtual clock (initially zero); `Sleep` advances it. Recording
   timings do not advance the clock. Randomness is a per-fork seeded stream.
+  Sandbox journal/generation timings follow that virtual clock; host runtime
+  profiles use wall-clock timing separately.
+
+## Checked example
+
+From `packages/glasshouse_mock`, run `gleam run -m glasshouse_demo`. The Gleam
+driver prepares the newsletter workspace, records a scripted agent, checks the
+private report and full offline replay, evaluates four variants, and exports
+portable archives under `demo/.eyg/export`. The unchanged variant reuses its two
+model observations; a changed skill uses new model responses; an unpermitted
+website request stops. No model or database account is required.
+
+The debugger shows the report diff, exact EYG replay, replayed model tokens and refused host. After building the website, run `gleam run -m tracing/sandbox_demo` from `packages/tracing`; it serves its own local static fixture and uses Chromium (`CHROME_BIN` selects an existing binary).
+
+The [technical walkthrough](https://eyg.run/glasshouse/runtime-acquisition.html)
+explains request identities, the Git adapter and replay state machine.
 
 These are reduction and IO budgets, not a hard JavaScript heap bound or a
 preemptive native-code sandbox. A builtin is one indivisible reduction, network
