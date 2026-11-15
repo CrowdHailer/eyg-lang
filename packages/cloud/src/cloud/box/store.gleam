@@ -8,6 +8,7 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/result
+import gleam/string
 import multiformats/cid/v1
 import simplifile
 import unixfs
@@ -34,11 +35,32 @@ pub fn load(path: String) {
   use snapshot <- result.try(
     json.parse(text, decoder()) |> result.replace_error("Invalid box snapshot"),
   )
+  use identified <- result.try(
+    list.try_fold(
+      dict.to_list(snapshot.files.blocks),
+      dict.new(),
+      fn(identified, pair) {
+        use _ <- result.try(valid_entry(pair.1))
+        let stored = mfs.identify(pair.1)
+        case stored.cid == pair.0 {
+          True -> Ok(dict.insert(identified, pair.0, stored.size))
+          False -> Error("Corrupt filesystem block")
+        }
+      },
+    ),
+  )
   use _ <- result.try(
-    list.try_each(dict.to_list(snapshot.files.blocks), fn(pair) {
-      case mfs.identify(pair.1).cid == pair.0 {
-        True -> Ok(Nil)
-        False -> Error("Corrupt content block")
+    list.try_each(dict.values(snapshot.files.blocks), fn(entry) {
+      case entry {
+        mfs.File(_) -> Ok(Nil)
+        mfs.Directory(links) ->
+          list.try_each(links, fn(link) {
+            case dict.get(identified, link.cid) {
+              Ok(size) if size == link.size -> Ok(Nil)
+              Ok(_) -> Error("Incorrect linked block size")
+              Error(_) -> Error("Missing filesystem block")
+            }
+          })
       }
     }),
   )
@@ -60,6 +82,29 @@ pub fn load(path: String) {
     }),
   )
   Ok(snapshot)
+}
+
+fn valid_entry(entry) {
+  case entry {
+    mfs.File(_) -> Ok(Nil)
+    mfs.Directory(links) -> {
+      let names = list.map(links, fn(link) { link.name })
+      case
+        list.length(list.unique(names)) == list.length(names)
+        && list.all(links, fn(link) {
+          link.size >= 0
+          && link.name != ""
+          && link.name != "."
+          && link.name != ".."
+          && !string.contains(link.name, "/")
+          && !string.contains(link.name, "\u{0}")
+        })
+      {
+        True -> Ok(Nil)
+        False -> Error("Invalid directory links")
+      }
+    }
+  }
 }
 
 fn encode(snapshot: Snapshot) {
@@ -171,8 +216,12 @@ fn decoder() {
       file_system.State(root, dict.from_list(blocks), dict.from_list(content)),
       history,
     )
-  case format {
-    1 -> decode.success(snapshot)
-    _ -> decode.failure(snapshot, "snapshot format 1")
+  case
+    format,
+    dict.size(snapshot.files.blocks) == list.length(blocks)
+    && dict.size(snapshot.files.content) == list.length(content)
+  {
+    1, True -> decode.success(snapshot)
+    _, _ -> decode.failure(snapshot, "snapshot format 1 with unique blocks")
   }
 }

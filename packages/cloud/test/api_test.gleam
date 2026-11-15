@@ -22,7 +22,7 @@ import overlay/llm/provider/ollama
 
 pub fn setup() {
   let directory =
-    "/tmp/opencode/cloud-api-"
+    "build/cloud-tests/cloud-api-"
     <> bit_array.base64_url_encode(crypto.strong_random_bytes(12), False)
   let runtime =
     execute.State(origin.http("localhost"), cache.ready(), dict.new())

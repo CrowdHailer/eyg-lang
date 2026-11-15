@@ -3,6 +3,20 @@
 A box is a named, versioned EYG computer. Its current root is a content identifier
 (CID) for a UnixFS tree. Files contain code, assets, configuration and runtime data.
 
+## Familiar configuration, checked before activation
+
+On Linux, systemd typically reads administrator unit files from /etc/systemd/system
+and packaged units from /usr/lib/systemd/system (sometimes /lib/systemd/system).
+Units use sections such as [Service] with directives such as ExecStart. Apache
+similarly reads site configuration under /etc/apache2 or /etc/httpd; PHP commonly
+runs through PHP-FPM, whose pool configuration is separate from Apache's routing.
+
+The box uses the same idea of filesystem-defined behavior, with EYG records and
+functions instead of separate configuration languages. Its application entry
+points are checked before activation. Network connections, in-flight requests and
+host-managed credentials are runtime capabilities outside the persisted tree.
+This is a cloud computer abstraction, rather than a POSIX or FUSE filesystem.
+
 ## Roots, snapshots and forks
 
 Every accepted mutation publishes one complete root. Previous roots remain
@@ -74,6 +88,16 @@ use idempotency keys when retrying externally visible operations.
 
 Execution records are appended beneath /traces using the same validation and
 publication mechanism. A trace write is itself a new root.
+
+## Recovery
+
+Snapshot publication syncs the temporary file, atomically renames it, and syncs
+its parent directory before acknowledgement. Unpublished temporary files are
+ignored on restart. Recovery checks every content hash, directory name, linked
+block size and historical root; missing or corrupt graphs fail to load rather
+than silently becoming an empty computer. Run one service instance per data
+directory. An interrupted request may have committed before its response was
+lost; inspect the current root before retrying it.
 
 ## Policies and identity
 

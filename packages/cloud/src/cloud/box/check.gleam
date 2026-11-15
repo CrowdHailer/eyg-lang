@@ -52,7 +52,10 @@ pub fn validate(files: file_system.State, runtime: execute.State) {
       True -> {
         use source <- result.try(load(files, path, []))
         use #(source, runtime) <- result.try(freeze(source, runtime))
-        use #(value, runtime) <- result.map(prepare(source, runtime))
+        use #(value, runtime) <- result.map(
+          prepare(source, runtime)
+          |> result.map_error(fn(reason) { path <> ": " <> reason }),
+        )
         #(dict.insert(modules, path, Module(source, value)), runtime)
       }
     }
@@ -79,7 +82,7 @@ fn load_with(files, path, visiting, allowed) {
         <> string.join(list.reverse([path, ..visiting]), " -> "),
       )
     False -> {
-      use bytes <- result.try(file_system.read(files, path, 0, 1_073_741_824))
+      use bytes <- result.try(file_system.read_all(files, path))
       case is_source(path) {
         False -> Ok(#(ir.Binary(bytes), #(0, 0)))
         True -> {

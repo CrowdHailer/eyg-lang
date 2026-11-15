@@ -225,5 +225,18 @@ This is a finite follow-on pass after the initial commit review and recording:
 - [x] Complete content-addressed API ergonomics: upload reusable blocks, resolve
   non-EYG DAG-JSON structures by CID, and support the short filesystem routes
   shown at the beginning of this plan alongside the documented `/api` routes.
-- [ ] Strengthen storage recovery: sync publication metadata, reject incomplete
+- [x] Strengthen storage recovery: sync publication metadata, reject incomplete
   or corrupt block graphs, and verify recovery and content-reference workflows.
+
+The follow-on pass is implemented and covered by the cloud test suite. Package
+references must be versioned or fully pinned so restarting a snapshot cannot
+silently select a newer release. The content-data representations and recovery
+contract are documented in the concepts guide.
+
+Completion verification (2026-11-15): formatting and warnings-as-errors builds
+pass; all 26 cloud tests pass, including all twenty templates, recovery,
+authorization, content imports, and simulated channel/model integration. The
+browser workflow also passes against the final server with a real HTTP request
+and automatic cron tick. Live Slack/Discord/model accounts were not used for the
+recording. The implementation commits were reviewed in order; subsequent commits
+extend the same primitives rather than replacing a discarded implementation.

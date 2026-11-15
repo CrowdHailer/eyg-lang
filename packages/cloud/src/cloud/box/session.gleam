@@ -58,7 +58,7 @@ pub fn run(config: check.Module, identity, text, agent, runtime, files) {
     }
     "agent" -> {
       let path = "/traces/sessions/" <> identity <> ".json"
-      let history = case file_system.read(files, path, 0, 16_777_216) {
+      let history = case file_system.read_all(files, path) {
         Error(_) -> Ok([])
         Ok(bytes) ->
           bit_array.to_string(bytes)

@@ -131,6 +131,16 @@ pub fn read(
   result.map_error(contents, simplifile.describe_error)
 }
 
+/// Internal consumers validating or identifying a file must never hash or
+/// execute a silently truncated prefix.
+pub fn read_all(fs: State, path: String) -> Result(BitArray, String) {
+  let contents = {
+    use parts <- result.try(path_parts(path))
+    run(mfs.read(fs.root, parts), fs.blocks).0
+  }
+  result.map_error(contents, simplifile.describe_error)
+}
+
 pub fn read_directory(fs: State, path: String) -> read_directory.Output {
   let entries = {
     use parts <- result.try(path_parts(path))

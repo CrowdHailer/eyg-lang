@@ -153,7 +153,7 @@ pub fn controller(service: Service) {
     with_path(ctx, fn(path) {
       protected(ctx, service, "read", path, fn(owner) {
         let snapshot = box.inspect(owner)
-        case file_system.read(snapshot.files, path, 0, 16_777_216) {
+        case file_system.read_all(snapshot.files, path) {
           Error(error) -> failure(ctx, 404, error)
           Ok(bytes) ->
             response.new(200)
