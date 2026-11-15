@@ -154,7 +154,7 @@ fn handle(state: State, message: Message) {
             install(
               state,
               name,
-              store.Snapshot(file_system.State(root, snapshot.files.blocks), []),
+              store.Snapshot(file_system.State(..snapshot.files, root:), []),
             )
         }
       }

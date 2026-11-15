@@ -15,12 +15,16 @@ import unixfs/mfs
 /// This is only useful for passing through execution state.
 /// TODO remove this once blocks are stored out of process.
 pub type State {
-  State(root: v1.Cid, blocks: Dict(v1.Cid, mfs.Entry))
+  State(
+    root: v1.Cid,
+    blocks: Dict(v1.Cid, mfs.Entry),
+    content: Dict(v1.Cid, BitArray),
+  )
 }
 
 pub fn new(blocks: Dict(v1.Cid, mfs.Entry)) -> State {
   let #(root, blocks) = put(blocks, mfs.Directory([]))
-  State(root.cid, blocks)
+  State(root.cid, blocks, dict.new())
 }
 
 fn put(blocks, entry) {
@@ -78,7 +82,7 @@ fn change(fs: State, path: String, operation) -> #(Result(Nil, String), State) {
     let #(root, blocks) = run(operation(Some(root), parts), fs.blocks)
     use root <- result.map(root)
     let #(stored, blocks) = put(blocks, root)
-    State(stored.cid, blocks)
+    State(stored.cid, blocks, fs.content)
   }
   case updated {
     Ok(fs) -> #(Ok(Nil), fs)

@@ -108,7 +108,7 @@ fn handle_message(
 fn handle_session(state: State, id, action, print) {
   let #(files, history) = case dict.get(state.sessions, id) {
     Ok(Session(root:, history:)) -> #(
-      file_system.State(root, state.blocks),
+      file_system.State(root, state.blocks, dict.new()),
       history,
     )
     Error(Nil) -> #(file_system.new(state.blocks), [])

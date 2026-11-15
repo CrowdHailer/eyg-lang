@@ -222,7 +222,7 @@ This is a finite follow-on pass after the initial commit review and recording:
 - [x] Make dependency execution reproducible and policy-safe: enforce connection
   read policies on imports, freeze package references before execution, and check
   authorization again at the publication boundary.
-- [ ] Complete content-addressed API ergonomics: upload reusable blocks, resolve
+- [x] Complete content-addressed API ergonomics: upload reusable blocks, resolve
   non-EYG DAG-JSON structures by CID, and support the short filesystem routes
   shown at the beginning of this plan alongside the documented `/api` routes.
 - [ ] Strengthen storage recovery: sync publication metadata, reject incomplete

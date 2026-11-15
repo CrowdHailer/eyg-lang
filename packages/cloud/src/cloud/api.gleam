@@ -5,6 +5,7 @@ import cloud/box/check
 import cloud/box/store
 import cloud/box/transaction as tx
 import cloud/catalog
+import cloud/content as block_content
 import cloud/overlay
 import cloud/templates
 import eyg/interpreter/cast
@@ -37,6 +38,23 @@ pub type Service {
 
 pub fn controller(service: Service) {
   controller.new("/api")
+  |> controller.post("/boxes/:name/blocks", fn(ctx) {
+    protected(ctx, service, "upload", "/", fn(owner) {
+      let outcome = {
+        let codec = case request.get_header(ctx.request, "content-type") {
+          Ok("application/vnd.ipld.dag-json") -> block_content.dag_json_code
+          _ -> block_content.raw
+        }
+        use bytes <- result.try(
+          controller.read_body(ctx, 16_777_216)
+          |> result.replace_error("Invalid body or larger than 16 MiB"),
+        )
+        use cid <- result.map(box.stage(owner, codec, bytes))
+        json.object([#("cid", json.string(v1.to_string(cid)))])
+      }
+      respond(ctx, outcome)
+    })
+  })
   |> controller.post("/boxes/:name/connect", fn(ctx) {
     protected(ctx, service, "connect", "/system/connection.eyg", fn(owner) {
       respond(
@@ -140,6 +158,10 @@ pub fn controller(service: Service) {
           Ok(bytes) ->
             response.new(200)
             |> response.set_header("etag", v1.to_string(snapshot.files.root))
+            |> response.set_header(
+              "x-content-cid",
+              v1.to_string(block_content.identify(block_content.raw, bytes)),
+            )
             |> response.set_header("content-type", "application/octet-stream")
             |> response.set_body(
               content.Bytes(bytes_tree.from_bit_array(bytes)),
@@ -238,6 +260,30 @@ pub fn controller(service: Service) {
         |> result.map(fn(_) { json.object([]) }),
     )
   })
+  |> controller.build
+}
+
+/// Short filesystem paths from the design are aliases of the same handlers,
+/// so authorization, validation and conflict behavior cannot diverge.
+pub fn short_controller(service: Service) {
+  list.fold(
+    controller.routes(controller(service)),
+    controller.new("/"),
+    fn(short, route) {
+      case route.segments {
+        ["api", "boxes", ":name", "files", "*path"] ->
+          controller.route(short, route.method, "/:name/*path", route.handler)
+        ["api", "boxes", ":name", "transactions"] ->
+          controller.route(
+            short,
+            route.method,
+            "/:name/transactions",
+            route.handler,
+          )
+        _ -> short
+      }
+    },
+  )
   |> controller.build
 }
 
@@ -410,6 +456,7 @@ fn respond(ctx, outcome) {
 fn transact(ctx, service: Service, owner, input) {
   case input {
     Error(error) -> failure(ctx, 400, error)
+    Ok(#(_, [])) -> failure(ctx, 400, "A transaction must contain a change")
     Ok(#(base, changes)) -> {
       let authorize = fn(change) {
         let operation = case change {
@@ -447,7 +494,10 @@ fn reference(files: file_system.State, path, text) {
   use cid <- result.try(parse_cid(text))
   case dict.get(files.blocks, cid) {
     Ok(mfs.File(bytes)) -> Ok(tx.Put(path, bytes))
-    _ -> Error("Unknown file content reference")
+    _ ->
+      dict.get(files.content, cid)
+      |> result.map(fn(bytes) { tx.Put(path, bytes) })
+      |> result.replace_error("Unknown file content reference")
   }
 }
 

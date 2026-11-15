@@ -2,6 +2,7 @@
 
 import cloud/beam/execute
 import cloud/beam/file_system
+import cloud/content
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -109,9 +110,24 @@ pub fn expand(source, files, path, visiting) {
   expand_with(source, files, path, visiting, fn(_) { True })
 }
 
-pub fn expand_with(source, files, path, visiting, allowed) {
+pub fn expand_with(source, files: file_system.State, path, visiting, allowed) {
   let #(node, meta) = source
   case node {
+    ir.Reference(ir.Content(cid)) ->
+      case dict.get(files.content, cid) {
+        Error(_) -> Ok(source)
+        Ok(bytes) -> {
+          use source <- result.try(content.source(cid.content_type, bytes))
+          // Immutable content links cannot point back to a containing block.
+          expand_with(
+            ir.map_annotation(source, fn(_) { meta }),
+            files,
+            path,
+            visiting,
+            allowed,
+          )
+        }
+      }
     ir.Reference(ir.Relative(relative)) -> {
       let directory =
         path

@@ -8,6 +8,7 @@ import cloud/box/interface
 import cloud/box/session
 import cloud/box/store
 import cloud/box/transaction as tx
+import cloud/content
 import cloud/overlay
 import cloud/schedule
 import eyg/interpreter/state as value
@@ -26,6 +27,7 @@ import multiformats/cid/v1
 import simplifile
 
 pub type Message {
+  Stage(codec: Int, bytes: BitArray, reply: Subject(Result(v1.Cid, String)))
   Inspect(reply: Subject(store.Snapshot))
   Invoke(
     path: String,
@@ -104,6 +106,10 @@ pub fn invoke(box, path, input) {
 
 pub fn connect(box, config, identity, text, agent) {
   process.call_forever(box, Connect(config, identity, text, agent, _))
+}
+
+pub fn stage(box, codec, bytes) {
+  process.call(box, 30_000, Stage(codec, bytes, _))
 }
 
 fn publish(state: State, files) {
@@ -239,6 +245,30 @@ fn tick(state: State) {
 
 fn handle(state: State, message: Message) {
   case message {
+    Stage(codec, bytes, reply) -> {
+      let staged = {
+        use _ <- result.try(content.source(codec, bytes))
+        let cid = content.identify(codec, bytes)
+        let files =
+          file_system.State(
+            ..state.snapshot.files,
+            content: dict.insert(state.snapshot.files.content, cid, bytes),
+          )
+        let snapshot = store.Snapshot(..state.snapshot, files:)
+        use _ <- result.map(store.save(state.path, snapshot))
+        #(cid, State(..state, snapshot:))
+      }
+      case staged {
+        Ok(#(cid, state)) -> {
+          process.send(reply, Ok(cid))
+          actor.continue(state)
+        }
+        Error(error) -> {
+          process.send(reply, Error(error))
+          actor.continue(state)
+        }
+      }
+    }
     Connect(config, identity, text, agent, reply) -> {
       let outcome = {
         use module <- result.try(

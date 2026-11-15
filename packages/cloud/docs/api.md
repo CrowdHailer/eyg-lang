@@ -7,6 +7,13 @@ file reads and application responses. JSON request bodies are limited to 16 MiB.
 GET /api/templates
   List IDs, titles and descriptions for the 20 starter filesystems. Public.
 
+POST /api/boxes/NAME/blocks
+  Upload immutable content without changing the current filesystem root.
+  Requires operation upload on /. Returns {cid}. By default bytes use the raw
+  codec; Content-Type: application/vnd.ipld.dag-json selects validated DAG-JSON.
+  A subsequent transaction can put a file by reference to this CID. EYG code
+  can also import the uploaded content with #CID.
+
 GET /api/boxes
   List box names. Administrator only.
 
@@ -21,7 +28,8 @@ GET /api/boxes/NAME
   File paths are filtered by the token's read policy.
 
 GET /api/boxes/NAME/files/PATH
-  Read bytes from the captured current root. ETag identifies that root.
+  Read bytes from the captured current root. ETag identifies that root;
+  X-Content-CID identifies the file bytes for reuse in a transaction.
   Requires operation read on the canonical absolute path.
 
 PUT /api/boxes/NAME/files/PATH
@@ -92,3 +100,6 @@ GET|POST|PUT|PATCH|DELETE /app/NAME/PATH
 
 Use the returned root as the next transaction's base. A request or cron can
 advance it at any time; clients should handle 409 explicitly.
+
+The short routes GET|PUT /NAME/PATH and POST /NAME/transactions are aliases of
+the corresponding filesystem handlers. An empty transaction is rejected.

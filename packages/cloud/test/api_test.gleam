@@ -63,7 +63,16 @@ pub fn webhook_cron_fork_and_conflict_test() {
   let transaction =
     json.object([
       #("base", json.string(v1.to_string(before))),
-      #("changes", json.array([], json.string)),
+      #(
+        "changes",
+        json.preprocessed_array([
+          json.object([
+            #("operation", json.string("put")),
+            #("path", json.string("/data/stale.txt")),
+            #("text", json.string("stale")),
+          ]),
+        ]),
+      ),
     ])
   let res =
     testing.post("/api/boxes/events/transactions", transaction)

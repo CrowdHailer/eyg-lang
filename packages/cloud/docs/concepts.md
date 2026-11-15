@@ -41,6 +41,20 @@ rejected because the same snapshot could otherwise change meaning on restart.
 Version references are resolved before execution and closures retain content IDs.
 Shell imports obey the connection's read policy, including nested imports.
 
+## Content blocks and DAG-JSON
+
+Upload a block independently, then reference its CID in a transaction or in EYG.
+Raw blocks import as binary. DAG-JSON blocks containing EYG IR import as code;
+other DAG-JSON imports as data: objects become records, integers and strings
+retain their types, booleans become True/False, bytes become binary, null becomes
+Null({}), and links become Link("CID"). Links are values rather than implicit I/O.
+
+Uniform arrays become lists. Heterogeneous arrays use indexed variants Item0,
+Item1, etc., preserving order and each element's type without an unsafe dynamic
+value. Non-integer numbers become Number("decimal representation"), since EYG
+has no native floating-point value. These representations make every supported
+DAG-JSON data shape expressible without changing the language's IR.
+
 ## Interfaces
 
 /system/http.eyg is {handler, policy}. Its handler receives {method, path, headers,

@@ -1,6 +1,7 @@
 //// Versioned snapshots. Acknowledgement follows a synced atomic replacement.
 
 import cloud/beam/file_system
+import cloud/content
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamic/decode
@@ -42,6 +43,15 @@ pub fn load(path: String) {
     }),
   )
   use _ <- result.try(
+    list.try_each(dict.to_list(snapshot.files.content), fn(pair) {
+      case content.identify(pair.0.content_type, pair.1) == pair.0 {
+        True ->
+          content.source(pair.0.content_type, pair.1) |> result.replace(Nil)
+        False -> Error("Corrupt content block")
+      }
+    }),
+  )
+  use _ <- result.try(
     list.try_each([snapshot.files.root, ..snapshot.history], fn(root) {
       case dict.get(snapshot.files.blocks, root) {
         Ok(mfs.Directory(_)) -> Ok(Nil)
@@ -55,6 +65,15 @@ pub fn load(path: String) {
 fn encode(snapshot: Snapshot) {
   json.object([
     #("format", json.int(1)),
+    #(
+      "content",
+      json.array(dict.to_list(snapshot.files.content), fn(pair) {
+        json.object([
+          #("cid", json.string(v1.to_string(pair.0))),
+          #("bytes", json.string(bit_array.base64_encode(pair.1, True))),
+        ])
+      }),
+    ),
     #("root", json.string(v1.to_string(snapshot.files.root))),
     #(
       "history",
@@ -127,6 +146,18 @@ fn decoder() {
   use format <- decode.field("format", decode.int)
   use root <- decode.field("root", cid_decoder())
   use history <- decode.field("history", decode.list(cid_decoder()))
+  use content <- decode.optional_field(
+    "content",
+    [],
+    decode.list({
+      use cid <- decode.field("cid", cid_decoder())
+      use text <- decode.field("bytes", decode.string)
+      case bit_array.base64_decode(text) {
+        Ok(bytes) -> decode.success(#(cid, bytes))
+        Error(_) -> decode.failure(#(cid, <<>>), "base64")
+      }
+    }),
+  )
   use blocks <- decode.field(
     "blocks",
     decode.list({
@@ -136,7 +167,10 @@ fn decoder() {
     }),
   )
   let snapshot =
-    Snapshot(file_system.State(root, dict.from_list(blocks)), history)
+    Snapshot(
+      file_system.State(root, dict.from_list(blocks), dict.from_list(content)),
+      history,
+    )
   case format {
     1 -> decode.success(snapshot)
     _ -> decode.failure(snapshot, "snapshot format 1")

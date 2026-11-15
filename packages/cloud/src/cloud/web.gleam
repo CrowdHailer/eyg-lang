@@ -73,6 +73,7 @@ pub fn app(service, domain) {
   })
   |> howdy.controller(api.controller(service))
   |> howdy.controller(api.public_controller(service))
+  |> howdy.controller(api.short_controller(service))
   |> howdy.controller(docs.controller())
   |> howdy.controller(
     controller.new("/")
