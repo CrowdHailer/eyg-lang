@@ -50,6 +50,7 @@ pub fn validate(files: file_system.State, runtime: execute.State) {
       False -> Ok(acc)
       True -> {
         use source <- result.try(load(files, path, []))
+        use #(source, runtime) <- result.try(freeze(source, runtime))
         use #(value, runtime) <- result.map(prepare(source, runtime))
         #(dict.insert(modules, path, Module(source, value)), runtime)
       }
@@ -62,6 +63,14 @@ pub fn is_source(path: String) {
 }
 
 pub fn load(files: file_system.State, path: String, visiting: List(String)) {
+  load_with(files, path, visiting, fn(_) { True })
+}
+
+fn load_with(files, path, visiting, allowed) {
+  use _ <- result.try(case allowed(path) {
+    True -> Ok(Nil)
+    False -> Error("Import denied: " <> path)
+  })
   case list.contains(visiting, path) {
     True ->
       Error(
@@ -80,7 +89,7 @@ pub fn load(files: file_system.State, path: String, visiting: List(String)) {
           use source <- result.try(
             parse(text) |> result.map_error(fn(error) { path <> ": " <> error }),
           )
-          expand(source, files, path, [path, ..visiting])
+          expand_with(source, files, path, [path, ..visiting], allowed)
         }
       }
     }
@@ -97,6 +106,10 @@ pub fn parse(text: String) {
 }
 
 pub fn expand(source, files, path, visiting) {
+  expand_with(source, files, path, visiting, fn(_) { True })
+}
+
+pub fn expand_with(source, files, path, visiting, allowed) {
   let #(node, meta) = source
   case node {
     ir.Reference(ir.Relative(relative)) -> {
@@ -113,29 +126,41 @@ pub fn expand(source, files, path, visiting) {
       }
       use absolute <- result.try(file_system.resolve_path(absolute))
       case string.contains(absolute, ":{") {
-        True -> pattern(files, absolute, visiting)
-        False -> load(files, absolute, visiting)
+        True -> pattern(files, absolute, visiting, allowed)
+        False -> load_with(files, absolute, visiting, allowed)
       }
     }
     ir.Lambda(label, body) -> {
-      use body <- result.map(expand(body, files, path, visiting))
+      use body <- result.map(expand_with(body, files, path, visiting, allowed))
       #(ir.Lambda(label, body), meta)
     }
     ir.Apply(function, argument) -> {
-      use function <- result.try(expand(function, files, path, visiting))
-      use argument <- result.map(expand(argument, files, path, visiting))
+      use function <- result.try(expand_with(
+        function,
+        files,
+        path,
+        visiting,
+        allowed,
+      ))
+      use argument <- result.map(expand_with(
+        argument,
+        files,
+        path,
+        visiting,
+        allowed,
+      ))
       #(ir.Apply(function, argument), meta)
     }
     ir.Let(label, value, body) -> {
-      use value <- result.try(expand(value, files, path, visiting))
-      use body <- result.map(expand(body, files, path, visiting))
+      use value <- result.try(expand_with(value, files, path, visiting, allowed))
+      use body <- result.map(expand_with(body, files, path, visiting, allowed))
       #(ir.Let(label, value, body), meta)
     }
     _ -> Ok(source)
   }
 }
 
-fn pattern(files, pattern, visiting) {
+fn pattern(files, pattern, visiting, allowed) {
   use #(prefix, rest) <- result.try(
     string.split_once(pattern, ":{")
     |> result.replace_error("Invalid import pattern"),
@@ -160,7 +185,7 @@ fn pattern(files, pattern, visiting) {
     })
   use items <- result.map(
     list.try_map(matching, fn(path) {
-      use source <- result.map(load(files, path, visiting))
+      use source <- result.map(load_with(files, path, visiting, allowed))
       ir.record([
         #("path", ir.string(path)),
         #(
@@ -177,6 +202,7 @@ fn pattern(files, pattern, visiting) {
 }
 
 pub fn prepare(source, runtime: execute.State) {
+  use #(source, runtime) <- result.try(freeze(source, runtime))
   let context = infer.pure() |> infer.with_effect("Abort", t.String, t.Never)
   use runtime <- result.try(check(infer.check(context, source), runtime))
   let #(value, runtime) =
@@ -185,6 +211,51 @@ pub fn prepare(source, runtime: execute.State) {
     result.map_error(value, fn(error) { simple_debug.describe(error.0) }),
   )
   #(value, runtime)
+}
+
+/// A durable root cannot depend on a moving package name. Versions are immutable
+/// in the hub; resolve and verify them once, then closures carry only content IDs.
+pub fn freeze(source, runtime: execute.State) {
+  let #(node, meta) = source
+  case node {
+    ir.Reference(ir.Package(name)) ->
+      Error("Pin @" <> name <> " to a version or @name:version:CID in a box")
+    ir.Reference(ir.Version(name, version) as reference) -> {
+      let #(value, loaded) = execute.lookup(reference, runtime)
+      use _ <- result.try(value)
+      use cid <- result.map(
+        cache.unbound_release(loaded, name, version)
+        |> result.replace_error("Missing package version"),
+      )
+      #(
+        #(ir.Reference(ir.Content(cid)), meta),
+        execute.State(..runtime, cache: loaded),
+      )
+    }
+    ir.Reference(ir.Pinned(release) as reference) -> {
+      let #(value, loaded) = execute.lookup(reference, runtime)
+      use _ <- result.map(value)
+      #(
+        #(ir.Reference(ir.Content(release.module)), meta),
+        execute.State(..runtime, cache: loaded),
+      )
+    }
+    ir.Lambda(label, body) -> {
+      use #(body, runtime) <- result.map(freeze(body, runtime))
+      #(#(ir.Lambda(label, body), meta), runtime)
+    }
+    ir.Apply(function, argument) -> {
+      use #(function, runtime) <- result.try(freeze(function, runtime))
+      use #(argument, runtime) <- result.map(freeze(argument, runtime))
+      #(#(ir.Apply(function, argument), meta), runtime)
+    }
+    ir.Let(label, value, body) -> {
+      use #(value, runtime) <- result.try(freeze(value, runtime))
+      use #(body, runtime) <- result.map(freeze(body, runtime))
+      #(#(ir.Let(label, value, body), meta), runtime)
+    }
+    _ -> Ok(#(source, runtime))
+  }
 }
 
 pub fn check(step, runtime: execute.State) {

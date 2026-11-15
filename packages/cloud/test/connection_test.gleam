@@ -163,4 +163,20 @@ pub fn channel_workspace_isolation_test() {
       service.agent,
     )
   string.contains(result, "Ok(") |> should.be_true
+  box.connect(
+    owner,
+    "/system/connection.eyg",
+    "user",
+    "import \"/system/policy.eyg\"",
+    service.agent,
+  )
+  |> should.be_error
+  box.connect(
+    owner,
+    "/system/connection.eyg",
+    "user",
+    "import \"/app/skills/readme.txt\"",
+    service.agent,
+  )
+  |> should.be_ok
 }

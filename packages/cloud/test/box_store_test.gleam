@@ -8,6 +8,7 @@ import gleam/bit_array
 import gleam/crypto
 import gleam/dict
 import gleam/erlang/process
+import gleam/otp/actor
 import gleeunit/should
 import ogre/origin
 import simplifile
@@ -81,5 +82,29 @@ pub fn failed_persistence_does_not_publish_test() {
   |> should.be_error
   box.inspect(owner.data) |> should.equal(base)
   simplifile.delete(path <> ".tmp") |> should.be_ok
+  simplifile.delete(path) |> should.be_ok
+}
+
+pub fn authorization_rechecked_before_publish_test() {
+  let path = path()
+  let runtime =
+    execute.State(origin.http("localhost"), cache.ready(), dict.new())
+  let assert Ok(owner) = box.start(path, box.empty(), runtime)
+  let assert Ok(gate) =
+    actor.new(0)
+    |> actor.on_message(fn(count, reply) {
+      process.send(reply, count == 0)
+      actor.continue(count + 1)
+    })
+    |> actor.start
+  let before = box.inspect(owner.data)
+  box.commit(
+    owner.data,
+    before.files.root,
+    [tx.Put("/value.eyg", <<"42":utf8>>)],
+    fn(_) { process.call(gate.data, 1000, fn(reply) { reply }) },
+  )
+  |> should.be_error
+  box.inspect(owner.data) |> should.equal(before)
   simplifile.delete(path) |> should.be_ok
 }

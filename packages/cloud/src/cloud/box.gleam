@@ -107,8 +107,16 @@ pub fn connect(box, config, identity, text, agent) {
 }
 
 fn publish(state: State, files) {
+  publish_if(state, files, fn() { True })
+}
+
+fn publish_if(state: State, files, authorized) {
   use #(modules, runtime) <- result.try(check.validate(files, state.runtime))
   use runtime <- result.try(interface.validate(modules, runtime))
+  use _ <- result.try(case authorized() {
+    True -> Ok(Nil)
+    False -> Error("Authorization changed before publication")
+  })
   let snapshot =
     store.Snapshot(files, [state.snapshot.files.root, ..state.snapshot.history])
   use _ <- result.map(store.save(state.path, snapshot))
@@ -281,7 +289,15 @@ fn handle(state: State, message: Message) {
           changes,
           authorize,
         ))
-        publish(state, files) |> result.map_error(tx.Invalid)
+        publish_if(state, files, fn() {
+          list.all(changes, fn(change) {
+            case tx.canonical(change) {
+              Ok(change) -> authorize(change)
+              Error(_) -> False
+            }
+          })
+        })
+        |> result.map_error(tx.Invalid)
       }
       case outcome {
         Ok(updated) -> {

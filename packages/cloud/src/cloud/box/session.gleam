@@ -6,7 +6,9 @@ import cloud/overlay
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/interpreter/cast
 import eyg/interpreter/simple_debug
+import eyg/interpreter/value as v
 import gleam/bit_array
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
@@ -34,7 +36,12 @@ pub fn run(config: check.Module, identity, text, agent, runtime, files) {
   case mode {
     "shell" -> {
       use source <- result.try(check.parse(text))
-      use source <- result.try(check.expand(source, files, "/shell.eyg", []))
+      use source <- result.try(
+        check.expand_with(source, files, "/shell.eyg", [], fn(path) {
+          can_import(policy, path, runtime)
+        }),
+      )
+      use #(source, runtime) <- result.try(check.freeze(source, runtime))
       let context =
         infer.pure()
         |> infer.with_effects(
@@ -87,6 +94,33 @@ pub fn run(config: check.Module, identity, text, agent, runtime, files) {
       )
     }
     _ -> Error("Connection mode must be shell or agent")
+  }
+}
+
+fn can_import(policy, path, runtime) {
+  let input =
+    v.Record(
+      dict.from_list([
+        #("path", v.String(path)),
+        #("offset", v.Integer(0)),
+        #("limit", v.Integer(1_073_741_824)),
+      ]),
+    )
+  let decision =
+    policy.decide(
+      policy,
+      "ReadFile",
+      input,
+      #(0, 0),
+      fn(returned, then) {
+        let #(outcome, _) = execute.pure_loop(returned, runtime)
+        then(outcome)
+      },
+      fn(action) { action },
+    )
+  case decision {
+    policy.Perform(_, authorized) -> authorized == input
+    _ -> False
   }
 }
 

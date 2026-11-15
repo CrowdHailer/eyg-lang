@@ -36,6 +36,11 @@ is the only admitted top-level effect, and actually calling it rejects the commi
 Functions may return effectful computations for the runtime to execute later.
 Missing imports, cyclic imports and incompatible dependency changes are rejected.
 
+Use versioned or fully pinned package references in boxes. A moving @name is
+rejected because the same snapshot could otherwise change meaning on restart.
+Version references are resolved before execution and closures retain content IDs.
+Shell imports obey the connection's read policy, including nested imports.
+
 ## Interfaces
 
 /system/http.eyg is {handler, policy}. Its handler receives {method, path, headers,

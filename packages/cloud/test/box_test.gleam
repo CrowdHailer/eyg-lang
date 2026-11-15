@@ -139,3 +139,8 @@ pub fn cycles_and_effects_test() {
   )
   |> should.be_ok
 }
+
+pub fn moving_package_references_are_not_snapshot_dependencies_test() {
+  let assert Ok(source) = check.parse("(_) -> { @standard }")
+  check.prepare(source, runtime()) |> should.be_error
+}

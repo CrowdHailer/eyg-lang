@@ -219,7 +219,7 @@ as stated above; the web connection uses the same shell/agent and policy model.
 
 This is a finite follow-on pass after the initial commit review and recording:
 
-- [ ] Make dependency execution reproducible and policy-safe: enforce connection
+- [x] Make dependency execution reproducible and policy-safe: enforce connection
   read policies on imports, freeze package references before execution, and check
   authorization again at the publication boundary.
 - [ ] Complete content-addressed API ergonomics: upload reusable blocks, resolve
