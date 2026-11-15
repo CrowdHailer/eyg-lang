@@ -2,6 +2,35 @@
 
 A place to run EYG code away from your local machine
 
+## Versioned boxes and web terminal
+
+```sh
+export EYG_CLOUD_TOKEN='choose-a-long-random-administrator-token'
+gleam run -m cloud/web
+```
+
+Open <http://127.0.0.1:8787>. The Howdy/etui dashboard creates boxes from twenty
+checked templates, edits files in atomic batches, installs webhooks and UTC cron
+jobs, opens shell/agent connections, and issues scoped account tokens.
+
+- [Concepts](docs/concepts.md)
+- [Getting started](docs/getting-started.md)
+- [API reference](docs/api.md)
+- All twenty template filesystems can be inspected at `/docs/templates`.
+
+Set `EYG_CLOUD_DATA` to a persistent directory (default `.cloud`). The server
+binds to `127.0.0.1:8787`; configure `EYG_CLOUD_BIND`, `PORT`, and
+`EYG_CLOUD_DOMAIN` as needed. A reverse proxy must preserve Host and support
+WebSockets. Account grants are stored outside box snapshots in `account.json`.
+
+For the browser test and video, install dependencies in `demo`, install
+Playwright's Chromium/FFmpeg, and run `npm run record` from that directory with
+`EYG_CLOUD_TOKEN` and optionally `EYG_CLOUD_URL` set. `CHROME` can select an
+existing Chrome executable. The test verifies both a real HTTP webhook and an
+automatic cron tick, and records a WebM under `research/everything-filesystem/demo`.
+
+The original chat-only runtime remains available with `gleam run`:
+
 ```
 (set -a; source .env; set +a; gleam dev)
 ```

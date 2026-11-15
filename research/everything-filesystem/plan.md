@@ -193,3 +193,37 @@ Every agent trajectory trace is saved into the file system as well.
 Each box has a single owner process that serializes commits. Multiple clients and agent sessions can still propose changes based on the same root. The expected-root check prevents a stale proposal from silently overwriting a newer commit.
 
 Agent trace writes and other system-generated filesystem changes follow the same commit rules.
+
+## Implementation and verification
+
+The implementation is in `packages/cloud`. Start the web runtime with
+`gleam run -m cloud/web`; its README describes configuration and the browser test.
+
+- The box owner constructs, checks and durably publishes complete candidate roots.
+- HTTP, UTC cron, shell/Overlay connections and Slack/Discord routing are configured
+  by files. Account-issued API grants are persisted outside the box.
+- The Howdy/etui dashboard includes filesystem transactions, webhook/cron setup,
+  channel-scoped agent policies, token management and snapshot forks.
+- Concepts, API reference, getting started, and all files from twenty distinct
+  templates are accessible from the dashboard navigation.
+- `demo/webhook-and-cron.webm` records the real dashboard workflow. The browser
+  test also checks an external HTTP request and an automatic cron tick.
+
+The initial implementation deliberately validates the whole tree and stores all
+historical blocks in a per-box snapshot file. This keeps the low-concurrency
+model explicit. Active executions are outside filesystem snapshots; external
+effects cannot be rolled back by restoring a root. SSH transport remains deferred
+as stated above; the web connection uses the same shell/agent and policy model.
+
+## Follow-on implementation steps
+
+This is a finite follow-on pass after the initial commit review and recording:
+
+- [ ] Make dependency execution reproducible and policy-safe: enforce connection
+  read policies on imports, freeze package references before execution, and check
+  authorization again at the publication boundary.
+- [ ] Complete content-addressed API ergonomics: upload reusable blocks, resolve
+  non-EYG DAG-JSON structures by CID, and support the short filesystem routes
+  shown at the beginning of this plan alongside the documented `/api` routes.
+- [ ] Strengthen storage recovery: sync publication metadata, reject incomplete
+  or corrupt block graphs, and verify recovery and content-reference workflows.

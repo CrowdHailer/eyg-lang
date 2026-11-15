@@ -326,3 +326,15 @@ pub fn all() {
 pub fn get(id) {
   all() |> list.find(fn(template) { template.id == id })
 }
+
+/// Channel-specific capabilities: reads are limited to the workspace and skills.
+pub fn channel_policy(scope: String) {
+  "let pass = (input) -> { Pass(input) }\n"
+  <> "let write = (path, input) -> { match !string_starts_with(path, "
+  <> quote(scope <> "/")
+  <> ") { True(_) -> { Pass(input) } False(_) -> { Mock(Error(\"Outside channel workspace\")) } } }\n"
+  <> "let read = (path, input) -> { match !string_starts_with(path, "
+  <> quote(scope <> "/")
+  <> ") { True(_) -> { Pass(input) } False(_) -> { match !string_starts_with(path, \"/app/skills/\") { True(_) -> { Pass(input) } False(_) -> { Mock(Error(\"Read is outside channel workspace or skills\")) } } } } }\n"
+  <> "{append_file: (input) -> { write(input.path, input) }, cwd: pass, delete_file: (path) -> { write(path, path) }, env: (_) -> { Mock(None({})) }, fetch: (_) -> { Mock(Error(\"Network access is not granted\")) }, flip: pass, make_directory: (path) -> { write(path, path) }, now: pass, random: pass, read_directory: (path) -> { read(!string_append(path, \"/\"), path) }, read_file: (input) -> { read(input.path, input) }, sleep: pass, standard_error: pass, standard_out: pass, write_file: (input) -> { write(input.path, input) }}"
+}

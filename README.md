@@ -45,6 +45,7 @@ Another reason could be to imagine your own syntax, or even visual editor, and r
 - [spec](./spec) A JSON spec of all evaluation rules. Compiler and interpreter implementations should use this as their test suite.
 - [gleam_analysis](./packages/gleam_analysis/) Type inference for expressions, effects and scope variables in EYG programs.
 - [gleam_cli](./packages/gleam_cli/) The CLI for running EYG programs and interacting with the EYG hub.
+- [cloud](./packages/cloud/) Versioned EYG computers with checked filesystem transactions, HTTP and cron interfaces, policy-controlled agents, and a web terminal with twenty starter filesystems.
 - [gleam_hub](./packages/gleam_hub/) Schemas, encoders and decoders for the EYG Hub API. (Unpublished)
 - [gleam_ir](./packages/gleam_ir/) Data structures for the EYG IR. This is the original implementation of EYG.
 - [gleam_interpreter](./packages/gleam_interpreter/) A Gleam interpreter for EYG targeting JavaScript. Runs in the browser and on the server.

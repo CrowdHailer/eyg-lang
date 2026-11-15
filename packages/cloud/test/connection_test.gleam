@@ -115,3 +115,52 @@ pub fn agent_trajectory_persisted_test() {
   string.contains(text, "First turn") |> should.be_true
   string.contains(text, "Second turn") |> should.be_true
 }
+
+pub fn channel_workspace_isolation_test() {
+  let #(service, _) = api_test.setup()
+  let assert Ok(template) = templates.get("agent-notebook")
+  let assert Ok(owner) =
+    catalog.create(service.catalog, "scoped", template.files)
+  let root = box.inspect(owner).files.root
+  box.commit(
+    owner,
+    root,
+    [
+      tx.MakeDirectory("/slack/channel/one"),
+      tx.MakeDirectory("/app/skills"),
+      templates.file("/app/skills/readme.txt", "instructions"),
+      templates.file(
+        "/system/policy.eyg",
+        templates.channel_policy("/slack/channel/one"),
+      ),
+    ],
+    fn(_) { True },
+  )
+  |> should.be_ok
+  box.connect(
+    owner,
+    "/system/connection.eyg",
+    "user",
+    "perform WriteFile({path: \"/slack/channel/one/note.txt\", contents: !string_to_binary(\"saved\")})",
+    service.agent,
+  )
+  |> should.equal(Ok("Ok({})"))
+  let assert Ok(result) =
+    box.connect(
+      owner,
+      "/system/connection.eyg",
+      "user",
+      "perform WriteFile({path: \"/slack/channel/one/../two/note.txt\", contents: !string_to_binary(\"denied\")})",
+      service.agent,
+    )
+  string.contains(result, "Outside channel workspace") |> should.be_true
+  let assert Ok(result) =
+    box.connect(
+      owner,
+      "/system/connection.eyg",
+      "user",
+      "perform ReadFile({path: \"/app/skills/readme.txt\", offset: 0, limit: 100})",
+      service.agent,
+    )
+  string.contains(result, "Ok(") |> should.be_true
+}
