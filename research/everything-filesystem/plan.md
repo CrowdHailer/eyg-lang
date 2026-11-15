@@ -1,19 +1,21 @@
 # Everything file system
 
+## Immutability has no existance
+
 EYG is a functional immutable language.
-This means that there is no concept of self, a system can process data but not modify itself.
-Where the concept of self is loosly defined.
+This means that there is no concept of self an EYG can process data but not modify itself.
 
 One solution is to identify a computer as the concept of self.
 Essentially I equate existance to a timeline of mutable state.
 The computer consists as a set of processes and kernel state living on a file system. Is there anything missing that should be considered a core part of an operating system that is relevant for this discussion.
 
 This is not the only solution for the concept of identity.
-A spread sheet is another layout of mutable items that can evolve over time. Are there more?
+A spread sheet is another layout of mutable items that can evolve over time.
+Mutable variables in a program are close, they also require eval to load in new code
 
 An entity that exists (has a mutable timeline regardless of implementation) has additional properties
 - Snapshot the entity at a given point in time
-- Fork, evolve more than one instance forward from a snapshot.
+- Clone, evolve more than one instance forward from a snapshot.
 
 The fact that a system has these properties does not imply that the implementation of these properties is efficient.
 
@@ -38,148 +40,177 @@ More recently vercel/nexjs use layout of a project on the file system to specify
 
 A global mutable file system is not something that is type checked programs that load data/config have to have runtime errors for any dependencies on the file system.
 
-## EYG cloud
+## EYG FS
 
-This is a cloud native computer
+Everything in an EYG box builds on the EYG file system
 
 This builds upon Mutable File System (MFS) a box (is this a good name).
-Is a named reference to a stream of mfs hashes.
 
-The system is headless, i.e. it is API first
+> The external API cannot be based on hashes if a reader is limited in it's ability to read directories
+> To create a new hash tree the client must be able to reproduce all parent directories.
+> This access to directories does not require any access to file content.
+>
+> A future API could check that directory read access is always allowed.
+> A good API would be post to a name a CAR file with new root CID, all new blocks are expected.
+> 
+> For now an external API to modifying files is exposed only to the sudo role with ability to post a new file root.
+> The other option for a client is to run a script and the runtime will manage all new hash values. Only one script runs at a time.
 
+### A box
+
+A box is the changable container for one chain of MFS roots.
+Cloning a box creates a new box with a new name and the same file system root.
+
+### import checking
+
+Any change to an EYG FS also validates any imports.
+Imports are resolved against the file system.
+
+#### Simple imports
+
+```eyg
+// /entry.eyg
+!int_add(import "./foo.eyg", import "./bar.eyg")
 ```
-PUT cloud.eyg.run/:name/foo/bar
-GET cloud.eyg.run/:name/foo/bar
+
+When this file is included in an filesystem the whole system is checked and both `foo.eyg` and `bar.eyg` must exist and contain modules that return an `Integer`.
+
+#### Pattern imports
+
+Pattern imports are for loading a set of modules.
+The return of the 
+
+```eyg
+let blogs = import "./blog/[slug].eyg"
+let routes = import "./routes/[..slug].eyg"
+let blogs = import "./site/[latitude]/[longitude].eyg"
 ```
-headers decide if a raw blob is being uploaded or a reference to existing blobs.
 
-Each box has a current filesystem root hash.
+The type of blogs is `List({slug: String, value: t})`
+The type of routes is `List({slug: List(String), value: t})`
+The type of routes is `List({latitude: String, longitude: String, value: t})`
 
-A mutation supplies the root hash it was based on and a batch of filesystem changes.
-The batch may create, replace, or delete multiple files and directories.
+#### Blob imports
 
-Validation runs against the complete candidate, so intermediate states within a batch do not need to be valid.
+Importing a single file that does not end in a `.eyg` or `.eyg.json` returns the files binary content.
+Pattern imports also work
 
-The candidate becomes the current filesystem only if validation succeeds and the supplied base hash still matches the current root at commit time. Publishing the new root is atomic: readers see either the old filesystem or the new one, never a partially applied batch.
-
-A conflict returns the current root hash so the caller can inspect the intervening changes and submit a revised batch.
-There is no automatic merging.
-
-Batch operation
-
+```eyg
+let logo = import "/images/logo.jpg"
+let pngs = import "/images/[image].png"
 ```
-POST cloud.eyg.run/:name/transactions
-Content-Type: application/json
 
+#### Hub imports
+
+All EYG scripts can rely on published packages e.g. `@standard`.
+Caching is done on the level of the whole cloud so in most cases this is a cheap dependency and saves space in the box.
+
+#### Implementation
+
+Type checking the whole file system is applied to an MFS root.
+The checking algorithm traverses all files.
+Checking follows imports but tracks:
+- the files already checked so each is checked only once
+- the current import sequence to avoid import loops.
+
+The type checking algorithm also accepts a previous run state so only the changed files are checked.
+
+## EYG computer
+
+### Configuration
+
+There is one special file in the EYG computer `_box/config.eyg`.
+Access to the `_box` dir has an additional check external to the box configuration that ensures that only the admin user can read and modify it.
+
+### Secrets
+
+Secrets are set as env variables per box.
+They can be used in `_box/config.eyg` via the `Env` effect.
+It is good practise for all users to have calls to perform the `Env` effect denied.
+Instead for fetch requests a derived identifier is passed and the policy for fetch replaces that identifier with the actual token in headers.
+
+### Services
+
+The configuration file is an EYG module that returns an object with a field for each service the box supports, for example HTTP, ssh or provider specific such as Slack
+
+Each box gets it's own subdomain on cloud.eyg.run, this is the domain for http and ssh (but not web as that log in is from the main cloud page.)
+
+Note in all cases policies for `ReadFile` also apply to imports.
+
+#### ssh
+
+```eyg
+// /_box/config.eyg
 {
-  "base": "<previous-root-hash>",
-  "changes": [
-    {
-      "operation": "put",
-      "path": "/app/server.eyg",
-      "reference": "<server-content-hash>"
-    },
-    {
-      "operation": "put",
-      "path": "/app/routes/account.eyg",
-      "reference": "<route-content-hash>"
+  ssh: {
+    port: 22,
+    bind: (attemted_user, key) -> {
+      let users = import "/home/[user].eyg"
+      // find user and check key, there is a field `ssh.authorized_keys in the user.eyg file
+      {policy: policy, process: Shell({}) | Overlay({prompt: "read skills from \"/shared/skills/skill.md\"", llm:})}
     }
-  ]
+  }
 }
 ```
 
-The EYG cloud is not just a file system.
-There is also
 
-- Each named space has a public presence, a subdomain on eyg.cloud. It can be configured to respond to web requests to that domain.
-  - Configuration should be a familiar as possible to people setting up a lamp stack, but everything is type checked and configured using EYG.
-- Any EYG scripts are checked, including all the imports they rely on.
-  - a file `!int_add(import "../foo.eyg", import "../bar.eyg") will prevent the file system being updated unless they type check.
-- SSH can be configured so that when a user is connected the connected shell has a policy (look at the existing approach to policies) applied to any effects they execute in the shell.
+This pattern allows a user to change their own keys but without read/write access to `config.eyg` or other user directories that's all they can change.
 
-This allows full applications to be built with their own collaboration rules.
-Any changes to the system are checked.
+Note the overlay agent is an option to start instead of a shell.
+This should be deprecated once an Agent can be built purely in EYG.
 
-For example Create a simple web service
+#### The web
 
 ```eyg
-// /app/server.eyg
-let routes = import "/app/routes/:{path}.eyg"
-let images = import "/app/images/:{image}.png"
-
-let server = (request) -> {
-  // todo use the routes and images
+// /_box/config.eyg
+{
+  http: {
+    ip: 0.0.0.0, // accept all domains.
+    port: 80,
+    on_request: (request) -> {
+      let users = import "/shared/routes/[route].eyg"
+    }
+  }
+  web: {
+    bind: (user) -> {
+      {policy: policy, process: Shell({}) | Overlay({..})}
+    }
+  }
 }
 ```
 
-In this example routes has type `List({path: String, source: (request) -> response})`
-while images has type `List({path, bytes})`.
-A valid EYG file, text or JSON source, is parsed.
-If using the pattern syntax, then the result of the import is a list and each item must have consistent type.
+The `http` field binds for webhooks.
+The `web` field is for anyone who is logged into `cloud.eyg.run` who connects to a box.
+They will get a shell or a agent session with the same configuration as overlay policy already implemented in gleam_cli
 
-Checking EYG code checks that it is sound, type checking passes, and that the top level evaluates without calling Abort.
-Abort is the only effect allowed at the top level of a `.eyg` file.
-Effects like `Fetch` are in functions that are returned by and `.eyg` file.
+The web view also gets a file browser where each dir with an `index.html` is viewable as an artifact.
 
-A user policy can prevent anyone who is not the admin from changing any files except the individual routes.
-Rules could be even more precise so an agent from the accounts team can only update the `/app/routes/account.eyg` path.
+#### Channels
 
-Derived values can also be implemented using the imports
+Channels are described in `packages/cloud/README.md`
 
-```eyg
-// in path/home.eyg
-let raw = import "page/home.md"
-let page = match !string_from_binary(raw) {
-  Ok(content) -> content
-  Error(_) -> perform Abort("page/home.md must be UTF8")
-}
-page
 ```
-
-Here the type of `home.eyg` is a string, not just bytes.
-This can be used for much more sophisticated transformations.
-i.e.
-
-```eyg
-let images = import "images/:{image}.png"
-let processed = list.try_map(images, do_image_have_valid_location_metadata)
-match processed {
-  Ok(processed) -> processed
-  Error(_) -> perform Abort("All images must have location metadata")
+// /_box/config.eyg
+{
+  slack: {
+    connection: { bot_token: perform Env("MY_COMPANY_SLACK_BOT_TOKEN") }
+    entry: (channel) -> {
+      {policy: policy, process: Overlay({})}
+    }
+  }
 }
 ```
 
-Importing structures that are not just eyg code is something that can be generalised.
-i.e. `let signatory = #bac1234` could point at a dag_json encoded unteathered signatory.
-As dag_json types can all be matched to EYG types then any dag_json imported (that is not EYG) gets imported as it's structure.
+Note there is also a both process option for shell execution when it's valid EYG.
 
-## Durable scripts
+#### Service Notes
 
-Any scripts that trigger as part of an HTTP request live outside the file system.
+Service logs live outside the file system.
 
-## Overlay agent
+All invocations and tracing information is saved in an OTEL format outside the box.
 
-Connecting to a box can be configured to return a shell, or an overlay agent session.
-This configuration is all specified on the file system as well.
-
-A user who logs into the cloud website can try an connect to a box
-
-## External agents
-
-A API token can be issued for the API that is restricted, again using a policy that can express anything because it is a full EYG script.
-This means you can give an agent specific permissions and it works from the outside.
-
-Creating a policy is something that is done from an account dashboard outside the box.
-This is because the box does not issue it's own tokens to the direct modify file system API.
-
-Policies for HTTP requests, SSH sessions, and agent connections are defined in the filesystem configuration for each interface. Permission to modify that configuration controls who can change the interface’s policy.
-Changes are authorized using the policy and its dependencies from the currently committed filesystem, before applying the proposed changes. A policy introduced by a transaction cannot authorize that same transaction.
-Sessions retain their authenticated identity, but each effect is authorized using the current committed policy for that connection. Filesystem write authorization is checked as part of committing the transaction.
-
-## Connections
-
-Instead of just exposing a port, for webhooks, There are direct slack/discord connections.
-Files in the box configure what to do on incoming slack messages.
+A service invocation finished before another executes.
+The only exception is Overlay where each turn completes before the next execution.
 
 ## Web interface
 
@@ -189,7 +220,3 @@ It will have the same interface as sshing into the cloud service, although we ar
 The homepage is a neat full screen tui that allows you to setup a box.
 In few operations a user should be able to set up a box and create rules for an agent in a slack channel that can only modify files in `/slack/channel/id` but it can read `app/skills` so that it can load app specific skills.
 
-Every agent trajectory trace is saved into the file system as well.
-Each box has a single owner process that serializes commits. Multiple clients and agent sessions can still propose changes based on the same root. The expected-root check prevents a stale proposal from silently overwriting a newer commit.
-
-Agent trace writes and other system-generated filesystem changes follow the same commit rules.
