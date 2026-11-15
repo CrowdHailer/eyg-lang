@@ -113,6 +113,19 @@ pub fn block(
   #(outcome, state, files)
 }
 
+/// Execute a source tree whose file imports were prepared by the box checker.
+pub fn source(source, state: State, policy: Policy, files, emit) {
+  let #(outcome, state, files, _) =
+    loop(block.execute(source, []), state, policy, files, emit, [])
+  #(
+    result.map(outcome, fn(value) {
+      value |> option.map(simple_debug.inspect) |> option.unwrap("")
+    }),
+    state,
+    files,
+  )
+}
+
 /// Execute an agent tool with fresh context and capture output for the model.
 /// TODO I think the agent can use block execute as well.
 pub fn run(

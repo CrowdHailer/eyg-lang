@@ -93,6 +93,10 @@ fn starter(id, title, description, handler, files) {
         tx.MakeDirectory("/data"),
         tx.MakeDirectory("/skills"),
         file("/system/policy.eyg", policy),
+        file(
+          "/system/connection.eyg",
+          "{mode: \"shell\", policy: import \"/system/policy.eyg\"}",
+        ),
         file("/system/http.eyg", http("import \"/app/handler.eyg\"")),
         file("/app/handler.eyg", handler),
         file(

@@ -24,6 +24,7 @@ pub type Payload {
 
 pub type Message {
   Message(id: String, payload: Payload, print: fn(execute.Output) -> Nil)
+  Incoming(id: String, value: state.Value(execute.Meta))
   Trigger(function: trigger.Checked, value: state.Value(execute.Meta))
 }
 
@@ -80,6 +81,9 @@ fn handle_message(
   message: Message,
 ) -> actor.Next(State, Message) {
   case message {
+    // The box bridge consumes these events using filesystem configuration.
+    // Legacy sessions continue using their explicitly supplied triggers.
+    Incoming(_, _) -> actor.continue(state)
     Trigger(function, value) -> {
       let #(outcome, execute_state, _) =
         execute.call(

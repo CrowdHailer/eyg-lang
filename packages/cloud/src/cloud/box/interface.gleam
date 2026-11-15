@@ -3,6 +3,8 @@
 import clockwork
 import cloud/beam/execute
 import cloud/box/check
+import cloud/discord/event as discord
+import cloud/slack/event as slack
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/cast
@@ -62,9 +64,14 @@ pub fn decode(value) {
 pub fn validate(modules, runtime) {
   list.try_fold(dict.to_list(modules), runtime, fn(runtime, pair) {
     let #(path, module) = pair
-    case path == "/system/http.eyg", is_cron(path) {
-      True, _ -> contract(module, request_type(), response_type(), runtime)
-      _, True -> {
+    case
+      path == "/system/http.eyg",
+      is_cron(path),
+      path == "/system/connection.eyg"
+      || string.starts_with(path, "/system/connections/")
+    {
+      True, _, _ -> contract(module, request_type(), response_type(), runtime)
+      _, True, _ -> {
         use runtime <- result.try(contract(module, t.unit, t.unit, runtime))
         use cron <- result.try(cron(path, module))
         use _ <- result.map(
@@ -73,7 +80,36 @@ pub fn validate(modules, runtime) {
         )
         runtime
       }
-      _, _ -> Ok(runtime)
+      _, _, True -> {
+        use mode <- result.try(
+          cast.field("mode", cast.as_string, module.value)
+          |> result.map_error(simple_debug.describe),
+        )
+        case mode {
+          "shell" | "agent" -> {
+            let source =
+              ir.get(ir.clear_annotation(module.source), "policy")
+              |> ir.map_annotation(fn(_) { #(0, 0) })
+            check.check(
+              infer.check(
+                infer.pure() |> infer.with_expected_type(policy.type_(rules())),
+                source,
+              ),
+              runtime,
+            )
+          }
+          _ -> Error("Connection mode must be shell or agent")
+        }
+      }
+      _, _, _ ->
+        case
+          string.starts_with(path, "/system/events/slack-"),
+          string.starts_with(path, "/system/events/discord-")
+        {
+          True, _ -> contract(module, slack.type_(), t.unit, runtime)
+          _, True -> contract(module, discord.type_(), t.unit, runtime)
+          _, _ -> Ok(runtime)
+        }
     }
   })
 }

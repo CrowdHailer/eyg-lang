@@ -130,6 +130,10 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
             case event.from_message(channel.id, message) {
               Ok(event) -> {
                 let value = event.to_eyg(channel.name, event)
+                process.send(
+                  state.sessions,
+                  session.Incoming(session_id, value),
+                )
                 list.each(state.triggers, fn(function) {
                   process.send(state.sessions, session.Trigger(function, value))
                 })

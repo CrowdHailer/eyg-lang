@@ -5,8 +5,10 @@ import cloud/beam/execute
 import cloud/beam/file_system
 import cloud/box/check
 import cloud/box/interface
+import cloud/box/session
 import cloud/box/store
 import cloud/box/transaction as tx
+import cloud/overlay
 import cloud/schedule
 import eyg/interpreter/state as value
 import eyg/interpreter/value as v
@@ -31,6 +33,13 @@ pub type Message {
     reply: Subject(Result(value.Value(execute.Meta), String)),
   )
   Tick
+  Connect(
+    config: String,
+    identity: String,
+    text: String,
+    agent: overlay.Session,
+    reply: Subject(Result(String, String)),
+  )
   Commit(
     base: v1.Cid,
     changes: List(tx.Change),
@@ -91,6 +100,10 @@ pub fn commit(box, base, changes, authorize) {
 
 pub fn invoke(box, path, input) {
   process.call(box, 30_000, Invoke(path, input, _))
+}
+
+pub fn connect(box, config, identity, text, agent) {
+  process.call_forever(box, Connect(config, identity, text, agent, _))
 }
 
 fn publish(state: State, files) {
@@ -218,6 +231,34 @@ fn tick(state: State) {
 
 fn handle(state: State, message: Message) {
   case message {
+    Connect(config, identity, text, agent, reply) -> {
+      let outcome = {
+        use module <- result.try(
+          dict.get(state.modules, config)
+          |> result.replace_error("Connection is not configured"),
+        )
+        use #(text, runtime, files) <- result.try(session.run(
+          module,
+          identity,
+          text,
+          agent,
+          state.runtime,
+          state.snapshot.files,
+        ))
+        use state <- result.map(publish(State(..state, runtime:), files))
+        #(text, state)
+      }
+      case outcome {
+        Ok(#(text, state)) -> {
+          process.send(reply, Ok(text))
+          actor.continue(state)
+        }
+        Error(error) -> {
+          process.send(reply, Error(error))
+          actor.continue(state)
+        }
+      }
+    }
     Tick -> {
       let state = tick(state)
       let _ = process.send_after(state.subject, 1000, Tick)
