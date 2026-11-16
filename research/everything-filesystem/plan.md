@@ -1,5 +1,12 @@
 # Everything file system
 
+## Wants
+
+- A record of everything in my personal setup, i.e. transcripts, documents, invoices, tasks etc.
+- Managed (type checked and authorized) changes over the code in an application.
+
+Can code an data be unified, I want this because I want it to be easy for users to make changes, if they have permission, to the system.
+
 ## Immutability has no existance
 
 EYG is a functional immutable language.
@@ -212,6 +219,17 @@ All invocations and tracing information is saved in an OTEL format outside the b
 A service invocation finished before another executes.
 The only exception is Overlay where each turn completes before the next execution.
 
+### Downsides
+
+The downside of the everything in one box file system is concurrency.
+It's fair to call this a feature and a bug as simplifying the concurrency model to a single box was close to the early design goal.
+
+The global name space for files does allow a simpler import pattern syntax. any definition of new events seems to require a full query language for imports or using EYG code and then an eval
+
+Much higher concurrency is possible if we allow concurrent action.
+This is the existing model when many shells are available on one machine.
+The imports add extra guarantees on the shape of the files.
+
 ## Web interface
 
 The website will be built using etui on howdy. As started on the howdy branch
@@ -220,3 +238,71 @@ It will have the same interface as sshing into the cloud service, although we ar
 The homepage is a neat full screen tui that allows you to setup a box.
 In few operations a user should be able to set up a box and create rules for an agent in a slack channel that can only modify files in `/slack/channel/id` but it can read `app/skills` so that it can load app specific skills.
 
+## Conclusion 
+
+The first item to remove from the box concepts are events that have happened, i.e. not commands.
+A web request is an event, even if it triggers a command.
+Linux introduces sockets as a queing mechanism, this should not be necessary if logging is outside the core.
+For example slack/discord events are logged outside the file system.
+Form submissions are events logged outside, there can be a trigger on send, or a scheduled trigger can process with/without AI all the latest from the event stream.
+
+Overlay trajectory traces are another external log source.
+They can be read by shells/agents in the main file system, but they do not need to be imported using patterns
+
+A Box is used as central configuration, this allows the simple pattern import solution to constrain configuration and accomodate upgrades in a type safe maner.
+This configuration becomes Infrastructure as Code for larger systems, where the box configure queues and infra.
+The initial file system can be a deploy script that sets up a server to listen to the box changes and implement them in the outside world.
+There is a symetry between lots of messages out and the log (logs of messages in), for example if many emails need sending.
+The read from the box builds a user query and template but post that as a single message to a configured external service that does the work.
+
+The core file system changing under a long running process is also a feature.
+It matches current OS/FS behaviour though it does result on hacks being worked out, like watchers
+A shell/process will be able to a list of stale reads, files that have changed since they were last read.
+This can be shown in a UI.
+
+The core file system should be defined by `eyg_fs` whereas the cloud package includes services available as effects to shells/users.
+such as publishing artifacts. The shells shouldn't publish an artifact instead the configuration as code set up in the box should specify what artifacts should be published
+
+## Roadmap
+
+1. 3 way merge on file changes, No merging of file changes and no move heuristics.
+2. Type check a file system root, from fresh everytime no memoisation
+3. Content Addressed store for both file systems and event attachements (such as large slack files)
+4. Web frontend for shells in the cloud attached to a specific box.
+5. View folders with correct index.html as artifacts. Linux uses file extension and mime type.
+
+## Architecture
+
+- packages/cloud.gleam starts processes for schedule, slack and discord. Secrets are loaded from environment and their is no account isolation
+- `session.start` start a single process that manages all sessions. agent_session is a bad name as it holds the `overlay.Session` type which is better described as a configuration.
+
+All of these component paths are under `src/cloud`
+
+- app.gleam -> start supervision tree
+- apex/router.gleam -> define http handlers, context type and middleware
+- apex/public.gleam -> controller for routes that don't fit in a bounded context
+- apex/public/terminal.gleam -> implementation of a terminal buffer so that etui can be used.
+- apex/server.gleam -> start the webserver that
+- box/configuration.gleam -> parsing/running eyg scripts for configuration
+- box/controller.gleam -> define a box bounded context specific context type. This might split into an api.gleam and dashboard.gleam
+- box/fs.gleam -> The implementation of type checking a file system, importing a pattern and a three way merge resolution. This will migrate to an eyg_fs or unifx package over time but for now is focused on just filling the box need
+- box/cas.gleam -> definition of the types and messages for a content addressed store that works as a backend for mfs blocks
+- box/cas_ets.gleam -> implementation of the (cas) backed by erlang term storage ETS, used for testing.
+- schedule/controller.gleam -> schedules can be attached or not to a box.
+- neon/api/client.gleam -> continuation based client
+- neon/client.gleam -> Beam client passing in concrete fetch implementation
+- neon/neon_cas.gleam -> neon implementation of CAS (This might move to data/blobs)
+- artifacts/controller.gleam -> put new artifact based on car file or existing hash from mfs reference. Get artifact in embedded iframe so untrusted content works
+- artifacts/driver.gleam -> API to use and snapshot an artifact.
+- artifacts/preview.gleam -> show link previews
+- sessions/api.gleam -> Create/execute/list existing sessions, sessions are shell or agent sessions. 
+- data/events.gleam -> returns `pog.Query` types for all the relevant operations on the DB that use an event interface.
+- data/boxes.gleam -> Boxes saved are events this module also includes queries into the views.
+- data/session.gleam -> The state of a session such that it can be recovered. Sessions can also be forked.
+  - Does fs reverting work in a session. if other things have happened around
+  - storage should be based on an otel complient output
+- otel/tracing.gleam -> implementation of tracing to build the session data
+
+Migrations 
+
+- priv/migrations/:migration -> managed by cigone
