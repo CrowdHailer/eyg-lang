@@ -62,6 +62,8 @@ pub type Screen {
   Boxes(boxes: List(Box), selected: Int)
   /// Choosing how to start a session from a named box.
   Open(box: Box, choices: List(Choice), selected: Int)
+  /// The names of a box's secrets, values are never shown.
+  Secrets(box: Box, names: List(String), selected: Int)
   Running(
     // Where the session is, for the title.
     place: String,
@@ -83,13 +85,17 @@ pub type Entry {
 
 /// A session in the box or in a transient copy of it, that runs code or chats with an llm.
 pub type Choice {
-  Choice(transient: Bool, llm: Option(String))
+  Start(transient: Bool, llm: Option(String))
+  ManageSecrets
 }
 
 pub type Message {
   Key(String)
   Listed(Result(List(Box), box.Reason))
   Created(Result(Box, box.Reason))
+  SecretsListed(Box, Result(List(String), box.Reason))
+  /// The name of a secret to set, its value is asked for next.
+  SecretNamed(String)
   Started(Result(#(String, Session, Bool), box.Reason))
   /// The outcome of a turn in the session with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
@@ -199,15 +205,69 @@ fn on_screen(model: Model, screen, message) {
         )
         "enter" ->
           case list.drop(choices, selected) {
-            [choice, ..] -> #(
+            [Start(transient, llm), ..] -> #(
               Model(..model, status: Working("Starting a session")),
-              background(fn() { Started(start(context, box, choice)) }),
+              background(fn() { Started(start(context, box, transient, llm)) }),
+            )
+            [ManageSecrets, ..] -> #(
+              Model(..model, status: Working("Loading secrets")),
+              background(fn() { SecretsListed(box, secret_names(context, box)) }),
             )
             [] -> #(model, effect.none())
           }
         "esc" -> back(model)
         _ -> #(model, effect.none())
       }
+    _, SecretsListed(box, Ok(names)) -> #(
+      Model(..model, screen: Secrets(box, names, 0), status: Quiet),
+      effect.none(),
+    )
+    _, SecretsListed(_, Error(reason)) -> #(
+      Model(..model, status: Problem(describe(reason))),
+      effect.none(),
+    )
+    Secrets(box, names, selected), Key(key) ->
+      case key {
+        "up" | "down" -> #(
+          Model(
+            ..model,
+            screen: Secrets(box, names, move(key, selected, names)),
+          ),
+          effect.none(),
+        )
+        "a" -> {
+          let prompt = Prompt("Name of the secret", "", False, SecretNamed)
+          #(Model(..model, prompt: Some(prompt)), effect.none())
+        }
+        "d" ->
+          case list.drop(names, selected) {
+            [name, ..] -> #(
+              Model(..model, status: Working("Removing " <> name)),
+              background(fn() {
+                SecretsListed(box, {
+                  use Nil <- result.try(box.delete_secret(context, box.id, name))
+                  secret_names(context, box)
+                })
+              }),
+            )
+            [] -> #(model, effect.none())
+          }
+        "esc" -> #(
+          Model(..model, screen: Open(box, choices(context), 0)),
+          effect.none(),
+        )
+        _ -> #(model, effect.none())
+      }
+    Secrets(box:, ..), SecretNamed(name) -> {
+      let submit = fn(value) {
+        SecretsListed(box, {
+          use Nil <- result.try(box.set_secret(context, box.id, name, value))
+          secret_names(context, box)
+        })
+      }
+      let prompt = Prompt("Value of " <> name, "", True, submit)
+      #(Model(..model, prompt: Some(prompt), status: Quiet), effect.none())
+    }
     _, Started(Ok(#(place, session, chat))) -> #(
       Model(context, Running(place, session, chat, [], "", False), None, Quiet),
       effect.none(),
@@ -291,23 +351,31 @@ fn move(key, selected, items) {
   }
 }
 
-/// Every way to start a session from a box, with each of the configured llms.
+/// Every way to start a session from a box, with each of the configured llms, then its secrets.
 pub fn choices(context: Context) -> List(Choice) {
   let llms = dict.keys(context.llms) |> list.sort(string.compare)
   list.flat_map([None, ..list.map(llms, Some)], fn(llm) {
-    [Choice(False, llm), Choice(True, llm)]
+    [Start(False, llm), Start(True, llm)]
   })
+  |> list.append([ManageSecrets])
 }
 
-/// Start a session as chosen, the place it is in and whether it chats.
+fn secret_names(context, box: Box) {
+  use secrets <- result.map(box.secrets(context, box.id))
+  dict.keys(secrets) |> list.sort(string.compare)
+}
+
+/// Start a session in the box or a transient copy of it, it chats if there is an llm.
+/// Returns where the session is and whether it chats.
 /// A transient copy starts from the latest files of the box.
 pub fn start(
   context: Context,
   named: Box,
-  choice: Choice,
+  transient: Bool,
+  llm: Option(String),
 ) -> Result(#(String, Session, Bool), box.Reason) {
   let name = option.unwrap(named.name, named.id)
-  use #(id, place) <- result.try(case choice.transient {
+  use #(id, place) <- result.try(case transient {
     False -> Ok(#(named.id, name))
     True -> {
       use latest <- result.try(box.latest(context, named.id))
@@ -315,8 +383,8 @@ pub fn start(
       #(copy.id, "a transient copy of " <> name)
     }
   })
-  use session <- result.map(turn.start(context, id, choice.llm))
-  #(place, session, option.is_some(choice.llm))
+  use session <- result.map(turn.start(context, id, llm))
+  #(place, session, option.is_some(llm))
 }
 
 fn describe(reason) {
@@ -361,6 +429,12 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("enter", "open"),
       #("n", "new box"),
       #("r", "refresh"),
+    ])
+    Secrets(box, ..) -> #("Secrets of " <> option.unwrap(box.name, box.id), [
+      #("↑↓", "choose"),
+      #("a", "add"),
+      #("d", "delete"),
+      #("esc", "back"),
     ])
     Open(box, ..) -> #(option.unwrap(box.name, box.id), [
       #("↑↓", "choose"),
@@ -459,17 +533,32 @@ fn body(screen, area: geometry.Rect, model: Model) {
     Open(box, choices, chosen) -> {
       let name = option.unwrap(box.name, box.id)
       list.map(choices, fn(choice) {
-        let kind = case choice.llm {
-          Some(llm) -> "Chat with " <> llm
-          None -> "Shell"
-        }
-        case choice.transient {
-          True -> kind <> " in a transient copy of " <> name
-          False -> kind <> " in " <> name
+        case choice {
+          Start(transient, llm) -> {
+            let kind = case llm {
+              Some(llm) -> "Chat with " <> llm
+              None -> "Shell"
+            }
+            case transient {
+              True -> kind <> " in a transient copy of " <> name
+              False -> kind <> " in " <> name
+            }
+          }
+          ManageSecrets -> "Secrets of " <> name
         }
       })
       |> menu(screen, area, chosen)
     }
+    Secrets(names: [], ..) ->
+      buffer.set_string(
+        screen,
+        area.position,
+        "No secrets, press a to add one",
+        fg(muted),
+      )
+    Secrets(names:, selected: chosen, ..) ->
+      list.map(names, fn(name) { name <> "  ••••••" })
+      |> menu(screen, area, chosen)
     Running(chat:, log:, input:, waiting:, ..) -> {
       let columns = area.size.width
       let rows = area.size.height - 1
