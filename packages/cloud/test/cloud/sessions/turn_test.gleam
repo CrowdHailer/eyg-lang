@@ -554,3 +554,47 @@ pub fn run_a_built_program_test() {
   let assert Ok(copy) = session_helpers.import_(context, session.box, log)
   assert turns(context, session) == turns(context, copy)
 }
+
+pub fn cancel_a_running_turn_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let #(server, release, _done) =
+    start_request(context, session, fn(server) {
+      "let _ = "
+      <> write
+      <> "\nlet _ = "
+      <> server.fetch(server, "GET", "/slow")
+      <> "\n1"
+    })
+  let assert Ok(Nil) = turn.cancel(context, session)
+  process.send(release, Nil)
+  let assert [
+    event.Started(..),
+    event.Resumed(_),
+    event.Requested(..),
+    event.Finished(Error("cancelled"), [], _),
+  ] = session_helpers.events(context, session)
+  // The cancelled turn is not resumed, its request is not sent again.
+  let assert Ok(#(Ok("2"), [])) = session_helpers.run(context, session, "2")
+  assert 1 == server.count_requests(server, http.Get, "/slow")
+  // The change made before the request was merged and is kept.
+  let assert Ok(#(Ok(value), [])) = session_helpers.run(context, session, read)
+  assert string.starts_with(value, "Ok(")
+  let log = session_helpers.export(context, session)
+  let assert Ok(_) = session_helpers.import_(context, session.box, log)
+}
+
+pub fn resume_a_stopped_turn_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let server =
+    stop_during_request(context, session, fn(server) {
+      server.fetch(server, "GET", "/slow")
+    })
+  let assert Ok(Nil) = turn.resume(context, session)
+  let assert [_, _, _, event.Answered(_), _, _, event.Finished(Ok(_), _, _)] =
+    session_helpers.events(context, session)
+  assert 2 == server.count_requests(server, http.Get, "/slow")
+  // Nothing is left to resume.
+  let assert Ok(Nil) = turn.resume(context, session)
+}

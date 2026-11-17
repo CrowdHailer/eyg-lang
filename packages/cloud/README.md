@@ -83,6 +83,9 @@ The web interface is started with the API on `WEB_PORT`, by default 8787, and al
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it, or by managing its secrets.
 A shell's programs are written with the structural editor and the same keys as the EYG shell.
+Recent sessions, and any session by its id, are opened again with their history.
+Sessions in transient boxes are only listed after pressing `t`.
+A turn that did not finish is finished when its session is opened, a running turn can be cancelled.
 
 ### Configuration
 

@@ -240,6 +240,15 @@ pub fn lines(editor: Editor, active: Bool) -> List(span.Line) {
 
 /// Code as it is shown once it has been sent, without a focus.
 pub fn sent(editor: Editor) -> List(span.Line) {
-  render.statements(projection.rebuild(editor.buffer.projection), [])
+  code(projection.rebuild(editor.buffer.projection))
+}
+
+/// A program that was sent, as it was shown.
+pub fn program_lines(program: ir.Node(Nil)) -> List(span.Line) {
+  code(e.from_annotated(program))
+}
+
+fn code(expression) {
+  render.statements(expression, [])
   |> list.flat_map(terminal.lines(_, False))
 }

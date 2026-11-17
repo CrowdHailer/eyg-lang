@@ -2,7 +2,10 @@
 ////
 //// The named boxes are listed, one is opened by starting a session in it, or in a transient copy of it.
 //// A session runs code as a shell, or chats with one of the configured llms.
-//// Work that waits for the database, a box or an llm runs in another process and reports back with a message.
+//// Sessions are durable, a recent session or one with a known id is opened again from its history,
+//// and a turn that did not finish is finished when it is opened.
+//// Work that waits for the database, a box or an llm runs in another process and reports back with a message,
+//// that process is watched so the interface is told if it stops.
 
 import cloud/apex/context.{type Context, Context}
 import cloud/apex/editor
@@ -10,6 +13,7 @@ import cloud/apex/terminal
 import cloud/box
 import cloud/data/boxes.{type Box}
 import cloud/data/sessions.{type Session}
+import cloud/sessions/event
 import cloud/sessions/turn
 import etui/buffer
 import etui/geometry.{Position}
@@ -61,6 +65,9 @@ pub type Status {
 
 pub type Screen {
   Boxes(boxes: List(Box), selected: Int)
+  /// The most recent sessions, in any box.
+  /// Sessions in transient boxes are only listed if `transient` is true.
+  Recent(sessions: List(#(Session, String)), selected: Int, transient: Bool)
   /// Choosing how to start a session from a named box.
   Open(box: Box, choices: List(Choice), selected: Int)
   /// The names of a box's secrets, values are never shown.
@@ -104,9 +111,24 @@ pub type Message {
   SecretsListed(Box, Result(List(String), box.Reason))
   /// The name of a secret to set, its value is asked for next.
   SecretNamed(String)
-  Started(Result(#(String, Session, Bool), box.Reason))
+  RecentListed(Bool, Result(List(#(Session, String)), box.Reason))
+  Opened(Result(Opening, box.Reason))
   /// The outcome of a turn in the session with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
+  /// Work in another process stopped without a reply.
+  Stopped(String)
+}
+
+/// A session as it is shown when it is opened.
+pub type Opening {
+  Opening(
+    place: String,
+    session: Session,
+    log: List(Entry),
+    chat: Bool,
+    // The last turn is still running, or it stopped and will be finished.
+    unfinished: Bool,
+  )
 }
 
 pub fn app() -> lustre.App(Context, Model, Message) {
@@ -124,10 +146,21 @@ fn list_boxes(context) {
   background(fn() { Listed(box.named(context)) })
 }
 
-// Run work away from the interface's process, a failure leaves the interface waiting.
+// Run work away from the interface's process. The work is watched and the interface is told if it stops.
 fn background(work: fn() -> Message) -> Effect(Message) {
   use dispatch <- effect.from
-  process.spawn_unlinked(fn() { dispatch(work()) })
+  process.spawn_unlinked(fn() {
+    let reply = process.new_subject()
+    let worker = process.spawn_unlinked(fn() { process.send(reply, work()) })
+    let monitor = process.monitor(worker)
+    process.new_selector()
+    |> process.select(reply)
+    |> process.select_specific_monitor(monitor, fn(down) {
+      Stopped(string.inspect(down.reason))
+    })
+    |> process.selector_receive_forever
+    |> dispatch
+  })
   Nil
 }
 
@@ -150,6 +183,39 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       effect.none(),
     )
     _, _, Created(Ok(_)) -> back(model)
+    // A turn that stopped is in the session's history, it is finished when the session is opened again.
+    _, Running(waiting: True, log:, ..) as running, Stopped(reason) -> #(
+      Model(
+        ..model,
+        screen: Running(
+          ..running,
+          log: list.append(log, [Failed("The turn stopped: " <> reason)]),
+          waiting: False,
+        ),
+        status: Quiet,
+      ),
+      effect.none(),
+    )
+    _, _, Stopped(reason) -> #(
+      Model(..model, status: Problem("The work stopped: " <> reason)),
+      effect.none(),
+    )
+    _, _, RecentListed(transient, Ok(sessions)) -> #(
+      Model(
+        ..model,
+        screen: Recent(sessions, 0, transient),
+        status: case sessions {
+          [] -> Working("There are no sessions yet")
+          _ -> Quiet
+        },
+      ),
+      effect.none(),
+    )
+    _, _, RecentListed(_, Error(reason)) | _, _, Opened(Error(reason)) -> #(
+      Model(..model, status: Problem(describe(reason))),
+      effect.none(),
+    )
+    _, _, Opened(Ok(opening)) -> opened(model, opening)
     _, screen, message -> on_screen(model, screen, message)
   }
 }
@@ -194,11 +260,47 @@ fn on_screen(model: Model, screen, message) {
             [] -> #(model, effect.none())
           }
         "r" -> back(model)
+        "s" -> #(
+          Model(..model, status: Working("Loading sessions")),
+          background(fn() { RecentListed(False, recent(context, False)) }),
+        )
+        "o" -> {
+          let submit = fn(id) { Opened(open(context, id)) }
+          let prompt = Prompt("Id of the session", "", False, submit)
+          #(Model(..model, prompt: Some(prompt)), effect.none())
+        }
         "n" -> {
           let submit = fn(name) { Created(box.create(context, Some(name))) }
           let prompt = Prompt("Name of the new box", "", False, submit)
           #(Model(..model, prompt: Some(prompt)), effect.none())
         }
+        _ -> #(model, effect.none())
+      }
+
+    Recent(sessions, selected, transient), Key(key) ->
+      case key {
+        "up" | "down" -> #(
+          Model(
+            ..model,
+            screen: Recent(sessions, move(key, selected, sessions), transient),
+          ),
+          effect.none(),
+        )
+        "t" -> #(
+          Model(..model, status: Working("Loading sessions")),
+          background(fn() {
+            RecentListed(!transient, recent(context, !transient))
+          }),
+        )
+        "enter" ->
+          case list.drop(sessions, selected) {
+            [#(session, _), ..] -> #(
+              Model(..model, status: Working("Opening the session")),
+              background(fn() { Opened(open(context, session.id)) }),
+            )
+            [] -> #(model, effect.none())
+          }
+        "esc" -> back(model)
         _ -> #(model, effect.none())
       }
 
@@ -215,7 +317,7 @@ fn on_screen(model: Model, screen, message) {
           case list.drop(choices, selected) {
             [Start(transient, llm), ..] -> #(
               Model(..model, status: Working("Starting a session")),
-              background(fn() { Started(start(context, box, transient, llm)) }),
+              background(fn() { Opened(start(context, box, transient, llm)) }),
             )
             [ManageSecrets, ..] -> #(
               Model(..model, status: Working("Loading secrets")),
@@ -276,22 +378,16 @@ fn on_screen(model: Model, screen, message) {
       let prompt = Prompt("Value of " <> name, "", True, submit)
       #(Model(..model, prompt: Some(prompt), status: Quiet), effect.none())
     }
-    _, Started(Ok(#(place, session, chat))) -> {
-      let draft = case chat {
-        True -> Chatting("")
-        False -> Coding(editor.new())
-      }
-      #(
-        Model(context, Running(place, session, [], draft, False), None, Quiet),
-        effect.none(),
-      )
-    }
-    _, Started(Error(reason)) -> #(
-      Model(..model, status: Problem(describe(reason))),
-      effect.none(),
-    )
-
     Running(waiting: True, ..), Key("esc") -> back(model)
+    Running(session:, waiting: True, ..), Key("x") -> #(
+      Model(..model, status: Working("Cancelling the turn")),
+      background(fn() {
+        Opened({
+          use Nil <- result.try(turn.cancel(context, session))
+          open(context, session.id)
+        })
+      }),
+    )
     Running(waiting: True, ..), Key(_) -> #(model, effect.none())
     Running(draft: Chatting(text), ..) as running, Key(key) ->
       case key {
@@ -358,7 +454,7 @@ fn on_screen(model: Model, screen, message) {
       }
     }
     // A reply for a session that is no longer shown is dropped, it is in the session's history.
-    Running(session:, log:, ..) as running, Replied(id, replied)
+    Running(session:, log:, waiting: True, ..) as running, Replied(id, replied)
       if id == session.id
     -> {
       let lines = case replied {
@@ -395,6 +491,73 @@ fn send(model: Model, running, entry, input, draft) {
   )
 }
 
+// Show a session, a turn that has not finished is finished first.
+fn opened(model: Model, opening: Opening) {
+  let Opening(place:, session:, log:, chat:, unfinished:) = opening
+  let draft = case chat {
+    True -> Chatting("")
+    False -> Coding(editor.new())
+  }
+  let screen = Running(place, session, log, draft, unfinished)
+  let model = Model(..model, screen:, status: Quiet)
+  case unfinished {
+    False -> #(model, effect.none())
+    True -> #(
+      model,
+      background(fn() {
+        Opened({
+          use Nil <- result.try(turn.resume(model.context, session))
+          open(model.context, session.id)
+        })
+      }),
+    )
+  }
+}
+
+fn recent(context, transient) {
+  use sessions <- result.map(turn.recent(context, 20, transient))
+  list.map(sessions, fn(entry) {
+    let #(session, name) = entry
+    #(session, option.unwrap(name, "a transient box"))
+  })
+}
+
+/// A session as it is shown, with everything that has happened in it.
+pub fn open(context: Context, id: String) -> Result(Opening, box.Reason) {
+  use session <- result.try(turn.find(context, id))
+  use box <- result.try(box.latest(context, session.box))
+  use history <- result.map(turn.history(context, id))
+  let events = list.map(history, fn(entry) { entry.2 })
+  let chat = case events {
+    [event.Configured(_), ..] -> True
+    _ -> False
+  }
+  let place = option.unwrap(box.name, "a transient box")
+  Opening(place, session, log(events), chat, turn.unfinished_turn(events))
+}
+
+// What the events of a session show.
+fn log(events) {
+  list.flat_map(events, fn(event) {
+    case event {
+      event.Started(code, _) -> [
+        Ran(string.split(code, "\n") |> list.map(span.line_plain)),
+      ]
+      event.Submitted(program, _) -> [Ran(editor.program_lines(program))]
+      event.Sent(message, _) -> [Sent(message)]
+      event.Finished(outcome, output, _) ->
+        list.map(output, Printed)
+        |> list.append([
+          case outcome {
+            Ok(value) -> Returned(value)
+            Error(reason) -> Failed(reason)
+          },
+        ])
+      _ -> []
+    }
+  })
+}
+
 // Back to the list of boxes, which may have changed.
 fn back(model: Model) {
   #(Model(..model, status: Working("Loading boxes")), list_boxes(model.context))
@@ -422,14 +585,13 @@ fn secret_names(context, box: Box) {
 }
 
 /// Start a session in the box or a transient copy of it, it chats if there is an llm.
-/// Returns where the session is and whether it chats.
 /// A transient copy starts from the latest files of the box.
 pub fn start(
   context: Context,
   named: Box,
   transient: Bool,
   llm: Option(String),
-) -> Result(#(String, Session, Bool), box.Reason) {
+) -> Result(Opening, box.Reason) {
   let name = option.unwrap(named.name, named.id)
   use #(id, place) <- result.try(case transient {
     False -> Ok(#(named.id, name))
@@ -440,7 +602,7 @@ pub fn start(
     }
   })
   use session <- result.map(turn.start(context, id, llm))
-  #(place, session, option.is_some(llm))
+  Opening(place, session, [], option.is_some(llm), False)
 }
 
 fn describe(reason) {
@@ -475,6 +637,14 @@ fn fg(color) {
   style.default_style() |> style.with_fg(color)
 }
 
+fn title(running) {
+  let assert Running(place:, draft:, ..) = running
+  case draft {
+    Chatting(_) -> "Chat in " <> place
+    Coding(_) -> "Shell in " <> place
+  }
+}
+
 /// The screen as it is drawn.
 pub fn render(model: Model) -> buffer.Buffer {
   let screen = buffer.buffer_new(geometry.rect_new(0, 0, width, height))
@@ -484,7 +654,28 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("↑↓", "choose"),
       #("enter", "open"),
       #("n", "new box"),
+      #("s", "sessions"),
+      #("o", "open by id"),
       #("r", "refresh"),
+    ])
+    Recent(transient:, ..) -> #(
+      case transient {
+        True -> "Recent sessions, with transient boxes"
+        False -> "Recent sessions"
+      },
+      [
+        #("↑↓", "choose"),
+        #("enter", "open"),
+        #("t", case transient {
+          True -> "hide transient"
+          False -> "show transient"
+        }),
+        #("esc", "back"),
+      ],
+    )
+    Running(waiting: True, ..) as running -> #(title(running), [
+      #("x", "cancel"),
+      #("esc", "boxes"),
     ])
     Secrets(box, ..) -> #("Secrets of " <> option.unwrap(box.name, box.id), [
       #("↑↓", "choose"),
@@ -497,11 +688,11 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("enter", "start"),
       #("esc", "back"),
     ])
-    Running(place:, draft: Chatting(_), ..) -> #("Chat in " <> place, [
+    Running(draft: Chatting(_), ..) as running -> #(title(running), [
       #("enter", "send"),
       #("esc", "boxes"),
     ])
-    Running(place:, draft: Coding(_), ..) -> #("Shell in " <> place, [
+    Running(draft: Coding(_), ..) as running -> #(title(running), [
       #("enter", "run"),
       #("n", "number"),
       #("s", "string"),
@@ -594,6 +785,12 @@ fn body(screen, area: geometry.Rect, model: Model) {
   case model.screen {
     Boxes(boxes, chosen) ->
       list.map(boxes, fn(box) { option.unwrap(box.name, box.id) })
+      |> menu(screen, area, chosen)
+    Recent(sessions, chosen, _) ->
+      list.map(sessions, fn(entry) {
+        let #(session, place) = entry
+        session.id <> "  in " <> place
+      })
       |> menu(screen, area, chosen)
     Open(box, choices, chosen) -> {
       let name = option.unwrap(box.name, box.id)

@@ -1,8 +1,10 @@
 import cloud/apex/context.{Context}
 import cloud/apex/tui.{Key}
+import cloud/beam/execute
 import cloud/box
 import cloud/helpers
 import cloud/server
+import cloud/sessions/event
 import cloud/sessions/turn
 import etui/buffer
 import etui/geometry.{Position}
@@ -12,7 +14,9 @@ import gleam/dict
 import gleam/erlang/process
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
+import unixfs/mfs
 
 // The text on the screen, one string for each row.
 fn screen(model) {
@@ -54,10 +58,11 @@ pub fn start_a_shell_in_a_transient_copy_test() {
   let assert tui.Open(_, choices, 1) = model.screen
   let assert [_, tui.Start(True, None), tui.ManageSecrets] = choices
 
-  let assert Ok(#(place, session, False)) = tui.start(context, home, True, None)
+  let assert Ok(opening) = tui.start(context, home, True, None)
+  let assert tui.Opening(place:, session:, chat: False, ..) = opening
   assert place == "a transient copy of home"
   assert session.box != home.id
-  let #(model, _) = tui.update(model, tui.Started(Ok(#(place, session, False))))
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
   // A builtin is chosen by name, then called with two numbers.
   let keys =
     list.flatten([
@@ -96,11 +101,11 @@ pub fn chat_in_the_box_test() {
       tui.Start(True, Some("test")),
       tui.ManageSecrets,
     ]
-  let assert Ok(#("home", session, True)) =
-    tui.start(context, home, False, Some("test"))
+  let assert Ok(opening) = tui.start(context, home, False, Some("test"))
+  let assert tui.Opening(place: "home", session:, chat: True, ..) = opening
   assert session.box == home.id
   let #(model, _) = tui.init(context)
-  let #(model, _) = tui.update(model, tui.Started(Ok(#("home", session, True))))
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
   assert string.contains(screen(model), "Chat in home")
   let model = press(model, ["h", "i", "enter"])
   let replied = turn.send(context, session, turn.Message("hi"))
@@ -154,4 +159,72 @@ pub fn manage_secrets_test() {
     == box.secrets(context, home.id)
   assert string.contains(screen(model), "TOKEN")
   assert !string.contains(screen(model), "s3cr3t")
+}
+
+pub fn reopen_a_session_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(tui.Opening(session:, ..)) =
+    tui.start(context, home, False, None)
+  let assert Ok(_) = turn.send(context, session, turn.Code("!int_add(1, 2)"))
+
+  // Recent sessions include it, other tests leave sessions.
+  let #(model, _) = tui.init(context)
+  let #(model, _) =
+    tui.update(model, tui.RecentListed(False, Ok([#(session, "home")])))
+  assert string.contains(screen(model), session.id <> "  in home")
+
+  let #(model, _) = tui.update(model, tui.Opened(tui.open(context, session.id)))
+  assert string.contains(screen(model), "!int_add(1, 2)")
+  assert string.contains(screen(model), "= 3")
+  let assert tui.Running(waiting: False, ..) = model.screen
+  assert Error(box.Missing) == tui.open(context, "gone") |> result.replace(Nil)
+}
+
+pub fn open_an_unfinished_turn_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let policy = mfs.File(<<context.policy:utf8>>)
+  let assert Ok(policy) =
+    execute.files(mfs.Put(policy, mfs.Done), context.state)
+  // A turn that started and did not finish, as if the process running it stopped.
+  let assert Ok(session) =
+    turn.create(context, home.id, [], [event.Started("1", policy.cid)])
+  let assert Ok(opening) = tui.open(context, session.id)
+  let assert tui.Opening(unfinished: True, ..) = opening
+
+  // It is shown waiting, a worker that stops is reported.
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let assert tui.Running(waiting: True, ..) = model.screen
+  let #(model, _) = tui.update(model, tui.Stopped("killed"))
+  let assert tui.Running(waiting: False, ..) = model.screen
+  assert string.contains(screen(model), "The turn stopped: killed")
+
+  // Opening it finishes the turn.
+  let assert Ok(Nil) = turn.resume(context, session)
+  let #(model, _) = tui.update(model, tui.Opened(tui.open(context, session.id)))
+  assert string.contains(screen(model), "= 1")
+}
+
+pub fn transient_sessions_are_hidden_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(tui.Opening(session: shared, ..)) =
+    tui.start(context, home, False, None)
+  let assert Ok(tui.Opening(session: transient, ..)) =
+    tui.start(context, home, True, None)
+  let ids = fn(transient) {
+    let assert Ok(sessions) = turn.recent(context, 100, transient)
+    list.map(sessions, fn(entry) { { entry.0 }.id })
+  }
+  assert list.contains(ids(False), shared.id)
+  assert !list.contains(ids(False), transient.id)
+  assert list.contains(ids(True), transient.id)
+
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.RecentListed(False, Ok([])))
+  assert string.contains(screen(model), "t show transient")
+  let #(model, _) = tui.update(model, tui.RecentListed(True, Ok([])))
+  assert string.contains(screen(model), "with transient boxes")
 }

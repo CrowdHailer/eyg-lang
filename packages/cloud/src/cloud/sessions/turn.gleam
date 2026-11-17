@@ -35,6 +35,7 @@ import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/crypto
 import gleam/dict
+import gleam/erlang/process
 import gleam/http
 import gleam/json
 import gleam/list
@@ -135,14 +136,78 @@ pub fn create(
   |> result.map_error(fn(error) { box.Failed(string.inspect(error)) })
 }
 
+pub fn find(context: Context, id: String) -> Result(Session, box.Reason) {
+  case db.execute(sessions.get(id), context.db) {
+    Ok(pog.Returned(rows: [session], ..)) -> Ok(session)
+    Ok(_) -> Error(box.Missing)
+    Error(reason) -> Error(box.Failed(string.inspect(reason)))
+  }
+}
+
+/// The most recent sessions in any box, with the name of the box if it has one.
+/// Sessions in transient boxes are left out unless `transient` is true.
+pub fn recent(
+  context: Context,
+  limit: Int,
+  transient: Bool,
+) -> Result(List(#(Session, Option(String))), box.Reason) {
+  db.execute(sessions.recent(limit, transient), context.db)
+  |> result.map(fn(returned) { returned.rows })
+  |> result.map_error(fn(reason) { box.Failed(string.inspect(reason)) })
+}
+
+/// Whether the last turn in the events has not finished.
+pub fn unfinished_turn(events: List(Event)) -> Bool {
+  list.map(events, fn(event) { #("", event) }) |> unfinished |> result.is_ok
+}
+
 /// Run a turn in the session's process, which runs one turn at a time.
 pub fn send(
   context: Context,
   session: Session,
   input: Input,
 ) -> Result(Outcome, box.Reason) {
+  in_process(context, session, fn() { run(context, session, input) })
+}
+
+/// Finish the last turn if it is unfinished, after a turn that is running finishes.
+pub fn resume(context: Context, session: Session) -> Result(Nil, box.Reason) {
+  use <- in_process(context, session)
+  use context <- result.try(in_box(context, session.box))
+  recover(context, session)
+}
+
+fn in_process(context: Context, session: Session, then) {
   registry.lookup(context.sessions, session.id, fn() { registry.serve(Nil) })
-  |> registry.call(600_000, fn(_) { #(Nil, run(context, session, input)) })
+  |> registry.call(600_000, fn(_) { #(Nil, then()) })
+}
+
+/// Stop a turn that is running and record it as finished with an error, so it is not resumed.
+/// Changes that were merged are kept, a change that was waiting to be merged is not merged.
+pub fn cancel(context: Context, session: Session) -> Result(Nil, box.Reason) {
+  let process =
+    registry.lookup(context.sessions, session.id, fn() { registry.serve(Nil) })
+  case process.subject_owner(process) {
+    Ok(pid) -> {
+      let monitor = process.monitor(pid)
+      process.kill(pid)
+      let _ =
+        process.new_selector()
+        |> process.select_specific_monitor(monitor, fn(_) { Nil })
+        |> process.selector_receive(5000)
+      Nil
+    }
+    Error(Nil) -> Nil
+  }
+  use history <- result.try(history(context, session.id))
+  case unfinished(list.map(history, fn(entry) { #(entry.1, entry.2) })) {
+    Error(Nil) -> Ok(Nil)
+    Ok(_) -> {
+      use box <- result.try(box.latest(context, session.box))
+      let cancelled = event.Finished(Error("cancelled"), [], box.root)
+      record(context, session, [cancelled]) |> result.replace(Nil)
+    }
+  }
 }
 
 /// Run a turn in the session, an unfinished turn is finished first.
@@ -640,6 +705,8 @@ type Position {
 fn walk(state, segment: Segment, entries) {
   case entries {
     [] -> Ok(Stalled(segment, state))
+    // The turn was cancelled.
+    [#(_, event.Finished(..)), ..entries] -> Ok(Ended(entries))
     [#(_, event.Resumed(start)), ..entries] -> {
       use #(stop, entries) <- result.try(replay_answers(
         segment(state, start),

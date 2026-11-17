@@ -62,3 +62,24 @@ pub fn fork(id: String) -> pog.Query(Session) {
   |> pog.parameter(pog.text(id))
   |> pog.returning(decoder())
 }
+
+/// The most recent sessions in any box, with the name of the box if it has one.
+/// Sessions in transient boxes are left out unless `transient` is true.
+pub fn recent(
+  limit: Int,
+  transient: Bool,
+) -> pog.Query(#(Session, Option(String))) {
+  "SELECT s.id, s.box, s.head, b.name
+  FROM sessions s JOIN boxes b ON b.id = s.box
+  WHERE $2 OR b.name IS NOT NULL
+  ORDER BY s.created_at DESC, s.id
+  LIMIT $1"
+  |> pog.query()
+  |> pog.parameter(pog.int(limit))
+  |> pog.parameter(pog.bool(transient))
+  |> pog.returning({
+    use session <- decode.then(decoder())
+    use name <- decode.field(3, decode.optional(decode.string))
+    decode.success(#(session, name))
+  })
+}
