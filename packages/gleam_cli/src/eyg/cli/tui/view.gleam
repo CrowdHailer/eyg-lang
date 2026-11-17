@@ -17,10 +17,10 @@ import gleam/option.{None, Some}
 import gleam/set
 import gleam/string
 import morph/buffer as morph_buffer
-import morph/lustre/frame
 import morph/lustre/render
 import morph/projection
 import morph/repl/history
+import morph/terminal
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let status_lines = info.status(state)
@@ -43,7 +43,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
     True -> empty_lines(state, active)
     False ->
       render.projection(state.buffer.projection, render.Statements, errors)
-      |> code(active)
+      |> terminal.lines(active)
       |> list.index_map(fn(line, index) {
         let prefix = case index {
           0 -> "> "
@@ -189,7 +189,7 @@ fn empty_lines(state: state.State, active: Bool) -> List(span.Line) {
       span.span_plain("> "),
       span.span_styled(
         "Write EYG…",
-        focus_style(style.default_style(), True, active),
+        terminal.focus_style(style.default_style(), True, active),
       ),
     ])
   case state.history {
@@ -238,7 +238,7 @@ fn history_lines(
     entry.buffer.projection
     |> projection.rebuild
     |> render.statements([])
-    |> list.flat_map(code(_, False))
+    |> list.flat_map(terminal.lines(_, False))
   let source = case source, open_code {
     [first, _, ..], False -> [
       first,
@@ -304,102 +304,5 @@ fn count(n: Int, noun: String) -> String {
   case n {
     1 -> "1 " <> noun
     n -> int.to_string(n) <> " " <> noun <> "s"
-  }
-}
-
-fn code(value: frame.Frame, active: Bool) -> List(span.Line) {
-  case value {
-    frame.Inline(spans) -> list.wrap(line(spans, active))
-    frame.Multiline([], inner, []) | frame.Statements(inner) ->
-      list.flat_map(inner, code(_, active))
-    frame.Multiline(pre, inner, post) -> {
-      // Indent the whole selected structure, but not a selected child alone.
-      // Its boundary lines may also contain unselected context or delimiters.
-      let focused =
-        list.any(pre, fn(s) { s.focus })
-        && list.any(post, fn(s) { s.focus })
-        && list.all(inner, frame.fully_focused)
-      let indent =
-        span.span_styled(
-          "  ",
-          focus_style(style.default_style(), focused, active),
-        )
-      list.flatten([
-        [line(pre, active)],
-        list.flat_map(inner, code(_, active))
-          |> list.map(fn(line) {
-            span.Line(..line, spans: [indent, ..line.spans])
-          }),
-        [line(post, active)],
-      ])
-    }
-  }
-}
-
-fn line(spans: List(frame.Span), active: Bool) -> span.Line {
-  let red = style.Rgb(255, 0, 0)
-
-  list.map(spans, fn(span) {
-    let base = syntax_style(span.token_type)
-    let style = case span.error {
-      True ->
-        base
-        |> style.add_modifier(style.underline())
-        |> style.with_underline_color(red)
-      False -> base
-    }
-    let style = focus_style(style, span.focus, active)
-    span.span_styled(span.text, style)
-  })
-  |> span.line_new
-}
-
-fn focus_style(base: style.Style, focused: Bool, active: Bool) -> style.Style {
-  case focused, active {
-    False, _ -> base
-    True, True ->
-      base
-      |> style.with_fg(style.Default)
-      |> style.with_bg(style.Default)
-      |> style.add_modifier(style.reverse())
-    True, False ->
-      base
-      |> style.add_modifier(style.dim())
-      |> style.add_modifier(style.underline())
-  }
-}
-
-fn syntax_style(token_type: frame.TokenType) -> style.Style {
-  case token_type {
-    frame.Plain | frame.Punctuation -> style.default_style()
-
-    frame.Comment ->
-      style.default_style()
-      |> style.add_modifier(style.dim())
-
-    frame.Number | frame.Symbol ->
-      style.default_style()
-      |> style.with_fg(style.Indexed(5))
-
-    frame.String | frame.Char | frame.Builtin ->
-      style.default_style()
-      |> style.with_fg(style.Indexed(2))
-
-    frame.Keyword ->
-      style.default_style()
-      |> style.with_fg(style.Indexed(6))
-
-    frame.Variable ->
-      style.default_style()
-      |> style.with_fg(style.Indexed(3))
-
-    frame.Important ->
-      style.default_style()
-      |> style.with_fg(style.Indexed(3))
-      |> style.add_modifier(style.bold())
-    frame.ClassName ->
-      style.default_style()
-      |> style.with_fg(style.Indexed(12))
-      |> style.add_modifier(style.bold())
   }
 }

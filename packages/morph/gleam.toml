@@ -12,6 +12,7 @@ gleam_x = {path = "../gleam_x"}
 lustre = ">= 5.0.0 and < 6.0.0"
 multiformats = ">= 4.0.0 and < 5.0.0"
 non_empty_list = ">= 2.3.0 and < 3.0.0"
+etui = ">= 2.0.0 and < 3.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

@@ -9,6 +9,7 @@
 packages = [
   { name = "base32", version = "1.0.0", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "0449285348ED0C4CD83C7198E76C5FD5A0451C4EF18695B9FD43792A503E551A" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
+  { name = "etui", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_stdlib"], otp_app = "etui", source = "hex", outer_checksum = "38CB35563CF480A935446A1C4EECAB3FB457B49CED04C2B00CDC3FB7934DFC44" },
   { name = "exception", version = "2.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "exception", source = "hex", outer_checksum = "6BDEA95248093599391C3B5DF1835C5C6A86C353C2F99CE539B450E3432FE117" },
   { name = "eyg_analysis", version = "3.1.0", build_tools = ["gleam"], requirements = ["eyg_ir", "eyg_parser", "glam", "gleam_stdlib", "multiformats"], otp_app = "eyg_analysis", source = "hex", outer_checksum = "9113AD7B98C520621C590CF2FCFEC34E43A8AE7A5FEE48717CAAD12492917355" },
   { name = "eyg_hub", version = "0.1.0", build_tools = ["gleam"], requirements = ["dag_json", "eyg_analysis", "eyg_interpreter", "eyg_ir", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "multiformats", "ogre", "untethered"], source = "local", path = "../gleam_hub" },
@@ -40,6 +41,7 @@ packages = [
 ]
 
 [requirements]
+etui = { version = ">= 2.0.0 and < 3.0.0" }
 eyg_analysis = { version = ">= 3.1.0 and < 4.0.0" }
 eyg_hub = { path = "../gleam_hub" }
 eyg_interpreter = { version = ">= 9.0.0 and < 10.0.0" }
