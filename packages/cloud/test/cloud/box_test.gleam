@@ -2,6 +2,7 @@ import cloud/apex/context.{Context}
 import cloud/box
 import cloud/box/memory
 import cloud/data/boxes
+import cloud/data/db
 import cloud/file_system
 import cloud/helpers
 import pog
@@ -13,7 +14,7 @@ pub fn keep_a_box_in_memory_until_a_session_is_made_test() {
     box.change(context, home, file_system.write(home.root, "/a.txt", <<"a">>))
   // Nothing is in Postgres.
   let assert Ok(pog.Returned(rows: [], ..)) =
-    pog.execute(boxes.latest("home"), context.db)
+    db.execute(boxes.latest("home"), context.db)
   let assert Error(box.Conflict) = box.create(context, "home")
   // A service started again has its own memory, so the box is lost.
   let assert Ok(memory) = memory.start()

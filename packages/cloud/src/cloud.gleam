@@ -4,6 +4,7 @@ import cloud/apex/server
 import cloud/beam/execute
 import cloud/box/memory
 import cloud/data/blobs
+import cloud/data/db
 import cloud/data/pool
 import cloud/discord/discord
 import cloud/schedule
@@ -104,7 +105,7 @@ fn start_api(state) {
     Error(Nil) -> Nil
     Ok(host) -> {
       let assert Ok(password) = envoy.get("POSTGRES_PASSWORD")
-      let assert Ok(db) =
+      let assert Ok(started) =
         pool.start(process.new_name("db_pool"), pool.Postgres(host:, password:))
       let assert Ok(endpoint) =
         envoy.get("S3_ENDPOINT") |> result.try(uri.parse)
@@ -132,7 +133,8 @@ fn start_api(state) {
       let port =
         envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8080)
       let assert Ok(memory) = memory.start()
-      let context = Context(db: db.data, memory: memory.data, state:, policy:)
+      let context =
+        Context(db: db.Pool(started.data), memory: memory.data, state:, policy:)
       let assert Ok(_) = server.start(context, port)
       Nil
     }

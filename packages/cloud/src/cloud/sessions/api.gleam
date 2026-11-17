@@ -4,6 +4,7 @@ import cloud/apex/context.{type Context}
 import cloud/beam/execute
 import cloud/box
 import cloud/box/controller.{reason, try}
+import cloud/data/db
 import cloud/data/sessions.{type Session, Turn}
 import gleam/dynamic/decode
 import gleam/json
@@ -77,7 +78,7 @@ fn find(id, context, then: fn(Session) -> wisp.Response) {
 }
 
 fn run(query, context: Context) {
-  case pog.execute(query, context.db) {
+  case db.execute(query, context.db) {
     Ok(pog.Returned(rows:, ..)) -> Ok(rows)
     Error(reason) -> Error(box.Failed(string.inspect(reason)))
   }

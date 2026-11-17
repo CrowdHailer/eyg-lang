@@ -3,11 +3,12 @@
 //// A box is kept in memory, see `box/memory`, until a session is made in it.
 //// Then it is made durable, its events are recorded in Postgres and every later event is recorded there.
 
-import cloud/apex/context.{type Context}
+import cloud/apex/context.{type Context, Context}
 import cloud/beam/execute
 import cloud/box/fs
 import cloud/box/memory
 import cloud/data/boxes.{type Box, Box}
+import cloud/data/db
 import cloud/file_system
 import gleam/list
 import gleam/result
@@ -46,7 +47,16 @@ pub fn durable(context: Context, name: String) -> Result(Nil, Reason) {
 }
 
 fn save(context: Context, events: memory.Events) {
-  list.try_each(events, fn(box) { query(boxes.record(box), context) })
+  db.transaction(context.db, fn(connection) {
+    let context = Context(..context, db: connection)
+    list.try_each(events, fn(box) { query(boxes.record(box), context) })
+  })
+  |> result.map_error(fn(error) {
+    case error {
+      pog.TransactionRolledBack(reason) -> reason
+      pog.TransactionQueryError(reason) -> Failed(string.inspect(reason))
+    }
+  })
 }
 
 pub fn create(context: Context, name: String) -> Result(Box, Reason) {
@@ -121,7 +131,7 @@ fn failed(reason) {
 }
 
 fn query(query, context: Context) {
-  case pog.execute(query, context.db) {
+  case db.execute(query, context.db) {
     Ok(pog.Returned(rows:, ..)) -> Ok(rows)
     Error(reason) -> Error(Failed(string.inspect(reason)))
   }

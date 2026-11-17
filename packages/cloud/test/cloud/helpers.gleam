@@ -3,6 +3,7 @@ import cloud/apex/router
 import cloud/beam/execute
 import cloud/box/memory
 import cloud/data/blobs
+import cloud/data/db
 import cloud/data/pool
 import envoy
 import eyg/hub/cache
@@ -33,8 +34,8 @@ pub fn start_db() {
 pub fn with_transaction(then) {
   let conn = pog.named_connection(test_pool_name())
   let assert Error(pog.TransactionRolledBack(Nil)) =
-    pog.transaction(conn, fn(db) {
-      then(db)
+    pog.transaction(conn, fn(connection) {
+      then(db.InTransaction(connection))
       Error(Nil)
     })
   Nil
