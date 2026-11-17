@@ -24,6 +24,7 @@ pub fn route(request: wisp.Request, context: Context) -> wisp.Response {
     ["boxes", name, "sessions"], http.Get -> sessions.list(name, context)
     ["sessions", id], http.Get -> sessions.get(id, context)
     ["sessions", id, "events"], http.Get -> sessions.export(id, context)
+    ["sessions", id, "fork"], http.Post -> sessions.fork(id, context)
     ["sessions", id, "trace"], http.Get -> sessions.trace(id, context)
     ["sessions", id, "turns"], http.Post -> sessions.turn(request, id, context)
     _, _ -> wisp.not_found()

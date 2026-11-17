@@ -482,6 +482,37 @@ pub fn replay_with_the_packages_a_turn_resolved_test() {
   assert "1" == value
 }
 
+pub fn fork_a_session_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let _ =
+    stop_during_request(context, session, fn(server) {
+      "let _ = " <> write <> "\n" <> server.fetch(server, "GET", "/slow")
+    })
+  let response =
+    simulate.request(http.Post, "/sessions/" <> session.id <> "/fork")
+    |> helpers.dispatch(context)
+  assert 201 == response.status
+  let assert Ok(id) =
+    json.parse(simulate.read_body(response), decode.at(["id"], decode.string))
+  let assert Ok(pog.Returned(rows: [fork], ..)) =
+    db.execute(sessions.get(id), context.db)
+  let assert Ok(pog.Returned(rows: [original], ..)) =
+    db.execute(sessions.get(session.id), context.db)
+  // A fork points at the same position in the thread.
+  assert original.head == fork.head
+
+  // Both continue the unfinished turn, its change is merged once.
+  let assert Ok(_) = session_helpers.run(context, session, "1")
+  let assert Ok(_) = session_helpers.run(context, fork, "2")
+  let assert Ok(home) = box.latest(context, "home")
+  assert 2 == home.sequence
+  let original = session_helpers.events(context, session)
+  let forked = session_helpers.events(context, fork)
+  assert list.take(original, 4) == list.take(forked, 4)
+  assert original != forked
+}
+
 pub fn import_shares_the_thread_test() {
   use context <- helpers.context()
   let session = session_helpers.session(context)

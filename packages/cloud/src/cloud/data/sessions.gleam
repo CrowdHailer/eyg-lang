@@ -52,3 +52,13 @@ pub fn move(
   |> pog.parameter(pog.text(to))
   |> pog.returning(decoder())
 }
+
+/// A new session pointing at the same position in the thread as another.
+pub fn fork(id: String) -> pog.Query(Session) {
+  "INSERT INTO sessions (box, head)
+  SELECT box, head FROM sessions WHERE id = $1
+  RETURNING id, box, head"
+  |> pog.query()
+  |> pog.parameter(pog.text(id))
+  |> pog.returning(decoder())
+}

@@ -97,6 +97,15 @@ fn parse_log(text) {
   })
 }
 
+/// A new session with the same history, both continue from it independently.
+pub fn fork(id, context: Context) {
+  use rows <- try(run(sessions.fork(id), context))
+  case rows {
+    [session] -> wisp.json_response(json.to_string(encode(session)), 201)
+    _ -> reason(404, "No such session")
+  }
+}
+
 pub fn list(box, context: Context) {
   use rows <- try(run(sessions.list(box), context))
   wisp.json_response(json.to_string(json.array(rows, encode)), 200)
