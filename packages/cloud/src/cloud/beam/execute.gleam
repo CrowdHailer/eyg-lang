@@ -95,6 +95,9 @@ pub type Answer {
   Flipped(Bool)
   Slept
   Completed(Result(chat.Completion(tool.Call), String))
+  /// The box rejected the files changed before the wait, so they were discarded.
+  /// Code that waited fails with the reason, an agent can repair the change.
+  Rejected(String)
 }
 
 /// Code runs until it finishes or waits for the answer to an effect.
@@ -153,6 +156,8 @@ fn answer_to_value(answer) {
     Slept -> sleep.encode(Nil)
     // Only an agent asks for a completion, code is never resumed with one.
     Completed(_) -> v.unit()
+    // Code that waited fails when its changes are rejected, see `loop`.
+    Rejected(_) -> v.unit()
   }
 }
 
@@ -333,7 +338,17 @@ fn loop(returned, state: State, policy, root, emit, output) {
               case perform_effect(effect, label, state, root, emit) {
                 Error(wait) ->
                   Waiting(wait, state, root, fn(answer, state, root) {
-                    continue(Ok(answer_to_value(answer)), state, root, output)
+                    case answer {
+                      Rejected(reason) ->
+                        Finished(Error(reason), state, root, output)
+                      _ ->
+                        continue(
+                          Ok(answer_to_value(answer)),
+                          state,
+                          root,
+                          output,
+                        )
+                    }
                   })
                 Ok(#(outcome, root)) -> {
                   let output = case label, input, outcome {

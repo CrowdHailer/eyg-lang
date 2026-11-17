@@ -2,11 +2,14 @@ import cloud/beam/execute
 import cloud/box
 import cloud/file_system
 import cloud/helpers
+import cloud/overlay
 import cloud/server
 import cloud/session_helpers
 import cloud/sessions/event
+import cloud/sessions/turn
 import gleam/erlang/process
 import gleam/http
+import gleam/list
 import gleam/string
 import overlay/llm/chat
 
@@ -68,15 +71,67 @@ pub fn messages_need_an_llm_test() {
     session_helpers.send(context, session, "hello")
 }
 
-pub fn rejected_changes_end_the_chat_test() {
+const invalid =
+  "perform WriteFile({path: \"/retry.eyg\", contents: !string_to_binary(\"let x =\")})"
+
+const valid =
+  "perform WriteFile({path: \"/retry.eyg\", contents: !string_to_binary(\"1\")})"
+
+// The recover-invalid-module case: the llm writes an invalid module and repairs it when told.
+pub fn repair_a_rejected_change_test() {
   use context <- helpers.context()
   let server = server.start(process.new_subject())
   let #(context, session) = session_helpers.chat(context, server)
-  let invalid =
-    "perform WriteFile({path: \"/bad.eyg\", contents: !string_to_binary(\"let x =\")})"
+  let assert Ok(#(Ok(_), [])) =
+    session_helpers.send(
+      context,
+      session,
+      "run:" <> invalid <> "\n---\n" <> valid,
+    )
+  let events = session_helpers.events(context, session)
+  let assert Ok(rejection) =
+    list.find_map(events, fn(event) {
+      case event {
+        event.Answered(execute.Rejected(reason)) -> Ok(reason)
+        _ -> Error(Nil)
+      }
+    })
+  assert string.starts_with(rejection, "File changes rejected\n/retry.eyg")
+  // The llm was told and asked again.
+  let assert Ok(_) =
+    list.find(events, fn(event) {
+      case event {
+        event.Asked([chat.UserMessage(text, _)], _) ->
+          string.starts_with(text, overlay.rejected_prefix)
+        _ -> False
+      }
+    })
+  let assert Ok(home) = box.latest(context, session.box)
+  assert Ok(Ok(<<"1">>))
+    == execute.files(file_system.read(home.root, "/retry.eyg"), context.state)
+  // The rejection is replayed.
+  let log = session_helpers.export(context, session)
+  let assert Ok(_) = session_helpers.import_(context, session.box, log)
+}
+
+pub fn repairs_are_limited_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let #(context, session) = session_helpers.chat(context, server)
+  let message = "run:" <> string.join(list.repeat(invalid, 5), "\n---\n")
   let assert Ok(#(Error(reason), [])) =
-    session_helpers.send(context, session, "run:" <> invalid)
+    session_helpers.send(context, session, message)
   assert string.starts_with(reason, "File changes rejected")
-  // The llm is not asked again after the change it made was rejected.
-  assert 1 == server.count_requests(server, http.Post, "/api/chat")
+  // The first attempt and three repairs.
+  assert 4 == server.count_requests(server, http.Post, "/api/chat")
+  let assert Ok(home) = box.latest(context, session.box)
+  let assert Ok(Error(_)) =
+    execute.files(file_system.read(home.root, "/retry.eyg"), context.state)
+  // The next message's chat says the last reply failed.
+  let assert Ok(chat.UserMessage(failed, [])) =
+    turn.conversation(session_helpers.events(context, session)) |> list.last
+  assert string.starts_with(
+    failed,
+    "The last reply failed.\nFile changes rejected",
+  )
 }

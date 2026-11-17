@@ -33,6 +33,7 @@ pub type Event {
   Resumed(root: v1.Cid)
   /// The answer to an effect, for Random, Now and Flip it is recorded when the code continues.
   /// The response to a fetch is recorded as soon as it is received.
+  /// If the box rejected the change before a request, sleep or completion the rejection is the answer.
   Answered(answer: execute.Answer)
   /// A reference to the latest release of a package resolved to this module,
   /// it resolves to the same module for the rest of the turn and when the turn is replayed.
@@ -96,6 +97,7 @@ pub fn fields(event: Event) -> List(#(String, json.Json)) {
         execute.Completed(Error(reason)) -> [
           #("refused", json.string(reason)),
         ]
+        execute.Rejected(reason) -> [#("rejected", json.string(reason))]
       }
     ]
     Pinned(package, version, module) -> [
@@ -221,6 +223,7 @@ fn answer_decoder() {
         |> decode.map(fn(completion) { execute.Completed(Ok(completion)) }),
       decode.at(["refused"], decode.string)
         |> decode.map(fn(reason) { execute.Completed(Error(reason)) }),
+      decode.at(["rejected"], decode.string) |> decode.map(execute.Rejected),
     ],
   )
 }

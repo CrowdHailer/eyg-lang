@@ -3,7 +3,9 @@
 //// Code runs in the session's process, from the latest root of the box, until it finishes, makes a request or sleeps.
 //// The events of that segment are appended to the session's thread, then the files it changed are merged into the box,
 //// then the request or sleep starts. A segment that only read files never waits for the box process.
-//// A change that conflicts or does not type check is rejected, the turn finishes and the request is not made.
+//// A change that conflicts or does not type check is rejected and the request is not made.
+//// The code continues from the box's latest root with the rejection as its answer, code fails with it
+//// and a chat tells the llm, which can repair the change.
 //// The response is recorded as soon as it is received and the code continues from the latest root.
 ////
 //// If the process stops, the code is replayed with the recorded answers the next time the session is used.
@@ -197,7 +199,7 @@ fn chat(context: Context, state: execute.State, before, policy, message) {
       case dict.get(context.llms, name) {
         Ok(llm) -> {
           let provider = overlay.box_context(state.origin)
-          let history = conversation(before)
+          let history = conversation(list.map(before, fn(entry) { entry.1 }))
           Ok(fn(state, root) {
             overlay.reply(llm, provider, history, message, policy, state, root)
           })
@@ -208,17 +210,32 @@ fn chat(context: Context, state: execute.State, before, policy, message) {
   }
 }
 
-// The messages the llm was sent and the completions it answered with, oldest first.
-fn conversation(entries: List(#(String, Event))) -> chat.History {
-  list.flat_map(entries, fn(entry) {
-    case entry.1 {
-      event.Asked(messages, _) -> messages
-      event.Answered(execute.Completed(Ok(completion))) -> [
-        chat.from_completion(completion),
-      ]
-      _ -> []
-    }
-  })
+/// The messages the llm was sent and the completions it answered with, oldest first.
+/// A chat turn that failed is followed by a message saying why, the llm was not told during the turn.
+pub fn conversation(events: List(Event)) -> chat.History {
+  let #(reversed, _) =
+    list.fold(events, #([], False), fn(acc, event) {
+      let #(history, chatting) = acc
+      case event, chatting {
+        event.Sent(..), _ -> #(history, True)
+        event.Started(..), _ | event.Submitted(..), _ -> #(history, False)
+        event.Asked(messages, _), _ -> #(
+          list.append(list.reverse(messages), history),
+          chatting,
+        )
+        event.Answered(execute.Completed(Ok(completion))), _ -> #(
+          [chat.from_completion(completion), ..history],
+          chatting,
+        )
+        event.Finished(Error(reason), ..), True -> {
+          let failed =
+            chat.UserMessage("The last reply failed.\n" <> reason, [])
+          #([failed, ..history], False)
+        }
+        _, _ -> acc
+      }
+    })
+  list.reverse(reversed)
 }
 
 // The code of a turn from the event that started it.
@@ -332,13 +349,16 @@ fn settle(context: Context, session: Session, state, start, root, key, next) {
       use _ <- result.try(record(context, session, [event.Answered(answer)]))
       drive(context, session, state, continue(resume, answer))
     }
-    Error(reason), _ -> {
-      use outcome <- result.try(rejected(reason))
-      let output = case next {
-        Return(output:, ..) -> output
-        _ -> []
-      }
-      finish(context, session, outcome, output, start)
+    Error(reason), Return(output:, ..) -> {
+      use reason <- result.try(rejected(reason))
+      finish(context, session, Error(reason), output, start)
+    }
+    // The code continues from the latest root, without the rejected changes.
+    Error(reason), Perform(_, resume) | Error(reason), Reply(_, resume) -> {
+      use reason <- result.try(rejected(reason))
+      let answer = execute.Rejected(reason)
+      use _ <- result.try(record(context, session, [event.Answered(answer)]))
+      drive(context, session, state, continue(resume, answer))
     }
   }
 }
@@ -408,9 +428,9 @@ fn finish(context, session, outcome, output, root) {
 fn rejected(reason) {
   case reason {
     box.Invalid(errors) ->
-      Ok(Error("File changes rejected\n" <> string.join(errors, "\n")))
+      Ok("File changes rejected\n" <> string.join(errors, "\n"))
     box.Conflict(paths) ->
-      Ok(Error("File changes conflict\n" <> string.join(paths, "\n")))
+      Ok("File changes conflict\n" <> string.join(paths, "\n"))
     _ -> Error(reason)
   }
 }
@@ -631,8 +651,11 @@ fn walk(state, segment: Segment, entries) {
         [#(key, recorded), ..entries] if recorded == last ->
           case next, entries {
             _, [] -> Ok(Unsettled(start, root, key, next, state))
-            // The turn finished, or its change was rejected.
+            // The turn finished, or its last change was rejected.
             _, [#(_, event.Finished(..)), ..entries] -> Ok(Ended(entries))
+            Perform(_, resume),
+              [#(_, event.Answered(execute.Rejected(_) as answer)), ..entries]
+            -> walk(state, continue(resume, answer), entries)
             Perform(execute.Fetch(_), resume),
               [#(_, event.Answered(answer)), ..entries]
             | Perform(execute.Complete(..), resume),

@@ -37,8 +37,10 @@ A completion that was asked for but not recorded is asked for again, it costs a 
 The llm is recorded by name, a chat turn can only be replayed while an llm is configured under that name.
 
 The changes made by a tool call that fails are kept, the llm is told it failed and can carry on.
-A change that is rejected when it is merged ends the turn, the rejection is the turn's outcome and the llm is not asked about it.
-The next message's chat does not include the rejection.
+A change that is rejected when it is merged is discarded and the rejection is recorded as the answer to the stop that merged it.
+Code fails with it. In a chat the llm is told before the next completion and can repair the change, three times at most.
+A rejection before a request or sleep inside a tool call fails that tool call, its result tells the llm.
+A chat turn that fails is followed in the next message's chat by a message saying why.
 
 A program built in a structural editor is recorded as its tree in DAG-JSON, not as text.
 There is no printer from a tree to EYG text, and some trees, such as binary literals, have no text syntax.

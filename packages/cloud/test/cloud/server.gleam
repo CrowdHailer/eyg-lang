@@ -2,6 +2,7 @@
 //// The first request to `/slow` is held until the test releases it.
 //// It is also an llm, see `chat`.
 
+import cloud/overlay
 import eyg/hub/cache
 import eyg/parser
 import gleam/bytes_tree
@@ -89,6 +90,7 @@ pub fn start(arrived: Subject(Subject(Nil))) -> Server {
 /// The server as an Ollama llm, it does what the last message from the user says.
 /// A message `run:` followed by code blocks separated by `---` is a tool call for each block, one at a time.
 /// After the last call it answers with the result of that call.
+/// A message saying its changes were rejected is not an instruction, the next block is run.
 /// Any other message is answered with itself and the number of messages from the user in the chat.
 pub fn llm(server: Server) {
   provider.Llm(provider.Ollama(ollama.Config(origin(server), None)), "test")
@@ -102,8 +104,12 @@ fn chat(body) {
   }
   let assert Ok(messages) =
     json.parse_bits(body, decode.at(["messages"], decode.list(message)))
+  // Messages telling the llm its changes were rejected are not instructions.
+  let instruction = fn(m: #(String, String)) {
+    m.0 == "user" && !string.starts_with(m.1, overlay.rejected_prefix)
+  }
   let #(results, earlier) =
-    list.reverse(messages) |> list.split_while(fn(m) { m.0 != "user" })
+    list.reverse(messages) |> list.split_while(fn(m) { !instruction(m) })
   let assert [#(_, last), ..] = earlier
   let results = list.filter(results, fn(m) { m.0 == "tool" })
   let reply = fn(content, calls) {

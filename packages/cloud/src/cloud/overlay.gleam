@@ -64,6 +64,8 @@ pub fn box_context(hub: origin.Origin) -> provider.Context {
 /// Reply to a message, running the code of every tool call until the llm answers without one.
 /// `history` is the chat before the message, oldest first.
 /// The changes made by a tool call are kept even if it fails, the llm is told it failed.
+/// If the box rejects the changes made before a completion they are discarded and the llm is told why,
+/// it can repair them `repairs` times before the reply fails.
 pub fn reply(
   llm: provider.Llm,
   context: provider.Context,
@@ -73,18 +75,23 @@ pub fn reply(
   state: execute.State,
   root: v1.Cid,
 ) -> execute.Run(String) {
-  ask(
-    llm,
-    context,
-    history,
-    [chat.UserMessage(message, [])],
-    policy,
-    state,
-    root,
-  )
+  [chat.UserMessage(message, [])]
+  |> ask(llm, context, history, _, policy, state, root, repairs)
 }
 
-fn ask(llm, context, history, added, policy, state, root) {
+const repairs = 3
+
+/// The message an llm is sent when the changes of its tool calls are rejected.
+pub fn rejection(reason: String) -> String {
+  rejected_prefix
+  <> " The files are as they were before those tool calls, fix the problem and try again.\n"
+  <> reason
+}
+
+pub const rejected_prefix =
+  "The box rejected the file changes made by the tool calls since your last reply and discarded them."
+
+fn ask(llm, context, history, added, policy, state, root, repairs) {
   let history = list.append(history, added)
   let wait = execute.Complete(llm, context, history, added)
   use answer, state, root <- execute.Waiting(wait, state, root)
@@ -94,23 +101,40 @@ fn ask(llm, context, history, added, policy, state, root) {
         [] -> execute.Finished(Ok(completion.content), state, root, [])
         calls -> {
           let history = list.append(history, [chat.from_completion(completion)])
-          call(llm, context, history, calls, [], policy, state, root)
+          call(llm, context, history, calls, [], policy, state, root, repairs)
         }
       }
     execute.Completed(Error(reason)) ->
       execute.Finished(Error(reason), state, root, [])
+    execute.Rejected(reason) if repairs > 0 -> {
+      let added = [chat.UserMessage(rejection(reason), [])]
+      ask(llm, context, history, added, policy, state, root, repairs - 1)
+    }
+    execute.Rejected(reason) -> execute.Finished(Error(reason), state, root, [])
     _ -> execute.Finished(Error("expected a completion"), state, root, [])
   }
 }
 
 // Run each call in order, then ask again with their results.
-fn call(llm, context, history, calls, results, policy, state, root) {
+fn call(llm, context, history, calls, results, policy, state, root, repairs) {
   case calls {
-    [] -> ask(llm, context, history, list.reverse(results), policy, state, root)
+    [] ->
+      list.reverse(results)
+      |> ask(llm, context, history, _, policy, state, root, repairs)
     [tool.Call(id, tool.FunctionCall(name, arguments)), ..calls] -> {
       let next = fn(result, state, root) {
         let results = [result_to_message(id, result), ..results]
-        call(llm, context, history, calls, results, policy, state, root)
+        call(
+          llm,
+          context,
+          history,
+          calls,
+          results,
+          policy,
+          state,
+          root,
+          repairs,
+        )
       }
       case agent.cast_tool_call(name, arguments) {
         Error(reason) ->

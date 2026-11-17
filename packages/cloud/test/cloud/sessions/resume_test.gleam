@@ -257,6 +257,7 @@ fn ends_group(event) {
     | event.Returned(..)
     | event.Answered(execute.Fetched(_))
     | event.Answered(execute.Completed(_))
+    | event.Answered(execute.Rejected(_))
     | event.Finished(..) -> True
     _ -> False
   }
@@ -300,7 +301,9 @@ fn requested(events, length, path) {
     [#(_, i), ..rest] if i < length ->
       case i + 1 == length, rest {
         False, _ -> Answered
-        True, [#(event.Finished(..), _), ..] -> Pending(rejected: True)
+        True, [#(event.Finished(..), _), ..]
+        | True, [#(event.Answered(execute.Rejected(_)), _), ..]
+        -> Pending(rejected: True)
         True, _ -> Pending(rejected: False)
       }
     _ -> NotRequested
