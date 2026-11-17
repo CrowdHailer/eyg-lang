@@ -69,7 +69,13 @@ pub fn unique(name) {
 /// Each state has its own blobs, kept in memory.
 pub fn state() {
   let assert Ok(blobs) = blobs.start()
-  execute.State(origin.https("eyg.test"), cache.ready(), dict.new(), blobs.data)
+  execute.State(
+    origin.https("eyg.test"),
+    cache.ready(),
+    dict.new(),
+    blobs.data,
+    dict.new(),
+  )
 }
 
 pub fn dispatch(request, context) {

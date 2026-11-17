@@ -61,6 +61,7 @@ pub fn setup() {
       cache: cache.ready(),
       secrets:,
       blobs: blobs.data,
+      pins: dict.new(),
     )
   #(state, llm)
 }

@@ -67,6 +67,7 @@ pub fn start_with_session(
         cache: cache.ready(),
         secrets:,
         blobs: blobs.data,
+        pins: dict.new(),
       ),
     )
   let assert Ok(policy) = policy

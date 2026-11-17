@@ -1,6 +1,11 @@
 import cloud/beam/execute
 import cloud/file_system
 import cloud/helpers
+import cloud/server
+import eyg/hub/cache
+import eyg/ir/tree as ir
+import gleam/dict
+import gleam/erlang/process
 import simplifile
 import unixfs/mfs
 
@@ -49,4 +54,26 @@ pub fn complete_performs_effects_test() {
       "let _ = perform Random(10)\nlet _ = perform Flip({})\nperform Sleep(1)",
     )
     |> execute.complete
+}
+
+pub fn pin_packages_for_the_run_test() {
+  let server = server.start(process.new_subject())
+  let state =
+    execute.State(
+      ..helpers.state(),
+      origin: server.origin(server),
+      cache: server.release(cache.empty(), "lib", "1"),
+    )
+  let assert Ok(root) = execute.files(file_system.empty(), state)
+  let assert Ok(policy) = simplifile.read("policy.eyg")
+  let assert #(Ok(policy), state) = execute.load_policy(policy, state)
+  let code = "let a = @lib\nlet _ = perform Random(1)\nlet b = @lib\n[a, b]"
+  let assert execute.Waiting(_, state, root, resume) =
+    execute.block(code, state, policy, root, fn(_) { Nil })
+  // A new version is released while the code is waiting.
+  let state =
+    execute.State(..state, cache: server.release(state.cache, "lib", "2"))
+  let assert execute.Finished(Ok("[1, 1]"), state, _, _) =
+    resume(execute.Number(0), state, root)
+  let assert Ok(_) = dict.get(state.pins, ir.Package("lib"))
 }
