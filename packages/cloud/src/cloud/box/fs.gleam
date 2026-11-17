@@ -1,141 +1,96 @@
-//// Type check every EYG module in a file system.
-//// Imports are resolved against the same file system.
-//// 
-//// Each module is checked only once.
-//// Import cycles are guarded against.
+//// Type check the EYG modules in a file system, with `unixfs/check`.
+//// Imports are resolved against the same file system,
+//// published modules a module refers to are fetched from the hub.
+//// The index of the file system lets a change be checked by checking only what it affects.
 
 import cloud/beam/execute
-import cloud/file_system
-import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
-import gleam/dict.{type Dict}
+import eyg/parser
+import gleam/dict
 import gleam/list
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
-import simplifile.{type FileError}
-import touch_grass/file_system/read_directory
+import unixfs/check
 import unixfs/mfs
 
-type Checker {
-  Checker(
-    state: execute.State,
-    checked: Dict(String, Result(binding.Poly, Nil)),
-    errors: List(String),
-  )
-}
-
+/// Check every module.
 /// Returns a description of every invalid module, so no errors is a valid file system.
 pub fn check(
   root: v1.Cid,
   state: execute.State,
-) -> mfs.Effect(Result(#(List(String), execute.State), FileError)) {
-  use paths <- mfs.then(modules(root, ""))
-  use paths <- mfs.try(paths)
-  use checker <- mfs.then(
-    fold(paths, Checker(state, dict.new(), []), fn(checker, path) {
-      use #(_, checker) <- mfs.then(check_module(checker, root, path, []))
-      mfs.Done(Ok(checker))
-    }),
-  )
-  use checker <- mfs.try(checker)
-  mfs.Done(Ok(#(list.reverse(checker.errors), checker.state)))
+) -> mfs.Effect(#(List(String), check.Index, execute.State)) {
+  change(check.empty(), root, state)
 }
 
-fn fold(items, acc, with) {
-  case items {
-    [] -> mfs.Done(Ok(acc))
-    [item, ..rest] -> {
-      use acc <- mfs.then(with(acc, item))
-      use acc <- mfs.try(acc)
-      fold(rest, acc, with)
-    }
-  }
+/// Check a later root than the one the index was made from, only checking the modules the change affects.
+pub fn change(
+  index: check.Index,
+  root: v1.Cid,
+  state: execute.State,
+) -> mfs.Effect(#(List(String), check.Index, execute.State)) {
+  use entry <- mfs.Get(root)
+  loop(index, entry, state, [])
 }
 
-fn modules(root, directory) -> mfs.Effect(Result(List(String), FileError)) {
-  use entries <- mfs.then(file_system.read_directory(root, directory <> "/"))
-  use entries <- mfs.try(entries)
-  fold(entries, [], fn(found, entry) {
-    let path = directory <> "/" <> entry.0
-    case entry.1 {
-      read_directory.Directory -> {
-        use nested <- mfs.then(modules(root, path))
-        use nested <- mfs.try(nested)
-        mfs.Done(Ok(list.append(found, nested)))
+// The cache only has the published modules that have been fetched,
+// fetch the ones that are missing and check again, a module that failed is always checked again.
+fn loop(index, entry, state: execute.State, fetched) {
+  use #(checked, index) <- mfs.then(check.change(index, entry, state.cache))
+  let missing =
+    dict.values(checked)
+    |> list.flat_map(fn(outcome) {
+      case outcome {
+        Error(check.TypeErrors(errors)) -> error.missing_references(errors)
+        _ -> []
       }
-      read_directory.File(_) ->
-        mfs.Done(
-          Ok(case string.ends_with(path, ".eyg") {
-            True -> list.append(found, [path])
-            False -> found
-          }),
-        )
-    }
-  })
-}
-
-// `importing` is the sequence of modules that lead to this one.
-fn check_module(checker: Checker, root, path, importing) {
-  case dict.get(checker.checked, path) {
-    Ok(type_) -> mfs.Done(#(type_, checker))
-    Error(Nil) -> {
-      use #(outcome, checker) <- mfs.then(case list.contains(importing, path) {
-        True -> mfs.Done(#(Error("imports itself"), checker))
-        False -> {
-          use bytes <- mfs.then(file_system.read(root, path))
-          let bytes = result.map_error(bytes, simplifile.describe_error)
-          case result.try(bytes, execute.parse_module) {
-            Error(reason) -> mfs.Done(#(Error(reason), checker))
-            Ok(source) ->
-              infer.check(infer.pure(), source)
-              |> loop(checker, root, path, [path, ..importing])
+    })
+    |> list.unique
+    |> list.filter(fn(reference) {
+      case reference {
+        ir.Relative(_) -> False
+        _ -> !list.contains(fetched, reference)
+      }
+    })
+  // Check again only if a missing module was found.
+  let #(found, state) =
+    list.fold(missing, #(False, state), fn(acc, reference) {
+      let #(found, state) = acc
+      let #(type_, state) = execute.lookup_type(reference, state)
+      #(found || result.is_ok(type_), state)
+    })
+  case found {
+    False -> {
+      let errors =
+        dict.to_list(checked)
+        |> list.filter_map(fn(checked) {
+          let #(path, outcome) = checked
+          case outcome {
+            Ok(_) -> Error(Nil)
+            Error(problem) ->
+              Ok("/" <> string.join(path, "/") <> ": " <> describe(problem))
           }
-        }
-      })
-      let #(type_, errors) = case outcome {
-        Ok(type_) -> #(Ok(type_), checker.errors)
-        Error(reason) -> #(Error(Nil), [
-          path <> ": " <> reason,
-          ..checker.errors
-        ])
-      }
-      let checked = dict.insert(checker.checked, path, type_)
-      mfs.Done(#(type_, Checker(..checker, checked:, errors:)))
+        })
+        |> list.sort(string.compare)
+      mfs.Done(#(errors, index, state))
     }
+    True -> loop(index, entry, state, list.append(fetched, missing))
   }
 }
 
-fn loop(step, checker: Checker, root, path, importing) {
-  case step {
-    infer.Done(analysis) ->
-      mfs.Done(case infer.all_errors(analysis) {
-        [] -> #(Ok(infer.poly_type(analysis)), checker)
-        errors -> #(
-          errors
-            |> list.map(fn(error) { debug.render_reason(error.1) })
-            |> string.join("\n")
-            |> Error,
-          checker,
-        )
-      })
-    infer.Lookup(ir.Relative(location), resume) -> {
-      let target = case location {
-        "/" <> _ -> location
-        _ -> path <> "/../" <> location
-      }
-      use #(type_, checker) <- mfs.then(case file_system.resolve_path(target) {
-        Ok(target) -> check_module(checker, root, target, importing)
-        Error(_) -> mfs.Done(#(Error(Nil), checker))
-      })
-      loop(resume(type_), checker, root, path, importing)
-    }
-    infer.Lookup(reference, resume) -> {
-      let #(type_, state) = execute.lookup_type(reference, checker.state)
-      let type_ = result.replace_error(type_, Nil)
-      loop(resume(type_), Checker(..checker, state:), root, path, importing)
-    }
+fn describe(problem) {
+  case problem {
+    check.MissingModule -> "is missing"
+    check.NotUtf8 -> "is not text"
+    check.InvalidSource(reason, source) -> parser.format_error(reason, source)
+    check.CircularImport(cycle) ->
+      "imports itself through "
+      <> list.map(cycle, fn(path) { "/" <> string.join(path, "/") })
+      |> string.join(", ")
+    check.TypeErrors(errors) ->
+      list.map(errors, fn(error) { debug.render_reason(error.1) })
+      |> string.join("\n")
   }
 }

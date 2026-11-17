@@ -15,8 +15,9 @@ Nothing promises that a long running change sees the latest files, it sees its b
 Changes are visible as soon as they are merged.
 In progress work is meant to be hidden by working in a transient box and merging it when done.
 
-The whole file system is type checked from fresh on every change.
-This reads every directory and `.eyg` file from the blob store, memoising on the previous root is the planned improvement.
+The box process keeps the `unixfs/check` index of the modules at its root.
+A change only checks the modules that changed, or failed, and every module that imports them.
+The index is only in memory, so the first change after the box process starts checks every module.
 
 A session turn that fails discards its file changes, even those made before the failure.
 This differs from the chat sessions in `cloud/session.gleam` which keep them.

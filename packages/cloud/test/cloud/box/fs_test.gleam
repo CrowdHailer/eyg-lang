@@ -1,28 +1,18 @@
 import cloud/beam/execute
 import cloud/box/fs
-import cloud/data/blobs
 import cloud/file_system
-import eyg/hub/cache
-import gleam/dict
+import cloud/helpers
 import gleam/list
 import gleam/string
-import ogre/origin
 import unixfs/mfs
 
 fn check(files: List(#(String, String))) {
-  let assert Ok(blobs) = blobs.start()
-  let state =
-    execute.State(
-      origin: origin.https("eyg.test"),
-      cache: cache.ready(),
-      secrets: dict.new(),
-      blobs: blobs.data,
-    )
-  let assert Ok(Ok(#(errors, _))) =
+  let state = helpers.state()
+  let assert Ok(#(errors, _, _)) =
     {
       use root <- mfs.then(file_system.empty())
       use root <- mfs.then(write_all(files, root))
-      use root <- mfs.try(root)
+      let assert Ok(root) = root
       fs.check(root, state)
     }
     |> execute.files(state)
