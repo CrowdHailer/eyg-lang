@@ -30,6 +30,9 @@ import gleam/string
 import multiformats/cid/v1
 import ogre/origin
 import overlay/agent
+import overlay/llm/chat
+import overlay/llm/provider
+import overlay/llm/tool
 import overlay/policy
 import simplifile
 import touch_grass/cryptography/hash
@@ -75,6 +78,14 @@ pub type Wait {
   Now
   Flip
   Sleep(Int)
+  /// Code never asks for a completion, an agent does between running code.
+  /// `history` ends with the `added` messages, the rest was sent with earlier completions.
+  Complete(
+    llm: provider.Llm,
+    context: provider.Context,
+    history: chat.History,
+    added: chat.History,
+  )
 }
 
 pub type Answer {
@@ -83,6 +94,7 @@ pub type Answer {
   Number(Int)
   Flipped(Bool)
   Slept
+  Completed(Result(chat.Completion(tool.Call), String))
 }
 
 /// Code runs until it finishes or waits for the answer to an effect.
@@ -123,6 +135,12 @@ pub fn perform(wait: Wait, state: State) -> Answer {
       process.sleep(int.max(0, milliseconds))
       Slept
     }
+    Complete(llm, context, history, _) ->
+      // A completion of a long chat can take minutes.
+      provider.completion(llm, context, history, system.slow_fetch(300_000))(
+        fn(completion) { completion },
+      )
+      |> Completed
   }
 }
 
@@ -133,16 +151,27 @@ fn answer_to_value(answer) {
     Number(number) -> v.Integer(number)
     Flipped(value) -> flip.encode(value)
     Slept -> sleep.encode(Nil)
+    // Only an agent asks for a completion, code is never resumed with one.
+    Completed(_) -> v.unit()
   }
 }
 
 fn map(run, f) {
+  then(run, fn(outcome, state, root, output) {
+    Finished(result.map(outcome, f), state, root, output)
+  })
+}
+
+/// Continue with `next` when the code finishes, after every effect it waits for.
+pub fn then(
+  run: Run(a),
+  next: fn(Result(a, String), State, v1.Cid, List(String)) -> Run(b),
+) -> Run(b) {
   case run {
-    Finished(outcome, state, root, output) ->
-      Finished(result.map(outcome, f), state, root, output)
+    Finished(outcome, state, root, output) -> next(outcome, state, root, output)
     Waiting(wait, state, root, resume) ->
       Waiting(wait, state, root, fn(answer, state, root) {
-        map(resume(answer, state, root), f)
+        then(resume(answer, state, root), next)
       })
   }
 }
@@ -204,7 +233,6 @@ pub fn block(
 }
 
 /// Execute an agent tool with fresh context and capture output for the model.
-/// TODO I think the agent can use block execute as well.
 pub fn run(
   code: String,
   state: State,
@@ -212,6 +240,17 @@ pub fn run(
   root: v1.Cid,
   emit: fn(Output) -> Nil,
 ) -> #(Result(String, String), State, v1.Cid, List(String)) {
+  tool(code, state, policy, root, emit) |> complete
+}
+
+/// Code an agent runs, with `context` in scope, waiting for effects that are not known.
+pub fn tool(
+  code: String,
+  state: State,
+  policy: Policy,
+  root: v1.Cid,
+  emit: fn(Output) -> Nil,
+) -> Run(String) {
   evaluate(
     code,
     [#("context", v.unit())],
@@ -221,7 +260,6 @@ pub fn run(
     root,
     emit,
   )
-  |> complete
 }
 
 fn evaluate(code, scope, inspect, state, policy, root, emit) {

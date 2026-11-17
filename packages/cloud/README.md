@@ -43,15 +43,16 @@ A session in a transient box, cloned from a named box, works on its own copy of 
 
 | Request | |
 | --- | --- |
-| `POST /boxes/:id/sessions` | Start a session in the box. |
+| `POST /boxes/:id/sessions` | Start a session in the box, send `{"llm": name}` for a session that chats with an llm. |
 | `GET /boxes/:id/sessions` | The sessions in the box. |
 | `GET /sessions/:id` | The session and all of its turns. |
-| `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`. |
+| `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`, or reply to `{"message": "hi"}` in a chat. |
 | `GET /sessions/:id/events` | Every event of the session as JSON lines. |
 | `POST /sessions/:id/fork` | Start a session with the same history, each continues from it on its own. |
 | `GET /sessions/:id/trace` | OpenTelemetry spans for the session, each turn and each request, as OTLP JSON. |
+| `GET /llms` | The names of the llms a session can chat with. |
 
-Posting exported events, as JSON lines, to `POST /boxes/:id/sessions` creates a session from them.
+Posting exported events, as JSON lines with content type `application/x-ndjson`, to `POST /boxes/:id/sessions` creates a session from them.
 The events are only accepted if replaying every turn does what they say.
 A copy of a session with an unfinished turn finishes that turn when it is next used.
 
@@ -62,6 +63,9 @@ A turn returns its `output` and either a `value` or an `error`.
 File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.
 Code runs in the session's own process. Before each request or sleep, and at the end, its events are recorded and then its file changes are merged into the box.
 A turn that only reads files never waits for other sessions.
+
+A chat runs the code of each tool call the llm makes, as an Overlay agent does, and replies with the llm's answer.
+There are no accounts yet, so every configured llm is available to every session.
 
 Sessions are durable, every turn is recorded as events that are enough to resume it.
 Events are stored in an append only thread and a session points at the last event of its history.

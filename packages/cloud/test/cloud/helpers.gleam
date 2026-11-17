@@ -67,6 +67,7 @@ fn context_for(db) {
     sessions: sessions.data,
     state:,
     policy:,
+    llms: dict.new(),
   )
 }
 

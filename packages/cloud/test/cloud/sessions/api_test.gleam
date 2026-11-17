@@ -1,5 +1,9 @@
+import cloud/apex/context.{Context}
 import cloud/helpers.{dispatch}
+import cloud/server
+import gleam/dict
 import gleam/dynamic/decode
+import gleam/erlang/process
 import gleam/http
 import gleam/json
 import gleam/string
@@ -150,4 +154,36 @@ pub fn failed_code_changes_nothing_test() {
   let code = write("/a.txt", "a") <> "\n!int_add(1, \"two\")"
   let _ = field(turn(context, id, code), "error", decode.string)
   assert before == root(context, home)
+}
+
+pub fn chat_with_a_configured_llm_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let response = dispatch(simulate.request(http.Get, "/llms"), context)
+  assert "[\"test\"]" == simulate.read_body(response)
+
+  let home = box(context, "home")
+  let start = fn(llm) {
+    simulate.request(http.Post, "/boxes/" <> home <> "/sessions")
+    |> simulate.json_body(json.object([#("llm", json.string(llm))]))
+    |> dispatch(context)
+  }
+  assert 422 == start("other").status
+  let response = start("test")
+  assert 201 == response.status
+  let id = field(response, "id", decode.string)
+
+  let response =
+    simulate.request(http.Post, "/sessions/" <> id <> "/turns")
+    |> simulate.json_body(json.object([#("message", json.string("hi"))]))
+    |> dispatch(context)
+  assert "hi #1" == field(response, "value", decode.string)
+
+  let response =
+    dispatch(simulate.request(http.Get, "/sessions/" <> id), context)
+  assert "test" == field(response, "llm", decode.string)
+  let assert [turn] = field(response, "turns", decode.list(decode.dynamic))
+  assert Ok("hi") == decode.run(turn, decode.at(["message"], decode.string))
 }

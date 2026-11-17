@@ -11,6 +11,7 @@ import cloud/sessions/event
 import cloud/sessions/trace
 import cloud/sessions/turn
 import gleam/bit_array
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
@@ -20,10 +21,42 @@ import gleam/string
 import pog
 import wisp
 
-/// A session can be created from the events exported from another,
-/// they are only accepted if replaying them does what they say.
-pub fn create(request, box, context: Context) {
+/// A session runs code, or chats with a configured llm if `{"llm": name}` is sent.
+/// Events exported from another session, as JSON lines, start a session with the same history.
+pub fn create(request: wisp.Request, box, context: Context) {
   use _ <- try(box.latest(context, box))
+  case list.key_find(request.headers, "content-type") {
+    Ok("application/x-ndjson") -> import_(request, box, context)
+    _ -> start(request, box, context)
+  }
+}
+
+fn start(request, box, context: Context) {
+  use body <- wisp.require_bit_array_body(request)
+  let decoder =
+    decode.optional_field(
+      "llm",
+      None,
+      decode.map(decode.string, Some),
+      decode.success,
+    )
+  let llm = case body {
+    <<>> -> Ok(None)
+    _ -> json.parse_bits(body, decoder) |> result.replace_error(Nil)
+  }
+  case llm {
+    Error(Nil) -> reason(400, "Expected an optional llm")
+    Ok(None) -> save(box, [], [], context)
+    Ok(Some(llm)) ->
+      case dict.has_key(context.llms, llm) {
+        True -> save(box, [], [event.Configured(llm)], context)
+        False -> reason(422, "No llm is configured as " <> llm)
+      }
+  }
+}
+
+/// Exported events are only accepted if replaying them does what they say.
+fn import_(request, box, context: Context) {
   use body <- wisp.require_bit_array_body(request)
   use log <- try(
     bit_array.to_string(body)
@@ -35,9 +68,15 @@ pub fn create(request, box, context: Context) {
     turn.check(context, list.map(log, fn(entry) { entry.1 }))
     |> result.map_error(fn(reason) { box.Invalid([reason]) }),
   )
-  // The events are added to the thread, events already in it are shared.
+  let #(times, events) = list.unzip(log)
+  save(box, times, events, context)
+}
+
+// The events are added to the thread, events already in it are shared.
+// `times` are when the events were recorded, events without one are recorded now.
+fn save(box, times, events, context: Context) {
   let payloads =
-    list.map(log, fn(entry) { json.to_string(event.encode(entry.1)) })
+    list.map(events, fn(event) { json.to_string(event.encode(event)) })
   let nodes = thread.nodes(None, payloads)
   let head =
     list.last(nodes) |> result.map(fn(node) { node.key }) |> option.from_result
@@ -45,9 +84,10 @@ pub fn create(request, box, context: Context) {
   use Nil <- try(box.durable(context, box))
   use session <- try(
     db.transaction(context.db, fn(connection) {
-      let restore =
-        thread.restore(list.zip(list.map(log, fn(entry) { entry.0 }), nodes))
-      use _ <- result.try(db.execute(restore, connection))
+      use _ <- result.try(case times {
+        [] -> db.execute(thread.insert(nodes), connection)
+        _ -> db.execute(thread.restore(list.zip(times, nodes)), connection)
+      })
       use created <- result.map(db.execute(
         sessions.create(box, head),
         connection,
@@ -115,9 +155,14 @@ pub fn get(id, context: Context) {
   use session <- find(id, context)
   use history <- try(turn.history(context, id))
   let events = list.map(history, fn(entry) { entry.2 })
+  let llm = case events {
+    [event.Configured(llm), ..] -> Some(llm)
+    _ -> None
+  }
   json.object([
     #("id", json.string(session.id)),
     #("box", json.string(session.box)),
+    #("llm", json.nullable(llm, json.string)),
     #("turns", json.array(turns(events, []), encode_turn)),
   ])
   |> json.to_string
@@ -125,25 +170,39 @@ pub fn get(id, context: Context) {
 }
 
 /// Each turn is run by the session's process, one at a time.
+/// A turn is `{"code": code}`, or `{"message": message}` for a session that chats with an llm.
 pub fn turn(request, id, context: Context) {
   use body <- wisp.require_json(request)
-  case decode.run(body, decode.at(["code"], decode.string)) {
-    Error(_) -> reason(400, "Expected code")
-    Ok(code) -> {
+  let decoder =
+    decode.one_of(decode.at(["code"], decode.string) |> decode.map(turn.Code), [
+      decode.at(["message"], decode.string) |> decode.map(turn.Message),
+    ])
+  case decode.run(body, decoder) {
+    Error(_) -> reason(400, "Expected code or a message")
+    Ok(input) -> {
       use session <- find(id, context)
       let process =
         registry.lookup(context.sessions, id, fn() { registry.serve(Nil) })
       use #(outcome, output) <- try(
         registry.call(process, 600_000, fn(_) {
-          #(Nil, turn.run(context, session, code))
+          #(Nil, turn.run(context, session, input))
         }),
       )
       wisp.json_response(
-        json.to_string(encode_turn(#(code, Some(#(outcome, output))))),
+        json.to_string(encode_turn(#(input, Some(#(outcome, output))))),
         200,
       )
     }
   }
+}
+
+/// The names of the llms a session can chat with.
+pub fn llms(context: Context) {
+  dict.keys(context.llms)
+  |> list.sort(string.compare)
+  |> json.array(json.string)
+  |> json.to_string
+  |> wisp.json_response(200)
 }
 
 // A turn without an outcome has not finished.
@@ -151,9 +210,11 @@ fn turns(events, acc) {
   case events, acc {
     [], _ -> list.reverse(acc)
     [event.Started(code, _), ..events], _ ->
-      turns(events, [#(code, None), ..acc])
-    [event.Finished(outcome, output, _), ..events], [#(code, _), ..acc] ->
-      turns(events, [#(code, Some(#(outcome, output))), ..acc])
+      turns(events, [#(turn.Code(code), None), ..acc])
+    [event.Sent(message, _), ..events], _ ->
+      turns(events, [#(turn.Message(message), None), ..acc])
+    [event.Finished(outcome, output, _), ..events], [#(input, _), ..acc] ->
+      turns(events, [#(input, Some(#(outcome, output))), ..acc])
     [_, ..events], _ -> turns(events, acc)
   }
 }
@@ -181,9 +242,12 @@ fn encode(session: Session) {
 }
 
 fn encode_turn(turn) {
-  let #(code, ended) = turn
+  let #(input, ended) = turn
   json.object([
-    #("code", json.string(code)),
+    case input {
+      turn.Code(code) -> #("code", json.string(code))
+      turn.Message(message) -> #("message", json.string(message))
+    },
     ..case ended {
       None -> [#("finished", json.bool(False))]
       Some(#(outcome, output)) -> [

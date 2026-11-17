@@ -10,7 +10,21 @@ import midas/effect
 pub fn fetch(
   request: request.Request(BitArray),
 ) -> K(t, Result(response.Response(BitArray), effect.FetchError)) {
-  case httpc.send_bits(request) {
+  send(request, httpc.configure())
+}
+
+/// Fetch, waiting up to `milliseconds` for the response, such as for a completion from an llm.
+pub fn slow_fetch(
+  milliseconds: Int,
+) -> fn(request.Request(BitArray)) ->
+  K(t, Result(response.Response(BitArray), effect.FetchError)) {
+  fn(request) {
+    send(request, httpc.configure() |> httpc.timeout(milliseconds))
+  }
+}
+
+fn send(request, configuration) {
+  case httpc.dispatch_bits(configuration, request) {
     Ok(response) -> continuation.done(response)
     Error(httpc.InvalidUtf8Response) ->
       continuation.fail(effect.UnableToReadBody)

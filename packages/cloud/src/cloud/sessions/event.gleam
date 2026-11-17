@@ -14,10 +14,17 @@ import gleam/http/response.{type Response, Response}
 import gleam/json
 import gleam/option.{type Option}
 import multiformats/cid/v1
+import oas/generator/utils
+import overlay/llm/chat
+import overlay/llm/tool
 
 pub type Event {
+  /// The session chats with the llm configured under this name, it is the first event of the session.
+  Configured(llm: String)
   /// Code was sent to the session, it runs with the policy in the blob store under `policy`.
   Started(code: String, policy: v1.Cid)
+  /// A message was sent to the session's llm, the code of its tool calls runs with the policy.
+  Sent(message: String, policy: v1.Cid)
   /// The code continued from this root in the box.
   /// The changes it made are in the root of the event that ends the segment.
   Resumed(root: v1.Cid)
@@ -33,6 +40,9 @@ pub type Event {
   Requested(request: Request(BitArray), root: v1.Cid)
   /// Sleeping is recorded before it starts, with the root of the changes made before it.
   Slept(milliseconds: Int, root: v1.Cid)
+  /// The llm is asked to continue the chat after these messages, with the root of the changes made before it.
+  /// The earlier messages are in earlier events, the completion is recorded as soon as it is received.
+  Asked(messages: chat.History, root: v1.Cid)
   /// The code returned, with the root of its changes. They are merged before the turn finishes.
   Returned(outcome: Result(String, String), output: List(String), root: v1.Cid)
   /// The turn finished, `root` is where it left the files, the root it started from if its changes were rejected.
@@ -46,9 +56,18 @@ pub fn encode(event: Event) -> json.Json {
 /// The fields of the event's JSON object, so other fields can be added.
 pub fn fields(event: Event) -> List(#(String, json.Json)) {
   case event {
+    Configured(llm) -> [
+      #("type", json.string("configured")),
+      #("llm", json.string(llm)),
+    ]
     Started(code, policy) -> [
       #("type", json.string("started")),
       #("code", json.string(code)),
+      #("policy", json.string(v1.to_string(policy))),
+    ]
+    Sent(message, policy) -> [
+      #("type", json.string("sent")),
+      #("message", json.string(message)),
       #("policy", json.string(v1.to_string(policy))),
     ]
     Resumed(root) -> [#("type", json.string("resumed")), root_field(root)]
@@ -63,6 +82,12 @@ pub fn fields(event: Event) -> List(#(String, json.Json)) {
           #("response", encode_response(response)),
         ]
         execute.Fetched(Error(reason)) -> [#("failed", json.string(reason))]
+        execute.Completed(Ok(completion)) -> [
+          #("completion", encode_completion(completion)),
+        ]
+        execute.Completed(Error(reason)) -> [
+          #("refused", json.string(reason)),
+        ]
       }
     ]
     Pinned(package, version, module) -> [
@@ -86,6 +111,11 @@ pub fn fields(event: Event) -> List(#(String, json.Json)) {
       #("milliseconds", json.int(milliseconds)),
       root_field(root),
     ]
+    Asked(messages, root) -> [
+      #("type", json.string("asked")),
+      #("messages", json.array(messages, encode_message)),
+      root_field(root),
+    ]
     Returned(outcome, output, root) -> [
       #("type", json.string("returned")),
       outcome_field(outcome),
@@ -104,10 +134,19 @@ pub fn fields(event: Event) -> List(#(String, json.Json)) {
 pub fn decoder() -> decode.Decoder(Event) {
   use type_ <- decode.field("type", decode.string)
   case type_ {
+    "configured" -> {
+      use llm <- decode.field("llm", decode.string)
+      decode.success(Configured(llm))
+    }
     "started" -> {
       use code <- decode.field("code", decode.string)
       use policy <- decode.field("policy", cid_decoder())
       decode.success(Started(code, policy))
+    }
+    "sent" -> {
+      use message <- decode.field("message", decode.string)
+      use policy <- decode.field("policy", cid_decoder())
+      decode.success(Sent(message, policy))
     }
     "resumed" -> {
       use root <- decode.field("root", cid_decoder())
@@ -135,6 +174,11 @@ pub fn decoder() -> decode.Decoder(Event) {
       use root <- decode.field("root", cid_decoder())
       decode.success(Slept(milliseconds, root))
     }
+    "asked" -> {
+      use messages <- decode.field("messages", decode.list(message_decoder()))
+      use root <- decode.field("root", cid_decoder())
+      decode.success(Asked(messages, root))
+    }
     "returned" -> {
       use outcome <- decode.then(outcome_decoder())
       use output <- decode.field("output", decode.list(decode.string))
@@ -160,8 +204,91 @@ fn answer_decoder() {
         |> decode.map(fn(response) { execute.Fetched(Ok(response)) }),
       decode.at(["failed"], decode.string)
         |> decode.map(fn(reason) { execute.Fetched(Error(reason)) }),
+      decode.at(["completion"], completion_decoder())
+        |> decode.map(fn(completion) { execute.Completed(Ok(completion)) }),
+      decode.at(["refused"], decode.string)
+        |> decode.map(fn(reason) { execute.Completed(Error(reason)) }),
     ],
   )
+}
+
+fn encode_message(message) {
+  case message {
+    chat.UserMessage(text, images) ->
+      json.object([
+        #("role", json.string("user")),
+        #("text", json.string(text)),
+        #("images", json.array(images, json.string)),
+      ])
+    chat.AssistantMessage(thinking, text, calls) ->
+      json.object([
+        #("role", json.string("assistant")),
+        #("thinking", json.string(thinking)),
+        #("text", json.string(text)),
+        #("tool_calls", json.array(calls, encode_call)),
+      ])
+    chat.ToolResultMessage(id, text, images) ->
+      json.object([
+        #("role", json.string("tool")),
+        #("tool_call_id", json.string(id)),
+        #("text", json.string(text)),
+        #("images", json.array(images, json.string)),
+      ])
+  }
+}
+
+fn message_decoder() {
+  use role <- decode.field("role", decode.string)
+  case role {
+    "user" -> {
+      use text <- decode.field("text", decode.string)
+      use images <- decode.field("images", decode.list(decode.string))
+      decode.success(chat.UserMessage(text, images))
+    }
+    "assistant" -> {
+      use thinking <- decode.field("thinking", decode.string)
+      use text <- decode.field("text", decode.string)
+      use calls <- decode.field("tool_calls", decode.list(call_decoder()))
+      decode.success(chat.AssistantMessage(thinking, text, calls))
+    }
+    "tool" -> {
+      use id <- decode.field("tool_call_id", decode.string)
+      use text <- decode.field("text", decode.string)
+      use images <- decode.field("images", decode.list(decode.string))
+      decode.success(chat.ToolResultMessage(id, text, images))
+    }
+    _ -> decode.failure(chat.UserMessage("", []), "Message")
+  }
+}
+
+fn encode_completion(completion: chat.Completion(tool.Call)) {
+  json.object([
+    #("thinking", json.string(completion.thinking)),
+    #("content", json.string(completion.content)),
+    #("tool_calls", json.array(completion.tool_calls, encode_call)),
+  ])
+}
+
+fn completion_decoder() {
+  use thinking <- decode.field("thinking", decode.string)
+  use content <- decode.field("content", decode.string)
+  use tool_calls <- decode.field("tool_calls", decode.list(call_decoder()))
+  decode.success(chat.Completion(thinking:, content:, tool_calls:))
+}
+
+fn encode_call(call: tool.Call) {
+  json.object([
+    #("id", json.string(call.id)),
+    #("name", json.string(call.function.name)),
+    #("arguments", utils.fields_to_json(call.function.arguments)),
+  ])
+}
+
+fn call_decoder() {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  use arguments <- decode.field("arguments", utils.fields_decoder())
+  decode.success(tool.Call(id, tool.FunctionCall(name, arguments)))
 }
 
 fn outcome_field(outcome) {

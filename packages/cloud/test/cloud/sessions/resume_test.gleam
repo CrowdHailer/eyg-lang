@@ -3,6 +3,7 @@
 //// Events are committed in groups, so a stopped session leaves its events at the end of a group.
 //// For random programs every such point is tried: a copy of the session is made from the events
 //// up to that point and resumed, sometimes after another change to the box.
+//// A program is either run as code or as a chat, where the llm makes a tool call for each step.
 
 import cloud/beam/execute
 import cloud/box
@@ -64,6 +65,13 @@ fn code(steps, server, id) {
   string.join(lines, "\n") <> "\n{" <> string.join(fields, ", ") <> "}"
 }
 
+// The llm makes a tool call for each step, one at a time.
+fn message(steps, server, id) {
+  "run:"
+  <> list.index_map(steps, fn(step, i) { expression(step, server, path(id, i)) })
+  |> string.join("\n---\n")
+}
+
 fn path(id, i) {
   "/" <> id <> "/" <> int.to_string(i)
 }
@@ -91,16 +99,30 @@ fn expression(step, server, path) {
 
 pub fn resume_from_any_stop_test() {
   let server = server.start(process.new_subject())
-  let config = qcheck.default_config() |> qcheck.with_test_count(25)
-  use steps <- qcheck.run(
+  let config = qcheck.default_config() |> qcheck.with_test_count(40)
+  use #(steps, chat) <- qcheck.run(
     config,
-    qcheck.generic_list(step(), qcheck.bounded_int(1, 6)),
+    qcheck.tuple2(
+      qcheck.generic_list(step(), qcheck.bounded_int(1, 6)),
+      qcheck.bool(),
+    ),
   )
   use context <- helpers.context()
-  let session = session_helpers.session(context)
   let id = int.to_string(int.random(1_000_000_000))
-  let assert Ok(_) =
-    session_helpers.run(context, session, code(steps, server, id))
+  let #(context, session) = case chat {
+    True -> {
+      let #(context, session) = session_helpers.chat(context, server)
+      let assert Ok(_) =
+        session_helpers.send(context, session, message(steps, server, id))
+      #(context, session)
+    }
+    False -> {
+      let session = session_helpers.session(context)
+      let assert Ok(_) =
+        session_helpers.run(context, session, code(steps, server, id))
+      #(context, session)
+    }
+  }
   let log = session_helpers.export(context, session)
   let lines = string.split(log, "\n") |> list.filter(fn(line) { line != "" })
   let events = session_helpers.events(context, session)
@@ -129,6 +151,7 @@ pub fn resume_from_any_stop_test() {
       _ -> Nil
     }
     let before = counts(server, steps, id)
+    let asked = server.count_requests(server, http.Post, "/api/chat")
     let assert Ok(#(Ok("{}"), [])) = session_helpers.run(context, copy, "{}")
     let after = counts(server, steps, id)
 
@@ -136,6 +159,9 @@ pub fn resume_from_any_stop_test() {
     let assert Ok(Nil) = turn.check(context, copied)
     let assert [_, ..] = list.filter(copied, is_finished)
     assert list.take(copied, length) == prefix
+    // Every completion is asked for once, unless it was recorded.
+    assert completions(copied) - completions(prefix)
+      == server.count_requests(server, http.Post, "/api/chat") - asked
 
     list.zip(steps, list.zip(before, after))
     |> list.index_map(fn(step_counts, i) {
@@ -164,7 +190,10 @@ fn box_roots(events, length) {
     list.index_map(prefix, fn(event, i) { #(event, i) })
     |> list.filter(fn(entry) {
       case entry.0 {
-        event.Requested(..) | event.Slept(..) | event.Returned(..) -> True
+        event.Requested(..)
+        | event.Slept(..)
+        | event.Asked(..)
+        | event.Returned(..) -> True
         _ -> False
       }
     })
@@ -208,14 +237,27 @@ fn last_resumed(events) {
 
 fn ends_group(event) {
   case event {
-    event.Started(..)
+    event.Configured(..)
+    | event.Started(..)
+    | event.Sent(..)
     | event.Requested(..)
     | event.Slept(..)
+    | event.Asked(..)
     | event.Returned(..)
     | event.Answered(execute.Fetched(_))
+    | event.Answered(execute.Completed(_))
     | event.Finished(..) -> True
     _ -> False
   }
+}
+
+fn completions(events) {
+  list.count(events, fn(event) {
+    case event {
+      event.Answered(execute.Completed(_)) -> True
+      _ -> False
+    }
+  })
 }
 
 fn is_finished(event) {

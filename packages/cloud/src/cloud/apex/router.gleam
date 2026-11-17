@@ -23,6 +23,7 @@ pub fn route(request: wisp.Request, context: Context) -> wisp.Response {
     ["boxes", id, "sessions"], http.Post ->
       sessions.create(request, id, context)
     ["boxes", id, "sessions"], http.Get -> sessions.list(id, context)
+    ["llms"], http.Get -> sessions.llms(context)
     ["sessions", id], http.Get -> sessions.get(id, context)
     ["sessions", id, "events"], http.Get -> sessions.export(id, context)
     ["sessions", id, "fork"], http.Post -> sessions.fork(id, context)

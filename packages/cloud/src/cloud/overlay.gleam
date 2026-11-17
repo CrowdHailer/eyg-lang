@@ -1,4 +1,7 @@
 //// The cloud adapter for Overlay's sequential completion/tool loop.
+////
+//// `reply` is the loop as code that waits for each completion, so a session can record and replay it.
+//// `inner_loop` performs each completion as it is reached, for channels that keep their history in memory.
 
 import cloud/beam/execute
 import cloud/system
@@ -29,22 +32,106 @@ pub type Session {
 }
 
 pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
-  let effects =
-    computer.effects()
-    |> policy.match_rules(execute.rules)
-    |> list.map(fn(rule) { rule.0 })
   let provider_context =
-    provider.Context(
-      system_prompt: agent.system_prompt(
-        hub,
-        effects,
-        "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports load modules from these files. Env reads configured workspace secrets and returns Some(value) or None({}) when missing. Respond using the chat platform's Markdown formatting.",
-      ),
-      tools: agent.tools(),
+    context(
+      hub,
+      "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports load modules from these files. Env reads configured workspace secrets and returns Some(value) or None({}) when missing. Respond using the chat platform's Markdown formatting.",
     )
   Session(llm:, provider_context:, fetch: fn(request) {
     system.fetch(request)(fn(x) { x })
   })
+}
+
+fn context(hub, readme) {
+  let effects =
+    computer.effects()
+    |> policy.match_rules(execute.rules)
+    |> list.map(fn(rule) { rule.0 })
+  provider.Context(
+    system_prompt: agent.system_prompt(hub, effects, readme),
+    tools: agent.tools(),
+  )
+}
+
+/// The context of a chat in a box.
+pub fn box_context(hub: origin.Origin) -> provider.Context {
+  context(
+    hub,
+    "context is an empty record. The working directory is / of a box, a file system that other sessions in the box also change. Changes to .eyg files are only kept if every module in the box type checks. Relative imports load modules from these files.",
+  )
+}
+
+/// Reply to a message, running the code of every tool call until the llm answers without one.
+/// `history` is the chat before the message, oldest first.
+/// The changes made by a tool call are kept even if it fails, the llm is told it failed.
+pub fn reply(
+  llm: provider.Llm,
+  context: provider.Context,
+  history: chat.History,
+  message: String,
+  policy: execute.Policy,
+  state: execute.State,
+  root: v1.Cid,
+) -> execute.Run(String) {
+  ask(
+    llm,
+    context,
+    history,
+    [chat.UserMessage(message, [])],
+    policy,
+    state,
+    root,
+  )
+}
+
+fn ask(llm, context, history, added, policy, state, root) {
+  let history = list.append(history, added)
+  let wait = execute.Complete(llm, context, history, added)
+  use answer, state, root <- execute.Waiting(wait, state, root)
+  case answer {
+    execute.Completed(Ok(completion)) ->
+      case completion.tool_calls {
+        [] -> execute.Finished(Ok(completion.content), state, root, [])
+        calls -> {
+          let history = list.append(history, [chat.from_completion(completion)])
+          call(llm, context, history, calls, [], policy, state, root)
+        }
+      }
+    execute.Completed(Error(reason)) ->
+      execute.Finished(Error(reason), state, root, [])
+    _ -> execute.Finished(Error("expected a completion"), state, root, [])
+  }
+}
+
+// Run each call in order, then ask again with their results.
+fn call(llm, context, history, calls, results, policy, state, root) {
+  case calls {
+    [] -> ask(llm, context, history, list.reverse(results), policy, state, root)
+    [tool.Call(id, tool.FunctionCall(name, arguments)), ..calls] -> {
+      let next = fn(result, state, root) {
+        let results = [result_to_message(id, result), ..results]
+        call(llm, context, history, calls, results, policy, state, root)
+      }
+      case agent.cast_tool_call(name, arguments) {
+        Error(reason) ->
+          next(
+            Error(agent.describe_failure(reason, name, arguments)),
+            state,
+            root,
+          )
+        Ok(agent.Run(code)) -> {
+          use outcome, state, root, output <- execute.then(
+            execute.tool(code, state, policy, root, fn(_) { Nil }),
+          )
+          let result = case outcome {
+            Ok(text) -> Ok(tool.Return(run.report(output, text), []))
+            Error(reason) -> Error(run.report(output, reason))
+          }
+          next(result, state, root)
+        }
+      }
+    }
+  }
 }
 
 /// History is newest-first, matching the CLI loop. Keep completed tool results

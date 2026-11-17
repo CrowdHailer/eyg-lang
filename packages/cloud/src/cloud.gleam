@@ -77,7 +77,7 @@ pub fn main() -> Nil {
   let assert Ok(code) = simplifile.read("right_on_slack.eyg")
   let assert Ok(#(slack_triggers, state)) =
     trigger.prepare([#("Right on", code)], slack.trigger_type(), state)
-  start_api(state)
+  start_api(state, llm)
   let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
   let assert Ok(runtime) = schedule.runtime(state)
   let assert Ok(_) = schedule.start(schedules, sessions.data, runtime)
@@ -102,7 +102,8 @@ pub fn main() -> Nil {
 }
 
 /// The API is only available when a database is configured.
-fn start_api(state) {
+/// Sessions can chat with the configured llm, by the name of its model.
+fn start_api(state, llm: provider.Llm) {
   case envoy.get("POSTGRES_HOST") {
     Error(Nil) -> Nil
     Ok(host) -> {
@@ -144,6 +145,7 @@ fn start_api(state) {
           sessions: sessions.data,
           state:,
           policy:,
+          llms: dict.from_list([#(llm.model, llm)]),
         )
       let assert Ok(_) = server.start(context, port)
       Nil

@@ -3,6 +3,8 @@ import cloud/box/memory
 import cloud/data/boxes
 import cloud/data/db
 import cloud/registry
+import gleam/dict.{type Dict}
+import overlay/llm/provider
 import unixfs/check
 
 /// Everything a request needs from the running system.
@@ -19,6 +21,8 @@ pub type Context {
     state: execute.State,
     // The source of the policy for code run in sessions, each turn records the policy it ran with.
     policy: String,
+    // The llms a session can chat with, by name. There are no accounts yet so every session can use them.
+    llms: Dict(String, provider.Llm),
   )
 }
 

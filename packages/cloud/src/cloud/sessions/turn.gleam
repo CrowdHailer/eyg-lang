@@ -11,6 +11,10 @@
 //// then the request or sleep is made. A request is sent again if it is GET or HEAD,
 //// any other request is answered with a network error as it might have been received.
 ////
+//// A message to a session that chats with an llm is a turn that runs the code of each tool call the llm makes.
+//// Asking the llm for a completion is a stop like a request, the completion is recorded as soon as it is received.
+//// Completions have no effect outside the session, so one that was asked for but not recorded is asked for again.
+////
 //// Each turn records the policy it runs with and the module each package reference resolved to,
 //// so a replay runs the same code after the policy changes or a package is released.
 //// Secrets are never recorded, a fingerprint of each secret read is recorded instead.
@@ -22,6 +26,7 @@ import cloud/box
 import cloud/data/db
 import cloud/data/sessions.{type Session}
 import cloud/data/thread
+import cloud/overlay
 import cloud/sessions/event.{type Event}
 import eyg/ir/tree as ir
 import gleam/bit_array
@@ -34,6 +39,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
+import overlay/llm/chat
 import pog
 import unixfs/mfs
 
@@ -73,11 +79,18 @@ type Stop {
   )
 }
 
-/// Run code in the session, an unfinished turn is finished first.
+/// What is sent to a session.
+pub type Input {
+  Code(String)
+  /// A message for the session's llm.
+  Message(String)
+}
+
+/// Run a turn in the session, an unfinished turn is finished first.
 pub fn run(
   context: Context,
   session: Session,
-  code: String,
+  input: Input,
 ) -> Result(Outcome, box.Reason) {
   use Nil <- result.try(recover(context, session))
   let state = execute.State(..context.state, pins: dict.new())
@@ -91,14 +104,77 @@ pub fn run(
     |> result.replace(Nil)
     |> result.map_error(box.Failed),
   )
-  let started = event.Started(code, mfs.identify(stored).cid)
+  let stored = mfs.identify(stored).cid
+  use #(started, segment) <- result.try(case input {
+    Code(code) -> Ok(#(event.Started(code, stored), start(policy, code)))
+    Message(message) -> {
+      use history <- result.try(history(context, session.id))
+      let before = list.map(history, fn(entry) { #(entry.1, entry.2) })
+      chat(context, state, before, policy, message)
+      |> result.map(fn(segment) { #(event.Sent(message, stored), segment) })
+      |> result.map_error(fn(reason) { box.Invalid([reason]) })
+    }
+  })
   let events = [started, ..pinned(dict.new(), state)]
   use _ <- result.try(record(context, session, events))
-  drive(context, session, state, start(policy, code))
+  drive(context, session, state, segment)
 }
 
 fn start(policy, code) -> Segment {
   fn(state, root) { execute.block(code, state, policy, root, fn(_) { Nil }) }
+}
+
+// The llm replies to the message, after the chat in the events before it.
+fn chat(context: Context, state: execute.State, before, policy, message) {
+  case before {
+    [#(_, event.Configured(name)), ..] ->
+      case dict.get(context.llms, name) {
+        Ok(llm) -> {
+          let provider = overlay.box_context(state.origin)
+          let history = conversation(before)
+          Ok(fn(state, root) {
+            overlay.reply(llm, provider, history, message, policy, state, root)
+          })
+        }
+        Error(Nil) -> Error("the llm " <> name <> " is not configured")
+      }
+    _ -> Error("the session does not chat with an llm")
+  }
+}
+
+// The messages the llm was sent and the completions it answered with, oldest first.
+fn conversation(entries: List(#(String, Event))) -> chat.History {
+  list.flat_map(entries, fn(entry) {
+    case entry.1 {
+      event.Asked(messages, _) -> messages
+      event.Answered(execute.Completed(Ok(completion))) -> [
+        chat.from_completion(completion),
+      ]
+      _ -> []
+    }
+  })
+}
+
+// The code of a turn from the event that started it.
+fn begin(context, state, before, started) -> Result(Segment, String) {
+  case started {
+    event.Started(code, policy) -> {
+      use policy <- result.map(load_policy(state, policy))
+      start(policy, code)
+    }
+    event.Sent(message, policy) -> {
+      use policy <- result.try(load_policy(state, policy))
+      chat(context, state, before, policy, message)
+    }
+    _ -> Error(mismatch)
+  }
+}
+
+fn starts(event) {
+  case event {
+    event.Started(..) | event.Sent(..) -> True
+    _ -> False
+  }
 }
 
 // The policy a turn was started with.
@@ -201,7 +277,8 @@ fn settle(context: Context, session: Session, state, start, root, key, next) {
 fn answer(context: Context, session: Session, state, wait, resume) {
   let answer = execute.perform(wait, state)
   use _ <- result.try(case wait {
-    execute.Fetch(_) -> record(context, session, [event.Answered(answer)])
+    execute.Fetch(_) | execute.Complete(..) ->
+      record(context, session, [event.Answered(answer)])
     _ -> Ok("")
   })
   drive(context, session, state, continue(resume, answer))
@@ -235,7 +312,7 @@ fn fingerprint(name, value) {
   string.lowercase(bit_array.base16_encode(hash))
 }
 
-// Code stops when it finishes, makes a request or sleeps.
+// Code stops when it finishes, makes a request, sleeps or asks for a completion.
 fn stop(run) {
   case run {
     execute.Finished(outcome, state, root, output) ->
@@ -244,6 +321,8 @@ fn stop(run) {
       Ok(Leaving(state, wait, event.Requested(request, root), root, resume))
     execute.Waiting(execute.Sleep(milliseconds) as wait, state, root, resume) ->
       Ok(Leaving(state, wait, event.Slept(milliseconds, root), root, resume))
+    execute.Waiting(execute.Complete(added:, ..) as wait, state, root, resume) ->
+      Ok(Leaving(state, wait, event.Asked(added, root), root, resume))
     execute.Waiting(wait, state, root, resume) ->
       Error(#(wait, state, root, resume))
   }
@@ -328,13 +407,13 @@ pub fn history(
 fn recover(context: Context, session: Session) -> Result(Nil, box.Reason) {
   use history <- result.try(history(context, session.id))
   let entries = list.map(history, fn(entry) { #(entry.1, entry.2) })
-  case unfinished(entries, Error(Nil)) {
+  case unfinished(entries) {
     Error(Nil) -> Ok(Nil)
-    Ok(#(code, policy, entries)) -> {
+    Ok(#(before, started, entries)) -> {
       let #(state, entries) = pins(context.state, entries)
       let position = {
-        use policy <- result.try(load_policy(state, policy))
-        walk(state, start(policy, code), entries)
+        use segment <- result.try(begin(context, state, before, started))
+        walk(state, segment, entries)
       }
       case position {
         Ok(Stalled(segment, state)) -> drive(context, session, state, segment)
@@ -355,7 +434,7 @@ fn recover(context: Context, session: Session) -> Result(Nil, box.Reason) {
           let next = Reply(answer, resume)
           settle(context, session, state, start, root, key, next)
         }
-        // A sleep that was stopped is started again.
+        // A sleep that was stopped is started again, a completion is asked for again.
         Ok(Unsettled(start, root, key, next, state)) ->
           settle(context, session, state, start, root, key, next)
         Ok(Ended(_)) -> Error(box.Failed(mismatch))
@@ -366,14 +445,23 @@ fn recover(context: Context, session: Session) -> Result(Nil, box.Reason) {
   }
 }
 
-// The code and events of the last turn, if it has no finished event.
-fn unfinished(entries, last) {
-  case entries, last {
-    [], _ -> last
-    [#(_, event.Started(code, policy)), ..rest], _ ->
-      unfinished(rest, Ok(#(code, policy, rest)))
-    [#(_, event.Finished(..)), ..rest], _ -> unfinished(rest, Error(Nil))
-    [_, ..rest], _ -> unfinished(rest, last)
+// The events before the last turn, the event that started it and its events, if it has no finished event.
+fn unfinished(entries: List(#(String, Event))) {
+  let last =
+    list.index_fold(entries, Error(Nil), fn(last, entry, i) {
+      case entry.1 {
+        event.Finished(..) -> Error(Nil)
+        event ->
+          case starts(event) {
+            True -> Ok(i)
+            False -> last
+          }
+      }
+    })
+  use i <- result.try(last)
+  case list.split(entries, i) {
+    #(before, [#(_, started), ..entries]) -> Ok(#(before, started, entries))
+    _ -> Error(Nil)
   }
 }
 
@@ -403,31 +491,30 @@ fn pins(state: execute.State, entries: List(#(String, Event))) {
 /// Replay every turn and check it does what the events say it did.
 /// The blocks of every root in the events must be in the blob store.
 pub fn check(context: Context, events: List(Event)) -> Result(Nil, String) {
-  do_check(context, list.map(events, fn(event) { #("", event) }))
+  case list.map(events, fn(event) { #("", event) }) {
+    [#(_, event.Configured(_)) as configured, ..entries] ->
+      do_check(context, [configured], entries)
+    entries -> do_check(context, [], entries)
+  }
 }
 
-fn do_check(context: Context, entries) {
+fn do_check(context: Context, before, entries) {
   case entries {
     [] -> Ok(Nil)
-    [#(_, event.Started(code, policy)), ..entries] -> {
+    [#(_, started) as first, ..entries] -> {
       let #(turn, rest) =
-        list.split_while(entries, fn(entry) {
-          case entry.1 {
-            event.Started(..) -> False
-            _ -> True
-          }
-        })
-      let #(state, turn) = pins(context.state, turn)
-      use policy <- result.try(load_policy(state, policy))
-      case walk(state, start(policy, code), turn), rest {
-        Ok(Ended([])), _ -> do_check(context, rest)
+        list.split_while(entries, fn(entry) { !starts(entry.1) })
+      let #(state, replayed) = pins(context.state, turn)
+      use segment <- result.try(begin(context, state, before, started))
+      case walk(state, segment, replayed), rest {
+        Ok(Ended([])), _ ->
+          do_check(context, list.flatten([before, [first], turn]), rest)
         // Only the last turn can be unfinished.
         Ok(Stalled(..)), [] | Ok(Unsettled(..)), [] -> Ok(Nil)
         Ok(_), _ -> Error(mismatch)
         Error(reason), _ -> Error(reason)
       }
     }
-    _ -> Error(mismatch)
   }
 }
 
@@ -464,6 +551,8 @@ fn walk(state, segment: Segment, entries) {
             // The turn finished, or its change was rejected.
             _, [#(_, event.Finished(..)), ..entries] -> Ok(Ended(entries))
             Perform(execute.Fetch(_), resume),
+              [#(_, event.Answered(answer)), ..entries]
+            | Perform(execute.Complete(..), resume),
               [#(_, event.Answered(answer)), ..entries]
             -> walk(state, continue(resume, answer), entries)
             Perform(execute.Sleep(_), resume), _ ->

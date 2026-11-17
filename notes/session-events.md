@@ -29,3 +29,13 @@ so turns can be listed without running any code. Finished is recorded once the c
 
 Events are recorded at the time they are inserted, not when their transaction started.
 Events recorded together are close in time, so a trace shows them in order.
+
+A chat records the messages sent with each completion and the completion, not the request.
+The request holds the llm's credentials and the whole chat so far, the messages are only the ones added since the last completion.
+The chat for a new message is rebuilt from these events, so it is never replayed.
+A completion that was asked for but not recorded is asked for again, it costs a request but has no effect outside the session.
+The llm is recorded by name, a chat turn can only be replayed while an llm is configured under that name.
+
+The changes made by a tool call that fails are kept, the llm is told it failed and can carry on.
+A change that is rejected when it is merged ends the turn, the rejection is the turn's outcome and the llm is not asked about it.
+The next message's chat does not include the rejection.
