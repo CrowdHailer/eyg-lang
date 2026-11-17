@@ -45,10 +45,14 @@ Many sessions can use the same box, they all see the latest files.
 | `GET /sessions/:id` | The session and all of its turns. |
 | `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`. |
 | `GET /sessions/:id/events` | Every event of the session as JSON lines. |
+| `GET /sessions/:id/trace` | OpenTelemetry spans for the session, each turn and each request, as OTLP JSON. |
 
 Posting exported events, as JSON lines, to `POST /boxes/:name/sessions` creates a session from them.
 The events are only accepted if replaying every turn does what they say.
 A copy of a session with an unfinished turn finishes that turn when it is next used.
+
+Traces are made from the session events, so there is no separate instrumentation.
+The OTLP JSON can be posted to the `/v1/traces` endpoint of any OpenTelemetry collector.
 
 A turn returns its `output` and either a `value` or an `error`.
 File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.

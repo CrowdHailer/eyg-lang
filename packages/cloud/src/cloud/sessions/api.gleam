@@ -8,6 +8,7 @@ import cloud/data/sessions.{type Session}
 import cloud/data/thread
 import cloud/registry
 import cloud/sessions/event
+import cloud/sessions/trace
 import cloud/sessions/turn
 import gleam/bit_array
 import gleam/dynamic/decode
@@ -72,6 +73,15 @@ pub fn export(id, context: Context) {
   |> string.concat
   |> wisp.string_body(wisp.response(200), _)
   |> wisp.set_header("content-type", "application/x-ndjson")
+}
+
+/// OpenTelemetry spans for the session and each of its turns and requests, as OTLP JSON.
+pub fn trace(id, context: Context) {
+  use history <- try(turn.history(context, id))
+  let log = list.map(history, fn(entry) { #(entry.0, entry.2) })
+  trace.encode(id, trace.spans(id, log))
+  |> json.to_string
+  |> wisp.json_response(200)
 }
 
 fn parse_log(text) {
