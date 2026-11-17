@@ -400,6 +400,37 @@ fn pins(state: execute.State, entries: List(#(String, Event))) {
   #(execute.State(..state, pins:), entries)
 }
 
+/// Replay every turn and check it does what the events say it did.
+/// The blocks of every root in the events must be in the blob store.
+pub fn check(context: Context, events: List(Event)) -> Result(Nil, String) {
+  do_check(context, list.map(events, fn(event) { #("", event) }))
+}
+
+fn do_check(context: Context, entries) {
+  case entries {
+    [] -> Ok(Nil)
+    [#(_, event.Started(code, policy)), ..entries] -> {
+      let #(turn, rest) =
+        list.split_while(entries, fn(entry) {
+          case entry.1 {
+            event.Started(..) -> False
+            _ -> True
+          }
+        })
+      let #(state, turn) = pins(context.state, turn)
+      use policy <- result.try(load_policy(state, policy))
+      case walk(state, start(policy, code), turn), rest {
+        Ok(Ended([])), _ -> do_check(context, rest)
+        // Only the last turn can be unfinished.
+        Ok(Stalled(..)), [] | Ok(Unsettled(..)), [] -> Ok(Nil)
+        Ok(_), _ -> Error(mismatch)
+        Error(reason), _ -> Error(reason)
+      }
+    }
+    _ -> Error(mismatch)
+  }
+}
+
 // How far the events of a turn go.
 type Position {
   Ended(rest: List(#(String, Event)))

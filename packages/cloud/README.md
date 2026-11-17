@@ -44,6 +44,11 @@ Many sessions can use the same box, they all see the latest files.
 | `GET /boxes/:name/sessions` | The sessions in the box. |
 | `GET /sessions/:id` | The session and all of its turns. |
 | `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`. |
+| `GET /sessions/:id/events` | Every event of the session as JSON lines. |
+
+Posting exported events, as JSON lines, to `POST /boxes/:name/sessions` creates a session from them.
+The events are only accepted if replaying every turn does what they say.
+A copy of a session with an unfinished turn finishes that turn when it is next used.
 
 A turn returns its `output` and either a `value` or an `error`.
 File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.

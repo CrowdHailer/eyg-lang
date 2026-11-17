@@ -11,6 +11,7 @@ import cloud/sessions/event
 import cloud/sessions/turn
 import eyg/hub/cache
 import gleam/dict
+import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/http
 import gleam/int
@@ -20,6 +21,7 @@ import gleam/option.{None}
 import gleam/string
 import pog
 import unixfs/check
+import wisp/simulate
 
 fn session(context: Context) {
   let assert Ok(_) = box.create(context, "home")
@@ -411,4 +413,124 @@ pub fn replay_with_the_packages_a_turn_resolved_test() {
       }
     })
   assert "1" == value
+}
+
+fn export(context, session: sessions.Session) {
+  simulate.request(http.Get, "/sessions/" <> session.id <> "/events")
+  |> helpers.dispatch(context)
+  |> simulate.read_body
+}
+
+fn import_(context, log) {
+  let response =
+    simulate.request(http.Post, "/boxes/home/sessions")
+    |> simulate.string_body(log)
+    |> helpers.dispatch(context)
+  case response.status {
+    201 -> {
+      let assert Ok(id) =
+        json.parse(
+          simulate.read_body(response),
+          decode.at(["id"], decode.string),
+        )
+      let assert Ok(pog.Returned(rows: [session], ..)) =
+        db.execute(sessions.get(id), context.db)
+      Ok(session)
+    }
+    status -> Error(status)
+  }
+}
+
+fn turns(context, session: sessions.Session) {
+  simulate.request(http.Get, "/sessions/" <> session.id)
+  |> helpers.dispatch(context)
+  |> simulate.read_body
+  |> json.parse(decode.at(["turns"], decode.dynamic))
+}
+
+pub fn export_and_reconstruct_test() {
+  use context <- helpers.context()
+  let session = session(context)
+  let server = server.start(process.new_subject())
+  let _ = run(context, session, "let _ = " <> write <> "\nperform Random(100)")
+  let _ =
+    run(
+      context,
+      session,
+      "let _ = perform Flip({})\n" <> server.fetch(server, "GET", "/hello"),
+    )
+  let _ = run(context, session, "!int_add(1, \"two\")")
+  let _ = run(context, session, read)
+  let log = export(context, session)
+  assert 4 == list.length(string.split(log, "\"type\":\"started\"")) - 1
+
+  let assert Ok(copy) = import_(context, log)
+  assert turns(context, session) == turns(context, copy)
+  assert log == export(context, copy)
+}
+
+pub fn resume_reconstructed_turn_test() {
+  use context <- helpers.context()
+  let session = session(context)
+  let server =
+    stop_during_request(context, session, fn(server) {
+      "let n = perform Random(1000000)\nlet _ = "
+      <> server.fetch(server, "GET", "/slow")
+      <> "\nn"
+    })
+  let assert Ok(copy) = import_(context, export(context, session))
+  let assert [_, _, event.Answered(execute.Number(number)), _] =
+    events(context, copy)
+  // The copy finishes the turn from its events.
+  let assert Ok(#(Ok("\"done\""), [])) = run(context, copy, "\"done\"")
+  let assert [_, _, _, _, _, _, _, event.Finished(Ok(value), _, _), ..] =
+    events(context, copy)
+  assert int.to_string(number) == value
+  assert 2 == server.count_requests(server, http.Get, "/slow")
+}
+
+pub fn reject_events_that_do_not_match_test() {
+  use context <- helpers.context()
+  let session = session(context)
+  let _ = run(context, session, "perform Random(10)")
+  let assert [_, _, event.Answered(execute.Number(number)), ..] =
+    events(context, session)
+  let changed =
+    export(context, session)
+    |> string.replace(
+      "\"number\":" <> int.to_string(number),
+      "\"number\":" <> int.to_string(number + 10),
+    )
+  assert Error(422) == import_(context, changed)
+}
+
+pub fn reload_export_after_the_policy_changes_test() {
+  use context <- helpers.context()
+  let session = session(context)
+  let assert Ok(#(Ok("Ok({})"), [])) = run(context, session, write)
+  let log = export(context, session)
+  // The events record the policy each turn ran with.
+  let context = Context(..context, policy: deny_writes)
+  let assert Ok(copy) = import_(context, log)
+  assert turns(context, session) == turns(context, copy)
+}
+
+pub fn import_shares_the_thread_test() {
+  use context <- helpers.context()
+  let session = session(context)
+  let assert Ok(_) = run(context, session, write)
+  let count = fn() {
+    let assert Ok(pog.Returned(rows: [count], ..)) =
+      pog.query("SELECT count(*)::INT FROM thread_events")
+      |> pog.returning(decode.at([0], decode.int))
+      |> db.execute(context.db)
+    count
+  }
+  let before = count()
+  let assert Ok(copy) = import_(context, export(context, session))
+  // Keys are made from the events, so the copy points at the same history.
+  assert before == count()
+  let assert Ok(pog.Returned(rows: [original], ..)) =
+    db.execute(sessions.get(session.id), context.db)
+  assert original.head == copy.head
 }

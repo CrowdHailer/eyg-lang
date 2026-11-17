@@ -19,9 +19,11 @@ pub fn route(request: wisp.Request, context: Context) -> wisp.Response {
         _ -> wisp.method_not_allowed([http.Get, http.Put, http.Delete])
       }
     }
-    ["boxes", name, "sessions"], http.Post -> sessions.create(name, context)
+    ["boxes", name, "sessions"], http.Post ->
+      sessions.create(request, name, context)
     ["boxes", name, "sessions"], http.Get -> sessions.list(name, context)
     ["sessions", id], http.Get -> sessions.get(id, context)
+    ["sessions", id, "events"], http.Get -> sessions.export(id, context)
     ["sessions", id, "turns"], http.Post -> sessions.turn(request, id, context)
     _, _ -> wisp.not_found()
   }
