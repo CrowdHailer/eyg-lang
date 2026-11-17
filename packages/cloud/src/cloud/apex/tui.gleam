@@ -8,8 +8,10 @@
 //// that process is watched so the interface is told if it stops.
 
 import cloud/apex/context.{type Context, Context}
+import cloud/apex/draft
 import cloud/apex/editor
 import cloud/apex/terminal
+import cloud/beam/execute
 import cloud/box
 import cloud/data/boxes.{type Box}
 import cloud/data/sessions.{type Session}
@@ -25,17 +27,21 @@ import etui/widgets/clear
 import etui/widgets/list as list_widget
 import gleam/dict
 import gleam/erlang/process
+import gleam/http
+import gleam/http/request
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import gleam/uri
 import lustre
 import lustre/effect.{type Effect}
+import overlay/agent
+import unixfs/mfs
 
-pub const width = 100
-
-pub const height = 30
+/// The size of the screen before the page says how much fits.
+pub const size = #(100, 30)
 
 pub type Model {
   Model(
@@ -44,6 +50,8 @@ pub type Model {
     // A line of text asked for over the screen.
     prompt: Option(Prompt),
     status: Status,
+    // The columns and rows that fit on the page.
+    size: #(Int, Int),
   )
 }
 
@@ -77,15 +85,15 @@ pub type Screen {
     place: String,
     session: Session,
     log: List(Entry),
-    draft: Draft,
+    draft: draft.Draft,
     waiting: Bool,
+    // What the running turn has done so far.
+    progress: List(String),
+    // How many lines of the log are scrolled back.
+    scroll: Int,
+    // The files of the session's box.
+    files: List(String),
   )
-}
-
-/// What is being written in a session, a message in a chat and a program in a shell.
-pub type Draft {
-  Chatting(String)
-  Coding(editor.Editor)
 }
 
 /// What a session's log shows, each is coloured differently.
@@ -117,6 +125,11 @@ pub type Message {
   Replied(String, Result(turn.Outcome, box.Reason))
   /// Work in another process stopped without a reply.
   Stopped(String)
+  Pasted(String)
+  Resized(columns: Int, rows: Int)
+  /// What the running turn in the session with this id has done so far.
+  Progressed(String, List(String))
+  FilesListed(String, Result(List(String), box.Reason))
 }
 
 /// A session as it is shown when it is opened.
@@ -137,7 +150,7 @@ pub fn app() -> lustre.App(Context, Model, Message) {
 
 pub fn init(context: Context) -> #(Model, Effect(Message)) {
   #(
-    Model(context, Boxes([], 0), None, Working("Loading boxes")),
+    Model(context, Boxes([], 0), None, Working("Loading boxes"), size),
     list_boxes(context),
   )
 }
@@ -165,14 +178,14 @@ fn background(work: fn() -> Message) -> Effect(Message) {
 }
 
 pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
-  let Model(context:, screen:, prompt:, ..) = model
+  let Model(screen:, prompt:, ..) = model
   case prompt, screen, message {
     Some(prompt), _, Key(key) -> #(ask(model, prompt, key), case key {
       "enter" -> background(fn() { prompt.submit(prompt.input) })
       _ -> effect.none()
     })
     _, _, Listed(Ok(boxes)) -> #(
-      Model(context, Boxes(boxes, 0), None, case boxes {
+      Model(..model, screen: Boxes(boxes, 0), prompt: None, status: case boxes {
         [] -> Working("There are no named boxes, press n to create one")
         _ -> Quiet
       }),
@@ -183,6 +196,10 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       effect.none(),
     )
     _, _, Created(Ok(_)) -> back(model)
+    _, _, Resized(columns, rows) -> #(
+      Model(..model, size: #(int.max(60, columns), int.max(16, rows))),
+      effect.none(),
+    )
     // A turn that stopped is in the session's history, it is finished when the session is opened again.
     _, Running(waiting: True, log:, ..) as running, Stopped(reason) -> #(
       Model(
@@ -378,6 +395,17 @@ fn on_screen(model: Model, screen, message) {
       let prompt = Prompt("Value of " <> name, "", True, submit)
       #(Model(..model, prompt: Some(prompt), status: Quiet), effect.none())
     }
+    Running(scroll:, ..) as running, Key("pageup") -> #(
+      Model(..model, screen: Running(..running, scroll: scroll + page(model))),
+      effect.none(),
+    )
+    Running(scroll:, ..) as running, Key("pagedown") -> #(
+      Model(
+        ..model,
+        screen: Running(..running, scroll: int.max(0, scroll - page(model))),
+      ),
+      effect.none(),
+    )
     Running(waiting: True, ..), Key("esc") -> back(model)
     Running(session:, waiting: True, ..), Key("x") -> #(
       Model(..model, status: Working("Cancelling the turn")),
@@ -388,71 +416,36 @@ fn on_screen(model: Model, screen, message) {
         })
       }),
     )
-    Running(waiting: True, ..), Key(_) -> #(model, effect.none())
-    Running(draft: Chatting(text), ..) as running, Key(key) ->
-      case key {
-        "esc" -> back(model)
-        "enter" if text != "" ->
-          send(model, running, Sent(text), turn.Message(text), Chatting(""))
-        "backspace" -> #(
-          Model(
-            ..model,
-            screen: Running(
-              ..running,
-              draft: Chatting(string.drop_end(text, 1)),
-            ),
-          ),
-          effect.none(),
-        )
-        _ ->
-          case string.length(key) {
-            1 -> #(
-              Model(
-                ..model,
-                screen: Running(..running, draft: Chatting(text <> key)),
-              ),
-              effect.none(),
-            )
-            _ -> #(model, effect.none())
-          }
-      }
-    Running(draft: Coding(editor.Editor(input: None, ..)), ..), Key("esc") ->
-      back(model)
-    Running(draft: Coding(editor.Editor(input: None, ..) as edited), ..) as running,
-      Key("enter")
-    ->
-      case editor.program(edited) {
-        Ok(program) ->
-          send(
-            model,
-            running,
-            Ran(editor.sent(edited)),
-            turn.Program(program),
-            Coding(editor.new()),
-          )
-        Error(Nil) -> #(
-          Model(..model, status: Problem("Write a program first")),
-          effect.none(),
-        )
-      }
-    Running(draft: Coding(edited), ..) as running, Key(key) -> {
-      let #(edited, state) = editor.key(edited, key, context.state)
-      let model = Model(..model, context: Context(..context, state:))
-      case edited {
-        Ok(edited) -> #(
-          Model(
-            ..model,
-            screen: Running(..running, draft: Coding(edited)),
-            status: Quiet,
-          ),
-          effect.none(),
-        )
-        Error(reason) -> #(
-          Model(..model, status: Problem(reason)),
-          effect.none(),
-        )
-      }
+    Running(waiting: True, ..), Key(_)
+    | Running(waiting: True, ..), Pasted(_)
+    -> #(model, effect.none())
+    Running(draft: current, files:, ..) as running, Key(key) -> {
+      let #(outcome, state) = draft.key(current, key, context.state, files)
+      drafted(
+        Model(..model, context: Context(..context, state:)),
+        running,
+        key,
+        outcome,
+      )
     }
+    Running(draft: current, ..) as running, Pasted(text) -> {
+      let #(outcome, state) = draft.paste(current, text, context.state)
+      drafted(
+        Model(..model, context: Context(..context, state:)),
+        running,
+        "",
+        outcome,
+      )
+    }
+    Running(session:, waiting: True, ..) as running, Progressed(id, progress)
+      if id == session.id
+    -> #(
+      Model(..model, screen: Running(..running, progress:)),
+      poll(context, session),
+    )
+    Running(session:, ..) as running, FilesListed(id, Ok(files))
+      if id == session.id
+    -> #(Model(..model, screen: Running(..running, files:)), effect.none())
     // A reply for a session that is no longer shown is dropped, it is in the session's history.
     Running(session:, log:, waiting: True, ..) as running, Replied(id, replied)
       if id == session.id
@@ -470,46 +463,179 @@ fn on_screen(model: Model, screen, message) {
       }
       let log = list.append(log, lines)
       #(
-        Model(..model, screen: Running(..running, log:, waiting: False)),
-        effect.none(),
+        Model(
+          ..model,
+          screen: Running(
+            ..running,
+            log:,
+            waiting: False,
+            progress: [],
+            scroll: 0,
+          ),
+        ),
+        list_files(context, session),
       )
     }
     _, _ -> #(model, effect.none())
   }
 }
 
+// What a key or paste did to the draft. Escape leaves the session if the draft does not use it.
+fn drafted(model: Model, running, key, outcome) {
+  let assert Running(..) = running
+  case outcome {
+    draft.Edited(edited) -> #(
+      Model(..model, screen: Running(..running, draft: edited), status: Quiet),
+      effect.none(),
+    )
+    draft.Send(input, next) -> send(model, running, input, next)
+    draft.Problem(reason) -> #(
+      Model(..model, status: Problem(reason)),
+      effect.none(),
+    )
+    draft.Unhandled ->
+      case key {
+        "esc" -> back(model)
+        _ -> #(model, effect.none())
+      }
+  }
+}
+
+// The lines a page up or down scrolls.
+fn page(model: Model) {
+  int.max(1, model.size.1 - 8)
+}
+
+// Check what a running turn has done, again and again while it runs.
+fn poll(context, session: Session) {
+  background(fn() {
+    process.sleep(700)
+    case turn.history(context, session.id) {
+      Ok(history) ->
+        Progressed(
+          session.id,
+          progress(list.map(history, fn(entry) { entry.2 })),
+        )
+      Error(_) -> Progressed(session.id, [])
+    }
+  })
+}
+
+/// What the last turn in the events has done, such as asking the llm and running its tool calls.
+pub fn progress(events: List(event.Event)) -> List(String) {
+  list.reverse(events)
+  |> list.take_while(fn(event) {
+    case event {
+      event.Started(..) | event.Submitted(..) | event.Sent(..) -> False
+      _ -> True
+    }
+  })
+  |> list.reverse
+  |> list.flat_map(fn(event) {
+    case event {
+      event.Asked(..) -> ["asking the llm"]
+      event.Answered(execute.Completed(Ok(completion))) ->
+        list.filter_map(completion.tool_calls, fn(call) {
+          case
+            agent.cast_tool_call(call.function.name, call.function.arguments)
+          {
+            Ok(agent.Run(code)) -> Ok("running " <> first_line(code))
+            Error(_) -> Error(Nil)
+          }
+        })
+      event.Requested(request, _) -> [
+        http.method_to_string(request.method)
+        |> string.uppercase
+        <> " "
+        <> uri.to_string(request.to_uri(request)),
+      ]
+      event.Slept(milliseconds, _) -> [
+        "sleeping " <> int.to_string(milliseconds) <> "ms",
+      ]
+      event.Answered(execute.Rejected(reason)) -> [
+        "changes rejected, " <> first_line(string.replace(reason, "\n", " ")),
+      ]
+      _ -> []
+    }
+  })
+}
+
+fn first_line(text) {
+  case string.split(string.trim(text), "\n") {
+    [line] -> line
+    [line, ..] -> line <> " …"
+    [] -> ""
+  }
+}
+
+fn list_files(context: Context, session: Session) {
+  background(fn() { FilesListed(session.id, files(context, session.box)) })
+}
+
+/// The path of every file in the box.
+pub fn files(
+  context: Context,
+  box: String,
+) -> Result(List(String), box.Reason) {
+  use box <- result.try(box.latest(context, box))
+  execute.files(mfs.files(box.root), context.state)
+  |> result.map(list.map(_, fn(path) { "/" <> string.join(path, "/") }))
+  |> result.map_error(fn(reason) { box.Failed(string.inspect(reason)) })
+}
+
 // Send a turn to the session, its outcome is added to the log when it is replied to.
-fn send(model: Model, running, entry, input, draft) {
+fn send(model: Model, running, input, draft) {
   let assert Running(session:, log:, ..) = running
+  let log = list.append(log, [sent(input)])
   let screen =
-    Running(..running, log: list.append(log, [entry]), draft:, waiting: True)
+    Running(..running, log:, draft:, waiting: True, progress: [], scroll: 0)
   #(
     Model(..model, screen:, status: Quiet),
-    background(fn() {
-      Replied(session.id, turn.send(model.context, session, input))
-    }),
+    effect.batch([
+      background(fn() {
+        Replied(session.id, turn.send(model.context, session, input))
+      }),
+      poll(model.context, session),
+    ]),
   )
+}
+
+// How something sent to a session is shown in its log.
+fn sent(input) {
+  case input {
+    turn.Message(text) -> Sent(text)
+    turn.Code(code) ->
+      Ran(string.split(code, "\n") |> list.map(span.line_plain))
+    turn.Program(program) -> Ran(editor.program_lines(program))
+  }
 }
 
 // Show a session, a turn that has not finished is finished first.
 fn opened(model: Model, opening: Opening) {
   let Opening(place:, session:, log:, chat:, unfinished:) = opening
-  let draft = case chat {
-    True -> Chatting("")
-    False -> Coding(editor.new())
+  // A draft is kept when the session is opened again after its turn finishes.
+  let draft = case model.screen, chat {
+    Running(session: shown, draft: kept, ..), _ if shown.id == session.id -> kept
+    _, True -> draft.message()
+    _, False -> draft.program()
   }
-  let screen = Running(place, session, log, draft, unfinished)
+  let screen = Running(place, session, log, draft, unfinished, [], 0, [])
   let model = Model(..model, screen:, status: Quiet)
+  let files = list_files(model.context, session)
   case unfinished {
-    False -> #(model, effect.none())
+    False -> #(model, files)
     True -> #(
       model,
-      background(fn() {
-        Opened({
-          use Nil <- result.try(turn.resume(model.context, session))
-          open(model.context, session.id)
-        })
-      }),
+      effect.batch([
+        files,
+        poll(model.context, session),
+        background(fn() {
+          Opened({
+            use Nil <- result.try(turn.resume(model.context, session))
+            open(model.context, session.id)
+          })
+        }),
+      ]),
     )
   }
 }
@@ -540,11 +666,9 @@ pub fn open(context: Context, id: String) -> Result(Opening, box.Reason) {
 fn log(events) {
   list.flat_map(events, fn(event) {
     case event {
-      event.Started(code, _) -> [
-        Ran(string.split(code, "\n") |> list.map(span.line_plain)),
-      ]
-      event.Submitted(program, _) -> [Ran(editor.program_lines(program))]
-      event.Sent(message, _) -> [Sent(message)]
+      event.Started(code, _) -> [sent(turn.Code(code))]
+      event.Submitted(program, _) -> [sent(turn.Program(program))]
+      event.Sent(message, _) -> [sent(turn.Message(message))]
       event.Finished(outcome, output, _) ->
         list.map(output, Printed)
         |> list.append([
@@ -617,7 +741,7 @@ fn describe(reason) {
 }
 
 pub fn view(model: Model) {
-  terminal.view(render(model), Key)
+  terminal.view(render(model), Key, Pasted, Resized)
 }
 
 // The colours of the interface, the code uses the editor's own.
@@ -638,15 +762,16 @@ fn fg(color) {
 }
 
 fn title(running) {
-  let assert Running(place:, draft:, ..) = running
-  case draft {
-    Chatting(_) -> "Chat in " <> place
-    Coding(_) -> "Shell in " <> place
+  let assert Running(place:, draft: current, ..) = running
+  case current {
+    draft.Message(..) -> "Chat in " <> place
+    draft.Program(..) -> "Shell in " <> place
   }
 }
 
 /// The screen as it is drawn.
 pub fn render(model: Model) -> buffer.Buffer {
+  let #(width, height) = model.size
   let screen = buffer.buffer_new(geometry.rect_new(0, 0, width, height))
   let area = geometry.rect_new(0, 1, width, height - 3)
   let #(title, help) = case model.screen {
@@ -688,12 +813,25 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("enter", "start"),
       #("esc", "back"),
     ])
-    Running(draft: Chatting(_), ..) as running -> #(title(running), [
+    Running(draft: draft.Message(..), ..) as running -> #(title(running), [
       #("enter", "send"),
+      #("shift+enter", "new line"),
+      #("pgup/pgdn", "scroll"),
       #("esc", "boxes"),
     ])
-    Running(draft: Coding(_), ..) as running -> #(title(running), [
+    Running(draft: draft.Program(structured: False, ..), ..) as running -> #(
+      title(running),
+      [
+        #("enter", "run"),
+        #("shift+enter", "new line"),
+        #("tab", "structured"),
+        #("pgup/pgdn", "scroll"),
+        #("esc", "boxes"),
+      ],
+    )
+    Running(draft: draft.Program(..), ..) as running -> #(title(running), [
       #("enter", "run"),
+      #("tab", "text"),
       #("n", "number"),
       #("s", "string"),
       #("v", "variable"),
@@ -701,8 +839,8 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("c", "call"),
       #("e", "let"),
       #("p", "perform"),
+      #("q", "import"),
       #("z", "undo"),
-      #("esc", "boxes"),
     ])
   }
   let frame =
@@ -727,23 +865,24 @@ pub fn render(model: Model) -> buffer.Buffer {
       ]
     })
   screen
-  |> spans(0, [
+  |> spans(0, width, [
     span.span_styled(" EYG", fg(accent) |> style.add_modifier(style.bold())),
     span.span_styled(" cloud", fg(muted)),
   ])
   |> block.render(area, frame)
   |> body(inner, model)
-  |> spans(height - 2, help)
-  |> spans(height - 1, case model.status {
+  |> spans(height - 2, width, help)
+  |> spans(height - 1, width, case model.status {
     Quiet -> []
     Working(text) -> [span.span_styled(" " <> text, fg(muted))]
     Problem(text) -> [span.span_styled(" " <> text, fg(red))]
   })
-  |> dialog(model.prompt)
+  |> dialog(model.prompt, model.size)
 }
 
 // The prompt in a box over the middle of the screen.
-fn dialog(screen, prompt) {
+fn dialog(screen, prompt, size: #(Int, Int)) {
+  let #(width, height) = size
   case prompt {
     None -> screen
     Some(Prompt(label:, input:, masked:, ..)) -> {
@@ -777,7 +916,7 @@ fn dialog(screen, prompt) {
   }
 }
 
-fn spans(screen, y, spans) {
+fn spans(screen, y, width, spans) {
   span.render_line(screen, Position(0, y), span.line_new(spans), width)
 }
 
@@ -821,28 +960,72 @@ fn body(screen, area: geometry.Rect, model: Model) {
     Secrets(names:, selected: chosen, ..) ->
       list.map(names, fn(name) { name <> "  ••••••" })
       |> menu(screen, area, chosen)
-    Running(log:, draft:, waiting:, ..) -> {
+    Running(log:, draft: current, waiting:, progress:, scroll:, files:, ..) -> {
+      // A wide screen shows the files of the box beside the session.
+      let pane = 26
+      let #(area, screen) = case area.size.width >= 90 {
+        True -> #(
+          geometry.rect_new(
+            area.position.x,
+            area.position.y,
+            area.size.width - pane - 1,
+            area.size.height,
+          ),
+          file_pane(
+            screen,
+            geometry.rect_new(
+              area.position.x + area.size.width - pane,
+              area.position.y,
+              pane,
+              area.size.height,
+            ),
+            files,
+          ),
+        )
+        False -> #(area, screen)
+      }
       let columns = area.size.width
-      let chat = case draft {
-        Chatting(_) -> True
-        Coding(_) -> False
-      }
+      let chat = draft.mode(current) == "message"
       let lines = list.flat_map(log, entry_lines(_, chat, columns))
-      let draft = case waiting, draft {
-        True, _ -> [span.line_new([span.span_styled("waiting…", fg(muted))])]
-        False, Chatting(text) -> [
-          span.line_new([
-            span.span_styled("> ", fg(accent)),
-            span.span_plain(text.truncate(text, columns - 3, "…")),
-            span.span_styled("▏", fg(accent)),
-          ]),
-        ]
-        False, Coding(edited) -> prompted(editor.lines(edited, True))
+      let below = case waiting {
+        True ->
+          list.map(progress, fn(step) {
+            span.line_new([span.span_styled("· " <> step, fg(muted))])
+          })
+          |> list.append([
+            span.line_new([span.span_styled("waiting…", fg(muted))]),
+          ])
+        False -> prompted(draft.lines(current, True))
       }
-      // The end of the log is shown above the draft.
-      let rows = area.size.height - list.length(draft)
-      let shown = list.drop(lines, int.max(list.length(lines) - rows, 0))
-      list.append(shown, draft)
+      let rows = int.max(0, area.size.height - list.length(below))
+      // Scrolling back shows earlier lines, it stops at the first.
+      let total = list.length(lines)
+      let scroll = int.min(scroll, int.max(0, total - rows))
+      let start = int.max(0, total - rows - scroll)
+      let shown = list.drop(lines, start) |> list.take(rows)
+      let shown = case start > 0, shown {
+        True, [_, ..rest] -> [
+          span.line_new([
+            span.span_styled(
+              "↑ " <> int.to_string(start + 1) <> " earlier lines, page up",
+              fg(muted),
+            ),
+          ]),
+          ..rest
+        ]
+        _, _ -> shown
+      }
+      let shown = case scroll > 0 {
+        True ->
+          list.take(shown, list.length(shown) - 1)
+          |> list.append([
+            span.line_new([
+              span.span_styled("↓ newer lines, page down", fg(muted)),
+            ]),
+          ])
+        False -> shown
+      }
+      list.append(shown, below)
       |> list.index_fold(screen, fn(screen, line, i) {
         span.render_line(
           screen,
@@ -853,6 +1036,41 @@ fn body(screen, area: geometry.Rect, model: Model) {
       })
     }
   }
+}
+
+fn file_pane(screen, area: geometry.Rect, files: List(String)) {
+  let screen =
+    list.index_fold(
+      list.repeat(Nil, area.size.height),
+      screen,
+      fn(screen, _, i) {
+        buffer.set_string(
+          screen,
+          Position(area.position.x - 1, area.position.y + i),
+          "│",
+          fg(muted),
+        )
+      },
+    )
+  [
+    span.line_new([span.span_styled(" files", fg(accent))]),
+    ..case files {
+      [] -> [span.line_new([span.span_styled(" none yet", fg(muted))])]
+      _ ->
+        list.map(files, fn(path) {
+          span.line_plain(" " <> text.truncate(path, area.size.width - 1, "…"))
+        })
+    }
+  ]
+  |> list.take(area.size.height)
+  |> list.index_fold(screen, fn(screen, line, i) {
+    span.render_line(
+      screen,
+      Position(area.position.x, area.position.y + i),
+      line,
+      area.size.width,
+    )
+  })
 }
 
 // Code starts with a prompt and the lines after it are lined up with it.
