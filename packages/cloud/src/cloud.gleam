@@ -1,6 +1,7 @@
 import bucket
 import cloud/apex/context.{Context}
 import cloud/apex/server
+import cloud/apex/web
 import cloud/beam/execute
 import cloud/box/memory
 import cloud/data/blobs
@@ -148,6 +149,9 @@ fn start_api(state, llm: provider.Llm) {
           llms: dict.from_list([#(llm.model, llm)]),
         )
       let assert Ok(_) = server.start(context, port)
+      let web_port =
+        envoy.get("WEB_PORT") |> result.try(int.parse) |> result.unwrap(8787)
+      let assert Ok(_) = web.start(context, web_port)
       Nil
     }
   }

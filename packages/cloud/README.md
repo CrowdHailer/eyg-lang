@@ -72,6 +72,12 @@ Events are stored in an append only thread and a session points at the last even
 If the process running a turn stops, the turn is finished the next time code is sent to the session.
 See `cloud/sessions/turn.gleam` for how a turn is recorded and replayed.
 
+### Web interface
+
+The web interface is started with the API on `WEB_PORT`, by default 8787, and also only accepts local connections.
+It is a terminal in the page that lists the named boxes.
+A box is opened by starting a shell or a chat in it, or in a transient copy of it.
+
 ### Configuration
 
 ```sh

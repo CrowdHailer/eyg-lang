@@ -32,6 +32,10 @@ simplifile = ">= 2.7.0 and < 3.0.0"
 touch_grass = { path = "../touch_grass" }
 unixfs = { path = "../unixfs" }
 wisp = ">= 2.2.2 and < 3.0.0"
+etui = ">= 2.0.2 and < 3.0.0"
+howdy = ">= 1.0.1 and < 2.0.0"
+howdy_ui = ">= 1.0.0 and < 2.0.0"
+lustre = ">= 5.7.1 and < 6.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
