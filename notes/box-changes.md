@@ -18,5 +18,3 @@ Keeping the change atomic means a turn can write several modules that depend on 
 Blocks are put in the blob store as they are written, before the change is checked or recorded.
 A change that is rejected or conflicts leaves blocks in the store that no root references, they are harmless as blocks are content addressed.
 Nothing is cached so every block read is a request to the store, a cache can sit behind the same interface because blocks never change.
-
-Code run through the sessions API cannot yet use relative imports, although the type check of the file system follows them.

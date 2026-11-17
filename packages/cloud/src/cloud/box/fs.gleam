@@ -10,8 +10,6 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/ir/tree as ir
-import eyg/parser
-import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
@@ -89,7 +87,7 @@ fn check_module(checker: Checker, root, path, importing) {
         False -> {
           use bytes <- mfs.then(file_system.read(root, path))
           let bytes = result.map_error(bytes, simplifile.describe_error)
-          case result.try(bytes, parse) {
+          case result.try(bytes, execute.parse_module) {
             Error(reason) -> mfs.Done(#(Error(reason), checker))
             Ok(source) ->
               infer.check(infer.pure(), source)
@@ -108,14 +106,6 @@ fn check_module(checker: Checker, root, path, importing) {
       mfs.Done(#(type_, Checker(..checker, checked:, errors:)))
     }
   }
-}
-
-fn parse(bytes) {
-  use code <- result.try(
-    bit_array.to_string(bytes) |> result.replace_error("is not text"),
-  )
-  parser.all_from_string(code)
-  |> result.map_error(parser.format_error(_, code))
 }
 
 fn loop(step, checker: Checker, root, path, importing) {

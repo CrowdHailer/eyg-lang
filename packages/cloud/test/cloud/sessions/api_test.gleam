@@ -106,6 +106,22 @@ pub fn file_changes_are_shared_through_the_box_test() {
   assert string.starts_with(field(response, "value", decode.string), "Ok(")
 }
 
+pub fn import_modules_test() {
+  use context <- helpers.context()
+  let _ = box(context, "home")
+  let id = session(context, "home")
+  let _ = turn(context, id, "perform MakeDirectory(\"/lib\")")
+  let _ = turn(context, id, write("/lib/one.eyg", "1"))
+  let two = "(x) -> { !int_add(x, import \\\"./one.eyg\\\") }"
+  let _ = turn(context, id, write("/lib/two.eyg", two))
+
+  // Imports in the code that is run are relative to the root.
+  let response = turn(context, id, "let two = import \"lib/two.eyg\"\ntwo(2)")
+  assert "3" == field(response, "value", decode.string)
+  let response = turn(context, id, "import \"/lib/gone.eyg\"")
+  let _ = field(response, "error", decode.string)
+}
+
 pub fn reject_write_of_invalid_eyg_test() {
   use context <- helpers.context()
   let before = box(context, "home")

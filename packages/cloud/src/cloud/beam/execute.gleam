@@ -15,6 +15,7 @@ import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser
+import gleam/bit_array
 import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/erlang/process
@@ -220,7 +221,7 @@ fn loop(returned, state: State, policy, root, emit, output) {
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
-      let #(value, state) = lookup_value(reference, state)
+      let #(value, state) = resolve(reference, [], state, root)
       case value {
         Ok(value) ->
           loop(block.resume(value, env, k), state, policy, root, emit, output)
@@ -234,6 +235,83 @@ fn loop(returned, state: State, policy, root, emit, output) {
       output,
     )
   }
+}
+
+fn resolve(reference, importing, state: State, root) {
+  case reference {
+    ir.Relative(location) -> import_module(location, importing, state, root)
+    _ -> lookup_value(reference, state)
+  }
+}
+
+/// A module is the value of a file in the file system the code is running against.
+/// Code that is run is at the root of the file system, so its imports are relative to there.
+/// `importing` is the sequence of modules that lead to this one.
+fn import_module(location, importing, state, root) {
+  let loaded = {
+    use path <- result.try(file_system.resolve_path(location))
+    use Nil <- result.try(case list.contains(importing, path) {
+      True -> Error("imports itself")
+      False -> Ok(Nil)
+    })
+    use bytes <- result.try(
+      files(file_system.read(root, path), state)
+      |> result.try(result.map_error(_, simplifile.describe_error)),
+    )
+    use source <- result.map(parse_module(bytes))
+    #(path, absolute(source, path))
+  }
+  case loaded {
+    Ok(#(path, source)) ->
+      expression.execute(source, [])
+      |> module_loop(state, root, [path, ..importing])
+    Error(reason) -> #(Error("import " <> location <> ": " <> reason), state)
+  }
+}
+
+// Modules are pure, so all a module can need is another module.
+fn module_loop(returned, state, root, importing) {
+  case returned {
+    Ok(value) -> #(Ok(value), state)
+    Error(#(break.UndefinedReference(reference), _, env, k)) -> {
+      let #(value, state) = resolve(reference, importing, state, root)
+      case value {
+        Ok(value) ->
+          expression.resume(value, env, k)
+          |> module_loop(state, root, importing)
+        Error(reason) -> #(Error(reason), state)
+      }
+    }
+    Error(debug) -> #(Error(simple_debug.describe(debug.0)), state)
+  }
+}
+
+/// Modules are the EYG source in a file.
+pub fn parse_module(bytes) {
+  use code <- result.try(
+    bit_array.to_string(bytes) |> result.replace_error("is not text"),
+  )
+  parser.all_from_string(code)
+  |> result.map_error(parser.format_error(_, code))
+}
+
+// The imports of a module are relative to its own directory.
+// Nothing records where code came from once it is running, a function from a
+// module can import when it is called, so locations are made absolute on load.
+fn absolute(node, path) {
+  let #(expression, meta) = node
+  let expression = case expression {
+    ir.Reference(ir.Relative("/" <> _)) -> expression
+    ir.Reference(ir.Relative(location)) ->
+      ir.Reference(ir.Relative(path <> "/../" <> location))
+    ir.Lambda(label, body) -> ir.Lambda(label, absolute(body, path))
+    ir.Apply(func, argument) ->
+      ir.Apply(absolute(func, path), absolute(argument, path))
+    ir.Let(label, definition, body) ->
+      ir.Let(label, absolute(definition, path), absolute(body, path))
+    _ -> expression
+  }
+  #(expression, meta)
 }
 
 fn decide(policy, label, lift, meta, state) {
