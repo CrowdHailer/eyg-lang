@@ -7,6 +7,7 @@
 
 import cloud/beam/execute
 import cloud/sessions/event.{type Event}
+import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/crypto
 import gleam/http
@@ -53,6 +54,8 @@ fn turns(log) {
     [] -> []
     [#(i, at, event.Started(code, policy)), ..log] ->
       turn(i, at, #("eyg.code", code), policy, log)
+    [#(i, at, event.Submitted(program, policy)), ..log] ->
+      turn(i, at, #("eyg.program", dag_json.to_string(program)), policy, log)
     [#(i, at, event.Sent(message, policy)), ..log] ->
       turn(i, at, #("eyg.message", message), policy, log)
     [_, ..log] -> turns(log)
@@ -63,7 +66,7 @@ fn turn(i, at, input, policy, log: List(#(Int, Int, Event))) {
   let #(events, log) =
     list.split_while(log, fn(entry) {
       case entry.2 {
-        event.Started(..) | event.Sent(..) -> False
+        event.Started(..) | event.Submitted(..) | event.Sent(..) -> False
         _ -> True
       }
     })

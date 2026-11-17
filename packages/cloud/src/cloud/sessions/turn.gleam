@@ -83,6 +83,8 @@ type Stop {
 /// What is sent to a session.
 pub type Input {
   Code(String)
+  /// A program built in a structural editor.
+  Program(ir.Node(Nil))
   /// A message for the session's llm.
   Message(String)
 }
@@ -163,6 +165,8 @@ pub fn run(
   let stored = mfs.identify(stored).cid
   use #(started, segment) <- result.try(case input {
     Code(code) -> Ok(#(event.Started(code, stored), program(policy, code)))
+    Program(source) ->
+      Ok(#(event.Submitted(source, stored), built(policy, source)))
     Message(message) -> {
       use history <- result.try(history(context, session.id))
       let before = list.map(history, fn(entry) { #(entry.1, entry.2) })
@@ -178,6 +182,12 @@ pub fn run(
 
 fn program(policy, code) -> Segment {
   fn(state, root) { execute.block(code, state, policy, root, fn(_) { Nil }) }
+}
+
+fn built(policy, source) -> Segment {
+  fn(state, root) {
+    execute.program(source, state, policy, root, fn(_) { Nil })
+  }
 }
 
 // The llm replies to the message, after the chat in the events before it.
@@ -218,6 +228,10 @@ fn begin(context, state, before, started) -> Result(Segment, String) {
       use policy <- result.map(load_policy(state, policy))
       program(policy, code)
     }
+    event.Submitted(source, policy) -> {
+      use policy <- result.map(load_policy(state, policy))
+      built(policy, source)
+    }
     event.Sent(message, policy) -> {
       use policy <- result.try(load_policy(state, policy))
       chat(context, state, before, policy, message)
@@ -228,7 +242,7 @@ fn begin(context, state, before, started) -> Result(Segment, String) {
 
 fn starts(event) {
   case event {
-    event.Started(..) | event.Sent(..) -> True
+    event.Started(..) | event.Submitted(..) | event.Sent(..) -> True
     _ -> False
   }
 }

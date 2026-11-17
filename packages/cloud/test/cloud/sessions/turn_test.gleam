@@ -9,7 +9,10 @@ import cloud/registry
 import cloud/server
 import cloud/session_helpers
 import cloud/sessions/event
+import cloud/sessions/turn
 import eyg/hub/cache
+import eyg/ir/tree as ir
+import eyg/parser
 import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/http
@@ -534,4 +537,20 @@ pub fn import_shares_the_thread_test() {
   let assert Ok(pog.Returned(rows: [original], ..)) =
     db.execute(sessions.get(session.id), context.db)
   assert original.head == copy.head
+}
+
+pub fn run_a_built_program_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let assert Ok(source) = parser.all_from_string("!int_add(1, 2)")
+  let program = ir.map_annotation(source, fn(_) { Nil })
+  let assert Ok(#(Ok("3"), [])) =
+    session_helpers.turn(context, session, turn.Program(program))
+  let assert [event.Submitted(recorded, _), ..] =
+    session_helpers.events(context, session)
+  assert recorded == program
+  // The program is in the export, so a copy replays it.
+  let log = session_helpers.export(context, session)
+  let assert Ok(copy) = session_helpers.import_(context, session.box, log)
+  assert turns(context, session) == turns(context, copy)
 }

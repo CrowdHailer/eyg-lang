@@ -8,6 +8,7 @@ import cloud/data/sessions.{type Session}
 import cloud/sessions/event
 import cloud/sessions/trace
 import cloud/sessions/turn
+import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamic/decode
@@ -139,11 +140,13 @@ pub fn get(id, context: Context) {
 }
 
 /// Each turn is run by the session's process, one at a time.
-/// A turn is `{"code": code}`, or `{"message": message}` for a session that chats with an llm.
+/// A turn is `{"code": code}`, `{"program": program}` with the program as DAG-JSON,
+/// or `{"message": message}` for a session that chats with an llm.
 pub fn turn(request, id, context: Context) {
   use body <- wisp.require_json(request)
   let decoder =
     decode.one_of(decode.at(["code"], decode.string) |> decode.map(turn.Code), [
+      decode.at(["program"], dag_json.decoder(Nil)) |> decode.map(turn.Program),
       decode.at(["message"], decode.string) |> decode.map(turn.Message),
     ])
   case decode.run(body, decoder) {
@@ -174,6 +177,8 @@ fn turns(events, acc) {
     [], _ -> list.reverse(acc)
     [event.Started(code, _), ..events], _ ->
       turns(events, [#(turn.Code(code), None), ..acc])
+    [event.Submitted(program, _), ..events], _ ->
+      turns(events, [#(turn.Program(program), None), ..acc])
     [event.Sent(message, _), ..events], _ ->
       turns(events, [#(turn.Message(message), None), ..acc])
     [event.Finished(outcome, output, _), ..events], [#(input, _), ..acc] ->
@@ -209,6 +214,7 @@ fn encode_turn(turn) {
   json.object([
     case input {
       turn.Code(code) -> #("code", json.string(code))
+      turn.Program(program) -> #("program", dag_json.to_data_model(program))
       turn.Message(message) -> #("message", json.string(message))
     },
     ..case ended {

@@ -6,6 +6,7 @@
 
 import cloud/beam/execute
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/http
@@ -23,6 +24,8 @@ pub type Event {
   Configured(llm: String)
   /// Code was sent to the session, it runs with the policy in the blob store under `policy`.
   Started(code: String, policy: v1.Cid)
+  /// A program built in a structural editor was sent to the session, it runs as code does.
+  Submitted(program: ir.Node(Nil), policy: v1.Cid)
   /// A message was sent to the session's llm, the code of its tool calls runs with the policy.
   Sent(message: String, policy: v1.Cid)
   /// The code continued from this root in the box.
@@ -63,6 +66,11 @@ pub fn fields(event: Event) -> List(#(String, json.Json)) {
     Started(code, policy) -> [
       #("type", json.string("started")),
       #("code", json.string(code)),
+      #("policy", json.string(v1.to_string(policy))),
+    ]
+    Submitted(program, policy) -> [
+      #("type", json.string("submitted")),
+      #("program", dag_json.to_data_model(program)),
       #("policy", json.string(v1.to_string(policy))),
     ]
     Sent(message, policy) -> [
@@ -142,6 +150,11 @@ pub fn decoder() -> decode.Decoder(Event) {
       use code <- decode.field("code", decode.string)
       use policy <- decode.field("policy", cid_decoder())
       decode.success(Started(code, policy))
+    }
+    "submitted" -> {
+      use program <- decode.field("program", dag_json.decoder(Nil))
+      use policy <- decode.field("policy", cid_decoder())
+      decode.success(Submitted(program, policy))
     }
     "sent" -> {
       use message <- decode.field("message", decode.string)

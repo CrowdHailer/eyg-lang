@@ -64,7 +64,7 @@ pub fn send(context, session, message) {
   turn(context, session, turn.Message(message))
 }
 
-fn turn(context, session, input) {
+pub fn turn(context, session, input) {
   registry.call(process(context, session), 10_000, fn(_) {
     #(Nil, turn.run(context, session, input))
   })

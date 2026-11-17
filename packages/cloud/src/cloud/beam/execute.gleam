@@ -232,6 +232,18 @@ pub fn block(
   evaluate(code, [], simple_debug.inspect, state, policy, root, emit)
 }
 
+/// Run a program that was built rather than written, such as in a structural editor.
+pub fn program(
+  source: ir.Node(Nil),
+  state: State,
+  policy: Policy,
+  root: v1.Cid,
+  emit: fn(Output) -> Nil,
+) -> Run(String) {
+  ir.map_annotation(source, fn(_) { #(0, 0) })
+  |> run_source([], simple_debug.inspect, state, policy, root, emit)
+}
+
 /// Execute an agent tool with fresh context and capture output for the model.
 pub fn run(
   code: String,
@@ -266,10 +278,13 @@ fn evaluate(code, scope, inspect, state, policy, root, emit) {
   case parser.all_from_string(code) {
     Error(reason) ->
       Finished(Error(parser.format_error(reason, code)), state, root, [])
-    Ok(source) ->
-      loop(block.execute(source, scope), state, policy, root, emit, [])
-      |> map(fn(value) { value |> option.map(inspect) |> option.unwrap("") })
+    Ok(source) -> run_source(source, scope, inspect, state, policy, root, emit)
   }
+}
+
+fn run_source(source, scope, inspect, state, policy, root, emit) {
+  loop(block.execute(source, scope), state, policy, root, emit, [])
+  |> map(fn(value) { value |> option.map(inspect) |> option.unwrap("") })
 }
 
 /// Run a checked automation through the same policy-gated loop as other code.

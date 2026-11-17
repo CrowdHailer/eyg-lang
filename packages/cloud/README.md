@@ -51,7 +51,7 @@ A session in a transient box, cloned from a named box, works on its own copy of 
 | `POST /boxes/:id/sessions` | Start a session in the box, send `{"llm": name}` for a session that chats with an llm. |
 | `GET /boxes/:id/sessions` | The sessions in the box. |
 | `GET /sessions/:id` | The session and all of its turns. |
-| `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`, or reply to `{"message": "hi"}` in a chat. |
+| `POST /sessions/:id/turns` | Run the code from `{"code": "1"}` or a program as DAG-JSON from `{"program": program}`, or reply to `{"message": "hi"}` in a chat. |
 | `GET /sessions/:id/events` | Every event of the session as JSON lines. |
 | `POST /sessions/:id/fork` | Start a session with the same history, each continues from it on its own. |
 | `GET /sessions/:id/trace` | OpenTelemetry spans for the session, each turn and each request, as OTLP JSON. |

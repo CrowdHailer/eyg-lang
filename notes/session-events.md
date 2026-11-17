@@ -39,3 +39,6 @@ The llm is recorded by name, a chat turn can only be replayed while an llm is co
 The changes made by a tool call that fails are kept, the llm is told it failed and can carry on.
 A change that is rejected when it is merged ends the turn, the rejection is the turn's outcome and the llm is not asked about it.
 The next message's chat does not include the rejection.
+
+A program built in a structural editor is recorded as its tree in DAG-JSON, not as text.
+There is no printer from a tree to EYG text, and some trees, such as binary literals, have no text syntax.

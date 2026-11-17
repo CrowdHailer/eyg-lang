@@ -3,7 +3,7 @@
 //// Events are committed in groups, so a stopped session leaves its events at the end of a group.
 //// For random programs every such point is tried: a copy of the session is made from the events
 //// up to that point and resumed, sometimes after another change to the box.
-//// A program is either run as code or as a chat, where the llm makes a tool call for each step.
+//// A program is run as code, as a program built in an editor, or as a chat where the llm makes a tool call for each step.
 
 import cloud/beam/execute
 import cloud/box
@@ -14,6 +14,8 @@ import cloud/server.{type Server}
 import cloud/session_helpers
 import cloud/sessions/event
 import cloud/sessions/turn
+import eyg/ir/tree as ir
+import eyg/parser
 import gleam/erlang/process
 import gleam/http
 import gleam/int
@@ -100,23 +102,31 @@ fn expression(step, server, path) {
 pub fn resume_from_any_stop_test() {
   let server = server.start(process.new_subject())
   let config = qcheck.default_config() |> qcheck.with_test_count(40)
-  use #(steps, chat) <- qcheck.run(
+  use #(steps, mode) <- qcheck.run(
     config,
     qcheck.tuple2(
       qcheck.generic_list(step(), qcheck.bounded_int(1, 6)),
-      qcheck.bool(),
+      qcheck.bounded_int(0, 2),
     ),
   )
   use context <- helpers.context()
   let id = int.to_string(int.random(1_000_000_000))
-  let #(context, session) = case chat {
-    True -> {
+  let #(context, session) = case mode {
+    0 -> {
       let #(context, session) = session_helpers.chat(context, server)
       let assert Ok(_) =
         session_helpers.send(context, session, message(steps, server, id))
       #(context, session)
     }
-    False -> {
+    1 -> {
+      let session = session_helpers.session(context)
+      let assert Ok(source) = parser.all_from_string(code(steps, server, id))
+      let program = ir.map_annotation(source, fn(_) { Nil })
+      let assert Ok(_) =
+        session_helpers.turn(context, session, turn.Program(program))
+      #(context, session)
+    }
+    _ -> {
       let session = session_helpers.session(context)
       let assert Ok(_) =
         session_helpers.run(context, session, code(steps, server, id))
@@ -239,6 +249,7 @@ fn ends_group(event) {
   case event {
     event.Configured(..)
     | event.Started(..)
+    | event.Submitted(..)
     | event.Sent(..)
     | event.Requested(..)
     | event.Slept(..)
