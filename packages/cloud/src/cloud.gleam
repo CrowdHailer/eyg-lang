@@ -7,6 +7,7 @@ import cloud/data/blobs
 import cloud/data/db
 import cloud/data/pool
 import cloud/discord/discord
+import cloud/registry
 import cloud/schedule
 import cloud/schedules
 import cloud/session
@@ -132,9 +133,16 @@ fn start_api(state) {
       let assert #(Ok(policy), state) = execute.load_policy(code, state)
       let port =
         envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8080)
+      let assert Ok(boxes) = registry.start()
       let assert Ok(memory) = memory.start()
       let context =
-        Context(db: db.Pool(started.data), memory: memory.data, state:, policy:)
+        Context(
+          db: db.Pool(started.data),
+          boxes: boxes.data,
+          memory: memory.data,
+          state:,
+          policy:,
+        )
       let assert Ok(_) = server.start(context, port)
       Nil
     }

@@ -10,7 +10,9 @@ import cloud/box/memory
 import cloud/data/boxes.{type Box, Box}
 import cloud/data/db
 import cloud/file_system
+import cloud/registry
 import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
@@ -20,8 +22,10 @@ import unixfs/mfs
 
 pub type Reason {
   Missing
-  /// The box name is taken or the box changed while this change was being made.
-  Conflict
+  /// The box name is taken.
+  Taken
+  /// Files changed by this change were also changed since its base.
+  Conflict(paths: List(String))
   Invalid(List(String))
   Failed(String)
 }
@@ -40,10 +44,15 @@ pub fn latest(context: Context, name: String) -> Result(Box, Reason) {
 /// Record a box in Postgres if it is only in memory, it is durable from then on.
 /// A box is made durable when the first session is made in it.
 pub fn durable(context: Context, name: String) -> Result(Nil, Reason) {
-  case memory.take(context.memory, name) {
-    Error(Nil) -> Ok(Nil)
-    Ok(events) -> save(context, events)
-  }
+  use box <- result.try(latest(context, name))
+  // The box's process records its events, so none are recorded while it is moved.
+  registry.lookup(context.boxes, name, fn() { registry.serve(box) })
+  |> registry.call(600_000, fn(box) {
+    case memory.take(context.memory, name) {
+      Error(Nil) -> #(box, Ok(Nil))
+      Ok(events) -> #(box, save(context, events))
+    }
+  })
 }
 
 fn save(context: Context, events: memory.Events) {
@@ -77,35 +86,87 @@ fn start(context: Context, box: Box) {
   use saved <- result.try(query(boxes.latest(box.name), context))
   case saved == [] && memory.add(context.memory, box) {
     True -> Ok(box)
-    False -> Error(Conflict)
+    False -> Error(Taken)
   }
 }
 
 /// Make a change to the files in a box, the effect returns the new root.
 pub fn change(
   context: Context,
-  box: Box,
-  effect: mfs.Effect(Result(v1.Cid, simplifile.FileError)),
+  name: String,
+  effect: fn(v1.Cid) -> mfs.Effect(Result(v1.Cid, simplifile.FileError)),
 ) -> Result(Box, Reason) {
-  case execute.files(effect, context.state) {
-    Ok(Ok(root)) -> commit(context, box, root)
+  use box <- result.try(latest(context, name))
+  case execute.files(effect(box.root), context.state) {
+    Ok(Ok(root)) -> merge(context, name, box.root, root)
     Ok(Error(reason)) -> Error(Invalid([simplifile.describe_error(reason)]))
     Error(reason) -> Error(Failed(reason))
   }
 }
 
-/// Move the box to a new root if the file system there is valid.
-pub fn commit(context: Context, box: Box, root: v1.Cid) -> Result(Box, Reason) {
-  case root == box.root {
-    True -> Ok(box)
+/// Merge the changes from `base` to `ours` into the box.
+///
+/// Each box has one process that merges changes one at a time,
+/// changes are made away from it and it only merges, type checks and records them.
+pub fn merge(
+  context: Context,
+  name: String,
+  base: v1.Cid,
+  ours: v1.Cid,
+) -> Result(Box, Reason) {
+  use box <- result.try(latest(context, name))
+  registry.lookup(context.boxes, name, fn() { registry.serve(box) })
+  |> registry.call(600_000, fn(box) {
+    case commit(context, box, base, ours) {
+      Ok(box) -> #(box, Ok(box))
+      Error(reason) -> #(box, Error(reason))
+    }
+  })
+}
+
+fn commit(context: Context, box: Box, base, ours) {
+  use merged <- result.try(case base == box.root {
+    True -> Ok(ours)
     False ->
-      case execute.files(fs.check(root, context.state), context.state) {
-        Ok(Ok(#([], _))) ->
-          record(context, Box(box.name, box.sequence + 1, root))
+      case execute.files(three_way(base, ours, box.root), context.state) {
+        Ok(Ok(root)) -> Ok(root)
+        Ok(Error(paths)) ->
+          Error(
+            Conflict(
+              list.map(paths, fn(path) { "/" <> string.join(path, "/") }),
+            ),
+          )
+        Error(reason) -> Error(Failed(reason))
+      }
+  })
+  use Nil <- result.try(case merged == box.root {
+    True -> Ok(Nil)
+    False ->
+      case execute.files(fs.check(merged, context.state), context.state) {
+        Ok(Ok(#([], _))) -> Ok(Nil)
         Ok(Ok(#(errors, _))) -> Error(Invalid(errors))
         Ok(Error(reason)) -> Error(failed(reason))
         Error(reason) -> Error(Failed(reason))
       }
+  })
+  case merged == box.root {
+    True -> Ok(box)
+    False -> record(context, Box(box.name, box.sequence + 1, merged))
+  }
+}
+
+// Merge the change from `base` to `ours` with the change from `base` to `theirs`.
+// The files both changes changed are the conflict.
+fn three_way(base, ours, theirs) {
+  let stored = fn(cid) { Some(mfs.Stored(cid, 0)) }
+  use merged <- mfs.then(mfs.merge(stored(base), stored(ours), stored(theirs)))
+  case merged {
+    Ok(Some(root)) -> mfs.Done(Ok(root.cid))
+    _ -> {
+      use ours <- mfs.then(mfs.diff(base, ours))
+      use theirs <- mfs.then(mfs.diff(base, theirs))
+      mfs.Done(Error(list.filter(ours, list.contains(theirs, _))))
+    }
   }
 }
 
@@ -115,12 +176,12 @@ fn record(context: Context, box: Box) {
     Ok(_) ->
       case memory.record(context.memory, box) {
         True -> Ok(box)
-        False -> Error(Conflict)
+        False -> Error(Taken)
       }
     Error(Nil) ->
       case query(boxes.record(box), context) {
         Ok([box]) -> Ok(box)
-        Ok(_) -> Error(Conflict)
+        Ok(_) -> Error(Taken)
         Error(reason) -> Error(reason)
       }
   }

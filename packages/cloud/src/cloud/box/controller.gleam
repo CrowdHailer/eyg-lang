@@ -101,8 +101,7 @@ pub fn delete(name, path, context: Context) {
 }
 
 fn change(name, context, operation) {
-  use box <- try(box.latest(context, name))
-  use box <- try(box.change(context, box, operation(box.root)))
+  use box <- try(box.change(context, name, operation))
   wisp.json_response(json.to_string(encode(box)), 200)
 }
 
@@ -118,7 +117,12 @@ pub fn try(result, next) {
   case result {
     Ok(value) -> next(value)
     Error(box.Missing) -> reason(404, "No such box")
-    Error(box.Conflict) -> reason(409, "The box already exists or has changed")
+    Error(box.Taken) -> reason(409, "The box already exists")
+    Error(box.Conflict(paths)) ->
+      reason(
+        409,
+        "Changed since the change was made\n" <> string.join(paths, "\n"),
+      )
     Error(box.Invalid(errors)) -> reason(422, string.join(errors, "\n"))
     Error(box.Failed(message)) -> reason(500, message)
   }

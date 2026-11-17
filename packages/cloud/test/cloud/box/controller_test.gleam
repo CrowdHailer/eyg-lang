@@ -1,7 +1,10 @@
 import cloud/helpers.{dispatch}
 import gleam/dynamic/decode
+import gleam/erlang/process
 import gleam/http
+import gleam/int
 import gleam/json
+import gleam/list
 import gleam/string
 import wisp/simulate
 
@@ -128,4 +131,25 @@ pub fn clone_box_test() {
   let response =
     dispatch(simulate.request(http.Get, "/boxes/copy/files/a.txt"), context)
   assert "b" == simulate.read_body(response)
+}
+
+pub fn concurrent_changes_test() {
+  let context = helpers.pool_context()
+  let name = helpers.unique("concurrent")
+  assert 201 == create(context, [#("name", json.string(name))]).status
+  let replies = process.new_subject()
+  let writes = list.repeat(Nil, 10)
+  list.index_map(writes, fn(_, i) {
+    process.spawn(fn() {
+      let path = "/boxes/" <> name <> "/files/" <> int.to_string(i) <> ".txt"
+      process.send(replies, write(context, path, "x").status)
+    })
+  })
+  // No change is lost because another was made at the same time.
+  list.each(writes, fn(_) {
+    assert Ok(200) == process.receive(replies, 5000)
+  })
+  let response =
+    dispatch(simulate.request(http.Get, "/boxes/" <> name), context)
+  assert 11 == field(response, "sequence", decode.int)
 }
