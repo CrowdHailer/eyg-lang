@@ -6,6 +6,7 @@ import cloud/data/boxes
 import cloud/data/db
 import cloud/file_system
 import cloud/helpers
+import gleam/option.{None, Some}
 import gleam/string
 import pog
 
@@ -15,7 +16,7 @@ pub fn merge_changes_from_the_same_base_test() {
   let change = fn(path, contents) {
     let assert Ok(Ok(root)) =
       execute.files(file_system.write(home.root, path, contents), context.state)
-    box.merge(context, "home", home.root, root)
+    box.merge(context, "home", home.root, root, None)
   }
   let assert Ok(_) = change("/a.txt", <<"a">>)
   let assert Ok(merged) = change("/b.txt", <<"b">>)
@@ -32,7 +33,7 @@ pub fn type_check_the_merged_root_test() {
   let write = fn(base, path, code) {
     let assert Ok(Ok(root)) =
       execute.files(file_system.write(base, path, <<code:utf8>>), context.state)
-    box.merge(context, "home", base, root)
+    box.merge(context, "home", base, root, None)
   }
   let assert Ok(start) = write(home.root, "/one.eyg", "1")
   let assert Ok(_) =
@@ -46,8 +47,13 @@ pub fn type_check_the_merged_root_test() {
 pub fn keep_a_box_in_memory_until_a_session_is_made_test() {
   use context <- helpers.context()
   let assert Ok(home) = box.create(context, "home")
+  let assert Ok(Ok(root)) =
+    execute.files(
+      file_system.write(home.root, "/a.txt", <<"a">>),
+      context.state,
+    )
   let assert Ok(changed) =
-    box.change(context, "home", file_system.write(_, "/a.txt", <<"a">>))
+    box.merge(context, "home", home.root, root, Some("change"))
   // Nothing is in Postgres.
   let assert Ok(pog.Returned(rows: [], ..)) =
     db.execute(boxes.latest("home"), context.db)
@@ -60,7 +66,12 @@ pub fn keep_a_box_in_memory_until_a_session_is_made_test() {
   // The first session makes the box durable, with every event it had in memory.
   let assert Ok(Nil) = box.durable(context, "home")
   assert Ok(changed) == box.latest(restarted, "home")
-  assert home.root != changed.root
+  let assert Ok(pog.Returned(rows: [saved], ..)) =
+    db.execute(boxes.merged("home", "change"), context.db)
+  assert saved == changed
+  // The change it merged in memory is still only merged once.
+  assert Ok(changed)
+    == box.merge(context, "home", home.root, root, Some("change"))
   let assert Ok(Nil) = box.durable(context, "home")
   let assert Error(box.Taken) = box.create(restarted, "home")
 }

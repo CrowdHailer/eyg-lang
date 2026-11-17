@@ -58,8 +58,16 @@ fn context_for(db) {
   let assert Ok(policy) = simplifile.read("policy.eyg")
   let state = state()
   let assert Ok(boxes) = registry.start()
+  let assert Ok(sessions) = registry.start()
   let assert Ok(memory) = memory.start()
-  Context(db:, boxes: boxes.data, memory: memory.data, state:, policy:)
+  Context(
+    db:,
+    boxes: boxes.data,
+    memory: memory.data,
+    sessions: sessions.data,
+    state:,
+    policy:,
+  )
 }
 
 pub fn unique(name) {

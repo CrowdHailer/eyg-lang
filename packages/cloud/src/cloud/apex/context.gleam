@@ -9,13 +9,15 @@ import unixfs/check
 pub type Context {
   Context(
     db: db.Db,
-    // The process for each box, it merges every change to the box.
+    // The process for each box, all changes to a box are made by it.
     boxes: registry.Registry(fn(Open) -> Open),
     // Boxes no session has been made in, they are only kept in memory.
     memory: memory.Memory,
+    // The process for each session, it runs one turn at a time.
+    sessions: registry.Registry(fn(Nil) -> Nil),
     // The hub, secrets and blob store used by code running in a box.
     state: execute.State,
-    // The source of the policy for code run in sessions.
+    // The source of the policy for code run in sessions, each turn records the policy it ran with.
     policy: String,
   )
 }

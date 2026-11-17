@@ -134,12 +134,14 @@ fn start_api(state) {
       let port =
         envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8080)
       let assert Ok(boxes) = registry.start()
+      let assert Ok(sessions) = registry.start()
       let assert Ok(memory) = memory.start()
       let context =
         Context(
           db: db.Pool(started.data),
           boxes: boxes.data,
           memory: memory.data,
+          sessions: sessions.data,
           state:,
           policy:,
         )

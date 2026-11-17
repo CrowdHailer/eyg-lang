@@ -12,7 +12,7 @@ import cloud/data/db
 import cloud/file_system
 import cloud/registry
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
@@ -61,7 +61,10 @@ pub fn durable(context: Context, name: String) -> Result(Nil, Reason) {
 fn save(context: Context, events: memory.Events) {
   db.transaction(context.db, fn(connection) {
     let context = Context(..context, db: connection)
-    list.try_each(events, fn(box) { query(boxes.record(box), context) })
+    list.try_each(events, fn(event) {
+      let #(box, change) = event
+      query(boxes.record(box, change), context)
+    })
   })
   |> result.map_error(fn(error) {
     case error {
@@ -101,13 +104,14 @@ pub fn change(
 ) -> Result(Box, Reason) {
   use box <- result.try(latest(context, name))
   case execute.files(effect(box.root), context.state) {
-    Ok(Ok(root)) -> merge(context, name, box.root, root)
+    Ok(Ok(root)) -> merge(context, name, box.root, root, None)
     Ok(Error(reason)) -> Error(Invalid([simplifile.describe_error(reason)]))
     Error(reason) -> Error(Failed(reason))
   }
 }
 
 /// Merge the changes from `base` to `ours` into the box.
+/// A change with an identifier is only merged once, merging it again returns the latest box.
 ///
 /// Each box has one process that merges changes one at a time,
 /// changes are made away from it and it only merges, type checks and records them.
@@ -116,52 +120,71 @@ pub fn merge(
   name: String,
   base: v1.Cid,
   ours: v1.Cid,
+  change: Option(String),
 ) -> Result(Box, Reason) {
   use box <- result.try(latest(context, name))
   registry.lookup(context.boxes, name, fn() {
     registry.serve(Open(box, check.empty()))
   })
   |> registry.call(600_000, fn(open) {
-    case commit(context, open, base, ours) {
+    case commit(context, open, base, ours, change) {
       Ok(open) -> #(open, Ok(open.box))
       Error(reason) -> #(open, Error(reason))
     }
   })
 }
 
-fn commit(context: Context, open: Open, base, ours) {
+fn commit(context: Context, open: Open, base, ours, change) {
   let Open(box, index) = open
-  use merged <- result.try(case base == box.root {
-    True -> Ok(ours)
-    False ->
-      case execute.files(three_way(base, ours, box.root), context.state) {
-        Ok(Ok(root)) -> Ok(root)
-        Ok(Error(paths)) ->
-          Error(
-            Conflict(
-              list.map(paths, fn(path) { "/" <> string.join(path, "/") }),
-            ),
-          )
-        Error(reason) -> Error(Failed(reason))
-      }
+  // A box in memory remembers the changes it merged, a durable box records them.
+  use merged <- result.try(case change, memory.get(context.memory, box.name) {
+    Some(change), Ok(_) -> Ok(memory.merged(context.memory, box.name, change))
+    Some(change), Error(Nil) ->
+      query(boxes.merged(box.name, change), context)
+      |> result.map(fn(rows) { rows != [] })
+    None, _ -> Ok(False)
   })
-  // Only the modules affected by the changes since the last check are checked.
-  use index <- result.try(case merged == box.root {
-    True -> Ok(index)
-    False ->
-      case
-        execute.files(fs.change(index, merged, context.state), context.state)
-      {
-        Ok(#([], index, _)) -> Ok(index)
-        Ok(#(errors, _, _)) -> Error(Invalid(errors))
-        Error(reason) -> Error(Failed(reason))
-      }
-  })
-  use box <- result.map(case merged == box.root {
-    True -> Ok(box)
-    False -> record(context, Box(box.name, box.sequence + 1, merged))
-  })
-  Open(box, index)
+  case merged {
+    True -> Ok(open)
+    False -> {
+      use merged <- result.try(case base == box.root {
+        True -> Ok(ours)
+        False ->
+          case execute.files(three_way(base, ours, box.root), context.state) {
+            Ok(Ok(root)) -> Ok(root)
+            Ok(Error(paths)) ->
+              Error(
+                Conflict(
+                  list.map(paths, fn(path) { "/" <> string.join(path, "/") }),
+                ),
+              )
+            Error(reason) -> Error(Failed(reason))
+          }
+      })
+      // Only the modules affected by the changes since the last check are checked.
+      use index <- result.try(case merged == box.root {
+        True -> Ok(index)
+        False ->
+          case
+            execute.files(
+              fs.change(index, merged, context.state),
+              context.state,
+            )
+          {
+            Ok(#([], index, _)) -> Ok(index)
+            Ok(#(errors, _, _)) -> Error(Invalid(errors))
+            Error(reason) -> Error(Failed(reason))
+          }
+      })
+      // A change with an identifier is recorded even if it changes nothing, so it is not merged again.
+      use box <- result.map(case merged == box.root && change == None {
+        True -> Ok(box)
+        False ->
+          record(context, Box(box.name, box.sequence + 1, merged), change)
+      })
+      Open(box, index)
+    }
+  }
 }
 
 // Merge the change from `base` to `ours` with the change from `base` to `theirs`.
@@ -180,15 +203,15 @@ fn three_way(base, ours, theirs) {
 }
 
 // A box in memory keeps its events there, a durable box records them in Postgres.
-fn record(context: Context, box: Box) {
+fn record(context: Context, box: Box, change) {
   case memory.get(context.memory, box.name) {
     Ok(_) ->
-      case memory.record(context.memory, box) {
+      case memory.record(context.memory, box, change) {
         True -> Ok(box)
         False -> Error(Taken)
       }
     Error(Nil) ->
-      case query(boxes.record(box), context) {
+      case query(boxes.record(box, change), context) {
         Ok([box]) -> Ok(box)
         Ok(_) -> Error(Taken)
         Error(reason) -> Error(reason)

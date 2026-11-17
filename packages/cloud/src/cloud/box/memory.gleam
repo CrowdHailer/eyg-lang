@@ -7,16 +7,19 @@ import cloud/data/boxes.{type Box}
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
+import gleam/result
 
-/// The state of a box after each of its events, newest first.
+/// The state of a box after each of its events, with the change each event merged.
 pub type Events =
-  List(Box)
+  List(#(Box, Option(String)))
 
 pub opaque type Message {
   Add(box: Box, reply: Subject(Bool))
-  Record(box: Box, reply: Subject(Bool))
+  Record(box: Box, change: Option(String), reply: Subject(Bool))
   Get(name: String, reply: Subject(Result(Box, Nil)))
+  Merged(name: String, change: String, reply: Subject(Bool))
   Take(name: String, reply: Subject(Result(Events, Nil)))
 }
 
@@ -36,16 +39,20 @@ fn handle(kept: Dict(String, Events), message) {
       process.send(reply, !taken)
       case taken {
         True -> actor.continue(kept)
-        False -> actor.continue(dict.insert(kept, box.name, [box]))
+        False -> actor.continue(dict.insert(kept, box.name, [#(box, None)]))
       }
     }
     // An event is only recorded with the next sequence for the box,
     // so two changes made from the same root cannot both be recorded.
-    Record(box, reply) ->
+    Record(box, change, reply) ->
       case dict.get(kept, box.name) {
-        Ok([latest, ..] as events) if box.sequence == latest.sequence + 1 -> {
+        Ok([#(latest, _), ..] as events)
+          if box.sequence == latest.sequence + 1
+        -> {
           process.send(reply, True)
-          actor.continue(dict.insert(kept, box.name, [box, ..events]))
+          actor.continue(
+            dict.insert(kept, box.name, [#(box, change), ..events]),
+          )
         }
         _ -> {
           process.send(reply, False)
@@ -54,9 +61,17 @@ fn handle(kept: Dict(String, Events), message) {
       }
     Get(name, reply) -> {
       process.send(reply, case dict.get(kept, name) {
-        Ok([box, ..]) -> Ok(box)
+        Ok([#(box, _), ..]) -> Ok(box)
         _ -> Error(Nil)
       })
+      actor.continue(kept)
+    }
+    Merged(name, change, reply) -> {
+      let events = dict.get(kept, name) |> result.unwrap([])
+      process.send(
+        reply,
+        list.any(events, fn(event) { event.1 == Some(change) }),
+      )
       actor.continue(kept)
     }
     Take(name, reply) -> {
@@ -75,13 +90,19 @@ pub fn add(memory: Memory, box: Box) -> Bool {
 }
 
 /// Record the box after its next event, false if the box is not in memory or the sequence is not the next.
-pub fn record(memory: Memory, box: Box) -> Bool {
-  process.call(memory, 5000, Record(box, _))
+/// `change` is the change the event merged.
+pub fn record(memory: Memory, box: Box, change: Option(String)) -> Bool {
+  process.call(memory, 5000, Record(box, change, _))
 }
 
 /// The latest state of a box, an error if it is not in memory.
 pub fn get(memory: Memory, name: String) -> Result(Box, Nil) {
   process.call(memory, 5000, Get(name, _))
+}
+
+/// Whether the box in memory merged the change.
+pub fn merged(memory: Memory, name: String, change: String) -> Bool {
+  process.call(memory, 5000, Merged(name, change, _))
 }
 
 /// Remove a box from memory, returning its events oldest first.

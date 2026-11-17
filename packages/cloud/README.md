@@ -47,6 +47,13 @@ Many sessions can use the same box, they all see the latest files.
 
 A turn returns its `output` and either a `value` or an `error`.
 File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.
+Code runs in the session's own process. Before each request or sleep, and at the end, its events are recorded and then its file changes are merged into the box.
+A turn that only reads files never waits for other sessions.
+
+Sessions are durable, every turn is recorded as events that are enough to resume it.
+Events are stored in an append only thread and a session points at the last event of its history.
+If the process running a turn stops, the turn is finished the next time code is sent to the session.
+See `cloud/sessions/turn.gleam` for how a turn is recorded and replayed.
 
 ### Configuration
 

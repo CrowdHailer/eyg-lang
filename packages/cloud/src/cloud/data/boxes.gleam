@@ -2,6 +2,7 @@
 
 import eyg/ir/dag_json
 import gleam/dynamic/decode
+import gleam/option.{type Option}
 import multiformats/cid/v1
 import pog
 
@@ -22,15 +23,28 @@ fn decoder() -> decode.Decoder(Box) {
 }
 
 /// Returns no rows when the sequence has already been recorded for the box.
-pub fn record(box: Box) -> pog.Query(Box) {
-  "INSERT INTO box_events (box, seq, root)
-  VALUES ($1, $2, $3)
+/// `change` identifies the change that was merged, if it has an identifier.
+pub fn record(box: Box, change: Option(String)) -> pog.Query(Box) {
+  "INSERT INTO box_events (box, seq, root, change)
+  VALUES ($1, $2, $3, $4)
   ON CONFLICT DO NOTHING
   RETURNING box, seq, root"
   |> pog.query()
   |> pog.parameter(pog.text(box.name))
   |> pog.parameter(pog.int(box.sequence))
   |> pog.parameter(pog.text(v1.to_string(box.root)))
+  |> pog.parameter(pog.nullable(pog.text, change))
+  |> pog.returning(decoder())
+}
+
+/// The event that merged a change, if it has been merged.
+pub fn merged(name: String, change: String) -> pog.Query(Box) {
+  "SELECT box, seq, root
+  FROM box_events
+  WHERE box = $1 AND change = $2"
+  |> pog.query()
+  |> pog.parameter(pog.text(name))
+  |> pog.parameter(pog.text(change))
   |> pog.returning(decoder())
 }
 

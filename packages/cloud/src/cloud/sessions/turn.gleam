@@ -1,0 +1,476 @@
+//// Run code in a session so that it can be resumed from the session's history.
+////
+//// Code runs in the session's process, from the latest root of the box, until it finishes, makes a request or sleeps.
+//// The events of that segment are appended to the session's thread, then the files it changed are merged into the box,
+//// then the request or sleep starts. A segment that only read files never waits for the box process.
+//// A change that conflicts or does not type check is rejected, the turn finishes and the request is not made.
+//// The response is recorded as soon as it is received and the code continues from the latest root.
+////
+//// If the process stops, the code is replayed with the recorded answers the next time the session is used.
+//// If the events of the last segment were recorded its change is merged again, which does nothing if it was merged,
+//// then the request or sleep is made. A request is sent again if it is GET or HEAD,
+//// any other request is answered with a network error as it might have been received.
+////
+//// Each turn records the policy it runs with and the module each package reference resolved to,
+//// so a replay runs the same code after the policy changes or a package is released.
+//// Secrets are never recorded, a fingerprint of each secret read is recorded instead.
+//// If a secret changed the turn cannot be replayed and fails saying which secret changed.
+
+import cloud/apex/context.{type Context}
+import cloud/beam/execute
+import cloud/box
+import cloud/data/db
+import cloud/data/sessions.{type Session}
+import cloud/data/thread
+import cloud/sessions/event.{type Event}
+import eyg/ir/tree as ir
+import gleam/bit_array
+import gleam/crypto
+import gleam/dict
+import gleam/http
+import gleam/json
+import gleam/list
+import gleam/option.{None, Some}
+import gleam/result
+import gleam/string
+import multiformats/cid/v1
+import pog
+import unixfs/mfs
+
+/// What a turn came to and everything it printed.
+pub type Outcome =
+  #(Result(String, String), List(String))
+
+type Segment =
+  fn(execute.State, v1.Cid) -> execute.Run(String)
+
+type Resume =
+  fn(execute.Answer, execute.State, v1.Cid) -> execute.Run(String)
+
+// What happens after a segment's change is merged.
+type Next {
+  Return(outcome: Result(String, String), output: List(String), root: v1.Cid)
+  Perform(execute.Wait, Resume)
+  // Answer without performing, for a request that might have been received.
+  Reply(execute.Answer, Resume)
+}
+
+// Where a segment of code stops.
+type Stop {
+  Stopped(
+    state: execute.State,
+    outcome: Result(String, String),
+    root: v1.Cid,
+    output: List(String),
+  )
+  // A request or sleep is done outside the box process, `left` is the event that records it.
+  Leaving(
+    state: execute.State,
+    wait: execute.Wait,
+    left: Event,
+    root: v1.Cid,
+    resume: Resume,
+  )
+}
+
+/// Run code in the session, an unfinished turn is finished first.
+pub fn run(
+  context: Context,
+  session: Session,
+  code: String,
+) -> Result(Outcome, box.Reason) {
+  use Nil <- result.try(recover(context, session))
+  let state = execute.State(..context.state, pins: dict.new())
+  let #(policy, state) = execute.load_policy(context.policy, state)
+  use policy <- result.try(
+    result.map_error(policy, fn(reason) { box.Failed("policy " <> reason) }),
+  )
+  let stored = mfs.File(<<context.policy:utf8>>)
+  use Nil <- result.try(
+    execute.files(mfs.Put(stored, mfs.Done), state)
+    |> result.replace(Nil)
+    |> result.map_error(box.Failed),
+  )
+  let started = event.Started(code, mfs.identify(stored).cid)
+  let events = [started, ..pinned(dict.new(), state)]
+  use _ <- result.try(record(context, session, events))
+  drive(context, session, state, start(policy, code))
+}
+
+fn start(policy, code) -> Segment {
+  fn(state, root) { execute.block(code, state, policy, root, fn(_) { Nil }) }
+}
+
+// The policy a turn was started with.
+fn load_policy(state: execute.State, cid) {
+  use bytes <- result.try(
+    execute.files(mfs.read(cid, []), state)
+    |> result.replace_error(Nil)
+    |> result.try(result.replace_error(_, Nil))
+    |> result.replace_error("the policy " <> v1.to_string(cid) <> " is missing"),
+  )
+  use code <- result.try(
+    bit_array.to_string(bytes)
+    |> result.replace_error(
+      "the policy " <> v1.to_string(cid) <> " is not text",
+    ),
+  )
+  execute.load_policy(code, state).0
+}
+
+// The packages pinned in `state` that were not pinned `before`.
+fn pinned(before, state: execute.State) {
+  dict.drop(state.pins, dict.keys(before))
+  |> dict.to_list
+  |> list.filter_map(fn(pin) {
+    case pin {
+      #(ir.Package(package), module) -> Ok(event.Pinned(package, None, module))
+      #(ir.Version(package, version), module) ->
+        Ok(event.Pinned(package, Some(version), module))
+      _ -> Error(Nil)
+    }
+  })
+}
+
+fn drive(context: Context, session: Session, state, segment: Segment) {
+  use start <- result.try(box.latest(context, session.box))
+  let start = start.root
+  let before = state.pins
+  let #(stop, answers) = perform(segment(state, start), [])
+  let #(last, root, next) = ending(stop, start)
+  let events =
+    list.flatten([
+      [event.Resumed(start)],
+      pinned(before, stop.state),
+      answers,
+      [last],
+    ])
+  use key <- result.try(record(context, session, events))
+  settle(context, session, stop.state, start, root, key, next)
+}
+
+// The event that ends a segment, the root of its change and what happens next.
+fn ending(stop, start) {
+  case stop {
+    Stopped(_, outcome, root, output) -> {
+      // Code that fails changes nothing.
+      let root = case outcome {
+        Ok(_) -> root
+        Error(_) -> start
+      }
+      #(
+        event.Returned(outcome, output, root),
+        root,
+        Return(outcome, output, root),
+      )
+    }
+    Leaving(_, wait, left, root, resume) -> #(left, root, Perform(wait, resume))
+  }
+}
+
+// Merge the change of a segment whose events are recorded, then continue.
+// `key` is the key of the segment's last event, it identifies the change so it is only merged once.
+fn settle(context: Context, session: Session, state, start, root, key, next) {
+  let merged = case root == start {
+    True -> Ok(Nil)
+    False ->
+      box.merge(context, session.box, start, root, Some(key))
+      |> result.replace(Nil)
+  }
+  case merged, next {
+    Ok(Nil), Return(outcome, output, root) ->
+      finish(context, session, outcome, output, root)
+    Ok(Nil), Perform(wait, resume) ->
+      answer(context, session, state, wait, resume)
+    Ok(Nil), Reply(answer, resume) -> {
+      use _ <- result.try(record(context, session, [event.Answered(answer)]))
+      drive(context, session, state, continue(resume, answer))
+    }
+    Error(reason), _ -> {
+      use outcome <- result.try(rejected(reason))
+      let output = case next {
+        Return(output:, ..) -> output
+        _ -> []
+      }
+      finish(context, session, outcome, output, start)
+    }
+  }
+}
+
+// A response is recorded as soon as it is received, sleeping has nothing to record.
+fn answer(context: Context, session: Session, state, wait, resume) {
+  let answer = execute.perform(wait, state)
+  use _ <- result.try(case wait {
+    execute.Fetch(_) -> record(context, session, [event.Answered(answer)])
+    _ -> Ok("")
+  })
+  drive(context, session, state, continue(resume, answer))
+}
+
+// Answer every effect that does not leave the box process.
+fn perform(run, answers) {
+  case stop(run) {
+    Ok(stop) -> #(stop, list.reverse(answers))
+    Error(#(wait, state, root, resume)) -> {
+      let answer = execute.perform(wait, state)
+      let recorded = case wait, answer {
+        execute.Env(name), execute.Secret(value) ->
+          event.Read(name, fingerprint(name, value))
+        _, _ -> event.Answered(answer)
+      }
+      perform(resume(answer, state, root), [recorded, ..answers])
+    }
+  }
+}
+
+// Enough to notice a secret has changed, a weak secret could be guessed from it.
+fn fingerprint(name, value) {
+  let value = case value {
+    Some(value) -> <<1, value:utf8>>
+    None -> <<0>>
+  }
+  let assert Ok(hash) =
+    crypto.hash(crypto.Sha256, <<name:utf8, 0, value:bits>>)
+    |> bit_array.slice(0, 8)
+  string.lowercase(bit_array.base16_encode(hash))
+}
+
+// Code stops when it finishes, makes a request or sleeps.
+fn stop(run) {
+  case run {
+    execute.Finished(outcome, state, root, output) ->
+      Ok(Stopped(state, outcome, root, list.reverse(output)))
+    execute.Waiting(execute.Fetch(request) as wait, state, root, resume) ->
+      Ok(Leaving(state, wait, event.Requested(request, root), root, resume))
+    execute.Waiting(execute.Sleep(milliseconds) as wait, state, root, resume) ->
+      Ok(Leaving(state, wait, event.Slept(milliseconds, root), root, resume))
+    execute.Waiting(wait, state, root, resume) ->
+      Error(#(wait, state, root, resume))
+  }
+}
+
+fn finish(context, session, outcome, output, root) {
+  let finished = event.Finished(outcome, output, root)
+  use _ <- result.map(record(context, session, [finished]))
+  #(outcome, output)
+}
+
+// A change the box does not accept fails the turn.
+fn rejected(reason) {
+  case reason {
+    box.Invalid(errors) ->
+      Ok(Error("File changes rejected\n" <> string.join(errors, "\n")))
+    box.Conflict(paths) ->
+      Ok(Error("File changes conflict\n" <> string.join(paths, "\n")))
+    _ -> Error(reason)
+  }
+}
+
+// Append events after the session's head and move the head to the last of them, returning its key.
+fn record(context: Context, session: Session, events: List(Event)) {
+  let failed = fn(reason) { box.Failed(string.inspect(reason)) }
+  db.transaction(context.db, fn(connection) {
+    let execute = fn(query) {
+      db.execute(query, connection) |> result.map_error(failed)
+    }
+    use found <- result.try(execute(sessions.get(session.id)))
+    let assert [session] = found.rows
+    let payloads =
+      list.map(events, fn(event) { json.to_string(event.encode(event)) })
+    let nodes = thread.nodes(session.head, payloads)
+    let assert Ok(last) = list.last(nodes)
+    use _ <- result.try(
+      db.execute(thread.insert(nodes), connection) |> result.map_error(failed),
+    )
+    let move = sessions.move(session.id, session.head, last.key)
+    use moved <- result.try(execute(move))
+    case moved.rows {
+      [_] -> Ok(last.key)
+      // Only the session's process moves its head, this is a safety check.
+      _ -> Error(box.Failed("the session was moved by another process"))
+    }
+  })
+  |> result.map_error(fn(error) {
+    case error {
+      pog.TransactionRolledBack(reason) -> reason
+      pog.TransactionQueryError(reason) -> failed(reason)
+    }
+  })
+}
+
+/// Every event in the session's history, with the time it was recorded in microseconds and its key.
+pub fn history(
+  context: Context,
+  session: String,
+) -> Result(List(#(Int, String, Event)), box.Reason) {
+  let failed = fn(reason) { box.Failed(string.inspect(reason)) }
+  use found <- result.try(
+    db.execute(sessions.get(session), context.db) |> result.map_error(failed),
+  )
+  case found.rows {
+    [sessions.Session(head: Some(head), ..)] -> {
+      use returned <- result.try(
+        db.execute(thread.history(head), context.db) |> result.map_error(failed),
+      )
+      list.try_map(returned.rows, fn(entry) {
+        let #(at, thread.Node(key:, payload:, ..)) = entry
+        json.parse(payload, event.decoder())
+        |> result.map(fn(event) { #(at, key, event) })
+        |> result.map_error(fn(reason) { box.Failed(string.inspect(reason)) })
+      })
+    }
+    [_] -> Ok([])
+    _ -> Error(box.Missing)
+  }
+}
+
+// Finish the last turn if the process running it stopped.
+fn recover(context: Context, session: Session) -> Result(Nil, box.Reason) {
+  use history <- result.try(history(context, session.id))
+  let entries = list.map(history, fn(entry) { #(entry.1, entry.2) })
+  case unfinished(entries, Error(Nil)) {
+    Error(Nil) -> Ok(Nil)
+    Ok(#(code, policy, entries)) -> {
+      let #(state, entries) = pins(context.state, entries)
+      let position = {
+        use policy <- result.try(load_policy(state, policy))
+        walk(state, start(policy, code), entries)
+      }
+      case position {
+        Ok(Stalled(segment, state)) -> drive(context, session, state, segment)
+        // A request that might have been received is not sent again.
+        Ok(Unsettled(
+          start,
+          root,
+          key,
+          Perform(execute.Fetch(request), resume),
+          state,
+        ))
+          if request.method != http.Get && request.method != http.Head
+        -> {
+          let answer =
+            execute.Fetched(Error(
+              "network error, the session stopped before the response was recorded",
+            ))
+          let next = Reply(answer, resume)
+          settle(context, session, state, start, root, key, next)
+        }
+        // A sleep that was stopped is started again.
+        Ok(Unsettled(start, root, key, next, state)) ->
+          settle(context, session, state, start, root, key, next)
+        Ok(Ended(_)) -> Error(box.Failed(mismatch))
+        Error(reason) -> Error(box.Failed(reason))
+      }
+      |> result.replace(Nil)
+    }
+  }
+}
+
+// The code and events of the last turn, if it has no finished event.
+fn unfinished(entries, last) {
+  case entries, last {
+    [], _ -> last
+    [#(_, event.Started(code, policy)), ..rest], _ ->
+      unfinished(rest, Ok(#(code, policy, rest)))
+    [#(_, event.Finished(..)), ..rest], _ -> unfinished(rest, Error(Nil))
+    [_, ..rest], _ -> unfinished(rest, last)
+  }
+}
+
+// A package resolves to the same module throughout a turn, so the pins from all of a turn's events
+// are set before it is replayed. They are left out of the events to replay.
+fn pins(state: execute.State, entries: List(#(String, Event))) {
+  let #(pins, entries) =
+    list.partition(entries, fn(entry) {
+      case entry.1 {
+        event.Pinned(..) -> True
+        _ -> False
+      }
+    })
+  let pins =
+    list.fold(pins, dict.new(), fn(pins, entry) {
+      case entry.1 {
+        event.Pinned(package, None, module) ->
+          dict.insert(pins, ir.Package(package), module)
+        event.Pinned(package, Some(version), module) ->
+          dict.insert(pins, ir.Version(package, version), module)
+        _ -> pins
+      }
+    })
+  #(execute.State(..state, pins:), entries)
+}
+
+// How far the events of a turn go.
+type Position {
+  Ended(rest: List(#(String, Event)))
+  // The next segment's events were never recorded.
+  Stalled(Segment, execute.State)
+  // The last segment's events are recorded, its change might not be merged and nothing after it happened.
+  Unsettled(
+    start: v1.Cid,
+    root: v1.Cid,
+    key: String,
+    next: Next,
+    state: execute.State,
+  )
+}
+
+/// Run the code again with the answers that were recorded.
+fn walk(state, segment: Segment, entries) {
+  case entries {
+    [] -> Ok(Stalled(segment, state))
+    [#(_, event.Resumed(start)), ..entries] -> {
+      use #(stop, entries) <- result.try(replay_answers(
+        segment(state, start),
+        entries,
+      ))
+      let #(last, root, next) = ending(stop, start)
+      let state = stop.state
+      case entries {
+        [#(key, recorded), ..entries] if recorded == last ->
+          case next, entries {
+            _, [] -> Ok(Unsettled(start, root, key, next, state))
+            // The turn finished, or its change was rejected.
+            _, [#(_, event.Finished(..)), ..entries] -> Ok(Ended(entries))
+            Perform(execute.Fetch(_), resume),
+              [#(_, event.Answered(answer)), ..entries]
+            -> walk(state, continue(resume, answer), entries)
+            Perform(execute.Sleep(_), resume), _ ->
+              walk(state, continue(resume, execute.Slept), entries)
+            _, _ -> Error(mismatch)
+          }
+        _ -> Error(mismatch)
+      }
+    }
+    _ -> Error(mismatch)
+  }
+}
+
+fn continue(resume: Resume, answer) -> Segment {
+  fn(state, root) { resume(answer, state, root) }
+}
+
+fn replay_answers(run, entries) {
+  case stop(run), entries {
+    Ok(stop), _ -> Ok(#(stop, entries))
+    // The secret is read again, it must be the one that was read before.
+    Error(#(execute.Env(name), state, root, resume)),
+      [#(_, event.Read(recorded, fingerprint_)), ..entries]
+      if name == recorded
+    -> {
+      let value = dict.get(state.secrets, name) |> option.from_result
+      case fingerprint(name, value) == fingerprint_ {
+        True ->
+          resume(execute.Secret(value), state, root)
+          |> replay_answers(entries)
+        False ->
+          Error("the secret " <> name <> " has changed since the turn ran")
+      }
+    }
+    Error(#(_, state, root, resume)), [#(_, event.Answered(answer)), ..entries]
+    -> replay_answers(resume(answer, state, root), entries)
+    Error(_), _ -> Error(mismatch)
+  }
+}
+
+const mismatch = "the session events do not match the code"
