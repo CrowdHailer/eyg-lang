@@ -55,8 +55,8 @@ pub fn pool_context() {
 }
 
 fn context_for(db) {
-  let assert Ok(code) = simplifile.read("policy.eyg")
-  let assert #(Ok(policy), state) = execute.load_policy(code, state())
+  let assert Ok(policy) = simplifile.read("policy.eyg")
+  let state = state()
   let assert Ok(boxes) = registry.start()
   let assert Ok(memory) = memory.start()
   Context(db:, boxes: boxes.data, memory: memory.data, state:, policy:)

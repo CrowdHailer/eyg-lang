@@ -9,6 +9,7 @@ import cloud/data/sessions.{type Session, Turn}
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
+import gleam/result
 import gleam/string
 import pog
 import wisp
@@ -46,11 +47,13 @@ pub fn turn(request, id, context: Context) {
     Error(_) -> reason(400, "Expected code")
     Ok(code) -> {
       use session <- find(id, context)
+      use policy <- try(
+        execute.load_policy(context.policy, context.state).0
+        |> result.map_error(fn(reason) { box.Failed("policy " <> reason) }),
+      )
       use start <- try(box.latest(context, session.box))
       let #(outcome, _, root, output) =
-        execute.block(code, context.state, context.policy, start.root, fn(_) {
-          Nil
-        })
+        execute.block(code, context.state, policy, start.root, fn(_) { Nil })
         |> execute.complete
       // Code runs in this process, only the changes it made are merged into the box.
       let outcome = case outcome {

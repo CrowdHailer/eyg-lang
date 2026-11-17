@@ -15,7 +15,8 @@ pub type Context {
     memory: memory.Memory,
     // The hub, secrets and blob store used by code running in a box.
     state: execute.State,
-    policy: execute.Policy,
+    // The source of the policy for code run in sessions.
+    policy: String,
   )
 }
 

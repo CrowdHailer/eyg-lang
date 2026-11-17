@@ -130,8 +130,7 @@ fn start_api(state) {
         )
       let assert Ok(blobs) = blobs.s3(credentials, bucket)
       let state = execute.State(..state, blobs: blobs.data)
-      let assert Ok(code) = simplifile.read("policy.eyg")
-      let assert #(Ok(policy), state) = execute.load_policy(code, state)
+      let assert Ok(policy) = simplifile.read("policy.eyg")
       let port =
         envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8080)
       let assert Ok(boxes) = registry.start()
