@@ -6,6 +6,8 @@ import cloud/server
 import cloud/sessions/turn
 import etui/buffer
 import etui/geometry.{Position}
+import eyg/ir/tree as ir
+import eyg/parser
 import gleam/dict
 import gleam/erlang/process
 import gleam/list
@@ -56,15 +58,26 @@ pub fn start_a_shell_in_a_transient_copy_test() {
   assert place == "a transient copy of home"
   assert session.box != home.id
   let #(model, _) = tui.update(model, tui.Started(Ok(#(place, session, False))))
-  let keys = string.to_graphemes("!int_add(1, 3") |> list.append(["backspace"])
-  let model = press(model, list.append(keys, ["2", ")"]))
+  // A builtin is chosen by name, then called with two numbers.
+  let keys =
+    list.flatten([
+      ["j", ..string.to_graphemes("int_add")],
+      ["enter", "c", "n", "1", "enter", " ", "n", "2", "enter"],
+    ])
+  let model = press(model, list.take(keys, 4))
+  // The name is typed below the code, with the builtins that match.
+  assert string.contains(screen(model), "Name int")
+  assert string.contains(screen(model), "int_add")
+  let model = press(model, list.drop(keys, 4))
   assert string.contains(screen(model), "> !int_add(1, 2)")
+  let model = press(model, ["Q"])
+  assert model.status == tui.Problem("Nothing is bound to Q")
   let model = press(model, ["enter"])
-  let assert tui.Running(waiting: True, log: [tui.Sent("!int_add(1, 2)")], ..) =
-    model.screen
+  let assert tui.Running(waiting: True, log: [tui.Ran(_)], ..) = model.screen
   assert string.contains(screen(model), "waiting")
-
-  let replied = turn.send(context, session, turn.Code("!int_add(1, 2)"))
+  let assert Ok(program) = parser.all_from_string("!int_add(1, 2)")
+  let program = ir.map_annotation(program, fn(_) { Nil })
+  let replied = turn.send(context, session, turn.Program(program))
   let #(model, _) = tui.update(model, tui.Replied(session.id, replied))
   assert string.contains(screen(model), "= 3")
 }

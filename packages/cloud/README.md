@@ -82,6 +82,7 @@ See `cloud/sessions/turn.gleam` for how a turn is recorded and replayed.
 The web interface is started with the API on `WEB_PORT`, by default 8787, and also only accepts local connections.
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it, or by managing its secrets.
+A shell's programs are written with the structural editor and the same keys as the EYG shell.
 
 ### Configuration
 
