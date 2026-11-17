@@ -83,3 +83,24 @@ pub fn recent(
     decode.success(#(session, name))
   })
 }
+
+/// The session a channel is bound to.
+pub fn bound(channel: String) -> pog.Query(Session) {
+  "SELECT s.id, s.box, s.head
+  FROM channel_sessions c JOIN sessions s ON s.id = c.session
+  WHERE c.channel = $1"
+  |> pog.query()
+  |> pog.parameter(pog.text(channel))
+  |> pog.returning(decoder())
+}
+
+/// Bind a channel to a session, returns no rows if the channel is already bound.
+pub fn bind(channel: String, session: String) -> pog.Query(String) {
+  "INSERT INTO channel_sessions (channel, session) VALUES ($1, $2)
+  ON CONFLICT DO NOTHING
+  RETURNING session"
+  |> pog.query()
+  |> pog.parameter(pog.text(channel))
+  |> pog.parameter(pog.text(session))
+  |> pog.returning(decode.at([0], decode.string))
+}

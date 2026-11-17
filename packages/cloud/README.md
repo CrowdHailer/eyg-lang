@@ -117,8 +117,9 @@ A session is a shell session and/or agent session with persistent state and file
 External messages get routed to sessions to keep isolation.
 We do not yet solve inter session communication.
 
-Each session ID retains its own MFS root and agent history in memory. Slack
-sessions are scoped to a workspace/channel and Discord sessions to a guild/channel.
+Discord channels have durable sessions in a box, the same sessions as the API and web interface.
+Each channel is bound to one session and the binding is kept in Postgres, so a conversation continues after a restart.
+Slack sessions and triggers still keep their own MFS root and agent history in memory, scoped to a workspace/channel.
 
 The sessions process loads `policy.eyg` from the working directory at startup.
 Direct code, agent tools, and triggers use this policy.
@@ -220,6 +221,11 @@ channels with:
 ```sh
 (set -a; source .env; set +a; gleam dev discord channels)
 ```
+
+Discord also needs the database, and `DISCORD_BOX` set to the name of the box its channels have sessions in.
+Set `DISCORD_CHANNELS` to a comma separated list of channel names to only serve those channels.
+A message to the bot goes to the session's llm, fenced code runs in the box.
+The scheduled check-in to a `#noise` channel is a demo, it only runs when `DISCORD_NOISE` is set.
 
 #### Storage
 

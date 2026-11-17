@@ -1,6 +1,11 @@
 //// One actor discovers guild channels and polls their histories serially.
+////
+//// Messages addressed to the bot run in the channel's durable session, see `cloud/channels`.
+//// Text is sent to the session's llm and fenced code runs in the same box.
 
 import cloud/beam/execute
+import cloud/box
+import cloud/channels
 import cloud/discord/api/client as api
 import cloud/discord/api/operations
 import cloud/discord/api/schema
@@ -8,6 +13,7 @@ import cloud/discord/client
 import cloud/discord/command
 import cloud/discord/event
 import cloud/session
+import cloud/sessions/turn
 import cloud/trigger
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
@@ -15,7 +21,7 @@ import gleam/float
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import gleam/result
 import gleam/set
@@ -33,6 +39,9 @@ pub opaque type State {
     bot_user: String,
     conversations: Dict(String, List(schema.Message)),
     sessions: Subject(session.Message),
+    channels: channels.Channels,
+    // The names of the channels to serve, all of them if not given.
+    selected: Option(List(String)),
     triggers: List(trigger.Checked),
   )
 }
@@ -42,6 +51,8 @@ pub fn start(
   guild: schema.Guild,
   bot_user: String,
   sessions: Subject(session.Message),
+  channels: channels.Channels,
+  selected: Option(List(String)),
   triggers: List(trigger.Checked),
 ) -> actor.StartResult(Subject(Message)) {
   actor.new_with_initialiser(1000, fn(subject) {
@@ -54,6 +65,8 @@ pub fn start(
       bot_user,
       dict.new(),
       sessions,
+      channels,
+      selected,
       triggers,
     ))
     |> actor.returning(subject)
@@ -83,7 +96,14 @@ fn poll(state: State) -> State {
       report_failure("channels", reason)
       state
     }
-    Ok(channels) -> list.fold(channels, state, load_conversation)
+    Ok(channels) ->
+      list.filter(channels, fn(channel) {
+        case state.selected {
+          Some(names) -> list.contains(names, channel.name)
+          None -> True
+        }
+      })
+      |> list.fold(state, load_conversation)
   }
 }
 
@@ -149,10 +169,14 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
             case command.payload(message.data, state.bot_user) {
               Error(Nil) -> Nil
               Ok(payload) -> {
-                process.send(
-                  state.sessions,
-                  session.Message(id: session_id, payload:, print:),
-                )
+                let input = case payload {
+                  session.Code(code) -> turn.Code(code)
+                  session.UserPrompt(text) -> turn.Message(text)
+                }
+                channels.deliver(state.channels, session_id, input, reply(
+                  _,
+                  print,
+                ))
               }
             }
           })
@@ -167,6 +191,20 @@ fn load_conversation(state: State, channel: schema.Channel) -> State {
         ),
       )
     }
+  }
+}
+
+// Post what the turn printed, then its value or the reason it failed.
+fn reply(replied: Result(turn.Outcome, box.Reason), print) {
+  case replied {
+    Ok(#(outcome, output)) -> {
+      list.each(output, fn(text) { print(execute.StandardOut(text)) })
+      case outcome {
+        Ok(value) -> print(execute.StandardOut(value))
+        Error(reason) -> print(execute.StandardError(reason))
+      }
+    }
+    Error(reason) -> print(execute.StandardError(string.inspect(reason)))
   }
 }
 

@@ -4,6 +4,7 @@ import cloud/apex/server
 import cloud/apex/web
 import cloud/beam/execute
 import cloud/box/memory
+import cloud/channels
 import cloud/data/blobs
 import cloud/data/db
 import cloud/data/pool
@@ -20,8 +21,11 @@ import gleam/dict
 import gleam/erlang/process
 import gleam/http
 import gleam/int
+import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
+import gleam/string
 import gleam/uri
 import ogre/origin
 import overlay/llm/provider
@@ -69,7 +73,18 @@ pub fn setup() {
 
 pub fn main() -> Nil {
   let #(state, llm) = setup()
-  let assert Ok(#(schedules, state)) = schedules.load(state)
+  // The check-in to the #noise channel is a demo, it only runs when asked for.
+  let #(schedules, state) = case envoy.get("DISCORD_NOISE") {
+    Error(Nil) -> #([], state)
+    Ok(_) ->
+      case schedules.load(state) {
+        Ok(loaded) -> loaded
+        Error(reason) -> {
+          io.println_error(reason)
+          #([], state)
+        }
+      }
+  }
   let assert Ok(code) = simplifile.read("right_on.eyg")
   let discord_triggers = [#("Right on", code)]
   // TODO keep this execute_state
@@ -78,7 +93,7 @@ pub fn main() -> Nil {
   let assert Ok(code) = simplifile.read("right_on_slack.eyg")
   let assert Ok(#(slack_triggers, state)) =
     trigger.prepare([#("Right on", code)], slack.trigger_type(), state)
-  start_api(state, llm)
+  let api = start_api(state, llm)
   let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
   let assert Ok(runtime) = schedule.runtime(state)
   let assert Ok(_) = schedule.start(schedules, sessions.data, runtime)
@@ -90,14 +105,41 @@ pub fn main() -> Nil {
     }
     Error(_) -> Nil
   }
-  case dict.get(state.secrets, "DISCORD_BOT_TOKEN") {
-    Ok(token) -> {
+  // Discord channels have durable sessions in a box that is chosen explicitly.
+  case
+    dict.get(state.secrets, "DISCORD_BOT_TOKEN"),
+    api,
+    envoy.get("DISCORD_BOX")
+  {
+    Ok(token), Some(context), Ok(box) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
+      let assert Ok(channels) = channels.start(context, box, Some(llm.model))
+      let selected =
+        envoy.get("DISCORD_CHANNELS")
+        |> result.map(fn(names) {
+          string.split(names, ",") |> list.map(string.trim)
+        })
+        |> option.from_result
       let assert Ok(_) =
-        discord.start_channel(sessions.data, token, guild, discord_triggers)
+        discord.start_channel(
+          sessions.data,
+          channels,
+          token,
+          guild,
+          selected,
+          discord_triggers,
+        )
       Nil
     }
-    Error(_) -> Nil
+    Ok(_), None, _ ->
+      io.println_error(
+        "Discord needs POSTGRES_HOST, its sessions are kept there",
+      )
+    Ok(_), _, Error(Nil) ->
+      io.println_error(
+        "Discord needs DISCORD_BOX, the name of the box its channels have sessions in",
+      )
+    Error(_), _, _ -> Nil
   }
   process.sleep_forever()
 }
@@ -106,7 +148,7 @@ pub fn main() -> Nil {
 /// Sessions can chat with the configured llm, by the name of its model.
 fn start_api(state, llm: provider.Llm) {
   case envoy.get("POSTGRES_HOST") {
-    Error(Nil) -> Nil
+    Error(Nil) -> None
     Ok(host) -> {
       let assert Ok(password) = envoy.get("POSTGRES_PASSWORD")
       let assert Ok(started) =
@@ -152,7 +194,7 @@ fn start_api(state, llm: provider.Llm) {
       let web_port =
         envoy.get("WEB_PORT") |> result.try(int.parse) |> result.unwrap(8787)
       let assert Ok(_) = web.start(context, web_port)
-      Nil
+      Some(context)
     }
   }
 }
