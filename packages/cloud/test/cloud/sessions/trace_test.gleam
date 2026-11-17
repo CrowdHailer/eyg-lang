@@ -13,6 +13,8 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
+import multiformats/cid/v1
+import overlay/llm/chat
 import unixfs/mfs
 import wisp/simulate
 
@@ -105,4 +107,31 @@ pub fn trace_a_session_test() {
   assert session.2 <= turn.2 && turn.2 < request.2
   assert request.2 < request.3
   assert request.3 < turn.3 && turn.3 <= session.3
+}
+
+pub fn trace_a_chat_test() {
+  let policy = mfs.identify(mfs.File(<<"policy">>)).cid
+  let completion = chat.Completion("", "hi", [])
+  let log = [
+    #(1, event.Configured("test")),
+    #(2, event.Sent("hello", policy)),
+    #(3, event.Resumed(policy)),
+    #(4, event.Asked([chat.UserMessage("hello", [])], policy)),
+    #(6, event.Answered(execute.Completed(Ok(completion)))),
+    #(7, event.Resumed(policy)),
+    #(8, event.Returned(Ok("hi"), [], policy)),
+    #(9, event.Finished(Ok("hi"), [], policy)),
+  ]
+  let assert [_, turn, asked] = trace.spans("s", log)
+  assert [#("eyg.message", "hello"), #("eyg.policy", v1.to_string(policy))]
+    == turn.attributes
+  assert #("chat", True, 4, 6, None, Some(turn.id))
+    == #(
+      asked.name,
+      asked.client,
+      asked.start,
+      asked.end,
+      asked.error,
+      asked.parent,
+    )
 }

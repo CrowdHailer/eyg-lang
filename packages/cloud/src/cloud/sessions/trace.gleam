@@ -2,6 +2,7 @@
 ////
 //// The session is one span, each turn is a span in it and each request is a span in its turn.
 //// A request span starts when the request is recorded and ends when its response is recorded.
+//// Asking an llm for a completion is a span in the same way.
 //// Spans are encoded as OTLP JSON, which can be posted to any OpenTelemetry collector.
 
 import cloud/beam/execute
@@ -50,22 +51,27 @@ pub fn spans(session: String, log: List(#(Int, Event))) -> List(Span) {
 fn turns(log) {
   case log {
     [] -> []
-    [#(i, at, event.Started(code, policy)), ..log] -> {
-      let #(events, log) =
-        list.split_while(log, fn(entry) {
-          case entry.2 {
-            event.Started(..) -> False
-            _ -> True
-          }
-        })
-      [#(i, at, code, policy, events), ..turns(log)]
-    }
+    [#(i, at, event.Started(code, policy)), ..log] ->
+      turn(i, at, #("eyg.code", code), policy, log)
+    [#(i, at, event.Sent(message, policy)), ..log] ->
+      turn(i, at, #("eyg.message", message), policy, log)
     [_, ..log] -> turns(log)
   }
 }
 
+fn turn(i, at, input, policy, log: List(#(Int, Int, Event))) {
+  let #(events, log) =
+    list.split_while(log, fn(entry) {
+      case entry.2 {
+        event.Started(..) | event.Sent(..) -> False
+        _ -> True
+      }
+    })
+  [#(i, at, input, policy, events), ..turns(log)]
+}
+
 fn turn_spans(session, parent, turn) {
-  let #(i, start, code, policy, events) = turn
+  let #(i, start, input, policy, events) = turn
   let id = span_id(session, i)
   let finished =
     list.find_map(events, fn(entry) {
@@ -80,7 +86,7 @@ fn turn_spans(session, parent, turn) {
     Error(Nil), Ok(#(_, at, _)) -> #(at, Some("unfinished"))
     Error(Nil), Error(Nil) -> #(start, Some("unfinished"))
   }
-  let attributes = [#("eyg.code", code), #("eyg.policy", v1.to_string(policy))]
+  let attributes = [input, #("eyg.policy", v1.to_string(policy))]
   [
     Span(id, Some(parent), "turn", False, start, end, attributes, error),
     ..requests(session, id, events)
@@ -117,6 +123,27 @@ fn requests(session, parent, events) {
       let id = span_id(session, i)
       [
         Span(id, Some(parent), method, True, start, end, attributes, error),
+        ..requests(session, parent, events)
+      ]
+    }
+    [#(i, start, event.Asked(..)), ..events] -> {
+      let #(end, error, events) = case events {
+        [#(_, end, event.Answered(execute.Completed(Ok(_)))), ..events] -> #(
+          end,
+          None,
+          events,
+        )
+        [#(_, end, event.Answered(execute.Completed(Error(reason)))), ..events] -> #(
+          end,
+          Some(reason),
+          events,
+        )
+        _ -> #(start, Some("no completion was recorded"), events)
+      }
+      let attributes = [#("gen_ai.operation.name", "chat")]
+      let id = span_id(session, i)
+      [
+        Span(id, Some(parent), "chat", True, start, end, attributes, error),
         ..requests(session, parent, events)
       ]
     }
