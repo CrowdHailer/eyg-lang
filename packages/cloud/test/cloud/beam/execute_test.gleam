@@ -6,6 +6,7 @@ import eyg/hub/cache
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/erlang/process
+import gleam/option.{Some}
 import simplifile
 import unixfs/mfs
 
@@ -54,6 +55,16 @@ pub fn complete_performs_effects_test() {
       "let _ = perform Random(10)\nlet _ = perform Flip({})\nperform Sleep(1)",
     )
     |> execute.complete
+}
+
+pub fn secrets_are_answered_by_the_caller_test() {
+  let assert execute.Waiting(execute.Env("KEY"), state, root, resume) =
+    start("perform Env(\"KEY\")")
+  let assert execute.Finished(Ok(value), _, _, _) =
+    resume(execute.Secret(Some("value")), state, root)
+  assert "Some(\"value\")" == value
+  let state = execute.State(..state, secrets: dict.from_list([#("KEY", "x")]))
+  assert execute.Secret(Some("x")) == execute.perform(execute.Env("KEY"), state)
 }
 
 pub fn pin_packages_for_the_run_test() {
