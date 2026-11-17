@@ -5,8 +5,6 @@ import cloud/box
 import cloud/box/controller.{reason, try}
 import cloud/data/db
 import cloud/data/sessions.{type Session}
-import cloud/data/thread
-import cloud/registry
 import cloud/sessions/event
 import cloud/sessions/trace
 import cloud/sessions/turn
@@ -46,12 +44,10 @@ fn start(request, box, context: Context) {
   }
   case llm {
     Error(Nil) -> reason(400, "Expected an optional llm")
-    Ok(None) -> save(box, [], [], context)
-    Ok(Some(llm)) ->
-      case dict.has_key(context.llms, llm) {
-        True -> save(box, [], [event.Configured(llm)], context)
-        False -> reason(422, "No llm is configured as " <> llm)
-      }
+    Ok(llm) -> {
+      use session <- try(turn.start(context, box, llm))
+      wisp.json_response(json.to_string(encode(session)), 201)
+    }
   }
 }
 
@@ -69,34 +65,7 @@ fn import_(request, box, context: Context) {
     |> result.map_error(fn(reason) { box.Invalid([reason]) }),
   )
   let #(times, events) = list.unzip(log)
-  save(box, times, events, context)
-}
-
-// The events are added to the thread, events already in it are shared.
-// `times` are when the events were recorded, events without one are recorded now.
-fn save(box, times, events, context: Context) {
-  let payloads =
-    list.map(events, fn(event) { json.to_string(event.encode(event)) })
-  let nodes = thread.nodes(None, payloads)
-  let head =
-    list.last(nodes) |> result.map(fn(node) { node.key }) |> option.from_result
-  // A box is only kept in memory until a session is made in it.
-  use Nil <- try(box.durable(context, box))
-  use session <- try(
-    db.transaction(context.db, fn(connection) {
-      use _ <- result.try(case times {
-        [] -> db.execute(thread.insert(nodes), connection)
-        _ -> db.execute(thread.restore(list.zip(times, nodes)), connection)
-      })
-      use created <- result.map(db.execute(
-        sessions.create(box, head),
-        connection,
-      ))
-      let assert [session] = created.rows
-      session
-    })
-    |> result.map_error(fn(error) { box.Failed(string.inspect(error)) }),
-  )
+  use session <- try(turn.create(context, box, times, events))
   wisp.json_response(json.to_string(encode(session)), 201)
 }
 
@@ -181,13 +150,7 @@ pub fn turn(request, id, context: Context) {
     Error(_) -> reason(400, "Expected code or a message")
     Ok(input) -> {
       use session <- find(id, context)
-      let process =
-        registry.lookup(context.sessions, id, fn() { registry.serve(Nil) })
-      use #(outcome, output) <- try(
-        registry.call(process, 600_000, fn(_) {
-          #(Nil, turn.run(context, session, input))
-        }),
-      )
+      use #(outcome, output) <- try(turn.send(context, session, input))
       wisp.json_response(
         json.to_string(encode_turn(#(input, Some(#(outcome, output))))),
         200,

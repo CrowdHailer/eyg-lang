@@ -27,6 +27,7 @@ import cloud/data/db
 import cloud/data/sessions.{type Session}
 import cloud/data/thread
 import cloud/overlay
+import cloud/registry
 import cloud/sessions/event.{type Event}
 import eyg/ir/tree as ir
 import gleam/bit_array
@@ -35,7 +36,7 @@ import gleam/dict
 import gleam/http
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
@@ -86,6 +87,60 @@ pub type Input {
   Message(String)
 }
 
+/// A new session in the box, it chats with the llm configured as `llm` if there is one.
+pub fn start(
+  context: Context,
+  box: String,
+  llm: Option(String),
+) -> Result(Session, box.Reason) {
+  case llm {
+    None -> create(context, box, [], [])
+    Some(llm) ->
+      case dict.has_key(context.llms, llm) {
+        True -> create(context, box, [], [event.Configured(llm)])
+        False -> Error(box.Invalid(["No llm is configured as " <> llm]))
+      }
+  }
+}
+
+/// A new session in the box whose history is `events`, events already in the thread are shared.
+/// The box is made durable if it is only in memory.
+/// `times` are when each event was first recorded, leave them out for new events.
+pub fn create(
+  context: Context,
+  box: String,
+  times: List(Int),
+  events: List(Event),
+) -> Result(Session, box.Reason) {
+  let payloads =
+    list.map(events, fn(event) { json.to_string(event.encode(event)) })
+  let nodes = thread.nodes(None, payloads)
+  let head =
+    list.last(nodes) |> result.map(fn(node) { node.key }) |> option.from_result
+  // A box is only kept in memory until a session is made in it.
+  use Nil <- result.try(box.durable(context, box))
+  db.transaction(context.db, fn(connection) {
+    use _ <- result.try(case times {
+      [] -> db.execute(thread.insert(nodes), connection)
+      _ -> db.execute(thread.restore(list.zip(times, nodes)), connection)
+    })
+    use created <- result.map(db.execute(sessions.create(box, head), connection))
+    let assert [session] = created.rows
+    session
+  })
+  |> result.map_error(fn(error) { box.Failed(string.inspect(error)) })
+}
+
+/// Run a turn in the session's process, which runs one turn at a time.
+pub fn send(
+  context: Context,
+  session: Session,
+  input: Input,
+) -> Result(Outcome, box.Reason) {
+  registry.lookup(context.sessions, session.id, fn() { registry.serve(Nil) })
+  |> registry.call(600_000, fn(_) { #(Nil, run(context, session, input)) })
+}
+
 /// Run a turn in the session, an unfinished turn is finished first.
 pub fn run(
   context: Context,
@@ -106,7 +161,7 @@ pub fn run(
   )
   let stored = mfs.identify(stored).cid
   use #(started, segment) <- result.try(case input {
-    Code(code) -> Ok(#(event.Started(code, stored), start(policy, code)))
+    Code(code) -> Ok(#(event.Started(code, stored), program(policy, code)))
     Message(message) -> {
       use history <- result.try(history(context, session.id))
       let before = list.map(history, fn(entry) { #(entry.1, entry.2) })
@@ -120,7 +175,7 @@ pub fn run(
   drive(context, session, state, segment)
 }
 
-fn start(policy, code) -> Segment {
+fn program(policy, code) -> Segment {
   fn(state, root) { execute.block(code, state, policy, root, fn(_) { Nil }) }
 }
 
@@ -160,7 +215,7 @@ fn begin(context, state, before, started) -> Result(Segment, String) {
   case started {
     event.Started(code, policy) -> {
       use policy <- result.map(load_policy(state, policy))
-      start(policy, code)
+      program(policy, code)
     }
     event.Sent(message, policy) -> {
       use policy <- result.try(load_policy(state, policy))
