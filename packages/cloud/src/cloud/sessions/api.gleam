@@ -61,7 +61,7 @@ fn import_(request, box, context: Context) {
     |> result.replace_error(box.Invalid(["Expected events as JSON lines"])),
   )
   use Nil <- try(
-    turn.check(context, list.map(log, fn(entry) { entry.1 }))
+    turn.check(context, box, list.map(log, fn(entry) { entry.1 }))
     |> result.map_error(fn(reason) { box.Invalid([reason]) }),
   )
   let #(times, events) = list.unzip(log)

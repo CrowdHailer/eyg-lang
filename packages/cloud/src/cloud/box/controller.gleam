@@ -4,8 +4,10 @@ import cloud/box
 import cloud/data/boxes
 import cloud/file_system
 import gleam/bytes_tree
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
@@ -54,6 +56,29 @@ pub fn list(context: Context) {
 pub fn get(id, context: Context) {
   use box <- try(box.latest(context, id))
   wisp.json_response(json.to_string(encode(box)), 200)
+}
+
+/// The names of the box's secrets, their values are never returned.
+pub fn secrets(id, context: Context) {
+  use _ <- try(box.latest(context, id))
+  use secrets <- try(box.secrets(context, id))
+  dict.keys(secrets)
+  |> list.sort(string.compare)
+  |> json.array(json.string)
+  |> json.to_string
+  |> wisp.json_response(200)
+}
+
+/// The request body is the value of the secret.
+pub fn set_secret(request, id, name, context: Context) {
+  use value <- wisp.require_string_body(request)
+  use Nil <- try(box.set_secret(context, id, name, value))
+  wisp.no_content()
+}
+
+pub fn delete_secret(id, name, context: Context) {
+  use Nil <- try(box.delete_secret(context, id, name))
+  wisp.no_content()
 }
 
 /// A directory is listed, a file is returned as it was written.

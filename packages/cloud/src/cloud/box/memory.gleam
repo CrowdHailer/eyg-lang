@@ -1,5 +1,6 @@
 //// Boxes that are only kept in memory, as blobs are in the memory blob store.
-//// A box is kept here until a session is made in it, then its events are recorded in Postgres, see `box.durable`.
+//// A box is kept here until a session is made in it, then its events and secrets are recorded in Postgres,
+//// see `box.durable`.
 //// A box that no session was made in is lost when the service stops.
 
 import cloud/data/boxes.{type Box}
@@ -15,13 +16,19 @@ import gleam/string
 pub type Events =
   List(#(Box, Option(String)))
 
+type Kept {
+  Kept(events: Events, secrets: Dict(String, String))
+}
+
 pub opaque type Message {
   Add(box: Box, reply: Subject(Bool))
   Record(box: Box, change: Option(String))
   Get(id: String, reply: Subject(Result(Box, Nil)))
   Merged(id: String, change: String, reply: Subject(Bool))
   Named(reply: Subject(List(Box)))
-  Take(id: String, reply: Subject(Result(Events, Nil)))
+  Secrets(id: String, reply: Subject(Result(Dict(String, String), Nil)))
+  SetSecrets(id: String, secrets: Dict(String, String))
+  Take(id: String, reply: Subject(Result(#(Events, Dict(String, String)), Nil)))
 }
 
 pub type Memory =
@@ -33,13 +40,13 @@ pub fn start() -> actor.StartResult(Memory) {
   |> actor.start
 }
 
-fn handle(kept: Dict(String, Events), message) {
+fn handle(kept: Dict(String, Kept), message) {
   case message {
     Add(box, reply) -> {
       let taken =
         box.name != option.None
-        && list.any(dict.values(kept), fn(events) {
-          case events {
+        && list.any(dict.values(kept), fn(kept) {
+          case kept.events {
             [#(latest, _), ..] -> latest.name == box.name
             [] -> False
           }
@@ -48,22 +55,35 @@ fn handle(kept: Dict(String, Events), message) {
       case taken {
         True -> actor.continue(kept)
         False ->
-          actor.continue(dict.insert(kept, box.id, [#(box, option.None)]))
+          actor.continue(dict.insert(
+            kept,
+            box.id,
+            Kept([#(box, option.None)], dict.new()),
+          ))
       }
     }
-    Record(box, change) -> {
-      let events = dict.get(kept, box.id) |> result.unwrap([])
-      actor.continue(dict.insert(kept, box.id, [#(box, change), ..events]))
-    }
+    Record(box, change) ->
+      case dict.get(kept, box.id) {
+        Ok(Kept(events, secrets)) ->
+          actor.continue(dict.insert(
+            kept,
+            box.id,
+            Kept([#(box, change), ..events], secrets),
+          ))
+        Error(Nil) -> actor.continue(kept)
+      }
     Get(id, reply) -> {
       process.send(reply, case dict.get(kept, id) {
-        Ok([#(box, _), ..]) -> Ok(box)
+        Ok(Kept([#(box, _), ..], _)) -> Ok(box)
         _ -> Error(Nil)
       })
       actor.continue(kept)
     }
     Merged(id, change, reply) -> {
-      let events = dict.get(kept, id) |> result.unwrap([])
+      let events = case dict.get(kept, id) {
+        Ok(kept) -> kept.events
+        Error(Nil) -> []
+      }
       process.send(
         reply,
         list.any(events, fn(event) { event.1 == Some(change) }),
@@ -72,8 +92,8 @@ fn handle(kept: Dict(String, Events), message) {
     }
     Named(reply) -> {
       dict.values(kept)
-      |> list.filter_map(fn(events) {
-        case events {
+      |> list.filter_map(fn(kept) {
+        case kept.events {
           [#(box, _), ..] if box.name != option.None -> Ok(box)
           _ -> Error(Nil)
         }
@@ -84,8 +104,24 @@ fn handle(kept: Dict(String, Events), message) {
       |> process.send(reply, _)
       actor.continue(kept)
     }
+    Secrets(id, reply) -> {
+      process.send(
+        reply,
+        dict.get(kept, id) |> result.map(fn(kept) { kept.secrets }),
+      )
+      actor.continue(kept)
+    }
+    SetSecrets(id, secrets) ->
+      case dict.get(kept, id) {
+        Ok(Kept(events, _)) ->
+          actor.continue(dict.insert(kept, id, Kept(events, secrets)))
+        Error(Nil) -> actor.continue(kept)
+      }
     Take(id, reply) -> {
-      process.send(reply, dict.get(kept, id) |> result.map(list.reverse))
+      process.send(reply, case dict.get(kept, id) {
+        Ok(Kept(events, secrets)) -> Ok(#(list.reverse(events), secrets))
+        Error(Nil) -> Error(Nil)
+      })
       actor.continue(dict.delete(kept, id))
     }
   }
@@ -116,7 +152,27 @@ pub fn named(memory: Memory) -> List(Box) {
   process.call(memory, 5000, Named)
 }
 
-/// Remove a box from memory, returning its events oldest first.
-pub fn take(memory: Memory, id: String) -> Result(Events, Nil) {
+/// The secrets of a box in memory.
+pub fn secrets(
+  memory: Memory,
+  id: String,
+) -> Result(Dict(String, String), Nil) {
+  process.call(memory, 5000, Secrets(id, _))
+}
+
+/// Replace the secrets of a box in memory.
+pub fn set_secrets(
+  memory: Memory,
+  id: String,
+  secrets: Dict(String, String),
+) -> Nil {
+  process.send(memory, SetSecrets(id, secrets))
+}
+
+/// Remove a box from memory, returning its events oldest first and its secrets.
+pub fn take(
+  memory: Memory,
+  id: String,
+) -> Result(#(Events, Dict(String, String)), Nil) {
   process.call(memory, 5000, Take(id, _))
 }

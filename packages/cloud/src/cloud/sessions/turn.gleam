@@ -17,10 +17,10 @@
 ////
 //// Each turn records the policy it runs with and the module each package reference resolved to,
 //// so a replay runs the same code after the policy changes or a package is released.
-//// Secrets are never recorded, a fingerprint of each secret read is recorded instead.
+//// Code reads the secrets of its box. Secrets are never recorded, a fingerprint of each secret read is recorded instead.
 //// If a secret changed the turn cannot be replayed and fails saying which secret changed.
 
-import cloud/apex/context.{type Context}
+import cloud/apex/context.{type Context, Context}
 import cloud/beam/execute
 import cloud/box
 import cloud/data/db
@@ -147,6 +147,7 @@ pub fn run(
   session: Session,
   input: Input,
 ) -> Result(Outcome, box.Reason) {
+  use context <- result.try(in_box(context, session.box))
   use Nil <- result.try(recover(context, session))
   let state = execute.State(..context.state, pins: dict.new())
   let #(policy, state) = execute.load_policy(context.policy, state)
@@ -543,9 +544,22 @@ fn pins(state: execute.State, entries: List(#(String, Event))) {
   #(execute.State(..state, pins:), entries)
 }
 
-/// Replay every turn and check it does what the events say it did.
+// Code in a box reads the secrets of the box.
+fn in_box(context: Context, box) {
+  use secrets <- result.map(box.secrets(context, box))
+  Context(..context, state: execute.State(..context.state, secrets:))
+}
+
+/// Replay every turn, as if it ran in the box, and check it does what the events say it did.
 /// The blocks of every root in the events must be in the blob store.
-pub fn check(context: Context, events: List(Event)) -> Result(Nil, String) {
+pub fn check(
+  context: Context,
+  box: String,
+  events: List(Event),
+) -> Result(Nil, String) {
+  use context <- result.try(
+    in_box(context, box) |> result.replace_error("the box is unavailable"),
+  )
   case list.map(events, fn(event) { #("", event) }) {
     [#(_, event.Configured(_)) as configured, ..entries] ->
       do_check(context, [configured], entries)

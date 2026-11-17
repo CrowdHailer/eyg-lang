@@ -20,6 +20,11 @@ pub fn route(request: wisp.Request, context: Context) -> wisp.Response {
         _ -> wisp.method_not_allowed([http.Get, http.Put, http.Delete])
       }
     }
+    ["boxes", id, "secrets"], http.Get -> boxes.secrets(id, context)
+    ["boxes", id, "secrets", name], http.Put ->
+      boxes.set_secret(request, id, name, context)
+    ["boxes", id, "secrets", name], http.Delete ->
+      boxes.delete_secret(id, name, context)
     ["boxes", id, "sessions"], http.Post ->
       sessions.create(request, id, context)
     ["boxes", id, "sessions"], http.Get -> sessions.list(id, context)

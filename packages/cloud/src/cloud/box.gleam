@@ -10,10 +10,12 @@ import cloud/box/fs
 import cloud/box/memory
 import cloud/data/boxes.{type Box, Box}
 import cloud/data/db
+import cloud/data/secrets
 import cloud/file_system
 import cloud/registry
 import gleam/bit_array
 import gleam/crypto
+import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -56,12 +58,12 @@ pub fn durable(context: Context, id: String) -> Result(Nil, Reason) {
   |> registry.call(600_000, fn(open) {
     case memory.take(context.memory, id) {
       Error(Nil) -> #(open, Ok(Nil))
-      Ok(events) -> #(open, save(context, id, events))
+      Ok(#(events, secrets)) -> #(open, save(context, id, events, secrets))
     }
   })
 }
 
-fn save(context: Context, id, events: memory.Events) {
+fn save(context: Context, id, events: memory.Events, kept) {
   let name = case events {
     [#(box, _), ..] -> box.name
     [] -> None
@@ -69,9 +71,15 @@ fn save(context: Context, id, events: memory.Events) {
   db.transaction(context.db, fn(connection) {
     let context = Context(..context, db: connection)
     use _ <- result.try(query(boxes.insert(id, name), context))
-    list.try_each(events, fn(event) {
-      let #(box, change) = event
-      query(boxes.record(box, change), context)
+    use _ <- result.try(
+      list.try_each(events, fn(event) {
+        let #(box, change) = event
+        query(boxes.record(box, change), context)
+      }),
+    )
+    dict.to_list(kept)
+    |> list.try_each(fn(secret) {
+      query(secrets.set(id, secret.0, secret.1), context)
     })
   })
   |> result.map_error(fn(error) {
@@ -90,13 +98,73 @@ pub fn create(context: Context, name: Option(String)) -> Result(Box, Reason) {
   start(context, name, root)
 }
 
-/// The new box starts at the current root of the original.
+/// The new box starts at the current root of the original, with a copy of its secrets.
 pub fn clone(
   context: Context,
   from: Box,
   name: Option(String),
 ) -> Result(Box, Reason) {
-  start(context, name, from.root)
+  use secrets <- result.try(secrets(context, from.id))
+  use box <- result.map(start(context, name, from.root))
+  memory.set_secrets(context.memory, box.id, secrets)
+  box
+}
+
+/// The secrets of a box by name, code in the box reads them with the Env effect.
+pub fn secrets(
+  context: Context,
+  id: String,
+) -> Result(Dict(String, String), Reason) {
+  case memory.secrets(context.memory, id) {
+    Ok(secrets) -> Ok(secrets)
+    Error(Nil) -> query(secrets.all(id), context) |> result.map(dict.from_list)
+  }
+}
+
+/// Add a secret to a box, or replace the one with the same name.
+/// A name is uppercase letters, digits and underscores, as for environment variables.
+pub fn set_secret(
+  context: Context,
+  id: String,
+  name: String,
+  value: String,
+) -> Result(Nil, Reason) {
+  let allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+  case
+    name != ""
+    && list.all(string.to_graphemes(name), string.contains(allowed, _))
+  {
+    False ->
+      Error(
+        Invalid(["A secret name is uppercase letters, digits and underscores"]),
+      )
+    True -> {
+      use _ <- result.try(latest(context, id))
+      case memory.secrets(context.memory, id) {
+        Ok(kept) ->
+          Ok(memory.set_secrets(
+            context.memory,
+            id,
+            dict.insert(kept, name, value),
+          ))
+        Error(Nil) ->
+          query(secrets.set(id, name, value), context) |> result.replace(Nil)
+      }
+    }
+  }
+}
+
+pub fn delete_secret(
+  context: Context,
+  id: String,
+  name: String,
+) -> Result(Nil, Reason) {
+  case memory.secrets(context.memory, id) {
+    Ok(kept) ->
+      Ok(memory.set_secrets(context.memory, id, dict.delete(kept, name)))
+    Error(Nil) ->
+      query(secrets.delete(id, name), context) |> result.replace(Nil)
+  }
 }
 
 /// All the named boxes, in order of name.

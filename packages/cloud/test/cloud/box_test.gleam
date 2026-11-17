@@ -6,6 +6,7 @@ import cloud/data/boxes
 import cloud/data/db
 import cloud/file_system
 import cloud/helpers
+import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -77,4 +78,27 @@ pub fn keep_a_box_in_memory_until_a_session_is_made_test() {
     == box.merge(context, home.id, home.root, root, Some("change"))
   let assert Ok(Nil) = box.durable(context, home.id)
   let assert Error(box.Taken) = box.create(restarted, Some("home"))
+}
+
+pub fn clones_copy_secrets_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(Nil) = box.set_secret(context, home.id, "KEY", "home")
+  let assert Ok(copy) = box.clone(context, home, None)
+  assert Ok(dict.from_list([#("KEY", "home")])) == box.secrets(context, copy.id)
+  // The boxes keep their own secrets.
+  let assert Ok(Nil) = box.set_secret(context, copy.id, "KEY", "copy")
+  assert Ok(dict.from_list([#("KEY", "home")])) == box.secrets(context, home.id)
+  let assert Ok(Nil) = box.delete_secret(context, home.id, "KEY")
+  assert Ok(dict.new()) == box.secrets(context, home.id)
+  assert Error(box.Missing) == box.set_secret(context, "gone", "KEY", "x")
+  // Secrets kept in memory are recorded when the box is made durable.
+  let assert Ok(Nil) = box.durable(context, copy.id)
+  let assert Ok(memory) = memory.start()
+  let restarted = Context(..context, memory: memory.data)
+  assert Ok(dict.from_list([#("KEY", "copy")]))
+    == box.secrets(restarted, copy.id)
+  let assert Ok(Nil) = box.set_secret(restarted, copy.id, "OTHER", "x")
+  assert Ok(dict.from_list([#("KEY", "copy"), #("OTHER", "x")]))
+    == box.secrets(context, copy.id)
 }

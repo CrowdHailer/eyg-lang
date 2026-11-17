@@ -126,7 +126,7 @@ pub fn resume_from_any_stop_test() {
   let log = session_helpers.export(context, session)
   let lines = string.split(log, "\n") |> list.filter(fn(line) { line != "" })
   let events = session_helpers.events(context, session)
-  let assert Ok(Nil) = turn.check(context, events)
+  let assert Ok(Nil) = turn.check(context, session.box, events)
 
   list.index_map(events, fn(event, i) { #(event, i + 1) })
   |> list.filter(fn(entry) { ends_group(entry.0) })
@@ -156,7 +156,7 @@ pub fn resume_from_any_stop_test() {
     let after = counts(server, steps, id)
 
     let copied = session_helpers.events(context, copy)
-    let assert Ok(Nil) = turn.check(context, copied)
+    let assert Ok(Nil) = turn.check(context, copy.box, copied)
     let assert [_, ..] = list.filter(copied, is_finished)
     assert list.take(copied, length) == prefix
     // Every completion is asked for once, unless it was recorded.
