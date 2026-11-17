@@ -95,3 +95,22 @@ pub fn chat_in_the_box_test() {
   assert string.contains(screen(model), "you hi")
   assert string.contains(screen(model), "llm hi #1")
 }
+
+pub fn create_a_box_test() {
+  use context <- helpers.context()
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Listed(Ok([])))
+  let model = press(model, ["n", ..string.to_graphemes("Bad")])
+  assert string.contains(screen(model), "Name of the new box")
+  let assert Some(prompt) = model.prompt
+  let #(model, _) = tui.update(model, Key("enter"))
+  assert None == model.prompt
+  let #(model, _) = tui.update(model, prompt.submit(prompt.input))
+  assert string.contains(screen(model), "lowercase letters")
+
+  let model = press(model, ["n", ..string.to_graphemes("garden")])
+  let assert Some(prompt) = model.prompt
+  let #(model, _) = tui.update(model, prompt.submit(prompt.input))
+  let #(model, _) = tui.update(model, tui.Listed(box.named(context)))
+  assert string.contains(screen(model), "garden")
+}

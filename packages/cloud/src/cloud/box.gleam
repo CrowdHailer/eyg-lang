@@ -108,8 +108,19 @@ pub fn named(context: Context) -> Result(List(Box), Reason) {
   })
 }
 
+// A name is lowercase letters, digits and dashes.
 // A new box is kept in memory, a name is taken if a box in Postgres or in memory has it.
 fn start(context, name, root) {
+  let allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
+  let valid = fn(name) {
+    name != ""
+    && list.all(string.to_graphemes(name), string.contains(allowed, _))
+  }
+  use Nil <- result.try(case option.map(name, valid) {
+    Some(False) ->
+      Error(Invalid(["A box name is lowercase letters, digits and dashes"]))
+    _ -> Ok(Nil)
+  })
   use saved <- result.try(query(boxes.named(), context))
   let taken = name != None && list.any(saved, fn(box: Box) { box.name == name })
   let box = Box(id(), name, 1, root)

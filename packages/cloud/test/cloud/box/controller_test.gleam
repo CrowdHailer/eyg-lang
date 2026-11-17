@@ -74,7 +74,7 @@ pub fn box_names_are_unique_test() {
 
 pub fn reject_box_name_test() {
   use context <- helpers.context()
-  assert 400 == create(context, [#("name", json.string("My Box"))]).status
+  assert 422 == create(context, [#("name", json.string("My Box"))]).status
 }
 
 pub fn missing_box_test() {

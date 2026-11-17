@@ -16,6 +16,7 @@ import etui/span
 import etui/style
 import etui/text
 import etui/widgets/block
+import etui/widgets/clear
 import etui/widgets/list as list_widget
 import gleam/dict
 import gleam/erlang/process
@@ -32,7 +33,29 @@ pub const width = 100
 pub const height = 30
 
 pub type Model {
-  Model(context: Context, screen: Screen, status: String)
+  Model(
+    context: Context,
+    screen: Screen,
+    // A line of text asked for over the screen.
+    prompt: Option(Prompt),
+    status: Status,
+  )
+}
+
+/// A line of text asked for, it is submitted in another process and `masked` hides what is typed.
+pub type Prompt {
+  Prompt(
+    label: String,
+    input: String,
+    masked: Bool,
+    submit: fn(String) -> Message,
+  )
+}
+
+pub type Status {
+  Quiet
+  Working(String)
+  Problem(String)
 }
 
 pub type Screen {
@@ -66,6 +89,7 @@ pub type Choice {
 pub type Message {
   Key(String)
   Listed(Result(List(Box), box.Reason))
+  Created(Result(Box, box.Reason))
   Started(Result(#(String, Session, Bool), box.Reason))
   /// The outcome of a turn in the session with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
@@ -76,7 +100,10 @@ pub fn app() -> lustre.App(Context, Model, Message) {
 }
 
 pub fn init(context: Context) -> #(Model, Effect(Message)) {
-  #(Model(context, Boxes([], 0), "Loading boxes"), list_boxes(context))
+  #(
+    Model(context, Boxes([], 0), None, Working("Loading boxes")),
+    list_boxes(context),
+  )
 }
 
 fn list_boxes(context) {
@@ -91,20 +118,53 @@ fn background(work: fn() -> Message) -> Effect(Message) {
 }
 
 pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
-  let Model(context:, screen:, ..) = model
-  case screen, message {
-    _, Listed(Ok(boxes)) -> #(
-      Model(context, Boxes(boxes, 0), case boxes {
-        [] -> "There are no named boxes, create one with POST /boxes"
-        _ -> ""
+  let Model(context:, screen:, prompt:, ..) = model
+  case prompt, screen, message {
+    Some(prompt), _, Key(key) -> #(ask(model, prompt, key), case key {
+      "enter" -> background(fn() { prompt.submit(prompt.input) })
+      _ -> effect.none()
+    })
+    _, _, Listed(Ok(boxes)) -> #(
+      Model(context, Boxes(boxes, 0), None, case boxes {
+        [] -> Working("There are no named boxes, press n to create one")
+        _ -> Quiet
       }),
       effect.none(),
     )
-    _, Listed(Error(reason)) -> #(
-      Model(..model, status: describe(reason)),
+    _, _, Listed(Error(reason)) | _, _, Created(Error(reason)) -> #(
+      Model(..model, status: Problem(describe(reason))),
       effect.none(),
     )
+    _, _, Created(Ok(_)) -> back(model)
+    _, screen, message -> on_screen(model, screen, message)
+  }
+}
 
+// Typing into the prompt, it is closed when it is submitted or cancelled.
+fn ask(model, prompt: Prompt, key) {
+  case key {
+    "esc" -> Model(..model, prompt: None)
+    "enter" -> Model(..model, prompt: None, status: Working("Working"))
+    "backspace" ->
+      Model(
+        ..model,
+        prompt: Some(Prompt(..prompt, input: string.drop_end(prompt.input, 1))),
+      )
+    _ ->
+      case string.length(key) {
+        1 ->
+          Model(
+            ..model,
+            prompt: Some(Prompt(..prompt, input: prompt.input <> key)),
+          )
+        _ -> model
+      }
+  }
+}
+
+fn on_screen(model: Model, screen, message) {
+  let context = model.context
+  case screen, message {
     Boxes(boxes, selected), Key(key) ->
       case key {
         "up" | "down" -> #(
@@ -119,7 +179,12 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
             )
             [] -> #(model, effect.none())
           }
-        "r" -> #(Model(..model, status: "Loading boxes"), list_boxes(context))
+        "r" -> back(model)
+        "n" -> {
+          let submit = fn(name) { Created(box.create(context, Some(name))) }
+          let prompt = Prompt("Name of the new box", "", False, submit)
+          #(Model(..model, prompt: Some(prompt)), effect.none())
+        }
         _ -> #(model, effect.none())
       }
 
@@ -135,7 +200,7 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
         "enter" ->
           case list.drop(choices, selected) {
             [choice, ..] -> #(
-              Model(..model, status: "Starting a session"),
+              Model(..model, status: Working("Starting a session")),
               background(fn() { Started(start(context, box, choice)) }),
             )
             [] -> #(model, effect.none())
@@ -144,11 +209,11 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
         _ -> #(model, effect.none())
       }
     _, Started(Ok(#(place, session, chat))) -> #(
-      Model(context, Running(place, session, chat, [], "", False), ""),
+      Model(context, Running(place, session, chat, [], "", False), None, Quiet),
       effect.none(),
     )
     _, Started(Error(reason)) -> #(
-      Model(..model, status: describe(reason)),
+      Model(..model, status: Problem(describe(reason))),
       effect.none(),
     )
 
@@ -216,7 +281,7 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
 
 // Back to the list of boxes, which may have changed.
 fn back(model: Model) {
-  #(Model(..model, status: "Loading boxes"), list_boxes(model.context))
+  #(Model(..model, status: Working("Loading boxes")), list_boxes(model.context))
 }
 
 fn move(key, selected, items) {
@@ -294,6 +359,7 @@ pub fn render(model: Model) -> buffer.Buffer {
     Boxes(..) -> #("Boxes", [
       #("↑↓", "choose"),
       #("enter", "open"),
+      #("n", "new box"),
       #("r", "refresh"),
     ])
     Open(box, ..) -> #(option.unwrap(box.name, box.id), [
@@ -338,7 +404,47 @@ pub fn render(model: Model) -> buffer.Buffer {
   |> block.render(area, frame)
   |> body(inner, model)
   |> spans(height - 2, help)
-  |> spans(height - 1, [span.span_styled(" " <> model.status, fg(red))])
+  |> spans(height - 1, case model.status {
+    Quiet -> []
+    Working(text) -> [span.span_styled(" " <> text, fg(muted))]
+    Problem(text) -> [span.span_styled(" " <> text, fg(red))]
+  })
+  |> dialog(model.prompt)
+}
+
+// The prompt in a box over the middle of the screen.
+fn dialog(screen, prompt) {
+  case prompt {
+    None -> screen
+    Some(Prompt(label:, input:, masked:, ..)) -> {
+      let area = geometry.rect_new(20, height / 2 - 2, width - 40, 3)
+      let frame =
+        block.block_new()
+        |> block.with_border(block.Rounded)
+        |> block.with_style(accent, style.Default)
+        |> block.with_bg_fill
+        |> block.with_title_styled(
+          [span.span_styled(" " <> label <> " ", fg(accent))],
+          block.Top,
+        )
+      let inner = block.inner(area, frame)
+      let shown = case masked {
+        True -> string.repeat("•", string.length(input))
+        False -> input
+      }
+      screen
+      |> clear.render(area)
+      |> block.render(area, frame)
+      |> span.render_line(
+        inner.position,
+        span.line_new([
+          span.span_plain(text.truncate(shown, inner.size.width - 1, "…")),
+          span.span_styled("▏", fg(accent)),
+        ]),
+        inner.size.width,
+      )
+    }
+  }
 }
 
 fn spans(screen, y, spans) {
