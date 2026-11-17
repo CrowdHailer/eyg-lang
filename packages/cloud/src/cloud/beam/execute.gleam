@@ -19,6 +19,8 @@ import gleam/bit_array
 import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/erlang/process
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
 import gleam/httpc
 import gleam/int
 import gleam/list
@@ -61,6 +63,82 @@ pub type State {
     secrets: Dict(String, String),
     blobs: blobs.Blobs,
   )
+}
+
+/// Effects whose result is not known from the code and the file system.
+pub type Wait {
+  Fetch(Request(BitArray))
+  Random(Int)
+  Now
+  Flip
+  Sleep(Int)
+}
+
+pub type Answer {
+  Fetched(Result(Response(BitArray), String))
+  Number(Int)
+  Flipped(Bool)
+  Slept
+}
+
+/// Code runs until it finishes or waits for the answer to an effect.
+pub type Run(a) {
+  Finished(
+    outcome: Result(a, String),
+    state: State,
+    root: v1.Cid,
+    output: List(String),
+  )
+  Waiting(
+    wait: Wait,
+    state: State,
+    root: v1.Cid,
+    resume: fn(Answer, State, v1.Cid) -> Run(a),
+  )
+}
+
+/// Answer every effect by performing it.
+pub fn complete(
+  run: Run(a),
+) -> #(Result(a, String), State, v1.Cid, List(String)) {
+  case run {
+    Finished(outcome, state, root, output) -> #(outcome, state, root, output)
+    Waiting(wait, state, root, resume) ->
+      complete(resume(perform(wait), state, root))
+  }
+}
+
+pub fn perform(wait: Wait) -> Answer {
+  case wait {
+    Fetch(request) -> Fetched(fetch(request))
+    Random(max) -> Number(random.sync(max))
+    Now -> Number(now.sync())
+    Flip -> Flipped(flip.sync())
+    Sleep(milliseconds) -> {
+      process.sleep(int.max(0, milliseconds))
+      Slept
+    }
+  }
+}
+
+fn answer_to_value(answer) {
+  case answer {
+    Fetched(result) -> fetch.encode(result)
+    Number(number) -> v.Integer(number)
+    Flipped(value) -> flip.encode(value)
+    Slept -> sleep.encode(Nil)
+  }
+}
+
+fn map(run, f) {
+  case run {
+    Finished(outcome, state, root, output) ->
+      Finished(result.map(outcome, f), state, root, output)
+    Waiting(wait, state, root, resume) ->
+      Waiting(wait, state, root, fn(answer, state, root) {
+        map(resume(answer, state, root), f)
+      })
+  }
 }
 
 pub type Policy =
@@ -115,7 +193,7 @@ pub fn block(
   policy: Policy,
   root: v1.Cid,
   emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, v1.Cid, List(String)) {
+) -> Run(String) {
   evaluate(code, [], simple_debug.inspect, state, policy, root, emit)
 }
 
@@ -137,28 +215,16 @@ pub fn run(
     root,
     emit,
   )
+  |> complete
 }
 
 fn evaluate(code, scope, inspect, state, policy, root, emit) {
   case parser.all_from_string(code) {
-    Error(reason) -> #(
-      Error(parser.format_error(reason, code)),
-      state,
-      root,
-      [],
-    )
-    Ok(source) -> {
-      let #(outcome, state, root, output) =
-        loop(block.execute(source, scope), state, policy, root, emit, [])
-      #(
-        result.map(outcome, fn(value) {
-          value |> option.map(inspect) |> option.unwrap("")
-        }),
-        state,
-        root,
-        output,
-      )
-    }
+    Error(reason) ->
+      Finished(Error(parser.format_error(reason, code)), state, root, [])
+    Ok(source) ->
+      loop(block.execute(source, scope), state, policy, root, emit, [])
+      |> map(fn(value) { value |> option.map(inspect) |> option.unwrap("") })
   }
 }
 
@@ -180,44 +246,53 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
       emit,
       [],
     )
+    |> complete
   #(result.map(outcome, option.unwrap(_, v.unit())), state, root)
 }
 
 fn loop(returned, state: State, policy, root, emit, output) {
   case returned {
-    Ok(#(value, _scope)) -> #(Ok(value), state, root, output)
+    Ok(#(value, _scope)) -> Finished(Ok(value), state, root, output)
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      let #(action, state) = decide(policy, label, lift, meta, state)
-      let #(outcome, root, output) = case action {
-        policy.Perform(interface, input) -> {
-          let #(outcome, root) = case interface.decode(input) {
-            Ok(effect) -> perform_effect(effect, label, state, root, emit)
-            Error(reason) -> #(Error(simple_debug.describe(reason)), root)
-          }
-          let output = case label, input, outcome {
-            "StandardOut", v.String(text), Ok(_)
-            | "StandardError", v.String(text), Ok(_)
-            -> [text, ..output]
-            _, _, _ -> output
-          }
-          #(outcome, root, output)
+      let continue = fn(outcome, state, root, output) {
+        case outcome {
+          Ok(value) ->
+            block.resume(value, env, k)
+            |> loop(state, policy, root, emit, output)
+          Error(reason) -> Finished(Error(reason), state, root, output)
         }
-        policy.Resume(value) -> #(Ok(value), root, output)
-        policy.Failed(debug) -> #(
-          Error("Policy failed: " <> simple_debug.describe(debug.0)),
-          root,
-          output,
-        )
-        policy.Unavailable -> #(
-          Error("Unhandled effect: " <> label),
-          root,
-          output,
-        )
       }
-      case outcome {
-        Ok(value) ->
-          loop(block.resume(value, env, k), state, policy, root, emit, output)
-        Error(reason) -> #(Error(reason), state, root, output)
+      let #(action, state) = decide(policy, label, lift, meta, state)
+      case action {
+        policy.Perform(interface, input) ->
+          case interface.decode(input) {
+            Error(reason) ->
+              simple_debug.describe(reason)
+              |> Error
+              |> Finished(state, root, output)
+            Ok(effect) ->
+              case perform_effect(effect, label, state, root, emit) {
+                Error(wait) ->
+                  Waiting(wait, state, root, fn(answer, state, root) {
+                    continue(Ok(answer_to_value(answer)), state, root, output)
+                  })
+                Ok(#(outcome, root)) -> {
+                  let output = case label, input, outcome {
+                    "StandardOut", v.String(text), Ok(_)
+                    | "StandardError", v.String(text), Ok(_)
+                    -> [text, ..output]
+                    _, _, _ -> output
+                  }
+                  continue(outcome, state, root, output)
+                }
+              }
+          }
+        policy.Resume(value) -> continue(Ok(value), state, root, output)
+        policy.Failed(debug) ->
+          Error("Policy failed: " <> simple_debug.describe(debug.0))
+          |> continue(state, root, output)
+        policy.Unavailable ->
+          continue(Error("Unhandled effect: " <> label), state, root, output)
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
@@ -225,15 +300,11 @@ fn loop(returned, state: State, policy, root, emit, output) {
       case value {
         Ok(value) ->
           loop(block.resume(value, env, k), state, policy, root, emit, output)
-        Error(reason) -> #(Error(reason), state, root, output)
+        Error(reason) -> Finished(Error(reason), state, root, output)
       }
     }
-    Error(debug) -> #(
-      Error(simple_debug.describe(debug.0)),
-      state,
-      root,
-      output,
-    )
+    Error(debug) ->
+      Finished(Error(simple_debug.describe(debug.0)), state, root, output)
   }
 }
 
@@ -369,69 +440,70 @@ pub fn pure_loop(returned, state: State) {
   }
 }
 
+/// Effects that are not known from the code and the file system are returned to wait for.
 fn perform_effect(effect, label, state: State, root, emit) {
   case effect {
     computer.StandardOut(text) -> {
       emit(StandardOut(text))
-      #(Ok(standard_out.encode(Nil)), root)
+      Ok(#(Ok(standard_out.encode(Nil)), root))
     }
     computer.StandardError(text) -> {
       emit(StandardError(text))
-      #(Ok(standard_error.encode(Nil)), root)
+      Ok(#(Ok(standard_error.encode(Nil)), root))
     }
     computer.AppendFile(input) ->
       file_system.append(root, input.path, input.contents)
       |> change(state, root, append_file.encode)
-    computer.Cwd -> #(cwd(), root)
-    computer.DecodeJson(bytes) -> #(decode_json(bytes), root)
+    computer.Cwd -> Ok(#(cwd(), root))
+    computer.DecodeJson(bytes) -> Ok(#(decode_json(bytes), root))
     computer.DeleteFile(path) ->
       file_system.delete(root, path) |> change(state, root, delete_file.encode)
-    computer.Env(name:) -> #(get_env(name, state.secrets), root)
-    computer.Fetch(request) -> #(fetch(request), root)
-    computer.Flip -> #(flip(), root)
-    computer.Hash(input) -> #(hash(input), root)
+    computer.Env(name:) -> Ok(#(get_env(name, state.secrets), root))
+    computer.Hash(input) -> Ok(#(hash(input), root))
     computer.MakeDirectory(path) ->
       file_system.make_directory(root, path)
       |> change(state, root, make_directory.encode)
-    computer.Now -> #(now(), root)
-    computer.Random(max) -> #(random(max), root)
     computer.ReadDirectory(path) ->
       file_system.read_directory(root, path)
       |> read(state, root, read_directory.encode)
     computer.ReadFile(input) ->
       file_system.read_range(root, input.path, input.offset, input.limit)
       |> read(state, root, read_file.encode)
-    computer.Sleep(milliseconds) -> #(sleep(milliseconds), root)
     computer.WriteFile(input) ->
       file_system.write(root, input.path, input.contents)
       |> change(state, root, write_file.encode)
+    computer.Fetch(request) -> Error(Fetch(request))
+    computer.Flip -> Error(Flip)
+    computer.Now -> Error(Now)
+    computer.Random(max) -> Error(Random(max))
+    computer.Sleep(milliseconds) -> Error(Sleep(milliseconds))
     computer.CreateKey(_)
     | computer.Exit(_)
     | computer.EygParse(_)
     | computer.Sign(_)
-    | computer.StandardIn -> #(Error("Unhandled effect: " <> label), root)
+    | computer.StandardIn -> Ok(#(Error("Unhandled effect: " <> label), root))
   }
 }
 
 // A failed file operation is a value for the program and leaves the root unchanged.
 fn change(effect, state, root, encode) {
   case files(effect, state) {
-    Error(reason) -> #(Error(reason), root)
-    Ok(Ok(root)) -> #(Ok(encode(Ok(Nil))), root)
-    Ok(Error(reason)) -> #(
-      Ok(encode(Error(simplifile.describe_error(reason)))),
-      root,
-    )
+    // A block that cannot be read or written fails the program.
+    Error(reason) -> Ok(#(Error(reason), root))
+    Ok(Ok(root)) -> Ok(#(Ok(encode(Ok(Nil))), root))
+    Ok(Error(reason)) ->
+      Ok(#(Ok(encode(Error(simplifile.describe_error(reason)))), root))
   }
 }
 
 fn read(effect, state, root, encode) {
   case files(effect, state) {
-    Error(reason) -> #(Error(reason), root)
-    Ok(outcome) -> #(
-      Ok(encode(result.map_error(outcome, simplifile.describe_error))),
-      root,
-    )
+    Error(reason) -> Ok(#(Error(reason), root))
+    Ok(outcome) ->
+      Ok(#(
+        Ok(encode(result.map_error(outcome, simplifile.describe_error))),
+        root,
+      ))
   }
 }
 
@@ -571,28 +643,9 @@ fn get_env(name, secrets) {
 fn fetch(request) {
   httpc.send_bits(request)
   |> result.map_error(string.inspect)
-  |> fetch.encode
-  |> Ok
-}
-
-fn flip() {
-  Ok(flip.encode(flip.sync()))
 }
 
 fn hash(input) {
   let hash.Input(algorithm: hash.Sha256, bytes:) = input
   Ok(hash.encode(crypto.hash(crypto.Sha256, bytes)))
-}
-
-fn now() {
-  Ok(now.encode(now.sync()))
-}
-
-fn random(max) {
-  Ok(random.encode(random.sync(max)))
-}
-
-fn sleep(milliseconds) {
-  process.sleep(int.max(0, milliseconds))
-  Ok(sleep.encode(Nil))
 }

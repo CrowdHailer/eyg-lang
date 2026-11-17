@@ -51,6 +51,7 @@ pub fn turn(request, id, context: Context) {
         execute.block(code, context.state, context.policy, start.root, fn(_) {
           Nil
         })
+        |> execute.complete
       // Code runs in this process, only the changes it made are merged into the box.
       let outcome = case outcome {
         Ok(value) if root != start.root ->
