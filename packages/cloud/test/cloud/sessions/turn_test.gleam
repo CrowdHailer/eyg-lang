@@ -7,8 +7,8 @@ import cloud/file_system
 import cloud/helpers
 import cloud/registry
 import cloud/server
+import cloud/session_helpers
 import cloud/sessions/event
-import cloud/sessions/turn
 import eyg/hub/cache
 import gleam/dict
 import gleam/dynamic/decode
@@ -23,35 +23,13 @@ import pog
 import unixfs/check
 import wisp/simulate
 
-fn session(context: Context) {
-  let assert Ok(_) = box.create(context, "home")
-  let assert Ok(pog.Returned(rows: [session], ..)) =
-    db.execute(sessions.create("home", None), context.db)
-  session
-}
-
-fn events(context: Context, session: sessions.Session) {
-  let assert Ok(history) = turn.history(context, session.id)
-  list.map(history, fn(entry) { entry.2 })
-}
-
-fn process(context: Context, session: sessions.Session) {
-  registry.lookup(context.sessions, session.id, fn() { registry.serve(Nil) })
-}
-
-fn run(context, session, code) {
-  registry.call(process(context, session), 10_000, fn(_) {
-    #(Nil, turn.run(context, session, code))
-  })
-}
-
 // Start a turn and wait until its request to /slow has arrived.
 fn start_request(context, session, code) {
   let arrived = process.new_subject()
   let server = server.start(arrived)
   let done = process.new_subject()
   process.spawn_unlinked(fn() {
-    process.send(done, run(context, session, code(server)))
+    process.send(done, session_helpers.run(context, session, code(server)))
   })
   let assert Ok(release) = process.receive(arrived, 5000)
   #(server, release, done)
@@ -59,7 +37,8 @@ fn start_request(context, session, code) {
 
 fn stop_during_request(context, session, code) {
   let #(server, _release, _done) = start_request(context, session, code)
-  let assert Ok(pid) = process.subject_owner(process(context, session))
+  let assert Ok(pid) =
+    process.subject_owner(session_helpers.process(context, session))
   process.kill(pid)
   server
 }
@@ -71,7 +50,7 @@ const read = "perform ReadFile({path: \"/a.txt\", offset: 0, limit: 10})"
 
 pub fn record_events_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let server = server.start(process.new_subject())
   let code =
     "let n = perform Random(10)\nlet _ = "
@@ -79,7 +58,7 @@ pub fn record_events_test() {
     <> "\nlet _ = "
     <> server.fetch(server, "GET", "/hello")
     <> "\nn"
-  let assert Ok(#(Ok(value), [])) = run(context, session, code)
+  let assert Ok(#(Ok(value), [])) = session_helpers.run(context, session, code)
   let assert [
     event.Started(..),
     event.Resumed(start),
@@ -89,7 +68,7 @@ pub fn record_events_test() {
     event.Resumed(after),
     event.Returned(Ok(_), [], _),
     event.Finished(Ok(finished), [], end),
-  ] = events(context, session)
+  ] = session_helpers.events(context, session)
   assert int.to_string(number) == value
   assert value == finished
   assert start != written
@@ -99,7 +78,7 @@ pub fn record_events_test() {
 
 pub fn box_changes_while_waiting_for_a_response_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let #(_server, release, done) =
     start_request(context, session, fn(server) {
       "let _ = " <> server.fetch(server, "GET", "/slow") <> "\n" <> read
@@ -112,17 +91,18 @@ pub fn box_changes_while_waiting_for_a_response_test() {
   let assert Ok(Ok(#(Ok(value), _))) = process.receive(done, 5000)
   // The code continues from the latest root after the response.
   assert string.contains(value, "b3RoZXI=")
-  let assert [_, _, _, _, event.Resumed(after), _, _] = events(context, session)
+  let assert [_, _, _, _, event.Resumed(after), _, _] =
+    session_helpers.events(context, session)
   assert other.root == after
 }
 
 pub fn box_changes_while_sleeping_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let done = process.new_subject()
   process.spawn(fn() {
     let code = "let _ = perform Sleep(500)\n" <> read
-    process.send(done, run(context, session, code))
+    process.send(done, session_helpers.run(context, session, code))
   })
   process.sleep(100)
   // The box is not held while the session sleeps.
@@ -133,19 +113,20 @@ pub fn box_changes_while_sleeping_test() {
   let assert Ok(Ok(#(Ok(value), _))) = process.receive(done, 5000)
   assert string.contains(value, "b3RoZXI=")
   let assert [_, _, event.Slept(500, _), event.Resumed(after), _, _] =
-    events(context, session)
+    session_helpers.events(context, session)
   assert other.root == after
 }
 
 pub fn send_get_again_after_stopping_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let server =
     stop_during_request(context, session, fn(server) {
       server.fetch(server, "GET", "/slow")
     })
-  let assert [_, _, event.Requested(..)] = events(context, session)
-  let assert Ok(#(Ok("2"), [])) = run(context, session, "2")
+  let assert [_, _, event.Requested(..)] =
+    session_helpers.events(context, session)
+  let assert Ok(#(Ok("2"), [])) = session_helpers.run(context, session, "2")
   assert 2 == server.count_requests(server, http.Get, "/slow")
   let assert [
     _,
@@ -156,28 +137,28 @@ pub fn send_get_again_after_stopping_test() {
     _,
     event.Finished(Ok(value), _, _),
     ..
-  ] = events(context, session)
+  ] = session_helpers.events(context, session)
   assert string.starts_with(value, "Ok(")
 }
 
 pub fn fail_post_after_stopping_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let server =
     stop_during_request(context, session, fn(server) {
       server.fetch(server, "POST", "/slow")
     })
-  let assert Ok(#(Ok("2"), [])) = run(context, session, "2")
+  let assert Ok(#(Ok("2"), [])) = session_helpers.run(context, session, "2")
   // The request might have been received so it is not sent again.
   assert 1 == server.count_requests(server, http.Post, "/slow")
   let assert [_, _, _, _, _, _, event.Finished(Ok(value), _, _), ..] =
-    events(context, session)
+    session_helpers.events(context, session)
   assert string.starts_with(value, "Error(\"network error")
 }
 
 pub fn replay_recorded_answers_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let _ =
     stop_during_request(context, session, fn(server) {
       "let n = perform Random(1000000)\nlet _ = "
@@ -185,11 +166,85 @@ pub fn replay_recorded_answers_test() {
       <> "\nn"
     })
   let assert [_, _, event.Answered(execute.Number(number)), _] =
-    events(context, session)
-  let assert Ok(_) = run(context, session, "1")
+    session_helpers.events(context, session)
+  let assert Ok(_) = session_helpers.run(context, session, "1")
   let assert [_, _, _, _, _, _, _, event.Finished(Ok(value), _, _), ..] =
-    events(context, session)
+    session_helpers.events(context, session)
   assert int.to_string(number) == value
+}
+
+fn turns(context, session: sessions.Session) {
+  simulate.request(http.Get, "/sessions/" <> session.id)
+  |> helpers.dispatch(context)
+  |> simulate.read_body
+  |> json.parse(decode.at(["turns"], decode.dynamic))
+}
+
+pub fn export_and_reconstruct_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let server = server.start(process.new_subject())
+  let _ =
+    session_helpers.run(
+      context,
+      session,
+      "let _ = " <> write <> "\nperform Random(100)",
+    )
+  let _ =
+    session_helpers.run(
+      context,
+      session,
+      "let _ = perform Flip({})\n" <> server.fetch(server, "GET", "/hello"),
+    )
+  let _ = session_helpers.run(context, session, "!int_add(1, \"two\")")
+  let _ = session_helpers.run(context, session, read)
+  let log = session_helpers.export(context, session)
+  assert 4 == list.length(string.split(log, "\"type\":\"started\"")) - 1
+
+  let assert Ok(copy) = session_helpers.import_(context, "home", log)
+  assert turns(context, session) == turns(context, copy)
+  assert log == session_helpers.export(context, copy)
+}
+
+pub fn resume_reconstructed_turn_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let server =
+    stop_during_request(context, session, fn(server) {
+      "let n = perform Random(1000000)\nlet _ = "
+      <> server.fetch(server, "GET", "/slow")
+      <> "\nn"
+    })
+  let assert Ok(copy) =
+    session_helpers.import_(
+      context,
+      "home",
+      session_helpers.export(context, session),
+    )
+  let assert [_, _, event.Answered(execute.Number(number)), _] =
+    session_helpers.events(context, copy)
+  // The copy finishes the turn from its events.
+  let assert Ok(#(Ok("\"done\""), [])) =
+    session_helpers.run(context, copy, "\"done\"")
+  let assert [_, _, _, _, _, _, _, event.Finished(Ok(value), _, _), ..] =
+    session_helpers.events(context, copy)
+  assert int.to_string(number) == value
+  assert 2 == server.count_requests(server, http.Get, "/slow")
+}
+
+pub fn reject_events_that_do_not_match_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let _ = session_helpers.run(context, session, "perform Random(10)")
+  let assert [_, _, event.Answered(execute.Number(number)), ..] =
+    session_helpers.events(context, session)
+  let changed =
+    session_helpers.export(context, session)
+    |> string.replace(
+      "\"number\":" <> int.to_string(number),
+      "\"number\":" <> int.to_string(number + 10),
+    )
+  assert Error(422) == session_helpers.import_(context, "home", changed)
 }
 
 const deny_writes =
@@ -214,16 +269,17 @@ const deny_writes =
 
 pub fn replay_with_the_policy_a_turn_started_with_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let _ =
     stop_during_request(context, session, fn(server) {
       "let _ = " <> server.fetch(server, "GET", "/slow") <> "\n" <> write
     })
   let context = Context(..context, policy: deny_writes)
-  let assert Ok(#(Ok(denied), [])) = run(context, session, write)
+  let assert Ok(#(Ok(denied), [])) =
+    session_helpers.run(context, session, write)
   // The unfinished turn ran with the policy it started with.
   let assert [_, _, _, _, _, _, event.Finished(Ok(allowed), _, _), ..] =
-    events(context, session)
+    session_helpers.events(context, session)
   assert "Ok({})" == allowed
   assert "Error(\"denied\")" == denied
 }
@@ -233,30 +289,40 @@ pub fn secrets_are_fingerprinted_test() {
   let secrets = dict.from_list([#("KEY", "s3cr3t-value")])
   let context =
     Context(..context, state: execute.State(..context.state, secrets:))
-  let session = session(context)
+  let session = session_helpers.session(context)
   let _ =
     stop_during_request(context, session, fn(server) {
       "let key = perform Env(\"KEY\")\nlet _ = "
       <> server.fetch(server, "GET", "/slow")
       <> "\nkey"
     })
-  let assert [_, _, event.Read("KEY", _), _] = events(context, session)
-  let recorded =
-    events(context, session)
-    |> list.map(fn(event) { json.to_string(event.encode(event)) })
-    |> string.concat
-  assert !string.contains(recorded, "s3cr3t")
+  let assert [_, _, event.Read("KEY", _), _] =
+    session_helpers.events(context, session)
+  assert !string.contains(session_helpers.export(context, session), "s3cr3t")
 
   let changed = dict.from_list([#("KEY", "other")])
   let changed =
     Context(..context, state: execute.State(..context.state, secrets: changed))
-  let assert Error(box.Failed(reason)) = run(changed, session, "1")
+  let assert Error(box.Failed(reason)) =
+    session_helpers.run(changed, session, "1")
   assert reason == "the secret KEY has changed since the turn ran"
 
-  let assert Ok(_) = run(context, session, "1")
+  let assert Ok(_) = session_helpers.run(context, session, "1")
   let assert [_, _, _, _, _, _, _, event.Finished(Ok(value), _, _), ..] =
-    events(context, session)
+    session_helpers.events(context, session)
   assert "Some(\"s3cr3t-value\")" == value
+}
+
+pub fn reload_export_after_the_policy_changes_test() {
+  use context <- helpers.context()
+  let session = session_helpers.session(context)
+  let assert Ok(#(Ok("Ok({})"), [])) =
+    session_helpers.run(context, session, write)
+  let log = session_helpers.export(context, session)
+  // The events record the policy each turn ran with.
+  let context = Context(..context, policy: deny_writes)
+  let assert Ok(copy) = session_helpers.import_(context, "home", log)
+  assert turns(context, session) == turns(context, copy)
 }
 
 // Keep the box process busy until the returned subject is sent to.
@@ -281,18 +347,18 @@ fn hold_box(context: Context, name) {
 
 pub fn reading_sessions_do_not_wait_for_the_box_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let server = server.start(process.new_subject())
   let release = hold_box(context, "home")
   let code = "let _ = " <> server.fetch(server, "GET", "/hello") <> "\n" <> read
-  let assert Ok(#(Ok(value), [])) = run(context, session, code)
+  let assert Ok(#(Ok(value), [])) = session_helpers.run(context, session, code)
   assert string.starts_with(value, "Error(")
   process.send(release, Nil)
 }
 
 pub fn reject_a_conflicting_session_test() {
   use context <- helpers.context()
-  let session = session(context)
+  let session = session_helpers.session(context)
   let server = server.start(process.new_subject())
   let release = hold_box(context, "home")
   // This change waits for the box process first.
@@ -306,7 +372,7 @@ pub fn reject_a_conflicting_session_test() {
   process.spawn(fn() {
     let code =
       "let _ = " <> write <> "\n" <> server.fetch(server, "GET", "/hello")
-    process.send(done, run(context, session, code))
+    process.send(done, session_helpers.run(context, session, code))
   })
   process.sleep(100)
   process.send(release, Nil)
@@ -344,12 +410,12 @@ pub fn merge_a_change_only_once_test() {
       <> "\nlet _ = "
       <> server.fetch(server, "GET", "/hello")
       <> "\n2"
-    run(context, session, code)
+    session_helpers.run(context, session, code)
   })
   // The session stops after recording its events, while its change waits to be merged.
   wait_until(
     fn() {
-      list.any(events(context, session), fn(event) {
+      list.any(session_helpers.events(context, session), fn(event) {
         case event {
           event.Requested(..) -> True
           _ -> False
@@ -359,7 +425,8 @@ pub fn merge_a_change_only_once_test() {
     200,
   )
   process.sleep(50)
-  let assert Ok(pid) = process.subject_owner(process(context, session))
+  let assert Ok(pid) =
+    process.subject_owner(session_helpers.process(context, session))
   process.kill(pid)
   let assert Ok(before) = box.latest(context, name)
   process.send(release, Nil)
@@ -376,10 +443,10 @@ pub fn merge_a_change_only_once_test() {
       file_system.write(root, "/a.txt", <<"other">>)
     })
 
-  let assert Ok(#(Ok("1"), [])) = run(context, session, "1")
+  let assert Ok(#(Ok("1"), [])) = session_helpers.run(context, session, "1")
   // Merging the session's change again did nothing, so it did not conflict.
   let assert [_, _, _, event.Answered(_), _, _, event.Finished(Ok(_), _, _), ..] =
-    events(context, session)
+    session_helpers.events(context, session)
   assert 1 == server.count_requests(server, http.Get, "/hello")
   let assert Ok(latest) = box.latest(context, name)
   assert Ok(Ok(<<"other">>))
@@ -392,21 +459,21 @@ pub fn replay_with_the_packages_a_turn_resolved_test() {
   let cache = server.release(cache.empty(), "lib", "1")
   let state = execute.State(..context.state, origin: server.origin(hub), cache:)
   let context = Context(..context, state:)
-  let session = session(context)
+  let session = session_helpers.session(context)
   let _ =
     stop_during_request(context, session, fn(server) {
       "let x = @lib\nlet _ = " <> server.fetch(server, "GET", "/slow") <> "\nx"
     })
   let assert [_, _, event.Pinned("lib", None, _), event.Requested(..)] =
-    events(context, session)
+    session_helpers.events(context, session)
 
   // A new version of the package is released before the session resumes.
   let cache = server.release(context.state.cache, "lib", "2")
   let context = Context(..context, state: execute.State(..state, cache:))
-  let assert Ok(#(Ok("2"), [])) = run(context, session, "@lib")
+  let assert Ok(#(Ok("2"), [])) = session_helpers.run(context, session, "@lib")
   // The turn that stopped finished with the version it started with.
   let assert Ok(value) =
-    list.find_map(events(context, session), fn(event) {
+    list.find_map(session_helpers.events(context, session), fn(event) {
       case event {
         event.Finished(Ok(value), _, _) -> Ok(value)
         _ -> Error(Nil)
@@ -415,110 +482,10 @@ pub fn replay_with_the_packages_a_turn_resolved_test() {
   assert "1" == value
 }
 
-fn export(context, session: sessions.Session) {
-  simulate.request(http.Get, "/sessions/" <> session.id <> "/events")
-  |> helpers.dispatch(context)
-  |> simulate.read_body
-}
-
-fn import_(context, log) {
-  let response =
-    simulate.request(http.Post, "/boxes/home/sessions")
-    |> simulate.string_body(log)
-    |> helpers.dispatch(context)
-  case response.status {
-    201 -> {
-      let assert Ok(id) =
-        json.parse(
-          simulate.read_body(response),
-          decode.at(["id"], decode.string),
-        )
-      let assert Ok(pog.Returned(rows: [session], ..)) =
-        db.execute(sessions.get(id), context.db)
-      Ok(session)
-    }
-    status -> Error(status)
-  }
-}
-
-fn turns(context, session: sessions.Session) {
-  simulate.request(http.Get, "/sessions/" <> session.id)
-  |> helpers.dispatch(context)
-  |> simulate.read_body
-  |> json.parse(decode.at(["turns"], decode.dynamic))
-}
-
-pub fn export_and_reconstruct_test() {
-  use context <- helpers.context()
-  let session = session(context)
-  let server = server.start(process.new_subject())
-  let _ = run(context, session, "let _ = " <> write <> "\nperform Random(100)")
-  let _ =
-    run(
-      context,
-      session,
-      "let _ = perform Flip({})\n" <> server.fetch(server, "GET", "/hello"),
-    )
-  let _ = run(context, session, "!int_add(1, \"two\")")
-  let _ = run(context, session, read)
-  let log = export(context, session)
-  assert 4 == list.length(string.split(log, "\"type\":\"started\"")) - 1
-
-  let assert Ok(copy) = import_(context, log)
-  assert turns(context, session) == turns(context, copy)
-  assert log == export(context, copy)
-}
-
-pub fn resume_reconstructed_turn_test() {
-  use context <- helpers.context()
-  let session = session(context)
-  let server =
-    stop_during_request(context, session, fn(server) {
-      "let n = perform Random(1000000)\nlet _ = "
-      <> server.fetch(server, "GET", "/slow")
-      <> "\nn"
-    })
-  let assert Ok(copy) = import_(context, export(context, session))
-  let assert [_, _, event.Answered(execute.Number(number)), _] =
-    events(context, copy)
-  // The copy finishes the turn from its events.
-  let assert Ok(#(Ok("\"done\""), [])) = run(context, copy, "\"done\"")
-  let assert [_, _, _, _, _, _, _, event.Finished(Ok(value), _, _), ..] =
-    events(context, copy)
-  assert int.to_string(number) == value
-  assert 2 == server.count_requests(server, http.Get, "/slow")
-}
-
-pub fn reject_events_that_do_not_match_test() {
-  use context <- helpers.context()
-  let session = session(context)
-  let _ = run(context, session, "perform Random(10)")
-  let assert [_, _, event.Answered(execute.Number(number)), ..] =
-    events(context, session)
-  let changed =
-    export(context, session)
-    |> string.replace(
-      "\"number\":" <> int.to_string(number),
-      "\"number\":" <> int.to_string(number + 10),
-    )
-  assert Error(422) == import_(context, changed)
-}
-
-pub fn reload_export_after_the_policy_changes_test() {
-  use context <- helpers.context()
-  let session = session(context)
-  let assert Ok(#(Ok("Ok({})"), [])) = run(context, session, write)
-  let log = export(context, session)
-  // The events record the policy each turn ran with.
-  let context = Context(..context, policy: deny_writes)
-  let assert Ok(copy) = import_(context, log)
-  assert turns(context, session) == turns(context, copy)
-}
-
 pub fn import_shares_the_thread_test() {
   use context <- helpers.context()
-  let session = session(context)
-  let assert Ok(_) = run(context, session, write)
+  let session = session_helpers.session(context)
+  let assert Ok(_) = session_helpers.run(context, session, write)
   let count = fn() {
     let assert Ok(pog.Returned(rows: [count], ..)) =
       pog.query("SELECT count(*)::INT FROM thread_events")
@@ -527,7 +494,12 @@ pub fn import_shares_the_thread_test() {
     count
   }
   let before = count()
-  let assert Ok(copy) = import_(context, export(context, session))
+  let assert Ok(copy) =
+    session_helpers.import_(
+      context,
+      "home",
+      session_helpers.export(context, session),
+    )
   // Keys are made from the events, so the copy points at the same history.
   assert before == count()
   let assert Ok(pog.Returned(rows: [original], ..)) =
