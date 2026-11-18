@@ -36,6 +36,8 @@ The chat for a new message is rebuilt from these events, so it is never replayed
 A completion that was asked for but not recorded is asked for again, it costs a request but has no effect outside the session.
 Completions are streamed to show their text as it arrives, only the whole completion is recorded.
 If the process stops part way through, the text so far is lost and the completion is asked for again from the start.
+Messages sent while a chat runs are kept in memory until the tool calls running finish, then recorded with the next completion.
+They are lost if the service stops first, they are not events because nothing in the turn has used them.
 The llm is recorded by name, a chat turn can only be replayed while an llm is configured under that name.
 
 The changes made by a tool call that fails are kept, the llm is told it failed and can carry on.

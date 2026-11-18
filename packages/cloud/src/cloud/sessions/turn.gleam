@@ -16,6 +16,7 @@
 //// A message to a session that chats with an llm is a turn that runs the code of each tool call the llm makes.
 //// Asking the llm for a completion is a stop like a request, the completion is recorded as soon as it is received.
 //// Completions have no effect outside the session, so one that was asked for but not recorded is asked for again.
+//// Messages sent to the chat while the llm's tool calls run are recorded with the next completion they are added to.
 ////
 //// Each turn records the policy it runs with and the module each package reference resolved to,
 //// so a replay runs the same code after the policy changes or a package is released.
@@ -366,7 +367,8 @@ fn drive(context: Context, session: Session, state, segment: Segment) {
   use start <- result.try(box.latest(context, session.box))
   let start = start.root
   let before = state.pins
-  let #(stop, answers) = perform(segment(state, start), [])
+  let steered = fn() { live.take(context.live, session.id) }
+  let #(stop, answers) = perform(segment(state, start), [], steered)
   let #(last, root, next) = ending(stop, start)
   let events =
     list.flatten([
@@ -456,17 +458,21 @@ fn answer(context: Context, session: Session, state, wait, resume) {
 }
 
 // Answer every effect that does not leave the box process.
-fn perform(run, answers) {
+// `steered` takes the messages sent to a chat while it ran tool calls.
+fn perform(run, answers, steered) {
   case stop(run) {
     Ok(stop) -> #(stop, list.reverse(answers))
     Error(#(wait, state, root, resume)) -> {
-      let answer = execute.perform(wait, state)
+      let answer = case wait {
+        execute.Steer -> execute.Steered(steered())
+        _ -> execute.perform(wait, state)
+      }
       let recorded = case wait, answer {
         execute.Env(name), execute.Secret(value) ->
           event.Read(name, fingerprint(name, value))
         _, _ -> event.Answered(answer)
       }
-      perform(resume(answer, state, root), [recorded, ..answers])
+      perform(resume(answer, state, root), [recorded, ..answers], steered)
     }
   }
 }

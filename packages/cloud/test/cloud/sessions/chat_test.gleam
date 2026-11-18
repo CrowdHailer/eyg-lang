@@ -2,6 +2,7 @@ import cloud/beam/execute
 import cloud/box
 import cloud/file_system
 import cloud/helpers
+import cloud/live
 import cloud/overlay
 import cloud/server
 import cloud/session_helpers
@@ -34,9 +35,11 @@ pub fn reply_after_running_tool_calls_test() {
     event.Asked([chat.UserMessage(asked, [])], _),
     event.Answered(execute.Completed(Ok(_))),
     event.Resumed(_),
+    event.Answered(execute.Steered([])),
     event.Asked([chat.ToolResultMessage(..)], written),
     event.Answered(execute.Completed(Ok(_))),
     event.Resumed(after),
+    event.Answered(execute.Steered([])),
     event.Asked([chat.ToolResultMessage(text: result, ..)], _),
     event.Answered(execute.Completed(Ok(_))),
     event.Resumed(_),
@@ -50,6 +53,40 @@ pub fn reply_after_running_tool_calls_test() {
   let assert Ok(home) = box.latest(context, session.box)
   assert Ok(Ok(<<"a">>))
     == execute.files(file_system.read(home.root, "/a.txt"), context.state)
+}
+
+pub fn add_messages_after_tool_calls_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let #(context, session) = session_helpers.chat(context, server)
+  // Sent while the turn runs, before its tool calls finish.
+  live.steer(context.live, session.id, "also")
+  let assert Ok(#(Ok("also #2"), [])) =
+    session_helpers.send(context, session, "run:" <> write)
+  let events = session_helpers.events(context, session)
+  let assert [_, ..] =
+    list.filter(events, fn(event) {
+      event == event.Answered(execute.Steered(["also"]))
+    })
+  let assert [
+    chat.UserMessage(_, []),
+    chat.AssistantMessage(..),
+    chat.ToolResultMessage(..),
+    chat.UserMessage("also", []),
+    chat.AssistantMessage(..),
+  ] = turn.conversation(events)
+  assert [] == live.take(context.live, session.id)
+}
+
+pub fn messages_sent_after_tool_calls_are_kept_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let #(context, session) = session_helpers.chat(context, server)
+  // A reply without tool calls has no point to add a message.
+  live.steer(context.live, session.id, "later")
+  let assert Ok(#(Ok("hello #1"), [])) =
+    session_helpers.send(context, session, "hello")
+  assert ["later"] == live.take(context.live, session.id)
 }
 
 pub fn continue_the_chat_test() {

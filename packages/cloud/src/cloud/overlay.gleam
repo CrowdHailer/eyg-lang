@@ -73,6 +73,7 @@ To make or change a skill, read /skills/writing-skills/SKILL.md first.",
 /// The changes made by a tool call are kept even if it fails, the llm is told it failed.
 /// If the box rejects the changes made before a completion they are discarded and the llm is told why,
 /// it can repair them `repairs` times before the reply fails.
+/// Messages sent while tool calls run are added after their results.
 pub fn reply(
   llm: provider.Llm,
   context: provider.Context,
@@ -122,12 +123,19 @@ fn ask(llm, context, history, added, policy, state, root, repairs) {
   }
 }
 
-// Run each call in order, then ask again with their results.
+// Run each call in order, then ask again with their results and any messages sent meanwhile.
 fn call(llm, context, history, calls, results, policy, state, root, repairs) {
   case calls {
-    [] ->
+    [] -> {
+      use answer, state, root <- execute.Waiting(execute.Steer, state, root)
+      let steered = case answer {
+        execute.Steered(messages) -> list.map(messages, chat.UserMessage(_, []))
+        _ -> []
+      }
       list.reverse(results)
+      |> list.append(steered)
       |> ask(llm, context, history, _, policy, state, root, repairs)
+    }
     [tool.Call(id, tool.FunctionCall(name, arguments)), ..calls] -> {
       let next = fn(result, state, root) {
         let results = [result_to_message(id, result), ..results]

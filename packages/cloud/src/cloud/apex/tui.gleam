@@ -407,8 +407,7 @@ fn on_screen(model: Model, screen, message) {
     Running(..) as running, Key("pagedown") ->
       scroll(model, running, 0 - page(model))
     Running(..) as running, Scrolled(lines) -> scroll(model, running, lines)
-    Running(waiting: True, ..), Key("esc") -> back(model)
-    Running(session:, waiting: True, ..), Key("x") -> #(
+    Running(session:, waiting: True, ..), Key("ctrl+x") -> #(
       Model(..model, status: Working("Cancelling the turn")),
       background(fn() {
         Opened({
@@ -417,8 +416,11 @@ fn on_screen(model: Model, screen, message) {
         })
       }),
     )
-    Running(waiting: True, ..), Key(_)
-    | Running(waiting: True, ..), Pasted(_)
+    // A message can be written while a chat runs, code is written once a turn finishes.
+    Running(waiting: True, draft: draft.Program(..), ..), Key("esc") ->
+      back(model)
+    Running(waiting: True, draft: draft.Program(..), ..), Key(_)
+    | Running(waiting: True, draft: draft.Program(..), ..), Pasted(_)
     -> #(model, effect.none())
     Running(draft: current, files:, ..) as running, Key(key) -> {
       let #(outcome, state) = draft.key(current, key, context.state, files)
@@ -449,9 +451,11 @@ fn on_screen(model: Model, screen, message) {
       if id == session.id
     -> #(Model(..model, screen: Running(..running, files:)), effect.none())
     // A reply for a session that is no longer shown is dropped, it is in the session's history.
+    // Messages sent after the chat's last tool calls start the next turn.
     Running(session:, log:, waiting: True, ..) as running, Replied(id, replied)
       if id == session.id
     -> {
+      let unsent = live.take(context.live, session.id)
       let lines = case replied {
         Ok(#(outcome, output)) ->
           list.map(output, Printed)
@@ -475,20 +479,24 @@ fn on_screen(model: Model, screen, message) {
           int.min(list.length(reply) - rows + 2, last_scroll(model, running))
         False -> 0
       }
-      #(
-        Model(
-          ..model,
-          screen: Running(
-            ..running,
-            log:,
-            waiting: False,
-            progress: [],
-            arriving: "",
-            scroll:,
-          ),
-        ),
-        list_files(context, session),
-      )
+      let running =
+        Running(
+          ..running,
+          log:,
+          waiting: False,
+          progress: [],
+          arriving: "",
+          scroll:,
+        )
+      let model = Model(..model, screen: running)
+      case unsent {
+        [] -> #(model, list_files(context, session))
+        _ -> {
+          let #(model, effects) =
+            run_turn(model, running, turn.Message(string.join(unsent, "\n\n")))
+          #(model, effect.batch([effects, list_files(context, session)]))
+        }
+      }
     }
     _, _ -> #(model, effect.none())
   }
@@ -629,19 +637,28 @@ pub fn files(
 }
 
 // Send a turn to the session, its outcome is added to the log when it is replied to.
+// A message sent while a chat runs is added to the chat when the llm's tool calls finish,
+// or starts the next turn.
 fn send(model: Model, running, input, draft) {
-  let assert Running(session:, log:, ..) = running
-  let log = list.append(log, [sent(input)])
+  let assert Running(session:, log:, waiting:, ..) = running
+  let running = Running(..running, log: list.append(log, [sent(input)]), draft:)
+  case waiting, input {
+    True, turn.Message(message) -> {
+      live.steer(model.context.live, session.id, message)
+      #(
+        Model(..model, screen: Running(..running, scroll: 0), status: Quiet),
+        effect.none(),
+      )
+    }
+    _, _ -> run_turn(model, running, input)
+  }
+}
+
+// Start a turn that is already in the log.
+fn run_turn(model: Model, running, input) {
+  let assert Running(session:, ..) = running
   let screen =
-    Running(
-      ..running,
-      log:,
-      draft:,
-      waiting: True,
-      progress: [],
-      arriving: "",
-      scroll: 0,
-    )
+    Running(..running, waiting: True, progress: [], arriving: "", scroll: 0)
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -721,6 +738,8 @@ fn log(events) {
       event.Started(code, _) -> [sent(turn.Code(code))]
       event.Submitted(program, _) -> [sent(turn.Program(program))]
       event.Sent(message, _) -> [sent(turn.Message(message))]
+      event.Answered(execute.Steered(messages)) ->
+        list.map(messages, fn(message) { sent(turn.Message(message)) })
       event.Finished(outcome, output, _) ->
         list.map(output, Printed)
         |> list.append([
@@ -850,8 +869,17 @@ pub fn render(model: Model) -> buffer.Buffer {
         #("esc", "back"),
       ],
     )
+    Running(waiting: True, draft: draft.Message(..), ..) as running -> #(
+      title(running),
+      [
+        #("enter", "add to chat"),
+        #("shift+enter", "new line"),
+        #("ctrl+x", "cancel"),
+        #("esc", "boxes"),
+      ],
+    )
     Running(waiting: True, ..) as running -> #(title(running), [
-      #("x", "cancel"),
+      #("ctrl+x", "cancel"),
       #("esc", "boxes"),
     ])
     Secrets(box, ..) -> #("Secrets of " <> option.unwrap(box.name, box.id), [
@@ -1048,6 +1076,14 @@ fn body(screen, area: geometry.Rect, model: Model) {
       let columns = area.size.width
       let chat = draft.mode(current) == "message"
       let lines = list.flat_map(log, entry_lines(_, chat, columns))
+      // A draft taller than half the area shows the part around its cursor.
+      let drafted = fn(most) {
+        let #(lines, cursor) = draft.lines(current, True, columns - 2)
+        let most = int.max(3, most)
+        let start =
+          int.clamp(cursor - most + 1, 0, int.max(0, list.length(lines) - most))
+        prompted(list.drop(lines, start) |> list.take(most))
+      }
       let below = case waiting {
         True ->
           list.map(progress, fn(step) {
@@ -1064,18 +1100,12 @@ fn body(screen, area: geometry.Rect, model: Model) {
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),
           ])
-        False -> {
-          // A draft taller than half the area shows the part around its cursor.
-          let #(lines, cursor) = draft.lines(current, True, columns - 2)
-          let most = int.max(3, area.size.height / 2)
-          let start =
-            int.clamp(
-              cursor - most + 1,
-              0,
-              int.max(0, list.length(lines) - most),
-            )
-          prompted(list.drop(lines, start) |> list.take(most))
-        }
+          // A message can be written for the chat while it runs.
+          |> list.append(case chat {
+            True -> drafted(area.size.height / 4)
+            False -> []
+          })
+        False -> drafted(area.size.height / 2)
       }
       let rows = int.max(0, area.size.height - list.length(below))
       // Scrolling back shows earlier lines, it stops at the first.

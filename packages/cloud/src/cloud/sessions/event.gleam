@@ -98,6 +98,9 @@ pub fn fields(event: Event) -> List(#(String, json.Json)) {
           #("refused", json.string(reason)),
         ]
         execute.Rejected(reason) -> [#("rejected", json.string(reason))]
+        execute.Steered(messages) -> [
+          #("steered", json.array(messages, json.string)),
+        ]
       }
     ]
     Pinned(package, version, module) -> [
@@ -224,6 +227,8 @@ fn answer_decoder() {
       decode.at(["refused"], decode.string)
         |> decode.map(fn(reason) { execute.Completed(Error(reason)) }),
       decode.at(["rejected"], decode.string) |> decode.map(execute.Rejected),
+      decode.at(["steered"], decode.list(decode.string))
+        |> decode.map(execute.Steered),
     ],
   )
 }

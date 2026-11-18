@@ -3,6 +3,7 @@ import cloud/apex/tui.{Key}
 import cloud/beam/execute
 import cloud/box
 import cloud/helpers
+import cloud/live
 import cloud/server
 import cloud/sessions/event
 import cloud/sessions/turn
@@ -207,6 +208,30 @@ pub fn open_an_unfinished_turn_test() {
   let assert Ok(Nil) = turn.resume(context, session)
   let #(model, _) = tui.update(model, tui.Opened(tui.open(context, session.id)))
   assert string.contains(screen(model), "= 1")
+}
+
+pub fn write_while_the_chat_runs_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, Some("test"))
+  let tui.Opening(session:, ..) = opening
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let model = press(model, ["h", "i", "enter"])
+  // A message written while the turn runs is shown and added to the chat after the tool calls running.
+  let model = press(model, ["m", "o", "r", "e", "enter"])
+  assert string.contains(screen(model), "you more")
+  assert string.contains(screen(model), "add to chat")
+  // The reply had no tool calls, so the message starts the next turn.
+  let replied = turn.send(context, session, turn.Message("hi"))
+  let #(model, _) = tui.update(model, tui.Replied(session.id, replied))
+  assert string.contains(screen(model), "llm hi #1")
+  assert string.contains(screen(model), "waiting…")
+  assert 1 == list.length(string.split(screen(model), "you more")) - 1
+  assert [] == live.take(context.live, session.id)
 }
 
 pub fn show_progress_and_scroll_back_test() {

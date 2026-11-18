@@ -86,6 +86,8 @@ pub type Wait {
     history: chat.History,
     added: chat.History,
   )
+  /// An agent asks for the messages sent to it while it ran tool calls, before asking for the next completion.
+  Steer
 }
 
 pub type Answer {
@@ -95,6 +97,7 @@ pub type Answer {
   Flipped(Bool)
   Slept
   Completed(Result(chat.Completion(tool.Call), String))
+  Steered(List(String))
   /// The box rejected the files changed before the wait, so they were discarded.
   /// Code that waited fails with the reason, an agent can repair the change.
   Rejected(String)
@@ -144,6 +147,8 @@ pub fn perform(wait: Wait, state: State) -> Answer {
         fn(completion) { completion },
       )
       |> Completed
+    // Nothing is sent to an agent that is not in a session.
+    Steer -> Steered([])
   }
 }
 
@@ -155,7 +160,7 @@ fn answer_to_value(answer) {
     Flipped(value) -> flip.encode(value)
     Slept -> sleep.encode(Nil)
     // Only an agent asks for a completion, code is never resumed with one.
-    Completed(_) -> v.unit()
+    Completed(_) | Steered(_) -> v.unit()
     // Code that waited fails when its changes are rejected, see `loop`.
     Rejected(_) -> v.unit()
   }
