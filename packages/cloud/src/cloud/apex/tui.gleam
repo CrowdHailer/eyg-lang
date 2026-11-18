@@ -37,6 +37,7 @@ import gleam/string
 import gleam/uri
 import lustre
 import lustre/effect.{type Effect}
+import morph/terminal as code
 import overlay/agent
 import unixfs/mfs
 
@@ -604,8 +605,7 @@ fn send(model: Model, running, input, draft) {
 fn sent(input) {
   case input {
     turn.Message(text) -> Sent(text)
-    turn.Code(code) ->
-      Ran(string.split(code, "\n") |> list.map(span.line_plain))
+    turn.Code(source) -> Ran(code.highlight(source) |> list.map(span.line_new))
     turn.Program(program) -> Ran(editor.program_lines(program))
   }
 }
@@ -816,6 +816,7 @@ pub fn render(model: Model) -> buffer.Buffer {
     Running(draft: draft.Message(..), ..) as running -> #(title(running), [
       #("enter", "send"),
       #("shift+enter", "new line"),
+      #("ctrl+←→", "word"),
       #("pgup/pgdn", "scroll"),
       #("esc", "boxes"),
     ])
@@ -824,6 +825,7 @@ pub fn render(model: Model) -> buffer.Buffer {
       [
         #("enter", "run"),
         #("shift+enter", "new line"),
+        #("ctrl+←→", "word"),
         #("tab", "structured"),
         #("pgup/pgdn", "scroll"),
         #("esc", "boxes"),
@@ -995,7 +997,18 @@ fn body(screen, area: geometry.Rect, model: Model) {
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),
           ])
-        False -> prompted(draft.lines(current, True))
+        False -> {
+          // A draft taller than half the area shows the part around its cursor.
+          let #(lines, cursor) = draft.lines(current, True, columns - 2)
+          let most = int.max(3, area.size.height / 2)
+          let start =
+            int.clamp(
+              cursor - most + 1,
+              0,
+              int.max(0, list.length(lines) - most),
+            )
+          prompted(list.drop(lines, start) |> list.take(most))
+        }
       }
       let rows = int.max(0, area.size.height - list.length(below))
       // Scrolling back shows earlier lines, it stops at the first.

@@ -1,8 +1,11 @@
 import cloud/apex/draft
 import cloud/helpers
 import cloud/sessions/turn
+import etui/span
+import etui/style
 import gleam/list
 import gleam/string
+import morph/terminal/textarea
 
 fn type_(draft, keys) {
   let state = helpers.state()
@@ -39,7 +42,8 @@ pub fn switch_between_text_and_structure_test() {
   // Switching back keeps both drafts.
   let program = type_(program, ["tab"])
   assert "structured" == draft.mode(program)
-  let assert draft.Program(text: "!int_add(1, 2)", ..) = program
+  let assert draft.Program(text:, ..) = program
+  assert "!int_add(1, 2)" == textarea.value(text)
   let assert #(turn.Program(_), program) = send(program)
   let #(input, _) = send(type_(program, ["tab"]))
   assert input == turn.Code("!int_add(1, 2)")
@@ -49,7 +53,8 @@ pub fn paste_text_test() {
   let state = helpers.state()
   let assert #(draft.Edited(message), _) =
     draft.paste(draft.message(), "line one\r\nline two", state)
-  assert message == draft.Message("line one\nline two")
+  let assert draft.Message(text) = message
+  assert "line one\nline two" == textarea.value(text)
 
   // Pasted into the structural editor, text replaces the expression in focus.
   let assert #(draft.Edited(program), _) =
@@ -58,4 +63,25 @@ pub fn paste_text_test() {
     draft.key(program, "enter", state, [])
   let assert #(draft.Problem(_), _) =
     draft.paste(draft.program(), "let x =", state)
+}
+
+pub fn edit_within_text_test() {
+  // Correct the first argument after typing the whole call.
+  let program =
+    type_(draft.program(), ["tab", ..string.to_graphemes("!int_add(3, 2)")])
+  let program =
+    type_(program, ["ctrl+left", "ctrl+left", "delete", "1", "end", "home"])
+  let #(input, _) = send(program)
+  assert input == turn.Code("!int_add(1, 2)")
+
+  // Program text is highlighted, a message is not.
+  let assert #(lines, 0) = draft.lines(program, False, 40)
+  let assert [line] = lines
+  // The bang and the name are both coloured as a builtin.
+  let assert [builtin, ..] = line.spans
+  assert builtin.content == "!int_add"
+  assert builtin.style != style.default_style()
+  let message = type_(draft.message(), string.to_graphemes("!int_add(1, 2)"))
+  let assert #([line], 0) = draft.lines(message, False, 40)
+  assert [span.span_plain("!int_add(1, 2)")] == line.spans
 }

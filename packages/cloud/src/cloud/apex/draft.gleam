@@ -1,21 +1,23 @@
 //// What is being written in a session, a message in a chat or a program in a shell.
 ////
+//// Text is written in a text area, with the motions of `morph/terminal/textarea`, and program text is highlighted.
 //// A program is written as EYG text or with the structural editor, tab switches between them and both drafts are kept.
-//// Text can be pasted, shift and enter starts a new line and enter sends it.
-//// Text pasted into the structural editor replaces the expression in focus.
+//// Shift and enter starts a new line and enter sends the draft.
+//// Pasted text is inserted at the cursor, in the structural editor it replaces the expression in focus.
 
 import cloud/apex/editor
 import cloud/beam/execute
 import cloud/sessions/turn
 import etui/span
-import etui/style
+import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
-import gleam/string
+import gleam/option.{None}
+import morph/terminal
+import morph/terminal/textarea.{type Textarea}
 
 pub type Draft {
-  Message(text: String)
-  Program(text: String, editor: editor.Editor, structured: Bool)
+  Message(text: Textarea)
+  Program(text: Textarea, editor: editor.Editor, structured: Bool)
 }
 
 pub type Outcome {
@@ -27,11 +29,11 @@ pub type Outcome {
 }
 
 pub fn message() -> Draft {
-  Message("")
+  Message(textarea.new())
 }
 
 pub fn program() -> Draft {
-  Program("", editor.new(), True)
+  Program(textarea.new(), editor.new(), True)
 }
 
 /// Handle a key, the state is returned with modules that were looked up to check a program.
@@ -81,17 +83,15 @@ pub fn key(
 fn typing(text, key, update, input) {
   case key {
     "enter" ->
-      case string.trim(text) {
-        "" -> Unhandled
-        _ -> Send(input(text), update(""))
+      case textarea.is_empty(text) {
+        True -> Unhandled
+        False -> Send(input(textarea.value(text)), update(textarea.new()))
       }
-    "shift+enter" -> Edited(update(text <> "\n"))
-    "backspace" -> Edited(update(string.drop_end(text, 1)))
     "esc" -> Unhandled
     _ ->
-      case string.length(key) {
-        1 -> Edited(update(text <> key))
-        _ -> Unhandled
+      case textarea.key(text, key) {
+        Ok(text) -> Edited(update(text))
+        Error(Nil) -> Unhandled
       }
   }
 }
@@ -102,11 +102,13 @@ pub fn paste(
   text: String,
   state: execute.State,
 ) -> #(Outcome, execute.State) {
-  let text = string.replace(text, "\r\n", "\n")
   case draft {
-    Message(current) -> #(Edited(Message(current <> text)), state)
+    Message(current) -> #(
+      Edited(Message(textarea.insert(current, text))),
+      state,
+    )
     Program(structured: False, ..) -> #(
-      Edited(Program(..draft, text: draft.text <> text)),
+      Edited(Program(..draft, text: textarea.insert(draft.text, text))),
       state,
     )
     Program(editor: edited, ..) -> {
@@ -119,25 +121,21 @@ pub fn paste(
   }
 }
 
-/// The draft as it is shown, `active` is false while a turn is running.
-pub fn lines(draft: Draft, active: Bool) -> List(span.Line) {
+/// The lines of the draft as it is shown `width` cells wide, and the row of the cursor.
+/// `active` is false while a turn is running.
+pub fn lines(
+  draft: Draft,
+  active: Bool,
+  width: Int,
+) -> #(List(span.Line), Int) {
   case draft {
-    Program(structured: True, editor: edited, ..) ->
-      editor.lines(edited, active)
-    Message(text) | Program(text:, ..) -> {
-      let lines = string.split(text, "\n")
-      let last = list.length(lines) - 1
-      list.index_map(lines, fn(line, i) {
-        case i == last && active {
-          True ->
-            span.line_new([
-              span.span_plain(line),
-              span.span_styled("▏", style.reversed()),
-            ])
-          False -> span.line_plain(line)
-        }
-      })
+    Program(structured: True, editor: edited, ..) -> {
+      let lines = editor.lines(edited, active)
+      #(lines, int.max(0, list.length(lines) - 1))
     }
+    Program(text:, ..) ->
+      textarea.lines(text, terminal.highlight, width, active)
+    Message(text) -> textarea.lines(text, textarea.plain, width, active)
   }
 }
 
@@ -147,14 +145,5 @@ pub fn mode(draft: Draft) -> String {
     Message(..) -> "message"
     Program(structured: True, ..) -> "structured"
     Program(structured: False, ..) -> "text"
-  }
-}
-
-/// Whether the editor is typing a value for an edit, when escape cancels it.
-pub fn typing_value(draft: Draft) -> Bool {
-  case draft {
-    Program(structured: True, editor: editor.Editor(input: Some(_), ..), ..) ->
-      True
-    _ -> False
   }
 }
