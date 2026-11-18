@@ -13,6 +13,7 @@ import eyg/parser
 import gleam/dict
 import gleam/erlang/process
 import gleam/http/request
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -218,17 +219,30 @@ pub fn show_progress_and_scroll_back_test() {
   assert 20 == list.length(string.split(screen(model), "\n"))
   let tui.Opening(session:, ..) = opening
 
-  // Many lines of output, the end is shown and earlier lines are a page up.
-  let output = list.repeat("line", 40)
+  // A reply longer than the screen is shown from its start, the rest is a page down.
+  let output =
+    list.index_map(list.repeat("line", 40), fn(line, i) {
+      line <> " " <> int.to_string(i)
+    })
   let model = press(model, ["tab", "1", "enter"])
   let #(model, _) =
     tui.update(model, tui.Replied(session.id, Ok(#(Ok("done"), output))))
-  assert string.contains(screen(model), "= done")
-  assert string.contains(screen(model), "earlier lines")
-  let model = press(model, ["pageup"])
+  assert string.contains(screen(model), "line 0")
   assert !string.contains(screen(model), "= done")
   assert string.contains(screen(model), "newer lines")
-  let model = press(model, ["pagedown"])
+  let model = press(model, ["pagedown", "pagedown", "pagedown"])
+  assert string.contains(screen(model), "= done")
+  assert string.contains(screen(model), "earlier lines")
+  // The wheel scrolls back, and stops at the first line.
+  let #(model, _) = tui.update(model, tui.Scrolled(3))
+  assert !string.contains(screen(model), "= done")
+  let model =
+    list.fold(list.repeat(Nil, 30), model, fn(model, _) {
+      tui.update(model, tui.Scrolled(3)).0
+    })
+  assert string.contains(screen(model), "> 1")
+  assert !string.contains(screen(model), "earlier lines")
+  let #(model, _) = tui.update(model, tui.Scrolled(-300))
   assert string.contains(screen(model), "= done")
 
   // While a turn runs, what it has done is shown.

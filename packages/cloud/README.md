@@ -35,6 +35,9 @@ then it accepts every connection and every request needs the password, with HTTP
 | `PUT /boxes/:id/secrets/:name` | Set a secret to the request body. |
 | `DELETE /boxes/:id/secrets/:name` | Remove a secret. |
 
+A new box starts with the files in `priv/box`, a skill in `/skills/writing-skills/SKILL.md` on writing skills.
+Agents chatting in a box are told to look for skills in `/skills` at the start of a task.
+
 Code in a box reads the box's secrets with the `Env` effect, a clone starts with a copy of them.
 
 A change that leaves an invalid module is rejected with status 422 and the box is not changed.
@@ -83,7 +86,8 @@ See `cloud/sessions/turn.gleam` for how a turn is recorded and replayed.
 The web interface is started with the API on `WEB_PORT`, by default 8787, with the same access as the API.
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it, or by managing its secrets.
-The terminal fills the window and the log scrolls back with page up and page down.
+The terminal fills the window and a session fills it from the bottom, as a terminal does.
+The log scrolls back with page up and page down or the mouse wheel, a reply longer than the screen is shown from its start.
 A shell's programs are written as EYG text, which can be pasted, or with the structural editor and the same keys as the EYG shell.
 Tab switches between them and keeps both, shift and enter starts a new line in text and in chat messages.
 Text is edited with arrows, home and end, ctrl or alt with an arrow moves by word, program text is highlighted.
