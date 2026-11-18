@@ -6,6 +6,7 @@ import cloud/apex/web
 import cloud/beam/execute
 import cloud/box/memory
 import cloud/channels
+import cloud/crons
 import cloud/data/blobs
 import cloud/data/db
 import cloud/data/migrations
@@ -197,6 +198,7 @@ fn start_api(state, llm: Option(provider.Llm)) {
       let web_port =
         envoy.get("WEB_PORT") |> result.try(int.parse) |> result.unwrap(8787)
       let assert Ok(_) = web.start(context, access, web_port)
+      let assert Ok(_) = crons.start(context)
       Some(context)
     }
   }

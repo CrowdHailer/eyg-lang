@@ -43,8 +43,8 @@ pub fn create_box_test() {
   assert "home" == field(response, "name", decode.string)
 
   let response = dispatch(simulate.request(http.Get, home <> "/files"), context)
-  // A new box starts with the skill for writing skills.
-  assert "[{\"name\":\"skills\",\"type\":\"directory\"}]"
+  // A new box starts with its configuration and the skill for writing skills.
+  assert "[{\"name\":\"_box\",\"type\":\"directory\"},{\"name\":\"skills\",\"type\":\"directory\"}]"
     == simulate.read_body(response)
   let response =
     simulate.request(http.Get, home <> "/files/skills/writing-skills/SKILL.md")

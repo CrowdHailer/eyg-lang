@@ -394,6 +394,11 @@ fn resolve(reference, importing, state: State, root) {
   }
 }
 
+/// The value of the module at the absolute `path`, it can import other modules and do nothing else.
+pub fn module(path: String, state: State, root: v1.Cid) {
+  import_module(path, [], state, root)
+}
+
 /// A module is the value of a file in the file system the code is running against.
 /// Code that is run is at the root of the file system, so its imports are relative to there.
 /// `importing` is the sequence of modules that lead to this one.

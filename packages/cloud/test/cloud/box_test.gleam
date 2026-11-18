@@ -22,7 +22,7 @@ pub fn merge_changes_from_the_same_base_test() {
   }
   let assert Ok(_) = change("/a.txt", <<"a">>)
   let assert Ok(merged) = change("/b.txt", <<"b">>)
-  let assert Ok(Ok([#("a.txt", _), #("b.txt", _), #("skills", _)])) =
+  let assert Ok(Ok([#("_box", _), #("a.txt", _), #("b.txt", _), #("skills", _)])) =
     execute.files(file_system.read_directory(merged.root, "/"), context.state)
   // The same change again is not a conflict, a different one is.
   let assert Ok(_) = change("/a.txt", <<"a">>)

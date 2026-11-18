@@ -268,8 +268,8 @@ perform WriteFile({path: \"/page.html\", contents: !string_to_binary(\"<p>hi</p>
   let model = press(model, ["esc"])
   let assert tui.Running(artifact: None, ..) = model.screen
   assert !string.contains(element.to_string(tui.view(model)), "<iframe")
-  // Clicking a file beside the session shows it, the files start on the fourth row.
-  let #(model, _) = tui.update(model, tui.Clicked(110, 3))
+  // Clicking a file beside the session shows it, the files start on the fourth row after the configuration.
+  let #(model, _) = tui.update(model, tui.Clicked(110, 4))
   let assert tui.Running(artifact: Some(tui.Artifact("/notes.txt", _)), ..) =
     model.screen
   let #(model, _) = tui.update(model, tui.Clicked(20, 0))
