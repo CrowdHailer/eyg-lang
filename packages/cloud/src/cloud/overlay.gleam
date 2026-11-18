@@ -57,7 +57,14 @@ fn context(hub, readme) {
 pub fn box_context(hub: origin.Origin) -> provider.Context {
   context(
     hub,
-    "context is an empty record. The working directory is / of a box, a file system that other sessions in the box also change. Changes to .eyg files are only kept if every module in the box type checks. Relative imports load modules from these files.",
+    "context is an empty record. The working directory is / of a box, a file system that other sessions in the box also change. Changes to .eyg files are only kept if every module in the box type checks. Relative imports load modules from these files.
+
+## Skills
+
+Skills are instructions for tasks in this box. Each skill is a directory in /skills with a SKILL.md file, such as /skills/writing-skills/SKILL.md.
+SKILL.md starts with frontmatter giving the skill's name and a description of when to use it.
+At the start of a task list /skills with the ReadDirectory effect, read the frontmatter of each SKILL.md and follow every skill that applies to the task.
+To make or change a skill, read /skills/writing-skills/SKILL.md first.",
   )
 }
 

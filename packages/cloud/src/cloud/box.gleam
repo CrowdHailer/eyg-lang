@@ -16,6 +16,7 @@ import cloud/registry
 import gleam/bit_array
 import gleam/crypto
 import gleam/dict.{type Dict}
+import gleam/erlang/application
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -90,12 +91,54 @@ fn save(context: Context, id, events: memory.Events, kept) {
   })
 }
 
+/// A new box starts with the files in `priv/box`, such as the skill for writing skills.
 pub fn create(context: Context, name: Option(String)) -> Result(Box, Reason) {
+  use files <- result.try(
+    starting_files() |> result.map_error(fn(reason) { Failed(reason) }),
+  )
   use root <- result.try(
-    execute.files(file_system.empty(), context.state)
-    |> result.map_error(Failed),
+    {
+      use root <- mfs.then(file_system.empty())
+      write_all(root, files)
+    }
+    |> execute.files(context.state)
+    |> result.map_error(Failed)
+    |> result.try(result.map_error(_, failed)),
   )
   start(context, name, root)
+}
+
+// Each file every new box starts with, by its path in the box.
+fn starting_files() -> Result(List(#(String, BitArray)), String) {
+  use priv <- result.try(
+    application.priv_directory("cloud")
+    |> result.replace_error("the starting files are missing"),
+  )
+  let directory = priv <> "/box"
+  use paths <- result.try(
+    simplifile.get_files(directory)
+    |> result.map_error(simplifile.describe_error),
+  )
+  list.sort(paths, string.compare)
+  |> list.try_map(fn(path) {
+    use bytes <- result.map(
+      simplifile.read_bits(path) |> result.map_error(simplifile.describe_error),
+    )
+    #(string.drop_start(path, string.length(directory)), bytes)
+  })
+}
+
+fn write_all(root, files) {
+  case files {
+    [] -> mfs.Done(Ok(root))
+    [#(path, bytes), ..files] -> {
+      use root <- mfs.then(file_system.make_directory(root, path <> "/.."))
+      use root <- mfs.try(root)
+      use root <- mfs.then(file_system.write(root, path, bytes))
+      use root <- mfs.try(root)
+      write_all(root, files)
+    }
+  }
 }
 
 /// The new box starts at the current root of the original, with a copy of its secrets.
@@ -334,6 +377,10 @@ fn record(context: Context, box: Box, change) {
         Error(reason) -> Error(reason)
       }
   }
+}
+
+fn failed(reason) {
+  Failed(simplifile.describe_error(reason))
 }
 
 fn query(query, context: Context) {
