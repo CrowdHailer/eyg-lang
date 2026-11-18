@@ -2,6 +2,7 @@ name = "morph"
 version = "0.0.0"
 
 [dependencies]
+eyg_parser = { path = "../gleam_parser" }
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 eyg_analysis = ">= 3.1.0 and < 4.0.0"
 eyg_hub = { path = "../gleam_hub" }
@@ -16,4 +17,3 @@ etui = ">= 2.0.0 and < 3.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
-eyg_parser = { path = "../gleam_parser" }
