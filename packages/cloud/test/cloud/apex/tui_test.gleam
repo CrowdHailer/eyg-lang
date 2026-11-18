@@ -19,6 +19,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import lustre/element
 import unixfs/mfs
 
 // The text on the screen, one string for each row.
@@ -232,6 +233,47 @@ pub fn write_while_the_chat_runs_test() {
   assert string.contains(screen(model), "waiting…")
   assert 1 == list.length(string.split(screen(model), "you more")) - 1
   assert [] == live.take(context.live, session.id)
+}
+
+pub fn show_artifacts_beside_the_session_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, None)
+  let tui.Opening(session:, ..) = opening
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Resized(120, 30))
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let code =
+    "let _ = perform WriteFile({path: \"/notes.txt\", contents: !string_to_binary(\"n\")})
+perform WriteFile({path: \"/page.html\", contents: !string_to_binary(\"<p>hi</p>\")})"
+  let model = press(model, ["tab", "1", "enter"])
+  let replied = turn.send(context, session, turn.Code(code))
+  let #(model, _) = tui.update(model, tui.Replied(session.id, replied))
+  // The page the turn changed is shown beside the session, in a sandbox.
+  let assert Ok(files) = tui.files(context, session)
+  assert files.changed == ["/notes.txt", "/page.html"]
+  let #(model, _) =
+    tui.update(model, tui.FilesListed(session.id, Ok(files), True))
+  let artifact = tui.Artifact("/page.html", files.root)
+  let assert tui.Running(artifact: Some(shown), ..) = model.screen
+  assert shown == artifact
+  assert string.contains(
+    screen(model),
+    "✕ close /page.html  esc or click this line",
+  )
+  let view = element.to_string(tui.view(model))
+  assert string.contains(view, "src=\"" <> tui.artifact_url(artifact) <> "\"")
+  assert string.contains(view, "sandbox=\"allow-scripts\"")
+  // Escape closes it, and so does clicking the line that says so.
+  let model = press(model, ["esc"])
+  let assert tui.Running(artifact: None, ..) = model.screen
+  assert !string.contains(element.to_string(tui.view(model)), "<iframe")
+  // Clicking a file beside the session shows it, the files start on the fourth row.
+  let #(model, _) = tui.update(model, tui.Clicked(110, 3))
+  let assert tui.Running(artifact: Some(tui.Artifact("/notes.txt", _)), ..) =
+    model.screen
+  let #(model, _) = tui.update(model, tui.Clicked(20, 0))
+  let assert tui.Running(artifact: None, ..) = model.screen
 }
 
 pub fn show_progress_and_scroll_back_test() {

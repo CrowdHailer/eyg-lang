@@ -1,6 +1,10 @@
 //// A terminal in the browser, an etui buffer drawn as text with a span for each run of cells in the same style.
 //// Key presses are sent to the server with the names etui uses for them, with `ctrl+`, `alt+` or `shift+` before them.
-//// The page's `script` sends pasted text and the number of cells that fit, and leaves shortcuts such as copy to the browser.
+//// The page's `script` sends pasted text, the cell that is clicked and the number of cells that fit,
+//// and leaves shortcuts such as copy to the browser.
+////
+//// A page can be shown beside the terminal, in a frame that cannot reach the terminal or anything else on its site.
+//// On a wide screen it is on the right, on a narrow screen it fills most of the screen and the terminal is a strip above it.
 
 import etui/buffer
 import etui/geometry
@@ -8,6 +12,7 @@ import etui/style
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import lustre/attribute
@@ -20,13 +25,55 @@ const foreground = "#ddd"
 
 const background = "#181818"
 
+const layout =
+  "
+.terminal { display: flex; height: 100vh; height: 100dvh; }
+.terminal pre { flex: 1 1 0; min-width: 0; min-height: 0; box-sizing: border-box; overflow: hidden; }
+.terminal iframe { flex: 1 1 0; min-width: 0; min-height: 0; border: 0; background: #fff; }
+@media (max-width: 800px) {
+  .terminal.beside { flex-direction: column; }
+  .terminal.beside pre { flex: 0 0 auto; height: calc(12 * 1.15 * 14px + 2rem); }
+}
+"
+
+/// The terminal, and the page at the `beside` url if there is one.
 pub fn view(
   screen: buffer.Buffer,
+  beside: Option(String),
   on_key: fn(String) -> msg,
   on_paste: fn(String) -> msg,
   on_resize: fn(Int, Int) -> msg,
   on_scroll: fn(Int) -> msg,
+  on_click: fn(Int, Int) -> msg,
 ) -> Element(msg) {
+  let terminal = text(screen, on_key, on_paste, on_resize, on_scroll, on_click)
+  html.div(
+    [
+      attribute.class(case beside {
+        Some(_) -> "terminal beside"
+        None -> "terminal"
+      }),
+    ],
+    [
+      html.style([], layout),
+      terminal,
+      ..case beside {
+        // Scripts in the page run, but it has its own origin so it cannot read anything of the terminal's site.
+        Some(url) -> [
+          html.iframe([
+            attribute.src(url),
+            attribute.attribute("sandbox", "allow-scripts"),
+            attribute.attribute("referrerpolicy", "no-referrer"),
+            attribute.title("Artifact"),
+          ]),
+        ]
+        None -> []
+      }
+    ],
+  )
+}
+
+fn text(screen, on_key, on_paste, on_resize, on_scroll, on_click) {
   html.pre(
     [
       attribute.tabindex(0),
@@ -35,7 +82,6 @@ pub fn view(
       attribute.style("font", "14px/1.15 monospace"),
       attribute.style("font-variant-ligatures", "none"),
       attribute.style("white-space", "pre"),
-      attribute.style("overflow", "auto"),
       attribute.style("margin", "0"),
       attribute.style("outline", "none"),
       attribute.style("padding", "1rem"),
@@ -70,6 +116,12 @@ pub fn view(
         decode.success(on_resize(columns, rows))
       })
         |> server_component.include(["detail.columns", "detail.rows"]),
+      event.on("terminal-click", {
+        use column <- decode.subfield(["detail", "column"], decode.int)
+        use row <- decode.subfield(["detail", "row"], decode.int)
+        decode.success(on_click(column, row))
+      })
+        |> server_component.include(["detail.column", "detail.row"]),
     ],
     list.repeat(Nil, buffer.height(screen))
       |> list.index_map(fn(_, y) {
@@ -132,7 +184,7 @@ fn key(on_key) {
 /// The script for the page the terminal is on.
 /// Keys the terminal uses do nothing else on the page, keys with ctrl or meta and function keys keep doing what the browser does,
 /// such as copy and full screen.
-/// Pasted text is sent to the terminal, and the number of cells that fit the window when it changes size.
+/// Pasted text is sent to the terminal, and the cell that is clicked, and the number of cells that fit when it changes size.
 pub const script =
   "
 const terminal = () => document.querySelector('lustre-server-component')?.shadowRoot?.querySelector('pre');
@@ -151,17 +203,33 @@ document.addEventListener('paste', (event) => {
 const probe = document.createElement('span');
 probe.style = 'position: absolute; visibility: hidden; font: 14px/1.15 monospace; white-space: pre';
 probe.textContent = 'x'.repeat(100);
+function cell() {
+  document.body.appendChild(probe);
+  const box = probe.getBoundingClientRect();
+  probe.remove();
+  return { width: box.width / 100, height: box.height };
+}
+// The terminal has a padding of 16 pixels.
+document.addEventListener('click', (event) => {
+  const pre = terminal();
+  if (!pre || !event.composedPath().includes(pre)) return;
+  const size = cell();
+  const box = pre.getBoundingClientRect();
+  const column = Math.floor((event.clientX - box.left - 16) / size.width);
+  const row = Math.floor((event.clientY - box.top - 16 + pre.scrollTop) / size.height);
+  pre.dispatchEvent(new CustomEvent('terminal-click', { detail: { column, row } }));
+});
 // The size is sent again every few seconds, a connection that is made again starts a new terminal that does not know it.
 let focused = false;
+let observed = null;
 function resize() {
   const pre = terminal();
   if (!pre) return;
   if (!focused) { pre.focus(); focused = true; }
-  document.body.appendChild(probe);
-  const cell = probe.getBoundingClientRect();
-  probe.remove();
-  const columns = Math.floor((window.innerWidth - 32) / (cell.width / 100));
-  const rows = Math.floor((window.innerHeight - 32) / cell.height);
+  if (observed !== pre) { observed = pre; new ResizeObserver(resize).observe(pre); }
+  const size = cell();
+  const columns = Math.floor((pre.clientWidth - 32) / size.width);
+  const rows = Math.floor((pre.clientHeight - 32) / size.height);
   pre.dispatchEvent(new CustomEvent('terminal-resize', { detail: { columns, rows } }));
 }
 window.addEventListener('resize', resize);

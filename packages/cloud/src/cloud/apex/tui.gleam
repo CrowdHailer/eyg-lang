@@ -11,6 +11,7 @@ import cloud/apex/context.{type Context, Context}
 import cloud/apex/draft
 import cloud/apex/editor
 import cloud/apex/terminal
+import cloud/artifacts
 import cloud/beam/execute
 import cloud/box
 import cloud/data/boxes.{type Box}
@@ -26,6 +27,7 @@ import etui/text
 import etui/widgets/block
 import etui/widgets/clear
 import etui/widgets/list as list_widget
+import eyg/ir/dag_json
 import gleam/dict
 import gleam/erlang/process
 import gleam/http
@@ -40,6 +42,7 @@ import lustre
 import lustre/effect.{type Effect}
 import morph/terminal as code
 import morph/terminal/textarea
+import multiformats/cid/v1
 import overlay/agent
 import unixfs/mfs
 
@@ -97,8 +100,31 @@ pub type Screen {
     // How many lines of the log are scrolled back.
     scroll: Int,
     // The files of the session's box.
-    files: List(String),
+    files: Files,
+    // A file shown beside the terminal.
+    artifact: Option(Artifact),
   )
+}
+
+/// The files of a box and those a session changed, the most recently changed last.
+/// `latest` are the files the session's last turn changed.
+pub type Files {
+  Files(
+    root: v1.Cid,
+    paths: List(String),
+    changed: List(String),
+    latest: List(String),
+  )
+}
+
+/// A file as it was in the box at `root`.
+pub type Artifact {
+  Artifact(path: String, root: v1.Cid)
+}
+
+/// Where a file is read from by the page, see `cloud/apex/web`.
+pub fn artifact_url(artifact: Artifact) -> String {
+  "/artifacts/" <> v1.to_string(artifact.root) <> artifact.path
 }
 
 /// What a session's log shows, each is coloured differently.
@@ -137,7 +163,10 @@ pub type Message {
   /// What the running turn in the session with this id has done so far.
   /// And the text of a completion it is receiving, empty if it is not.
   Progressed(String, List(String), String)
-  FilesListed(String, Result(List(String), box.Reason))
+  /// The files of the box of the session with this id, a page the last turn changed is shown if `show` is true.
+  FilesListed(String, Result(Files, box.Reason), show: Bool)
+  /// The column and row of the cell clicked.
+  Clicked(Int, Int)
 }
 
 /// A session as it is shown when it is opened.
@@ -205,7 +234,7 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
     )
     _, _, Created(Ok(_)) -> back(model)
     _, _, Resized(columns, rows) -> #(
-      Model(..model, size: #(int.max(60, columns), int.max(16, rows))),
+      Model(..model, size: #(int.max(32, columns), int.max(10, rows))),
       effect.none(),
     )
     // A turn that stopped is in the session's history, it is finished when the session is opened again.
@@ -422,8 +451,32 @@ fn on_screen(model: Model, screen, message) {
     Running(waiting: True, draft: draft.Program(..), ..), Key(_)
     | Running(waiting: True, draft: draft.Program(..), ..), Pasted(_)
     -> #(model, effect.none())
+    Running(artifact: Some(_), ..) as running, Key("esc") -> #(
+      Model(..model, screen: Running(..running, artifact: None)),
+      effect.none(),
+    )
+    // The top line says the artifact closes when it is clicked.
+    Running(artifact: Some(_), ..) as running, Clicked(_, 0) -> #(
+      Model(..model, screen: Running(..running, artifact: None)),
+      effect.none(),
+    )
+    Running(files:, ..) as running, Clicked(column, row) ->
+      case pane_file(model.size, files.paths, column, row) {
+        Ok(path) -> #(
+          Model(
+            ..model,
+            screen: Running(
+              ..running,
+              artifact: Some(Artifact(path, files.root)),
+            ),
+          ),
+          effect.none(),
+        )
+        Error(Nil) -> #(model, effect.none())
+      }
     Running(draft: current, files:, ..) as running, Key(key) -> {
-      let #(outcome, state) = draft.key(current, key, context.state, files)
+      let #(outcome, state) =
+        draft.key(current, key, context.state, files.paths)
       drafted(
         Model(..model, context: Context(..context, state:)),
         running,
@@ -447,9 +500,24 @@ fn on_screen(model: Model, screen, message) {
       Model(..model, screen: Running(..running, progress:, arriving:)),
       poll(context, session),
     )
-    Running(session:, ..) as running, FilesListed(id, Ok(files))
+    // The page a turn changed last is shown, the files of a page are read from the root they were listed at.
+    Running(session:, artifact:, ..) as running,
+      FilesListed(id, Ok(files), show)
       if id == session.id
-    -> #(Model(..model, screen: Running(..running, files:)), effect.none())
+    -> {
+      let shown = case show, list.filter(files.latest, artifacts.viewable) {
+        True, [_, ..] as pages -> {
+          let assert Ok(path) = list.last(pages)
+          Some(Artifact(path, files.root))
+        }
+        _, _ ->
+          option.map(artifact, fn(shown) { Artifact(..shown, root: files.root) })
+      }
+      #(
+        Model(..model, screen: Running(..running, files:, artifact: shown)),
+        effect.none(),
+      )
+    }
     // A reply for a session that is no longer shown is dropped, it is in the session's history.
     // Messages sent after the chat's last tool calls start the next turn.
     Running(session:, log:, waiting: True, ..) as running, Replied(id, replied)
@@ -490,11 +558,11 @@ fn on_screen(model: Model, screen, message) {
         )
       let model = Model(..model, screen: running)
       case unsent {
-        [] -> #(model, list_files(context, session))
+        [] -> #(model, list_files(context, session, True))
         _ -> {
           let #(model, effects) =
             run_turn(model, running, turn.Message(string.join(unsent, "\n\n")))
-          #(model, effect.batch([effects, list_files(context, session)]))
+          #(model, effect.batch([effects, list_files(context, session, True)]))
         }
       }
     }
@@ -547,6 +615,19 @@ fn last_scroll(model: Model, running) {
 // A wide screen shows the files of the box beside the session.
 const pane = 26
 
+// Before the files are listed.
+const no_files = Files(dag_json.vacant_cid, [], [], [])
+
+// The file on the row clicked in the files beside the session, there are none on a narrow screen.
+// The files start below the frame's top and the title of the files.
+fn pane_file(size: #(Int, Int), paths, column, row) {
+  let #(width, _) = size
+  case width - 2 >= 90 && column >= width - 1 - pane {
+    True -> list.drop(paths, row - 3) |> list.first
+    False -> Error(Nil)
+  }
+}
+
 // The columns and rows of a session's log, inside the frame, beside the files and above a one line draft.
 fn log_size(size: #(Int, Int)) {
   let #(width, height) = size
@@ -576,14 +657,7 @@ fn poll(context, session: Session) {
 
 /// What the last turn in the events has done, such as asking the llm and running its tool calls.
 pub fn progress(events: List(event.Event)) -> List(String) {
-  list.reverse(events)
-  |> list.take_while(fn(event) {
-    case event {
-      event.Started(..) | event.Submitted(..) | event.Sent(..) -> False
-      _ -> True
-    }
-  })
-  |> list.reverse
+  last_turn(events)
   |> list.flat_map(fn(event) {
     case event {
       event.Asked(..) -> ["asking the llm"]
@@ -613,6 +687,18 @@ pub fn progress(events: List(event.Event)) -> List(String) {
   })
 }
 
+// The events after the last turn started.
+fn last_turn(events) {
+  list.reverse(events)
+  |> list.take_while(fn(event) {
+    case event {
+      event.Started(..) | event.Submitted(..) | event.Sent(..) -> False
+      _ -> True
+    }
+  })
+  |> list.reverse
+}
+
 fn first_line(text) {
   case string.split(string.trim(text), "\n") {
     [line] -> line
@@ -621,19 +707,29 @@ fn first_line(text) {
   }
 }
 
-fn list_files(context: Context, session: Session) {
-  background(fn() { FilesListed(session.id, files(context, session.box)) })
+fn list_files(context: Context, session: Session, show) {
+  background(fn() { FilesListed(session.id, files(context, session), show) })
 }
 
-/// The path of every file in the box.
-pub fn files(
-  context: Context,
-  box: String,
-) -> Result(List(String), box.Reason) {
-  use box <- result.try(box.latest(context, box))
-  execute.files(mfs.files(box.root), context.state)
-  |> result.map(list.map(_, fn(path) { "/" <> string.join(path, "/") }))
-  |> result.map_error(fn(reason) { box.Failed(string.inspect(reason)) })
+/// The path of every file in the session's box, and the files the session changed.
+pub fn files(context: Context, session: Session) -> Result(Files, box.Reason) {
+  let failed = fn(reason) { box.Failed(string.inspect(reason)) }
+  use box <- result.try(box.latest(context, session.box))
+  use paths <- result.try(
+    execute.files(mfs.files(box.root), context.state)
+    |> result.map(list.map(_, fn(path) { "/" <> string.join(path, "/") }))
+    |> result.map_error(failed),
+  )
+  use history <- result.try(turn.history(context, session.id))
+  let events = list.map(history, fn(entry) { entry.2 })
+  use changed <- result.try(
+    artifacts.changed(events, context.state) |> result.map_error(box.Failed),
+  )
+  use latest <- result.map(
+    artifacts.changed(last_turn(events), context.state)
+    |> result.map_error(box.Failed),
+  )
+  Files(box.root, paths, changed, latest)
 }
 
 // Send a turn to the session, its outcome is added to the log when it is replied to.
@@ -682,15 +778,18 @@ fn sent(input) {
 // Show a session, a turn that has not finished is finished first.
 fn opened(model: Model, opening: Opening) {
   let Opening(place:, session:, log:, chat:, unfinished:) = opening
-  // A draft is kept when the session is opened again after its turn finishes.
-  let draft = case model.screen, chat {
-    Running(session: shown, draft: kept, ..), _ if shown.id == session.id -> kept
-    _, True -> draft.message()
-    _, False -> draft.program()
+  // The draft, files and artifact are kept when the session is opened again after its turn finishes.
+  let #(draft, files, artifact) = case model.screen, chat {
+    Running(session: shown, draft:, files:, artifact:, ..), _
+      if shown.id == session.id
+    -> #(draft, files, artifact)
+    _, True -> #(draft.message(), no_files, None)
+    _, False -> #(draft.program(), no_files, None)
   }
-  let screen = Running(place, session, log, draft, unfinished, [], "", 0, [])
+  let screen =
+    Running(place, session, log, draft, unfinished, [], "", 0, files, artifact)
   let model = Model(..model, screen:, status: Quiet)
-  let files = list_files(model.context, session)
+  let files = list_files(model.context, session, False)
   case unfinished {
     False -> #(model, files)
     True -> #(
@@ -812,7 +911,19 @@ fn describe(reason) {
 }
 
 pub fn view(model: Model) {
-  terminal.view(render(model), Key, Pasted, Resized, Scrolled)
+  let artifact = case model.screen {
+    Running(artifact: Some(artifact), ..) -> Some(artifact_url(artifact))
+    _ -> None
+  }
+  terminal.view(
+    render(model),
+    artifact,
+    Key,
+    Pasted,
+    Resized,
+    Scrolled,
+    Clicked,
+  )
 }
 
 // The colours of the interface, the code uses the editor's own.
@@ -950,6 +1061,14 @@ pub fn render(model: Model) -> buffer.Buffer {
   |> spans(0, width, [
     span.span_styled(" EYG", fg(accent) |> style.add_modifier(style.bold())),
     span.span_styled(" cloud", fg(muted)),
+    ..case model.screen {
+      Running(artifact: Some(artifact), ..) -> [
+        span.span_styled("  ✕ close", fg(accent)),
+        span.span_styled(" " <> artifact.path, fg(green)),
+        span.span_styled("  esc or click this line", fg(muted)),
+      ]
+      _ -> []
+    }
   ])
   |> block.render(area, frame)
   |> body(inner, model)
@@ -968,7 +1087,9 @@ fn dialog(screen, prompt, size: #(Int, Int)) {
   case prompt {
     None -> screen
     Some(Prompt(label:, input:, masked:, ..)) -> {
-      let area = geometry.rect_new(20, height / 2 - 2, width - 40, 3)
+      let margin = int.min(20, width / 8)
+      let area =
+        geometry.rect_new(margin, height / 2 - 2, width - 2 * margin, 3)
       let frame =
         block.block_new()
         |> block.with_border(block.Rounded)
@@ -1050,6 +1171,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
       arriving:,
       scroll:,
       files:,
+      artifact:,
       ..,
     ) -> {
       let #(area, screen) = case area.size.width >= 90 {
@@ -1069,6 +1191,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
               area.size.height,
             ),
             files,
+            artifact,
           ),
         )
         False -> #(area, screen)
@@ -1151,7 +1274,8 @@ fn body(screen, area: geometry.Rect, model: Model) {
   }
 }
 
-fn file_pane(screen, area: geometry.Rect, files: List(String)) {
+// The files the session changed are coloured, the one shown is reversed.
+fn file_pane(screen, area: geometry.Rect, files: Files, artifact) {
   let screen =
     list.index_fold(
       list.repeat(Nil, area.size.height),
@@ -1167,11 +1291,26 @@ fn file_pane(screen, area: geometry.Rect, files: List(String)) {
     )
   [
     span.line_new([span.span_styled(" files", fg(accent))]),
-    ..case files {
+    ..case files.paths {
       [] -> [span.line_new([span.span_styled(" none yet", fg(muted))])]
-      _ ->
-        list.map(files, fn(path) {
-          span.line_plain(" " <> text.truncate(path, area.size.width - 1, "…"))
+      paths ->
+        list.map(paths, fn(path) {
+          let style = case list.contains(files.changed, path) {
+            True -> fg(green)
+            False -> style.default_style()
+          }
+          let style = case artifact {
+            Some(Artifact(path: shown, ..)) if shown == path ->
+              style.add_modifier(style, style.reverse())
+            _ -> style
+          }
+          span.line_new([
+            span.span_plain(" "),
+            span.span_styled(
+              text.truncate(path, area.size.width - 1, "…"),
+              style,
+            ),
+          ])
         })
     }
   ]

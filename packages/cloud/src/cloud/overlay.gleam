@@ -58,6 +58,7 @@ pub fn box_context(hub: origin.Origin) -> provider.Context {
   context(
     hub,
     "context is an empty record. The working directory is / of a box, a file system that other sessions in the box also change. Changes to .eyg files are only kept if every module in the box type checks. Relative imports load modules from these files.
+A web page or image you write, such as /report.html, is shown beside the chat. Pages run in a sandbox, they can link to files beside them but cannot call this service.
 
 ## Skills
 
