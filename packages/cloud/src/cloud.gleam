@@ -1,4 +1,5 @@
 import bucket
+import cloud/apex/access
 import cloud/apex/context.{Context}
 import cloud/apex/server
 import cloud/apex/web
@@ -7,6 +8,7 @@ import cloud/box/memory
 import cloud/channels
 import cloud/data/blobs
 import cloud/data/db
+import cloud/data/migrations
 import cloud/data/pool
 import cloud/discord/discord
 import cloud/registry
@@ -23,7 +25,7 @@ import gleam/http
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri
@@ -33,15 +35,15 @@ import overlay/llm/provider/ollama
 import simplifile
 
 /// Shared runtime configuration for the service and one-shot dev commands.
+/// The llm is Ollama's cloud, it is only available when `OLLAMA_API_KEY` is set.
 pub fn setup() {
   let slack_token = envoy.get("SLACK_BOT_TOKEN")
   let discord_token = envoy.get("DISCORD_BOT_TOKEN")
   let ollama_token = envoy.get("OLLAMA_API_KEY")
   let llm = case ollama_token {
-    Ok(token) ->
-      provider.Llm(provider.Ollama(ollama.cloud(token)), "glm-5.3:cloud")
-    Error(_) ->
-      provider.Llm(provider.Ollama(ollama.local()), "devstral-small-2:24b")
+    Ok(token) if token != "" ->
+      Some(provider.Llm(provider.Ollama(ollama.cloud(token)), "glm-5.3:cloud"))
+    _ -> None
   }
   let assert Ok(hub) =
     envoy.get("EYG_ORIGIN")
@@ -113,7 +115,8 @@ pub fn main() -> Nil {
   {
     Ok(token), Some(context), Ok(box) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
-      let assert Ok(channels) = channels.start(context, box, Some(llm.model))
+      let llm = option.map(llm, fn(llm: provider.Llm) { llm.model })
+      let assert Ok(channels) = channels.start(context, box, llm)
       let selected =
         envoy.get("DISCORD_CHANNELS")
         |> result.map(fn(names) {
@@ -132,9 +135,7 @@ pub fn main() -> Nil {
       Nil
     }
     Ok(_), None, _ ->
-      io.println_error(
-        "Discord needs POSTGRES_HOST, its sessions are kept there",
-      )
+      io.println_error("Discord needs a database, its sessions are kept there")
     Ok(_), _, Error(Nil) ->
       io.println_error(
         "Discord needs DISCORD_BOX, the name of the box its channels have sessions in",
@@ -144,36 +145,32 @@ pub fn main() -> Nil {
   process.sleep_forever()
 }
 
-/// The API is only available when a database is configured.
-/// Sessions can chat with the configured llm, by the name of its model.
-fn start_api(state, llm: provider.Llm) {
-  case envoy.get("POSTGRES_HOST") {
-    Error(Nil) -> None
-    Ok(host) -> {
+/// The API and web interface are only available when a database is configured,
+/// with `DATABASE_URL` or `POSTGRES_HOST` and `POSTGRES_PASSWORD`. Migrations are applied when they start.
+/// Blocks are kept in a bucket, Railway's blob storage or any S3 compatible store, set by the `S3_` variables.
+/// They only accept local connections unless `ACCESS_PASSWORD` is set, see `cloud/apex/access`.
+/// Sessions can chat with the configured llm, if there is one, by the name of its model.
+fn start_api(state, llm: Option(provider.Llm)) {
+  let database = case envoy.get("DATABASE_URL"), envoy.get("POSTGRES_HOST") {
+    Ok(url), _ -> Some(pool.Url(url))
+    Error(Nil), Ok(host) -> {
       let assert Ok(password) = envoy.get("POSTGRES_PASSWORD")
-      let assert Ok(started) =
-        pool.start(process.new_name("db_pool"), pool.Postgres(host:, password:))
-      let assert Ok(endpoint) =
-        envoy.get("S3_ENDPOINT") |> result.try(uri.parse)
-      let assert Some(s3_host) = endpoint.host
-      let assert Ok(scheme) =
-        http.scheme_from_string(option.unwrap(endpoint.scheme, "https"))
-      let assert Ok(region) = envoy.get("S3_REGION")
-      let assert Ok(bucket) = envoy.get("S3_BUCKET")
-      let assert Ok(access_key_id) = envoy.get("S3_ACCESS_KEY_ID")
-      let assert Ok(secret_access_key) = envoy.get("S3_SECRET_ACCESS_KEY")
-      let credentials =
-        bucket.Credentials(
-          scheme:,
-          port: endpoint.port,
-          host: s3_host,
-          region:,
-          access_key_id:,
-          secret_access_key:,
-          session_token: None,
-        )
-      let assert Ok(blobs) = blobs.s3(credentials, bucket)
+      Some(pool.Postgres(host:, password:))
+    }
+    Error(Nil), Error(Nil) -> None
+  }
+  case database {
+    None -> None
+    Some(database) -> {
+      let assert Ok(started) = pool.start(process.new_name("db_pool"), database)
+      migrations.apply_all(started.data)
+      let db = db.Pool(started.data)
+      let assert Ok(blobs) = s3_blobs()
       let state = execute.State(..state, blobs: blobs.data)
+      let access = case envoy.get("ACCESS_PASSWORD") {
+        Ok(password) if password != "" -> access.Password(password)
+        _ -> access.Local
+      }
       let assert Ok(policy) = simplifile.read("policy.eyg")
       let port =
         envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8080)
@@ -182,19 +179,44 @@ fn start_api(state, llm: provider.Llm) {
       let assert Ok(memory) = memory.start()
       let context =
         Context(
-          db: db.Pool(started.data),
+          db:,
           boxes: boxes.data,
           memory: memory.data,
           sessions: sessions.data,
           state:,
           policy:,
-          llms: dict.from_list([#(llm.model, llm)]),
+          llms: case llm {
+            Some(llm) -> dict.from_list([#(llm.model, llm)])
+            None -> dict.new()
+          },
         )
-      let assert Ok(_) = server.start(context, port)
+      let assert Ok(_) = server.start(context, access, port)
       let web_port =
         envoy.get("WEB_PORT") |> result.try(int.parse) |> result.unwrap(8787)
-      let assert Ok(_) = web.start(context, web_port)
+      let assert Ok(_) = web.start(context, access, web_port)
       Some(context)
     }
   }
+}
+
+fn s3_blobs() {
+  let assert Ok(endpoint) = envoy.get("S3_ENDPOINT") |> result.try(uri.parse)
+  let assert Some(host) = endpoint.host
+  let assert Ok(scheme) =
+    http.scheme_from_string(option.unwrap(endpoint.scheme, "https"))
+  let assert Ok(region) = envoy.get("S3_REGION")
+  let assert Ok(bucket) = envoy.get("S3_BUCKET")
+  let assert Ok(access_key_id) = envoy.get("S3_ACCESS_KEY_ID")
+  let assert Ok(secret_access_key) = envoy.get("S3_SECRET_ACCESS_KEY")
+  let credentials =
+    bucket.Credentials(
+      scheme:,
+      port: endpoint.port,
+      host:,
+      region:,
+      access_key_id:,
+      secret_access_key:,
+      session_token: None,
+    )
+  blobs.s3(credentials, bucket)
 }

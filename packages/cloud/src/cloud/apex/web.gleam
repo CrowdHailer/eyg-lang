@@ -1,10 +1,13 @@
 //// The web interface, a page with the terminal interface on it.
 //// Each connection runs its own terminal interface on the server, the page only draws it and sends keys.
-//// There is no authentication yet so only local connections are accepted.
+//// Requests need the password if there is one, see `access`.
 
+import cloud/apex/access.{type Access}
 import cloud/apex/context.{type Context}
 import cloud/apex/terminal
 import cloud/apex/tui
+import gleam/http/request
+import gleam/http/response
 import howdy
 import howdy/controller
 import howdy/ui/live
@@ -12,10 +15,20 @@ import howdy/ui/page
 import lustre/attribute
 import lustre/element/html
 
-pub fn start(context: Context, port: Int) {
+pub fn start(context: Context, access: Access, port: Int) {
   howdy.new()
-  |> howdy.bind(to: "127.0.0.1")
+  |> howdy.bind(to: access.bind(access))
   |> howdy.listening(on: port)
+  |> howdy.middleware(fn(ctx: controller.Context, next) {
+    case
+      access.allowed(access, request.get_header(ctx.request, "authorization"))
+    {
+      True -> next(ctx)
+      False ->
+        controller.status(ctx, 401)
+        |> response.set_header(access.challenge.0, access.challenge.1)
+    }
+  })
   |> howdy.controller(controller(context))
   |> howdy.start
 }

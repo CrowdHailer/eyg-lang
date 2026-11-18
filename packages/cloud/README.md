@@ -20,7 +20,8 @@ A box no session was made in is lost when the service stops.
 ### API
 
 The API is started when `POSTGRES_HOST` is set.
-It has no authentication so it only accepts local connections.
+There are no accounts yet. It only accepts local connections unless `ACCESS_PASSWORD` is set,
+then it accepts every connection and every request needs the password, with HTTP basic authentication and any user name.
 
 | Request | |
 | --- | --- |
@@ -79,7 +80,7 @@ See `cloud/sessions/turn.gleam` for how a turn is recorded and replayed.
 
 ### Web interface
 
-The web interface is started with the API on `WEB_PORT`, by default 8787, and also only accepts local connections.
+The web interface is started with the API on `WEB_PORT`, by default 8787, with the same access as the API.
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it, or by managing its secrets.
 The terminal fills the window and the log scrolls back with page up and page down.
@@ -95,15 +96,34 @@ A turn that did not finish is finished when its session is opened, a running tur
 ### Configuration
 
 ```sh
+# the database, or DATABASE_URL=postgres://user:password@host:port/database
 POSTGRES_HOST=localhost
 POSTGRES_PASSWORD=postgres
+# the bucket blocks are kept in, such as Railway's blob storage or any S3 compatible store
 S3_ENDPOINT=https://s3.eu-west-1.amazonaws.com
 S3_REGION=eu-west-1
 S3_BUCKET=
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
-# optional, defaults to 8080
+# optional, the llm sessions chat with is Ollama's cloud, without a key there is none
+OLLAMA_API_KEY=
+# optional, without it only local connections are accepted
+ACCESS_PASSWORD=
+# optional, default to 8080 and 8787
 PORT=8080
+WEB_PORT=8787
+```
+
+Migrations are applied when the service starts.
+
+### Deploying
+
+`Dockerfile` builds the service, from the root of the repository as it depends on other packages by path.
+`railway.json` at the root of the repository deploys it to Railway with that Dockerfile.
+`GET /health` on the API does not need the password, it is for the host's health checks.
+
+```sh
+docker build -f packages/cloud/Dockerfile .
 ```
 
 ### Database
