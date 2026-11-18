@@ -5,6 +5,7 @@ import cloud/box/memory
 import cloud/data/blobs
 import cloud/data/db
 import cloud/data/pool
+import cloud/live
 import cloud/registry
 import envoy
 import eyg/hub/cache
@@ -60,6 +61,7 @@ fn context_for(db) {
   let assert Ok(boxes) = registry.start()
   let assert Ok(sessions) = registry.start()
   let assert Ok(memory) = memory.start()
+  let assert Ok(live) = live.start()
   Context(
     db:,
     boxes: boxes.data,
@@ -68,6 +70,7 @@ fn context_for(db) {
     state:,
     policy:,
     llms: dict.new(),
+    live:,
   )
 }
 

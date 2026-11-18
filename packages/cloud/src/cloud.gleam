@@ -11,6 +11,7 @@ import cloud/data/db
 import cloud/data/migrations
 import cloud/data/pool
 import cloud/discord/discord
+import cloud/live
 import cloud/registry
 import cloud/schedule
 import cloud/schedules
@@ -177,6 +178,7 @@ fn start_api(state, llm: Option(provider.Llm)) {
       let assert Ok(boxes) = registry.start()
       let assert Ok(sessions) = registry.start()
       let assert Ok(memory) = memory.start()
+      let assert Ok(live) = live.start()
       let context =
         Context(
           db:,
@@ -189,6 +191,7 @@ fn start_api(state, llm: Option(provider.Llm)) {
             Some(llm) -> dict.from_list([#(llm.model, llm)])
             None -> dict.new()
           },
+          live:,
         )
       let assert Ok(_) = server.start(context, access, port)
       let web_port =

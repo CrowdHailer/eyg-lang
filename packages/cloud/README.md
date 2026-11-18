@@ -92,6 +92,7 @@ A shell's programs are written as EYG text, which can be pasted, or with the str
 Tab switches between them and keeps both, shift and enter starts a new line in text and in chat messages.
 Text is edited with arrows, home and end, ctrl or alt with an arrow moves by word, program text is highlighted.
 A wide window shows the files of the box beside the session, and a running turn shows what it has done so far.
+The llm's reply is shown as it arrives.
 Shortcuts with ctrl or meta and function keys are left to the browser, so output can be copied and F11 goes full screen.
 Recent sessions, and any session by its id, are opened again with their history.
 Sessions in transient boxes are only listed after pressing `t`.

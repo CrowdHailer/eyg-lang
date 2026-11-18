@@ -28,9 +28,11 @@ import cloud/box
 import cloud/data/db
 import cloud/data/sessions.{type Session}
 import cloud/data/thread
+import cloud/live
 import cloud/overlay
 import cloud/registry
 import cloud/sessions/event.{type Event}
+import cloud/stream
 import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/crypto
@@ -430,7 +432,21 @@ fn settle(context: Context, session: Session, state, start, root, key, next) {
 
 // A response is recorded as soon as it is received, sleeping has nothing to record.
 fn answer(context: Context, session: Session, state, wait, resume) {
-  let answer = execute.perform(wait, state)
+  let answer = case wait {
+    // A completion is streamed so its text can be shown as it arrives, only the completion is recorded.
+    // If the process stops before then the text is lost and the completion is asked for again.
+    execute.Complete(llm, provider, history, _) -> {
+      let completed =
+        stream.complete(llm, provider, history, live.show(
+          context.live,
+          session.id,
+          _,
+        ))
+      live.clear(context.live, session.id)
+      execute.Completed(completed)
+    }
+    _ -> execute.perform(wait, state)
+  }
   use _ <- result.try(case wait {
     execute.Fetch(_) | execute.Complete(..) ->
       record(context, session, [event.Answered(answer)])

@@ -260,8 +260,11 @@ pub fn show_progress_and_scroll_back_test() {
       event.Slept(10, root),
     ])
   assert progress == ["GET https://example.com", "sleeping 10ms"]
-  let #(model, _) = tui.update(model, tui.Progressed(session.id, progress))
+  let #(model, _) =
+    tui.update(model, tui.Progressed(session.id, progress, "Partly writ"))
   assert string.contains(screen(model), "· GET https://example.com")
+  // The text of a completion is shown as it arrives.
+  assert string.contains(screen(model), "llm Partly writ")
 }
 
 pub fn transient_sessions_are_hidden_test() {

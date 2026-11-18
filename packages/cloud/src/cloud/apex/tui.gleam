@@ -15,6 +15,7 @@ import cloud/beam/execute
 import cloud/box
 import cloud/data/boxes.{type Box}
 import cloud/data/sessions.{type Session}
+import cloud/live
 import cloud/sessions/event
 import cloud/sessions/turn
 import etui/buffer
@@ -91,6 +92,8 @@ pub type Screen {
     waiting: Bool,
     // What the running turn has done so far.
     progress: List(String),
+    // The text of a completion as it arrives, it is replaced by the reply when the turn finishes.
+    arriving: String,
     // How many lines of the log are scrolled back.
     scroll: Int,
     // The files of the session's box.
@@ -132,7 +135,8 @@ pub type Message {
   Scrolled(Int)
   Resized(columns: Int, rows: Int)
   /// What the running turn in the session with this id has done so far.
-  Progressed(String, List(String))
+  /// And the text of a completion it is receiving, empty if it is not.
+  Progressed(String, List(String), String)
   FilesListed(String, Result(List(String), box.Reason))
 }
 
@@ -434,10 +438,11 @@ fn on_screen(model: Model, screen, message) {
         outcome,
       )
     }
-    Running(session:, waiting: True, ..) as running, Progressed(id, progress)
+    Running(session:, waiting: True, ..) as running,
+      Progressed(id, progress, arriving)
       if id == session.id
     -> #(
-      Model(..model, screen: Running(..running, progress:)),
+      Model(..model, screen: Running(..running, progress:, arriving:)),
       poll(context, session),
     )
     Running(session:, ..) as running, FilesListed(id, Ok(files))
@@ -478,6 +483,7 @@ fn on_screen(model: Model, screen, message) {
             log:,
             waiting: False,
             progress: [],
+            arriving: "",
             scroll:,
           ),
         ),
@@ -553,8 +559,9 @@ fn poll(context, session: Session) {
         Progressed(
           session.id,
           progress(list.map(history, fn(entry) { entry.2 })),
+          live.text(context.live, session.id),
         )
-      Error(_) -> Progressed(session.id, [])
+      Error(_) -> Progressed(session.id, [], "")
     }
   })
 }
@@ -626,7 +633,15 @@ fn send(model: Model, running, input, draft) {
   let assert Running(session:, log:, ..) = running
   let log = list.append(log, [sent(input)])
   let screen =
-    Running(..running, log:, draft:, waiting: True, progress: [], scroll: 0)
+    Running(
+      ..running,
+      log:,
+      draft:,
+      waiting: True,
+      progress: [],
+      arriving: "",
+      scroll: 0,
+    )
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -656,7 +671,7 @@ fn opened(model: Model, opening: Opening) {
     _, True -> draft.message()
     _, False -> draft.program()
   }
-  let screen = Running(place, session, log, draft, unfinished, [], 0, [])
+  let screen = Running(place, session, log, draft, unfinished, [], "", 0, [])
   let model = Model(..model, screen:, status: Quiet)
   let files = list_files(model.context, session)
   case unfinished {
@@ -999,7 +1014,16 @@ fn body(screen, area: geometry.Rect, model: Model) {
     Secrets(names:, selected: chosen, ..) ->
       list.map(names, fn(name) { name <> "  ••••••" })
       |> menu(screen, area, chosen)
-    Running(log:, draft: current, waiting:, progress:, scroll:, files:, ..) -> {
+    Running(
+      log:,
+      draft: current,
+      waiting:,
+      progress:,
+      arriving:,
+      scroll:,
+      files:,
+      ..,
+    ) -> {
       let #(area, screen) = case area.size.width >= 90 {
         True -> #(
           geometry.rect_new(
@@ -1028,6 +1052,14 @@ fn body(screen, area: geometry.Rect, model: Model) {
         True ->
           list.map(progress, fn(step) {
             span.line_new([span.span_styled("· " <> step, fg(muted))])
+          })
+          // The text of a completion as it arrives, the end of it if it is long.
+          |> list.append(case arriving {
+            "" -> []
+            text -> {
+              let lines = entry_lines(Returned(text), True, columns)
+              list.drop(lines, list.length(lines) - area.size.height / 2)
+            }
           })
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),

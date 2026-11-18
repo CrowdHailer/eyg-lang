@@ -2,6 +2,7 @@ import cloud/beam/execute
 import cloud/box/memory
 import cloud/data/boxes
 import cloud/data/db
+import cloud/live
 import cloud/registry
 import gleam/dict.{type Dict}
 import overlay/llm/provider
@@ -23,6 +24,8 @@ pub type Context {
     policy: String,
     // The llms a session can chat with, by name. There are no accounts yet so every session can use them.
     llms: Dict(String, provider.Llm),
+    // What sessions are doing now that is not recorded, such as a completion as it arrives.
+    live: live.Live,
   )
 }
 
