@@ -31,3 +31,13 @@ pub fn cid_from_block(bytes: BitArray) -> v1.Cid {
   let digest = crypto.hash(crypto.Sha256, bytes)
   v1.Cid(unixfs.dag_pb_code, hashes.Multihash(hashes.Sha256, digest))
 }
+
+pub fn entries_round_trip_as_blocks_test() {
+  let file = mfs.File(<<"hello">>)
+  let stored = mfs.identify(file)
+  assert Ok(file) == mfs.decode(stored.cid, mfs.encode(file))
+
+  let directory = mfs.Directory([unixfs.Link(stored.cid, "a.txt", stored.size)])
+  let stored = mfs.identify(directory)
+  assert Ok(directory) == mfs.decode(stored.cid, mfs.encode(directory))
+}

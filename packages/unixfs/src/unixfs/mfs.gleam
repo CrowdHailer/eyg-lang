@@ -4,6 +4,7 @@ import gleam/bit_array
 import gleam/crypto
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import multiformats/cid/v1
 import multiformats/hashes
 import simplifile.{type FileError}
@@ -22,17 +23,36 @@ pub type Stored {
 
 /// Compute an entry's content identifier and cumulative encoded DAG size.
 pub fn identify(entry: Entry) -> Stored {
-  let #(codec, bytes, children_size) = case entry {
-    File(contents) -> #(unixfs.raw_code, contents, 0)
-    Directory(links) -> {
-      let assert Ok(bytes) = unixfs.encode_directory(links)
-      let size = list.fold(links, 0, fn(size, link) { size + link.size })
-      #(unixfs.dag_pb_code, bytes, size)
-    }
+  let #(codec, children_size) = case entry {
+    File(_) -> #(unixfs.raw_code, 0)
+    Directory(links) -> #(
+      unixfs.dag_pb_code,
+      list.fold(links, 0, fn(size, link) { size + link.size }),
+    )
   }
+  let bytes = encode(entry)
   let digest = crypto.hash(crypto.Sha256, bytes)
   let cid = v1.Cid(codec, hashes.Multihash(hashes.Sha256, digest))
   Stored(cid, bit_array.byte_size(bytes) + children_size)
+}
+
+/// Encode an Entry as it's bytes.
+pub fn encode(entry: Entry) -> BitArray {
+  case entry {
+    File(contents) -> contents
+    Directory(links) -> {
+      let assert Ok(bytes) = unixfs.encode_directory(links)
+      bytes
+    }
+  }
+}
+
+/// Decode a block based on the CID content type.
+pub fn decode(cid: v1.Cid, block: BitArray) -> Result(Entry, Nil) {
+  case cid.content_type == unixfs.raw_code {
+    True -> Ok(File(block))
+    False -> result.map(unixfs.decode_directory(block), Directory)
+  }
 }
 
 pub type Effect(t) {
@@ -41,7 +61,10 @@ pub type Effect(t) {
   Done(Result(t, FileError))
 }
 
-fn then(effect: Effect(a), next: fn(a) -> Effect(b)) -> Effect(b) {
+/// Compose am effectful operation with a next function.
+/// NOTE: this is not a true `bind` operation.
+/// TODO rewrite as monadic bind, keep the same name.
+pub fn then(effect: Effect(a), next: fn(a) -> Effect(b)) -> Effect(b) {
   case effect {
     Done(Ok(value)) -> next(value)
     Done(Error(error)) -> Done(Error(error))
