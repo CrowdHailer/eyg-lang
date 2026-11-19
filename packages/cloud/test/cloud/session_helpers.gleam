@@ -11,16 +11,16 @@ import gleam/dynamic/decode
 import gleam/http
 import gleam/json
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import pog
 import wisp/simulate
 
 /// A session in a new box called "home".
 pub fn session(context: Context) {
-  let assert Ok(_) = box.create(context, "home")
-  let assert Ok(Nil) = box.durable(context, "home")
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(Nil) = box.durable(context, home.id)
   let assert Ok(pog.Returned(rows: [session], ..)) =
-    db.execute(sessions.create("home", None), context.db)
+    db.execute(sessions.create(home.id, None), context.db)
   session
 }
 

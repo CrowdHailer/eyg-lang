@@ -17,7 +17,7 @@ import gleam/http
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/string
 import pog
 import unixfs/check
@@ -84,7 +84,7 @@ pub fn box_changes_while_waiting_for_a_response_test() {
       "let _ = " <> server.fetch(server, "GET", "/slow") <> "\n" <> read
     })
   let assert Ok(other) =
-    box.change(context, "home", fn(root) {
+    box.change(context, session.box, fn(root) {
       file_system.write(root, "/a.txt", <<"other">>)
     })
   process.send(release, Nil)
@@ -107,7 +107,7 @@ pub fn box_changes_while_sleeping_test() {
   process.sleep(100)
   // The box is not held while the session sleeps.
   let assert Ok(other) =
-    box.change(context, "home", fn(root) {
+    box.change(context, session.box, fn(root) {
       file_system.write(root, "/a.txt", <<"other">>)
     })
   let assert Ok(Ok(#(Ok(value), _))) = process.receive(done, 5000)
@@ -201,7 +201,7 @@ pub fn export_and_reconstruct_test() {
   let log = session_helpers.export(context, session)
   assert 4 == list.length(string.split(log, "\"type\":\"started\"")) - 1
 
-  let assert Ok(copy) = session_helpers.import_(context, "home", log)
+  let assert Ok(copy) = session_helpers.import_(context, session.box, log)
   assert turns(context, session) == turns(context, copy)
   assert log == session_helpers.export(context, copy)
 }
@@ -218,7 +218,7 @@ pub fn resume_reconstructed_turn_test() {
   let assert Ok(copy) =
     session_helpers.import_(
       context,
-      "home",
+      session.box,
       session_helpers.export(context, session),
     )
   let assert [_, _, event.Answered(execute.Number(number)), _] =
@@ -244,7 +244,7 @@ pub fn reject_events_that_do_not_match_test() {
       "\"number\":" <> int.to_string(number),
       "\"number\":" <> int.to_string(number + 10),
     )
-  assert Error(422) == session_helpers.import_(context, "home", changed)
+  assert Error(422) == session_helpers.import_(context, session.box, changed)
 }
 
 const deny_writes =
@@ -321,15 +321,15 @@ pub fn reload_export_after_the_policy_changes_test() {
   let log = session_helpers.export(context, session)
   // The events record the policy each turn ran with.
   let context = Context(..context, policy: deny_writes)
-  let assert Ok(copy) = session_helpers.import_(context, "home", log)
+  let assert Ok(copy) = session_helpers.import_(context, session.box, log)
   assert turns(context, session) == turns(context, copy)
 }
 
 // Keep the box process busy until the returned subject is sent to.
-fn hold_box(context: Context, name) {
-  let assert Ok(home) = box.latest(context, name)
+fn hold_box(context: Context, id) {
+  let assert Ok(home) = box.latest(context, id)
   let process =
-    registry.lookup(context.boxes, name, fn() {
+    registry.lookup(context.boxes, id, fn() {
       registry.serve(Open(home, check.empty()))
     })
   let held = process.new_subject()
@@ -349,7 +349,7 @@ pub fn reading_sessions_do_not_wait_for_the_box_test() {
   use context <- helpers.context()
   let session = session_helpers.session(context)
   let server = server.start(process.new_subject())
-  let release = hold_box(context, "home")
+  let release = hold_box(context, session.box)
   let code = "let _ = " <> server.fetch(server, "GET", "/hello") <> "\n" <> read
   let assert Ok(#(Ok(value), [])) = session_helpers.run(context, session, code)
   assert string.starts_with(value, "Error(")
@@ -360,10 +360,10 @@ pub fn reject_a_conflicting_session_test() {
   use context <- helpers.context()
   let session = session_helpers.session(context)
   let server = server.start(process.new_subject())
-  let release = hold_box(context, "home")
+  let release = hold_box(context, session.box)
   // This change waits for the box process first.
   process.spawn(fn() {
-    box.change(context, "home", fn(root) {
+    box.change(context, session.box, fn(root) {
       file_system.write(root, "/a.txt", <<"other">>)
     })
   })
@@ -396,8 +396,8 @@ fn wait_until(check, attempts) {
 pub fn merge_a_change_only_once_test() {
   // The test reads while the session and box processes write, which one connection can not do.
   let context = helpers.pool_context()
-  let name = helpers.unique("once")
-  let assert Ok(_) = box.create(context, name)
+  let assert Ok(home) = box.create(context, Some(helpers.unique("once")))
+  let name = home.id
   let assert Ok(Nil) = box.durable(context, name)
   let assert Ok(pog.Returned(rows: [session], ..)) =
     db.execute(sessions.create(name, None), context.db)
@@ -505,7 +505,7 @@ pub fn fork_a_session_test() {
   // Both continue the unfinished turn, its change is merged once.
   let assert Ok(_) = session_helpers.run(context, session, "1")
   let assert Ok(_) = session_helpers.run(context, fork, "2")
-  let assert Ok(home) = box.latest(context, "home")
+  let assert Ok(home) = box.latest(context, session.box)
   assert 2 == home.sequence
   let original = session_helpers.events(context, session)
   let forked = session_helpers.events(context, fork)
@@ -528,7 +528,7 @@ pub fn import_shares_the_thread_test() {
   let assert Ok(copy) =
     session_helpers.import_(
       context,
-      "home",
+      session.box,
       session_helpers.export(context, session),
     )
   // Keys are made from the events, so the copy points at the same history.

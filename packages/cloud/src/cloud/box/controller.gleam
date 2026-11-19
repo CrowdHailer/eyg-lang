@@ -15,10 +15,15 @@ import touch_grass/file_system/read_directory
 import unixfs/mfs
 import wisp
 
+/// A box without a name is transient, it can only be reached by its id.
 pub fn create(request, context: Context) {
   use body <- wisp.require_json(request)
   let decoder = {
-    use name <- decode.field("name", decode.string)
+    use name <- decode.optional_field(
+      "name",
+      None,
+      decode.map(decode.string, Some),
+    )
     use from <- decode.optional_field(
       "from",
       None,
@@ -27,12 +32,12 @@ pub fn create(request, context: Context) {
     decode.success(#(name, from))
   }
   case decode.run(body, decoder) {
-    Ok(#(name, from)) if name != "" -> {
-      let allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
-      case list.all(string.to_graphemes(name), string.contains(allowed, _)) {
-        False ->
+    Error(_) -> reason(400, "Expected an optional name and box to start from")
+    Ok(#(name, from)) ->
+      case option.map(name, valid_name) {
+        Some(False) ->
           reason(400, "A box name is lowercase letters, digits and dashes")
-        True -> {
+        _ -> {
           use box <- try(case from {
             None -> box.create(context, name)
             Some(from) -> {
@@ -43,19 +48,28 @@ pub fn create(request, context: Context) {
           wisp.json_response(json.to_string(encode(box)), 201)
         }
       }
-    }
-    _ -> reason(400, "Expected a name")
   }
 }
 
-pub fn get(name, context: Context) {
-  use box <- try(box.latest(context, name))
+fn valid_name(name) {
+  let allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
+  name != "" && list.all(string.to_graphemes(name), string.contains(allowed, _))
+}
+
+/// The named boxes, transient boxes are not listed.
+pub fn list(context: Context) {
+  use boxes <- try(box.named(context))
+  wisp.json_response(json.to_string(json.array(boxes, encode)), 200)
+}
+
+pub fn get(id, context: Context) {
+  use box <- try(box.latest(context, id))
   wisp.json_response(json.to_string(encode(box)), 200)
 }
 
 /// A directory is listed, a file is returned as it was written.
-pub fn read(name, path, context: Context) {
-  use box <- try(box.latest(context, name))
+pub fn read(id, path, context: Context) {
+  use box <- try(box.latest(context, id))
   case
     execute.files(file_system.read_directory(box.root, path), context.state)
   {
@@ -87,27 +101,28 @@ pub fn read(name, path, context: Context) {
 }
 
 /// Missing parent directories are created.
-pub fn write(request, name, path, context: Context) {
+pub fn write(request, id, path, context: Context) {
   use contents <- wisp.require_bit_array_body(request)
-  use root <- change(name, context)
+  use root <- change(id, context)
   use root <- mfs.then(file_system.make_directory(root, path <> "/.."))
   use root <- mfs.try(root)
   file_system.write(root, path, contents)
 }
 
-pub fn delete(name, path, context: Context) {
-  use root <- change(name, context)
+pub fn delete(id, path, context: Context) {
+  use root <- change(id, context)
   file_system.delete(root, path)
 }
 
-fn change(name, context, operation) {
-  use box <- try(box.change(context, name, operation))
+fn change(id, context, operation) {
+  use box <- try(box.change(context, id, operation))
   wisp.json_response(json.to_string(encode(box)), 200)
 }
 
 fn encode(box: boxes.Box) {
   json.object([
-    #("name", json.string(box.name)),
+    #("id", json.string(box.id)),
+    #("name", json.nullable(box.name, json.string)),
     #("sequence", json.int(box.sequence)),
     #("root", json.string(v1.to_string(box.root))),
   ])

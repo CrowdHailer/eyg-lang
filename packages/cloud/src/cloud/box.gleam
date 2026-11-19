@@ -1,4 +1,5 @@
-//// A box is a named file system that only moves to a root where all the EYG modules type check.
+//// A box is a file system that only moves to a root where all the EYG modules type check.
+//// A box with a name is shared, a box without one is transient.
 ////
 //// A box is kept in memory, see `box/memory`, until a session is made in it.
 //// Then it is made durable, its events are recorded in Postgres and every later event is recorded there.
@@ -11,6 +12,8 @@ import cloud/data/boxes.{type Box, Box}
 import cloud/data/db
 import cloud/file_system
 import cloud/registry
+import gleam/bit_array
+import gleam/crypto
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -31,11 +34,11 @@ pub type Reason {
   Failed(String)
 }
 
-pub fn latest(context: Context, name: String) -> Result(Box, Reason) {
+pub fn latest(context: Context, id: String) -> Result(Box, Reason) {
   use <- result.lazy_or(
-    memory.get(context.memory, name) |> result.replace_error(Missing),
+    memory.get(context.memory, id) |> result.replace_error(Missing),
   )
-  case query(boxes.latest(name), context) {
+  case query(boxes.latest(id), context) {
     Ok([box]) -> Ok(box)
     Ok(_) -> Error(Missing)
     Error(reason) -> Error(reason)
@@ -44,23 +47,28 @@ pub fn latest(context: Context, name: String) -> Result(Box, Reason) {
 
 /// Record a box in Postgres if it is only in memory, it is durable from then on.
 /// A box is made durable when the first session is made in it.
-pub fn durable(context: Context, name: String) -> Result(Nil, Reason) {
-  use box <- result.try(latest(context, name))
+pub fn durable(context: Context, id: String) -> Result(Nil, Reason) {
+  use box <- result.try(latest(context, id))
   // The box's process records its events, so none are recorded while it is moved.
-  registry.lookup(context.boxes, name, fn() {
+  registry.lookup(context.boxes, id, fn() {
     registry.serve(Open(box, check.empty()))
   })
   |> registry.call(600_000, fn(open) {
-    case memory.take(context.memory, name) {
+    case memory.take(context.memory, id) {
       Error(Nil) -> #(open, Ok(Nil))
-      Ok(events) -> #(open, save(context, events))
+      Ok(events) -> #(open, save(context, id, events))
     }
   })
 }
 
-fn save(context: Context, events: memory.Events) {
+fn save(context: Context, id, events: memory.Events) {
+  let name = case events {
+    [#(box, _), ..] -> box.name
+    [] -> None
+  }
   db.transaction(context.db, fn(connection) {
     let context = Context(..context, db: connection)
+    use _ <- result.try(query(boxes.insert(id, name), context))
     list.try_each(events, fn(event) {
       let #(box, change) = event
       query(boxes.record(box, change), context)
@@ -74,37 +82,63 @@ fn save(context: Context, events: memory.Events) {
   })
 }
 
-pub fn create(context: Context, name: String) -> Result(Box, Reason) {
+pub fn create(context: Context, name: Option(String)) -> Result(Box, Reason) {
   use root <- result.try(
     execute.files(file_system.empty(), context.state)
     |> result.map_error(Failed),
   )
-  start(context, Box(name, 1, root))
+  start(context, name, root)
 }
 
 /// The new box starts at the current root of the original.
-pub fn clone(context: Context, from: Box, name: String) -> Result(Box, Reason) {
-  start(context, Box(name, 1, from.root))
+pub fn clone(
+  context: Context,
+  from: Box,
+  name: Option(String),
+) -> Result(Box, Reason) {
+  start(context, name, from.root)
+}
+
+/// All the named boxes, in order of name.
+pub fn named(context: Context) -> Result(List(Box), Reason) {
+  use saved <- result.map(query(boxes.named(), context))
+  list.append(saved, memory.named(context.memory))
+  |> list.sort(fn(a, b) {
+    string.compare(option.unwrap(a.name, ""), option.unwrap(b.name, ""))
+  })
 }
 
 // A new box is kept in memory, a name is taken if a box in Postgres or in memory has it.
-fn start(context: Context, box: Box) {
-  use saved <- result.try(query(boxes.latest(box.name), context))
-  case saved == [] && memory.add(context.memory, box) {
+fn start(context, name, root) {
+  use saved <- result.try(query(boxes.named(), context))
+  let taken = name != None && list.any(saved, fn(box: Box) { box.name == name })
+  let box = Box(id(), name, 1, root)
+  case !taken && memory.add(context.memory, box) {
     True -> Ok(box)
     False -> Error(Taken)
   }
 }
 
+// A random identifier in the form of a UUID.
+fn id() {
+  let hex =
+    crypto.strong_random_bytes(16)
+    |> bit_array.base16_encode
+    |> string.lowercase
+  [#(0, 8), #(8, 4), #(12, 4), #(16, 4), #(20, 12)]
+  |> list.map(fn(part) { string.slice(hex, part.0, part.1) })
+  |> string.join("-")
+}
+
 /// Make a change to the files in a box, the effect returns the new root.
 pub fn change(
   context: Context,
-  name: String,
+  id: String,
   effect: fn(v1.Cid) -> mfs.Effect(Result(v1.Cid, simplifile.FileError)),
 ) -> Result(Box, Reason) {
-  use box <- result.try(latest(context, name))
+  use box <- result.try(latest(context, id))
   case execute.files(effect(box.root), context.state) {
-    Ok(Ok(root)) -> merge(context, name, box.root, root, None)
+    Ok(Ok(root)) -> merge(context, id, box.root, root, None)
     Ok(Error(reason)) -> Error(Invalid([simplifile.describe_error(reason)]))
     Error(reason) -> Error(Failed(reason))
   }
@@ -117,13 +151,13 @@ pub fn change(
 /// changes are made away from it and it only merges, type checks and records them.
 pub fn merge(
   context: Context,
-  name: String,
+  id: String,
   base: v1.Cid,
   ours: v1.Cid,
   change: Option(String),
 ) -> Result(Box, Reason) {
-  use box <- result.try(latest(context, name))
-  registry.lookup(context.boxes, name, fn() {
+  use box <- result.try(latest(context, id))
+  registry.lookup(context.boxes, id, fn() {
     registry.serve(Open(box, check.empty()))
   })
   |> registry.call(600_000, fn(open) {
@@ -137,10 +171,10 @@ pub fn merge(
 fn commit(context: Context, open: Open, base, ours, change) {
   let Open(box, index) = open
   // A box in memory remembers the changes it merged, a durable box records them.
-  use merged <- result.try(case change, memory.get(context.memory, box.name) {
-    Some(change), Ok(_) -> Ok(memory.merged(context.memory, box.name, change))
+  use merged <- result.try(case change, memory.get(context.memory, box.id) {
+    Some(change), Ok(_) -> Ok(memory.merged(context.memory, box.id, change))
     Some(change), Error(Nil) ->
-      query(boxes.merged(box.name, change), context)
+      query(boxes.merged(box.id, change), context)
       |> result.map(fn(rows) { rows != [] })
     None, _ -> Ok(False)
   })
@@ -180,7 +214,11 @@ fn commit(context: Context, open: Open, base, ours, change) {
       use box <- result.map(case merged == box.root && change == None {
         True -> Ok(box)
         False ->
-          record(context, Box(box.name, box.sequence + 1, merged), change)
+          record(
+            context,
+            Box(..box, sequence: box.sequence + 1, root: merged),
+            change,
+          )
       })
       Open(box, index)
     }
@@ -204,16 +242,16 @@ fn three_way(base, ours, theirs) {
 
 // A box in memory keeps its events there, a durable box records them in Postgres.
 fn record(context: Context, box: Box, change) {
-  case memory.get(context.memory, box.name) {
-    Ok(_) ->
-      case memory.record(context.memory, box, change) {
-        True -> Ok(box)
-        False -> Error(Taken)
-      }
+  case memory.get(context.memory, box.id) {
+    Ok(_) -> {
+      memory.record(context.memory, box, change)
+      Ok(box)
+    }
     Error(Nil) ->
       case query(boxes.record(box, change), context) {
         Ok([box]) -> Ok(box)
-        Ok(_) -> Error(Taken)
+        // Only the box's process records its events.
+        Ok(_) -> Error(Failed("the box was changed by another process"))
         Error(reason) -> Error(reason)
       }
   }

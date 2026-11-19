@@ -8,7 +8,8 @@ A place to run EYG code away from your local machine
 
 ## Boxes
 
-A box is a named file system.
+A box is a file system with an id.
+A box with a name is shared, a box without one is transient and only reached through its id.
 Each change is recorded as an event with the new file system root, so a box is the chain of its roots.
 A box only moves to a root where every `.eyg` file type checks, imports are resolved in the same file system.
 
@@ -23,11 +24,12 @@ It has no authentication so it only accepts local connections.
 
 | Request | |
 | --- | --- |
-| `POST /boxes` | Create a box from `{"name": "home"}`, add `"from": "other"` to start at the root of another box. |
-| `GET /boxes/:name` | The latest sequence and root of the box. |
-| `GET /boxes/:name/files/*path` | The contents of a file or the entries of a directory. |
-| `PUT /boxes/:name/files/*path` | Write the request body to a file. Missing directories are created. |
-| `DELETE /boxes/:name/files/*path` | Delete a file or directory. |
+| `GET /boxes` | The named boxes. |
+| `POST /boxes` | Create a box from `{"name": "home"}`, leave out the name for a transient box. Add `"from": id` to start at the root of another box. |
+| `GET /boxes/:id` | The name, latest sequence and root of the box. |
+| `GET /boxes/:id/files/*path` | The contents of a file or the entries of a directory. |
+| `PUT /boxes/:id/files/*path` | Write the request body to a file. Missing directories are created. |
+| `DELETE /boxes/:id/files/*path` | Delete a file or directory. |
 
 A change that leaves an invalid module is rejected with status 422 and the box is not changed.
 Status 409 is returned when the name is taken, or a file changed by something else first.
@@ -37,18 +39,19 @@ Changes are made away from the box and merged by the box's one process, which re
 
 A session runs EYG code in a box and records each turn so it can be read back later.
 Many sessions can use the same box, they all see the latest files.
+A session in a transient box, cloned from a named box, works on its own copy of the files.
 
 | Request | |
 | --- | --- |
-| `POST /boxes/:name/sessions` | Start a session in the box. |
-| `GET /boxes/:name/sessions` | The sessions in the box. |
+| `POST /boxes/:id/sessions` | Start a session in the box. |
+| `GET /boxes/:id/sessions` | The sessions in the box. |
 | `GET /sessions/:id` | The session and all of its turns. |
 | `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`. |
 | `GET /sessions/:id/events` | Every event of the session as JSON lines. |
 | `POST /sessions/:id/fork` | Start a session with the same history, each continues from it on its own. |
 | `GET /sessions/:id/trace` | OpenTelemetry spans for the session, each turn and each request, as OTLP JSON. |
 
-Posting exported events, as JSON lines, to `POST /boxes/:name/sessions` creates a session from them.
+Posting exported events, as JSON lines, to `POST /boxes/:id/sessions` creates a session from them.
 The events are only accepted if replaying every turn does what they say.
 A copy of a session with an unfinished turn finishes that turn when it is next used.
 

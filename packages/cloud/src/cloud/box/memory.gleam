@@ -1,15 +1,15 @@
 //// Boxes that are only kept in memory, as blobs are in the memory blob store.
-//// A box is kept here until a session is made in it, then its events are recorded in Postgres,
-//// see `box.durable`.
+//// A box is kept here until a session is made in it, then its events are recorded in Postgres, see `box.durable`.
 //// A box that no session was made in is lost when the service stops.
 
 import cloud/data/boxes.{type Box}
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option, Some}
 import gleam/otp/actor
 import gleam/result
+import gleam/string
 
 /// The state of a box after each of its events, with the change each event merged.
 pub type Events =
@@ -17,10 +17,11 @@ pub type Events =
 
 pub opaque type Message {
   Add(box: Box, reply: Subject(Bool))
-  Record(box: Box, change: Option(String), reply: Subject(Bool))
-  Get(name: String, reply: Subject(Result(Box, Nil)))
-  Merged(name: String, change: String, reply: Subject(Bool))
-  Take(name: String, reply: Subject(Result(Events, Nil)))
+  Record(box: Box, change: Option(String))
+  Get(id: String, reply: Subject(Result(Box, Nil)))
+  Merged(id: String, change: String, reply: Subject(Bool))
+  Named(reply: Subject(List(Box)))
+  Take(id: String, reply: Subject(Result(Events, Nil)))
 }
 
 pub type Memory =
@@ -35,51 +36,57 @@ pub fn start() -> actor.StartResult(Memory) {
 fn handle(kept: Dict(String, Events), message) {
   case message {
     Add(box, reply) -> {
-      let taken = dict.has_key(kept, box.name)
+      let taken =
+        box.name != option.None
+        && list.any(dict.values(kept), fn(events) {
+          case events {
+            [#(latest, _), ..] -> latest.name == box.name
+            [] -> False
+          }
+        })
       process.send(reply, !taken)
       case taken {
         True -> actor.continue(kept)
-        False -> actor.continue(dict.insert(kept, box.name, [#(box, None)]))
+        False ->
+          actor.continue(dict.insert(kept, box.id, [#(box, option.None)]))
       }
     }
-    // An event is only recorded with the next sequence for the box,
-    // so two changes made from the same root cannot both be recorded.
-    Record(box, change, reply) ->
-      case dict.get(kept, box.name) {
-        Ok([#(latest, _), ..] as events)
-          if box.sequence == latest.sequence + 1
-        -> {
-          process.send(reply, True)
-          actor.continue(
-            dict.insert(kept, box.name, [#(box, change), ..events]),
-          )
-        }
-        _ -> {
-          process.send(reply, False)
-          actor.continue(kept)
-        }
-      }
-    Get(name, reply) -> {
-      process.send(reply, case dict.get(kept, name) {
+    Record(box, change) -> {
+      let events = dict.get(kept, box.id) |> result.unwrap([])
+      actor.continue(dict.insert(kept, box.id, [#(box, change), ..events]))
+    }
+    Get(id, reply) -> {
+      process.send(reply, case dict.get(kept, id) {
         Ok([#(box, _), ..]) -> Ok(box)
         _ -> Error(Nil)
       })
       actor.continue(kept)
     }
-    Merged(name, change, reply) -> {
-      let events = dict.get(kept, name) |> result.unwrap([])
+    Merged(id, change, reply) -> {
+      let events = dict.get(kept, id) |> result.unwrap([])
       process.send(
         reply,
         list.any(events, fn(event) { event.1 == Some(change) }),
       )
       actor.continue(kept)
     }
-    Take(name, reply) -> {
-      process.send(reply, case dict.get(kept, name) {
-        Ok(events) -> Ok(list.reverse(events))
-        Error(Nil) -> Error(Nil)
+    Named(reply) -> {
+      dict.values(kept)
+      |> list.filter_map(fn(events) {
+        case events {
+          [#(box, _), ..] if box.name != option.None -> Ok(box)
+          _ -> Error(Nil)
+        }
       })
-      actor.continue(dict.delete(kept, name))
+      |> list.sort(fn(a, b) {
+        string.compare(option.unwrap(a.name, ""), option.unwrap(b.name, ""))
+      })
+      |> process.send(reply, _)
+      actor.continue(kept)
+    }
+    Take(id, reply) -> {
+      process.send(reply, dict.get(kept, id) |> result.map(list.reverse))
+      actor.continue(dict.delete(kept, id))
     }
   }
 }
@@ -89,23 +96,27 @@ pub fn add(memory: Memory, box: Box) -> Bool {
   process.call(memory, 5000, Add(box, _))
 }
 
-/// Record the box after its next event, false if the box is not in memory or the sequence is not the next.
-/// `change` is the change the event merged.
-pub fn record(memory: Memory, box: Box, change: Option(String)) -> Bool {
-  process.call(memory, 5000, Record(box, change, _))
+/// The box after an event, `change` is the change the event merged.
+pub fn record(memory: Memory, box: Box, change: Option(String)) -> Nil {
+  process.send(memory, Record(box, change))
 }
 
 /// The latest state of a box, an error if it is not in memory.
-pub fn get(memory: Memory, name: String) -> Result(Box, Nil) {
-  process.call(memory, 5000, Get(name, _))
+pub fn get(memory: Memory, id: String) -> Result(Box, Nil) {
+  process.call(memory, 5000, Get(id, _))
 }
 
 /// Whether the box in memory merged the change.
-pub fn merged(memory: Memory, name: String, change: String) -> Bool {
-  process.call(memory, 5000, Merged(name, change, _))
+pub fn merged(memory: Memory, id: String, change: String) -> Bool {
+  process.call(memory, 5000, Merged(id, change, _))
+}
+
+/// The latest state of every named box in memory, in order of name.
+pub fn named(memory: Memory) -> List(Box) {
+  process.call(memory, 5000, Named)
 }
 
 /// Remove a box from memory, returning its events oldest first.
-pub fn take(memory: Memory, name: String) -> Result(Events, Nil) {
-  process.call(memory, 5000, Take(name, _))
+pub fn take(memory: Memory, id: String) -> Result(Events, Nil) {
+  process.call(memory, 5000, Take(id, _))
 }

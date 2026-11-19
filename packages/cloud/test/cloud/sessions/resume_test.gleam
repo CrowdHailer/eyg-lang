@@ -17,6 +17,7 @@ import gleam/erlang/process
 import gleam/http
 import gleam/int
 import gleam/list
+import gleam/option.{None}
 import gleam/string
 import qcheck
 
@@ -110,17 +111,17 @@ pub fn resume_from_any_stop_test() {
   |> list.each(fn(entry) {
     let #(_, length) = entry
     let prefix = list.take(events, length)
-    use root, k <- list.index_map(box_roots(events, length))
-    // The copy works on its own box, with the files the box had at the stop.
-    let name = "copy-" <> int.to_string(length) <> "-" <> int.to_string(k)
-    let assert Ok(_) = box.clone(context, boxes.Box("home", 0, root), name)
+    use root <- list.each(box_roots(events, length))
+    // The copy works on its own transient box, with the files the box had at the stop.
+    let assert Ok(home) = box.latest(context, session.box)
+    let assert Ok(copy) = box.clone(context, boxes.Box(..home, root:), None)
     let log = string.join(list.take(lines, length), "\n")
-    let assert Ok(copy) = session_helpers.import_(context, name, log)
+    let assert Ok(copy) = session_helpers.import_(context, copy.id, log)
     // Another process changes the box before the session is resumed.
     case length % 2 {
       0 -> {
         let assert Ok(_) =
-          box.change(context, name, fn(root) {
+          box.change(context, copy.box, fn(root) {
             file_system.write(root, "/other.txt", <<int.to_string(length):utf8>>)
           })
         Nil

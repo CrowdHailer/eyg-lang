@@ -11,12 +11,13 @@ fn field(response, name, decoder) {
   value
 }
 
+// The id of a new box.
 fn box(context, name) {
   let response =
     simulate.request(http.Post, "/boxes")
     |> simulate.json_body(json.object([#("name", json.string(name))]))
     |> dispatch(context)
-  field(response, "root", decode.string)
+  field(response, "id", decode.string)
 }
 
 fn session(context, box) {
@@ -51,12 +52,13 @@ fn root(context, box) {
 
 pub fn sessions_belong_to_a_box_test() {
   use context <- helpers.context()
-  let _ = box(context, "home")
-  let _ = box(context, "other")
-  let id = session(context, "home")
+  let home = box(context, "home")
+  let other = box(context, "other")
+  let id = session(context, home)
 
   let response =
-    dispatch(simulate.request(http.Get, "/boxes/home/sessions"), context)
+    simulate.request(http.Get, "/boxes/" <> home <> "/sessions")
+    |> dispatch(context)
   let assert Ok([found]) =
     json.parse(
       simulate.read_body(response),
@@ -64,7 +66,8 @@ pub fn sessions_belong_to_a_box_test() {
     )
   assert id == found
   let response =
-    dispatch(simulate.request(http.Get, "/boxes/other/sessions"), context)
+    simulate.request(http.Get, "/boxes/" <> other <> "/sessions")
+    |> dispatch(context)
   assert "[]" == simulate.read_body(response)
 
   let response =
@@ -74,8 +77,8 @@ pub fn sessions_belong_to_a_box_test() {
 
 pub fn turns_are_recorded_test() {
   use context <- helpers.context()
-  let _ = box(context, "home")
-  let id = session(context, "home")
+  let home = box(context, "home")
+  let id = session(context, home)
 
   let response = turn(context, id, "let _ = perform StandardOut(\"hi\")\n1")
   assert "1" == field(response, "value", decode.string)
@@ -85,7 +88,7 @@ pub fn turns_are_recorded_test() {
 
   let response =
     dispatch(simulate.request(http.Get, "/sessions/" <> id), context)
-  assert "home" == field(response, "box", decode.string)
+  assert home == field(response, "box", decode.string)
   let assert [first, second] =
     field(response, "turns", decode.list(decode.dynamic))
   assert Ok("1") == decode.run(first, decode.at(["value"], decode.string))
@@ -96,9 +99,9 @@ pub fn turns_are_recorded_test() {
 
 pub fn file_changes_are_shared_through_the_box_test() {
   use context <- helpers.context()
-  let _ = box(context, "home")
-  let first = session(context, "home")
-  let second = session(context, "home")
+  let home = box(context, "home")
+  let first = session(context, home)
+  let second = session(context, home)
 
   let _ = turn(context, first, write("/a.txt", "a"))
   let read = "perform ReadFile({path: \"/a.txt\", offset: 0, limit: 10})"
@@ -108,8 +111,7 @@ pub fn file_changes_are_shared_through_the_box_test() {
 
 pub fn import_modules_test() {
   use context <- helpers.context()
-  let _ = box(context, "home")
-  let id = session(context, "home")
+  let id = session(context, box(context, "home"))
   let _ = turn(context, id, "perform MakeDirectory(\"/lib\")")
   let _ = turn(context, id, write("/lib/one.eyg", "1"))
   let two = "(x) -> { !int_add(x, import \\\"./one.eyg\\\") }"
@@ -124,26 +126,28 @@ pub fn import_modules_test() {
 
 pub fn reject_write_of_invalid_eyg_test() {
   use context <- helpers.context()
-  let before = box(context, "home")
-  let id = session(context, "home")
+  let home = box(context, "home")
+  let before = root(context, home)
+  let id = session(context, home)
 
   let response = turn(context, id, write("/bad.eyg", "let x ="))
   let reason = field(response, "error", decode.string)
   assert string.contains(reason, "/bad.eyg")
-  assert before == root(context, "home")
+  assert before == root(context, home)
 
   // The same write is accepted when the file is not an EYG module.
   let response = turn(context, id, write("/bad.txt", "let x ="))
   let _ = field(response, "value", decode.string)
-  assert before != root(context, "home")
+  assert before != root(context, home)
 }
 
 pub fn failed_code_changes_nothing_test() {
   use context <- helpers.context()
-  let before = box(context, "home")
-  let id = session(context, "home")
+  let home = box(context, "home")
+  let before = root(context, home)
+  let id = session(context, home)
 
   let code = write("/a.txt", "a") <> "\n!int_add(1, \"two\")"
   let _ = field(turn(context, id, code), "error", decode.string)
-  assert before == root(context, "home")
+  assert before == root(context, home)
 }
