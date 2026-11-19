@@ -12,12 +12,13 @@ A box is a named file system.
 Each change is recorded as an event with the new file system root, so a box is the chain of its roots.
 A box only moves to a root where every `.eyg` file type checks, imports are resolved in the same file system.
 
-Events are kept in memory, a box is lost when the service stops.
-The blocks of the file system are stored in S3, under their content identifier.
+Events are stored in Postgres and the blocks of the file system in S3, under their content identifier.
+A new box is only kept in memory until a session is made in it, then its events are stored in Postgres.
+A box no session was made in is lost when the service stops.
 
 ### API
 
-The API is started when `S3_BUCKET` is set.
+The API is started when `POSTGRES_HOST` is set.
 It has no authentication so it only accepts local connections.
 
 | Request | |
@@ -31,9 +32,26 @@ It has no authentication so it only accepts local connections.
 A change that leaves an invalid module is rejected with status 422 and the box is not changed.
 Status 409 is returned when the name is taken or the box was changed by something else first.
 
+### Sessions API
+
+A session runs EYG code in a box and records each turn so it can be read back later.
+Many sessions can use the same box, they all see the latest files.
+
+| Request | |
+| --- | --- |
+| `POST /boxes/:name/sessions` | Start a session in the box. |
+| `GET /boxes/:name/sessions` | The sessions in the box. |
+| `GET /sessions/:id` | The session and all of its turns. |
+| `POST /sessions/:id/turns` | Run the code from `{"code": "1"}`. |
+
+A turn returns its `output` and either a `value` or an `error`.
+File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.
+
 ### Configuration
 
 ```sh
+POSTGRES_HOST=localhost
+POSTGRES_PASSWORD=postgres
 S3_ENDPOINT=https://s3.eu-west-1.amazonaws.com
 S3_REGION=eu-west-1
 S3_BUCKET=
@@ -41,6 +59,16 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 # optional, defaults to 8080
 PORT=8080
+```
+
+### Database
+
+Tests need a Postgres database with the migrations applied.
+The `.env` file needs `POSTGRES_HOST` and `POSTGRES_PASSWORD`.
+
+```sh
+(set -a; source .env; set +a; gleam dev migrate)
+(set -a; source .env; set +a; gleam test)
 ```
 
 ## Sessions

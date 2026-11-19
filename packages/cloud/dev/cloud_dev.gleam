@@ -1,5 +1,7 @@
 import argv
 import cloud
+import cloud/data/migrations
+import cloud/data/pool
 import cloud/discord/api/client as discord
 import cloud/schedule
 import cloud/schedules
@@ -9,6 +11,7 @@ import cloud/slack/api/schema
 import cloud/system
 import envoy
 import gleam/erlang/process
+import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
@@ -45,6 +48,11 @@ fn do_main(args) {
           }
         }
       }
+    }
+    ["migrate"] -> migrations.apply_all(db())
+    ["rollback", count] -> {
+      let assert Ok(count) = int.parse(count)
+      migrations.rollback_n(db(), count)
     }
     ["discord", "messages", channel] -> {
       let assert Ok(token) = envoy.get("DISCORD_BOT_TOKEN")
@@ -123,4 +131,12 @@ fn do_main(args) {
 
 fn identity(x) {
   x
+}
+
+fn db() {
+  let assert Ok(host) = envoy.get("POSTGRES_HOST")
+  let assert Ok(password) = envoy.get("POSTGRES_PASSWORD")
+  let assert Ok(started) =
+    pool.start(process.new_name("db_pool"), pool.Postgres(host:, password:))
+  started.data
 }

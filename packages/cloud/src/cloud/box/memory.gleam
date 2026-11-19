@@ -1,9 +1,12 @@
 //// Boxes that are only kept in memory, as blobs are in the memory blob store.
-//// A box that is only in memory is lost when the service stops.
+//// A box is kept here until a session is made in it, then its events are recorded in Postgres,
+//// see `box.durable`.
+//// A box that no session was made in is lost when the service stops.
 
 import cloud/data/boxes.{type Box}
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
+import gleam/list
 import gleam/otp/actor
 
 /// The state of a box after each of its events, newest first.
@@ -14,6 +17,7 @@ pub opaque type Message {
   Add(box: Box, reply: Subject(Bool))
   Record(box: Box, reply: Subject(Bool))
   Get(name: String, reply: Subject(Result(Box, Nil)))
+  Take(name: String, reply: Subject(Result(Events, Nil)))
 }
 
 pub type Memory =
@@ -55,6 +59,13 @@ fn handle(kept: Dict(String, Events), message) {
       })
       actor.continue(kept)
     }
+    Take(name, reply) -> {
+      process.send(reply, case dict.get(kept, name) {
+        Ok(events) -> Ok(list.reverse(events))
+        Error(Nil) -> Error(Nil)
+      })
+      actor.continue(dict.delete(kept, name))
+    }
   }
 }
 
@@ -71,4 +82,9 @@ pub fn record(memory: Memory, box: Box) -> Bool {
 /// The latest state of a box, an error if it is not in memory.
 pub fn get(memory: Memory, name: String) -> Result(Box, Nil) {
   process.call(memory, 5000, Get(name, _))
+}
+
+/// Remove a box from memory, returning its events oldest first.
+pub fn take(memory: Memory, name: String) -> Result(Events, Nil) {
+  process.call(memory, 5000, Take(name, _))
 }
