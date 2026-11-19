@@ -4,9 +4,7 @@ import etui/span
 import etui/style
 import etui/widgets/block
 import etui/widgets/clear
-import etui/widgets/input
 import etui/widgets/paragraph
-import eyg/cli/etui/widgets/combobox
 import eyg/cli/tui/state
 import eyg/cli/tui/view/info
 import eyg/interpreter/simple_debug
@@ -21,6 +19,8 @@ import morph/lustre/render
 import morph/projection
 import morph/repl/history
 import morph/terminal
+import morph/terminal/combobox
+import morph/terminal/field
 
 pub fn render(state: state.State, screen: geometry.Rect) {
   let status_lines = info.status(state)
@@ -130,7 +130,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
         |> block.with_border(block.Rounded)
         |> block.with_title(title, block.Top)
         |> block.with_padding(0, 0, 1, 1)
-      let area = dialog_area(code_area, 12)
+      let area = field.centered(code_area, 12)
       buf
       |> clear.render(area)
       |> block.render(area, border)
@@ -144,40 +144,7 @@ pub fn render(state: state.State, screen: geometry.Rect) {
         state.PickCid(_) -> "Content reference"
         state.ReplyStandardIn(..) -> "Standard input"
       }
-      let message = case input.validate(widget, editing.value) {
-        Ok(_) ->
-          span.span_styled(
-            "Enter apply · Esc cancel",
-            style.default_style() |> style.add_modifier(style.dim()),
-          )
-        Error(message) ->
-          span.span_styled(
-            message,
-            style.default_style() |> style.with_fg(widget.error_fg),
-          )
-      }
-      let border =
-        block.block_new()
-        |> block.with_border(block.Rounded)
-        |> block.with_title(title, block.Top)
-        |> block.with_padding(0, 0, 1, 1)
-      let area = dialog_area(code_area, 5)
-      let inner = block.inner(area, border)
-      let buf = buf |> clear.render(area) |> block.render(area, border)
-      case inner.size.width > 0 && inner.size.height > 0 {
-        True -> {
-          let assert [field, _, feedback] =
-            geometry.split_v(inner, [
-              geometry.Length(1),
-              geometry.Fill,
-              geometry.Length(1),
-            ])
-          buf
-          |> input.render(field, widget, editing)
-          |> paragraph.render_styled(feedback, [span.line_new([message])])
-        }
-        False -> buf
-      }
+      field.dialog(buf, code_area, title, widget, editing)
     }
   }
 }
@@ -217,14 +184,6 @@ fn dim(text: String) -> span.Line {
       style.default_style() |> style.add_modifier(style.dim()),
     ),
   ])
-}
-
-fn dialog_area(area: geometry.Rect, height: Int) -> geometry.Rect {
-  let margin = case area.size.width >= 40 {
-    True -> 4
-    False -> 0
-  }
-  geometry.centered_rect(int.min(72, area.size.width - margin), height, area)
 }
 
 /// Show the first code line and an effect count until expanded.

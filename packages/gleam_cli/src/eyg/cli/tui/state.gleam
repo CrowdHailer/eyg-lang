@@ -2,7 +2,6 @@ import etui/backend
 import etui/style
 import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
-import eyg/cli/etui/widgets/combobox
 import eyg/cli/tui/files
 import eyg/cli/tui/references
 import eyg/hub/cache
@@ -31,6 +30,8 @@ import morph/picker
 import morph/projection
 import morph/repl/history
 import morph/terminal
+import morph/terminal/combobox
+import morph/terminal/field
 import multiformats/cid/v1
 import touch_grass/abort
 import touch_grass/harness/computer as harness
@@ -353,7 +354,7 @@ fn input_key_pressed(
     "esc", _ -> #(State(..state, mode: Navigating), [])
     "enter", _ -> submit_input(state, input.value, kind)
     _, _ -> {
-      let edited = combobox.edit_input(input_widget(kind), input, key)
+      let edited = field.edit(input_widget(kind), input, key)
       #(State(..state, mode: FreeInput(edited, kind)), [])
     }
   }
