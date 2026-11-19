@@ -84,7 +84,7 @@ pub fn try(
   }
 }
 
-fn each(items: List(a), f: fn(a) -> Effect(List(b))) -> Effect(List(b)) {
+pub fn each(items: List(a), f: fn(a) -> Effect(List(b))) -> Effect(List(b)) {
   case items {
     [] -> Done([])
     [item, ..rest] -> {
