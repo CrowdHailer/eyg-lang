@@ -6,6 +6,13 @@ A place to run EYG code away from your local machine
 (set -a; source .env; set +a; gleam dev)
 ```
 
+## Boxes
+
+A box is a named file system.
+Each change is recorded as an event with the new file system root, so a box is the chain of its roots.
+
+Events are kept in memory, a box is lost when the service stops.
+
 ## Sessions
 
 A session is a shell session and/or agent session with persistent state and file system.
