@@ -3,10 +3,15 @@
 //// A blob store is a process and is passed around as its subject, not as a record of functions.
 //// Every store handles the same messages, so code using blobs does not know where they are kept.
 
+import bucket
+import bucket/get_object
+import bucket/put_object
 import gleam/dict
 import gleam/erlang/process.{type Subject}
+import gleam/httpc
 import gleam/otp/actor
 import gleam/result
+import gleam/string
 
 pub type Message {
   Get(key: String, reply: Subject(Result(BitArray, String)))
@@ -41,4 +46,46 @@ pub fn start() -> actor.StartResult(Blobs) {
     }
   })
   |> actor.start
+}
+
+/// Blobs are objects in a bucket, requests are made one at a time.
+pub fn s3(
+  credentials: bucket.Credentials,
+  bucket: String,
+) -> actor.StartResult(Blobs) {
+  actor.new(Nil)
+  |> actor.on_message(fn(_, message) {
+    case message {
+      Get(key, reply) ->
+        process.send(reply, {
+          use response <- result.try(
+            get_object.request(bucket:, key:)
+            |> get_object.build(credentials)
+            |> send,
+          )
+          case get_object.response(response) {
+            Ok(get_object.Found(body)) -> Ok(body)
+            Ok(get_object.NotFound) -> Error("No blob " <> key)
+            Error(reason) -> Error(string.inspect(reason))
+          }
+        })
+      Put(key, body, reply) ->
+        process.send(reply, {
+          use response <- result.try(
+            put_object.request(bucket:, key:, body:)
+            |> put_object.build(credentials)
+            |> send,
+          )
+          put_object.response(response)
+          |> result.replace(Nil)
+          |> result.map_error(string.inspect)
+        })
+    }
+    actor.continue(Nil)
+  })
+  |> actor.start
+}
+
+fn send(request) {
+  httpc.send_bits(request) |> result.map_error(string.inspect)
 }

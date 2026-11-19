@@ -10,8 +10,38 @@ A place to run EYG code away from your local machine
 
 A box is a named file system.
 Each change is recorded as an event with the new file system root, so a box is the chain of its roots.
+A box only moves to a root where every `.eyg` file type checks, imports are resolved in the same file system.
 
 Events are kept in memory, a box is lost when the service stops.
+The blocks of the file system are stored in S3, under their content identifier.
+
+### API
+
+The API is started when `S3_BUCKET` is set.
+It has no authentication so it only accepts local connections.
+
+| Request | |
+| --- | --- |
+| `POST /boxes` | Create a box from `{"name": "home"}`, add `"from": "other"` to start at the root of another box. |
+| `GET /boxes/:name` | The latest sequence and root of the box. |
+| `GET /boxes/:name/files/*path` | The contents of a file or the entries of a directory. |
+| `PUT /boxes/:name/files/*path` | Write the request body to a file. Missing directories are created. |
+| `DELETE /boxes/:name/files/*path` | Delete a file or directory. |
+
+A change that leaves an invalid module is rejected with status 422 and the box is not changed.
+Status 409 is returned when the name is taken or the box was changed by something else first.
+
+### Configuration
+
+```sh
+S3_ENDPOINT=https://s3.eu-west-1.amazonaws.com
+S3_REGION=eu-west-1
+S3_BUCKET=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+# optional, defaults to 8080
+PORT=8080
+```
 
 ## Sessions
 

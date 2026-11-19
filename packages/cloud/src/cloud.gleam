@@ -1,4 +1,8 @@
+import bucket
+import cloud/apex/context.{Context}
+import cloud/apex/server
 import cloud/beam/execute
+import cloud/box/memory
 import cloud/data/blobs
 import cloud/discord/discord
 import cloud/schedule
@@ -10,7 +14,11 @@ import envoy
 import eyg/hub/cache
 import gleam/dict
 import gleam/erlang/process
+import gleam/http
+import gleam/int
+import gleam/option.{None, Some}
 import gleam/result
+import gleam/uri
 import ogre/origin
 import overlay/llm/provider
 import overlay/llm/provider/ollama
@@ -65,6 +73,7 @@ pub fn main() -> Nil {
   let assert Ok(code) = simplifile.read("right_on_slack.eyg")
   let assert Ok(#(slack_triggers, state)) =
     trigger.prepare([#("Right on", code)], slack.trigger_type(), state)
+  start_api(state)
   let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
   let assert Ok(runtime) = schedule.runtime(state)
   let assert Ok(_) = schedule.start(schedules, sessions.data, runtime)
@@ -86,4 +95,41 @@ pub fn main() -> Nil {
     Error(_) -> Nil
   }
   process.sleep_forever()
+}
+
+/// The API is only available when a bucket is configured for the blocks of file systems.
+fn start_api(state) {
+  case envoy.get("S3_BUCKET") {
+    Error(Nil) -> Nil
+    Ok(bucket) -> {
+      let assert Ok(endpoint) =
+        envoy.get("S3_ENDPOINT") |> result.try(uri.parse)
+      let assert Some(s3_host) = endpoint.host
+      let assert Ok(scheme) =
+        http.scheme_from_string(option.unwrap(endpoint.scheme, "https"))
+      let assert Ok(region) = envoy.get("S3_REGION")
+      let assert Ok(access_key_id) = envoy.get("S3_ACCESS_KEY_ID")
+      let assert Ok(secret_access_key) = envoy.get("S3_SECRET_ACCESS_KEY")
+      let credentials =
+        bucket.Credentials(
+          scheme:,
+          port: endpoint.port,
+          host: s3_host,
+          region:,
+          access_key_id:,
+          secret_access_key:,
+          session_token: None,
+        )
+      let assert Ok(blobs) = blobs.s3(credentials, bucket)
+      let state = execute.State(..state, blobs: blobs.data)
+      let assert Ok(code) = simplifile.read("policy.eyg")
+      let assert #(Ok(policy), state) = execute.load_policy(code, state)
+      let port =
+        envoy.get("PORT") |> result.try(int.parse) |> result.unwrap(8080)
+      let assert Ok(memory) = memory.start()
+      let context = Context(memory: memory.data, state:, policy:)
+      let assert Ok(_) = server.start(context, port)
+      Nil
+    }
+  }
 }
