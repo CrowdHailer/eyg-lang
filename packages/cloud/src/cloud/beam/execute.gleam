@@ -12,7 +12,6 @@ import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
-import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parser
@@ -221,8 +220,7 @@ fn loop(returned, state: State, policy, root, emit, output) {
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
-      let #(value, cache) = lookup(reference, state)
-      let state = State(..state, cache:)
+      let #(value, state) = lookup_value(reference, state)
       case value {
         Ok(value) ->
           loop(block.resume(value, env, k), state, policy, root, emit, output)
@@ -283,8 +281,7 @@ fn resolve_policy_input(label, lift) {
 pub fn pure_loop(returned, state: State) {
   case returned {
     Error(#(break.UndefinedReference(reference), _, env, k) as debug) -> {
-      let #(value, cache) = lookup(reference, state)
-      let state = State(..state, cache:)
+      let #(value, state) = lookup_value(reference, state)
       case value {
         Ok(value) -> pure_loop(expression.resume(value, env, k), state)
         Error(_) -> #(Error(debug), state)
@@ -383,7 +380,7 @@ pub type Meta =
 pub fn lookup(
   reference: ir.Reference,
   state: State,
-) -> #(Result(state.Value(#(Int, Int)), String), cache.Cache(Meta)) {
+) -> #(Result(cache.Module(#(Int, Int)), String), cache.Cache(Meta)) {
   let refresh = case reference {
     ir.Content(_) | ir.Relative(_) -> False
     _ -> True
@@ -410,15 +407,34 @@ pub fn lookup(
     Error(Nil), _ -> #(Error(missing), cache)
     Ok(cid), _ -> {
       let cache = flush(cache.fetch(cache, cid), state.origin)
-      let value = case cache.get_module(cache, cid) {
-        Ok(module) -> Ok(module.value)
+      let module = case cache.get_module(cache, cid) {
+        Ok(module) -> Ok(module)
         Error(cache.Failed(reason)) -> Error(reason)
         Error(cache.Invalid(reason)) -> Error(simple_debug.describe(reason))
         Error(_) -> Error(missing)
       }
-      #(value, cache)
+      #(module, cache)
     }
   }
+}
+
+/// The type of a published module.
+pub fn lookup_type(reference: ir.Reference, state: State) {
+  let #(module, cache) = lookup(reference, state)
+  let type_ =
+    module
+    |> result.map(fn(m) { m.type_ })
+
+  #(type_, State(..state, cache:))
+}
+
+pub fn lookup_value(reference: ir.Reference, state: State) {
+  let #(module, cache) = lookup(reference, state)
+  let value =
+    module
+    |> result.map(fn(m) { m.value })
+
+  #(value, State(..state, cache:))
 }
 
 fn flush(cache: cache.Cache(Meta), origin) -> cache.Cache(Meta) {

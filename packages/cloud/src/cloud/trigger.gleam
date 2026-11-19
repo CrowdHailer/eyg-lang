@@ -4,7 +4,6 @@ import cloud/beam/execute
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
-import eyg/hub/cache
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
@@ -88,13 +87,9 @@ fn check(step, state: execute.State) {
   case step {
     infer.Done(analysis) -> #(analysis, state)
     infer.Lookup(reference, resume) -> {
-      let #(value, cache) = execute.lookup(reference, state)
-      let type_ = {
-        use _ <- result.try(result.replace_error(value, Nil))
-        use module <- result.map(cache.get_reference(cache, reference))
-        module.type_
-      }
-      check(resume(type_), execute.State(..state, cache:))
+      let #(type_, state) = execute.lookup_type(reference, state)
+      let type_ = result.replace_error(type_, Nil)
+      check(resume(type_), state)
     }
   }
 }
