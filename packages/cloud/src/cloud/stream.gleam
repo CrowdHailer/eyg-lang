@@ -1,4 +1,4 @@
-//// Completions streamed from an llm, so their text can be shown as it arrives.
+//// Completions streamed from an llm, so their thinking and text can be shown as they arrive.
 
 import gleam/http/request.{type Request}
 import gleam/list
@@ -19,13 +19,13 @@ fn post(
   fold: fn(a, BitArray) -> a,
 ) -> Result(a, String)
 
-/// The completion of the history, `show` is given the text so far each time more arrives.
+/// The completion of the history, `show` is given the completion so far each time more arrives.
 /// A completion can take minutes, the response stops if nothing arrives for five.
 pub fn complete(
   llm: provider.Llm,
   context: provider.Context,
   history: chat.History,
-  show: fn(String) -> Nil,
+  show: fn(chat.Completion(tool.Call)) -> Nil,
 ) -> Result(chat.Completion(tool.Call), String) {
   let request = provider.stream_completion_request(llm, context, history)
   let start = #(<<>>, chat.fresh())
@@ -36,7 +36,7 @@ pub fn complete(
     let completion = chat.append_chunks(completion, chunks)
     case chunks {
       [] -> Nil
-      _ -> show(completion.content)
+      _ -> show(completion)
     }
     #(remaining, completion)
   })

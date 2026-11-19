@@ -26,7 +26,7 @@ pub fn show_text_as_it_arrives_test() {
       server.llm(server),
       provider.Context("", []),
       history,
-      process.send(texts, _),
+      fn(completion) { process.send(texts, completion.content) },
     )
   assert completion.content == "slow: a longer message #1"
   // The text grows as it arrives and ends as the completion.
@@ -57,4 +57,22 @@ pub fn failed_request_test() {
   let llm = provider.Llm(provider.Ollama(ollama.Config(origin, None)), "test")
   let assert Error(_) =
     stream.complete(llm, provider.Context("", []), [], fn(_) { Nil })
+}
+
+pub fn thinking_is_streamed_test() {
+  let server = server.start(process.new_subject())
+  let arrived = process.new_subject()
+  let history = [chat.UserMessage("think:hard", [])]
+  let assert Ok(completion) =
+    stream.complete(
+      server.llm(server),
+      provider.Context("", []),
+      history,
+      process.send(arrived, _),
+    )
+  assert completion.thinking == "Thinking about think:hard #1"
+  assert completion.content == "think:hard #1"
+  // The thinking arrives before the text.
+  let assert [first, ..] = shown(arrived, [])
+  assert first.content == "" && first.thinking != ""
 }

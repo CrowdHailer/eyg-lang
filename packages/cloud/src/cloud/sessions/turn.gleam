@@ -438,12 +438,11 @@ fn answer(context: Context, session: Session, state, wait, resume) {
     // A completion is streamed so its text can be shown as it arrives, only the completion is recorded.
     // If the process stops before then the text is lost and the completion is asked for again.
     execute.Complete(llm, provider, history, _) -> {
-      let completed =
-        stream.complete(llm, provider, history, live.show(
-          context.live,
-          session.id,
-          _,
-        ))
+      let show = fn(completion: chat.Completion(_)) {
+        live.Arriving(completion.thinking, completion.content)
+        |> live.show(context.live, session.id, _)
+      }
+      let completed = stream.complete(llm, provider, history, show)
       live.clear(context.live, session.id)
       execute.Completed(completed)
     }

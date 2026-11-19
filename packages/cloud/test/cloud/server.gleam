@@ -145,10 +145,15 @@ fn respond(body) {
 }
 
 fn completion(content, calls, done) {
+  thought("", content, calls, done)
+}
+
+fn thought(thinking, content, calls, done) {
   json.object([
     #(
       "message",
       json.object([
+        #("thinking", json.string(thinking)),
         #("content", json.string(content)),
         #("tool_calls", json.preprocessed_array(calls)),
       ]),
@@ -163,12 +168,24 @@ fn completion(content, calls, done) {
 
 // A streamed completion is a line of JSON for each few characters of its content, then a line with the tool calls.
 // The reply to a message that starts with `slow:` pauses after each line, so the lines arrive one at a time.
+// The reply to a message that starts with `think:` thinks about the message first.
 fn stream(request, content, calls) {
-  let pieces =
-    string.to_graphemes(content)
-    |> list.sized_chunk(4)
-    |> list.map(fn(piece) { completion(string.concat(piece), [], Some(False)) })
-  let lines = list.append(pieces, [completion("", calls, Some(True))])
+  let pieces = fn(text) {
+    string.to_graphemes(text) |> list.sized_chunk(4) |> list.map(string.concat)
+  }
+  let thinking = case string.starts_with(content, "think:") {
+    True ->
+      pieces("Thinking about " <> content)
+      |> list.map(fn(piece) { thought(piece, "", [], Some(False)) })
+    False -> []
+  }
+  let lines =
+    list.flatten([
+      thinking,
+      pieces(content)
+        |> list.map(fn(piece) { completion(piece, [], Some(False)) }),
+      [completion("", calls, Some(True))],
+    ])
   mist.chunked(
     request,
     response.new(200),

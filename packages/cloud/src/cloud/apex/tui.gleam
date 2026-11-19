@@ -96,8 +96,8 @@ pub type Screen {
     waiting: Bool,
     // What the running turn has done so far.
     progress: List(String),
-    // The text of a completion as it arrives, it is replaced by the reply when the turn finishes.
-    arriving: String,
+    // A completion as it arrives, it is replaced by the reply when the turn finishes.
+    arriving: live.Arriving,
     // How many lines of the log are scrolled back.
     scroll: Int,
     // The files of the session's box.
@@ -136,6 +136,8 @@ pub type Entry {
   Printed(String)
   Returned(String)
   Failed(String)
+  /// What an llm thought before a completion, only the latest thinking is shown in full.
+  Thought(String)
 }
 
 /// A session in the box or in a transient copy of it, that runs code or chats with an llm.
@@ -163,9 +165,11 @@ pub type Message {
   Resized(columns: Int, rows: Int)
   /// What the running turn in the session with this id has done so far.
   /// And the text of a completion it is receiving, empty if it is not.
-  Progressed(String, List(String), String)
+  Progressed(String, List(String), live.Arriving)
   /// The files of the box of the session with this id, a page the last turn changed is shown if `show` is true.
   FilesListed(String, Result(Files, box.Reason), show: Bool)
+  /// The log of the session with this id, read again from its events once a turn finishes.
+  Logged(String, Result(List(Entry), box.Reason))
   /// The column and row of the cell clicked.
   Clicked(Int, Int)
 }
@@ -516,6 +520,10 @@ fn on_screen(model: Model, screen, message) {
         effect.none(),
       )
     }
+    // A turn that started since the log was read adds to the log, the next one read has it all.
+    Running(session:, waiting: False, ..) as running, Logged(id, Ok(log))
+      if id == session.id
+    -> #(Model(..model, screen: Running(..running, log:)), effect.none())
     // A reply for a session that is no longer shown is dropped, it is in the session's history.
     // Messages sent after the chat's last tool calls start the next turn.
     Running(session:, log:, waiting: True, ..) as running, Replied(id, replied)
@@ -551,16 +559,27 @@ fn on_screen(model: Model, screen, message) {
           log:,
           waiting: False,
           progress: [],
-          arriving: "",
+          arriving: live.nothing,
           scroll:,
         )
       let model = Model(..model, screen: running)
+      // The log is read again from the events, which have the thinking of each completion.
+      let after =
+        effect.batch([
+          list_files(context, session, True),
+          background(fn() {
+            Logged(
+              session.id,
+              result.map(open(context, session.id), fn(opening) { opening.log }),
+            )
+          }),
+        ])
       case unsent {
-        [] -> #(model, list_files(context, session, True))
+        [] -> #(model, after)
         _ -> {
           let #(model, effects) =
             run_turn(model, running, turn.Message(string.join(unsent, "\n\n")))
-          #(model, effect.batch([effects, list_files(context, session, True)]))
+          #(model, effect.batch([effects, after]))
         }
       }
     }
@@ -606,7 +625,7 @@ fn last_scroll(model: Model, running) {
   let assert Running(log:, draft: current, ..) = running
   let #(columns, rows) = log_size(model.size)
   let chat = draft.mode(current) == "message"
-  let lines = list.flat_map(log, entry_lines(_, chat, columns)) |> list.length
+  let lines = log_lines(log, chat, columns, False) |> list.length
   int.max(0, lines - rows)
 }
 
@@ -646,9 +665,9 @@ fn poll(context, session: Session) {
         Progressed(
           session.id,
           progress(list.map(history, fn(entry) { entry.2 })),
-          live.text(context.live, session.id),
+          live.arriving(context.live, session.id),
         )
-      Error(_) -> Progressed(session.id, [], "")
+      Error(_) -> Progressed(session.id, [], live.nothing)
     }
   })
 }
@@ -752,7 +771,13 @@ fn send(model: Model, running, input, draft) {
 fn run_turn(model: Model, running, input) {
   let assert Running(session:, ..) = running
   let screen =
-    Running(..running, waiting: True, progress: [], arriving: "", scroll: 0)
+    Running(
+      ..running,
+      waiting: True,
+      progress: [],
+      arriving: live.nothing,
+      scroll: 0,
+    )
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -785,7 +810,18 @@ fn opened(model: Model, opening: Opening) {
     _, False -> #(draft.program(), no_files, None)
   }
   let screen =
-    Running(place, session, log, draft, unfinished, [], "", 0, files, artifact)
+    Running(
+      place,
+      session,
+      log,
+      draft,
+      unfinished,
+      [],
+      live.nothing,
+      0,
+      files,
+      artifact,
+    )
   let model = Model(..model, screen:, status: Quiet)
   let files = list_files(model.context, session, False)
   case unfinished {
@@ -835,6 +871,9 @@ fn log(events) {
       event.Started(code, _) -> [sent(turn.Code(code))]
       event.Submitted(program, _) -> [sent(turn.Program(program))]
       event.Sent(message, _) -> [sent(turn.Message(message))]
+      event.Answered(execute.Completed(Ok(completion)))
+        if completion.thinking != ""
+      -> [Thought(completion.thinking)]
       event.Answered(execute.Steered(messages)) ->
         list.map(messages, fn(message) { sent(turn.Message(message)) })
       event.Finished(outcome, output, _) ->
@@ -1207,7 +1246,8 @@ fn body(screen, area: geometry.Rect, model: Model) {
       }
       let columns = area.size.width
       let chat = draft.mode(current) == "message"
-      let lines = list.flat_map(log, entry_lines(_, chat, columns))
+      let lines =
+        log_lines(log, chat, columns, waiting && arriving.thinking != "")
       // A draft taller than half the area shows the part around its cursor.
       let drafted = fn(most) {
         let #(lines, cursor) = draft.lines(current, True, columns - 2)
@@ -1221,13 +1261,19 @@ fn body(screen, area: geometry.Rect, model: Model) {
           list.map(progress, fn(step) {
             span.line_new([span.span_styled("· " <> step, fg(muted))])
           })
-          // The text of a completion as it arrives, the end of it if it is long.
-          |> list.append(case arriving {
-            "" -> []
-            text -> {
-              let lines = entry_lines(Returned(text), True, columns)
-              list.drop(lines, list.length(lines) - area.size.height / 2)
-            }
+          // The thinking and text of a completion as they arrive, the end of them if they are long.
+          |> list.append({
+            let lines =
+              list.flat_map(
+                [Thought(arriving.thinking), Returned(arriving.text)],
+                fn(entry) {
+                  case entry {
+                    Thought("") | Returned("") -> []
+                    _ -> entry_lines(entry, True, columns)
+                  }
+                },
+              )
+            list.drop(lines, list.length(lines) - area.size.height / 2)
           })
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),
@@ -1365,7 +1411,40 @@ fn entry_lines(entry, chat, columns) {
     Returned(content), True -> text("llm ", content, fg(purple))
     Returned(content), False -> text("= ", content, fg(green))
     Failed(content), _ -> text("! ", content, fg(red))
+    Thought(content), _ ->
+      text("thinking ", content, fg(muted) |> style.add_modifier(style.dim()))
   }
+}
+
+// The lines of the log, only the latest thinking is shown in full, earlier thinking is a line saying how long it is.
+// When an llm is thinking now that is the latest.
+fn log_lines(log, chat, columns, thinking_now) {
+  let latest = case thinking_now {
+    True -> -1
+    False ->
+      list.index_fold(log, -1, fn(latest, entry, i) {
+        case entry {
+          Thought(_) -> i
+          _ -> latest
+        }
+      })
+  }
+  list.index_map(log, fn(entry, i) {
+    case entry {
+      Thought(content) if i != latest -> {
+        let lines = list.length(string.split(content, "\n"))
+        let lines = case lines {
+          1 -> "1 line"
+          _ -> int.to_string(lines) <> " lines"
+        }
+        [
+          span.line_new([span.span_styled("▸ thought for " <> lines, fg(muted))]),
+        ]
+      }
+      _ -> entry_lines(entry, chat, columns)
+    }
+  })
+  |> list.flatten
 }
 
 fn menu(items, screen, area, chosen) {
