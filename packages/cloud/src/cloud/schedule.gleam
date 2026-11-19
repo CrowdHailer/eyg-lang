@@ -2,13 +2,12 @@
 
 import clockwork
 import cloud/beam/execute
-import cloud/beam/file_system
+import cloud/file_system
 import cloud/schedule/message
 import cloud/session
 import cloud/trigger
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
-import gleam/dict
 import gleam/erlang/process.{type Subject}
 import gleam/io
 import gleam/list
@@ -145,13 +144,14 @@ pub fn run(
   runtime: Runtime,
 ) -> #(Result(session.Message, String), Runtime) {
   let print = fn(_) { Nil }
+  let assert Ok(empty) = execute.files(file_system.empty(), runtime.state)
   let #(outcome, state, _) =
     execute.call_value(
       schedule.function,
       v.unit(),
       runtime.state,
       runtime.policy,
-      file_system.new(dict.new()),
+      empty,
       print,
     )
   let message = {

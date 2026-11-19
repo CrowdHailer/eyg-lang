@@ -1,8 +1,8 @@
 //// Discord automations, checked and evaluated once at startup.
 
 import cloud/beam/execute
-import cloud/beam/file_system
 import cloud/discord/event as discord
+import cloud/file_system
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -121,8 +121,9 @@ pub fn run(
 /// Execute at the Discord polling hook. File state lasts for this event; the
 /// reference cache and configured workspace secrets are retained by the client.
 pub fn run_all(triggers, channel_name, event, state, policy, emit) {
+  let assert Ok(empty) = execute.files(file_system.empty(), state)
   let #(state, _) =
-    list.fold(triggers, #(state, file_system.new(dict.new())), fn(acc, trigger) {
+    list.fold(triggers, #(state, empty), fn(acc, trigger) {
       let #(state, files) = acc
       let #(outcome, state, files) =
         run(trigger, channel_name, event, state, policy, files, emit)

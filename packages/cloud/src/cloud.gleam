@@ -1,4 +1,5 @@
 import cloud/beam/execute
+import cloud/data/blobs
 import cloud/discord/discord
 import cloud/schedule
 import cloud/schedules
@@ -42,7 +43,15 @@ pub fn setup() {
     Ok(guild) -> dict.insert(secrets, "DISCORD_GUILD_ID", guild)
     Error(_) -> secrets
   }
-  #(execute.State(origin: hub, cache: cache.ready(), secrets:), llm)
+  let assert Ok(blobs) = blobs.start()
+  let state =
+    execute.State(
+      origin: hub,
+      cache: cache.ready(),
+      secrets:,
+      blobs: blobs.data,
+    )
+  #(state, llm)
 }
 
 pub fn main() -> Nil {

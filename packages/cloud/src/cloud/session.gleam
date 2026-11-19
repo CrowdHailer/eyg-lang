@@ -1,7 +1,8 @@
 //// A single actor executes queued code and agent turns in each session.
 
 import cloud/beam/execute
-import cloud/beam/file_system
+import cloud/data/blobs
+import cloud/file_system
 import cloud/overlay
 import cloud/trigger
 import eyg/hub/cache
@@ -10,12 +11,12 @@ import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/io
 import gleam/otp/actor
+import gleam/result
 import multiformats/cid/v1
 import ogre/origin
 import overlay/llm/chat
 import overlay/llm/provider
 import simplifile
-import unixfs/mfs
 
 pub type Payload {
   Code(String)
@@ -31,7 +32,6 @@ type State {
   State(
     execute_state: execute.State,
     policy: execute.Policy,
-    blocks: Dict(v1.Cid, mfs.Entry),
     sessions: Dict(String, Session),
     // session is not a good name for overlay.Session
     // it is closer to config as it is constant over the session life time.
@@ -58,16 +58,21 @@ pub fn start_with_session(
 ) -> actor.StartResult(Subject(Message)) {
   // policy.eyg could be moved to shared startup configuration later.
   let assert Ok(code) = simplifile.read("policy.eyg")
+  let assert Ok(blobs) = blobs.start()
   let #(policy, execute_state) =
     execute.load_policy(
       code,
-      execute.State(origin: hub, cache: cache.ready(), secrets:),
+      execute.State(
+        origin: hub,
+        cache: cache.ready(),
+        secrets:,
+        blobs: blobs.data,
+      ),
     )
   let assert Ok(policy) = policy
   actor.new(State(
     execute_state:,
     policy:,
-    blocks: dict.new(),
     sessions: dict.new(),
     agent_config: agent_session,
   ))
@@ -88,7 +93,7 @@ fn handle_message(
           state.execute_state,
           // TODO triggers shouldn't need the same as an individual channel policy.
           state.policy,
-          file_system.new(dict.new()),
+          empty(state.execute_state),
           fn(_) { Nil },
         )
       case outcome {
@@ -102,22 +107,18 @@ fn handle_message(
 }
 
 fn handle_session(state: State, id, action, print) {
-  let #(files, history) = case dict.get(state.sessions, id) {
-    Ok(Session(root:, history:)) -> #(
-      file_system.State(root, state.blocks),
-      history,
-    )
-    Error(Nil) -> #(file_system.new(state.blocks), [])
-  }
-  let #(history, execute_state, files) = case action {
+  let Session(root, history) =
+    dict.get(state.sessions, id)
+    |> result.lazy_unwrap(fn() { Session(empty(state.execute_state), []) })
+  let #(history, execute_state, root) = case action {
     Code(code) -> {
-      let #(outcome, execute_state, files) =
-        execute.block(code, state.execute_state, state.policy, files, print)
+      let #(outcome, execute_state, root, _) =
+        execute.block(code, state.execute_state, state.policy, root, print)
       case outcome {
         Ok(value) -> print(execute.StandardOut(value))
         Error(reason) -> print(execute.StandardError(reason))
       }
-      #(history, execute_state, files)
+      #(history, execute_state, root)
     }
     UserPrompt(text) ->
       overlay.inner_loop(
@@ -125,7 +126,7 @@ fn handle_session(state: State, id, action, print) {
         state.execute_state,
         state.policy,
         [chat.UserMessage(text, []), ..history],
-        files,
+        root,
         print,
       )
   }
@@ -133,8 +134,12 @@ fn handle_session(state: State, id, action, print) {
     State(
       ..state,
       execute_state:,
-      blocks: files.blocks,
-      sessions: dict.insert(state.sessions, id, Session(files.root, history)),
+      sessions: dict.insert(state.sessions, id, Session(root, history)),
     ),
   )
+}
+
+fn empty(state) {
+  let assert Ok(root) = execute.files(file_system.empty(), state)
+  root
 }

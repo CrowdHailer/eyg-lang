@@ -1,7 +1,6 @@
 //// The cloud adapter for Overlay's sequential completion/tool loop.
 
 import cloud/beam/execute
-import cloud/beam/file_system
 import cloud/system
 import gleam/http/request
 import gleam/http/response
@@ -9,6 +8,7 @@ import gleam/list
 import gleam/string
 import midas/continuation
 import midas/effect
+import multiformats/cid/v1
 import ogre/origin
 import overlay/agent
 import overlay/llm/chat
@@ -54,9 +54,9 @@ pub fn inner_loop(
   eyg_state: execute.State,
   policy: execute.Policy,
   history: chat.History,
-  files: file_system.State,
+  files: v1.Cid,
   emit: fn(execute.Output) -> Nil,
-) -> #(chat.History, execute.State, file_system.State) {
+) -> #(chat.History, execute.State, v1.Cid) {
   let completion =
     provider.completion(
       session.llm,

@@ -1,6 +1,10 @@
 //// This module is similar to loam/execute BUT it's not the beam plaform instead it's the cloud platform.
+////
+//// The `beam` modules are where continuation based code, which is pure, is turned into idiomatic BEAM code.
+//// Functions here perform their effects directly, they block, make requests and call other processes.
 
-import cloud/beam/file_system
+import cloud/data/blobs
+import cloud/file_system
 import cloud/system
 import eyg/hub/cache
 import eyg/interpreter/block
@@ -21,9 +25,11 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
+import multiformats/cid/v1
 import ogre/origin
 import overlay/agent
 import overlay/policy
+import simplifile.{type FileError}
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env
@@ -41,6 +47,7 @@ import touch_grass/random
 import touch_grass/sleep
 import touch_grass/standard_error
 import touch_grass/standard_out
+import unixfs/mfs
 
 pub type Output {
   StandardOut(String)
@@ -52,6 +59,7 @@ pub type State {
     origin: origin.Origin,
     cache: cache.Cache(Meta),
     secrets: Dict(String, String),
+    blobs: blobs.Blobs,
   )
 }
 
@@ -105,12 +113,10 @@ pub fn block(
   code: String,
   state: State,
   policy: Policy,
-  files: file_system.State,
+  root: v1.Cid,
   emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, file_system.State) {
-  let #(outcome, state, files, _) =
-    evaluate(code, [], simple_debug.inspect, state, policy, files, emit)
-  #(outcome, state, files)
+) -> #(Result(String, String), State, v1.Cid, List(String)) {
+  evaluate(code, [], simple_debug.inspect, state, policy, root, emit)
 }
 
 /// Execute an agent tool with fresh context and capture output for the model.
@@ -119,37 +125,37 @@ pub fn run(
   code: String,
   state: State,
   policy: Policy,
-  files: file_system.State,
+  root: v1.Cid,
   emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, file_system.State, List(String)) {
+) -> #(Result(String, String), State, v1.Cid, List(String)) {
   evaluate(
     code,
     [#("context", v.unit())],
     agent.inspect_result,
     state,
     policy,
-    files,
+    root,
     emit,
   )
 }
 
-fn evaluate(code, scope, inspect, state, policy, files, emit) {
+fn evaluate(code, scope, inspect, state, policy, root, emit) {
   case parser.all_from_string(code) {
     Error(reason) -> #(
       Error(parser.format_error(reason, code)),
       state,
-      files,
+      root,
       [],
     )
     Ok(source) -> {
-      let #(outcome, state, files, output) =
-        loop(block.execute(source, scope), state, policy, files, emit, [])
+      let #(outcome, state, root, output) =
+        loop(block.execute(source, scope), state, policy, root, emit, [])
       #(
         result.map(outcome, fn(value) {
           value |> option.map(inspect) |> option.unwrap("")
         }),
         state,
-        files,
+        root,
         output,
       )
     }
@@ -157,37 +163,36 @@ fn evaluate(code, scope, inspect, state, policy, files, emit) {
 }
 
 /// Run a checked automation through the same policy-gated loop as other code.
-pub fn call(function, input, state: State, policy: Policy, files, emit) {
-  let #(outcome, state, files) =
-    call_value(function, input, state, policy, files, emit)
-  #(result.replace(outcome, Nil), state, files)
+pub fn call(function, input, state: State, policy: Policy, root, emit) {
+  let #(outcome, state, root) =
+    call_value(function, input, state, policy, root, emit)
+  #(result.replace(outcome, Nil), state, root)
 }
 
 /// Preserve the result of a trigger while applying the normal effect policy.
-pub fn call_value(function, input, state: State, policy: Policy, files, emit) {
-  let #(outcome, state, files, _) =
+pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
+  let #(outcome, state, root, _) =
     loop(
       block.call(function, [#(input, #(0, 0))], builtin.default([])),
       state,
       policy,
-      files,
+      root,
       emit,
       [],
     )
-  #(result.map(outcome, option.unwrap(_, v.unit())), state, files)
+  #(result.map(outcome, option.unwrap(_, v.unit())), state, root)
 }
 
-fn loop(returned, state: State, policy, files, emit, output) {
+fn loop(returned, state: State, policy, root, emit, output) {
   case returned {
-    Ok(#(value, _scope)) -> #(Ok(value), state, files, output)
+    Ok(#(value, _scope)) -> #(Ok(value), state, root, output)
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       let #(action, state) = decide(policy, label, lift, meta, state)
-      let #(outcome, files, output) = case action {
+      let #(outcome, root, output) = case action {
         policy.Perform(interface, input) -> {
-          let #(outcome, files) = case interface.decode(input) {
-            Ok(effect) ->
-              perform_effect(effect, label, state.secrets, files, emit)
-            Error(reason) -> #(Error(simple_debug.describe(reason)), files)
+          let #(outcome, root) = case interface.decode(input) {
+            Ok(effect) -> perform_effect(effect, label, state, root, emit)
+            Error(reason) -> #(Error(simple_debug.describe(reason)), root)
           }
           let output = case label, input, outcome {
             "StandardOut", v.String(text), Ok(_)
@@ -195,24 +200,24 @@ fn loop(returned, state: State, policy, files, emit, output) {
             -> [text, ..output]
             _, _, _ -> output
           }
-          #(outcome, files, output)
+          #(outcome, root, output)
         }
-        policy.Resume(value) -> #(Ok(value), files, output)
+        policy.Resume(value) -> #(Ok(value), root, output)
         policy.Failed(debug) -> #(
           Error("Policy failed: " <> simple_debug.describe(debug.0)),
-          files,
+          root,
           output,
         )
         policy.Unavailable -> #(
           Error("Unhandled effect: " <> label),
-          files,
+          root,
           output,
         )
       }
       case outcome {
         Ok(value) ->
-          loop(block.resume(value, env, k), state, policy, files, emit, output)
-        Error(reason) -> #(Error(reason), state, files, output)
+          loop(block.resume(value, env, k), state, policy, root, emit, output)
+        Error(reason) -> #(Error(reason), state, root, output)
       }
     }
     Error(#(break.UndefinedReference(reference), _, env, k)) -> {
@@ -220,14 +225,14 @@ fn loop(returned, state: State, policy, files, emit, output) {
       let state = State(..state, cache:)
       case value {
         Ok(value) ->
-          loop(block.resume(value, env, k), state, policy, files, emit, output)
-        Error(reason) -> #(Error(reason), state, files, output)
+          loop(block.resume(value, env, k), state, policy, root, emit, output)
+        Error(reason) -> #(Error(reason), state, root, output)
       }
     }
     Error(debug) -> #(
       Error(simple_debug.describe(debug.0)),
       state,
-      files,
+      root,
       output,
     )
   }
@@ -289,59 +294,86 @@ pub fn pure_loop(returned, state: State) {
   }
 }
 
-fn perform_effect(effect, label, secrets, files, emit) {
+fn perform_effect(effect, label, state: State, root, emit) {
   case effect {
     computer.StandardOut(text) -> {
       emit(StandardOut(text))
-      #(Ok(standard_out.encode(Nil)), files)
+      #(Ok(standard_out.encode(Nil)), root)
     }
     computer.StandardError(text) -> {
       emit(StandardError(text))
-      #(Ok(standard_error.encode(Nil)), files)
+      #(Ok(standard_error.encode(Nil)), root)
     }
-    computer.AppendFile(input) -> {
-      let #(outcome, files) =
-        file_system.append(files, input.path, input.contents)
-      #(Ok(append_file.encode(outcome)), files)
-    }
-    computer.Cwd -> #(cwd(), files)
-    computer.DecodeJson(bytes) -> #(decode_json(bytes), files)
-    computer.DeleteFile(path) -> {
-      let #(outcome, files) = file_system.delete(files, path)
-      #(Ok(delete_file.encode(outcome)), files)
-    }
-    computer.Env(name:) -> #(get_env(name, secrets), files)
-    computer.Fetch(request) -> #(fetch(request), files)
-    computer.Flip -> #(flip(), files)
-    computer.Hash(input) -> #(hash(input), files)
-    computer.MakeDirectory(path) -> {
-      let #(outcome, files) = file_system.make_directory(files, path)
-      #(Ok(make_directory.encode(outcome)), files)
-    }
-    computer.Now -> #(now(), files)
-    computer.Random(max) -> #(random(max), files)
-    computer.ReadDirectory(path) -> #(
-      Ok(file_system.read_directory(files, path) |> read_directory.encode),
-      files,
-    )
-    computer.ReadFile(input) -> #(
-      Ok(
-        file_system.read(files, input.path, input.offset, input.limit)
-        |> read_file.encode,
-      ),
-      files,
-    )
-    computer.Sleep(milliseconds) -> #(sleep(milliseconds), files)
-    computer.WriteFile(input) -> {
-      let #(outcome, files) =
-        file_system.write(files, input.path, input.contents)
-      #(Ok(write_file.encode(outcome)), files)
-    }
+    computer.AppendFile(input) ->
+      file_system.append(root, input.path, input.contents)
+      |> change(state, root, append_file.encode)
+    computer.Cwd -> #(cwd(), root)
+    computer.DecodeJson(bytes) -> #(decode_json(bytes), root)
+    computer.DeleteFile(path) ->
+      file_system.delete(root, path) |> change(state, root, delete_file.encode)
+    computer.Env(name:) -> #(get_env(name, state.secrets), root)
+    computer.Fetch(request) -> #(fetch(request), root)
+    computer.Flip -> #(flip(), root)
+    computer.Hash(input) -> #(hash(input), root)
+    computer.MakeDirectory(path) ->
+      file_system.make_directory(root, path)
+      |> change(state, root, make_directory.encode)
+    computer.Now -> #(now(), root)
+    computer.Random(max) -> #(random(max), root)
+    computer.ReadDirectory(path) ->
+      file_system.read_directory(root, path)
+      |> read(state, root, read_directory.encode)
+    computer.ReadFile(input) ->
+      file_system.read_range(root, input.path, input.offset, input.limit)
+      |> read(state, root, read_file.encode)
+    computer.Sleep(milliseconds) -> #(sleep(milliseconds), root)
+    computer.WriteFile(input) ->
+      file_system.write(root, input.path, input.contents)
+      |> change(state, root, write_file.encode)
     computer.CreateKey(_)
     | computer.Exit(_)
     | computer.EygParse(_)
     | computer.Sign(_)
-    | computer.StandardIn -> #(Error("Unhandled effect: " <> label), files)
+    | computer.StandardIn -> #(Error("Unhandled effect: " <> label), root)
+  }
+}
+
+// A failed file operation is a value for the program and leaves the root unchanged.
+fn change(effect, state, root, encode) {
+  case files(effect, state) {
+    Ok(root) -> #(Ok(encode(Ok(Nil))), root)
+    Error(reason) -> #(
+      Ok(encode(Error(simplifile.describe_error(reason)))),
+      root,
+    )
+  }
+}
+
+fn read(effect, state, root, encode) {
+  let outcome =
+    files(effect, state) |> result.map_error(simplifile.describe_error)
+  #(Ok(encode(outcome)), root)
+}
+
+/// Run file system effects by getting and putting blocks in the blob store.
+pub fn files(effect: mfs.Effect(a), state: State) -> Result(a, FileError) {
+  case effect {
+    mfs.Done(value) -> value
+    mfs.Get(cid, resume) ->
+      blobs.get(state.blobs, v1.to_string(cid))
+      |> result.replace_error(Nil)
+      |> result.try(mfs.decode(cid, _))
+      |> result.replace_error(simplifile.Enoent)
+      |> resume
+      |> files(state)
+    mfs.Put(entry, resume) -> {
+      let stored = mfs.identify(entry)
+      blobs.put(state.blobs, v1.to_string(stored.cid), mfs.encode(entry))
+      |> result.replace(stored)
+      |> result.replace_error(simplifile.Eio)
+      |> resume
+      |> files(state)
+    }
   }
 }
 
