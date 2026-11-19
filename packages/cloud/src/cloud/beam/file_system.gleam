@@ -10,6 +10,7 @@ import gleam/string
 import multiformats/cid/v1
 import simplifile.{type FileError}
 import touch_grass/file_system/read_directory
+import unixfs
 import unixfs/mfs
 
 /// This is only useful for passing through execution state.
@@ -127,22 +128,21 @@ pub fn read(
   result.map_error(contents, simplifile.describe_error)
 }
 
+/// Read the contents of a diractory in a file system at the given path.
+/// 
+/// Directory contents are not loaded from blob store.
 pub fn read_directory(fs: State, path: String) -> read_directory.Output {
   let entries = {
     use parts <- result.try(path_parts(path))
-    use links <- result.try(
+    use links <- result.map(
       run(mfs.read_directory(fs.root, parts), fs.blocks).0,
     )
     links
     |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
-    |> list.try_map(fn(link) {
-      use entry <- result.map(
-        dict.get(fs.blocks, link.cid)
-        |> result.replace_error(simplifile.Enoent),
-      )
-      let metadata = case entry {
-        mfs.File(contents) -> read_directory.File(bit_array.byte_size(contents))
-        mfs.Directory(_) -> read_directory.Directory
+    |> list.map(fn(link) {
+      let metadata = case link.cid.content_type == unixfs.raw_code {
+        True -> read_directory.File(link.size)
+        False -> read_directory.Directory
       }
       #(link.name, metadata)
     })
