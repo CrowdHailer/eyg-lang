@@ -18,10 +18,11 @@ fn check(files: List(#(String, String))) {
       secrets: dict.new(),
       blobs: blobs.data,
     )
-  let assert Ok(#(errors, _)) =
+  let assert Ok(Ok(#(errors, _))) =
     {
       use root <- mfs.then(file_system.empty())
       use root <- mfs.then(write_all(files, root))
+      use root <- mfs.try(root)
       fs.check(root, state)
     }
     |> execute.files(state)
@@ -33,7 +34,9 @@ fn write_all(files, root) {
     [] -> mfs.Done(Ok(root))
     [#(path, code), ..files] -> {
       use root <- mfs.then(file_system.make_directory(root, path <> "/.."))
+      use root <- mfs.try(root)
       use root <- mfs.then(file_system.write(root, path, <<code:utf8>>))
+      use root <- mfs.try(root)
       write_all(files, root)
     }
   }
@@ -89,6 +92,16 @@ pub fn import_type_mismatch_test() {
 pub fn missing_import_test() {
   let errors = check([#("/main.eyg", "import \"./gone.eyg\"")])
   assert 2 == list.length(errors)
+}
+
+pub fn missing_import_does_not_stop_checking_other_modules_test() {
+  let errors =
+    check([
+      #("/main.eyg", "import \"./gone.eyg\""),
+      #("/other.eyg", "!int_add(1, \"two\")"),
+    ])
+  assert 3 == list.length(errors)
+  assert list.any(errors, string.starts_with(_, "/other.eyg: "))
 }
 
 pub fn import_cycle_test() {

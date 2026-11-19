@@ -28,7 +28,7 @@ import multiformats/cid/v1
 import ogre/origin
 import overlay/agent
 import overlay/policy
-import simplifile.{type FileError}
+import simplifile
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env
@@ -338,8 +338,9 @@ fn perform_effect(effect, label, state: State, root, emit) {
 // A failed file operation is a value for the program and leaves the root unchanged.
 fn change(effect, state, root, encode) {
   case files(effect, state) {
-    Ok(root) -> #(Ok(encode(Ok(Nil))), root)
-    Error(reason) -> #(
+    Error(reason) -> #(Error(reason), root)
+    Ok(Ok(root)) -> #(Ok(encode(Ok(Nil))), root)
+    Ok(Error(reason)) -> #(
       Ok(encode(Error(simplifile.describe_error(reason)))),
       root,
     )
@@ -347,29 +348,51 @@ fn change(effect, state, root, encode) {
 }
 
 fn read(effect, state, root, encode) {
-  let outcome =
-    files(effect, state) |> result.map_error(simplifile.describe_error)
-  #(Ok(encode(outcome)), root)
+  case files(effect, state) {
+    Error(reason) -> #(Error(reason), root)
+    Ok(outcome) -> #(
+      Ok(encode(result.map_error(outcome, simplifile.describe_error))),
+      root,
+    )
+  }
 }
 
 /// Run file system effects by getting and putting blocks in the blob store.
-pub fn files(effect: mfs.Effect(a), state: State) -> Result(a, FileError) {
+/// Storage failures stop execution without resuming the effect. The completed
+/// value may independently contain a filesystem operation error.
+pub fn files(effect: mfs.Effect(a), state: State) -> Result(a, String) {
   case effect {
-    mfs.Done(value) -> value
-    mfs.Get(cid, resume) ->
-      blobs.get(state.blobs, v1.to_string(cid))
-      |> result.replace_error(Nil)
-      |> result.try(mfs.decode(cid, _))
-      |> result.replace_error(simplifile.Enoent)
-      |> resume
-      |> files(state)
+    mfs.Done(value) -> Ok(value)
+    mfs.Get(cid, resume) -> {
+      use bytes <- result.try(
+        blobs.get(state.blobs, v1.to_string(cid))
+        |> result.map_error(fn(reason) {
+          "Could not read file system block "
+          <> v1.to_string(cid)
+          <> ": "
+          <> reason
+        }),
+      )
+      use entry <- result.try(
+        mfs.decode(cid, bytes)
+        |> result.replace_error(
+          "Invalid file system block " <> v1.to_string(cid),
+        ),
+      )
+      files(resume(entry), state)
+    }
     mfs.Put(entry, resume) -> {
       let stored = mfs.identify(entry)
-      blobs.put(state.blobs, v1.to_string(stored.cid), mfs.encode(entry))
-      |> result.replace(stored)
-      |> result.replace_error(simplifile.Eio)
-      |> resume
-      |> files(state)
+      use Nil <- result.try(
+        blobs.put(state.blobs, v1.to_string(stored.cid), mfs.encode(entry))
+        |> result.map_error(fn(reason) {
+          "Could not write file system block "
+          <> v1.to_string(stored.cid)
+          <> ": "
+          <> reason
+        }),
+      )
+      files(resume(stored), state)
     }
   }
 }

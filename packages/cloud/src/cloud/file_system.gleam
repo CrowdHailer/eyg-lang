@@ -41,24 +41,16 @@ pub fn resolve_path(path: String) -> Result(String, String) {
   |> result.map_error(simplifile.describe_error)
 }
 
-/// Turn a failure into a value so that later effects still happen.
-pub fn attempt(effect: mfs.Effect(a)) -> mfs.Effect(Result(a, String)) {
-  case effect {
-    mfs.Done(value) ->
-      mfs.Done(Ok(result.map_error(value, simplifile.describe_error)))
-    mfs.Get(cid, resume) -> mfs.Get(cid, fn(entry) { attempt(resume(entry)) })
-    mfs.Put(entry, resume) ->
-      mfs.Put(entry, fn(stored) { attempt(resume(stored)) })
-  }
-}
-
 /// The root of a file system with no files.
 pub fn empty() -> mfs.Effect(v1.Cid) {
-  use stored <- mfs.then(mfs.Put(mfs.Directory([]), mfs.Done))
-  mfs.Done(Ok(stored.cid))
+  use stored <- mfs.Put(mfs.Directory([]))
+  mfs.Done(stored.cid)
 }
 
-fn at(path: String, then: fn(List(String)) -> mfs.Effect(a)) -> mfs.Effect(a) {
+fn at(
+  path: String,
+  then: fn(List(String)) -> mfs.Effect(Result(a, FileError)),
+) -> mfs.Effect(Result(a, FileError)) {
   case path_parts(path) {
     Ok(parts) -> then(parts)
     Error(reason) -> mfs.Done(Error(reason))
@@ -66,11 +58,16 @@ fn at(path: String, then: fn(List(String)) -> mfs.Effect(a)) -> mfs.Effect(a) {
 }
 
 // Every change returns the root of the changed file system.
-fn change(root: v1.Cid, path: String, operation) -> mfs.Effect(v1.Cid) {
+fn change(
+  root: v1.Cid,
+  path: String,
+  operation,
+) -> mfs.Effect(Result(v1.Cid, FileError)) {
   use parts <- at(path)
-  use entry <- mfs.then(mfs.Get(root, mfs.Done))
+  use entry <- mfs.Get(root)
   use entry <- mfs.then(operation(Some(entry), parts))
-  use stored <- mfs.then(mfs.Put(entry, mfs.Done))
+  use entry <- mfs.try(entry)
+  use stored <- mfs.Put(entry)
   mfs.Done(Ok(stored.cid))
 }
 
@@ -95,8 +92,9 @@ pub fn read_range(
   path: String,
   offset: Int,
   limit: Int,
-) -> mfs.Effect(BitArray) {
+) -> mfs.Effect(Result(BitArray, FileError)) {
   use bytes <- mfs.then(read(root, path))
+  use bytes <- mfs.try(bytes)
   let size = bit_array.byte_size(bytes)
   mfs.Done(case offset < 0 || limit < 0 {
     True -> Error(simplifile.Einval)
@@ -108,7 +106,10 @@ pub fn read_range(
 }
 
 /// The complete contents of a file.
-pub fn read(root: v1.Cid, path: String) -> mfs.Effect(BitArray) {
+pub fn read(
+  root: v1.Cid,
+  path: String,
+) -> mfs.Effect(Result(BitArray, FileError)) {
   use parts <- at(path)
   mfs.read(root, parts)
 }
@@ -119,9 +120,10 @@ pub fn read(root: v1.Cid, path: String) -> mfs.Effect(BitArray) {
 pub fn read_directory(
   root: v1.Cid,
   path: String,
-) -> mfs.Effect(List(#(String, read_directory.Entry))) {
+) -> mfs.Effect(Result(List(#(String, read_directory.Entry)), FileError)) {
   use parts <- at(path)
   use links <- mfs.then(mfs.read_directory(root, parts))
+  use links <- mfs.try(links)
   links
   |> list.sort(fn(a, b) { string.compare(a.name, b.name) })
   |> list.map(fn(link) {

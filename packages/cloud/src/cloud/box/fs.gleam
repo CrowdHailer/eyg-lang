@@ -17,6 +17,7 @@ import gleam/list
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
+import simplifile.{type FileError}
 import touch_grass/file_system/read_directory
 import unixfs/mfs
 
@@ -32,14 +33,16 @@ type Checker {
 pub fn check(
   root: v1.Cid,
   state: execute.State,
-) -> mfs.Effect(#(List(String), execute.State)) {
+) -> mfs.Effect(Result(#(List(String), execute.State), FileError)) {
   use paths <- mfs.then(modules(root, ""))
+  use paths <- mfs.try(paths)
   use checker <- mfs.then(
     fold(paths, Checker(state, dict.new(), []), fn(checker, path) {
       use #(_, checker) <- mfs.then(check_module(checker, root, path, []))
       mfs.Done(Ok(checker))
     }),
   )
+  use checker <- mfs.try(checker)
   mfs.Done(Ok(#(list.reverse(checker.errors), checker.state)))
 }
 
@@ -48,18 +51,21 @@ fn fold(items, acc, with) {
     [] -> mfs.Done(Ok(acc))
     [item, ..rest] -> {
       use acc <- mfs.then(with(acc, item))
+      use acc <- mfs.try(acc)
       fold(rest, acc, with)
     }
   }
 }
 
-fn modules(root, directory) -> mfs.Effect(List(String)) {
+fn modules(root, directory) -> mfs.Effect(Result(List(String), FileError)) {
   use entries <- mfs.then(file_system.read_directory(root, directory <> "/"))
+  use entries <- mfs.try(entries)
   fold(entries, [], fn(found, entry) {
     let path = directory <> "/" <> entry.0
     case entry.1 {
       read_directory.Directory -> {
         use nested <- mfs.then(modules(root, path))
+        use nested <- mfs.try(nested)
         mfs.Done(Ok(list.append(found, nested)))
       }
       read_directory.File(_) ->
@@ -76,16 +82,15 @@ fn modules(root, directory) -> mfs.Effect(List(String)) {
 // `importing` is the sequence of modules that lead to this one.
 fn check_module(checker: Checker, root, path, importing) {
   case dict.get(checker.checked, path) {
-    Ok(type_) -> mfs.Done(Ok(#(type_, checker)))
+    Ok(type_) -> mfs.Done(#(type_, checker))
     Error(Nil) -> {
       use #(outcome, checker) <- mfs.then(case list.contains(importing, path) {
-        True -> mfs.Done(Ok(#(Error("imports itself"), checker)))
+        True -> mfs.Done(#(Error("imports itself"), checker))
         False -> {
-          use bytes <- mfs.then(
-            file_system.attempt(file_system.read(root, path)),
-          )
+          use bytes <- mfs.then(file_system.read(root, path))
+          let bytes = result.map_error(bytes, simplifile.describe_error)
           case result.try(bytes, parse) {
-            Error(reason) -> mfs.Done(Ok(#(Error(reason), checker)))
+            Error(reason) -> mfs.Done(#(Error(reason), checker))
             Ok(source) ->
               infer.check(infer.pure(), source)
               |> loop(checker, root, path, [path, ..importing])
@@ -100,7 +105,7 @@ fn check_module(checker: Checker, root, path, importing) {
         ])
       }
       let checked = dict.insert(checker.checked, path, type_)
-      mfs.Done(Ok(#(type_, Checker(..checker, checked:, errors:))))
+      mfs.Done(#(type_, Checker(..checker, checked:, errors:)))
     }
   }
 }
@@ -116,18 +121,16 @@ fn parse(bytes) {
 fn loop(step, checker: Checker, root, path, importing) {
   case step {
     infer.Done(analysis) ->
-      mfs.Done(
-        Ok(case infer.all_errors(analysis) {
-          [] -> #(Ok(infer.poly_type(analysis)), checker)
-          errors -> #(
-            errors
-              |> list.map(fn(error) { debug.render_reason(error.1) })
-              |> string.join("\n")
-              |> Error,
-            checker,
-          )
-        }),
-      )
+      mfs.Done(case infer.all_errors(analysis) {
+        [] -> #(Ok(infer.poly_type(analysis)), checker)
+        errors -> #(
+          errors
+            |> list.map(fn(error) { debug.render_reason(error.1) })
+            |> string.join("\n")
+            |> Error,
+          checker,
+        )
+      })
     infer.Lookup(ir.Relative(location), resume) -> {
       let target = case location {
         "/" <> _ -> location
@@ -135,7 +138,7 @@ fn loop(step, checker: Checker, root, path, importing) {
       }
       use #(type_, checker) <- mfs.then(case file_system.resolve_path(target) {
         Ok(target) -> check_module(checker, root, target, importing)
-        Error(_) -> mfs.Done(Ok(#(Error(Nil), checker)))
+        Error(_) -> mfs.Done(#(Error(Nil), checker))
       })
       loop(resume(type_), checker, root, path, importing)
     }

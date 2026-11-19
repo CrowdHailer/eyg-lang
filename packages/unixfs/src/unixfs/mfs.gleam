@@ -55,31 +55,42 @@ pub fn decode(cid: v1.Cid, block: BitArray) -> Result(Entry, Nil) {
   }
 }
 
+/// Storage failures are handled by the runner; continuations receive successful
+/// responses. Filesystem operation errors are ordinary return values.
 pub type Effect(t) {
-  Put(Entry, resume: fn(Result(Stored, FileError)) -> Effect(t))
-  Get(cid: v1.Cid, resume: fn(Result(Entry, FileError)) -> Effect(t))
-  Done(Result(t, FileError))
+  Put(Entry, resume: fn(Stored) -> Effect(t))
+  Get(cid: v1.Cid, resume: fn(Entry) -> Effect(t))
+  Done(t)
 }
 
-/// Compose am effectful operation with a next function.
-/// NOTE: this is not a true `bind` operation.
-/// TODO rewrite as monadic bind, keep the same name.
+/// Compose effectful operations. Every completed value is passed to `next`,
+/// including errors when the value is a Result.
 pub fn then(effect: Effect(a), next: fn(a) -> Effect(b)) -> Effect(b) {
   case effect {
-    Done(Ok(value)) -> next(value)
-    Done(Error(error)) -> Done(Error(error))
+    Done(value) -> next(value)
     Get(cid, resume) -> Get(cid, fn(value) { then(resume(value), next) })
     Put(entry, resume) -> Put(entry, fn(value) { then(resume(value), next) })
   }
 }
 
+/// Continue on success, or return the error without running `next`.
+pub fn try(
+  value: Result(a, e),
+  next: fn(a) -> Effect(Result(b, e)),
+) -> Effect(Result(b, e)) {
+  case value {
+    Ok(value) -> next(value)
+    Error(error) -> Done(Error(error))
+  }
+}
+
 fn each(items: List(a), f: fn(a) -> Effect(List(b))) -> Effect(List(b)) {
   case items {
-    [] -> Done(Ok([]))
+    [] -> Done([])
     [item, ..rest] -> {
       use first <- then(f(item))
       use rest <- then(each(rest, f))
-      Done(Ok(list.append(first, rest)))
+      Done(list.append(first, rest))
     }
   }
 }
@@ -90,7 +101,7 @@ pub fn write(
   root: Option(Entry),
   path: List(String),
   contents: BitArray,
-) -> Effect(Entry) {
+) -> Effect(Result(Entry, FileError)) {
   update(root, path, Reject, fn(entry) {
     case entry {
       Some(Directory(_)) -> Error(simplifile.Eisdir)
@@ -104,7 +115,7 @@ pub fn append(
   root: Option(Entry),
   path: List(String),
   contents: BitArray,
-) -> Effect(Entry) {
+) -> Effect(Result(Entry, FileError)) {
   update(root, path, Reject, fn(entry) {
     case entry {
       Some(Directory(_)) -> Error(simplifile.Eisdir)
@@ -118,7 +129,7 @@ pub fn append(
 pub fn make_directory(
   root: Option(Entry),
   path: List(String),
-) -> Effect(Entry) {
+) -> Effect(Result(Entry, FileError)) {
   update(root, path, Reject, fn(entry) {
     case entry {
       Some(_) -> Error(simplifile.Eexist)
@@ -132,7 +143,7 @@ pub fn make_directory(
 pub fn make_directory_all(
   root: Option(Entry),
   path: List(String),
-) -> Effect(Entry) {
+) -> Effect(Result(Entry, FileError)) {
   update(root, path, CreateDirectories, fn(entry) {
     case entry {
       None -> Ok(Directory([]))
@@ -144,7 +155,10 @@ pub fn make_directory_all(
 
 /// Delete a file, or a directory and everything in it.
 /// The root cannot be deleted.
-pub fn delete(root: Option(Entry), path: List(String)) -> Effect(Entry) {
+pub fn delete(
+  root: Option(Entry),
+  path: List(String),
+) -> Effect(Result(Entry, FileError)) {
   case list.reverse(path) {
     [] -> Done(Error(simplifile.Ebusy))
     [name, ..parent] ->
@@ -169,8 +183,8 @@ pub fn delete(root: Option(Entry), path: List(String)) -> Effect(Entry) {
 pub fn read_directory(
   root: v1.Cid,
   path: List(String),
-) -> Effect(List(unixfs.Link)) {
-  use entry <- then(Get(root, Done))
+) -> Effect(Result(List(unixfs.Link), FileError)) {
+  use entry <- Get(root)
   case entry, path {
     Directory(links), [] -> Done(Ok(links))
     File(_), _ -> Done(Error(simplifile.Enotdir))
@@ -183,8 +197,11 @@ pub fn read_directory(
 }
 
 /// Read the complete contents of a file. Reading a directory returns Eisdir.
-pub fn read(root: v1.Cid, path: List(String)) -> Effect(BitArray) {
-  use entry <- then(Get(root, Done))
+pub fn read(
+  root: v1.Cid,
+  path: List(String),
+) -> Effect(Result(BitArray, FileError)) {
+  use entry <- Get(root)
   case entry, path {
     File(contents), [] -> Done(Ok(contents))
     Directory(_), [] -> Done(Error(simplifile.Eisdir))
@@ -208,7 +225,7 @@ fn update(
   path: List(String),
   missing_parents: MissingParents,
   change: fn(Option(Entry)) -> Result(Entry, FileError),
-) -> Effect(Entry) {
+) -> Effect(Result(Entry, FileError)) {
   case root, path {
     _, [] -> Done(change(root))
     None, [_, ..] ->
@@ -223,16 +240,18 @@ fn update(
         upsert_link(links, name, fn(link) {
           let child = case link {
             Some(link) -> {
-              use entry <- then(Get(link.cid, Done))
+              use entry <- Get(link.cid)
               update(Some(entry), rest, missing_parents, change)
             }
             None -> update(None, rest, missing_parents, change)
           }
           use child <- then(child)
-          use stored <- then(Put(child, Done))
+          use child <- try(child)
+          use stored <- Put(child)
           Done(Ok(unixfs.Link(stored.cid, name, stored.size)))
         })
       use links <- then(links)
+      use links <- try(links)
       Done(Ok(Directory(links)))
     }
   }
@@ -241,19 +260,22 @@ fn update(
 fn upsert_link(
   links: List(unixfs.Link),
   name: String,
-  change: fn(Option(unixfs.Link)) -> Effect(unixfs.Link),
-) -> Effect(List(unixfs.Link)) {
+  change: fn(Option(unixfs.Link)) -> Effect(Result(unixfs.Link, FileError)),
+) -> Effect(Result(List(unixfs.Link), FileError)) {
   case links {
     [] -> {
       use link <- then(change(None))
+      use link <- try(link)
       Done(Ok([link]))
     }
     [link, ..rest] if link.name == name -> {
       use link <- then(change(Some(link)))
+      use link <- try(link)
       Done(Ok([link, ..rest]))
     }
     [link, ..rest] -> {
       use rest <- then(upsert_link(rest, name, change))
+      use rest <- try(rest)
       Done(Ok([link, ..rest]))
     }
   }
@@ -269,10 +291,10 @@ fn link_by_name(
 /// List the paths of all files that differ between old and new tree.
 pub fn diff(old: v1.Cid, new: v1.Cid) -> Effect(List(List(String))) {
   case old == new {
-    True -> Done(Ok([]))
+    True -> Done([])
     False -> {
-      use old <- then(Get(old, Done))
-      use new <- then(Get(new, Done))
+      use old <- Get(old)
+      use new <- Get(new)
       case old, new {
         Directory(old), Directory(new) -> {
           let names =
@@ -284,17 +306,17 @@ pub fn diff(old: v1.Cid, new: v1.Cid) -> Effect(List(List(String))) {
               case link_by_name(old, name), link_by_name(new, name) {
                 Ok(old), Ok(new) -> diff(old.cid, new.cid)
                 Ok(only), Error(Nil) | Error(Nil), Ok(only) -> files(only.cid)
-                Error(Nil), Error(Nil) -> Done(Ok([]))
+                Error(Nil), Error(Nil) -> Done([])
               },
             )
-            Done(Ok(list.map(paths, fn(path) { [name, ..path] })))
+            Done(list.map(paths, fn(path) { [name, ..path] }))
           })
         }
-        File(_), File(_) -> Done(Ok([[]]))
+        File(_), File(_) -> Done([[]])
         _, _ -> {
           use old <- then(entry_files(old))
           use new <- then(entry_files(new))
-          Done(Ok(list.append(old, new)))
+          Done(list.append(old, new))
         }
       }
     }
@@ -303,17 +325,17 @@ pub fn diff(old: v1.Cid, new: v1.Cid) -> Effect(List(List(String))) {
 
 /// The paths of every file in a tree.
 pub fn files(root: v1.Cid) -> Effect(List(List(String))) {
-  use entry <- then(Get(root, Done))
+  use entry <- Get(root)
   entry_files(entry)
 }
 
 fn entry_files(entry: Entry) -> Effect(List(List(String))) {
   case entry {
-    File(_) -> Done(Ok([[]]))
+    File(_) -> Done([[]])
     Directory(links) ->
       each(links, fn(link) {
         use paths <- then(files(link.cid))
-        Done(Ok(list.map(paths, fn(path) { [link.name, ..path] })))
+        Done(list.map(paths, fn(path) { [link.name, ..path] }))
       })
   }
 }
