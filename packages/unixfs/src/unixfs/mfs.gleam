@@ -73,6 +73,17 @@ pub fn then(effect: Effect(a), next: fn(a) -> Effect(b)) -> Effect(b) {
   }
 }
 
+fn each(items: List(a), f: fn(a) -> Effect(List(b))) -> Effect(List(b)) {
+  case items {
+    [] -> Done(Ok([]))
+    [item, ..rest] -> {
+      use first <- then(f(item))
+      use rest <- then(each(rest, f))
+      Done(Ok(list.append(first, rest)))
+    }
+  }
+}
+
 /// Replace a file, or create it if only the final path component is missing.
 /// Missing parents return Enoent, directories cannot be overwritten.
 pub fn write(
@@ -253,4 +264,56 @@ fn link_by_name(
   name: String,
 ) -> Result(unixfs.Link, Nil) {
   list.find(links, fn(link) { link.name == name })
+}
+
+/// List the paths of all files that differ between old and new tree.
+pub fn diff(old: v1.Cid, new: v1.Cid) -> Effect(List(List(String))) {
+  case old == new {
+    True -> Done(Ok([]))
+    False -> {
+      use old <- then(Get(old, Done))
+      use new <- then(Get(new, Done))
+      case old, new {
+        Directory(old), Directory(new) -> {
+          let names =
+            list.append(old, new)
+            |> list.map(fn(link) { link.name })
+            |> list.unique
+          each(names, fn(name) {
+            use paths <- then(
+              case link_by_name(old, name), link_by_name(new, name) {
+                Ok(old), Ok(new) -> diff(old.cid, new.cid)
+                Ok(only), Error(Nil) | Error(Nil), Ok(only) -> files(only.cid)
+                Error(Nil), Error(Nil) -> Done(Ok([]))
+              },
+            )
+            Done(Ok(list.map(paths, fn(path) { [name, ..path] })))
+          })
+        }
+        File(_), File(_) -> Done(Ok([[]]))
+        _, _ -> {
+          use old <- then(entry_files(old))
+          use new <- then(entry_files(new))
+          Done(Ok(list.append(old, new)))
+        }
+      }
+    }
+  }
+}
+
+/// The paths of every file in a tree.
+pub fn files(root: v1.Cid) -> Effect(List(List(String))) {
+  use entry <- then(Get(root, Done))
+  entry_files(entry)
+}
+
+fn entry_files(entry: Entry) -> Effect(List(List(String))) {
+  case entry {
+    File(_) -> Done(Ok([[]]))
+    Directory(links) ->
+      each(links, fn(link) {
+        use paths <- then(files(link.cid))
+        Done(Ok(list.map(paths, fn(path) { [link.name, ..path] })))
+      })
+  }
 }
