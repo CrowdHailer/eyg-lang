@@ -104,6 +104,8 @@ pub type Screen {
     files: Files,
     // A file shown beside the terminal.
     artifact: Option(Artifact),
+    // Code run before that is selected, counting back from the latest, to write it in the draft again.
+    history: Option(Int),
   )
 }
 
@@ -132,7 +134,7 @@ pub fn artifact_url(artifact: Artifact) -> String {
 pub type Entry {
   Sent(String)
   /// A program as it was shown in the editor.
-  Ran(List(span.Line))
+  Ran(lines: List(span.Line), input: turn.Input)
   Printed(String)
   Returned(String)
   Failed(String)
@@ -476,16 +478,49 @@ fn on_screen(model: Model, screen, message) {
         )
         Error(Nil) -> #(model, effect.none())
       }
-    Running(draft: current, files:, ..) as running, Key(key) -> {
-      let #(outcome, state) =
-        draft.key(current, key, context.state, files.paths)
-      drafted(
-        Model(..model, context: Context(..context, state:)),
-        running,
-        key,
-        outcome,
-      )
-    }
+    // Up with nothing written in a shell selects the code run before, as in the EYG shell.
+    Running(draft: draft.Program(..) as current, history: None, ..) as running,
+      Key("up")
+      if !running.waiting
+    ->
+      case draft.is_empty(current) && ran(running.log) != [] {
+        True -> select(model, running, 0)
+        False -> drafted_key(model, running, "up")
+      }
+    Running(history: Some(selected), log:, draft: current, ..) as running,
+      Key(key)
+    ->
+      case key {
+        "up" ->
+          select(
+            model,
+            running,
+            int.min(selected + 1, list.length(ran(log)) - 1),
+          )
+        "down" if selected > 0 -> select(model, running, selected - 1)
+        "down" | "esc" -> #(
+          Model(..model, screen: Running(..running, history: None, scroll: 0)),
+          effect.none(),
+        )
+        "enter" ->
+          case list.drop(ran(log), selected) {
+            [#(_, input), ..] -> #(
+              Model(
+                ..model,
+                screen: Running(
+                  ..running,
+                  draft: draft.recall(current, input),
+                  history: None,
+                  scroll: 0,
+                ),
+              ),
+              effect.none(),
+            )
+            [] -> #(model, effect.none())
+          }
+        _ -> #(model, effect.none())
+      }
+    Running(..) as running, Key(key) -> drafted_key(model, running, key)
     Running(draft: current, ..) as running, Pasted(text) -> {
       let #(outcome, state) = draft.paste(current, text, context.state)
       drafted(
@@ -587,6 +622,48 @@ fn on_screen(model: Model, screen, message) {
   }
 }
 
+fn drafted_key(model: Model, running, key) {
+  let assert Running(draft: current, files:, ..) = running
+  let context = model.context
+  let #(outcome, state) = draft.key(current, key, context.state, files.paths)
+  drafted(
+    Model(..model, context: Context(..context, state:)),
+    running,
+    key,
+    outcome,
+  )
+}
+
+// The code run in the session with its place in the log, the latest first.
+fn ran(log) {
+  list.index_map(log, fn(entry, i) { #(i, entry) })
+  |> list.filter_map(fn(entry) {
+    case entry {
+      #(i, Ran(input:, ..)) -> Ok(#(i, input))
+      _ -> Error(Nil)
+    }
+  })
+  |> list.reverse
+}
+
+// Select code run before, scrolled so the end of it is just above the draft.
+fn select(model: Model, running, selected) {
+  let assert Running(log:, draft: current, ..) = running
+  let running = Running(..running, history: Some(selected))
+  let below = case list.drop(ran(log), selected) {
+    [#(index, _), ..] -> {
+      let #(columns, _) = log_size(model.size)
+      let chat = draft.mode(current) == "message"
+      list.drop(log, index + 1)
+      |> log_lines(chat, columns, False, None)
+      |> list.length
+    }
+    [] -> 0
+  }
+  let scroll = int.min(below, last_scroll(model, running))
+  #(Model(..model, screen: Running(..running, scroll:)), effect.none())
+}
+
 // What a key or paste did to the draft. Escape leaves the session if the draft does not use it.
 fn drafted(model: Model, running, key, outcome) {
   let assert Running(..) = running
@@ -625,7 +702,7 @@ fn last_scroll(model: Model, running) {
   let assert Running(log:, draft: current, ..) = running
   let #(columns, rows) = log_size(model.size)
   let chat = draft.mode(current) == "message"
-  let lines = log_lines(log, chat, columns, False) |> list.length
+  let lines = log_lines(log, chat, columns, False, None) |> list.length
   int.max(0, lines - rows)
 }
 
@@ -793,8 +870,9 @@ fn run_turn(model: Model, running, input) {
 fn sent(input) {
   case input {
     turn.Message(text) -> Sent(text)
-    turn.Code(source) -> Ran(code.highlight(source) |> list.map(span.line_new))
-    turn.Program(program) -> Ran(editor.program_lines(program))
+    turn.Code(source) ->
+      Ran(code.highlight(source) |> list.map(span.line_new), input)
+    turn.Program(program) -> Ran(editor.program_lines(program), input)
   }
 }
 
@@ -821,6 +899,7 @@ fn opened(model: Model, opening: Opening) {
       0,
       files,
       artifact,
+      None,
     )
   let model = Model(..model, screen:, status: Quiet)
   let files = list_files(model.context, session, False)
@@ -1017,6 +1096,11 @@ pub fn render(model: Model) -> buffer.Buffer {
         #("esc", "back"),
       ],
     )
+    Running(history: Some(_), ..) as running -> #(title(running), [
+      #("↑↓", "choose"),
+      #("enter", "edit"),
+      #("esc", "back"),
+    ])
     Running(waiting: True, draft: draft.Message(..), ..) as running -> #(
       title(running),
       [
@@ -1220,6 +1304,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
       scroll:,
       files:,
       artifact:,
+      history:,
       ..,
     ) -> {
       let #(area, screen) = case area.size.width >= 90 {
@@ -1247,7 +1332,18 @@ fn body(screen, area: geometry.Rect, model: Model) {
       let columns = area.size.width
       let chat = draft.mode(current) == "message"
       let lines =
-        log_lines(log, chat, columns, waiting && arriving.thinking != "")
+        log_lines(
+          log,
+          chat,
+          columns,
+          waiting && arriving.thinking != "",
+          option.then(history, fn(selected) {
+            list.drop(ran(log), selected)
+            |> list.first
+            |> result.map(fn(entry) { entry.0 })
+            |> option.from_result
+          }),
+        )
       // A draft taller than half the area shows the part around its cursor.
       let drafted = fn(most) {
         let #(lines, cursor) = draft.lines(current, True, columns - 2)
@@ -1402,7 +1498,7 @@ fn entry_lines(entry, chat, columns) {
   }
   case entry, chat {
     // Code is wrapped beside its prompt.
-    Ran(lines), _ ->
+    Ran(lines:, ..), _ ->
       list.flat_map(lines, fn(line) { textarea.wrap(line.spans, columns - 2) })
       |> prompted
     Sent(content), _ ->
@@ -1418,7 +1514,8 @@ fn entry_lines(entry, chat, columns) {
 
 // The lines of the log, only the latest thinking is shown in full, earlier thinking is a line saying how long it is.
 // When an llm is thinking now that is the latest.
-fn log_lines(log, chat, columns, thinking_now) {
+// The entry at `selected` is marked as selected.
+fn log_lines(log, chat, columns, thinking_now, selected: Option(Int)) {
   let latest = case thinking_now {
     True -> -1
     False ->
@@ -1441,6 +1538,12 @@ fn log_lines(log, chat, columns, thinking_now) {
           span.line_new([span.span_styled("▸ thought for " <> lines, fg(muted))]),
         ]
       }
+      _ if selected == Some(i) -> [
+        span.line_new([
+          span.span_styled("◆ selected, enter to edit", fg(accent)),
+        ]),
+        ..entry_lines(entry, chat, columns)
+      ]
       _ -> entry_lines(entry, chat, columns)
     }
   })

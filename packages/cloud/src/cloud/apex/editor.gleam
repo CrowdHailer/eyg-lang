@@ -66,6 +66,11 @@ pub fn new() -> Editor {
   Editor(buffer.empty(), None)
 }
 
+/// An editor with the program in it, to edit it again.
+pub fn from_program(program: ir.Node(Nil)) -> Editor {
+  Editor(buffer.from_source(program), None)
+}
+
 /// The program, an editor with nothing written has none.
 pub fn program(editor: Editor) -> Result(ir.Node(Nil), Nil) {
   case projection.rebuild(editor.buffer.projection) {

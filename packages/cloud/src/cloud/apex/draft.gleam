@@ -139,6 +139,28 @@ pub fn lines(
   }
 }
 
+/// Nothing has been written.
+pub fn is_empty(draft: Draft) -> Bool {
+  case draft {
+    Message(text) | Program(text:, structured: False, ..) ->
+      textarea.is_empty(text)
+    Program(editor: edited, ..) ->
+      edited.input == None && editor.program(edited) == Error(Nil)
+  }
+}
+
+/// Write what was sent before into the draft, to edit and send it again.
+/// Code is written as text and a program from the structural editor in the editor.
+pub fn recall(draft: Draft, input: turn.Input) -> Draft {
+  case draft, input {
+    Program(..), turn.Code(source) ->
+      Program(..draft, text: textarea.from_string(source), structured: False)
+    Program(..), turn.Program(program) ->
+      Program(..draft, editor: editor.from_program(program), structured: True)
+    _, _ -> draft
+  }
+}
+
 /// A short description of how the draft is written, for the help line.
 pub fn mode(draft: Draft) -> String {
   case draft {
