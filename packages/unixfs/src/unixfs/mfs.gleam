@@ -95,6 +95,23 @@ pub fn each(items: List(a), f: fn(a) -> Effect(b)) -> Effect(List(b)) {
   }
 }
 
+fn do_try_each(
+  items: List(a),
+  f: fn(a) -> Effect(Result(b, c)),
+  acc: List(b),
+) -> Effect(Result(List(b), c)) {
+  case items {
+    [] -> Done(Ok(list.reverse(acc)))
+    [item, ..rest] -> {
+      use item <- then(f(item))
+      case item {
+        Ok(item) -> do_try_each(rest, f, [item, ..acc])
+        Error(reason) -> Done(Error(reason))
+      }
+    }
+  }
+}
+
 /// Replace a file, or create it if only the final path component is missing.
 /// Missing parents return Enoent, directories cannot be overwritten.
 pub fn write(
@@ -344,5 +361,78 @@ fn entry_files(entry: Entry) -> Effect(List(List(String))) {
       )
       Done(list.flatten(paths))
     }
+  }
+}
+
+/// 3-way merge only the directories.
+/// The Gliff package already exists for text merging.
+pub fn merge(
+  base: Option(Stored),
+  ours: Option(Stored),
+  theirs: Option(Stored),
+) -> Effect(Result(Option(Stored), Nil)) {
+  case base, ours, theirs {
+    _base, ours, theirs if ours == theirs -> Done(Ok(ours))
+    base, ours, theirs if theirs == base -> Done(Ok(ours))
+    base, ours, theirs if ours == base -> Done(Ok(theirs))
+
+    base, ours, theirs -> {
+      use base <- then(fetch_it(base))
+      use ours <- then(fetch_it(ours))
+      use theirs <- then(fetch_it(theirs))
+      let base = case base {
+        Some(Directory(base)) -> base
+        _ -> []
+      }
+      case ours, theirs {
+        Some(Directory(ours)), Some(Directory(theirs)) -> {
+          let names =
+            [base, ours, theirs]
+            |> list.flatten
+            |> list.map(fn(link) { link.name })
+            |> list.unique
+          use links <- then(
+            do_try_each(
+              names,
+              fn(name) {
+                let child = fn(links) {
+                  link_by_name(links, name)
+                  |> result.map(fn(link: unixfs.Link) {
+                    Stored(link.cid, link.size)
+                  })
+                  |> option.from_result
+                }
+                use new <- then(merge(child(base), child(ours), child(theirs)))
+                use new <- try(new)
+
+                case new {
+                  Some(stored) -> [unixfs.Link(stored.cid, name, stored.size)]
+                  None -> []
+                }
+                |> Ok
+                |> Done
+              },
+              [],
+            ),
+          )
+          use links <- try(links)
+          let links = list.flatten(links)
+          use stored <- Put(Directory(links))
+          Done(Ok(Some(stored)))
+        }
+
+        _, _ -> Done(Error(Nil))
+      }
+    }
+  }
+}
+
+fn fetch_it(stored: Option(Stored)) {
+  case stored {
+    Some(stored) -> {
+      use entry <- Get(stored.cid)
+      Done(Some(entry))
+    }
+    None -> Done(None)
   }
 }
