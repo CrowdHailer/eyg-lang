@@ -74,9 +74,11 @@ pub fn start_a_shell_in_a_transient_copy_test() {
       ["enter", "c", "n", "1", "enter", " ", "n", "2", "enter"],
     ])
   let model = press(model, list.take(keys, 4))
-  // The name is typed below the code, with the builtins that match.
-  assert string.contains(screen(model), "Name int")
-  assert string.contains(screen(model), "int_add")
+  // The name is chosen in a box in the middle of the screen, the builtins that match are shown with their types.
+  assert string.contains(screen(model), "Choose a value")
+  assert string.contains(screen(model), "│ int")
+  assert string.contains(screen(model), "int_add : ")
+  assert string.contains(screen(model), "enter pick")
   let model = press(model, list.drop(keys, 4))
   assert string.contains(screen(model), "> !int_add(1, 2)")
   let model = press(model, ["Q"])
@@ -118,6 +120,29 @@ pub fn chat_in_the_box_test() {
   assert string.contains(screen(model), "llm hi #1")
 }
 
+pub fn move_the_cursor_in_inputs_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, None)
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  // A number is typed in a box in the middle of the screen, the cursor moves within it.
+  let model = press(model, ["n", "backspace", "1", "2", "left", "3"])
+  assert string.contains(screen(model), "╭Number")
+  assert string.contains(screen(model), "132")
+  assert string.contains(screen(model), "Enter apply")
+  assert string.contains(screen(model), "←→ move")
+  let model = press(model, ["home", "4", "enter"])
+  assert string.contains(screen(model), "> 4132")
+
+  // A prompt moves its cursor too.
+  let #(model, _) = tui.update(model, tui.Listed(Ok([home])))
+  let model = press(model, ["n", "h", "m", "e", "left", "left", "o"])
+  let assert Some(prompt) = model.prompt
+  assert "home" == prompt.input.value
+  assert string.contains(screen(model), "Name of the new box")
+}
+
 pub fn create_a_box_test() {
   use context <- helpers.context()
   let #(model, _) = tui.init(context)
@@ -127,12 +152,12 @@ pub fn create_a_box_test() {
   let assert Some(prompt) = model.prompt
   let #(model, _) = tui.update(model, Key("enter"))
   assert None == model.prompt
-  let #(model, _) = tui.update(model, prompt.submit(prompt.input))
+  let #(model, _) = tui.update(model, prompt.submit(prompt.input.value))
   assert string.contains(screen(model), "lowercase letters")
 
   let model = press(model, ["n", ..string.to_graphemes("garden")])
   let assert Some(prompt) = model.prompt
-  let #(model, _) = tui.update(model, prompt.submit(prompt.input))
+  let #(model, _) = tui.update(model, prompt.submit(prompt.input.value))
   let #(model, _) = tui.update(model, tui.Listed(box.named(context)))
   assert string.contains(screen(model), "garden")
 }
@@ -141,7 +166,7 @@ pub fn create_a_box_test() {
 fn submit(model: tui.Model) {
   let assert Some(prompt) = model.prompt
   let #(model, _) = tui.update(model, Key("enter"))
-  tui.update(model, prompt.submit(prompt.input)).0
+  tui.update(model, prompt.submit(prompt.input.value)).0
 }
 
 pub fn manage_secrets_test() {
