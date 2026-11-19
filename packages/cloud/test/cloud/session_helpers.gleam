@@ -22,7 +22,7 @@ pub fn session(context: Context) {
   let assert Ok(home) = box.create(context, Some("home"))
   let assert Ok(Nil) = box.durable(context, home.id)
   let assert Ok(pog.Returned(rows: [session], ..)) =
-    db.execute(sessions.create(home.id, None), context.db)
+    db.execute(sessions.create(home.id, None, None), context.db)
   session
 }
 

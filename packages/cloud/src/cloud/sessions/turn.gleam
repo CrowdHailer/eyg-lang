@@ -132,7 +132,14 @@ pub fn create(
       [] -> db.execute(thread.insert(nodes), connection)
       _ -> db.execute(thread.restore(list.zip(times, nodes)), connection)
     })
-    use created <- result.map(db.execute(sessions.create(box, head), connection))
+    let llm = case events {
+      [event.Configured(llm), ..] -> Some(llm)
+      _ -> None
+    }
+    use created <- result.map(db.execute(
+      sessions.create(box, head, llm),
+      connection,
+    ))
     let assert [session] = created.rows
     session
   })
@@ -153,7 +160,7 @@ pub fn recent(
   context: Context,
   limit: Int,
   transient: Bool,
-) -> Result(List(#(Session, Option(String))), box.Reason) {
+) -> Result(List(sessions.Listed), box.Reason) {
   db.execute(sessions.recent(limit, transient), context.db)
   |> result.map(fn(returned) { returned.rows })
   |> result.map_error(fn(reason) { box.Failed(string.inspect(reason)) })

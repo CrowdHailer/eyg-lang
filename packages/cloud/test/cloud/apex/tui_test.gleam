@@ -3,6 +3,10 @@ import cloud/apex/draft
 import cloud/apex/tui.{Key}
 import cloud/beam/execute
 import cloud/box
+import cloud/crons
+import cloud/data/db
+import cloud/data/sessions
+import cloud/file_system
 import cloud/helpers
 import cloud/live
 import cloud/server
@@ -20,8 +24,10 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import gleam/time/timestamp
 import lustre/element
 import morph/terminal/textarea
+import pog
 import unixfs/mfs
 
 // The text on the screen, one string for each row.
@@ -248,9 +254,17 @@ pub fn reopen_a_session_test() {
 
   // Recent sessions include it, other tests leave sessions.
   let #(model, _) = tui.init(context)
+  let listed =
+    tui.describe_session(sessions.Listed(
+      session,
+      Some("home"),
+      None,
+      sessions.Person,
+    ))
   let #(model, _) =
-    tui.update(model, tui.RecentListed(False, Ok([#(session, "home")])))
-  assert string.contains(screen(model), session.id <> "  in home")
+    tui.update(model, tui.RecentListed(False, Ok([#(session, listed)])))
+  assert string.contains(screen(model), "shell  by a person")
+  assert string.contains(screen(model), session.id)
 
   let #(model, _) = tui.update(model, tui.Opened(tui.open(context, session.id)))
   assert string.contains(screen(model), "!int_add(1, 2)")
@@ -448,6 +462,49 @@ pub fn show_progress_and_scroll_back_test() {
   assert string.contains(screen(model), "llm Partly writ")
 }
 
+pub fn list_what_made_each_session_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(tui.Opening(session: shell, ..)) =
+    tui.start(context, home, False, None)
+  let assert Ok(tui.Opening(session: agent, ..)) =
+    tui.start(context, home, False, Some("test"))
+  // A cron makes its session the first time it is seen.
+  let config = "{crons: {daily: {schedule: \"0 8 * * *\", run: (_) -> { 1 }}}}"
+  let assert Ok(home) =
+    box.change(context, home.id, fn(root) {
+      file_system.write(root, crons.config, <<config:utf8>>)
+    })
+  let assert Ok([]) = crons.due(context, home, timestamp.system_time())
+  let assert Ok(listed) = turn.recent(context, 100, False)
+  let described = fn(id) {
+    let assert Ok(listed) =
+      list.find(listed, fn(listed: sessions.Listed) { listed.session.id == id })
+    tui.describe_session(listed)
+  }
+  assert string.starts_with(described(shell.id), "shell  by a person")
+  assert string.starts_with(described(agent.id), "agent  by a person")
+  let assert Ok(sessions.Listed(session: cron, ..)) =
+    list.find(listed, fn(listed: sessions.Listed) {
+      listed.by == sessions.Cron("daily")
+    })
+  assert string.starts_with(described(cron.id), "shell  by cron daily ")
+  assert string.contains(described(cron.id), " in home ")
+  assert string.ends_with(described(cron.id), cron.id)
+
+  // Forks and copies made from exported events keep what the session is.
+  let assert Ok(pog.Returned(rows: [fork], ..)) =
+    db.execute(sessions.fork(agent.id), context.db)
+  let assert Ok(listed) = turn.recent(context, 100, False)
+  let assert Ok(sessions.Listed(llm: Some("test"), ..)) =
+    list.find(listed, fn(listed: sessions.Listed) {
+      listed.session.id == fork.id
+    })
+}
+
 pub fn transient_sessions_are_hidden_test() {
   use context <- helpers.context()
   let assert Ok(home) = box.create(context, Some("home"))
@@ -457,7 +514,7 @@ pub fn transient_sessions_are_hidden_test() {
     tui.start(context, home, True, None)
   let ids = fn(transient) {
     let assert Ok(sessions) = turn.recent(context, 100, transient)
-    list.map(sessions, fn(entry) { { entry.0 }.id })
+    list.map(sessions, fn(listed: sessions.Listed) { listed.session.id })
   }
   assert list.contains(ids(False), shared.id)
   assert !list.contains(ids(False), transient.id)

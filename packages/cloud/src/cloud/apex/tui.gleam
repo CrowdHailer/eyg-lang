@@ -923,10 +923,25 @@ fn opened(model: Model, opening: Opening) {
 
 fn recent(context, transient) {
   use sessions <- result.map(turn.recent(context, 20, transient))
-  list.map(sessions, fn(entry) {
-    let #(session, name) = entry
-    #(session, option.unwrap(name, "a transient box"))
-  })
+  list.map(sessions, fn(listed) { #(listed.session, describe_session(listed)) })
+}
+
+/// A line for a session in the list: whether it is a shell or an agent, what made it, its box and its id.
+pub fn describe_session(listed: sessions.Listed) -> String {
+  let kind = case listed.llm {
+    Some(_) -> "agent"
+    None -> "shell"
+  }
+  let by = case listed.by {
+    sessions.Person -> "by a person"
+    sessions.Cron(name) -> "by cron " <> name
+    sessions.Channel -> "by a channel"
+  }
+  let place = "in " <> option.unwrap(listed.box, "a transient box")
+  string.pad_end(kind, 7, " ")
+  <> string.pad_end(by, 24, " ")
+  <> string.pad_end(place, 24, " ")
+  <> listed.session.id
 }
 
 /// A session as it is shown, with everything that has happened in it.
@@ -1261,10 +1276,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
       list.map(boxes, fn(box) { option.unwrap(box.name, box.id) })
       |> menu(screen, area, chosen)
     Recent(sessions, chosen, _) ->
-      list.map(sessions, fn(entry) {
-        let #(session, place) = entry
-        session.id <> "  in " <> place
-      })
+      list.map(sessions, fn(entry) { entry.1 })
       |> menu(screen, area, chosen)
     Open(box, choices, chosen) -> {
       let name = option.unwrap(box.name, box.id)

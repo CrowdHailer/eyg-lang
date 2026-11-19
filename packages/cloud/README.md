@@ -103,6 +103,7 @@ Files the session changed are coloured in the files beside it, clicking any file
 A page is read from `/artifacts/:root/*path` by the root of the box's files, so it links to the files beside it,
 and runs in a sandbox with its own origin, so its scripts cannot use the terminal or the API.
 Recent sessions, and any session by its id, are opened again with their history.
+The list says whether each is a shell or an agent, and whether a person, a cron or a channel made it.
 Sessions in transient boxes are only listed after pressing `t`.
 A turn that did not finish is finished when its session is opened, a running turn can be cancelled.
 

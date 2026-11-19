@@ -15,11 +15,17 @@ fn decoder() -> decode.Decoder(Session) {
   decode.success(Session(id:, box:, head:))
 }
 
-pub fn create(box: String, head: Option(String)) -> pog.Query(Session) {
-  "INSERT INTO sessions (box, head) VALUES ($1, $2) RETURNING id, box, head"
+/// A session that chats with `llm`, or a shell without one.
+pub fn create(
+  box: String,
+  head: Option(String),
+  llm: Option(String),
+) -> pog.Query(Session) {
+  "INSERT INTO sessions (box, head, llm) VALUES ($1, $2, $3) RETURNING id, box, head"
   |> pog.query()
   |> pog.parameter(pog.text(box))
   |> pog.parameter(pog.nullable(pog.text, head))
+  |> pog.parameter(pog.nullable(pog.text, llm))
   |> pog.returning(decoder())
 }
 
@@ -55,21 +61,43 @@ pub fn move(
 
 /// A new session pointing at the same position in the thread as another.
 pub fn fork(id: String) -> pog.Query(Session) {
-  "INSERT INTO sessions (box, head)
-  SELECT box, head FROM sessions WHERE id = $1
+  "INSERT INTO sessions (box, head, llm)
+  SELECT box, head, llm FROM sessions WHERE id = $1
   RETURNING id, box, head"
   |> pog.query()
   |> pog.parameter(pog.text(id))
   |> pog.returning(decoder())
 }
 
-/// The most recent sessions in any box, with the name of the box if it has one.
+/// A session as it is listed.
+pub type Listed {
+  Listed(
+    session: Session,
+    /// The name of its box, a transient box has none.
+    box: Option(String),
+    /// The llm it chats with, a shell has none.
+    llm: Option(String),
+    /// What made it.
+    by: Creator,
+  )
+}
+
+/// What made a session.
+pub type Creator {
+  /// A person, from the web interface or the API.
+  Person
+  /// The cron with this name in the session's box.
+  Cron(String)
+  /// A channel, such as one in Discord, that the session replies to.
+  Channel
+}
+
+/// The most recent sessions in any box.
 /// Sessions in transient boxes are left out unless `transient` is true.
-pub fn recent(
-  limit: Int,
-  transient: Bool,
-) -> pog.Query(#(Session, Option(String))) {
-  "SELECT s.id, s.box, s.head, b.name
+pub fn recent(limit: Int, transient: Bool) -> pog.Query(Listed) {
+  "SELECT s.id, s.box, s.head, b.name, s.llm,
+    (SELECT c.name FROM crons c WHERE c.session = s.id LIMIT 1),
+    EXISTS (SELECT 1 FROM channel_sessions c WHERE c.session = s.id)
   FROM sessions s JOIN boxes b ON b.id = s.box
   WHERE $2 OR b.name IS NOT NULL
   ORDER BY s.created_at DESC, s.id
@@ -79,8 +107,16 @@ pub fn recent(
   |> pog.parameter(pog.bool(transient))
   |> pog.returning({
     use session <- decode.then(decoder())
-    use name <- decode.field(3, decode.optional(decode.string))
-    decode.success(#(session, name))
+    use box <- decode.field(3, decode.optional(decode.string))
+    use llm <- decode.field(4, decode.optional(decode.string))
+    use cron <- decode.field(5, decode.optional(decode.string))
+    use channel <- decode.field(6, decode.bool)
+    let by = case cron, channel {
+      option.Some(name), _ -> Cron(name)
+      option.None, True -> Channel
+      option.None, False -> Person
+    }
+    decode.success(Listed(session:, box:, llm:, by:))
   })
 }
 

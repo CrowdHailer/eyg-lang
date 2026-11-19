@@ -401,7 +401,7 @@ pub fn merge_a_change_only_once_test() {
   let name = home.id
   let assert Ok(Nil) = box.durable(context, name)
   let assert Ok(pog.Returned(rows: [session], ..)) =
-    db.execute(sessions.create(name, None), context.db)
+    db.execute(sessions.create(name, None, None), context.db)
   let server = server.start(process.new_subject())
   let release = hold_box(context, name)
   process.spawn_unlinked(fn() {
