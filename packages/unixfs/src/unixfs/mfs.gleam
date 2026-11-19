@@ -84,13 +84,13 @@ pub fn try(
   }
 }
 
-pub fn each(items: List(a), f: fn(a) -> Effect(List(b))) -> Effect(List(b)) {
+pub fn each(items: List(a), f: fn(a) -> Effect(b)) -> Effect(List(b)) {
   case items {
     [] -> Done([])
     [item, ..rest] -> {
       use first <- then(f(item))
       use rest <- then(each(rest, f))
-      Done(list.append(first, rest))
+      Done([first, ..rest])
     }
   }
 }
@@ -301,16 +301,19 @@ pub fn diff(old: v1.Cid, new: v1.Cid) -> Effect(List(List(String))) {
             list.append(old, new)
             |> list.map(fn(link) { link.name })
             |> list.unique
-          each(names, fn(name) {
-            use paths <- then(
-              case link_by_name(old, name), link_by_name(new, name) {
-                Ok(old), Ok(new) -> diff(old.cid, new.cid)
-                Ok(only), Error(Nil) | Error(Nil), Ok(only) -> files(only.cid)
-                Error(Nil), Error(Nil) -> Done([])
-              },
-            )
-            Done(list.map(paths, fn(path) { [name, ..path] }))
-          })
+          use paths <- then(
+            each(names, fn(name) {
+              use paths <- then(
+                case link_by_name(old, name), link_by_name(new, name) {
+                  Ok(old), Ok(new) -> diff(old.cid, new.cid)
+                  Ok(only), Error(Nil) | Error(Nil), Ok(only) -> files(only.cid)
+                  Error(Nil), Error(Nil) -> Done([])
+                },
+              )
+              Done(list.map(paths, fn(path) { [name, ..path] }))
+            }),
+          )
+          Done(list.flatten(paths))
         }
         File(_), File(_) -> Done([[]])
         _, _ -> {
@@ -332,10 +335,14 @@ pub fn files(root: v1.Cid) -> Effect(List(List(String))) {
 fn entry_files(entry: Entry) -> Effect(List(List(String))) {
   case entry {
     File(_) -> Done([[]])
-    Directory(links) ->
-      each(links, fn(link) {
-        use paths <- then(files(link.cid))
-        Done(list.map(paths, fn(path) { [link.name, ..path] }))
-      })
+    Directory(links) -> {
+      use paths <- then(
+        each(links, fn(link) {
+          use paths <- then(files(link.cid))
+          Done(list.map(paths, fn(path) { [link.name, ..path] }))
+        }),
+      )
+      Done(list.flatten(paths))
+    }
   }
 }

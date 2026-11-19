@@ -61,12 +61,16 @@ pub fn entry(
 fn load_files(entry, reversed) {
   case entry {
     mfs.File(contents:) -> mfs.Done([#(list.reverse(reversed), contents)])
-    mfs.Directory(links:) ->
-      mfs.each(links, fn(link) {
-        let unixfs.Link(cid:, name:, size: _) = link
-        use entry <- mfs.Get(cid)
-        load_files(entry, [name, ..reversed])
-      })
+    mfs.Directory(links:) -> {
+      use files <- mfs.then(
+        mfs.each(links, fn(link) {
+          let unixfs.Link(cid:, name:, size: _) = link
+          use entry <- mfs.Get(cid)
+          load_files(entry, [name, ..reversed])
+        }),
+      )
+      mfs.Done(list.flatten(files))
+    }
   }
 }
 
