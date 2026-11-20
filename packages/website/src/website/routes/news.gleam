@@ -124,12 +124,14 @@ pub fn home_page() {
 
   use pea <- asset.do(asset.load("src/website/images/pea.webp"))
   use layout <- asset.do(asset.load(home.layout_path))
+  use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   let page =
     html.doc(
       list.flatten([
         [
           html.stylesheet(html.tailwind_2_2_11),
           html.stylesheet(asset.src(layout)),
+          html.stylesheet(asset.src(neo)),
           h.meta([a.name("twitter:card"), a.content("summary_large_image")]),
         ],
         common.page_meta(
@@ -245,6 +247,7 @@ fn letter_container(contents) {
         #("margin", "0 auto"),
         #("max-width", "660px"),
         #("background", "white"),
+        #("color", "black"),
       ]),
     ],
     contents,
