@@ -26,6 +26,8 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
   case request.path_segments(ctx.request), ctx.request.method {
     [], http.Get -> web.page(ctx)
     ["tui"], http.Get -> web.tui(ctx, context)
+    ["artifacts", root, ..path], http.Get ->
+      web.artifact(root, string.join(path, "/"), context)
     ["boxes"], http.Get -> boxes.list(context)
     ["boxes"], http.Post -> boxes.create(ctx, context)
     ["boxes", id], http.Get -> boxes.get(id, context)

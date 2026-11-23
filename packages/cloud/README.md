@@ -112,6 +112,10 @@ The llm's reply is shown as it arrives.
 Messages written while a chat runs are added to the chat once the tool calls running finish,
 or start the next turn if the llm has replied. Ctrl+x cancels a running turn.
 Shortcuts with ctrl or meta and function keys are left to the browser, so output can be copied and F11 goes full screen.
+A web page or image that a turn writes is shown beside the shell, or over most of a narrow screen.
+Files the shell changed are coloured in the files beside it, clicking any file shows it.
+A page is read from `/artifacts/:root/*path` by the root of the box's files, so it links to the files beside it,
+and runs in a sandbox with its own origin, so its scripts cannot use the terminal or the API.
 Recent shells, and any shell by its id, are opened again with their history.
 Shells in transient boxes are only listed after pressing `t`.
 A turn that did not finish is finished when its shell is opened, a running turn can be cancelled.
