@@ -15,8 +15,9 @@ Nothing promises that a long running change sees the latest files, it sees its b
 Changes are visible as soon as they are merged.
 In progress work is meant to be hidden by working in a transient box and merging it when done.
 
-The whole file system is type checked on every change, every file is read from the blob store.
-Checking only the modules a change affects, from an index of the last root, is the planned improvement.
+The box process keeps the `unixfs/check` index of the modules at its root.
+A change only checks the modules that changed, or failed, and every module that imports them.
+The index is only in memory, so the first change after the box process starts checks every module.
 
 Blocks are put in the blob store as they are written, before the change is merged or recorded.
 A change that is rejected leaves blocks in the store that no root references, they are harmless as blocks are content addressed.

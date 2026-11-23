@@ -21,18 +21,33 @@ pub fn check(
   use entry <- mfs.Get(root)
   use files <- mfs.then(checker.load_files(entry))
   let #(results, state) = loop(checker.files(files), state)
-  let errors =
-    results
-    |> dict.to_list
-    |> list.filter_map(fn(entry) {
-      let #(path, outcome) = entry
-      case outcome {
-        Ok(_) -> Error(Nil)
-        Error(problem) -> Ok(render_path(path) <> ": " <> describe(problem))
-      }
-    })
-    |> list.sort(string.compare)
-  mfs.Done(Ok(#(errors, state)))
+  mfs.Done(Ok(#(errors(results), state)))
+}
+
+/// Check a root from the index of an earlier check, only the modules affected by the change are checked again.
+/// Returns a description of every invalid module and the index of this root.
+pub fn change(
+  index: checker.Index,
+  root: v1.Cid,
+  state: execute.State,
+) -> mfs.Effect(#(List(String), checker.Index, execute.State)) {
+  use entry <- mfs.Get(root)
+  use files <- mfs.then(checker.load_files(entry))
+  let #(#(results, index), state) = loop(checker.changed(index, files), state)
+  mfs.Done(#(errors(results), index, state))
+}
+
+fn errors(results) {
+  results
+  |> dict.to_list
+  |> list.filter_map(fn(entry) {
+    let #(path, outcome) = entry
+    case outcome {
+      Ok(_) -> Error(Nil)
+      Error(problem) -> Ok(render_path(path) <> ": " <> describe(problem))
+    }
+  })
+  |> list.sort(string.compare)
 }
 
 fn loop(step, state) {

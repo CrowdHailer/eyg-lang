@@ -1,7 +1,7 @@
 //// A box is a file system that only moves to a root where all the EYG modules type check.
 //// A box with a name is shared, a box without one is transient.
 
-import cloud/apex/context.{type Context}
+import cloud/apex/context.{type Context, type Open, Open}
 import cloud/beam/execute
 import cloud/box/fs
 import cloud/data/boxes.{type Box, Box}
@@ -15,6 +15,7 @@ import gleam/string
 import multiformats/cid/v1
 import pog
 import simplifile
+import unixfs/check
 import unixfs/mfs
 
 pub type Reason {
@@ -90,16 +91,19 @@ pub fn merge(
   ours: v1.Cid,
 ) -> Result(Box, Reason) {
   use box <- result.try(latest(context, id))
-  registry.lookup(context.boxes, id, fn() { registry.serve(box) })
-  |> registry.call(600_000, fn(box) {
-    case commit(context, box, base, ours) {
-      Ok(box) -> #(box, Ok(box))
-      Error(reason) -> #(box, Error(reason))
+  registry.lookup(context.boxes, id, fn() {
+    registry.serve(Open(box, check.empty()))
+  })
+  |> registry.call(600_000, fn(open) {
+    case commit(context, open, base, ours) {
+      Ok(open) -> #(open, Ok(open.box))
+      Error(reason) -> #(open, Error(reason))
     }
   })
 }
 
-fn commit(context: Context, box: Box, base, ours) {
+fn commit(context: Context, open: Open, base, ours) {
+  let Open(box, index) = open
   use merged <- result.try(case base == box.root {
     True -> Ok(ours)
     False ->
@@ -114,17 +118,19 @@ fn commit(context: Context, box: Box, base, ours) {
         Error(reason) -> Error(Failed(reason))
       }
   })
-  use Nil <- result.try(case merged == box.root {
-    True -> Ok(Nil)
+  // Only the modules affected by the changes since the last check are checked.
+  use index <- result.try(case merged == box.root {
+    True -> Ok(index)
     False ->
-      case execute.files(fs.check(merged, context.state), context.state) {
-        Ok(Ok(#([], _))) -> Ok(Nil)
-        Ok(Ok(#(errors, _))) -> Error(Invalid(errors))
-        Ok(Error(reason)) -> Error(Failed(simplifile.describe_error(reason)))
+      case
+        execute.files(fs.change(index, merged, context.state), context.state)
+      {
+        Ok(#([], index, _)) -> Ok(index)
+        Ok(#(errors, _, _)) -> Error(Invalid(errors))
         Error(reason) -> Error(Failed(reason))
       }
   })
-  case merged == box.root {
+  use box <- result.map(case merged == box.root {
     True -> Ok(box)
     False ->
       case
@@ -138,7 +144,8 @@ fn commit(context: Context, box: Box, base, ours) {
         Ok(_) -> Error(Failed("the box was changed by another process"))
         Error(reason) -> Error(reason)
       }
-  }
+  })
+  Open(box, index)
 }
 
 // Merge the change from `base` to `ours` with the change from `base` to `theirs`.
