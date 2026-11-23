@@ -36,6 +36,7 @@ packages = [
 eyg_analysis = { version = ">= 2.0.0 and < 4.0.0" }
 eyg_interpreter = { version = ">= 9.0.0 and < 10.0.0" }
 eyg_ir = { version = ">= 3.0.0 and < 4.0.0" }
+filepath = { version = ">= 1.1.2 and < 2.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleam_time = { version = ">= 1.8.0 and < 2.0.0" }

@@ -40,6 +40,7 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/tool
 import overlay/tools/run
+import touch_grass/file_system
 import touch_grass/harness/computer as harness_computer
 import touch_grass/interface
 import touch_grass/policy
@@ -413,7 +414,13 @@ pub fn check_and_execute(
           let scope = [#("context", session.context.value)]
 
           use #(result, state, output) <- system.map(
-            loop(block.execute(source, scope), eyg_state, session.policy, []),
+            loop(
+              block.execute(source, scope),
+              eyg_state,
+              session.policy,
+              session.cwd,
+              [],
+            ),
           )
           let result = case result {
             Ok(value) -> Ok(value)
@@ -443,7 +450,7 @@ fn type_check(session: Session(_), source, eyg_state) {
     session.cwd,
     context,
     eyg_state,
-    import_gate(session.policy, source.1),
+    import_gate(session.policy, source.1, session.cwd),
     // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
   ))
   errors
@@ -465,6 +472,7 @@ fn import_request(path) {
 fn import_gate(
   policy: policy.Policy(harness_computer.Effect, source.Location),
   meta: source.Location,
+  cwd: String,
 ) {
   fn(path, state) {
     use #(decided, state) <- system.map(decide(
@@ -473,6 +481,7 @@ fn import_gate(
       import_request(path),
       meta,
       state,
+      cwd,
     ))
     let path = case decided {
       policy.Perform(_, modified) ->
@@ -490,6 +499,7 @@ fn loop(
   return: Result(_, execute.Debug),
   state: execute.State,
   policy: policy.Policy(_, _),
+  cwd: String,
   output: List(String),
 ) -> system.Effect(#(Result(_, execute.Debug), execute.State, List(String))) {
   case return {
@@ -503,6 +513,7 @@ fn loop(
             lift,
             meta,
             state,
+            cwd,
           ))
           case decided {
             // This could return just the decoded value but that would require keeping meta data for the full debug state.
@@ -518,13 +529,13 @@ fn loop(
                     _ -> output
                   }
                   use value <- system.then(effect)
-                  loop(block.resume(value, env, k), state, policy, output)
+                  loop(block.resume(value, env, k), state, policy, cwd, output)
                 }
                 Error(reason) ->
                   system.Done(#(Error(#(reason, meta, env, k)), state, output))
               }
             policy.Resume(returned) ->
-              loop(block.resume(returned, env, k), state, policy, output)
+              loop(block.resume(returned, env, k), state, policy, cwd, output)
             policy.Failed(debug) -> system.Done(#(Error(debug), state, output))
             policy.Unavailable ->
               system.Done(#(Error(#(reason, meta, env, k)), state, output))
@@ -536,10 +547,11 @@ fn loop(
             meta,
             state,
             policy,
+            cwd,
           ))
           case result {
             Ok(value) ->
-              loop(block.resume(value, env, k), state, policy, output)
+              loop(block.resume(value, env, k), state, policy, cwd, output)
             Error(reason) ->
               system.Done(#(Error(#(reason, meta, env, k)), state, output))
           }
@@ -547,36 +559,6 @@ fn loop(
 
         _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
       }
-  }
-}
-
-/// Resolve filesystem paths before a policy sees them. Other request fields
-/// stay intact, and the interface decoder still validates malformed requests.
-/// 
-/// This is an unfortunet amount of knowledge about the effects.
-/// Maybe all filesystem effects should be absolute
-fn resolve_policy_input(label, lift, origin) {
-  case label, lift {
-    "ReadFile", value.Record(fields)
-    | "WriteFile", value.Record(fields)
-    | "AppendFile", value.Record(fields)
-    ->
-      case dict.get(fields, "path") {
-        Ok(value.String(path)) -> {
-          use resolved <- system.map(source.resolve_filepath(origin, path))
-          use path <- result.map(resolved)
-          value.Record(dict.insert(fields, "path", value.String(path)))
-        }
-        _ -> system.Done(Ok(lift))
-      }
-    "DeleteFile", value.String(path)
-    | "MakeDirectory", value.String(path)
-    | "ReadDirectory", value.String(path)
-    -> {
-      use resolved <- system.map(source.resolve_filepath(origin, path))
-      result.map(resolved, value.String)
-    }
-    _, _ -> system.Done(Ok(lift))
   }
 }
 
@@ -588,15 +570,20 @@ fn decide(
   lift: execute.Value,
   meta: source.Location,
   state: execute.State,
+  cwd: String,
 ) -> system.Effect(
   #(policy.Action(source.Location, harness_computer.Effect), execute.State),
 ) {
-  use resolved <- system.then(resolve_policy_input(label, lift, meta.origin))
-  case resolved {
+  case file_system.resolve_input(source.base(meta.origin, cwd), label, lift) {
     Ok(lift) -> decide_resolved(policy, label, lift, meta, state)
     // Path resolution failures are ordinary filesystem effect errors.
-    Error(reason) ->
-      system.Done(#(policy.Resume(value.error(value.String(reason))), state))
+    Error(Nil) ->
+      system.Done(#(
+        policy.Resume(
+          value.error(value.String("invalid relative path outside filesystem")),
+        ),
+        state,
+      ))
   }
 }
 
@@ -617,7 +604,7 @@ fn decide_resolved(policy, label, lift, meta, state) {
 // Resolve imports before asking the ReadFile gate, matching type checking.
 // This is lookup_reference_value there is a separate lookup_reference_type
 // is it worth loam/execute.lookup_relative handling a policy, maybe if eval and spawn is included.
-fn lookup_reference(reference, meta: source.Location, state, policy) {
+fn lookup_reference(reference, meta: source.Location, state, policy, cwd) {
   case reference {
     ir.Relative(path) -> {
       use resolved <- system.then(source.resolve_filepath(meta.origin, path))
@@ -632,6 +619,7 @@ fn lookup_reference(reference, meta: source.Location, state, policy) {
         request,
         meta,
         state,
+        cwd,
       ))
 
       case decided {
@@ -644,7 +632,7 @@ fn lookup_reference(reference, meta: source.Location, state, policy) {
                 state,
                 fn(reference, meta, state) {
                   // lookup reference in overlay accepts the policy
-                  lookup_reference(reference, meta, state, policy)
+                  lookup_reference(reference, meta, state, policy, cwd)
                 },
               )
             Error(reason) -> system.Done(#(Error(reason), state))

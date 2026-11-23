@@ -32,6 +32,7 @@ import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env
 import touch_grass/fetch
+import touch_grass/file_system as filesystem_request
 import touch_grass/file_system/append_file
 import touch_grass/file_system/delete_file
 import touch_grass/file_system/make_directory
@@ -237,8 +238,13 @@ fn loop(returned, state: State, policy, root, emit, output) {
 }
 
 fn decide(policy, label, lift, meta, state) {
-  case resolve_policy_input(label, lift) {
-    Error(reason) -> #(policy.Resume(v.error(v.String(reason))), state)
+  case filesystem_request.resolve_input(option.Some("/"), label, lift) {
+    Error(Nil) -> #(
+      policy.Resume(
+        v.error(v.String(simplifile.describe_error(simplifile.Einval))),
+      ),
+      state,
+    )
     Ok(input) ->
       policy.decide(
         policy,
@@ -251,28 +257,6 @@ fn decide(policy, label, lift, meta, state) {
         },
         fn(action) { #(action, state) },
       )
-  }
-}
-
-/// TODO remove
-fn resolve_policy_input(label, lift) {
-  case label, lift {
-    "ReadFile", v.Record(fields)
-    | "WriteFile", v.Record(fields)
-    | "AppendFile", v.Record(fields)
-    ->
-      case dict.get(fields, "path") {
-        Ok(v.String(path)) -> {
-          use path <- result.map(file_system.resolve_path(path))
-          v.Record(dict.insert(fields, "path", v.String(path)))
-        }
-        _ -> Ok(lift)
-      }
-    "DeleteFile", v.String(path)
-    | "MakeDirectory", v.String(path)
-    | "ReadDirectory", v.String(path)
-    -> result.map(file_system.resolve_path(path), v.String)
-    _, _ -> Ok(lift)
   }
 }
 

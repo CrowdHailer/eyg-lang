@@ -7,7 +7,7 @@ import eyg/parser/location
 import filepath
 import gleam/json
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import loam/system
@@ -107,6 +107,16 @@ pub fn normalize_input(working_directory: String, input: Input) {
       File(path)
     }
     Code(_) | Stdin -> Ok(input)
+  }
+}
+
+/// The directory for relative paths from this origin.
+/// Published modules have no filesystem base.
+pub fn base(origin: Origin, cwd: String) -> Option(String) {
+  case origin {
+    Disk(path) -> Some(filepath.directory_name(path))
+    Inline | Pipe | Repl -> Some(cwd)
+    Content(_) | Release(..) -> None
   }
 }
 
