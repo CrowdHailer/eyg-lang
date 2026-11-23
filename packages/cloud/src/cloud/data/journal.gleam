@@ -80,3 +80,12 @@ pub fn entries(shell: String) -> pog.Query(Recorded) {
     }
   })
 }
+
+/// Copy the entries of a shell to another in the same box.
+pub fn copy(from: String, to: String) -> pog.Query(Nil) {
+  "INSERT INTO journal (shell, box, seq, start, entry, recorded_at)
+  SELECT $2, box, seq, start, entry, recorded_at FROM journal WHERE shell = $1"
+  |> pog.query()
+  |> pog.parameter(pog.text(from))
+  |> pog.parameter(pog.text(to))
+}

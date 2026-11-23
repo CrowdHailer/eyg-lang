@@ -48,8 +48,10 @@ A shell in a transient box, cloned from a named box, works on its own copy of th
 | `GET /shells/:id` | The shell and all of its turns. |
 | `POST /shells/:id/turns` | Run the code from `{"code": "1"}`. |
 | `GET /shells/:id/events` | Every entry of the shell's journal as JSON lines. |
+| `POST /shells/:id/fork` | Start a shell with the same history, each continues from it on its own. |
 | `GET /shells/:id/trace` | OpenTelemetry spans for the shell, each turn and each request, as OTLP JSON. |
 
+A fork has a copy of the journal and works in the same box. A fork of a shell with an unfinished turn finishes that turn when it is next used.
 
 Traces are made from the shell's journal, so there is no separate instrumentation.
 The OTLP JSON can be posted to the `/v1/traces` endpoint of any OpenTelemetry collector.

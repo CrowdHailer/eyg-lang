@@ -86,6 +86,20 @@ pub fn find(context: Context, id: String) -> Result(Shell, box.Reason) {
   }
 }
 
+/// A new shell in the same box with a copy of the shell's journal.
+pub fn fork(context: Context, id: String) -> Result(Shell, box.Reason) {
+  use shell <- result.try(find(context, id))
+  transaction(context, fn(context) {
+    use forked <- result.try(case query(context, shells.create(shell.box)) {
+      Ok([forked]) -> Ok(forked)
+      Ok(_) -> Error(box.Failed("the shell could not be forked"))
+      Error(reason) -> Error(reason)
+    })
+    use _ <- result.map(query(context, journal.copy(id, forked.id)))
+    forked
+  })
+}
+
 /// Run a turn in the shell, an unfinished turn is finished first.
 pub fn run(
   context: Context,

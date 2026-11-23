@@ -10,6 +10,7 @@ A file system root is an immutable DAG of blocks and a box is a pointer to a roo
 | Shell | Box |
 | --- | --- |
 | journal entry | box event |
+| fork a shell | clone a box |
 | shell id | box id |
 
 A named box is like a branch, a shared pointer that anyone can find by its name.

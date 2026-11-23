@@ -487,3 +487,33 @@ pub fn replay_with_the_packages_a_turn_resolved_test() {
     })
   assert "1" == value
 }
+
+pub fn fork_a_shell_test() {
+  use context <- helpers.context()
+  let shell = shell_helpers.shell(context)
+  let _ =
+    stop_during_request(context, shell, fn(server) {
+      "let _ = " <> write <> "\n" <> server.fetch(server, "GET", "/slow")
+    })
+  let response =
+    simulate.request(http.Post, "/shells/" <> shell.id <> "/fork")
+    |> helpers.dispatch(context)
+  assert 201 == response.status
+  let assert Ok(id) =
+    json.parse(simulate.text(response), decode.at(["id"], decode.string))
+  let assert Ok(pog.Returned(rows: [fork], ..)) =
+    db.execute(shells.get(id), context.db)
+  // A fork has a copy of the journal.
+  assert shell_helpers.entries(context, shell)
+    == shell_helpers.entries(context, fork)
+
+  // Both continue the unfinished turn, its change is merged once.
+  let assert Ok(_) = shell_helpers.run(context, shell, "1")
+  let assert Ok(_) = shell_helpers.run(context, fork, "2")
+  let assert Ok(home) = box.latest(context, shell.box)
+  assert 2 == home.sequence
+  let original = shell_helpers.entries(context, shell)
+  let forked = shell_helpers.entries(context, fork)
+  assert list.take(original, 2) == list.take(forked, 2)
+  assert original != forked
+}

@@ -50,6 +50,17 @@ pub fn trace(id, context: Context) {
   |> api.json(200)
 }
 
+/// A new shell with the same history, both continue from it independently.
+pub fn fork(id, context: Context) {
+  case turn.fork(context, id) {
+    Error(box.Missing) -> reason(404, "No such shell")
+    forked -> {
+      use shell <- try(forked)
+      api.json(encode(shell), 201)
+    }
+  }
+}
+
 pub fn list(box, context: Context) {
   use rows <- try(run(shells.list(box), context))
   api.json(json.array(rows, encode), 200)

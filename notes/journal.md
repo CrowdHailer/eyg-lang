@@ -8,6 +8,7 @@ How a turn is recorded and replayed is described in `packages/cloud/src/cloud/sh
 
 The journal is keyed by shell and sequence, entries are only appended.
 Two processes cannot both continue a shell, the second append fails on the key.
+A fork copies the journal rather than sharing it, histories are small and a copy needs no pointers.
 
 An input records the box event its segment starts from, not the root.
 A shell never moves between boxes, so the sequence is enough and the journal links to the box's history.
