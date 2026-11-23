@@ -6,7 +6,6 @@ import cloud/box
 import cloud/box/controller.{reason, try} as _
 import cloud/data/db
 import cloud/data/shells.{type Shell}
-import cloud/registry
 import cloud/shells/event
 import cloud/shells/trace
 import cloud/shells/turn
@@ -20,10 +19,9 @@ import howdy/content.{type Content}
 import howdy/controller
 import pog
 
+/// A shell runs code in the box, each turn after the last.
 pub fn create(box, context: Context) {
-  use _ <- try(box.latest(context, box))
-  use rows <- try(run(shells.create(box, shells.Anyone), context))
-  let assert [shell] = rows
+  use shell <- try(turn.start(context, box))
   api.json(encode(shell), 201)
 }
 
@@ -85,13 +83,7 @@ pub fn turn(request: controller.Context, id, context: Context) {
     Error(_) -> reason(400, "Expected code")
     Ok(code) -> {
       use shell <- find(id, context)
-      let process =
-        registry.lookup(context.shells, id, fn() { registry.serve(Nil) })
-      use #(outcome, output) <- try(
-        registry.call(process, 600_000, fn(_) {
-          #(Nil, turn.run(context, shell, code))
-        }),
-      )
+      use #(outcome, output) <- try(turn.send(context, shell, code))
       api.json(encode_turn(#(code, Some(#(outcome, output)))), 200)
     }
   }

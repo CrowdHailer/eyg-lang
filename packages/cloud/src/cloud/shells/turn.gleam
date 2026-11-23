@@ -79,6 +79,25 @@ type Writer {
   Writer(shell: Shell, next: Int)
 }
 
+/// A new shell in the box, for a person or a cron.
+pub fn start(context: Context, box: String) -> Result(Shell, box.Reason) {
+  create(context, box, shells.Anyone)
+}
+
+/// A new shell in the box, `for` is what it runs code for.
+pub fn create(
+  context: Context,
+  box: String,
+  for: shells.For,
+) -> Result(Shell, box.Reason) {
+  use _ <- result.try(box.latest(context, box))
+  case query(context, shells.create(box, for)) {
+    Ok([shell]) -> Ok(shell)
+    Ok(_) -> Error(box.Failed("the shell could not be made"))
+    Error(reason) -> Error(reason)
+  }
+}
+
 pub fn find(context: Context, id: String) -> Result(Shell, box.Reason) {
   case query(context, shells.get(id)) {
     Ok([shell]) -> Ok(shell)
@@ -103,29 +122,39 @@ pub fn fork(context: Context, id: String) -> Result(Shell, box.Reason) {
   })
 }
 
+/// Run a turn in the shell's process, which runs one turn at a time.
+pub fn send(
+  context: Context,
+  shell: Shell,
+  code: String,
+) -> Result(Outcome, box.Reason) {
+  use <- in_process(context, shell)
+  run(context, shell, code)
+}
+
+fn in_process(context: Context, shell: Shell, then) {
+  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
+  |> registry.call(600_000, fn(_) { #(Nil, then()) })
+}
+
 /// Run the code as the only turn of a shell made for it, such as for a tool call.
 /// A turn that already started is finished rather than started again, so the code runs once
 /// however many times this is called, and each call has what it came to.
-/// It runs in the shell's process, as every turn does.
 pub fn once(
   context: Context,
   shell: Shell,
   code: String,
 ) -> Result(Outcome, box.Reason) {
-  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
-  |> registry.call(600_000, fn(_) {
-    #(Nil, {
+  use <- in_process(context, shell)
+  use recorded <- result.try(entries(context, shell.id))
+  case recorded {
+    [] -> run(context, shell, code)
+    _ -> {
+      use Nil <- result.try(recover(context, shell))
       use recorded <- result.try(entries(context, shell.id))
-      case recorded {
-        [] -> run(context, shell, code)
-        _ -> {
-          use Nil <- result.try(recover(context, shell))
-          use recorded <- result.try(entries(context, shell.id))
-          Ok(ended(recorded))
-        }
-      }
-    })
-  })
+      Ok(ended(recorded))
+    }
+  }
 }
 
 // What the last turn in the entries came to, it has finished.
@@ -168,7 +197,7 @@ pub fn run(
   )
   let stored = mfs.identify(stored).cid
   let trigger = event.Started(code, stored)
-  let segment = start(policy, code)
+  let segment = program(policy, code)
   use box <- result.try(box.latest(context, shell.box))
   let input = event.Input(trigger, box.sequence, box.root)
   use writer <- result.try(append(context, writer(shell, before), [input]))
@@ -176,7 +205,7 @@ pub fn run(
   drive(context, writer, state, segment, box.root, dict.new())
 }
 
-fn start(policy, code) -> Segment {
+fn program(policy, code) -> Segment {
   fn(state, root) { execute.run(code, state, policy, root, fn(_) { Nil }) }
 }
 
@@ -197,7 +226,7 @@ fn begin(state, trigger) -> Result(Segment, String) {
   case trigger {
     event.Started(code, policy) -> {
       use policy <- result.map(load_policy(state, policy))
-      start(policy, code)
+      program(policy, code)
     }
     _ -> Error(mismatch)
   }
