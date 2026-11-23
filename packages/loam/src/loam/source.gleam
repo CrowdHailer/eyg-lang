@@ -12,6 +12,7 @@ import gleam/result
 import gleam/string
 import loam/system
 import multiformats/cid/v1
+import touch_grass/file_system
 
 pub type Input {
   File(path: String)
@@ -101,7 +102,7 @@ pub fn normalize_input(working_directory: String, input: Input) {
   case input {
     File(path:) -> {
       use path <- result.map(
-        system.resolve_relative(working_directory, path)
+        file_system.resolve_path(Some(working_directory), path)
         |> result.replace_error("invalid relative path outside filesystem"),
       )
       File(path)
@@ -144,7 +145,7 @@ pub fn resolve_filepath(
 }
 
 fn resolved_path(root, path) {
-  system.resolve_relative(root, path)
+  file_system.resolve_path(Some(root), path)
   |> result.replace_error("invalid relative path outside filesystem")
   |> system.Done
 }

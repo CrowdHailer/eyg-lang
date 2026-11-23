@@ -18,6 +18,7 @@ import loam/sandbox/fs
 import loam/system
 import midas/effect
 import simplifile
+import touch_grass/file_system
 
 pub type Sandbox(a) {
   Sandbox(
@@ -169,8 +170,8 @@ pub fn save_and_return(sandbox, response) {
 }
 
 fn mutate_file_system(sandbox: Sandbox(a), path, mutate) {
-  case system.resolve_relative(sandbox.cwd, path) {
-    Error(error) -> #(Error(error), sandbox)
+  case file_system.resolve_path(option.Some(sandbox.cwd), path) {
+    Error(Nil) -> #(Error(simplifile.Einval), sandbox)
     Ok(path) -> {
       let #(outcome, file_system) = mutate(sandbox.file_system, path)
       #(outcome, Sandbox(..sandbox, file_system:))
@@ -203,13 +204,15 @@ pub fn run(
     }
     system.FileInfo(path, resume) -> {
       let info =
-        system.resolve_relative(sandbox.cwd, path)
+        file_system.resolve_path(option.Some(sandbox.cwd), path)
+        |> result.replace_error(simplifile.Einval)
         |> result.try(fs.file_info(sandbox.file_system, _))
       run(resume(info), sandbox)
     }
     system.ReadFileRange(path, offset, limit, resume) -> {
       let contents =
-        system.resolve_relative(sandbox.cwd, path)
+        file_system.resolve_path(option.Some(sandbox.cwd), path)
+        |> result.replace_error(simplifile.Einval)
         |> result.try(fn(path) {
           fs.read_range(sandbox.file_system, path, offset, limit)
         })
@@ -265,13 +268,15 @@ pub fn run(
       |> resume()
       |> run(sandbox)
     system.ReadDirectory(path, resume) -> {
-      system.resolve_relative(sandbox.cwd, path)
+      file_system.resolve_path(option.Some(sandbox.cwd), path)
+      |> result.replace_error(simplifile.Einval)
       |> result.try(fs.read_directory(sandbox.file_system, _))
       |> resume
       |> run(sandbox)
     }
     system.ReadFile(path, resume) -> {
-      system.resolve_relative(sandbox.cwd, path)
+      file_system.resolve_path(option.Some(sandbox.cwd), path)
+      |> result.replace_error(simplifile.Einval)
       |> result.try(fs.read(sandbox.file_system, _))
       |> result.map_error(fn(error) { system.format_file_error(path, error) })
       |> resume()

@@ -15,6 +15,7 @@ import loam/source
 import loam/system
 import midas/continuation.{type Continuation as K, return, then}
 import multiformats/cid/v1
+import touch_grass/file_system
 
 pub fn execute(
   input: source.Input,
@@ -101,7 +102,7 @@ fn do_load(
       let #(exp, meta) = node
       case exp {
         ir.Reference(ir.Relative(location:)) -> {
-          case system.resolve_relative(directory, location) {
+          case file_system.resolve_path(Some(directory), location) {
             Ok(path) ->
               case dict.get(loaded, path) {
                 Ok(cid) ->

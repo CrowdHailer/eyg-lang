@@ -8,10 +8,12 @@ import eyg/ir/tree as ir
 import eyg/parser
 import filepath
 import gleam/list
+import gleam/option.{Some}
 import loam/execute
 import loam/platform/computer
 import loam/source
 import loam/system
+import touch_grass/file_system
 import touch_grass/interface
 
 pub fn allway_pass_gate(path, state) {
@@ -134,7 +136,7 @@ fn check_loop(
         ir.Pinned(release:) ->
           execute.take_type(execute.lookup_pinned(release, state), errors)
         ir.Relative(location:) ->
-          case system.resolve_relative(directory, location) {
+          case file_system.resolve_path(Some(directory), location) {
             Ok(path) -> {
               use #(result, state) <- system.then(gate(path, state))
               case result {

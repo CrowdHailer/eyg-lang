@@ -1,5 +1,4 @@
 import envoy
-import filepath
 import gleam/crypto as gcrypto
 import gleam/fetch
 import gleam/fetchx
@@ -141,15 +140,6 @@ pub fn create_directory(path) {
 
 pub fn cwd() {
   Cwd(Done)
-}
-
-pub fn resolve_relative(root, relative) {
-  let joined = case filepath.is_absolute(relative) {
-    True -> relative
-    False -> filepath.join(root, relative)
-  }
-  filepath.expand(joined)
-  |> result.replace_error(simplifile.Einval)
 }
 
 pub fn hash(algorithm, bytes) {

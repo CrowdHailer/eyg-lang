@@ -34,7 +34,10 @@ pub fn resolve_input(
   }
 }
 
-fn resolve_path(base: Option(String), path: String) -> Result(String, Nil) {
+/// Resolve a path against an optional base.
+/// Without a base only absolute paths are accepted.
+/// Empty paths, NUL bytes and traversal above root are rejected.
+pub fn resolve_path(base: Option(String), path: String) -> Result(String, Nil) {
   case path == "" || string.contains(path, "\u{0}") {
     True -> Error(Nil)
     False ->
