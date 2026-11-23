@@ -4,10 +4,12 @@ import cloud/beam/execute
 import cloud/config
 import cloud/data/db
 import cloud/db/pool
+import cloud/registry
 import eyg/hub/cache
 import gleam/dict
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Name}
+import gleam/int
 import howdy/testing
 import ogre/origin
 import pog
@@ -41,6 +43,16 @@ pub fn with_transaction(then) {
 
 pub fn context(then) {
   use db <- with_transaction()
+  then(context_for(db))
+}
+
+/// For tests that make queries at the same time, which one connection cannot.
+/// Writes are kept, so use names no other test uses.
+pub fn pool_context() {
+  context_for(db.Pool(pog.named_connection(test_pool_name())))
+}
+
+fn context_for(db) {
   let assert Ok(code) = simplifile.read("policy.eyg")
   let assert #(Ok(policy), state) =
     execute.load_policy(
@@ -49,7 +61,12 @@ pub fn context(then) {
       state(),
       execute.template(),
     )
-  then(Context(db:, state:, policy:))
+  let assert Ok(boxes) = registry.start()
+  Context(db:, boxes: boxes.data, state:, policy:)
+}
+
+pub fn unique(name) {
+  name <> "-" <> int.to_string(int.random(1_000_000_000))
 }
 
 /// Blocks are kept in the bucket set by the `S3_` variables, by their content so tests can share it.

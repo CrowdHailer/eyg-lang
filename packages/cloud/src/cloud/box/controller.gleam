@@ -135,8 +135,11 @@ pub fn try(result, next) {
     Ok(value) -> next(value)
     Error(box.Missing) -> reason(404, "No such box")
     Error(box.Taken) -> reason(409, "The box already exists")
-    Error(box.Conflict) ->
-      reason(409, "The box has changed since the change was made")
+    Error(box.Conflict(paths)) ->
+      reason(
+        409,
+        "Changed since the change was made\n" <> string.join(paths, "\n"),
+      )
     Error(box.Invalid(errors)) -> reason(422, string.join(errors, "\n"))
     Error(box.Failed(message)) -> reason(500, message)
   }

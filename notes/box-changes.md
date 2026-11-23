@@ -4,9 +4,9 @@ description: Trade-offs in how a box moves to a new file system root.
 date: 2026-11-17
 ---
 
-A change to a box is made against the root it was read at and recorded as the next event in sequence.
-If another change was recorded first the later one fails with a conflict, nothing is merged.
-A three way merge of the file systems is the planned replacement.
+Changes are made away from the box, from a base root, and sent to the box's one process.
+The process merges each change onto the latest root, rejects it if a path was changed on both sides,
+type checks the result and records it. Changes are never retried.
 
 Reads are not tracked, as on a normal file system reading then writing is not transactional.
 A change whose files did not conflict is accepted even if files it read changed since its base.

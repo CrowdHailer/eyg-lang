@@ -32,7 +32,8 @@ It has no authentication so it only accepts local connections.
 | `DELETE /boxes/:id/files/*path` | Delete a file or directory. |
 
 A change that leaves an invalid module is rejected with status 422 and the box is not changed.
-Status 409 is returned when the name is taken or the box was changed by something else first.
+Status 409 is returned when the name is taken, or a file changed by something else first.
+Changes are made away from the box and merged by the box's one process, which rejects files changed on both sides.
 
 ### Configuration
 

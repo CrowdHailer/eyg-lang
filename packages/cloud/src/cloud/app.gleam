@@ -6,6 +6,7 @@ import cloud/beam/execute
 import cloud/config.{type Config}
 import cloud/data/db
 import cloud/db/pool
+import cloud/registry
 import envoy
 import eyg/hub/cache
 import gleam/dict
@@ -67,8 +68,14 @@ pub fn start(config: Config, state) {
       state,
       execute.template(),
     )
+  let assert Ok(boxes) = registry.start()
   let context =
-    Context(db: db.Pool(pog.named_connection(pool_name)), state:, policy:)
+    Context(
+      db: db.Pool(pog.named_connection(pool_name)),
+      boxes: boxes.data,
+      state:,
+      policy:,
+    )
   supervisor.new(supervisor.OneForOne)
   |> supervisor.add(pool.supervised(pool_name, config.postgres))
   |> supervisor.add(server.supervised(context, config.port))
