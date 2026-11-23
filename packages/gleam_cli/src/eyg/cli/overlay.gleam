@@ -607,7 +607,8 @@ fn decide_resolved(policy, label, lift, meta, state) {
 fn lookup_reference(reference, meta: source.Location, state, policy, cwd) {
   case reference {
     ir.Relative(path) -> {
-      use resolved <- system.then(source.resolve_filepath(meta.origin, path))
+      let resolved =
+        file_system.resolve_path(source.base(meta.origin, cwd), path)
       use path <- try(
         result.replace_error(resolved, break.UndefinedReference(reference)),
         state,

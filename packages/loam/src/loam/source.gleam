@@ -123,31 +123,21 @@ pub fn base(origin: Origin, cwd: String) -> Option(String) {
 
 /// Resolve a source-relative path, requesting CWD only for interactive origins.
 pub fn resolve_filepath(
-  from: Origin,
+  origin: Origin,
   path: String,
 ) -> system.Effect(Result(String, String)) {
-  case filepath.is_absolute(path), from {
-    True, _ -> resolved_path("", path)
-    False, Disk(source_path) ->
-      resolved_path(filepath.directory_name(source_path), path)
+  use base <- system.map(case filepath.is_absolute(path), origin {
+    True, _ -> system.Done(Ok(None))
+    False, Disk(path) -> system.Done(Ok(Some(filepath.directory_name(path))))
     False, Inline | False, Pipe | False, Repl -> {
-      use cwd <- system.then(system.cwd())
-      use cwd <- system.try(cwd)
-      resolved_path(cwd, path)
+      use cwd <- system.map(system.cwd())
+      result.map(cwd, Some)
     }
-    False, _ ->
-      system.Done(Error(
-        "relative path \""
-        <> path
-        <> "\" requires a disk-backed source; use CWD or an absolute path",
-      ))
-  }
-}
-
-fn resolved_path(root, path) {
-  file_system.resolve_path(Some(root), path)
+    False, Content(_) | False, Release(..) -> system.Done(Ok(None))
+  })
+  use base <- result.try(base)
+  file_system.resolve_path(base, path)
   |> result.replace_error("invalid relative path outside filesystem")
-  |> system.Done
 }
 
 pub fn block_expression(code) {
