@@ -1,4 +1,5 @@
 import cloud/apex/context.{Context}
+import cloud/apex/draft
 import cloud/apex/tui.{Key}
 import cloud/beam/execute
 import cloud/box
@@ -24,6 +25,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import lustre/element
+import morph/terminal/textarea
 import unixfs/mfs
 
 // The text on the screen, one string for each row.
@@ -88,7 +90,7 @@ pub fn start_a_shell_in_a_transient_copy_test() {
   let model = press(model, ["Q"])
   assert model.status == tui.Problem("Nothing is bound to Q")
   let model = press(model, ["enter"])
-  let assert tui.Running(waiting: True, log: [tui.Ran(_)], ..) = model.screen
+  let assert tui.Running(waiting: True, log: [tui.Ran(..)], ..) = model.screen
   assert string.contains(screen(model), "waiting")
   let assert Ok(program) = parser.all_from_string("!int_add(1, 2)")
   let program = ir.map_annotation(program, fn(_) { Nil })
@@ -123,6 +125,53 @@ pub fn chat_in_the_box_test() {
   let #(model, _) = tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
   assert string.contains(screen(model), "you hi")
   assert string.contains(screen(model), "llm hi #1")
+}
+
+pub fn select_code_run_before_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, None)
+  let assert tui.Opening(thread: tui.InShell(shell:, ..), ..) = opening
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let run = fn(model, keys, input) {
+    let model = press(model, keys)
+    let replied = turn.send(context, shell, input)
+    tui.update(model, tui.Replied(shell.id, replied)).0
+  }
+  // A program from the structural editor, then code written as text.
+  let assert Ok(program) = parser.all_from_string("10")
+  let program = ir.map_annotation(program, fn(_) { Nil })
+  let model =
+    run(
+      model,
+      ["n", "backspace", "1", "0", "enter", "enter"],
+      turn.Program(program),
+    )
+  let model = run(model, ["tab", "2", "0", "enter"], turn.Code("20"))
+  let assert tui.Running(history: None, ..) = model.screen
+
+  // Up with nothing written selects the latest code, then earlier code.
+  let model = press(model, ["up"])
+  let assert tui.Running(history: Some(0), ..) = model.screen
+  assert string.contains(screen(model), "◆ selected, enter to edit")
+  assert string.contains(screen(model), "↑↓ choose")
+  let model = press(model, ["up", "up"])
+  let assert tui.Running(history: Some(1), ..) = model.screen
+  // Enter writes it in the draft to edit, a program in the structural editor.
+  let model = press(model, ["enter"])
+  let assert tui.Running(history: None, draft: draft, ..) = model.screen
+  let assert draft.Program(structured: True, ..) = draft
+  assert string.contains(screen(model), "> 10")
+
+  // Code written as text is written as text, down past the latest leaves the selection.
+  let model = run(model, ["enter"], turn.Program(program))
+  let model = press(model, ["up", "up", "enter"])
+  let assert tui.Running(draft: draft.Program(structured: False, text:, ..), ..) =
+    model.screen
+  assert "20" == textarea.value(text)
+  let model = press(model, ["ctrl+u", "up", "down"])
+  let assert tui.Running(history: None, ..) = model.screen
 }
 
 pub fn move_the_cursor_in_inputs_test() {
