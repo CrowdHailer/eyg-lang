@@ -99,8 +99,8 @@ pub type Screen {
     waiting: Bool,
     // What the running turn has done so far.
     progress: List(String),
-    // The text of a completion as it arrives, it is replaced by the reply when the turn finishes.
-    arriving: String,
+    // A completion as it arrives, it is replaced by the reply when the turn finishes.
+    arriving: live.Arriving,
     // How many lines of the log are scrolled back.
     scroll: Int,
     // The files of the shell's box.
@@ -139,6 +139,8 @@ pub type Entry {
   Printed(String)
   Returned(String)
   Failed(String)
+  /// What an llm thought before a completion, only the latest thinking is shown in full.
+  Thought(String)
 }
 
 /// What is open, a shell or a chat.
@@ -164,8 +166,6 @@ pub type Message {
   Opened(Result(Opening, box.Reason))
   /// The outcome of a turn in the shell with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
-  /// Whether the chat with this id has messages sent after its last reply.
-  Checked(String, unanswered: Bool)
   /// A message was added to a chat that is replying.
   Added(Result(Nil, box.Reason))
   /// Work in another process stopped without a reply.
@@ -176,9 +176,11 @@ pub type Message {
   Resized(columns: Int, rows: Int)
   /// What the running turn in the shell with this id has done so far.
   /// And the text of a completion it is receiving, empty if it is not.
-  Progressed(String, List(String), String)
+  Progressed(String, List(String), live.Arriving)
   /// The files of the box of the shell with this id, a page the last turn changed is shown if `show` is true.
   FilesListed(String, Result(Files, box.Reason), show: Bool)
+  /// The shell or chat with this id, read again from its journal once a turn finishes.
+  Logged(String, Result(Opening, box.Reason))
   /// The column and row of the cell clicked.
   Clicked(Int, Int)
 }
@@ -535,6 +537,16 @@ fn on_screen(model: Model, screen, message) {
         effect.none(),
       )
     }
+    // A turn that started since the log was read adds to the log, the next one read has it all.    // A message sent to a chat after its last reply is replied to next.
+    Running(thread:, waiting: False, ..) as running, Logged(id, Ok(opening))
+      if id == thread.id
+    -> {
+      let running = Running(..running, log: opening.log)
+      case opening.unfinished, thread {
+        True, InChat(chat:, ..) -> reply(model, running, chat)
+        _, _ -> #(Model(..model, screen: running), effect.none())
+      }
+    }
     // A reply for a thread that is no longer shown is dropped, it is in the thread's history.
     // A message sent to a chat after its last reply is replied to next.
     Running(thread:, log:, waiting: True, ..) as running, Replied(id, replied)
@@ -569,19 +581,19 @@ fn on_screen(model: Model, screen, message) {
           log:,
           waiting: False,
           progress: [],
-          arriving: "",
+          arriving: live.nothing,
           scroll:,
         )
       let model = Model(..model, screen: running)
+      // The log is read again from the journal, which has the thinking of each completion.
       #(
         model,
-        effect.batch([list_files(context, thread, True), check(context, thread)]),
+        effect.batch([
+          list_files(context, thread, True),
+          background(fn() { Logged(thread.id, open(context, thread.id)) }),
+        ]),
       )
     }
-    Running(thread: InChat(chat:, ..) as thread, waiting: False, ..) as running,
-      Checked(id, True)
-      if id == thread.id
-    -> reply(model, running, chat)
     _, _ -> #(model, effect.none())
   }
 }
@@ -624,7 +636,7 @@ fn last_scroll(model: Model, running) {
   let assert Running(log:, draft: current, ..) = running
   let #(columns, rows) = log_size(model.size)
   let chat = draft.mode(current) == "message"
-  let lines = list.flat_map(log, entry_lines(_, chat, columns)) |> list.length
+  let lines = log_lines(log, chat, columns, False) |> list.length
   int.max(0, lines - rows)
 }
 
@@ -667,9 +679,9 @@ fn poll(context: Context, thread: Thread) {
             Progressed(
               id,
               progress(list.map(history, fn(entry) { entry.1 })),
-              "",
+              live.nothing,
             )
-          Error(_) -> Progressed(id, [], "")
+          Error(_) -> Progressed(id, [], live.nothing)
         }
       InChat(chat:, ..) ->
         case chatting.entries(context, chat.id) {
@@ -677,9 +689,9 @@ fn poll(context: Context, thread: Thread) {
             Progressed(
               id,
               chat_progress(entries),
-              live.text(context.live, chat.id),
+              live.arriving(context.live, chat.id),
             )
-          Error(_) -> Progressed(id, [], "")
+          Error(_) -> Progressed(id, [], live.nothing)
         }
     }
   })
@@ -834,30 +846,18 @@ fn send(model: Model, running, input, draft) {
   }
 }
 
-// Whether a chat has messages sent after its last reply.
-fn check(context: Context, thread: Thread) {
-  case thread {
-    InChat(chat:, ..) ->
-      background(fn() {
-        case chatting.entries(context, chat.id) {
-          Ok(entries) ->
-            Checked(chat.id, case chat_event.next(entries) {
-              chat_event.Idle(_) -> False
-              _ -> True
-            })
-          Error(_) -> Checked(chat.id, False)
-        }
-      })
-    InShell(..) -> effect.none()
-  }
-}
-
 // Reply to messages sent to the chat that have no reply.
 fn reply(model: Model, running, chat: Chat) {
   let assert Running(..) = running
   let context = model.context
   let screen =
-    Running(..running, waiting: True, progress: [], arriving: "", scroll: 0)
+    Running(
+      ..running,
+      waiting: True,
+      progress: [],
+      arriving: live.nothing,
+      scroll: 0,
+    )
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -876,7 +876,13 @@ fn reply(model: Model, running, chat: Chat) {
 fn run_turn(model: Model, running, input) {
   let assert Running(thread:, ..) = running
   let screen =
-    Running(..running, waiting: True, progress: [], arriving: "", scroll: 0)
+    Running(
+      ..running,
+      waiting: True,
+      progress: [],
+      arriving: live.nothing,
+      scroll: 0,
+    )
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -901,7 +907,7 @@ fn sent(input: draft.Sent) {
 // Show a shell or chat, a turn that has not finished is finished first.
 fn opened(model: Model, opening: Opening) {
   let Opening(place:, thread:, log:, unfinished:) = opening
-  // The draft, files and artifact are kept when the shell is opened again after its turn finishes.
+  // The draft, files and artifact are kept when it is opened again after its turn finishes.
   let #(draft, files, artifact) = case model.screen, thread {
     Running(thread: shown, draft:, files:, artifact:, ..), _
       if shown.id == thread.id
@@ -910,7 +916,18 @@ fn opened(model: Model, opening: Opening) {
     _, InShell(..) -> #(draft.program(), no_files, None)
   }
   let screen =
-    Running(place, thread, log, draft, unfinished, [], "", 0, files, artifact)
+    Running(
+      place,
+      thread,
+      log,
+      draft,
+      unfinished,
+      [],
+      live.nothing,
+      0,
+      files,
+      artifact,
+    )
   let model = Model(..model, screen:, status: Quiet)
   let files = list_files(model.context, thread, False)
   case unfinished {
@@ -990,16 +1007,20 @@ pub fn open(context: Context, id: String) -> Result(Opening, box.Reason) {
   }
 }
 
-// What the entries of a chat show, the messages and the llm's replies.
+// What the entries of a chat show, the messages, the llm's thinking and its replies.
 fn chat_log(entries) {
   list.flat_map(entries, fn(entry) {
     case entry {
       chat_event.Sent(message) -> [Sent(message)]
       chat_event.Replied(completion) ->
-        case completion.tool_calls {
+        case completion.thinking {
+          "" -> []
+          thinking -> [Thought(thinking)]
+        }
+        |> list.append(case completion.tool_calls {
           [] -> [Returned(completion.content)]
           _ -> []
-        }
+        })
       chat_event.Failed(reason) -> [Failed(reason)]
       chat_event.Cancelled -> [Failed("cancelled")]
       chat_event.Returned(..) -> []
@@ -1413,7 +1434,8 @@ fn body(screen, area: geometry.Rect, model: Model) {
       }
       let columns = area.size.width
       let chat = draft.mode(current) == "message"
-      let lines = list.flat_map(log, entry_lines(_, chat, columns))
+      let lines =
+        log_lines(log, chat, columns, waiting && arriving.thinking != "")
       // A draft taller than half the area shows the part around its cursor.
       let drafted = fn(most) {
         let #(lines, cursor) = draft.lines(current, True, columns - 2)
@@ -1427,13 +1449,19 @@ fn body(screen, area: geometry.Rect, model: Model) {
           list.map(progress, fn(step) {
             span.line_new([span.span_styled("· " <> step, fg(muted))])
           })
-          // The text of a completion as it arrives, the end of it if it is long.
-          |> list.append(case arriving {
-            "" -> []
-            text -> {
-              let lines = entry_lines(Returned(text), True, columns)
-              list.drop(lines, list.length(lines) - area.size.height / 2)
-            }
+          // The thinking and text of a completion as they arrive, the end of them if they are long.
+          |> list.append({
+            let lines =
+              list.flat_map(
+                [Thought(arriving.thinking), Returned(arriving.text)],
+                fn(entry) {
+                  case entry {
+                    Thought("") | Returned("") -> []
+                    _ -> entry_lines(entry, True, columns)
+                  }
+                },
+              )
+            list.drop(lines, list.length(lines) - area.size.height / 2)
           })
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),
@@ -1571,7 +1599,40 @@ fn entry_lines(entry, chat, columns) {
     Returned(content), True -> text("llm ", content, fg(purple))
     Returned(content), False -> text("= ", content, fg(green))
     Failed(content), _ -> text("! ", content, fg(red))
+    Thought(content), _ ->
+      text("thinking ", content, fg(muted) |> style.add_modifier(style.dim()))
   }
+}
+
+// The lines of the log, only the latest thinking is shown in full, earlier thinking is a line saying how long it is.
+// When an llm is thinking now that is the latest.
+fn log_lines(log, chat, columns, thinking_now) {
+  let latest = case thinking_now {
+    True -> -1
+    False ->
+      list.index_fold(log, -1, fn(latest, entry, i) {
+        case entry {
+          Thought(_) -> i
+          _ -> latest
+        }
+      })
+  }
+  list.index_map(log, fn(entry, i) {
+    case entry {
+      Thought(content) if i != latest -> {
+        let lines = list.length(string.split(content, "\n"))
+        let lines = case lines {
+          1 -> "1 line"
+          _ -> int.to_string(lines) <> " lines"
+        }
+        [
+          span.line_new([span.span_styled("▸ thought for " <> lines, fg(muted))]),
+        ]
+      }
+      _ -> entry_lines(entry, chat, columns)
+    }
+  })
+  |> list.flatten
 }
 
 fn menu(items, screen, area, chosen) {

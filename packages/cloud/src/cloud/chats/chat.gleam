@@ -166,12 +166,11 @@ fn ask(context: Context, chat: Chat, history: chat.History, replied: Int) {
       Ok(event.Failed("the llm " <> chat.llm <> " is not configured"))
     Ok(llm) -> {
       let provider = overlay.box_context(context.state.origin)
-      let completed =
-        stream.complete(llm, provider, history, live.show(
-          context.live,
-          chat.id,
-          _,
-        ))
+      let show = fn(completion: chat.Completion(_)) {
+        live.Arriving(completion.thinking, completion.content)
+        |> live.show(context.live, chat.id, _)
+      }
+      let completed = stream.complete(llm, provider, history, show)
       live.clear(context.live, chat.id)
       Ok(case completed {
         Ok(completion) -> event.Replied(named(completion, replied))

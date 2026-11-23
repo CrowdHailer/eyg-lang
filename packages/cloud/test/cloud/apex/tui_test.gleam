@@ -6,6 +6,7 @@ import cloud/chats/chat
 import cloud/data/db
 import cloud/data/journal
 import cloud/helpers
+import cloud/live
 import cloud/server
 import cloud/shells/event
 import cloud/shells/turn
@@ -244,6 +245,42 @@ pub fn open_an_unfinished_turn_test() {
   assert string.contains(screen(model), "= 1")
 }
 
+pub fn show_thinking_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, Some("test"))
+  let assert tui.Opening(thread: tui.InChat(chat: talk, ..), ..) = opening
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let reply = fn(model, message) {
+    let model =
+      press(model, list.append(string.to_graphemes(message), ["enter"]))
+    let assert Ok(replied) = chat.send(context, talk, message)
+    let #(model, _) =
+      tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
+    tui.update(model, tui.Logged(talk.id, tui.open(context, talk.id))).0
+  }
+  let model = reply(model, "think:a")
+  assert string.contains(screen(model), "thinking Thinking about think:a #1")
+  assert string.contains(screen(model), "llm think:a #1")
+
+  // Only the latest thinking is shown in full.
+  let model = reply(model, "think:b")
+  assert string.contains(screen(model), "▸ thought for 1 line")
+  assert !string.contains(screen(model), "Thinking about think:a")
+  assert string.contains(screen(model), "thinking Thinking about think:b #2")
+
+  // Thinking as it arrives is the latest.
+  let model = press(model, ["c", "enter"])
+  let arriving = live.Arriving("Considering c", "")
+  let #(model, _) = tui.update(model, tui.Progressed(talk.id, [], arriving))
+  assert string.contains(screen(model), "thinking Considering c")
+  assert !string.contains(screen(model), "Thinking about think:b")
+}
+
 pub fn write_while_the_chat_runs_test() {
   use context <- helpers.context()
   let server = server.start(process.new_subject())
@@ -265,7 +302,8 @@ pub fn write_while_the_chat_runs_test() {
   let #(model, _) = tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
   assert string.contains(screen(model), "llm hi #2")
   let assert Ok(Nil) = chat.add(context, talk, "again")
-  let #(model, _) = tui.update(model, tui.Checked(talk.id, True))
+  let #(model, _) =
+    tui.update(model, tui.Logged(talk.id, tui.open(context, talk.id)))
   let assert tui.Running(waiting: True, ..) = model.screen
   assert string.contains(screen(model), "waiting…")
   assert 1 == list.length(string.split(screen(model), "you more")) - 1
@@ -371,7 +409,10 @@ pub fn show_progress_and_scroll_back_test() {
     ])
   assert progress == ["GET https://example.com", "sleeping 10ms"]
   let #(model, _) =
-    tui.update(model, tui.Progressed(shell.id, progress, "Partly writ"))
+    tui.update(
+      model,
+      tui.Progressed(shell.id, progress, live.Arriving("", "Partly writ")),
+    )
   assert string.contains(screen(model), "· GET https://example.com")
   // The text of a completion is shown as it arrives.
   assert string.contains(screen(model), "llm Partly writ")

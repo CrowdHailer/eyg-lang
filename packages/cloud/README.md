@@ -109,7 +109,7 @@ Variables, builtins, packages and files are chosen in a box in the middle of the
 Tab switches between them and keeps both, shift and enter starts a new line in text and in chat messages.
 Text is edited with arrows, home and end, ctrl or alt with an arrow moves by word, program text is highlighted.
 A wide window shows the files of the box beside the shell, and a running turn shows what it has done so far.
-The llm's reply is shown as it arrives.
+The llm's thinking and reply are shown as they arrive. Only the latest thinking is shown in full, earlier thinking is a line saying how long it was.
 Messages written while a chat runs are added to the chat once the tool calls running finish,
 or start the next turn if the llm has replied. Ctrl+x cancels a running turn.
 Shortcuts with ctrl or meta and function keys are left to the browser, so output can be copied and F11 goes full screen.
