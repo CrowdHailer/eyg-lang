@@ -1,10 +1,16 @@
 //// The structural editor in a terminal, its key bindings and its code drawn as etui lines.
 //// A terminal interface keeps its own modes, such as entering text, and uses these for navigating code.
+//// EYG text is highlighted with the same colours, see `highlight`.
 
 import etui/span
 import etui/style
 import eyg/analysis/type_/isomorphic as t
+import eyg/parser/lexer
+import eyg/parser/token
+import gleam/bit_array
 import gleam/list
+import gleam/result
+import gleam/string
 import morph/buffer.{type Buffer}
 import morph/lustre/frame
 import morph/manipulation as m
@@ -129,6 +135,81 @@ pub fn focus_style(
       base
       |> style.add_modifier(style.dim())
       |> style.add_modifier(style.underline())
+  }
+}
+
+/// EYG text coloured as code is coloured in the structural editor, the spans of each of its lines.
+/// The text is kept exactly, invalid tokens are underlined.
+pub fn highlight(source: String) -> List(List(span.Span)) {
+  let bits = bit_array.from_string(source)
+  let tokens = lexer.lex(source)
+  let ends =
+    list.drop(tokens, 1)
+    |> list.map(fn(token) { token.1 })
+    |> list.append([bit_array.byte_size(bits)])
+  let #(lines, line, _) =
+    list.zip(tokens, ends)
+    |> list.fold(#([], [], token.Whitespace("")), fn(acc, entry) {
+      let #(lines, line, previous) = acc
+      let #(#(token, start), end) = entry
+      let raw =
+        bit_array.slice(bits, start, end - start)
+        |> result.try(bit_array.to_string)
+        |> result.unwrap("")
+      let style = token_style(token, previous)
+      let #(lines, line) = case string.split(raw, "\n") {
+        [first, ..rest] ->
+          list.fold(
+            rest,
+            #(lines, [span.span_styled(first, style), ..line]),
+            fn(acc, part) {
+              let #(lines, line) = acc
+              #([list.reverse(line), ..lines], [span.span_styled(part, style)])
+            },
+          )
+        [] -> #(lines, line)
+      }
+      let previous = case token {
+        token.Whitespace(_) | token.Comment(_) -> previous
+        _ -> token
+      }
+      #(lines, line, previous)
+    })
+  list.reverse([list.reverse(line), ..lines])
+}
+
+// Names are coloured by what is before them, `!` is a builtin and `@` or `#` a reference.
+fn token_style(current: token.Token, previous: token.Token) -> style.Style {
+  case current {
+    token.UnexpectedGrapheme(_)
+    | token.UnterminatedString(_)
+    | token.InvalidEscape(_) ->
+      style.default_style()
+      |> style.add_modifier(style.underline())
+      |> style.with_underline_color(style.Rgb(255, 0, 0))
+    _ ->
+      syntax_style(case current, previous {
+        token.Comment(_), _ -> frame.Comment
+        token.Name(_), token.Bang -> frame.Builtin
+        token.Name(_), token.At | token.Name(_), token.Hash -> frame.Symbol
+        token.Name(_), token.Dot -> frame.Plain
+        token.Name(_), _ -> frame.Variable
+        token.Uppername(_), _ -> frame.ClassName
+        token.Integer(_), _ -> frame.Number
+        token.String(_), _ -> frame.String
+        token.Bang, _ -> frame.Builtin
+        token.At, _ | token.Hash, _ -> frame.Symbol
+        token.Let, _
+        | token.Match, _
+        | token.Perform, _
+        | token.Deep, _
+        | token.Handle, _
+        | token.Import, _
+        | token.Todo, _
+        -> frame.Keyword
+        token.Whitespace(_), _ -> frame.Plain
+        _, _ -> frame.Punctuation
+      })
   }
 }
 
