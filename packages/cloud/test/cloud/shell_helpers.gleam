@@ -31,8 +31,12 @@ pub fn process(context: Context, shell: shells.Shell) {
 }
 
 pub fn run(context, shell, code) {
+  turn(context, shell, turn.Code(code))
+}
+
+pub fn turn(context, shell, input) {
   registry.call(process(context, shell), 10_000, fn(_) {
-    #(Nil, turn.run(context, shell, code))
+    #(Nil, turn.run(context, shell, input))
   })
 }
 

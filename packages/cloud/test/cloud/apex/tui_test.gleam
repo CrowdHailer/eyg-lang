@@ -66,7 +66,7 @@ pub fn start_a_shell_in_a_transient_copy_test() {
     model.screen
   assert string.contains(screen(model), "waiting")
 
-  let replied = turn.send(context, shell, "!int_add(1, 2)")
+  let replied = turn.send(context, shell, turn.Code("!int_add(1, 2)"))
   let #(model, _) = tui.update(model, tui.Replied(shell.id, replied))
   assert string.contains(screen(model), "= 3")
 }

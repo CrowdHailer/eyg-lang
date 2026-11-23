@@ -9,6 +9,7 @@ import cloud/data/shells.{type Shell}
 import cloud/shells/event
 import cloud/shells/trace
 import cloud/shells/turn
+import eyg/ir/dag_json
 import gleam/dynamic/decode
 import gleam/http/response.{type Response}
 import gleam/json
@@ -77,14 +78,19 @@ pub fn get(id, context: Context) {
 }
 
 /// Each turn is run by the shell's process, one at a time.
+/// A turn is `{"code": code}` or `{"program": program}` with the program as DAG-JSON.
 pub fn turn(request: controller.Context, id, context: Context) {
   use body <- api.read_json(request)
-  case decode.run(body, decode.at(["code"], decode.string)) {
-    Error(_) -> reason(400, "Expected code")
-    Ok(code) -> {
+  let decoder =
+    decode.one_of(decode.at(["code"], decode.string) |> decode.map(turn.Code), [
+      decode.at(["program"], dag_json.decoder(Nil)) |> decode.map(turn.Program),
+    ])
+  case decode.run(body, decoder) {
+    Error(_) -> reason(400, "Expected code or a program")
+    Ok(input) -> {
       use shell <- find(id, context)
-      use #(outcome, output) <- try(turn.send(context, shell, code))
-      api.json(encode_turn(#(code, Some(#(outcome, output)))), 200)
+      use #(outcome, output) <- try(turn.send(context, shell, input))
+      api.json(encode_turn(#(input, Some(#(outcome, output)))), 200)
     }
   }
 }
@@ -94,7 +100,9 @@ fn turns(entries, acc) {
   case entries, acc {
     [], _ -> list.reverse(acc)
     [event.Input(event.Started(code, _), ..), ..entries], _ ->
-      turns(entries, [#(code, None), ..acc])
+      turns(entries, [#(turn.Code(code), None), ..acc])
+    [event.Input(event.Submitted(program, _), ..), ..entries], _ ->
+      turns(entries, [#(turn.Program(program), None), ..acc])
     [
       event.Output(stop: event.Finished(_, output) as stop, change:, ..),
       ..entries
@@ -135,9 +143,12 @@ fn encode(shell: Shell) {
 }
 
 fn encode_turn(turn) {
-  let #(code, ended) = turn
+  let #(input, ended) = turn
   json.object([
-    #("code", json.string(code)),
+    case input {
+      turn.Code(code) -> #("code", json.string(code))
+      turn.Program(program) -> #("program", dag_json.to_data_model(program))
+    },
     ..case ended {
       None -> [#("finished", json.bool(False))]
       Some(#(outcome, output)) -> [

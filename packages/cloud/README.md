@@ -46,7 +46,7 @@ A shell in a transient box, cloned from a named box, works on its own copy of th
 | `POST /boxes/:id/shells` | Start a shell in the box. |
 | `GET /boxes/:id/shells` | The shells in the box. |
 | `GET /shells/:id` | The shell and all of its turns. |
-| `POST /shells/:id/turns` | Run the code from `{"code": "1"}`. |
+| `POST /shells/:id/turns` | Run the code from `{"code": "1"}` or a program as DAG-JSON from `{"program": program}`. |
 | `GET /shells/:id/events` | Every entry of the shell's journal as JSON lines. |
 | `POST /shells/:id/fork` | Start a shell with the same history, each continues from it on its own. |
 | `GET /shells/:id/trace` | OpenTelemetry spans for the shell, each turn and each request, as OTLP JSON. |

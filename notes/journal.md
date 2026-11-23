@@ -34,3 +34,6 @@ The finished output records the value and output of a turn although replay could
 so turns can be listed without running any code.
 
 Entries are recorded at the time they are inserted, not when their transaction started, so a trace shows them in order.
+
+A program built in a structural editor is recorded as its tree in DAG-JSON, not as text.
+There is no printer from a tree to EYG text, and some trees, such as binary literals, have no text syntax.

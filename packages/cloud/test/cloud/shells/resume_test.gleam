@@ -3,6 +3,7 @@
 //// Entries are appended in transactions, so a stopped shell leaves its journal at the end of one.
 //// For random programs every such point is tried: a shell in the same box is made with the entries
 //// up to that point and resumed, sometimes after another change to the box.
+//// A program is run as code, as a program built in an editor, or as a chat where the llm makes a tool call for each step.
 
 import cloud/box
 import cloud/file_system
@@ -10,6 +11,9 @@ import cloud/helpers
 import cloud/server.{type Server}
 import cloud/shell_helpers
 import cloud/shells/event
+import cloud/shells/turn
+import eyg/ir/tree as ir
+import eyg/parser
 import gleam/erlang/process
 import gleam/http
 import gleam/int
@@ -88,14 +92,31 @@ fn expression(step, server, path) {
 pub fn resume_from_any_stop_test() {
   let server = server.start(process.new_subject())
   let config = qcheck.default_config() |> qcheck.with_test_count(40)
-  use steps <- qcheck.run(
+  use #(steps, mode) <- qcheck.run(
     config,
-    qcheck.generic_list(step(), qcheck.bounded_int(1, 6)),
+    qcheck.tuple2(
+      qcheck.generic_list(step(), qcheck.bounded_int(1, 6)),
+      qcheck.bounded_int(1, 2),
+    ),
   )
   use context <- helpers.context()
   let id = int.to_string(int.random(1_000_000_000))
-  let shell = shell_helpers.shell(context)
-  let assert Ok(_) = shell_helpers.run(context, shell, code(steps, server, id))
+  let shell = case mode {
+    1 -> {
+      let shell = shell_helpers.shell(context)
+      let assert Ok(source) = parser.all_from_string(code(steps, server, id))
+      let program = ir.map_annotation(source, fn(_) { Nil })
+      let assert Ok(_) =
+        shell_helpers.turn(context, shell, turn.Program(program))
+      shell
+    }
+    _ -> {
+      let shell = shell_helpers.shell(context)
+      let assert Ok(_) =
+        shell_helpers.run(context, shell, code(steps, server, id))
+      shell
+    }
+  }
   let entries = shell_helpers.entries(context, shell)
 
   list.index_map(entries, fn(_, i) { i + 1 })

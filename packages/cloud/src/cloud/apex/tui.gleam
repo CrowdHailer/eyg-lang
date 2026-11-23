@@ -290,7 +290,7 @@ fn is_chat(thread: Thread) -> Bool {
 // Code runs as a turn of the shell, a message is sent to the chat and its reply is the outcome.
 fn send(context, thread: Thread, input) -> Result(turn.Outcome, box.Reason) {
   case thread {
-    InShell(shell:, ..) -> turn.send(context, shell, input)
+    InShell(shell:, ..) -> turn.send(context, shell, turn.Code(input))
     InChat(chat:, ..) -> {
       use replied <- result.map(chatting.send(context, chat, input))
       #(replied, [])

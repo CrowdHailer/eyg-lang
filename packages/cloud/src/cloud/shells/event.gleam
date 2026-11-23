@@ -8,6 +8,7 @@
 
 import cloud/beam/execute
 import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/dynamic/decode
 import gleam/http
@@ -28,6 +29,8 @@ pub type Entry {
 pub type Trigger {
   /// Code was sent to the shell, it runs with the policy in the blob store under `policy`.
   Started(code: String, policy: v1.Cid)
+  /// A program built in a structural editor was sent to the shell, it runs as code does.
+  Submitted(program: ir.Node(Nil), policy: v1.Cid)
   /// The answer to the request or sleep the last segment stopped at.
   Continued(answer: execute.Answer)
 }
@@ -66,7 +69,7 @@ pub type Change {
 /// Whether the trigger starts a turn.
 pub fn starts(trigger: Trigger) -> Bool {
   case trigger {
-    Started(..) -> True
+    Started(..) | Submitted(..) -> True
     Continued(_) -> False
   }
 }
@@ -113,6 +116,11 @@ fn trigger_fields(trigger) {
     Started(code, policy) -> [
       #("trigger", json.string("started")),
       #("code", json.string(code)),
+      #("policy", json.string(v1.to_string(policy))),
+    ]
+    Submitted(program, policy) -> [
+      #("trigger", json.string("submitted")),
+      #("program", dag_json.to_data_model(program)),
       #("policy", json.string(v1.to_string(policy))),
     ]
     Continued(answer) -> [
@@ -219,6 +227,11 @@ fn trigger_decoder() {
       use code <- decode.field("code", decode.string)
       use policy <- decode.field("policy", cid_decoder())
       decode.success(Started(code, policy))
+    }
+    "submitted" -> {
+      use program <- decode.field("program", dag_json.decoder(Nil))
+      use policy <- decode.field("policy", cid_decoder())
+      decode.success(Submitted(program, policy))
     }
     "continued" -> decode.map(answer_decoder(), Continued)
     _ -> decode.failure(Continued(execute.Slept), "Trigger")

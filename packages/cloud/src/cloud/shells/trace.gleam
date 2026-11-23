@@ -6,6 +6,7 @@
 
 import cloud/beam/execute
 import cloud/shells/event.{type Entry}
+import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/crypto
 import gleam/http
@@ -52,6 +53,8 @@ fn turns(log) {
     [] -> []
     [#(i, at, event.Input(event.Started(code, policy), ..)), ..log] ->
       turn(i, at, #("eyg.code", code), policy, log)
+    [#(i, at, event.Input(event.Submitted(program, policy), ..)), ..log] ->
+      turn(i, at, #("eyg.program", dag_json.to_string(program)), policy, log)
     [_, ..log] -> turns(log)
   }
 }

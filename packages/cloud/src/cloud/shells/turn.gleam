@@ -12,6 +12,8 @@
 //// A request whose response was not recorded is sent again if it is GET or HEAD,
 //// any other request is answered with a network error as it might have been received.
 ////
+//// A shell made for a tool call or for code sent to a chat runs that code as its only turn, see `once`.
+////
 //// Each turn records the policy it runs with and the module each package reference resolved to,
 //// so a replay runs the same code after the policy changes or a package is released.
 //// Secrets are never recorded, a fingerprint of each secret read is recorded instead.
@@ -79,6 +81,13 @@ type Writer {
   Writer(shell: Shell, next: Int)
 }
 
+/// What is sent to a shell.
+pub type Input {
+  Code(String)
+  /// A program built in a structural editor.
+  Program(ir.Node(Nil))
+}
+
 /// A new shell in the box, for a person or a cron.
 pub fn start(context: Context, box: String) -> Result(Shell, box.Reason) {
   create(context, box, shells.Anyone)
@@ -126,15 +135,10 @@ pub fn fork(context: Context, id: String) -> Result(Shell, box.Reason) {
 pub fn send(
   context: Context,
   shell: Shell,
-  code: String,
+  input: Input,
 ) -> Result(Outcome, box.Reason) {
   use <- in_process(context, shell)
-  run(context, shell, code)
-}
-
-fn in_process(context: Context, shell: Shell, then) {
-  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
-  |> registry.call(600_000, fn(_) { #(Nil, then()) })
+  run(context, shell, input)
 }
 
 /// Run the code as the only turn of a shell made for it, such as for a tool call.
@@ -148,7 +152,7 @@ pub fn once(
   use <- in_process(context, shell)
   use recorded <- result.try(entries(context, shell.id))
   case recorded {
-    [] -> run(context, shell, code)
+    [] -> run(context, shell, Code(code))
     _ -> {
       use Nil <- result.try(recover(context, shell))
       use recorded <- result.try(entries(context, shell.id))
@@ -170,11 +174,16 @@ fn ended(entries: List(Entry)) -> Outcome {
   })
 }
 
+fn in_process(context: Context, shell: Shell, then) {
+  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
+  |> registry.call(600_000, fn(_) { #(Nil, then()) })
+}
+
 /// Run a turn in the shell, an unfinished turn is finished first.
 pub fn run(
   context: Context,
   shell: Shell,
-  code: String,
+  input: Input,
 ) -> Result(Outcome, box.Reason) {
   use Nil <- result.try(recover(context, shell))
   use before <- result.try(entries(context, shell.id))
@@ -196,8 +205,11 @@ pub fn run(
     |> result.map_error(box.Failed),
   )
   let stored = mfs.identify(stored).cid
-  let trigger = event.Started(code, stored)
-  let segment = program(policy, code)
+  use #(trigger, segment) <- result.try(case input {
+    Code(code) -> Ok(#(event.Started(code, stored), program(policy, code)))
+    Program(source) ->
+      Ok(#(event.Submitted(source, stored), built(policy, source)))
+  })
   use box <- result.try(box.latest(context, shell.box))
   let input = event.Input(trigger, box.sequence, box.root)
   use writer <- result.try(append(context, writer(shell, before), [input]))
@@ -207,6 +219,12 @@ pub fn run(
 
 fn program(policy, code) -> Segment {
   fn(state, root) { execute.run(code, state, policy, root, fn(_) { Nil }) }
+}
+
+fn built(policy, source) -> Segment {
+  fn(state, root) {
+    execute.program(source, state, policy, root, fn(_) { Nil })
+  }
 }
 
 /// What a turn that finished came to, a change that was rejected fails the turn.
@@ -227,6 +245,10 @@ fn begin(state, trigger) -> Result(Segment, String) {
     event.Started(code, policy) -> {
       use policy <- result.map(load_policy(state, policy))
       program(policy, code)
+    }
+    event.Submitted(source, policy) -> {
+      use policy <- result.map(load_policy(state, policy))
+      built(policy, source)
     }
     _ -> Error(mismatch)
   }

@@ -9,7 +9,10 @@ import cloud/registry
 import cloud/server
 import cloud/shell_helpers
 import cloud/shells/event
+import cloud/shells/turn
 import eyg/hub/cache
+import eyg/ir/tree as ir
+import eyg/parser
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/erlang/process
@@ -505,4 +508,16 @@ pub fn fork_a_shell_test() {
   let forked = shell_helpers.entries(context, fork)
   assert list.take(original, 2) == list.take(forked, 2)
   assert original != forked
+}
+
+pub fn run_a_built_program_test() {
+  use context <- helpers.context()
+  let shell = shell_helpers.shell(context)
+  let assert Ok(source) = parser.all_from_string("!int_add(1, 2)")
+  let program = ir.map_annotation(source, fn(_) { Nil })
+  let assert Ok(#(Ok("3"), [])) =
+    shell_helpers.turn(context, shell, turn.Program(program))
+  let assert [event.Input(event.Submitted(recorded, _), ..), ..] =
+    shell_helpers.entries(context, shell)
+  assert recorded == program
 }
