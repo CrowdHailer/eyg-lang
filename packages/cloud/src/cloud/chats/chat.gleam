@@ -3,6 +3,7 @@
 ////
 //// The llm's tool calls run as shells in the box at the same time, see `cloud/calls`.
 //// When they have all returned their results are recorded and the llm is asked again.
+//// A message sent while the tool calls run is recorded at once and added to the chat after their results.
 ////
 //// If the process stops the chat continues from its journal the next time it is used.
 //// A completion that was not recorded is asked for again, completions have no effect outside the chat.
@@ -89,6 +90,7 @@ pub fn recent(
 }
 
 /// Send a message to the chat and wait for the llm's reply.
+/// A message sent while the chat is replying is part of that reply, which answers both.
 pub fn send(
   context: Context,
   chat: Chat,
@@ -96,6 +98,16 @@ pub fn send(
 ) -> Result(Result(String, String), box.Reason) {
   use Nil <- result.try(append(context, chat, [event.Sent(message)]))
   reply(context, chat)
+}
+
+/// Add a message to the chat without waiting for a reply.
+/// If the chat is replying the message is added after the tool calls that are running.
+pub fn add(
+  context: Context,
+  chat: Chat,
+  message: String,
+) -> Result(Nil, box.Reason) {
+  append(context, chat, [event.Sent(message)])
 }
 
 /// Reply to every message sent to the chat, in the chat's process, which replies to one at a time.

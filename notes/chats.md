@@ -14,6 +14,7 @@ Completions are streamed to show their text as it arrives, only the whole comple
 
 The journal is ordered by a serial id rather than a sequence per chat.
 People append messages while the chat's process appends completions and results, a serial never conflicts.
+A message sent while tool calls run comes after them in the journal and is added to the llm's chat after their results.
 
 Each tool call runs as the only turn of a shell made for it, see `cloud/calls.gleam`.
 The chat does not record which shell a call ran in, the shell records its chat and call and a call has one shell.

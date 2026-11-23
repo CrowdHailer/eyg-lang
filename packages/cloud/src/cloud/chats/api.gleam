@@ -55,7 +55,8 @@ pub fn get(id, context: Context) {
   |> api.json(200)
 }
 
-/// Send `{"message": message}` and wait for the reply.
+/// Send `{"message": message}` and wait for the reply. A message sent while the chat is replying
+/// is added after the tool calls that are running, and both have the reply that answers them.
 pub fn send(request: controller.Context, id, context: Context) {
   use body <- api.read_json(request)
   case decode.run(body, decode.at(["message"], decode.string)) {

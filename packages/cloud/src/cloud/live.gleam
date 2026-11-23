@@ -1,4 +1,5 @@
-//// What is happening in chats now and is not recorded, such as the text of a completion as it arrives.
+//// What is happening in chats now and is not recorded, such as the text of a completion as it arrives
+//// and messages sent to a chat while it is running.
 //// It is kept in a process and lost when the service stops, the journal of a chat is what is kept.
 
 import gleam/dict.{type Dict}
@@ -15,20 +16,25 @@ pub opaque type Message {
 pub type Live =
   Subject(Message)
 
+type State {
+  State(texts: Dict(String, String))
+}
+
 pub fn start() -> Result(Live, actor.StartError) {
-  actor.new(dict.new())
+  actor.new(State(dict.new()))
   |> actor.on_message(handle)
   |> actor.start
   |> result.map(fn(started) { started.data })
 }
 
-fn handle(texts: Dict(String, String), message) {
+fn handle(state: State, message) {
   case message {
-    Show(chat, text) -> actor.continue(dict.insert(texts, chat, text))
-    Clear(chat) -> actor.continue(dict.delete(texts, chat))
+    Show(chat, text) ->
+      actor.continue(State(texts: dict.insert(state.texts, chat, text)))
+    Clear(chat) -> actor.continue(State(texts: dict.delete(state.texts, chat)))
     Get(chat, reply) -> {
-      process.send(reply, dict.get(texts, chat) |> result.unwrap(""))
-      actor.continue(texts)
+      process.send(reply, dict.get(state.texts, chat) |> result.unwrap(""))
+      actor.continue(state)
     }
   }
 }

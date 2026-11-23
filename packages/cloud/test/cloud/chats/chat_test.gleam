@@ -93,6 +93,43 @@ pub fn tool_calls_run_at_the_same_time_test() {
     == execute.files(file_system.read(home.root, "/a.txt"), context.state)
 }
 
+pub fn messages_sent_while_tool_calls_run_test() {
+  let context = helpers.pool_context()
+  let arrived = process.new_subject()
+  let server = server.start(arrived)
+  let #(context, talk) = chat_helpers.chat(context, server)
+  let done = process.new_subject()
+  let slow = server.fetch(server, "GET", "/slow")
+  process.spawn(fn() {
+    process.send(done, chat_helpers.send(context, talk, "run:" <> slow))
+  })
+  let assert Ok(release) = process.receive(arrived, 5000)
+  // Added while the call runs, it is sent to the llm after the call's result.
+  let assert Ok(Nil) = chat.add(context, talk, "also")
+  process.send(release, Nil)
+  let assert Ok(Ok(Ok("also #2"))) = process.receive(done, 5000)
+  let assert [
+    llm.UserMessage(_, []),
+    llm.AssistantMessage(..),
+    llm.ToolResultMessage(..),
+    llm.UserMessage("also", []),
+    llm.AssistantMessage(..),
+  ] = event.conversation(chat_helpers.entries(context, talk))
+}
+
+pub fn messages_sent_after_a_reply_are_replied_to_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let #(context, talk) = chat_helpers.chat(context, server)
+  let assert Ok(Ok("hello #1")) = chat_helpers.send(context, talk, "hello")
+  let assert Ok(Nil) = chat.add(context, talk, "later")
+  let assert event.Ask(_) = event.next(chat_helpers.entries(context, talk))
+  let assert Ok(Ok("later #2")) = chat.reply(context, talk)
+  // There is nothing more to reply to, the last reply is given again.
+  let assert Ok(Ok("later #2")) = chat.reply(context, talk)
+  assert 2 == server.count_requests(server, http.Post, "/api/chat")
+}
+
 pub fn a_rejected_change_is_the_calls_result_test() {
   use context <- helpers.context()
   let server = server.start(process.new_subject())

@@ -2,6 +2,7 @@
 ////
 //// A turn starts when a message is sent and ends when the llm replies without tool calls.
 //// The code of each tool call runs in a shell made for it, see `cloud/calls`, and the chat records what each call returned.
+//// A message sent while the llm's tool calls run is added to the chat after their results.
 
 import gleam/dynamic/decode
 import gleam/json
@@ -62,21 +63,57 @@ pub fn next(entries: List(Entry)) -> Next {
 }
 
 /// The messages sent to the llm and its completions, oldest first.
+/// Messages sent while tool calls ran come after the calls' results.
 pub fn conversation(entries: List(Entry)) -> chat.History {
-  list.map(entries, fn(entry) {
-    case entry {
-      Sent(message) -> chat.UserMessage(message, [])
-      Replied(completion) -> chat.from_completion(completion)
-      Returned(id, result) -> {
-        let text = case result {
-          Ok(text) | Error(text) -> agent.tool_result_text(text)
+  let #(history, _, _) =
+    list.fold(entries, #([], [], []), fn(acc, entry) {
+      let #(history, pending, held) = acc
+      case entry {
+        Sent(message) ->
+          case pending {
+            [] -> #([chat.UserMessage(message, []), ..history], pending, held)
+            _ -> #(history, pending, [message, ..held])
+          }
+        Replied(completion) -> #(
+          [chat.from_completion(completion), ..history],
+          list.map(completion.tool_calls, fn(call) { call.id }),
+          held,
+        )
+        Returned(id, result) -> {
+          let text = case result {
+            Ok(text) | Error(text) -> agent.tool_result_text(text)
+          }
+          let history = [chat.ToolResultMessage(id, text, []), ..history]
+          case list.filter(pending, fn(pending) { pending != id }) {
+            [] -> #(release(held, history), [], [])
+            pending -> #(history, pending, held)
+          }
         }
-        chat.ToolResultMessage(id, text, [])
+        Failed(reason) -> #(
+          [
+            chat.UserMessage("The last reply failed.\n" <> reason, []),
+            ..release(held, history)
+          ],
+          [],
+          [],
+        )
+        Cancelled -> #(
+          [
+            chat.UserMessage("The last reply was cancelled.", []),
+            ..release(held, history)
+          ],
+          [],
+          [],
+        )
       }
-      Failed(reason) ->
-        chat.UserMessage("The last reply failed.\n" <> reason, [])
-      Cancelled -> chat.UserMessage("The last reply was cancelled.", [])
-    }
+    })
+  list.reverse(history)
+}
+
+// Held messages are newest first, as is the history.
+fn release(held, history) {
+  list.fold(list.reverse(held), history, fn(history, message) {
+    [chat.UserMessage(message, []), ..history]
   })
 }
 

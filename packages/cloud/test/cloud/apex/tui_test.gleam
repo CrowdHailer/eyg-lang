@@ -218,6 +218,33 @@ pub fn open_an_unfinished_turn_test() {
   assert string.contains(screen(model), "= 1")
 }
 
+pub fn write_while_the_chat_runs_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, Some("test"))
+  let assert tui.Opening(thread: tui.InChat(chat: talk, ..), ..) = opening
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let model = press(model, ["h", "i", "enter"])
+  // A message written while the chat replies is shown and added to the chat.
+  let model = press(model, ["m", "o", "r", "e", "enter"])
+  assert string.contains(screen(model), "you more")
+  assert string.contains(screen(model), "add to chat")
+  let assert Ok(Nil) = chat.add(context, talk, "more")
+  // A message added after the last reply is replied to next.
+  let assert Ok(replied) = chat.send(context, talk, "hi")
+  let #(model, _) = tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
+  assert string.contains(screen(model), "llm hi #2")
+  let assert Ok(Nil) = chat.add(context, talk, "again")
+  let #(model, _) = tui.update(model, tui.Checked(talk.id, True))
+  let assert tui.Running(waiting: True, ..) = model.screen
+  assert string.contains(screen(model), "waiting…")
+  assert 1 == list.length(string.split(screen(model), "you more")) - 1
+}
+
 pub fn show_progress_and_scroll_back_test() {
   use context <- helpers.context()
   let assert Ok(home) = box.create(context, Some("home"))

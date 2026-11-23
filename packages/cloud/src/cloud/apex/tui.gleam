@@ -137,6 +137,10 @@ pub type Message {
   Opened(Result(Opening, box.Reason))
   /// The outcome of a turn in the shell with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
+  /// Whether the chat with this id has messages sent after its last reply.
+  Checked(String, unanswered: Bool)
+  /// A message was added to a chat that is replying.
+  Added(Result(Nil, box.Reason))
   /// Work in another process stopped without a reply.
   Stopped(String)
   Pasted(String)
@@ -249,6 +253,11 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       effect.none(),
     )
     _, _, Opened(Ok(opening)) -> opened(model, opening)
+    _, _, Added(Ok(Nil)) -> #(model, effect.none())
+    _, _, Added(Error(reason)) -> #(
+      Model(..model, status: Problem(describe(reason))),
+      effect.none(),
+    )
     _, screen, message -> on_screen(model, screen, message)
   }
 }
@@ -415,8 +424,7 @@ fn on_screen(model: Model, screen, message) {
     Running(..) as running, Key("pagedown") ->
       scroll(model, running, 0 - page(model))
     Running(..) as running, Scrolled(lines) -> scroll(model, running, lines)
-    Running(waiting: True, ..), Key("esc") -> back(model)
-    Running(thread:, waiting: True, ..), Key("x") -> #(
+    Running(thread:, waiting: True, ..), Key("ctrl+x") -> #(
       Model(..model, status: Working("Cancelling the turn")),
       background(fn() {
         Opened({
@@ -428,8 +436,11 @@ fn on_screen(model: Model, screen, message) {
         })
       }),
     )
-    Running(waiting: True, ..), Key(_)
-    | Running(waiting: True, ..), Pasted(_)
+    // A message can be written while a chat runs, code is written once a turn finishes.
+    Running(waiting: True, draft: draft.Program(..), ..), Key("esc") ->
+      back(model)
+    Running(waiting: True, draft: draft.Program(..), ..), Key(_)
+    | Running(waiting: True, draft: draft.Program(..), ..), Pasted(_)
     -> #(model, effect.none())
     Running(draft: current, files:, ..) as running, Key(key) -> {
       let #(outcome, state) = draft.key(current, key, context.state, files)
@@ -460,6 +471,7 @@ fn on_screen(model: Model, screen, message) {
       if id == thread.id
     -> #(Model(..model, screen: Running(..running, files:)), effect.none())
     // A reply for a thread that is no longer shown is dropped, it is in the thread's history.
+    // A message sent to a chat after its last reply is replied to next.
     Running(thread:, log:, waiting: True, ..) as running, Replied(id, replied)
       if id == thread.id
     -> {
@@ -486,21 +498,25 @@ fn on_screen(model: Model, screen, message) {
           int.min(list.length(reply) - rows + 2, last_scroll(model, running))
         False -> 0
       }
+      let running =
+        Running(
+          ..running,
+          log:,
+          waiting: False,
+          progress: [],
+          arriving: "",
+          scroll:,
+        )
+      let model = Model(..model, screen: running)
       #(
-        Model(
-          ..model,
-          screen: Running(
-            ..running,
-            log:,
-            waiting: False,
-            progress: [],
-            arriving: "",
-            scroll:,
-          ),
-        ),
-        list_files(context, thread),
+        model,
+        effect.batch([list_files(context, thread), check(context, thread)]),
       )
     }
+    Running(thread: InChat(chat:, ..) as thread, waiting: False, ..) as running,
+      Checked(id, True)
+      if id == thread.id
+    -> reply(model, running, chat)
     _, _ -> #(model, effect.none())
   }
 }
@@ -669,19 +685,62 @@ pub fn files(
 }
 
 // Send code to the shell or a message to the chat, its outcome is added to the log when it is replied to.
+// A message sent while a chat is replying is added to the chat after the tool calls that are running.
 fn send(model: Model, running, input, draft) {
-  let assert Running(thread:, log:, ..) = running
-  let log = list.append(log, [sent(input)])
-  let screen =
-    Running(
-      ..running,
-      log:,
-      draft:,
-      waiting: True,
-      progress: [],
-      arriving: "",
-      scroll: 0,
+  let assert Running(thread:, log:, waiting:, ..) = running
+  let running = Running(..running, log: list.append(log, [sent(input)]), draft:)
+  case waiting, thread, input {
+    True, InChat(chat:, ..), draft.Said(message) -> #(
+      Model(..model, screen: Running(..running, scroll: 0), status: Quiet),
+      background(fn() { Added(chatting.add(model.context, chat, message)) }),
     )
+    _, _, _ -> run_turn(model, running, input)
+  }
+}
+
+// Whether a chat has messages sent after its last reply.
+fn check(context: Context, thread: Thread) {
+  case thread {
+    InChat(chat:, ..) ->
+      background(fn() {
+        case chatting.entries(context, chat.id) {
+          Ok(entries) ->
+            Checked(chat.id, case chat_event.next(entries) {
+              chat_event.Idle(_) -> False
+              _ -> True
+            })
+          Error(_) -> Checked(chat.id, False)
+        }
+      })
+    InShell(..) -> effect.none()
+  }
+}
+
+// Reply to messages sent to the chat that have no reply.
+fn reply(model: Model, running, chat: Chat) {
+  let assert Running(..) = running
+  let context = model.context
+  let screen =
+    Running(..running, waiting: True, progress: [], arriving: "", scroll: 0)
+  #(
+    Model(..model, screen:, status: Quiet),
+    effect.batch([
+      background(fn() {
+        Replied(chat.id, {
+          use replied <- result.map(chatting.reply(context, chat))
+          #(replied, [])
+        })
+      }),
+      poll(context, InChat(chat.id, chat)),
+    ]),
+  )
+}
+
+// Start a turn that is already in the log.
+fn run_turn(model: Model, running, input) {
+  let assert Running(thread:, ..) = running
+  let screen =
+    Running(..running, waiting: True, progress: [], arriving: "", scroll: 0)
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -974,8 +1033,17 @@ pub fn render(model: Model) -> buffer.Buffer {
         #("esc", "back"),
       ],
     )
+    Running(waiting: True, draft: draft.Message(..), ..) as running -> #(
+      title(running),
+      [
+        #("enter", "add to chat"),
+        #("shift+enter", "new line"),
+        #("ctrl+x", "cancel"),
+        #("esc", "boxes"),
+      ],
+    )
     Running(waiting: True, ..) as running -> #(title(running), [
-      #("x", "cancel"),
+      #("ctrl+x", "cancel"),
       #("esc", "boxes"),
     ])
     Secrets(box, ..) -> #("Secrets of " <> option.unwrap(box.name, box.id), [
@@ -1172,6 +1240,14 @@ fn body(screen, area: geometry.Rect, model: Model) {
       let columns = area.size.width
       let chat = draft.mode(current) == "message"
       let lines = list.flat_map(log, entry_lines(_, chat, columns))
+      // A draft taller than half the area shows the part around its cursor.
+      let drafted = fn(most) {
+        let #(lines, cursor) = draft.lines(current, True, columns - 2)
+        let most = int.max(3, most)
+        let start =
+          int.clamp(cursor - most + 1, 0, int.max(0, list.length(lines) - most))
+        prompted(list.drop(lines, start) |> list.take(most))
+      }
       let below = case waiting {
         True ->
           list.map(progress, fn(step) {
@@ -1188,18 +1264,12 @@ fn body(screen, area: geometry.Rect, model: Model) {
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),
           ])
-        False -> {
-          // A draft taller than half the area shows the part around its cursor.
-          let #(lines, cursor) = draft.lines(current, True, columns - 2)
-          let most = int.max(3, area.size.height / 2)
-          let start =
-            int.clamp(
-              cursor - most + 1,
-              0,
-              int.max(0, list.length(lines) - most),
-            )
-          prompted(list.drop(lines, start) |> list.take(most))
-        }
+          // A message can be written for the chat while it runs.
+          |> list.append(case chat {
+            True -> drafted(area.size.height / 4)
+            False -> []
+          })
+        False -> drafted(area.size.height / 2)
       }
       let rows = int.max(0, area.size.height - list.length(below))
       // Scrolling back shows earlier lines, it stops at the first.
