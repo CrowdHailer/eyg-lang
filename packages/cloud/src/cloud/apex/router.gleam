@@ -1,5 +1,6 @@
 import cloud/apex/api
 import cloud/apex/context.{type Context}
+import cloud/apex/web
 import cloud/box/controller as boxes
 import cloud/chats/api as chats
 import cloud/shells/api as shells
@@ -23,6 +24,8 @@ pub fn controller(context: Context) -> controller.Controller {
 
 pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
   case request.path_segments(ctx.request), ctx.request.method {
+    [], http.Get -> web.page(ctx)
+    ["tui"], http.Get -> web.tui(ctx, context)
     ["boxes"], http.Get -> boxes.list(context)
     ["boxes"], http.Post -> boxes.create(ctx, context)
     ["boxes", id], http.Get -> boxes.get(id, context)

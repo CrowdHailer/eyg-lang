@@ -1,4 +1,4 @@
-//// One app serves the API, see `router` for the routes.
+//// One app serves the API and the web interface, see `router` for the routes.
 
 import cloud/apex/context.{type Context}
 import cloud/apex/router

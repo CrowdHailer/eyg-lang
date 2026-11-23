@@ -88,6 +88,12 @@ Chats are durable: the journal records each message, completion and tool call re
 A chat that stopped continues from its journal, a call that was running is finished in its shell rather than run again.
 See `cloud/chats/chat.gleam`.
 
+### Web interface
+
+The web interface is served with the API, on the same port, and also only accepts local connections.
+It is a terminal in the page that lists the named boxes and creates new ones.
+A box is opened by starting a shell or a chat in it, or in a transient copy of it.
+
 ### Configuration
 
 ```sh
