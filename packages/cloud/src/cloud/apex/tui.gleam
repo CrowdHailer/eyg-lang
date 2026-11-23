@@ -14,6 +14,7 @@ import cloud/data/shells.{type Shell}
 import cloud/shells/turn
 import etui/buffer
 import etui/geometry.{Position}
+import etui/span
 import etui/style
 import etui/text
 import etui/widgets/block
@@ -44,10 +45,18 @@ pub type Screen {
     // Where the shell or chat is, for the title.
     place: String,
     thread: Thread,
-    log: List(String),
+    log: List(Entry),
     input: String,
     waiting: Bool,
   )
+}
+
+/// What a shell's log shows, each is coloured differently.
+pub type Entry {
+  Sent(String)
+  Printed(String)
+  Returned(String)
+  Failed(String)
 }
 
 /// What is open, a shell or a chat.
@@ -163,11 +172,7 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
           effect.none(),
         )
         "enter" if input != "" -> {
-          let sent = case thread {
-            InChat(..) -> "you: " <> input
-            InShell(..) -> "> " <> input
-          }
-          let log = list.append(log, [sent])
+          let log = list.append(log, [Sent(input)])
           #(
             Model(
               ..model,
@@ -189,20 +194,16 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
     Running(thread:, log:, ..) as running, Replied(id, replied)
       if id == thread.id
     -> {
-      let chat = case thread {
-        InChat(..) -> True
-        InShell(..) -> False
-      }
       let lines = case replied {
         Ok(#(outcome, output)) ->
-          list.append(output, [
-            case outcome, chat {
-              Ok(value), True -> "llm: " <> value
-              Ok(value), False -> "= " <> value
-              Error(reason), _ -> "! " <> reason
+          list.map(output, Printed)
+          |> list.append([
+            case outcome {
+              Ok(value) -> Returned(value)
+              Error(reason) -> Failed(reason)
             },
           ])
-        Error(reason) -> ["! " <> describe(reason)]
+        Error(reason) -> [Failed(describe(reason))]
       }
       let log = list.append(log, lines)
       #(
@@ -211,6 +212,13 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       )
     }
     _, _ -> #(model, effect.none())
+  }
+}
+
+fn is_chat(thread: Thread) -> Bool {
+  case thread {
+    InChat(..) -> True
+    InShell(..) -> False
   }
 }
 
@@ -288,52 +296,88 @@ pub fn view(model: Model) {
   terminal.view(render(model), Key)
 }
 
+// The colours of the interface, the code uses the editor's own.
+const accent = style.Rgb(97, 175, 239)
+
+const muted = style.Rgb(110, 118, 134)
+
+const green = style.Rgb(152, 195, 121)
+
+const red = style.Rgb(224, 108, 117)
+
+const purple = style.Rgb(198, 120, 221)
+
+const selected = style.Rgb(38, 56, 84)
+
+fn fg(color) {
+  style.default_style() |> style.with_fg(color)
+}
+
 /// The screen as it is drawn.
 pub fn render(model: Model) -> buffer.Buffer {
   let screen = buffer.buffer_new(geometry.rect_new(0, 0, width, height))
   let area = geometry.rect_new(0, 1, width, height - 3)
   let #(title, help) = case model.screen {
-    Boxes(..) -> #("Boxes", "↑↓ choose  enter open  r refresh")
-    Open(box, ..) -> #(
-      option.unwrap(box.name, box.id),
-      "↑↓ choose  enter start  esc back",
-    )
+    Boxes(..) -> #("Boxes", [
+      #("↑↓", "choose"),
+      #("enter", "open"),
+      #("r", "refresh"),
+    ])
+    Open(box, ..) -> #(option.unwrap(box.name, box.id), [
+      #("↑↓", "choose"),
+      #("enter", "start"),
+      #("esc", "back"),
+    ])
     Running(place:, thread:, ..) -> #(
       case thread {
         InChat(..) -> "Chat in " <> place
         InShell(..) -> "Shell in " <> place
       },
-      "enter send  esc boxes",
+      [#("enter", "send"), #("esc", "boxes")],
     )
   }
   let frame =
     block.block_new()
     |> block.with_border(block.Rounded)
-    |> block.with_title(" " <> title <> " ", block.Top)
+    |> block.with_style(muted, style.Default)
+    |> block.with_title_styled(
+      [
+        span.span_styled(
+          " " <> title <> " ",
+          fg(accent) |> style.add_modifier(style.bold()),
+        ),
+      ],
+      block.Top,
+    )
   let inner = block.inner(area, frame)
+  let help =
+    list.flat_map(help, fn(entry) {
+      [
+        span.span_styled(" " <> entry.0, fg(accent)),
+        span.span_styled(" " <> entry.1 <> " ", fg(muted)),
+      ]
+    })
   screen
-  |> line(0, " EYG cloud", style.bold_style())
+  |> spans(0, [
+    span.span_styled(" EYG", fg(accent) |> style.add_modifier(style.bold())),
+    span.span_styled(" cloud", fg(muted)),
+  ])
   |> block.render(area, frame)
   |> body(inner, model)
-  |> line(height - 2, " " <> help, style.dim_style())
-  |> line(height - 1, " " <> model.status, style.default_style())
+  |> spans(height - 2, help)
+  |> spans(height - 1, [span.span_styled(" " <> model.status, fg(red))])
 }
 
-fn line(screen, y, content, style) {
-  buffer.set_string(
-    screen,
-    Position(0, y),
-    text.truncate(content, width, "…"),
-    style,
-  )
+fn spans(screen, y, spans) {
+  span.render_line(screen, Position(0, y), span.line_new(spans), width)
 }
 
 fn body(screen, area: geometry.Rect, model: Model) {
   case model.screen {
-    Boxes(boxes, selected) ->
+    Boxes(boxes, chosen) ->
       list.map(boxes, fn(box) { option.unwrap(box.name, box.id) })
-      |> menu(screen, area, selected)
-    Open(box, choices, selected) -> {
+      |> menu(screen, area, chosen)
+    Open(box, choices, chosen) -> {
       let name = option.unwrap(box.name, box.id)
       list.map(choices, fn(choice) {
         let kind = case choice.llm {
@@ -345,48 +389,69 @@ fn body(screen, area: geometry.Rect, model: Model) {
           False -> kind <> " in " <> name
         }
       })
-      |> menu(screen, area, selected)
+      |> menu(screen, area, chosen)
     }
-    Running(log:, input:, waiting:, ..) -> {
+    Running(thread:, log:, input:, waiting:, ..) -> {
+      let chat = is_chat(thread)
       let columns = area.size.width
       let rows = area.size.height - 1
       let lines =
         list.flat_map(log, fn(entry) {
-          string.split(entry, "\n") |> list.flat_map(text.wrap(_, columns))
+          let #(prefix, content, style) = case entry, chat {
+            Sent(text), True -> #(
+              "you ",
+              text,
+              fg(accent) |> style.add_modifier(style.bold()),
+            )
+            Sent(text), False -> #("> ", text, fg(accent))
+            Printed(text), _ -> #("", text, fg(muted))
+            Returned(text), True -> #("llm ", text, fg(purple))
+            Returned(text), False -> #("= ", text, fg(green))
+            Failed(text), _ -> #("! ", text, fg(red))
+          }
+          string.split(prefix <> content, "\n")
+          |> list.flat_map(text.wrap(_, columns))
+          |> list.map(fn(line) { #(line, style) })
         })
       let shown = list.drop(lines, int.max(list.length(lines) - rows, 0))
       let screen =
-        list.index_fold(shown, screen, fn(screen, content, i) {
+        list.index_fold(shown, screen, fn(screen, line, i) {
           buffer.set_string(
             screen,
             Position(area.position.x, area.position.y + i),
-            content,
-            style.default_style(),
+            line.0,
+            line.1,
           )
         })
       let prompt = case waiting {
-        True -> #("waiting…", style.dim_style())
-        False -> #(
-          text.truncate("> " <> input, columns - 1, "…") <> "▏",
-          style.default_style(),
-        )
+        True -> [span.span_styled("waiting…", fg(muted))]
+        False -> [
+          span.span_styled("> ", fg(accent)),
+          span.span_plain(text.truncate(input, columns - 3, "…")),
+          span.span_styled("▏", fg(accent)),
+        ]
       }
-      buffer.set_string(
+      span.render_line(
         screen,
         Position(area.position.x, area.position.y + rows),
-        prompt.0,
-        prompt.1,
+        span.line_new(prompt),
+        columns,
       )
     }
   }
 }
 
-fn menu(items, screen, area, selected) {
+fn menu(items, screen, area, chosen) {
   list_widget.list_new(items)
+  |> list_widget.with_highlight_style(
+    fg(style.Rgb(255, 255, 255))
+    |> style.with_bg(selected)
+    |> style.add_modifier(style.bold()),
+  )
   |> list_widget.render_stateful(
     screen,
     area,
     _,
-    list_widget.ListState(selected, 0),
+    list_widget.ListState(chosen, 0),
   )
 }

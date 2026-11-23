@@ -63,7 +63,7 @@ pub fn start_a_shell_in_a_transient_copy_test() {
   let model = press(model, list.append(keys, ["2", ")"]))
   assert string.contains(screen(model), "> !int_add(1, 2)")
   let model = press(model, ["enter"])
-  let assert tui.Running(waiting: True, log: ["> !int_add(1, 2)"], ..) =
+  let assert tui.Running(waiting: True, log: [tui.Sent("!int_add(1, 2)")], ..) =
     model.screen
   assert string.contains(screen(model), "waiting")
 
@@ -94,6 +94,6 @@ pub fn chat_in_the_box_test() {
   let model = press(model, ["h", "i", "enter"])
   let assert Ok(replied) = chat.send(context, talk, "hi")
   let #(model, _) = tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
-  assert string.contains(screen(model), "you: hi")
-  assert string.contains(screen(model), "llm: hi #1")
+  assert string.contains(screen(model), "you hi")
+  assert string.contains(screen(model), "llm hi #1")
 }
