@@ -48,6 +48,11 @@ A shell in a transient box, cloned from a named box, works on its own copy of th
 | `GET /shells/:id` | The shell and all of its turns. |
 | `POST /shells/:id/turns` | Run the code from `{"code": "1"}`. |
 | `GET /shells/:id/events` | Every entry of the shell's journal as JSON lines. |
+| `GET /shells/:id/trace` | OpenTelemetry spans for the shell, each turn and each request, as OTLP JSON. |
+
+
+Traces are made from the shell's journal, so there is no separate instrumentation.
+The OTLP JSON can be posted to the `/v1/traces` endpoint of any OpenTelemetry collector.
 
 A turn returns its `output` and either a `value` or an `error`.
 File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.

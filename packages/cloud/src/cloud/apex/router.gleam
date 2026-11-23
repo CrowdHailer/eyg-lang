@@ -40,6 +40,7 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
     ["boxes", id, "shells"], http.Get -> shells.list(id, context)
     ["shells", id], http.Get -> shells.get(id, context)
     ["shells", id, "events"], http.Get -> shells.export(id, context)
+    ["shells", id, "trace"], http.Get -> shells.trace(id, context)
     ["shells", id, "turns"], http.Post -> shells.turn(ctx, id, context)
     _, _ -> api.status(404)
   }

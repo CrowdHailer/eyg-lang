@@ -8,6 +8,7 @@ import cloud/data/db
 import cloud/data/shells.{type Shell}
 import cloud/registry
 import cloud/shells/event
+import cloud/shells/trace
 import cloud/shells/turn
 import gleam/dynamic/decode
 import gleam/http/response.{type Response}
@@ -40,6 +41,13 @@ pub fn export(id, context: Context) {
   |> content.Text
   |> response.set_body(response.new(200), _)
   |> response.set_header("content-type", "application/x-ndjson")
+}
+
+/// OpenTelemetry spans for the shell and each of its turns and requests, as OTLP JSON.
+pub fn trace(id, context: Context) {
+  use history <- try(turn.history(context, id))
+  trace.encode(id, trace.spans(id, history))
+  |> api.json(200)
 }
 
 pub fn list(box, context: Context) {

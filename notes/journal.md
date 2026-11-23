@@ -32,4 +32,4 @@ A turn resolves a package once, later releases are seen by the next turn.
 The finished output records the value and output of a turn although replay could compute them,
 so turns can be listed without running any code.
 
-Entries are recorded at the time they are inserted, not when their transaction started, so they are in order.
+Entries are recorded at the time they are inserted, not when their transaction started, so a trace shows them in order.
