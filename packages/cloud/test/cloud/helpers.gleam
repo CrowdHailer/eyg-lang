@@ -1,3 +1,4 @@
+import cloud/apex/access
 import cloud/apex/context.{Context}
 import cloud/apex/server
 import cloud/beam/execute
@@ -85,7 +86,7 @@ pub fn state() {
 }
 
 pub fn dispatch(request, context) {
-  testing.send(request, server.app(context))
+  testing.send(request, server.app(context, access.Local))
 }
 
 /// Wait for the check to pass, checking every 10ms.

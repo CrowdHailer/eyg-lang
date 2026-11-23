@@ -18,5 +18,5 @@ pub fn build_config(postgres_pool_name, postgres) {
   |> pog.host(host)
   |> pog.port(port)
   |> pog.password(Some(password))
-  |> pog.pool_size(2)
+  |> pog.pool_size(5)
 }

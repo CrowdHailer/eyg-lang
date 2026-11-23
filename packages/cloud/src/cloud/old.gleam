@@ -12,13 +12,13 @@ import envoy
 import gleam/dict
 import gleam/io
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import overlay/llm/provider
 import simplifile
 
-pub fn start(context: Context, state, llm: provider.Llm) -> Nil {
+pub fn start(context: Context, state, llm: Option(provider.Llm)) -> Nil {
   // The check-in to the #noise channel is a demo, it only runs when asked for.
   let #(schedules, state) = case envoy.get("DISCORD_NOISE") {
     Error(Nil) -> #([], state)
@@ -52,8 +52,12 @@ pub fn start(context: Context, state, llm: provider.Llm) -> Nil {
     Error(_) -> Nil
   }
   // Discord channels are durable chats in a box that is chosen explicitly.
-  case dict.get(state.secrets, "DISCORD_BOT_TOKEN"), envoy.get("DISCORD_BOX") {
-    Ok(token), Ok(box) -> {
+  case
+    dict.get(state.secrets, "DISCORD_BOT_TOKEN"),
+    envoy.get("DISCORD_BOX"),
+    llm
+  {
+    Ok(token), Ok(box), Some(llm) -> {
       let assert Ok(guild) = envoy.get("DISCORD_GUILD_ID")
       let assert Ok(channels) = channels.start(context, box, llm.model)
       let selected =
@@ -73,10 +77,12 @@ pub fn start(context: Context, state, llm: provider.Llm) -> Nil {
         )
       Nil
     }
-    Ok(_), Error(Nil) ->
+    Ok(_), Error(Nil), _ ->
       io.println_error(
-        "Discord needs DISCORD_BOX, the name of the box its channels have sessions in",
+        "Discord needs DISCORD_BOX, the name of the box its channels chat in",
       )
-    Error(_), _ -> Nil
+    Ok(_), _, None ->
+      io.println_error("Discord needs an llm to chat with, see OLLAMA_API_KEY")
+    Error(_), _, _ -> Nil
   }
 }

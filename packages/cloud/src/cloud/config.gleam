@@ -10,6 +10,8 @@ pub type Config {
     secret_key_base: String,
     bucket: S3Bucket,
     postgres: Postgres,
+    // Without a password the server only accepts local connections, see `cloud/apex/access`.
+    access_password: Result(String, Nil),
     port: Int,
   )
 }
@@ -49,8 +51,12 @@ pub fn from_env() {
   use secret_key_base <- try(envoy.get("SECRET_KEY_BASE"))
   use bucket <- try(bucket())
   use postgres <- try(postgres())
+  let access_password = case envoy.get("ACCESS_PASSWORD") {
+    Ok(password) if password != "" -> Ok(password)
+    _ -> Error(Nil)
+  }
   let port = envoy.get("PORT") |> try(int.parse) |> result.unwrap(8080)
-  Ok(Config(secret_key_base:, bucket:, postgres:, port:))
+  Ok(Config(secret_key_base:, bucket:, postgres:, access_password:, port:))
 }
 
 /// The database from `POSTGRES_HOST`, `POSTGRES_PORT` and `POSTGRES_PASSWORD`.

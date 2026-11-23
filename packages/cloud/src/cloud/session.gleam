@@ -10,6 +10,7 @@ import eyg/interpreter/state
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{type Subject}
 import gleam/io
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
 import gleam/result
 import multiformats/cid/v1
@@ -36,7 +37,8 @@ type State {
     sessions: Dict(String, Session),
     // session is not a good name for overlay.Session
     // it is closer to config as it is constant over the session life time.
-    agent_config: overlay.Session,
+    // Prompts are answered by the agent if an llm is configured.
+    agent_config: Option(overlay.Session),
   )
 }
 
@@ -46,16 +48,21 @@ pub type Session {
 
 pub fn start(
   hub: origin.Origin,
-  llm: provider.Llm,
+  llm: Option(provider.Llm),
   secrets: Dict(String, String),
   bucket: config.S3Bucket,
 ) -> actor.StartResult(Subject(Message)) {
-  start_with_session(hub, overlay.setup(hub, llm), secrets, bucket)
+  start_with_session(
+    hub,
+    option.map(llm, overlay.setup(hub, _)),
+    secrets,
+    bucket,
+  )
 }
 
 pub fn start_with_session(
   hub: origin.Origin,
-  agent_session: overlay.Session,
+  agent_session: Option(overlay.Session),
   secrets: Dict(String, String),
   bucket,
 ) -> actor.StartResult(Subject(Message)) {
@@ -128,14 +135,23 @@ fn handle_session(state: State, id, action, print) {
       #(history, execute_state, root)
     }
     UserPrompt(text) ->
-      overlay.inner_loop(
-        state.agent_config,
-        state.execute_state,
-        state.policy,
-        [chat.UserMessage(text, []), ..history],
-        root,
-        print,
-      )
+      case state.agent_config {
+        Some(agent_config) ->
+          overlay.inner_loop(
+            agent_config,
+            state.execute_state,
+            state.policy,
+            [chat.UserMessage(text, []), ..history],
+            root,
+            print,
+          )
+        None -> {
+          print(execute.StandardError(
+            "No llm is configured, set OLLAMA_API_KEY to chat",
+          ))
+          #(history, state.execute_state, root)
+        }
+      }
   }
   actor.continue(
     State(
