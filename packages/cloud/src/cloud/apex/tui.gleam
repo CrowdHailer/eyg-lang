@@ -82,6 +82,8 @@ pub type Screen {
   Recent(threads: List(#(Thread, String)), selected: Int, transient: Bool)
   /// Choosing how to start a shell or chat from a named box.
   Open(box: Box, choices: List(Choice), selected: Int)
+  /// The names of a box's secrets, values are never shown.
+  Secrets(box: Box, names: List(String), selected: Int)
   Running(
     // Where the shell or chat is, for the title.
     place: String,
@@ -117,12 +119,16 @@ pub type Thread {
 /// A shell, or a chat with an llm, in the box or in a transient copy of it.
 pub type Choice {
   Start(transient: Bool, llm: Option(String))
+  ManageSecrets
 }
 
 pub type Message {
   Key(String)
   Listed(Result(List(Box), box.Reason))
   Created(Result(Box, box.Reason))
+  SecretsListed(Box, Result(List(String), box.Reason))
+  /// The name of a secret to set, its value is asked for next.
+  SecretNamed(String)
   RecentListed(Bool, Result(List(#(Thread, String)), box.Reason))
   Opened(Result(Opening, box.Reason))
   /// The outcome of a turn in the shell with this id.
@@ -339,11 +345,65 @@ fn on_screen(model: Model, screen, message) {
               Model(..model, status: Working("Starting a shell")),
               background(fn() { Opened(start(context, box, transient, llm)) }),
             )
+            [ManageSecrets, ..] -> #(
+              Model(..model, status: Working("Loading secrets")),
+              background(fn() { SecretsListed(box, secret_names(context, box)) }),
+            )
             [] -> #(model, effect.none())
           }
         "esc" -> back(model)
         _ -> #(model, effect.none())
       }
+    _, SecretsListed(box, Ok(names)) -> #(
+      Model(..model, screen: Secrets(box, names, 0), status: Quiet),
+      effect.none(),
+    )
+    _, SecretsListed(_, Error(reason)) -> #(
+      Model(..model, status: Problem(describe(reason))),
+      effect.none(),
+    )
+    Secrets(box, names, selected), Key(key) ->
+      case key {
+        "up" | "down" -> #(
+          Model(
+            ..model,
+            screen: Secrets(box, names, move(key, selected, names)),
+          ),
+          effect.none(),
+        )
+        "a" -> {
+          let prompt = Prompt("Name of the secret", "", False, SecretNamed)
+          #(Model(..model, prompt: Some(prompt)), effect.none())
+        }
+        "d" ->
+          case list.drop(names, selected) {
+            [name, ..] -> #(
+              Model(..model, status: Working("Removing " <> name)),
+              background(fn() {
+                SecretsListed(box, {
+                  use Nil <- result.try(box.delete_secret(context, box.id, name))
+                  secret_names(context, box)
+                })
+              }),
+            )
+            [] -> #(model, effect.none())
+          }
+        "esc" -> #(
+          Model(..model, screen: Open(box, choices(context), 0)),
+          effect.none(),
+        )
+        _ -> #(model, effect.none())
+      }
+    Secrets(box:, ..), SecretNamed(name) -> {
+      let submit = fn(value) {
+        SecretsListed(box, {
+          use Nil <- result.try(box.set_secret(context, box.id, name, value))
+          secret_names(context, box)
+        })
+      }
+      let prompt = Prompt("Value of " <> name, "", True, submit)
+      #(Model(..model, prompt: Some(prompt), status: Quiet), effect.none())
+    }
     Running(scroll:, ..) as running, Key("pageup") -> #(
       Model(..model, screen: Running(..running, scroll: scroll + page(model))),
       effect.none(),
@@ -742,12 +802,18 @@ fn move(key, selected, items) {
   }
 }
 
-/// Every way to start from a box, a shell or a chat with each of the configured llms.
+/// Every way to start a shell from a box, with each of the configured llms, then its secrets.
 pub fn choices(context: Context) -> List(Choice) {
   let llms = dict.keys(context.llms) |> list.sort(string.compare)
   list.flat_map([None, ..list.map(llms, Some)], fn(llm) {
     [Start(False, llm), Start(True, llm)]
   })
+  |> list.append([ManageSecrets])
+}
+
+fn secret_names(context, box: Box) {
+  use secrets <- result.map(box.secrets(context, box.id))
+  dict.keys(secrets) |> list.sort(string.compare)
 }
 
 /// Start a shell in the box or a transient copy of it, or a chat if there is an llm.
@@ -851,6 +917,12 @@ pub fn render(model: Model) -> buffer.Buffer {
     Running(waiting: True, ..) as running -> #(title(running), [
       #("x", "cancel"),
       #("esc", "boxes"),
+    ])
+    Secrets(box, ..) -> #("Secrets of " <> option.unwrap(box.name, box.id), [
+      #("↑↓", "choose"),
+      #("a", "add"),
+      #("d", "delete"),
+      #("esc", "back"),
     ])
     Open(box, ..) -> #(option.unwrap(box.name, box.id), [
       #("↑↓", "choose"),
@@ -991,10 +1063,21 @@ fn body(screen, area: geometry.Rect, model: Model) {
               False -> kind <> " in " <> name
             }
           }
+          ManageSecrets -> "Secrets of " <> name
         }
       })
       |> menu(screen, area, chosen)
     }
+    Secrets(names: [], ..) ->
+      buffer.set_string(
+        screen,
+        area.position,
+        "No secrets, press a to add one",
+        fg(muted),
+      )
+    Secrets(names:, selected: chosen, ..) ->
+      list.map(names, fn(name) { name <> "  ••••••" })
+      |> menu(screen, area, chosen)
     Running(log:, draft: current, waiting:, progress:, scroll:, files:, ..) -> {
       // A wide screen shows the files of the box beside the shell.
       let pane = 26

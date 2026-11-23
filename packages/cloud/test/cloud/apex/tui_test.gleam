@@ -61,7 +61,7 @@ pub fn start_a_shell_in_a_transient_copy_test() {
   let model = press(model, ["enter", "down"])
   assert string.contains(screen(model), "Shell in a transient copy of home")
   let assert tui.Open(_, choices, 1) = model.screen
-  let assert [_, tui.Start(True, None)] = choices
+  let assert [_, tui.Start(True, None), tui.ManageSecrets] = choices
 
   let assert Ok(opening) = tui.start(context, home, True, None)
   let assert tui.Opening(place:, thread: tui.InShell(shell:, ..), ..) = opening
@@ -104,6 +104,7 @@ pub fn chat_in_the_box_test() {
       tui.Start(True, None),
       tui.Start(False, Some("test")),
       tui.Start(True, Some("test")),
+      tui.ManageSecrets,
     ]
   let assert Ok(opening) = tui.start(context, home, False, Some("test"))
   let assert tui.Opening(place: "home", thread: tui.InChat(chat: talk, ..), ..) =
@@ -136,6 +137,34 @@ pub fn create_a_box_test() {
   let #(model, _) = tui.update(model, prompt.submit(prompt.input))
   let #(model, _) = tui.update(model, tui.Listed(box.named(context)))
   assert string.contains(screen(model), "garden")
+}
+
+// Run the work of a prompt as the interface does when it is submitted.
+fn submit(model: tui.Model) {
+  let assert Some(prompt) = model.prompt
+  let #(model, _) = tui.update(model, Key("enter"))
+  tui.update(model, prompt.submit(prompt.input)).0
+}
+
+pub fn manage_secrets_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Listed(Ok([home])))
+  let model = press(model, ["enter", "down", "down"])
+  assert string.contains(screen(model), "Secrets of home")
+  let #(model, _) = tui.update(model, tui.SecretsListed(home, Ok([])))
+  assert string.contains(screen(model), "No secrets")
+
+  let model = press(model, ["a", ..string.to_graphemes("TOKEN")]) |> submit
+  let model = press(model, string.to_graphemes("s3cr3t"))
+  // The value is hidden as it is typed.
+  assert !string.contains(screen(model), "s3cr3t")
+  let model = submit(model)
+  assert Ok(dict.from_list([#("TOKEN", "s3cr3t")]))
+    == box.secrets(context, home.id)
+  assert string.contains(screen(model), "TOKEN")
+  assert !string.contains(screen(model), "s3cr3t")
 }
 
 pub fn reopen_a_session_test() {

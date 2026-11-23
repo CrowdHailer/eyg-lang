@@ -98,7 +98,7 @@ See `cloud/chats/chat.gleam`.
 
 The web interface is served with the API, on the same port and with the same access.
 It is a terminal in the page that lists the named boxes and creates new ones.
-A box is opened by starting a shell or a chat in it, or in a transient copy of it.
+A box is opened by starting a shell or a chat in it, or in a transient copy of it, or by managing its secrets.
 The terminal fills the window and the log scrolls back with page up and page down.
 A shell's programs are written as EYG text, which can be pasted, or with the structural editor and the same keys as the EYG shell.
 Tab switches between them and keeps both, shift and enter starts a new line in text and in chat messages.
