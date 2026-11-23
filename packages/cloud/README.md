@@ -13,8 +13,42 @@ storage checks, and resetting local data.
 A box is a file system with an id.
 A box with a name is shared, a box without one is transient and only reached through its id.
 Each change is recorded as an event with the new file system root, so a box is the chain of its roots.
+A box only moves to a root where every `.eyg` file type checks, imports are resolved in the same file system.
 
-Events are stored in Postgres and the blocks of the file system in a blob store, under their content identifier.
+Events are stored in Postgres and the blocks of the file system in S3, under their content identifier.
+
+### API
+
+The API is served by one howdy app, routed by matching on the path and method in `cloud/apex/router.gleam`.
+It has no authentication so it only accepts local connections.
+
+| Request | |
+| --- | --- |
+| `GET /boxes` | The named boxes. |
+| `POST /boxes` | Create a box from `{"name": "home"}`, leave out the name for a transient box. Add `"from": id` to start at the root of another box. |
+| `GET /boxes/:id` | The name, latest sequence and root of the box. |
+| `GET /boxes/:id/files/*path` | The contents of a file or the entries of a directory. |
+| `PUT /boxes/:id/files/*path` | Write the request body to a file. Missing directories are created. |
+| `DELETE /boxes/:id/files/*path` | Delete a file or directory. |
+
+A change that leaves an invalid module is rejected with status 422 and the box is not changed.
+Status 409 is returned when the name is taken or the box was changed by something else first.
+
+### Configuration
+
+```sh
+SECRET_KEY_BASE=
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_PASSWORD=postgres
+S3_ENDPOINT=https://s3.eu-west-1.amazonaws.com
+S3_REGION=eu-west-1
+S3_BUCKET=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+# optional, defaults to 8080
+PORT=8080
+```
 
 ## Sessions
 

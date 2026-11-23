@@ -1,23 +1,20 @@
-import cloud/apex/context
+//// One app serves the API, see `router` for the routes.
+
+import cloud/apex/context.{type Context}
 import cloud/apex/router
 import howdy
+import howdy/logger
 
-pub fn start(config, conn) {
-  build(config, conn)
-  |> howdy.start
-}
-
-pub fn supervised(config, conn) {
-  build(config, conn)
+/// There is no authentication yet so only local connections are accepted.
+pub fn supervised(context: Context, port: Int) {
+  app(context)
+  |> howdy.bind(to: "127.0.0.1")
+  |> howdy.listening(on: port)
   |> howdy.supervised
 }
 
-fn build(config, conn) {
-  // let Config(secret_key_base:, ..) = config
-  let context = context.from_config(config, conn)
-
+pub fn app(context: Context) -> howdy.App {
   howdy.new()
-  |> howdy.bind(to: "0.0.0.0")
-  |> howdy.controller(router.route(context))
+  |> howdy.middleware(logger.log)
+  |> howdy.controller(router.controller(context))
 }
-/// The server module is where we start a process and move from functional core to describing OTP trees

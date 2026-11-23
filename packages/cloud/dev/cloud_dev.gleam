@@ -1,12 +1,12 @@
 import argv
 import bucket/get_object
 import bucket/list_objects
+import cloud/app
 import cloud/blobs/blobs
 import cloud/config
 import cloud/data/migrations
 import cloud/db/pool
 import cloud/discord/api/client as discord
-import cloud/old
 import cloud/schedule
 import cloud/schedules
 import cloud/session
@@ -65,7 +65,7 @@ fn do_main(args) {
     }
     ["cron", name] -> {
       let assert Ok(config) = config.bucket()
-      let #(state, llm) = old.setup(config)
+      let #(state, llm) = app.setup(config)
       let assert Ok(#(schedules, state)) = schedules.load(state)
       let assert Ok(runtime) = schedule.runtime(state)
       let assert Ok(sessions) =

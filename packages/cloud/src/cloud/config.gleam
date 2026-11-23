@@ -6,7 +6,12 @@ import gleam/result.{try}
 import ogre/origin
 
 pub type Config {
-  Config(secret_key_base: String, bucket: S3Bucket, postgres: Postgres)
+  Config(
+    secret_key_base: String,
+    bucket: S3Bucket,
+    postgres: Postgres,
+    port: Int,
+  )
 }
 
 pub type Postgres {
@@ -44,7 +49,8 @@ pub fn from_env() {
   use secret_key_base <- try(envoy.get("SECRET_KEY_BASE"))
   use bucket <- try(bucket())
   use postgres <- try(postgres())
-  Ok(Config(secret_key_base:, bucket:, postgres:))
+  let port = envoy.get("PORT") |> try(int.parse) |> result.unwrap(8080)
+  Ok(Config(secret_key_base:, bucket:, postgres:, port:))
 }
 
 /// The database from `POSTGRES_HOST`, `POSTGRES_PORT` and `POSTGRES_PASSWORD`.

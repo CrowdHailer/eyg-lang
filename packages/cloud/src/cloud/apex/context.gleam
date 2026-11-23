@@ -1,11 +1,12 @@
-import cloud/config
-import pog
+import cloud/beam/execute
+import cloud/data/db
 
+/// Everything a request needs from the running system.
 pub type Context {
-  Context(secret_key_base: String, conn: pog.Connection)
-}
-
-pub fn from_config(config, conn) {
-  let config.Config(secret_key_base:, ..) = config
-  Context(secret_key_base:, conn:)
+  Context(
+    db: db.Db,
+    // The hub, secrets and blob store used by code running in a box.
+    state: execute.State,
+    policy: execute.Policy,
+  )
 }

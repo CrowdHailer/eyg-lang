@@ -1,3 +1,5 @@
+import cloud/apex/context.{Context}
+import cloud/apex/server
 import cloud/beam/execute
 import cloud/config
 import cloud/data/db
@@ -6,8 +8,11 @@ import eyg/hub/cache
 import gleam/dict
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Name}
+import howdy/testing
 import ogre/origin
 import pog
+import simplifile
+import touch_grass/source
 
 @external(erlang, "cloud_test_ffi", "identity")
 fn unsafe_global_name(atom: Atom) -> Name(a)
@@ -34,6 +39,19 @@ pub fn with_transaction(then) {
   Nil
 }
 
+pub fn context(then) {
+  use db <- with_transaction()
+  let assert Ok(code) = simplifile.read("policy.eyg")
+  let assert #(Ok(policy), state) =
+    execute.load_policy(
+      code,
+      source.Host("policy.eyg"),
+      state(),
+      execute.template(),
+    )
+  then(Context(db:, state:, policy:))
+}
+
 /// Blocks are kept in the bucket set by the `S3_` variables, by their content so tests can share it.
 pub fn state() {
   let assert Ok(bucket) = config.bucket()
@@ -44,4 +62,8 @@ pub fn state() {
     bucket,
     dict.new(),
   )
+}
+
+pub fn dispatch(request, context) {
+  testing.send(request, server.app(context))
 }
