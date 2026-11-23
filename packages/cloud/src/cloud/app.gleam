@@ -8,6 +8,7 @@ import cloud/config.{type Config}
 import cloud/data/db
 import cloud/data/migrations
 import cloud/db/pool
+import cloud/live
 import cloud/registry
 import envoy
 import eyg/hub/cache
@@ -75,6 +76,7 @@ pub fn start(config: Config, state, llm: Option(provider.Llm)) -> Context {
   let assert Ok(boxes) = registry.start()
   let assert Ok(shells) = registry.start()
   let assert Ok(chats) = registry.start()
+  let assert Ok(live) = live.start()
   let context =
     Context(
       db: db.Pool(conn),
@@ -87,6 +89,7 @@ pub fn start(config: Config, state, llm: Option(provider.Llm)) -> Context {
         Some(llm) -> dict.from_list([#(llm.model, llm)])
         None -> dict.new()
       },
+      live:,
     )
   let access = case config.access_password {
     Ok(password) -> access.Password(password)

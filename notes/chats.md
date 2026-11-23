@@ -10,6 +10,7 @@ How it continues is described in `packages/cloud/src/cloud/chats/chat.gleam`.
 The journal records each message, each completion and what each tool call returned, not the requests.
 A request holds the llm's credentials and the whole chat so far, the chat is rebuilt from the journal instead.
 A completion that was asked for but not recorded is asked for again, it costs a request but has no effect outside the chat.
+Completions are streamed to show their text as it arrives, only the whole completion is recorded.
 
 The journal is ordered by a serial id rather than a sequence per chat.
 People append messages while the chat's process appends completions and results, a serial never conflicts.

@@ -18,6 +18,7 @@ import cloud/chats/event as chat_event
 import cloud/data/boxes.{type Box}
 import cloud/data/chats.{type Chat}
 import cloud/data/shells.{type Shell}
+import cloud/live
 import cloud/shells/event
 import cloud/shells/turn
 import etui/buffer
@@ -94,6 +95,8 @@ pub type Screen {
     waiting: Bool,
     // What the running turn has done so far.
     progress: List(String),
+    // The text of a completion as it arrives, it is replaced by the reply when the turn finishes.
+    arriving: String,
     // How many lines of the log are scrolled back.
     scroll: Int,
     // The files of the shell's box.
@@ -141,7 +144,8 @@ pub type Message {
   Scrolled(Int)
   Resized(columns: Int, rows: Int)
   /// What the running turn in the shell with this id has done so far.
-  Progressed(String, List(String))
+  /// And the text of a completion it is receiving, empty if it is not.
+  Progressed(String, List(String), String)
   FilesListed(String, Result(List(String), box.Reason))
 }
 
@@ -445,10 +449,11 @@ fn on_screen(model: Model, screen, message) {
         outcome,
       )
     }
-    Running(thread:, waiting: True, ..) as running, Progressed(id, progress)
+    Running(thread:, waiting: True, ..) as running,
+      Progressed(id, progress, arriving)
       if id == thread.id
     -> #(
-      Model(..model, screen: Running(..running, progress:)),
+      Model(..model, screen: Running(..running, progress:, arriving:)),
       poll(context, thread),
     )
     Running(thread:, ..) as running, FilesListed(id, Ok(files))
@@ -489,6 +494,7 @@ fn on_screen(model: Model, screen, message) {
             log:,
             waiting: False,
             progress: [],
+            arriving: "",
             scroll:,
           ),
         ),
@@ -564,13 +570,22 @@ fn poll(context: Context, thread: Thread) {
       InShell(shell:, ..) ->
         case turn.history(context, shell.id) {
           Ok(history) ->
-            Progressed(id, progress(list.map(history, fn(entry) { entry.1 })))
-          Error(_) -> Progressed(id, [])
+            Progressed(
+              id,
+              progress(list.map(history, fn(entry) { entry.1 })),
+              "",
+            )
+          Error(_) -> Progressed(id, [], "")
         }
       InChat(chat:, ..) ->
         case chatting.entries(context, chat.id) {
-          Ok(entries) -> Progressed(id, chat_progress(entries))
-          Error(_) -> Progressed(id, [])
+          Ok(entries) ->
+            Progressed(
+              id,
+              chat_progress(entries),
+              live.text(context.live, chat.id),
+            )
+          Error(_) -> Progressed(id, [], "")
         }
     }
   })
@@ -658,7 +673,15 @@ fn send(model: Model, running, input, draft) {
   let assert Running(thread:, log:, ..) = running
   let log = list.append(log, [sent(input)])
   let screen =
-    Running(..running, log:, draft:, waiting: True, progress: [], scroll: 0)
+    Running(
+      ..running,
+      log:,
+      draft:,
+      waiting: True,
+      progress: [],
+      arriving: "",
+      scroll: 0,
+    )
   #(
     Model(..model, screen:, status: Quiet),
     effect.batch([
@@ -689,7 +712,7 @@ fn opened(model: Model, opening: Opening) {
     _, InChat(..) -> draft.message()
     _, InShell(..) -> draft.program()
   }
-  let screen = Running(place, thread, log, draft, unfinished, [], 0, [])
+  let screen = Running(place, thread, log, draft, unfinished, [], "", 0, [])
   let model = Model(..model, screen:, status: Quiet)
   let files = list_files(model.context, thread)
   case unfinished {
@@ -1115,7 +1138,16 @@ fn body(screen, area: geometry.Rect, model: Model) {
     Secrets(names:, selected: chosen, ..) ->
       list.map(names, fn(name) { name <> "  ••••••" })
       |> menu(screen, area, chosen)
-    Running(log:, draft: current, waiting:, progress:, scroll:, files:, ..) -> {
+    Running(
+      log:,
+      draft: current,
+      waiting:,
+      progress:,
+      arriving:,
+      scroll:,
+      files:,
+      ..,
+    ) -> {
       let #(area, screen) = case area.size.width >= 90 {
         True -> #(
           geometry.rect_new(
@@ -1144,6 +1176,14 @@ fn body(screen, area: geometry.Rect, model: Model) {
         True ->
           list.map(progress, fn(step) {
             span.line_new([span.span_styled("· " <> step, fg(muted))])
+          })
+          // The text of a completion as it arrives, the end of it if it is long.
+          |> list.append(case arriving {
+            "" -> []
+            text -> {
+              let lines = entry_lines(Returned(text), True, columns)
+              list.drop(lines, list.length(lines) - area.size.height / 2)
+            }
           })
           |> list.append([
             span.line_new([span.span_styled("waiting…", fg(muted))]),

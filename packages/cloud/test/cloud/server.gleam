@@ -13,7 +13,7 @@ import gleam/http/response
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/otp/actor
 import gleam/string
 import mist
@@ -67,16 +67,18 @@ pub fn start(arrived: Subject(Subject(Nil))) -> Server {
         _, _ -> Nil
       }
       // The server is also a hub with no releases, packages are added to the cache directly.
-      let body = case request.path {
-        "/packages/pull" -> "{\"entries\":[]}"
+      case request.path {
         "/api/chat" -> {
-          let assert Ok(request) = mist.read_body(request, 10_000_000)
-          chat(request.body)
+          let assert Ok(read) = mist.read_body(request, 10_000_000)
+          let #(content, calls) = chat(read.body)
+          case json.parse_bits(read.body, decode.at(["stream"], decode.bool)) {
+            Ok(True) -> stream(request, content, calls)
+            _ -> respond(completion(content, calls, None))
+          }
         }
-        path -> path
+        "/packages/pull" -> respond("{\"entries\":[]}")
+        path -> respond(path)
       }
-      response.new(200)
-      |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
     })
     |> mist.bind("localhost")
     |> mist.port(0)
@@ -108,18 +110,7 @@ fn chat(body) {
     list.reverse(messages) |> list.split_while(fn(m) { m.0 != "user" })
   let assert [#(_, last), ..] = earlier
   let results = list.filter(results, fn(m) { m.0 == "tool" })
-  let reply = fn(content, calls) {
-    json.object([
-      #(
-        "message",
-        json.object([
-          #("content", json.string(content)),
-          #("tool_calls", json.preprocessed_array(calls)),
-        ]),
-      ),
-    ])
-    |> json.to_string
-  }
+  let reply = fn(content, calls) { #(content, calls) }
   case last {
     "run:" <> blocks ->
       case list.drop(string.split(blocks, "\n---\n"), list.length(results)) {
@@ -152,6 +143,60 @@ fn call(code) {
   let function =
     json.object([#("name", json.string("run")), #("arguments", arguments)])
   json.object([#("function", function)])
+}
+
+fn respond(body) {
+  response.new(200)
+  |> response.set_body(mist.Bytes(bytes_tree.from_string(body)))
+}
+
+fn completion(content, calls, done) {
+  json.object([
+    #(
+      "message",
+      json.object([
+        #("content", json.string(content)),
+        #("tool_calls", json.preprocessed_array(calls)),
+      ]),
+    ),
+    ..case done {
+      Some(done) -> [#("done", json.bool(done))]
+      None -> []
+    }
+  ])
+  |> json.to_string
+}
+
+// A streamed completion is a line of JSON for each few characters of its content, then a line with the tool calls.
+// The reply to a message that starts with `slow:` pauses after each line, so the lines arrive one at a time.
+fn stream(request, content, calls) {
+  let pieces =
+    string.to_graphemes(content)
+    |> list.sized_chunk(4)
+    |> list.map(fn(piece) { completion(string.concat(piece), [], Some(False)) })
+  let lines = list.append(pieces, [completion("", calls, Some(True))])
+  mist.chunked(
+    request,
+    response.new(200),
+    fn(subject) {
+      list.each(lines, fn(line) { process.send(subject, Ok(line <> "\n")) })
+      process.send(subject, Error(Nil))
+      string.starts_with(content, "slow:")
+    },
+    fn(slow, line, connection) {
+      case line {
+        Ok(line) -> {
+          let assert Ok(Nil) = mist.send_chunk(connection, <<line:utf8>>)
+          case slow {
+            True -> process.sleep(20)
+            False -> Nil
+          }
+          mist.chunk_continue(slow)
+        }
+        Error(Nil) -> mist.chunk_stop()
+      }
+    },
+  )
 }
 
 fn count(counts, method, path) {

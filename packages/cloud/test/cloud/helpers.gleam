@@ -5,6 +5,7 @@ import cloud/beam/execute
 import cloud/config
 import cloud/data/db
 import cloud/db/pool
+import cloud/live
 import cloud/registry
 import eyg/hub/cache
 import gleam/dict
@@ -58,6 +59,7 @@ fn context_for(db) {
   let assert Ok(boxes) = registry.start()
   let assert Ok(shells) = registry.start()
   let assert Ok(chats) = registry.start()
+  let assert Ok(live) = live.start()
   Context(
     db:,
     boxes: boxes.data,
@@ -66,6 +68,7 @@ fn context_for(db) {
     state:,
     policy:,
     llms: dict.new(),
+    live:,
   )
 }
 

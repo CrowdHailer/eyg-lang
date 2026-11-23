@@ -6,7 +6,6 @@
 ////
 //// If the process stops the chat continues from its journal the next time it is used.
 //// A completion that was not recorded is asked for again, completions have no effect outside the chat.
-//// A completion of a long chat can take minutes, so it is waited for up to five.
 //// A tool call that was running is finished in its shell, its code is not run twice.
 
 import cloud/apex/context.{type Context}
@@ -16,10 +15,11 @@ import cloud/chats/event.{type Entry}
 import cloud/data/chats.{type Chat}
 import cloud/data/db
 import cloud/data/shells
+import cloud/live
 import cloud/overlay
 import cloud/registry
 import cloud/shells/turn
-import cloud/system
+import cloud/stream
 import gleam/dict
 import gleam/erlang/process
 import gleam/int
@@ -29,7 +29,6 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import overlay/llm/chat
-import overlay/llm/provider
 import overlay/llm/tool
 import pog
 
@@ -148,6 +147,7 @@ fn continue(context: Context, chat: Chat) {
   }
 }
 
+// A completion is streamed so its text can be shown as it arrives, only the completion is recorded.
 fn ask(context: Context, chat: Chat, history: chat.History, replied: Int) {
   case dict.get(context.llms, chat.llm) {
     Error(Nil) ->
@@ -155,9 +155,12 @@ fn ask(context: Context, chat: Chat, history: chat.History, replied: Int) {
     Ok(llm) -> {
       let provider = overlay.box_context(context.state.origin)
       let completed =
-        provider.completion(llm, provider, history, system.slow_fetch(300_000))(
-          fn(completion) { completion },
-        )
+        stream.complete(llm, provider, history, live.show(
+          context.live,
+          chat.id,
+          _,
+        ))
+      live.clear(context.live, chat.id)
       Ok(case completed {
         Ok(completion) -> event.Replied(named(completion, replied))
         Error(reason) -> event.Failed(reason)
