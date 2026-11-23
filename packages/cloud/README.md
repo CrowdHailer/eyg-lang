@@ -93,6 +93,7 @@ See `cloud/chats/chat.gleam`.
 The web interface is served with the API, on the same port, and also only accepts local connections.
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it.
+A shell's programs are written with the structural editor and the same keys as the EYG shell.
 
 ### Configuration
 

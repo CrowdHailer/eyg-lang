@@ -4,7 +4,8 @@
 //// A shell runs code, a chat is with one of the configured llms, whose tool calls run in shells of their own.
 //// Work that waits for the database, a box or an llm runs in another process and reports back with a message.
 
-import cloud/apex/context.{type Context}
+import cloud/apex/context.{type Context, Context}
+import cloud/apex/editor
 import cloud/apex/terminal
 import cloud/box
 import cloud/chats/chat as chatting
@@ -69,17 +70,31 @@ pub type Screen {
     place: String,
     thread: Thread,
     log: List(Entry),
-    input: String,
+    draft: Draft,
     waiting: Bool,
   )
+}
+
+/// What is being written in a shell, a message in a chat and a program in a shell.
+pub type Draft {
+  Chatting(String)
+  Coding(editor.Editor)
 }
 
 /// What a shell's log shows, each is coloured differently.
 pub type Entry {
   Sent(String)
+  /// A program as it was shown in the editor.
+  Ran(List(span.Line))
   Printed(String)
   Returned(String)
   Failed(String)
+}
+
+/// What is sent, code to a shell or a message to a chat.
+pub type Sending {
+  ToShell(turn.Input)
+  ToChat(String)
 }
 
 /// What is open, a shell or a chat.
@@ -215,10 +230,16 @@ fn on_screen(model: Model, screen, message) {
         "esc" -> back(model)
         _ -> #(model, effect.none())
       }
-    _, Started(Ok(#(place, thread))) -> #(
-      Model(context, Running(place, thread, [], "", False), None, Quiet),
-      effect.none(),
-    )
+    _, Started(Ok(#(place, thread))) -> {
+      let draft = case thread {
+        InChat(..) -> Chatting("")
+        InShell(..) -> Coding(editor.new())
+      }
+      #(
+        Model(context, Running(place, thread, [], draft, False), None, Quiet),
+        effect.none(),
+      )
+    }
     _, Started(Error(reason)) -> #(
       Model(..model, status: Problem(describe(reason))),
       effect.none(),
@@ -226,35 +247,70 @@ fn on_screen(model: Model, screen, message) {
 
     Running(waiting: True, ..), Key("esc") -> back(model)
     Running(waiting: True, ..), Key(_) -> #(model, effect.none())
-    Running(thread:, log:, input:, ..) as running, Key(key) ->
+    Running(draft: Chatting(text), ..) as running, Key(key) ->
       case key {
         "esc" -> back(model)
+        "enter" if text != "" ->
+          send(model, running, Sent(text), ToChat(text), Chatting(""))
         "backspace" -> #(
           Model(
             ..model,
-            screen: Running(..running, input: string.drop_end(input, 1)),
+            screen: Running(
+              ..running,
+              draft: Chatting(string.drop_end(text, 1)),
+            ),
           ),
           effect.none(),
         )
-        "enter" if input != "" -> {
-          let log = list.append(log, [Sent(input)])
-          #(
-            Model(
-              ..model,
-              screen: Running(..running, log:, input: "", waiting: True),
-            ),
-            background(fn() { Replied(thread.id, send(context, thread, input)) }),
-          )
-        }
         _ ->
           case string.length(key) {
             1 -> #(
-              Model(..model, screen: Running(..running, input: input <> key)),
+              Model(
+                ..model,
+                screen: Running(..running, draft: Chatting(text <> key)),
+              ),
               effect.none(),
             )
             _ -> #(model, effect.none())
           }
       }
+    Running(draft: Coding(editor.Editor(input: None, ..)), ..), Key("esc") ->
+      back(model)
+    Running(draft: Coding(editor.Editor(input: None, ..) as edited), ..) as running,
+      Key("enter")
+    ->
+      case editor.program(edited) {
+        Ok(program) ->
+          send(
+            model,
+            running,
+            Ran(editor.sent(edited)),
+            ToShell(turn.Program(program)),
+            Coding(editor.new()),
+          )
+        Error(Nil) -> #(
+          Model(..model, status: Problem("Write a program first")),
+          effect.none(),
+        )
+      }
+    Running(draft: Coding(edited), ..) as running, Key(key) -> {
+      let #(edited, state) = editor.key(edited, key, context.state)
+      let model = Model(..model, context: Context(..context, state:))
+      case edited {
+        Ok(edited) -> #(
+          Model(
+            ..model,
+            screen: Running(..running, draft: Coding(edited)),
+            status: Quiet,
+          ),
+          effect.none(),
+        )
+        Error(reason) -> #(
+          Model(..model, status: Problem(reason)),
+          effect.none(),
+        )
+      }
+    }
     // A reply for a shell or chat that is no longer shown is dropped, it is in its journal.
     Running(thread:, log:, ..) as running, Replied(id, replied)
       if id == thread.id
@@ -280,21 +336,33 @@ fn on_screen(model: Model, screen, message) {
   }
 }
 
-fn is_chat(thread: Thread) -> Bool {
-  case thread {
-    InChat(..) -> True
-    InShell(..) -> False
-  }
+// Send code to the shell or a message to the chat, its outcome is added to the log when it is replied to.
+fn send(model: Model, running, entry, input, draft) {
+  let assert Running(thread:, log:, ..) = running
+  let screen =
+    Running(..running, log: list.append(log, [entry]), draft:, waiting: True)
+  #(
+    Model(..model, screen:, status: Quiet),
+    background(fn() {
+      Replied(thread.id, turn_or_reply(model.context, thread, input))
+    }),
+  )
 }
 
 // Code runs as a turn of the shell, a message is sent to the chat and its reply is the outcome.
-fn send(context, thread: Thread, input) -> Result(turn.Outcome, box.Reason) {
-  case thread {
-    InShell(shell:, ..) -> turn.send(context, shell, turn.Code(input))
-    InChat(chat:, ..) -> {
-      use replied <- result.map(chatting.send(context, chat, input))
+fn turn_or_reply(
+  context,
+  thread: Thread,
+  sending: Sending,
+) -> Result(turn.Outcome, box.Reason) {
+  case thread, sending {
+    InShell(shell:, ..), ToShell(input) -> turn.send(context, shell, input)
+    InChat(chat:, ..), ToChat(message) -> {
+      use replied <- result.map(chatting.send(context, chat, message))
       #(replied, [])
     }
+    _, _ ->
+      Error(box.Failed("a shell runs code and a chat replies to messages"))
   }
 }
 
@@ -396,13 +464,22 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("enter", "start"),
       #("esc", "back"),
     ])
-    Running(place:, thread:, ..) -> #(
-      case thread {
-        InChat(..) -> "Chat in " <> place
-        InShell(..) -> "Shell in " <> place
-      },
-      [#("enter", "send"), #("esc", "boxes")],
-    )
+    Running(place:, draft: Chatting(_), ..) -> #("Chat in " <> place, [
+      #("enter", "send"),
+      #("esc", "boxes"),
+    ])
+    Running(place:, draft: Coding(_), ..) -> #("Shell in " <> place, [
+      #("enter", "run"),
+      #("n", "number"),
+      #("s", "string"),
+      #("v", "variable"),
+      #("j", "builtin"),
+      #("c", "call"),
+      #("e", "let"),
+      #("p", "perform"),
+      #("z", "undo"),
+      #("esc", "boxes"),
+    ])
   }
   let frame =
     block.block_new()
@@ -503,53 +580,68 @@ fn body(screen, area: geometry.Rect, model: Model) {
       })
       |> menu(screen, area, chosen)
     }
-    Running(thread:, log:, input:, waiting:, ..) -> {
-      let chat = is_chat(thread)
+    Running(log:, draft:, waiting:, ..) -> {
       let columns = area.size.width
-      let rows = area.size.height - 1
-      let lines =
-        list.flat_map(log, fn(entry) {
-          let #(prefix, content, style) = case entry, chat {
-            Sent(text), True -> #(
-              "you ",
-              text,
-              fg(accent) |> style.add_modifier(style.bold()),
-            )
-            Sent(text), False -> #("> ", text, fg(accent))
-            Printed(text), _ -> #("", text, fg(muted))
-            Returned(text), True -> #("llm ", text, fg(purple))
-            Returned(text), False -> #("= ", text, fg(green))
-            Failed(text), _ -> #("! ", text, fg(red))
-          }
-          string.split(prefix <> content, "\n")
-          |> list.flat_map(text.wrap(_, columns))
-          |> list.map(fn(line) { #(line, style) })
-        })
-      let shown = list.drop(lines, int.max(list.length(lines) - rows, 0))
-      let screen =
-        list.index_fold(shown, screen, fn(screen, line, i) {
-          buffer.set_string(
-            screen,
-            Position(area.position.x, area.position.y + i),
-            line.0,
-            line.1,
-          )
-        })
-      let prompt = case waiting {
-        True -> [span.span_styled("waiting…", fg(muted))]
-        False -> [
-          span.span_styled("> ", fg(accent)),
-          span.span_plain(text.truncate(input, columns - 3, "…")),
-          span.span_styled("▏", fg(accent)),
-        ]
+      let chat = case draft {
+        Chatting(_) -> True
+        Coding(_) -> False
       }
-      span.render_line(
-        screen,
-        Position(area.position.x, area.position.y + rows),
-        span.line_new(prompt),
-        columns,
-      )
+      let lines = list.flat_map(log, entry_lines(_, chat, columns))
+      let draft = case waiting, draft {
+        True, _ -> [span.line_new([span.span_styled("waiting…", fg(muted))])]
+        False, Chatting(text) -> [
+          span.line_new([
+            span.span_styled("> ", fg(accent)),
+            span.span_plain(text.truncate(text, columns - 3, "…")),
+            span.span_styled("▏", fg(accent)),
+          ]),
+        ]
+        False, Coding(edited) -> prompted(editor.lines(edited, True))
+      }
+      // The end of the log is shown above the draft.
+      let rows = area.size.height - list.length(draft)
+      let shown = list.drop(lines, int.max(list.length(lines) - rows, 0))
+      list.append(shown, draft)
+      |> list.index_fold(screen, fn(screen, line, i) {
+        span.render_line(
+          screen,
+          Position(area.position.x, area.position.y + i),
+          line,
+          columns,
+        )
+      })
     }
+  }
+}
+
+// Code starts with a prompt and the lines after it are lined up with it.
+fn prompted(lines) {
+  list.index_map(lines, fn(line, i) {
+    let prompt = case i {
+      0 -> "> "
+      _ -> "  "
+    }
+    span.Line(..line, spans: [
+      span.span_styled(prompt, fg(accent)),
+      ..line.spans
+    ])
+  })
+}
+
+fn entry_lines(entry, chat, columns) {
+  let text = fn(prefix, content, style) {
+    string.split(prefix <> content, "\n")
+    |> list.flat_map(text.wrap(_, columns))
+    |> list.map(fn(line) { span.line_new([span.span_styled(line, style)]) })
+  }
+  case entry, chat {
+    Ran(lines), _ -> prompted(lines)
+    Sent(content), _ ->
+      text("you ", content, fg(accent) |> style.add_modifier(style.bold()))
+    Printed(content), _ -> text("", content, fg(muted))
+    Returned(content), True -> text("llm ", content, fg(purple))
+    Returned(content), False -> text("= ", content, fg(green))
+    Failed(content), _ -> text("! ", content, fg(red))
   }
 }
 
