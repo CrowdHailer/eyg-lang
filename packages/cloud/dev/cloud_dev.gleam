@@ -3,6 +3,8 @@ import bucket/get_object
 import bucket/list_objects
 import cloud/blobs/blobs
 import cloud/config
+import cloud/data/migrations
+import cloud/db/pool
 import cloud/discord/api/client as discord
 import cloud/old
 import cloud/schedule
@@ -89,6 +91,11 @@ fn do_main(args) {
         }
       }
     }
+    ["migrate"] -> migrations.apply_all(db())
+    ["rollback", count] -> {
+      let assert Ok(count) = int.parse(count)
+      migrations.rollback_n(db(), count)
+    }
     ["discord", "messages", channel] -> {
       let assert Ok(token) = envoy.get("DISCORD_BOT_TOKEN")
       let context = discord.Context(token, system.fetch)
@@ -166,4 +173,10 @@ fn do_main(args) {
 
 fn identity(x) {
   x
+}
+
+fn db() {
+  let assert Ok(postgres) = config.postgres()
+  let assert Ok(started) = pool.start(process.new_name("db_pool"), postgres)
+  started.data
 }

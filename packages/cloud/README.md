@@ -8,6 +8,14 @@ Run PostgreSQL and S3-compatible storage locally with Docker Compose, while
 running Gleam on the host. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup,
 storage checks, and resetting local data.
 
+## Boxes
+
+A box is a file system with an id.
+A box with a name is shared, a box without one is transient and only reached through its id.
+Each change is recorded as an event with the new file system root, so a box is the chain of its roots.
+
+Events are stored in Postgres and the blocks of the file system in a blob store, under their content identifier.
+
 ## Sessions
 
 A session is a shell session and/or agent session with persistent state and file system.

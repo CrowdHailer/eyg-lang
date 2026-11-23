@@ -18,9 +18,11 @@ To run Gleam with the same configuration:
 
 ### Tests
 
-Tests read and write blocks in the local S3.
+Tests use the local Postgres and S3, the database needs the migrations applied first.
+Each test runs in a transaction that is rolled back.
 
 ```sh
+(set -a; source .env.local; set +a; gleam dev migrate)
 (set -a; source .env.local; set +a; gleam test)
 ```
 
