@@ -37,7 +37,7 @@ import gleam/erlang/process
 import gleam/http
 import gleam/json
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
@@ -140,7 +140,7 @@ pub fn recent(
   context: Context,
   limit: Int,
   transient: Bool,
-) -> Result(List(#(Shell, Option(String), Int)), box.Reason) {
+) -> Result(List(shells.Listed), box.Reason) {
   query(context, shells.recent(limit, transient))
 }
 
@@ -156,6 +156,41 @@ pub fn send(
   input: Input,
 ) -> Result(Outcome, box.Reason) {
   in_process(context, shell, fn() { run(context, shell, input) })
+}
+
+/// Run the code as the only turn of a shell made for it, such as for a tool call.
+/// A turn that already started is finished rather than started again, so the code runs once
+/// however many times this is called, and each call has what it came to.
+pub fn once(
+  context: Context,
+  shell: Shell,
+  code: String,
+) -> Result(Outcome, box.Reason) {
+  use <- in_process(context, shell)
+  use recorded <- result.try(entries(context, shell.id))
+  case recorded {
+    [] -> run(context, shell, Code(code))
+    _ -> {
+      use context <- result.try(in_box(context, shell.box))
+      use Nil <- result.try(recover(context, shell))
+      use recorded <- result.try(entries(context, shell.id))
+      Ok(ended(recorded))
+    }
+  }
+}
+
+// What the last turn in the entries came to, it has finished or was cancelled.
+fn ended(entries: List(Entry)) -> Outcome {
+  list.fold(entries, #(Error("the turn did not finish"), []), fn(ended, entry) {
+    case entry {
+      event.Output(stop: event.Finished(_, output) as stop, change:, ..) -> #(
+        outcome(stop, change),
+        output,
+      )
+      event.Input(event.Cancelled, ..) -> #(Error("cancelled"), [])
+      _ -> ended
+    }
+  })
 }
 
 /// Finish the last turn if it is unfinished, after a turn that is running finishes.
@@ -199,41 +234,6 @@ pub fn cancel(context: Context, shell: Shell) -> Result(Nil, box.Reason) {
       |> result.replace(Nil)
     }
   }
-}
-
-/// Run the code as the only turn of a shell made for it, such as for a tool call.
-/// A turn that already started is finished rather than started again, so the code runs once
-/// however many times this is called, and each call has what it came to.
-pub fn once(
-  context: Context,
-  shell: Shell,
-  code: String,
-) -> Result(Outcome, box.Reason) {
-  use <- in_process(context, shell)
-  use recorded <- result.try(entries(context, shell.id))
-  case recorded {
-    [] -> run(context, shell, Code(code))
-    _ -> {
-      use context <- result.try(in_box(context, shell.box))
-      use Nil <- result.try(recover(context, shell))
-      use recorded <- result.try(entries(context, shell.id))
-      Ok(ended(recorded))
-    }
-  }
-}
-
-// What the last turn in the entries came to, it has finished or was cancelled.
-fn ended(entries: List(Entry)) -> Outcome {
-  list.fold(entries, #(Error("the turn did not finish"), []), fn(ended, entry) {
-    case entry {
-      event.Output(stop: event.Finished(_, output) as stop, change:, ..) -> #(
-        outcome(stop, change),
-        output,
-      )
-      event.Input(event.Cancelled, ..) -> #(Error("cancelled"), [])
-      _ -> ended
-    }
-  })
 }
 
 /// Run a turn in the shell, an unfinished turn is finished first.

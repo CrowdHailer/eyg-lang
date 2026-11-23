@@ -79,13 +79,13 @@ pub fn keyed(context: Context, key: String) -> Result(Chat, box.Reason) {
   }
 }
 
-/// The most recent chats in any box, with the name of the box if it has one and when each was made.
+/// The most recent chats in any box, with the name of the box if it has one.
 /// Chats in transient boxes are left out unless `transient` is true.
 pub fn recent(
   context: Context,
   limit: Int,
   transient: Bool,
-) -> Result(List(#(Chat, Option(String), Int)), box.Reason) {
+) -> Result(List(chats.Listed), box.Reason) {
   query(context, chats.recent(limit, transient))
 }
 

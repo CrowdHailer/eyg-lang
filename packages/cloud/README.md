@@ -62,7 +62,7 @@ A shell in a transient box, cloned from a named box, works on its own copy of th
 
 A fork has a copy of the journal and works in the same box. A fork of a shell with an unfinished turn finishes that turn when it is next used.
 
-Traces are made from the shell's journal, so there is no separate instrumentation.
+Traces are made from the journal, so there is no separate instrumentation.
 The OTLP JSON can be posted to the `/v1/traces` endpoint of any OpenTelemetry collector.
 
 A turn returns its `output` and either a `value` or an `error`.
@@ -93,6 +93,7 @@ There are no accounts yet, so every configured llm is available to every chat.
 | `GET /llms` | The names of the llms a chat can be with. |
 | `POST /boxes/:id/calls` | Run tool calls from an agent outside the service, `{"tool_calls": calls}` in the shape OpenAI uses, and return a tool message for each with the shell it ran in. |
 
+A message sent while a chat is replying is recorded at once and added after the tool calls that are running.
 Chats are durable: the journal records each message, completion and tool call result, and the shell of a call records its code.
 A chat that stopped continues from its journal, a call that was running is finished in its shell rather than run again.
 See `cloud/chats/chat.gleam`.
@@ -102,25 +103,27 @@ See `cloud/chats/chat.gleam`.
 The web interface is served with the API, on the same port and with the same access.
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it, or by managing its secrets.
-The terminal fills the window and a shell fills it from the bottom, as a terminal does.
+The terminal fills the window and a shell or chat fills it from the bottom, as a terminal does.
 The log scrolls back with page up and page down or the mouse wheel, a reply longer than the screen is shown from its start.
 A shell's programs are written as EYG text, which can be pasted, or with the structural editor and the same keys as the EYG shell.
 Variables, builtins, packages and files are chosen in a box in the middle of the screen, which shows each with its type.
 In a shell, up with nothing written selects code run before, as in the EYG shell, and enter writes it in the draft to edit and run again.
 Tab switches between them and keeps both, shift and enter starts a new line in text and in chat messages.
 Text is edited with arrows, home and end, ctrl or alt with an arrow moves by word, program text is highlighted.
-A wide window shows the files of the box beside the shell, and a running turn shows what it has done so far.
+A wide window shows the files of the box beside the log, and a running turn shows what it has done so far.
 The llm's thinking and reply are shown as they arrive. Only the latest thinking is shown in full, earlier thinking is a line saying how long it was.
-Messages written while a chat runs are added to the chat once the tool calls running finish,
-or start the next turn if the llm has replied. Ctrl+x cancels a running turn.
+Messages written while a chat replies are added to the chat after the tool calls that are running,
+or are replied to next if the llm has replied. Ctrl+x cancels a running turn.
 Shortcuts with ctrl or meta and function keys are left to the browser, so output can be copied and F11 goes full screen.
-A web page or image that a turn writes is shown beside the shell, or over most of a narrow screen.
-Files the shell changed are coloured in the files beside it, clicking any file shows it.
+A web page or image that a turn writes is shown beside the log, or over most of a narrow screen.
+Files the shell or chat changed are coloured in the files beside it, clicking any file shows it.
 A page is read from `/artifacts/:root/*path` by the root of the box's files, so it links to the files beside it,
 and runs in a sandbox with its own origin, so its scripts cannot use the terminal or the API.
-Recent shells, and any shell by its id, are opened again with their history.
-Shells in transient boxes are only listed after pressing `t`.
-A turn that did not finish is finished when its shell is opened, a running turn can be cancelled.
+Recent shells and chats, and any by its id, are opened again with their history.
+The list says whether each is a shell or a chat, and whether a person, a cron or a channel made it.
+The shells of a chat's tool calls are not listed, their files are shown beside the chat.
+Shells and chats in transient boxes are only listed after pressing `t`.
+A turn that did not finish is finished when it is opened, a running turn can be cancelled.
 
 ### Configuration
 
@@ -135,7 +138,7 @@ S3_REGION=eu-west-1
 S3_BUCKET=
 S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
-# optional, the llm shells chat with is Ollama's cloud, without a key there is none
+# optional, the llm chats are with is Ollama's cloud, without a key there is none
 OLLAMA_API_KEY=
 # optional, without it only local connections are accepted
 ACCESS_PASSWORD=
@@ -194,7 +197,7 @@ Data sources that are cached/pulled
 ## Channels
 
 This [article](https://weli.dev/blog/the-valley-of-webhooks/) discusses the reliability problems of webhooks.
-Channels are connections that can start a session/chat etc.
+Channels are connections that can start a chat or run code.
 Most of their complexity is in solving the problem described in the article
 
 ### Slack

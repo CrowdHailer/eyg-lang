@@ -78,14 +78,38 @@ pub fn of_chat(chat: String) -> pog.Query(#(Shell, Option(String))) {
   })
 }
 
-/// The most recent shells in any box, with the name of the box if it has one, and when each was made
-/// in microseconds since the Unix epoch. Shells made for a chat are listed with it instead.
+/// A shell as it is listed.
+pub type Listed {
+  Listed(
+    shell: Shell,
+    /// The name of its box, a transient box has none.
+    box: Option(String),
+    /// What made it.
+    by: Creator,
+    /// When it was made, in microseconds since the Unix epoch.
+    at: Int,
+  )
+}
+
+/// What made a shell.
+pub type Creator {
+  /// A person, from the web interface or the API.
+  Person
+  /// The cron with this name in the shell's box.
+  Cron(String)
+  /// The chat with this id, for one of its llm's tool calls or code sent to it.
+  Chat(String)
+  /// A tool call sent through the API.
+  Tool
+}
+
+/// The most recent shells in any box, shells made for a chat are listed with it instead.
 /// Shells in transient boxes are left out unless `transient` is true.
-pub fn recent(
-  limit: Int,
-  transient: Bool,
-) -> pog.Query(#(Shell, Option(String), Int)) {
-  "SELECT s.id, s.box, b.name, (EXTRACT(EPOCH FROM s.created_at) * 1000000)::BIGINT
+pub fn recent(limit: Int, transient: Bool) -> pog.Query(Listed) {
+  "SELECT s.id, s.box, b.name,
+    (SELECT c.name FROM crons c WHERE c.shell = s.id LIMIT 1),
+    s.chat, s.call,
+    (EXTRACT(EPOCH FROM s.created_at) * 1000000)::BIGINT
   FROM shells s JOIN boxes b ON b.id = s.box
   WHERE ($2 OR b.name IS NOT NULL) AND s.chat IS NULL
   ORDER BY s.created_at DESC, s.id
@@ -95,8 +119,17 @@ pub fn recent(
   |> pog.parameter(pog.bool(transient))
   |> pog.returning({
     use shell <- decode.then(decoder())
-    use name <- decode.field(2, decode.optional(decode.string))
-    use at <- decode.field(3, decode.int)
-    decode.success(#(shell, name, at))
+    use box <- decode.field(2, decode.optional(decode.string))
+    use cron <- decode.field(3, decode.optional(decode.string))
+    use chat <- decode.field(4, decode.optional(decode.string))
+    use call <- decode.field(5, decode.optional(decode.string))
+    use at <- decode.field(6, decode.int)
+    let by = case cron, chat, call {
+      Some(name), _, _ -> Cron(name)
+      None, Some(chat), _ -> Chat(chat)
+      None, None, Some(_) -> Tool
+      None, None, None -> Person
+    }
+    decode.success(Listed(shell:, box:, by:, at:))
   })
 }

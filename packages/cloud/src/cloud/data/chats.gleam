@@ -55,13 +55,23 @@ pub fn list(box: String) -> pog.Query(Chat) {
   |> pog.returning(decoder())
 }
 
-/// The most recent chats in any box, with the name of the box if it has one, and when each was made
-/// in microseconds since the Unix epoch. Chats in transient boxes are left out unless `transient` is true.
-pub fn recent(
-  limit: Int,
-  transient: Bool,
-) -> pog.Query(#(Chat, Option(String), Int)) {
-  "SELECT c.id, c.box, c.llm, b.name,
+/// A chat as it is listed.
+pub type Listed {
+  Listed(
+    chat: Chat,
+    /// The name of its box, a transient box has none.
+    box: Option(String),
+    /// Whether a channel, such as a Discord thread, made it, rather than a person.
+    channel: Bool,
+    /// When it was made, in microseconds since the Unix epoch.
+    at: Int,
+  )
+}
+
+/// The most recent chats in any box.
+/// Chats in transient boxes are left out unless `transient` is true.
+pub fn recent(limit: Int, transient: Bool) -> pog.Query(Listed) {
+  "SELECT c.id, c.box, c.llm, b.name, c.key,
     (EXTRACT(EPOCH FROM c.created_at) * 1000000)::BIGINT
   FROM chats c JOIN boxes b ON b.id = c.box
   WHERE $2 OR b.name IS NOT NULL
@@ -72,9 +82,10 @@ pub fn recent(
   |> pog.parameter(pog.bool(transient))
   |> pog.returning({
     use chat <- decode.then(decoder())
-    use name <- decode.field(3, decode.optional(decode.string))
-    use at <- decode.field(4, decode.int)
-    decode.success(#(chat, name, at))
+    use box <- decode.field(3, decode.optional(decode.string))
+    use key <- decode.field(4, decode.optional(decode.string))
+    use at <- decode.field(5, decode.int)
+    decode.success(Listed(chat:, box:, channel: key != option.None, at:))
   })
 }
 

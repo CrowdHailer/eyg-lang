@@ -4,8 +4,13 @@ import cloud/apex/tui.{Key}
 import cloud/beam/execute
 import cloud/box
 import cloud/chats/chat
+import cloud/chats/event as chat_event
+import cloud/crons
+import cloud/data/chats
 import cloud/data/db
 import cloud/data/journal
+import cloud/data/shells
+import cloud/file_system
 import cloud/helpers
 import cloud/live
 import cloud/server
@@ -24,8 +29,12 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import gleam/time/timestamp
 import lustre/element
 import morph/terminal/textarea
+import oas/generator/utils
+import overlay/llm/chat as llm
+import overlay/llm/tool
 import unixfs/mfs
 
 // The text on the screen, one string for each row.
@@ -244,7 +253,7 @@ pub fn manage_secrets_test() {
   assert !string.contains(screen(model), "s3cr3t")
 }
 
-pub fn reopen_a_session_test() {
+pub fn reopen_a_shell_test() {
   use context <- helpers.context()
   let assert Ok(home) = box.create(context, Some("home"))
   let assert Ok(tui.Opening(thread: tui.InShell(shell:, ..) as thread, ..)) =
@@ -253,9 +262,12 @@ pub fn reopen_a_session_test() {
 
   // Recent shells include it, other tests leave shells.
   let #(model, _) = tui.init(context)
+  let listed =
+    tui.describe_shell(shells.Listed(shell, Some("home"), shells.Person, 0))
   let #(model, _) =
-    tui.update(model, tui.RecentListed(False, Ok([#(thread, "home")])))
-  assert string.contains(screen(model), shell.id <> "  in home")
+    tui.update(model, tui.RecentListed(False, Ok([#(thread, listed)])))
+  assert string.contains(screen(model), "shell  by a person")
+  assert string.contains(screen(model), shell.id)
 
   let #(model, _) = tui.update(model, tui.Opened(tui.open(context, shell.id)))
   assert string.contains(screen(model), "!int_add(1, 2)")
@@ -349,7 +361,6 @@ pub fn write_while_the_chat_runs_test() {
   // A message added after the last reply is replied to next.
   let assert Ok(replied) = chat.send(context, talk, "hi")
   let #(model, _) = tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
-  assert string.contains(screen(model), "llm hi #2")
   let assert Ok(Nil) = chat.add(context, talk, "again")
   let #(model, _) =
     tui.update(model, tui.Logged(talk.id, tui.open(context, talk.id)))
@@ -392,7 +403,7 @@ perform WriteFile({path: \"/page.html\", contents: !string_to_binary(\"<p>hi</p>
   let model = press(model, ["esc"])
   let assert tui.Running(artifact: None, ..) = model.screen
   assert !string.contains(element.to_string(tui.view(model)), "<iframe")
-  // Clicking a file beside the shell shows it, the files start on the fourth row after the configuration.
+  // Clicking a file beside the log shows it, the files start on the fourth row after the configuration.
   let #(model, _) = tui.update(model, tui.Clicked(110, 4))
   let assert tui.Running(artifact: Some(tui.Artifact("/notes.txt", _)), ..) =
     model.screen
@@ -458,16 +469,94 @@ pub fn show_progress_and_scroll_back_test() {
     ])
   assert progress == ["GET https://example.com", "sleeping 10ms"]
   let #(model, _) =
+    tui.update(model, tui.Progressed(shell.id, progress, live.nothing))
+  assert string.contains(screen(model), "· GET https://example.com")
+}
+
+pub fn show_what_a_chat_is_doing_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, Some("test"))
+  let assert tui.Opening(thread: tui.InChat(chat: talk, ..), ..) = opening
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  let model = press(model, ["h", "i", "enter"])
+  let call =
+    tool.Call(
+      "c1",
+      tool.FunctionCall(
+        "run",
+        dict.from_list([
+          #("code", utils.String("!int_add(1, 2)")),
+        ]),
+      ),
+    )
+  let progress =
+    tui.chat_progress([
+      chat_event.Sent("hi"),
+      chat_event.Replied(llm.Completion("", "", [call])),
+    ])
+  assert progress == ["running !int_add(1, 2)"]
+  assert ["asking the llm"] == tui.chat_progress([chat_event.Sent("hi")])
+  let #(model, _) =
     tui.update(
       model,
-      tui.Progressed(shell.id, progress, live.Arriving("", "Partly writ")),
+      tui.Progressed(talk.id, progress, live.Arriving("", "Partly writ")),
     )
-  assert string.contains(screen(model), "· GET https://example.com")
+  assert string.contains(screen(model), "· running !int_add(1, 2)")
   // The text of a completion is shown as it arrives.
   assert string.contains(screen(model), "llm Partly writ")
 }
 
-pub fn transient_sessions_are_hidden_test() {
+pub fn list_what_made_each_shell_and_chat_test() {
+  use context <- helpers.context()
+  let server = server.start(process.new_subject())
+  let context =
+    Context(..context, llms: dict.from_list([#("test", server.llm(server))]))
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(tui.Opening(thread: tui.InShell(shell:, ..), ..)) =
+    tui.start(context, home, False, None)
+  let assert Ok(tui.Opening(thread: tui.InChat(chat: talk, ..), ..)) =
+    tui.start(context, home, False, Some("test"))
+  // A cron makes its shell the first time it is seen.
+  let config = "{crons: {daily: {schedule: \"0 8 * * *\", run: (_) -> { 1 }}}}"
+  let assert Ok(home) =
+    box.change(context, home.id, fn(root) {
+      file_system.write(root, crons.config, <<config:utf8>>)
+    })
+  let assert Ok([]) = crons.due(context, home, timestamp.system_time())
+  // The shells of a chat's tool calls are listed with the chat.
+  let assert Ok(Ok(_)) = chat.send(context, talk, "run:1")
+  let assert Ok(listed) = turn.recent(context, 100, False)
+  let described = fn(id) {
+    let assert Ok(listed) =
+      list.find(listed, fn(listed: shells.Listed) { listed.shell.id == id })
+    tui.describe_shell(listed)
+  }
+  assert string.starts_with(described(shell.id), "shell  by a person")
+  let assert Ok(shells.Listed(shell: cron, ..)) =
+    list.find(listed, fn(listed: shells.Listed) {
+      listed.by == shells.Cron("daily")
+    })
+  assert string.starts_with(described(cron.id), "shell  by cron daily ")
+  assert string.contains(described(cron.id), " in home ")
+  assert string.ends_with(described(cron.id), cron.id)
+  assert !list.any(listed, fn(listed: shells.Listed) {
+    case listed.by {
+      shells.Chat(_) -> True
+      _ -> False
+    }
+  })
+  let assert Ok(chatted) = chat.recent(context, 100, False)
+  let assert Ok(listed) =
+    list.find(chatted, fn(listed: chats.Listed) { listed.chat.id == talk.id })
+  assert string.starts_with(tui.describe_chat(listed), "chat   by a person")
+}
+
+pub fn transient_shells_are_hidden_test() {
   use context <- helpers.context()
   let assert Ok(home) = box.create(context, Some("home"))
   let assert Ok(tui.Opening(thread: shared, ..)) =
@@ -475,8 +564,8 @@ pub fn transient_sessions_are_hidden_test() {
   let assert Ok(tui.Opening(thread: transient, ..)) =
     tui.start(context, home, True, None)
   let ids = fn(transient) {
-    let assert Ok(shells) = turn.recent(context, 100, transient)
-    list.map(shells, fn(entry) { { entry.0 }.id })
+    let assert Ok(listed) = turn.recent(context, 100, transient)
+    list.map(listed, fn(listed: shells.Listed) { listed.shell.id })
   }
   assert list.contains(ids(False), shared.id)
   assert !list.contains(ids(False), transient.id)

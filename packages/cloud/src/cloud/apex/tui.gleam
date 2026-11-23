@@ -2,7 +2,7 @@
 ////
 //// The named boxes are listed, one is opened by starting a shell or a chat in it, or in a transient copy of it.
 //// A shell runs code, a chat is with one of the configured llms, whose tool calls run in shells of their own.
-//// Shells are durable, a recent shell or one with a known id is opened again from its history,
+//// Both are durable, a recent one or one with a known id is opened again from its history,
 //// and a turn that did not finish is finished when it is opened.
 //// Work that waits for the database, a box or an llm runs in another process and reports back with a message,
 //// that process is watched so the interface is told if it stops.
@@ -83,8 +83,8 @@ pub type Status {
 
 pub type Screen {
   Boxes(boxes: List(Box), selected: Int)
-  /// The most recent shells, in any box.
-  /// Shells in transient boxes are only listed if `transient` is true.
+  /// The most recent shells and chats, in any box.
+  /// Those in transient boxes are only listed if `transient` is true.
   Recent(threads: List(#(Thread, String)), selected: Int, transient: Bool)
   /// Choosing how to start a shell or chat from a named box.
   Open(box: Box, choices: List(Choice), selected: Int)
@@ -103,7 +103,7 @@ pub type Screen {
     arriving: live.Arriving,
     // How many lines of the log are scrolled back.
     scroll: Int,
-    // The files of the shell's box.
+    // The files of the box.
     files: Files,
     // A file shown beside the terminal.
     artifact: Option(Artifact),
@@ -112,8 +112,8 @@ pub type Screen {
   )
 }
 
-/// The files of a box and those a shell changed, the most recently changed last.
-/// `latest` are the files the shell's last turn changed.
+/// The files of a box and those a shell or chat changed, the most recently changed last.
+/// `latest` are the files its last turn changed.
 pub type Files {
   Files(
     root: v1.Cid,
@@ -133,7 +133,13 @@ pub fn artifact_url(artifact: Artifact) -> String {
   "/artifacts/" <> v1.to_string(artifact.root) <> artifact.path
 }
 
-/// What a shell's log shows, each is coloured differently.
+/// What is open, a shell or a chat.
+pub type Thread {
+  InShell(id: String, shell: Shell)
+  InChat(id: String, chat: Chat)
+}
+
+/// What the log of a shell or chat shows, each is coloured differently.
 pub type Entry {
   Sent(String)
   /// A program as it was shown in the editor.
@@ -143,12 +149,6 @@ pub type Entry {
   Failed(String)
   /// What an llm thought before a completion, only the latest thinking is shown in full.
   Thought(String)
-}
-
-/// What is open, a shell or a chat.
-pub type Thread {
-  InShell(id: String, shell: Shell)
-  InChat(id: String, chat: Chat)
 }
 
 /// A shell, or a chat with an llm, in the box or in a transient copy of it.
@@ -166,7 +166,7 @@ pub type Message {
   SecretNamed(String)
   RecentListed(Bool, Result(List(#(Thread, String)), box.Reason))
   Opened(Result(Opening, box.Reason))
-  /// The outcome of a turn in the shell with this id.
+  /// The outcome of a turn in the shell, or the reply of the chat, with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
   /// A message was added to a chat that is replying.
   Added(Result(Nil, box.Reason))
@@ -176,10 +176,10 @@ pub type Message {
   /// Scroll the log back by lines, forward if negative.
   Scrolled(Int)
   Resized(columns: Int, rows: Int)
-  /// What the running turn in the shell with this id has done so far.
+  /// What the running turn in the shell or chat with this id has done so far.
   /// And the text of a completion it is receiving, empty if it is not.
   Progressed(String, List(String), live.Arriving)
-  /// The files of the box of the shell with this id, a page the last turn changed is shown if `show` is true.
+  /// The files of the box of the shell or chat with this id, a page the last turn changed is shown if `show` is true.
   FilesListed(String, Result(Files, box.Reason), show: Bool)
   /// The shell or chat with this id, read again from its journal once a turn finishes.
   Logged(String, Result(Opening, box.Reason))
@@ -194,6 +194,7 @@ pub type Opening {
     thread: Thread,
     log: List(Entry),
     // The last turn is still running, or it stopped and will be finished.
+    // A chat is unfinished when a message sent to it has no reply.
     unfinished: Bool,
   )
 }
@@ -254,7 +255,7 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       Model(..model, size: #(int.max(32, columns), int.max(10, rows))),
       effect.none(),
     )
-    // A turn that stopped is in the shell's history, it is finished when the shell is opened again.
+    // A turn that stopped is in the journal, it is finished when it is opened again.
     _, Running(waiting: True, log:, ..) as running, Stopped(reason) -> #(
       Model(
         ..model,
@@ -331,7 +332,7 @@ fn on_screen(model: Model, screen, message) {
           }
         "r" -> back(model)
         "s" -> #(
-          Model(..model, status: Working("Loading shells")),
+          Model(..model, status: Working("Loading shells and chats")),
           background(fn() { RecentListed(False, recent(context, False)) }),
         )
         "o" -> {
@@ -359,7 +360,7 @@ fn on_screen(model: Model, screen, message) {
           effect.none(),
         )
         "t" -> #(
-          Model(..model, status: Working("Loading shells")),
+          Model(..model, status: Working("Loading shells and chats")),
           background(fn() {
             RecentListed(!transient, recent(context, !transient))
           }),
@@ -388,7 +389,7 @@ fn on_screen(model: Model, screen, message) {
         "enter" ->
           case list.drop(choices, selected) {
             [Start(transient, llm), ..] -> #(
-              Model(..model, status: Working("Starting a shell")),
+              Model(..model, status: Working("Starting")),
               background(fn() { Opened(start(context, box, transient, llm)) }),
             )
             [ManageSecrets, ..] -> #(
@@ -572,7 +573,8 @@ fn on_screen(model: Model, screen, message) {
         effect.none(),
       )
     }
-    // A turn that started since the log was read adds to the log, the next one read has it all.    // A message sent to a chat after its last reply is replied to next.
+    // A turn that started since the log was read adds to the log, the next one read has it all.
+    // A message sent to a chat after its last reply is replied to next.
     Running(thread:, waiting: False, ..) as running, Logged(id, Ok(opening))
       if id == thread.id
     -> {
@@ -582,8 +584,7 @@ fn on_screen(model: Model, screen, message) {
         _, _ -> #(Model(..model, screen: running), effect.none())
       }
     }
-    // A reply for a thread that is no longer shown is dropped, it is in the thread's history.
-    // A message sent to a chat after its last reply is replied to next.
+    // A reply for a shell or chat that is no longer shown is dropped, it is in its journal.
     Running(thread:, log:, waiting: True, ..) as running, Replied(id, replied)
       if id == thread.id
     -> {
@@ -675,7 +676,7 @@ fn select(model: Model, running, selected) {
   #(Model(..model, screen: Running(..running, scroll:)), effect.none())
 }
 
-// What a key or paste did to the draft. Escape leaves the shell if the draft does not use it.
+// What a key or paste did to the draft. Escape leaves the shell or chat if the draft does not use it.
 fn drafted(model: Model, running, key, outcome) {
   let assert Running(..) = running
   case outcome {
@@ -717,13 +718,13 @@ fn last_scroll(model: Model, running) {
   int.max(0, lines - rows)
 }
 
-// A wide screen shows the files of the box beside the shell.
+// A wide screen shows the files of the box beside the log.
 const pane = 26
 
 // Before the files are listed.
 const no_files = Files(dag_json.vacant_cid, [], [], [])
 
-// The file on the row clicked in the files beside the shell, there are none on a narrow screen.
+// The file on the row clicked in the files beside the log, there are none on a narrow screen.
 // The files start below the frame's top and the title of the files.
 fn pane_file(size: #(Int, Int), paths, column, row) {
   let #(width, _) = size
@@ -733,7 +734,7 @@ fn pane_file(size: #(Int, Int), paths, column, row) {
   }
 }
 
-// The columns and rows of a shell's log, inside the frame, beside the files and above a one line draft.
+// The columns and rows of the log, inside the frame, beside the files and above a one line draft.
 fn log_size(size: #(Int, Int)) {
   let #(width, height) = size
   let inner = width - 2
@@ -911,46 +912,49 @@ fn last_calls(entries) {
 
 // Send code to the shell or a message to the chat, its outcome is added to the log when it is replied to.
 // A message sent while a chat is replying is added to the chat after the tool calls that are running.
-fn send(model: Model, running, input, draft) {
+fn send(model: Model, running, sent: draft.Sent, draft) {
   let assert Running(thread:, log:, waiting:, ..) = running
-  let running = Running(..running, log: list.append(log, [sent(input)]), draft:)
-  case waiting, thread, input {
-    True, InChat(chat:, ..), draft.Said(message) -> #(
-      Model(..model, screen: Running(..running, scroll: 0), status: Quiet),
-      background(fn() { Added(chatting.add(model.context, chat, message)) }),
-    )
-    _, _, _ -> run_turn(model, running, input)
+  let running = Running(..running, log: list.append(log, [shown(sent)]), draft:)
+  case thread, sent {
+    InChat(chat:, ..), draft.Said(message) ->
+      case waiting {
+        True -> #(
+          Model(..model, screen: Running(..running, scroll: 0), status: Quiet),
+          background(fn() { Added(chatting.add(model.context, chat, message)) }),
+        )
+        False -> {
+          let context = model.context
+          waiting_for(model, running, fn() {
+            Replied(chat.id, {
+              use replied <- result.map(chatting.send(context, chat, message))
+              #(replied, [])
+            })
+          })
+        }
+      }
+    InShell(shell:, ..), draft.Ran(input) -> {
+      let context = model.context
+      waiting_for(model, running, fn() {
+        Replied(shell.id, turn.send(context, shell, input))
+      })
+    }
+    _, _ -> #(model, effect.none())
   }
 }
 
 // Reply to messages sent to the chat that have no reply.
 fn reply(model: Model, running, chat: Chat) {
-  let assert Running(..) = running
   let context = model.context
-  let screen =
-    Running(
-      ..running,
-      waiting: True,
-      progress: [],
-      arriving: live.nothing,
-      scroll: 0,
-    )
-  #(
-    Model(..model, screen:, status: Quiet),
-    effect.batch([
-      background(fn() {
-        Replied(chat.id, {
-          use replied <- result.map(chatting.reply(context, chat))
-          #(replied, [])
-        })
-      }),
-      poll(context, InChat(chat.id, chat)),
-    ]),
-  )
+  waiting_for(model, running, fn() {
+    Replied(chat.id, {
+      use replied <- result.map(chatting.reply(context, chat))
+      #(replied, [])
+    })
+  })
 }
 
-// Start a turn that is already in the log.
-fn run_turn(model: Model, running, input) {
+// Wait for a turn that is already in the log.
+fn waiting_for(model: Model, running, work) {
   let assert Running(thread:, ..) = running
   let screen =
     Running(
@@ -962,18 +966,13 @@ fn run_turn(model: Model, running, input) {
     )
   #(
     Model(..model, screen:, status: Quiet),
-    effect.batch([
-      background(fn() {
-        Replied(thread.id, turn_or_reply(model.context, thread, input))
-      }),
-      poll(model.context, thread),
-    ]),
+    effect.batch([background(work), poll(model.context, thread)]),
   )
 }
 
 // How code or a message is shown in the log.
-fn sent(input: draft.Sent) {
-  case input {
+fn shown(sent: draft.Sent) {
+  case sent {
     draft.Said(text) -> Sent(text)
     draft.Ran(turn.Code(source) as input) ->
       Ran(code.highlight(source) |> list.map(span.line_new), input)
@@ -988,10 +987,10 @@ fn opened(model: Model, opening: Opening) {
   // The draft, files and artifact are kept when it is opened again after its turn finishes.
   let #(draft, files, artifact) = case model.screen, thread {
     Running(thread: shown, draft:, files:, artifact:, ..), _
-      if shown.id == thread.id
+      if shown == thread
     -> #(draft, files, artifact)
-    _, InChat(..) -> #(draft.message(), no_files, None)
-    _, InShell(..) -> #(draft.program(), no_files, None)
+    _, InChat(chat: _, ..) -> #(draft.message(), no_files, None)
+    _, InShell(shell: _, ..) -> #(draft.program(), no_files, None)
   }
   let screen =
     Running(
@@ -1008,33 +1007,27 @@ fn opened(model: Model, opening: Opening) {
       None,
     )
   let model = Model(..model, screen:, status: Quiet)
-  let files = list_files(model.context, thread, False)
-  case unfinished {
-    False -> #(model, files)
-    True -> #(
+  let context = model.context
+  let files = list_files(context, thread, False)
+  case unfinished, thread {
+    False, _ -> #(model, files)
+    True, InChat(chat:, ..) -> {
+      let #(model, replying) = reply(model, screen, chat)
+      #(model, effect.batch([files, replying]))
+    }
+    True, InShell(shell:, ..) -> #(
       model,
       effect.batch([
         files,
-        poll(model.context, thread),
-        background(fn() { resume(model.context, thread) }),
+        poll(context, thread),
+        background(fn() {
+          Opened({
+            use Nil <- result.try(turn.resume(context, shell))
+            open(context, shell.id)
+          })
+        }),
       ]),
     )
-  }
-}
-
-// Finish the last turn of a shell, or reply to the messages a chat has not replied to.
-fn resume(context: Context, thread: Thread) -> Message {
-  case thread {
-    InShell(shell:, ..) ->
-      Opened({
-        use Nil <- result.try(turn.resume(context, shell))
-        open(context, shell.id)
-      })
-    InChat(chat:, ..) ->
-      Replied(chat.id, {
-        use replied <- result.map(chatting.reply(context, chat))
-        #(replied, [])
-      })
   }
 }
 
@@ -1042,18 +1035,50 @@ fn recent(context, transient) {
   use shells <- result.try(turn.recent(context, 20, transient))
   use chats <- result.map(chatting.recent(context, 20, transient))
   list.append(
-    list.map(shells, fn(entry) {
-      let #(shell, name, at) = entry
-      #(at, #(InShell(shell.id, shell), option.unwrap(name, "a transient box")))
+    list.map(shells, fn(listed: shells.Listed) {
+      #(
+        listed.at,
+        #(InShell(listed.shell.id, listed.shell), describe_shell(listed)),
+      )
     }),
-    list.map(chats, fn(entry) {
-      let #(chat, name, at) = entry
-      #(at, #(InChat(chat.id, chat), option.unwrap(name, "a transient box")))
+    list.map(chats, fn(listed: chats.Listed) {
+      #(
+        listed.at,
+        #(InChat(listed.chat.id, listed.chat), describe_chat(listed)),
+      )
     }),
   )
   |> list.sort(fn(a, b) { int.compare(b.0, a.0) })
   |> list.take(20)
-  |> list.map(fn(entry) { entry.1 })
+  |> list.map(fn(listed) { listed.1 })
+}
+
+/// A line for a shell in the list: what made it, its box and its id.
+pub fn describe_shell(listed: shells.Listed) -> String {
+  let by = case listed.by {
+    shells.Person -> "by a person"
+    shells.Cron(name) -> "by cron " <> name
+    shells.Chat(_) -> "by a chat"
+    shells.Tool -> "by a tool call"
+  }
+  line("shell", by, listed.box, listed.shell.id)
+}
+
+/// A line for a chat in the list: what made it, its box and its id.
+pub fn describe_chat(listed: chats.Listed) -> String {
+  let by = case listed.channel {
+    True -> "by a channel"
+    False -> "by a person"
+  }
+  line("chat", by, listed.box, listed.chat.id)
+}
+
+fn line(kind, by, box, id) {
+  let place = "in " <> option.unwrap(box, "a transient box")
+  string.pad_end(kind, 7, " ")
+  <> string.pad_end(by, 24, " ")
+  <> string.pad_end(place, 24, " ")
+  <> id
 }
 
 /// A shell or chat as it is shown, with everything that has happened in it.
@@ -1086,6 +1111,30 @@ pub fn open(context: Context, id: String) -> Result(Opening, box.Reason) {
   }
 }
 
+// What the entries of a shell show.
+fn log(entries) {
+  list.flat_map(entries, fn(entry) {
+    case entry {
+      event.Input(event.Started(code, _), ..) -> [
+        shown(draft.Ran(turn.Code(code))),
+      ]
+      event.Input(event.Submitted(program, _), ..) -> [
+        shown(draft.Ran(turn.Program(program))),
+      ]
+      event.Input(event.Cancelled, ..) -> [Failed("cancelled")]
+      event.Output(stop: event.Finished(_, output) as stop, change:, ..) ->
+        list.map(output, Printed)
+        |> list.append([
+          case turn.outcome(stop, change) {
+            Ok(value) -> Returned(value)
+            Error(reason) -> Failed(reason)
+          },
+        ])
+      _ -> []
+    }
+  })
+}
+
 // What the entries of a chat show, the messages, the llm's thinking and its replies.
 fn chat_log(entries) {
   list.flat_map(entries, fn(entry) {
@@ -1107,47 +1156,6 @@ fn chat_log(entries) {
   })
 }
 
-// What the entries of a shell show.
-fn log(entries) {
-  list.flat_map(entries, fn(entry) {
-    case entry {
-      event.Input(event.Started(code, _), ..) -> [
-        sent(draft.Ran(turn.Code(code))),
-      ]
-      event.Input(event.Submitted(program, _), ..) -> [
-        sent(draft.Ran(turn.Program(program))),
-      ]
-      event.Input(event.Cancelled, ..) -> [Failed("cancelled")]
-      event.Output(stop: event.Finished(_, output) as stop, change:, ..) ->
-        list.map(output, Printed)
-        |> list.append([
-          case turn.outcome(stop, change) {
-            Ok(value) -> Returned(value)
-            Error(reason) -> Failed(reason)
-          },
-        ])
-      _ -> []
-    }
-  })
-}
-
-// Code runs as a turn of the shell, a message is sent to the chat and its reply is the outcome.
-fn turn_or_reply(
-  context,
-  thread: Thread,
-  sent: draft.Sent,
-) -> Result(turn.Outcome, box.Reason) {
-  case thread, sent {
-    InShell(shell:, ..), draft.Ran(input) -> turn.send(context, shell, input)
-    InChat(chat:, ..), draft.Said(message) -> {
-      use replied <- result.map(chatting.send(context, chat, message))
-      #(replied, [])
-    }
-    _, _ ->
-      Error(box.Failed("a shell runs code and a chat replies to messages"))
-  }
-}
-
 // Back to the list of boxes, which may have changed.
 fn back(model: Model) {
   #(Model(..model, status: Working("Loading boxes")), list_boxes(model.context))
@@ -1160,7 +1168,7 @@ fn move(key, selected, items) {
   }
 }
 
-/// Every way to start a shell from a box, with each of the configured llms, then its secrets.
+/// Every way to start from a box, a shell or a chat with each of the configured llms, then its secrets.
 pub fn choices(context: Context) -> List(Choice) {
   let llms = dict.keys(context.llms) |> list.sort(string.compare)
   list.flat_map([None, ..list.map(llms, Some)], fn(llm) {
@@ -1265,14 +1273,14 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("↑↓", "choose"),
       #("enter", "open"),
       #("n", "new box"),
-      #("s", "shells"),
+      #("s", "recent"),
       #("o", "open by id"),
       #("r", "refresh"),
     ])
     Recent(transient:, ..) -> #(
       case transient {
-        True -> "Recent shells, with transient boxes"
-        False -> "Recent shells"
+        True -> "Recent shells and chats, with transient boxes"
+        False -> "Recent shells and chats"
       },
       [
         #("↑↓", "choose"),
@@ -1449,10 +1457,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
       list.map(boxes, fn(box) { option.unwrap(box.name, box.id) })
       |> menu(screen, area, chosen)
     Recent(threads, chosen, _) ->
-      list.map(threads, fn(entry) {
-        let #(thread, place) = entry
-        thread.id <> "  in " <> place
-      })
+      list.map(threads, fn(entry) { entry.1 })
       |> menu(screen, area, chosen)
     Open(box, choices, chosen) -> {
       let name = option.unwrap(box.name, box.id)
@@ -1597,7 +1602,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
           ])
         False -> shown
       }
-      // The shell fills the screen from the bottom, as a terminal does, the log grows up from the draft.
+      // The log fills the screen from the bottom, as a terminal does, it grows up from the draft.
       let lines = list.append(shown, below)
       let top =
         area.position.y + int.max(0, area.size.height - list.length(lines))
@@ -1613,7 +1618,7 @@ fn body(screen, area: geometry.Rect, model: Model) {
   }
 }
 
-// The files the shell changed are coloured, the one shown is reversed.
+// The files the shell or chat changed are coloured, the one shown is reversed.
 fn file_pane(screen, area: geometry.Rect, files: Files, artifact) {
   let screen =
     list.index_fold(
