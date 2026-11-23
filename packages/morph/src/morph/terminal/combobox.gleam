@@ -2,7 +2,6 @@
 /// to the next branching point, following the highlighted item at a split.
 import etui/backend
 import etui/geometry
-import etui/keys
 import etui/span
 import etui/style
 import etui/text
@@ -13,6 +12,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import morph/terminal/field
 
 pub type Combobox {
   Combobox(
@@ -77,7 +77,7 @@ pub fn update(event: backend.InputEvent, box: Combobox) -> Action {
       Updated(Combobox(..box, selection:))
     }
     backend.KeyPress(key) ->
-      with_input(box, edit_input(input.input_new(""), box.input, key))
+      with_input(box, field.edit(input.input_new(""), box.input, key))
     backend.Paste(text) -> {
       let edited =
         text
@@ -146,48 +146,6 @@ fn with_input(box: Combobox, edited: input.InputState) -> Action {
     False -> None
   }
   Updated(Combobox(..box, input: edited, selection:, error:))
-}
-
-/// Field editing shared by every text input in the TUI.
-pub fn edit_input(
-  widget: input.InputWidget,
-  editing: input.InputState,
-  key: String,
-) -> input.InputState {
-  case key {
-    "ctrl+a" -> input.move_to_start(editing)
-    "ctrl+e" -> input.move_to_end(editing)
-    "ctrl+u" -> input.clear_state(editing)
-    "ctrl+k" -> input.delete_to_end(editing)
-    _ -> edit_key(widget, editing, key)
-  }
-}
-
-fn edit_key(
-  widget: input.InputWidget,
-  editing: input.InputState,
-  key: String,
-) -> input.InputState {
-  case keys.parse(key) {
-    keys.KeyEvent(code, keys.Modifiers(ctrl: False, alt: False, ..)) ->
-      case code {
-        keys.Char(char) -> input.insert_char(widget, editing, char)
-        keys.Backspace -> input.backspace(editing)
-        keys.Left -> input.move_cursor_left(editing)
-        keys.Right -> input.move_cursor_right(editing)
-        keys.Home -> input.move_to_start(editing)
-        keys.End -> input.move_to_end(editing)
-        keys.Delete -> {
-          let moved = input.move_cursor_right(editing)
-          case moved.cursor == editing.cursor {
-            True -> editing
-            False -> input.backspace(moved)
-          }
-        }
-        _ -> editing
-      }
-    _ -> editing
-  }
 }
 
 pub fn render(buf, area: geometry.Rect, box: Combobox) {
@@ -278,12 +236,13 @@ fn render_input(buf, area: geometry.Rect, box: Combobox) {
       _ -> ""
     })
   let buf = input.render(buf, area, widget, box.input)
+  let cursor = field.cursor(_, area, widget, box.input)
   // Match the input widget's horizontal scrolling before appending ghost text.
   let start = int.max(0, box.input.cursor - area.size.width + 1)
   let hidden = text.truncate(box.input.value, start, "")
   let offset = text.cell_width(box.input.value) - text.cell_width(hidden)
   case suffix != "" && offset < area.size.width {
-    False -> buf
+    False -> cursor(buf)
     True ->
       span.render_line(
         buf,
@@ -296,5 +255,6 @@ fn render_input(buf, area: geometry.Rect, box: Combobox) {
         ]),
         area.size.width - offset,
       )
+      |> cursor
   }
 }
