@@ -31,6 +31,11 @@ then it accepts every connection and every request needs the password, with HTTP
 | `GET /boxes/:id/files/*path` | The contents of a file or the entries of a directory. |
 | `PUT /boxes/:id/files/*path` | Write the request body to a file. Missing directories are created. |
 | `DELETE /boxes/:id/files/*path` | Delete a file or directory. |
+| `GET /boxes/:id/secrets` | The names of the box's secrets. |
+| `PUT /boxes/:id/secrets/:name` | Set a secret to the request body. |
+| `DELETE /boxes/:id/secrets/:name` | Remove a secret. |
+
+Code in a box reads the box's secrets with the `Env` effect, a clone starts with a copy of them.
 
 A change that leaves an invalid module is rejected with status 422 and the box is not changed.
 Status 409 is returned when the name is taken, or a file changed by something else first.

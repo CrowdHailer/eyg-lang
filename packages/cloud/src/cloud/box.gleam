@@ -6,8 +6,10 @@ import cloud/beam/execute
 import cloud/box/fs
 import cloud/data/boxes.{type Box, Box}
 import cloud/data/db
+import cloud/data/secrets
 import cloud/file_system
 import cloud/registry
+import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{type Option, Some}
 import gleam/result
@@ -44,13 +46,55 @@ pub fn create(context: Context, name: Option(String)) -> Result(Box, Reason) {
   start(context, name, root)
 }
 
-/// The new box starts at the current root of the original.
+/// The new box starts at the current root of the original, with a copy of its secrets.
 pub fn clone(
   context: Context,
   from: Box,
   name: Option(String),
 ) -> Result(Box, Reason) {
-  start(context, name, from.root)
+  use box <- result.try(start(context, name, from.root))
+  use _ <- result.map(query(secrets.copy(from.id, box.id), context))
+  box
+}
+
+/// The secrets of a box by name, code in the box reads them with the Env effect.
+pub fn secrets(
+  context: Context,
+  id: String,
+) -> Result(Dict(String, String), Reason) {
+  query(secrets.all(id), context) |> result.map(dict.from_list)
+}
+
+/// Add a secret to a box, or replace the one with the same name.
+/// A name is uppercase letters, digits and underscores, as for environment variables.
+pub fn set_secret(
+  context: Context,
+  id: String,
+  name: String,
+  value: String,
+) -> Result(Nil, Reason) {
+  let allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+  case
+    name != ""
+    && list.all(string.to_graphemes(name), string.contains(allowed, _))
+  {
+    False ->
+      Error(
+        Invalid(["A secret name is uppercase letters, digits and underscores"]),
+      )
+    True -> {
+      use _ <- result.try(latest(context, id))
+      query(secrets.set(id, name, value), context) |> result.replace(Nil)
+    }
+  }
+}
+
+pub fn delete_secret(
+  context: Context,
+  id: String,
+  name: String,
+) -> Result(Nil, Reason) {
+  query(secrets.delete(id, name), context) |> result.replace(Nil)
 }
 
 /// All the named boxes, in order of name.

@@ -40,6 +40,11 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
           |> response.set_header("allow", "GET, PUT, DELETE")
       }
     }
+    ["boxes", id, "secrets"], http.Get -> boxes.secrets(id, context)
+    ["boxes", id, "secrets", name], http.Put ->
+      boxes.set_secret(ctx, id, name, context)
+    ["boxes", id, "secrets", name], http.Delete ->
+      boxes.delete_secret(id, name, context)
     ["boxes", id, "shells"], http.Post -> shells.create(id, context)
     ["boxes", id, "shells"], http.Get -> shells.list(id, context)
     ["shells", id], http.Get -> shells.get(id, context)

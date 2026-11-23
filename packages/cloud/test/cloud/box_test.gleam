@@ -3,6 +3,7 @@ import cloud/box
 import cloud/data/journal
 import cloud/file_system
 import cloud/helpers
+import gleam/dict
 import gleam/option.{None, Some}
 import gleam/string
 
@@ -77,4 +78,18 @@ pub fn a_change_is_recorded_with_what_became_of_it_test() {
     box.merge_with(context, home.id, changed.root, invalid, fn(_) {
       [failing()]
     })
+}
+
+pub fn clones_copy_secrets_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(Nil) = box.set_secret(context, home.id, "KEY", "home")
+  let assert Ok(copy) = box.clone(context, home, None)
+  assert Ok(dict.from_list([#("KEY", "home")])) == box.secrets(context, copy.id)
+  // The boxes keep their own secrets.
+  let assert Ok(Nil) = box.set_secret(context, copy.id, "KEY", "copy")
+  assert Ok(dict.from_list([#("KEY", "home")])) == box.secrets(context, home.id)
+  let assert Ok(Nil) = box.delete_secret(context, home.id, "KEY")
+  assert Ok(dict.new()) == box.secrets(context, home.id)
+  assert Error(box.Missing) == box.set_secret(context, "gone", "KEY", "x")
 }

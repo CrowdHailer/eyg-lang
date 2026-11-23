@@ -17,7 +17,7 @@
 ////
 //// Each turn records the policy it runs with and the module each package reference resolved to,
 //// so a replay runs the same code after the policy changes or a package is released.
-//// Secrets are never recorded, a fingerprint of each secret read is recorded instead.
+//// Code reads the secrets of its box. Secrets are never recorded, a fingerprint of each secret read is recorded instead.
 //// If a secret changed the turn cannot be replayed and fails saying which secret changed.
 
 import cloud/apex/context.{type Context, Context}
@@ -161,6 +161,7 @@ pub fn send(
 /// Finish the last turn if it is unfinished, after a turn that is running finishes.
 pub fn resume(context: Context, shell: Shell) -> Result(Nil, box.Reason) {
   use <- in_process(context, shell)
+  use context <- result.try(in_box(context, shell.box))
   recover(context, shell)
 }
 
@@ -213,6 +214,7 @@ pub fn once(
   case recorded {
     [] -> run(context, shell, Code(code))
     _ -> {
+      use context <- result.try(in_box(context, shell.box))
       use Nil <- result.try(recover(context, shell))
       use recorded <- result.try(entries(context, shell.id))
       Ok(ended(recorded))
@@ -240,6 +242,7 @@ pub fn run(
   shell: Shell,
   input: Input,
 ) -> Result(Outcome, box.Reason) {
+  use context <- result.try(in_box(context, shell.box))
   use Nil <- result.try(recover(context, shell))
   use before <- result.try(entries(context, shell.id))
   let state = execute.State(..context.state, pins: dict.new())
@@ -671,6 +674,12 @@ fn pins(state: execute.State, turn: List(Entry)) {
       }
     })
   execute.State(..state, pins:)
+}
+
+// Code in a box reads the secrets of the box.
+fn in_box(context: Context, box) {
+  use secrets <- result.map(box.secrets(context, box))
+  Context(..context, state: execute.State(..context.state, secrets:))
 }
 
 /// Run the code again with the answers that were recorded, from the input that starts the turn.

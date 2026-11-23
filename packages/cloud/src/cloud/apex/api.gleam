@@ -1,5 +1,6 @@
 //// Reading request bodies and writing responses for the JSON API.
 
+import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
 import gleam/http/response.{type Response}
@@ -19,6 +20,17 @@ pub fn read_bits(
     Ok(body) -> then(body)
     Error(context.BodyTooLarge) -> status(413)
     Error(context.InvalidBody) -> status(400)
+  }
+}
+
+pub fn read_text(
+  ctx: controller.Context,
+  then: fn(String) -> Response(Content),
+) -> Response(Content) {
+  use body <- read_bits(ctx)
+  case bit_array.to_string(body) {
+    Ok(text) -> then(text)
+    Error(Nil) -> status(400)
   }
 }
 

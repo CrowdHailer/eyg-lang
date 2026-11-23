@@ -184,3 +184,27 @@ pub fn concurrent_changes_test() {
   let response = dispatch(simulate.request(http.Get, "/boxes/" <> box), context)
   assert 11 == field(response, "sequence", decode.int)
 }
+
+pub fn box_secrets_test() {
+  use context <- helpers.context()
+  let home = "/boxes/" <> id(create(context, [#("name", json.string("home"))]))
+  let set = fn(name, value) {
+    simulate.request(http.Put, home <> "/secrets/" <> name)
+    |> simulate.text_body(value)
+    |> dispatch(context)
+  }
+  assert 204 == set("TOKEN", "abc").status
+  assert 204 == set("A_KEY", "def").status
+  assert 422 == set("lower", "x").status
+  // Only names are listed.
+  let response =
+    dispatch(simulate.request(http.Get, home <> "/secrets"), context)
+  assert "[\"A_KEY\",\"TOKEN\"]" == simulate.text(response)
+
+  let response =
+    simulate.request(http.Delete, home <> "/secrets/TOKEN") |> dispatch(context)
+  assert 204 == response.status
+  let response =
+    dispatch(simulate.request(http.Get, home <> "/secrets"), context)
+  assert "[\"A_KEY\"]" == simulate.text(response)
+}

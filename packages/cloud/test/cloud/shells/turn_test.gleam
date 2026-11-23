@@ -13,7 +13,6 @@ import cloud/shells/turn
 import eyg/hub/cache
 import eyg/ir/tree as ir
 import eyg/parser
-import gleam/dict
 import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/http
@@ -301,9 +300,7 @@ pub fn replay_with_the_policy_a_turn_started_with_test() {
 pub fn secrets_are_fingerprinted_test() {
   use context <- helpers.context()
   let shell = shell_helpers.shell(context)
-  let secrets = dict.from_list([#("KEY", "s3cr3t-value")])
-  let context =
-    Context(..context, state: execute.State(..context.state, secrets:))
+  let assert Ok(Nil) = box.set_secret(context, shell.box, "KEY", "s3cr3t-value")
   let _ =
     stop_during_request(context, shell, fn(server) {
       "let key = perform Env(\"KEY\")\nlet _ = "
@@ -314,12 +311,11 @@ pub fn secrets_are_fingerprinted_test() {
     shell_helpers.entries(context, shell)
   assert !string.contains(shell_helpers.export(context, shell), "s3cr3t")
 
-  let changed = dict.from_list([#("KEY", "other")])
-  let changed =
-    Context(..context, state: execute.State(..context.state, secrets: changed))
-  let assert Error(box.Failed(reason)) = shell_helpers.run(changed, shell, "1")
+  let assert Ok(Nil) = box.set_secret(context, shell.box, "KEY", "other")
+  let assert Error(box.Failed(reason)) = shell_helpers.run(context, shell, "1")
   assert reason == "the secret KEY has changed since the turn ran"
 
+  let assert Ok(Nil) = box.set_secret(context, shell.box, "KEY", "s3cr3t-value")
   let assert Ok(_) = shell_helpers.run(context, shell, "1")
   let assert [_, _, _, event.Output(stop: event.Finished(Ok(value), _), ..), ..] =
     shell_helpers.entries(context, shell)
