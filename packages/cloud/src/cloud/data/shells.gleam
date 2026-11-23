@@ -74,3 +74,26 @@ pub fn of_chat(chat: String) -> pog.Query(#(Shell, Option(String))) {
     decode.success(#(shell, call))
   })
 }
+
+/// The most recent shells in any box, with the name of the box if it has one, and when each was made
+/// in microseconds since the Unix epoch. Shells made for a chat are listed with it instead.
+/// Shells in transient boxes are left out unless `transient` is true.
+pub fn recent(
+  limit: Int,
+  transient: Bool,
+) -> pog.Query(#(Shell, Option(String), Int)) {
+  "SELECT s.id, s.box, b.name, (EXTRACT(EPOCH FROM s.created_at) * 1000000)::BIGINT
+  FROM shells s JOIN boxes b ON b.id = s.box
+  WHERE ($2 OR b.name IS NOT NULL) AND s.chat IS NULL
+  ORDER BY s.created_at DESC, s.id
+  LIMIT $1"
+  |> pog.query()
+  |> pog.parameter(pog.int(limit))
+  |> pog.parameter(pog.bool(transient))
+  |> pog.returning({
+    use shell <- decode.then(decoder())
+    use name <- decode.field(2, decode.optional(decode.string))
+    use at <- decode.field(3, decode.int)
+    decode.success(#(shell, name, at))
+  })
+}

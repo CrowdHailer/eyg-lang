@@ -94,6 +94,9 @@ The web interface is served with the API, on the same port, and also only accept
 It is a terminal in the page that lists the named boxes and creates new ones.
 A box is opened by starting a shell or a chat in it, or in a transient copy of it.
 A shell's programs are written with the structural editor and the same keys as the EYG shell.
+Recent shells, and any shell by its id, are opened again with their history.
+Shells in transient boxes are only listed after pressing `t`.
+A turn that did not finish is finished when its shell is opened, a running turn can be cancelled.
 
 ### Configuration
 

@@ -34,6 +34,8 @@ pub type Trigger {
   /// The answer to the request or sleep the last segment stopped at,
   /// or the rejection of its change, when the box did not accept it.
   Continued(answer: execute.Answer)
+  /// The turn was stopped, nothing more runs in it.
+  Cancelled
 }
 
 /// An answer given to the code while a segment ran.
@@ -71,7 +73,7 @@ pub type Change {
 pub fn starts(trigger: Trigger) -> Bool {
   case trigger {
     Started(..) | Submitted(..) -> True
-    Continued(_) -> False
+    Continued(_) | Cancelled -> False
   }
 }
 
@@ -128,6 +130,7 @@ fn trigger_fields(trigger) {
       #("trigger", json.string("continued")),
       ..encode_answer(answer)
     ]
+    Cancelled -> [#("trigger", json.string("cancelled"))]
   }
 }
 
@@ -213,10 +216,7 @@ pub fn decoder(start: Option(#(Int, v1.Cid))) -> decode.Decoder(Entry) {
       decode.success(Output(answers, stop, root, change))
     }
     _, _ ->
-      decode.failure(
-        Input(Continued(execute.Slept), 0, dag_json.vacant_cid),
-        "Journal entry",
-      )
+      decode.failure(Input(Cancelled, 0, dag_json.vacant_cid), "Journal entry")
   }
 }
 
@@ -234,7 +234,8 @@ fn trigger_decoder() {
       decode.success(Submitted(program, policy))
     }
     "continued" -> decode.map(answer_decoder(), Continued)
-    _ -> decode.failure(Continued(execute.Slept), "Trigger")
+    "cancelled" -> decode.success(Cancelled)
+    _ -> decode.failure(Cancelled, "Trigger")
   }
 }
 

@@ -112,6 +112,8 @@ fn turns(entries, acc) {
       let outcome = turn.outcome(stop, change)
       turns(entries, [#(input, Some(#(outcome, output))), ..acc])
     }
+    [event.Input(event.Cancelled, ..), ..entries], [#(input, _), ..acc] ->
+      turns(entries, [#(input, Some(#(Error("cancelled"), []))), ..acc])
     [_, ..entries], _ -> turns(entries, acc)
   }
 }

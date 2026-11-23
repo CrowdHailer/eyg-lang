@@ -521,3 +521,48 @@ pub fn run_a_built_program_test() {
     shell_helpers.entries(context, shell)
   assert recorded == program
 }
+
+pub fn cancel_a_running_turn_test() {
+  use context <- helpers.context()
+  let shell = shell_helpers.shell(context)
+  let #(server, release, _done) =
+    start_request(context, shell, fn(server) {
+      "let _ = "
+      <> write
+      <> "\nlet _ = "
+      <> server.fetch(server, "GET", "/slow")
+      <> "\n1"
+    })
+  let assert Ok(Nil) = turn.cancel(context, shell)
+  process.send(release, Nil)
+  let assert [
+    event.Input(event.Started(..), ..),
+    event.Output(stop: event.Requested(..), ..),
+    event.Input(event.Cancelled, ..),
+  ] = shell_helpers.entries(context, shell)
+  // The cancelled turn is not resumed, its request is not sent again.
+  let assert Ok(#(Ok("2"), [])) = shell_helpers.run(context, shell, "2")
+  assert 1 == server.count_requests(server, http.Get, "/slow")
+  // The change made before the request was merged and is kept.
+  let assert Ok(#(Ok(value), [])) = shell_helpers.run(context, shell, read)
+  assert string.starts_with(value, "Ok(")
+}
+
+pub fn resume_a_stopped_turn_test() {
+  use context <- helpers.context()
+  let shell = shell_helpers.shell(context)
+  let server =
+    stop_during_request(context, shell, fn(server) {
+      server.fetch(server, "GET", "/slow")
+    })
+  let assert Ok(Nil) = turn.resume(context, shell)
+  let assert [
+    _,
+    _,
+    event.Input(event.Continued(_), ..),
+    event.Output(stop: event.Finished(Ok(_), _), ..),
+  ] = shell_helpers.entries(context, shell)
+  assert 2 == server.count_requests(server, http.Get, "/slow")
+  // Nothing is left to resume.
+  let assert Ok(Nil) = turn.resume(context, shell)
+}

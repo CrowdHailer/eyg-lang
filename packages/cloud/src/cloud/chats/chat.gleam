@@ -18,8 +18,10 @@ import cloud/data/db
 import cloud/data/shells
 import cloud/overlay
 import cloud/registry
+import cloud/shells/turn
 import cloud/system
 import gleam/dict
+import gleam/erlang/process
 import gleam/int
 import gleam/json
 import gleam/list
@@ -55,6 +57,16 @@ pub fn find(context: Context, id: String) -> Result(Chat, box.Reason) {
     Ok(_) -> Error(box.Missing)
     Error(reason) -> Error(reason)
   }
+}
+
+/// The most recent chats in any box, with the name of the box if it has one and when each was made.
+/// Chats in transient boxes are left out unless `transient` is true.
+pub fn recent(
+  context: Context,
+  limit: Int,
+  transient: Bool,
+) -> Result(List(#(Chat, Option(String), Int)), box.Reason) {
+  query(context, chats.recent(limit, transient))
 }
 
 /// Send a message to the chat and wait for the llm's reply.
@@ -136,6 +148,46 @@ fn named(completion: chat.Completion(tool.Call), replied: Int) {
       }
     })
   chat.Completion(..completion, tool_calls:)
+}
+
+/// Stop the chat replying and record that it was cancelled, so it does not continue.
+/// Tool calls that are running are cancelled in their shells, changes that were merged are kept.
+pub fn cancel(context: Context, chat: Chat) -> Result(Nil, box.Reason) {
+  let process =
+    registry.lookup(context.chats, chat.id, fn() { registry.serve(Nil) })
+  case process.subject_owner(process) {
+    Ok(pid) -> {
+      let monitor = process.monitor(pid)
+      process.kill(pid)
+      let _ =
+        process.new_selector()
+        |> process.select_specific_monitor(monitor, fn(_) { Nil })
+        |> process.selector_receive(5000)
+      Nil
+    }
+    Error(Nil) -> Nil
+  }
+  use entries <- result.try(entries(context, chat.id))
+  case event.next(entries) {
+    event.Idle(_) -> Ok(Nil)
+    event.Ask(_) -> append(context, chat, [event.Cancelled])
+    event.Call(pending) -> {
+      use running <- result.try(query(context, shells.of_chat(chat.id)))
+      list.each(running, fn(running) {
+        let #(shell, call) = running
+        case list.any(pending, fn(pending) { Some(pending.id) == call }) {
+          True -> {
+            let _ = turn.cancel(context, shell)
+            Nil
+          }
+          False -> Nil
+        }
+      })
+      list.map(pending, fn(call) { event.Returned(call.id, Error("cancelled")) })
+      |> list.append([event.Cancelled])
+      |> append(context, chat, _)
+    }
+  }
 }
 
 /// Every entry in the chat's journal, with the time it was recorded in microseconds.

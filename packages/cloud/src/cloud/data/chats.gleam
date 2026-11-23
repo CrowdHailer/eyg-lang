@@ -2,6 +2,7 @@
 //// The code of the llm's tool calls runs in shells, see `data/shells`.
 
 import gleam/dynamic/decode
+import gleam/option.{type Option}
 import pog
 
 pub type Chat {
@@ -36,6 +37,29 @@ pub fn list(box: String) -> pog.Query(Chat) {
   |> pog.query()
   |> pog.parameter(pog.text(box))
   |> pog.returning(decoder())
+}
+
+/// The most recent chats in any box, with the name of the box if it has one, and when each was made
+/// in microseconds since the Unix epoch. Chats in transient boxes are left out unless `transient` is true.
+pub fn recent(
+  limit: Int,
+  transient: Bool,
+) -> pog.Query(#(Chat, Option(String), Int)) {
+  "SELECT c.id, c.box, c.llm, b.name,
+    (EXTRACT(EPOCH FROM c.created_at) * 1000000)::BIGINT
+  FROM chats c JOIN boxes b ON b.id = c.box
+  WHERE $2 OR b.name IS NOT NULL
+  ORDER BY c.created_at DESC, c.id
+  LIMIT $1"
+  |> pog.query()
+  |> pog.parameter(pog.int(limit))
+  |> pog.parameter(pog.bool(transient))
+  |> pog.returning({
+    use chat <- decode.then(decoder())
+    use name <- decode.field(3, decode.optional(decode.string))
+    use at <- decode.field(4, decode.int)
+    decode.success(#(chat, name, at))
+  })
 }
 
 /// Append an entry to the chat's journal.

@@ -34,6 +34,7 @@ fn turns(chat, parent, log, done) {
       let id = trace.span_id(chat, i)
       let #(end, error) = case list.last(entries) {
         Ok(#(_, at, event.Failed(reason))) -> #(at, Some(reason))
+        Ok(#(_, at, event.Cancelled)) -> #(at, Some("cancelled"))
         Ok(#(_, at, event.Replied(completion))) if completion.tool_calls == [] -> #(
           at,
           None,
@@ -67,7 +68,8 @@ fn split_turn(log, entries) {
     [#(_, _, event.Replied(completion)) as entry, ..rest]
       if completion.tool_calls == []
     -> #(list.reverse([entry, ..entries]), rest)
-    [#(_, _, event.Failed(_)) as entry, ..rest] -> #(
+    [#(_, _, event.Failed(_)) as entry, ..rest]
+    | [#(_, _, event.Cancelled) as entry, ..rest] -> #(
       list.reverse([entry, ..entries]),
       rest,
     )

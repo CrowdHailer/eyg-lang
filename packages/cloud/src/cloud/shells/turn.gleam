@@ -33,10 +33,11 @@ import eyg/ir/tree as ir
 import gleam/bit_array
 import gleam/crypto
 import gleam/dict
+import gleam/erlang/process
 import gleam/http
 import gleam/json
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
@@ -133,14 +134,70 @@ pub fn fork(context: Context, id: String) -> Result(Shell, box.Reason) {
   })
 }
 
+/// The most recent shells in any box, with the name of the box if it has one.
+/// Shells in transient boxes are left out unless `transient` is true.
+pub fn recent(
+  context: Context,
+  limit: Int,
+  transient: Bool,
+) -> Result(List(#(Shell, Option(String), Int)), box.Reason) {
+  query(context, shells.recent(limit, transient))
+}
+
+/// Whether the last turn in the entries has not finished.
+pub fn unfinished_turn(entries: List(Entry)) -> Bool {
+  unfinished(entries) |> result.is_ok
+}
+
 /// Run a turn in the shell's process, which runs one turn at a time.
 pub fn send(
   context: Context,
   shell: Shell,
   input: Input,
 ) -> Result(Outcome, box.Reason) {
+  in_process(context, shell, fn() { run(context, shell, input) })
+}
+
+/// Finish the last turn if it is unfinished, after a turn that is running finishes.
+pub fn resume(context: Context, shell: Shell) -> Result(Nil, box.Reason) {
   use <- in_process(context, shell)
-  run(context, shell, input)
+  recover(context, shell)
+}
+
+fn in_process(context: Context, shell: Shell, then) {
+  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
+  |> registry.call(600_000, fn(_) { #(Nil, then()) })
+}
+
+/// Stop a turn that is running and record that it was cancelled, so it is not resumed.
+/// Changes that were merged are kept, a change that was waiting to be merged is not merged.
+pub fn cancel(context: Context, shell: Shell) -> Result(Nil, box.Reason) {
+  let process =
+    registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
+  case process.subject_owner(process) {
+    Ok(pid) -> {
+      let monitor = process.monitor(pid)
+      process.kill(pid)
+      let _ =
+        process.new_selector()
+        |> process.select_specific_monitor(monitor, fn(_) { Nil })
+        |> process.selector_receive(5000)
+      Nil
+    }
+    Error(Nil) -> Nil
+  }
+  use entries <- result.try(entries(context, shell.id))
+  case unfinished(entries) {
+    Error(Nil) -> Ok(Nil)
+    Ok(_) -> {
+      use box <- result.try(box.latest(context, shell.box))
+      writer(shell, entries)
+      |> append(context, _, [
+        event.Input(event.Cancelled, box.sequence, box.root),
+      ])
+      |> result.replace(Nil)
+    }
+  }
 }
 
 /// Run the code as the only turn of a shell made for it, such as for a tool call.
@@ -163,7 +220,7 @@ pub fn once(
   }
 }
 
-// What the last turn in the entries came to, it has finished.
+// What the last turn in the entries came to, it has finished or was cancelled.
 fn ended(entries: List(Entry)) -> Outcome {
   list.fold(entries, #(Error("the turn did not finish"), []), fn(ended, entry) {
     case entry {
@@ -171,14 +228,10 @@ fn ended(entries: List(Entry)) -> Outcome {
         outcome(stop, change),
         output,
       )
+      event.Input(event.Cancelled, ..) -> #(Error("cancelled"), [])
       _ -> ended
     }
   })
-}
-
-fn in_process(context: Context, shell: Shell, then) {
-  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
-  |> registry.call(600_000, fn(_) { #(Nil, then()) })
 }
 
 /// Run a turn in the shell, an unfinished turn is finished first.
@@ -588,6 +641,7 @@ fn unfinished(entries: List(Entry)) {
     list.any(turn, fn(entry) {
       case entry {
         event.Output(stop: event.Finished(..), ..) -> True
+        event.Input(event.Cancelled, ..) -> True
         _ -> False
       }
     })
@@ -645,6 +699,8 @@ fn walk(state, segment: Segment, entries) {
                 event.Rejected(_) -> Error(mismatch)
                 _ -> Ok(Unanswered(wait, resume, state))
               }
+            True, Perform(_, _), _, [event.Input(event.Cancelled, ..), ..] ->
+              Ok(Ended)
             True,
               Perform(_, resume),
               _,

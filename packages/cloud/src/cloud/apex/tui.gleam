@@ -2,16 +2,21 @@
 ////
 //// The named boxes are listed, one is opened by starting a shell or a chat in it, or in a transient copy of it.
 //// A shell runs code, a chat is with one of the configured llms, whose tool calls run in shells of their own.
-//// Work that waits for the database, a box or an llm runs in another process and reports back with a message.
+//// Shells are durable, a recent shell or one with a known id is opened again from its history,
+//// and a turn that did not finish is finished when it is opened.
+//// Work that waits for the database, a box or an llm runs in another process and reports back with a message,
+//// that process is watched so the interface is told if it stops.
 
 import cloud/apex/context.{type Context, Context}
 import cloud/apex/editor
 import cloud/apex/terminal
 import cloud/box
 import cloud/chats/chat as chatting
+import cloud/chats/event as chat_event
 import cloud/data/boxes.{type Box}
 import cloud/data/chats.{type Chat}
 import cloud/data/shells.{type Shell}
+import cloud/shells/event
 import cloud/shells/turn
 import etui/buffer
 import etui/geometry.{Position}
@@ -63,6 +68,9 @@ pub type Status {
 
 pub type Screen {
   Boxes(boxes: List(Box), selected: Int)
+  /// The most recent shells, in any box.
+  /// Shells in transient boxes are only listed if `transient` is true.
+  Recent(threads: List(#(Thread, String)), selected: Int, transient: Bool)
   /// Choosing how to start a shell or chat from a named box.
   Open(box: Box, choices: List(Choice), selected: Int)
   Running(
@@ -112,9 +120,23 @@ pub type Message {
   Key(String)
   Listed(Result(List(Box), box.Reason))
   Created(Result(Box, box.Reason))
-  Started(Result(#(String, Thread), box.Reason))
-  /// The outcome of a turn in the shell, or the reply of the chat, with this id.
+  RecentListed(Bool, Result(List(#(Thread, String)), box.Reason))
+  Opened(Result(Opening, box.Reason))
+  /// The outcome of a turn in the shell with this id.
   Replied(String, Result(turn.Outcome, box.Reason))
+  /// Work in another process stopped without a reply.
+  Stopped(String)
+}
+
+/// A shell or chat as it is shown when it is opened.
+pub type Opening {
+  Opening(
+    place: String,
+    thread: Thread,
+    log: List(Entry),
+    // The last turn is still running, or it stopped and will be finished.
+    unfinished: Bool,
+  )
 }
 
 pub fn app() -> lustre.App(Context, Model, Message) {
@@ -132,10 +154,21 @@ fn list_boxes(context) {
   background(fn() { Listed(box.named(context)) })
 }
 
-// Run work away from the interface's process, a failure leaves the interface waiting.
+// Run work away from the interface's process. The work is watched and the interface is told if it stops.
 fn background(work: fn() -> Message) -> Effect(Message) {
   use dispatch <- effect.from
-  process.spawn_unlinked(fn() { dispatch(work()) })
+  process.spawn_unlinked(fn() {
+    let reply = process.new_subject()
+    let worker = process.spawn_unlinked(fn() { process.send(reply, work()) })
+    let monitor = process.monitor(worker)
+    process.new_selector()
+    |> process.select(reply)
+    |> process.select_specific_monitor(monitor, fn(down) {
+      Stopped(string.inspect(down.reason))
+    })
+    |> process.selector_receive_forever
+    |> dispatch
+  })
   Nil
 }
 
@@ -158,6 +191,39 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
       effect.none(),
     )
     _, _, Created(Ok(_)) -> back(model)
+    // A turn that stopped is in the shell's history, it is finished when the shell is opened again.
+    _, Running(waiting: True, log:, ..) as running, Stopped(reason) -> #(
+      Model(
+        ..model,
+        screen: Running(
+          ..running,
+          log: list.append(log, [Failed("The turn stopped: " <> reason)]),
+          waiting: False,
+        ),
+        status: Quiet,
+      ),
+      effect.none(),
+    )
+    _, _, Stopped(reason) -> #(
+      Model(..model, status: Problem("The work stopped: " <> reason)),
+      effect.none(),
+    )
+    _, _, RecentListed(transient, Ok(threads)) -> #(
+      Model(
+        ..model,
+        screen: Recent(threads, 0, transient),
+        status: case threads {
+          [] -> Working("There are no shells or chats yet")
+          _ -> Quiet
+        },
+      ),
+      effect.none(),
+    )
+    _, _, RecentListed(_, Error(reason)) | _, _, Opened(Error(reason)) -> #(
+      Model(..model, status: Problem(describe(reason))),
+      effect.none(),
+    )
+    _, _, Opened(Ok(opening)) -> opened(model, opening)
     _, screen, message -> on_screen(model, screen, message)
   }
 }
@@ -202,11 +268,47 @@ fn on_screen(model: Model, screen, message) {
             [] -> #(model, effect.none())
           }
         "r" -> back(model)
+        "s" -> #(
+          Model(..model, status: Working("Loading shells")),
+          background(fn() { RecentListed(False, recent(context, False)) }),
+        )
+        "o" -> {
+          let submit = fn(id) { Opened(open(context, id)) }
+          let prompt = Prompt("Id of the shell or chat", "", False, submit)
+          #(Model(..model, prompt: Some(prompt)), effect.none())
+        }
         "n" -> {
           let submit = fn(name) { Created(box.create(context, Some(name))) }
           let prompt = Prompt("Name of the new box", "", False, submit)
           #(Model(..model, prompt: Some(prompt)), effect.none())
         }
+        _ -> #(model, effect.none())
+      }
+
+    Recent(threads, selected, transient), Key(key) ->
+      case key {
+        "up" | "down" -> #(
+          Model(
+            ..model,
+            screen: Recent(threads, move(key, selected, threads), transient),
+          ),
+          effect.none(),
+        )
+        "t" -> #(
+          Model(..model, status: Working("Loading shells")),
+          background(fn() {
+            RecentListed(!transient, recent(context, !transient))
+          }),
+        )
+        "enter" ->
+          case list.drop(threads, selected) {
+            [#(thread, _), ..] -> #(
+              Model(..model, status: Working("Opening")),
+              background(fn() { Opened(open(context, thread.id)) }),
+            )
+            [] -> #(model, effect.none())
+          }
+        "esc" -> back(model)
         _ -> #(model, effect.none())
       }
 
@@ -223,29 +325,26 @@ fn on_screen(model: Model, screen, message) {
           case list.drop(choices, selected) {
             [Start(transient, llm), ..] -> #(
               Model(..model, status: Working("Starting a shell")),
-              background(fn() { Started(start(context, box, transient, llm)) }),
+              background(fn() { Opened(start(context, box, transient, llm)) }),
             )
             [] -> #(model, effect.none())
           }
         "esc" -> back(model)
         _ -> #(model, effect.none())
       }
-    _, Started(Ok(#(place, thread))) -> {
-      let draft = case thread {
-        InChat(..) -> Chatting("")
-        InShell(..) -> Coding(editor.new())
-      }
-      #(
-        Model(context, Running(place, thread, [], draft, False), None, Quiet),
-        effect.none(),
-      )
-    }
-    _, Started(Error(reason)) -> #(
-      Model(..model, status: Problem(describe(reason))),
-      effect.none(),
-    )
-
     Running(waiting: True, ..), Key("esc") -> back(model)
+    Running(thread:, waiting: True, ..), Key("x") -> #(
+      Model(..model, status: Working("Cancelling the turn")),
+      background(fn() {
+        Opened({
+          use Nil <- result.try(case thread {
+            InShell(shell:, ..) -> turn.cancel(context, shell)
+            InChat(chat:, ..) -> chatting.cancel(context, chat)
+          })
+          open(context, thread.id)
+        })
+      }),
+    )
     Running(waiting: True, ..), Key(_) -> #(model, effect.none())
     Running(draft: Chatting(text), ..) as running, Key(key) ->
       case key {
@@ -311,8 +410,8 @@ fn on_screen(model: Model, screen, message) {
         )
       }
     }
-    // A reply for a shell or chat that is no longer shown is dropped, it is in its journal.
-    Running(thread:, log:, ..) as running, Replied(id, replied)
+    // A reply for a shell that is no longer shown is dropped, it is in the shell's history.
+    Running(thread:, log:, waiting: True, ..) as running, Replied(id, replied)
       if id == thread.id
     -> {
       let lines = case replied {
@@ -347,6 +446,126 @@ fn send(model: Model, running, entry, input, draft) {
       Replied(thread.id, turn_or_reply(model.context, thread, input))
     }),
   )
+}
+
+// Show a shell or chat, a turn that has not finished is finished first.
+fn opened(model: Model, opening: Opening) {
+  let Opening(place:, thread:, log:, unfinished:) = opening
+  let draft = case thread {
+    InChat(..) -> Chatting("")
+    InShell(..) -> Coding(editor.new())
+  }
+  let screen = Running(place, thread, log, draft, unfinished)
+  let model = Model(..model, screen:, status: Quiet)
+  case unfinished {
+    False -> #(model, effect.none())
+    True -> #(model, background(fn() { resume(model.context, thread) }))
+  }
+}
+
+// Finish the last turn of a shell, or reply to the messages a chat has not replied to.
+fn resume(context: Context, thread: Thread) -> Message {
+  case thread {
+    InShell(shell:, ..) ->
+      Opened({
+        use Nil <- result.try(turn.resume(context, shell))
+        open(context, shell.id)
+      })
+    InChat(chat:, ..) ->
+      Replied(chat.id, {
+        use replied <- result.map(chatting.reply(context, chat))
+        #(replied, [])
+      })
+  }
+}
+
+fn recent(context, transient) {
+  use shells <- result.try(turn.recent(context, 20, transient))
+  use chats <- result.map(chatting.recent(context, 20, transient))
+  list.append(
+    list.map(shells, fn(entry) {
+      let #(shell, name, at) = entry
+      #(at, #(InShell(shell.id, shell), option.unwrap(name, "a transient box")))
+    }),
+    list.map(chats, fn(entry) {
+      let #(chat, name, at) = entry
+      #(at, #(InChat(chat.id, chat), option.unwrap(name, "a transient box")))
+    }),
+  )
+  |> list.sort(fn(a, b) { int.compare(b.0, a.0) })
+  |> list.take(20)
+  |> list.map(fn(entry) { entry.1 })
+}
+
+/// A shell or chat as it is shown, with everything that has happened in it.
+pub fn open(context: Context, id: String) -> Result(Opening, box.Reason) {
+  case turn.find(context, id) {
+    Ok(shell) -> {
+      use box <- result.try(box.latest(context, shell.box))
+      use history <- result.map(turn.history(context, id))
+      let entries = list.map(history, fn(entry) { entry.1 })
+      let place = option.unwrap(box.name, "a transient box")
+      Opening(
+        place,
+        InShell(shell.id, shell),
+        log(entries),
+        turn.unfinished_turn(entries),
+      )
+    }
+    Error(box.Missing) -> {
+      use chat <- result.try(chatting.find(context, id))
+      use box <- result.try(box.latest(context, chat.box))
+      use entries <- result.map(chatting.entries(context, id))
+      let place = option.unwrap(box.name, "a transient box")
+      let unfinished = case chat_event.next(entries) {
+        chat_event.Idle(_) -> False
+        _ -> True
+      }
+      Opening(place, InChat(chat.id, chat), chat_log(entries), unfinished)
+    }
+    Error(reason) -> Error(reason)
+  }
+}
+
+// What the entries of a chat show, the messages and the llm's replies.
+fn chat_log(entries) {
+  list.flat_map(entries, fn(entry) {
+    case entry {
+      chat_event.Sent(message) -> [Sent(message)]
+      chat_event.Replied(completion) ->
+        case completion.tool_calls {
+          [] -> [Returned(completion.content)]
+          _ -> []
+        }
+      chat_event.Failed(reason) -> [Failed(reason)]
+      chat_event.Cancelled -> [Failed("cancelled")]
+      chat_event.Returned(..) -> []
+    }
+  })
+}
+
+// What the entries of a shell show.
+fn log(entries) {
+  list.flat_map(entries, fn(entry) {
+    case entry {
+      event.Input(event.Started(code, _), ..) -> [
+        Ran(string.split(code, "\n") |> list.map(span.line_plain)),
+      ]
+      event.Input(event.Submitted(program, _), ..) -> [
+        Ran(editor.program_lines(program)),
+      ]
+      event.Input(event.Cancelled, ..) -> [Failed("cancelled")]
+      event.Output(stop: event.Finished(_, output) as stop, change:, ..) ->
+        list.map(output, Printed)
+        |> list.append([
+          case turn.outcome(stop, change) {
+            Ok(value) -> Returned(value)
+            Error(reason) -> Failed(reason)
+          },
+        ])
+      _ -> []
+    }
+  })
 }
 
 // Code runs as a turn of the shell, a message is sent to the chat and its reply is the outcome.
@@ -387,14 +606,13 @@ pub fn choices(context: Context) -> List(Choice) {
 }
 
 /// Start a shell in the box or a transient copy of it, or a chat if there is an llm.
-/// Returns where it is.
 /// A transient copy starts from the latest files of the box.
 pub fn start(
   context: Context,
   named: Box,
   transient: Bool,
   llm: Option(String),
-) -> Result(#(String, Thread), box.Reason) {
+) -> Result(Opening, box.Reason) {
   let name = option.unwrap(named.name, named.id)
   use #(id, place) <- result.try(case transient {
     False -> Ok(#(named.id, name))
@@ -407,11 +625,11 @@ pub fn start(
   case llm {
     None -> {
       use shell <- result.map(turn.start(context, id))
-      #(place, InShell(shell.id, shell))
+      Opening(place, InShell(shell.id, shell), [], False)
     }
     Some(llm) -> {
       use chat <- result.map(chatting.start(context, id, llm))
-      #(place, InChat(chat.id, chat))
+      Opening(place, InChat(chat.id, chat), [], False)
     }
   }
 }
@@ -448,6 +666,14 @@ fn fg(color) {
   style.default_style() |> style.with_fg(color)
 }
 
+fn title(running) {
+  let assert Running(place:, draft:, ..) = running
+  case draft {
+    Chatting(_) -> "Chat in " <> place
+    Coding(_) -> "Shell in " <> place
+  }
+}
+
 /// The screen as it is drawn.
 pub fn render(model: Model) -> buffer.Buffer {
   let screen = buffer.buffer_new(geometry.rect_new(0, 0, width, height))
@@ -457,18 +683,39 @@ pub fn render(model: Model) -> buffer.Buffer {
       #("↑↓", "choose"),
       #("enter", "open"),
       #("n", "new box"),
+      #("s", "shells"),
+      #("o", "open by id"),
       #("r", "refresh"),
+    ])
+    Recent(transient:, ..) -> #(
+      case transient {
+        True -> "Recent shells, with transient boxes"
+        False -> "Recent shells"
+      },
+      [
+        #("↑↓", "choose"),
+        #("enter", "open"),
+        #("t", case transient {
+          True -> "hide transient"
+          False -> "show transient"
+        }),
+        #("esc", "back"),
+      ],
+    )
+    Running(waiting: True, ..) as running -> #(title(running), [
+      #("x", "cancel"),
+      #("esc", "boxes"),
     ])
     Open(box, ..) -> #(option.unwrap(box.name, box.id), [
       #("↑↓", "choose"),
       #("enter", "start"),
       #("esc", "back"),
     ])
-    Running(place:, draft: Chatting(_), ..) -> #("Chat in " <> place, [
+    Running(draft: Chatting(_), ..) as running -> #(title(running), [
       #("enter", "send"),
       #("esc", "boxes"),
     ])
-    Running(place:, draft: Coding(_), ..) -> #("Shell in " <> place, [
+    Running(draft: Coding(_), ..) as running -> #(title(running), [
       #("enter", "run"),
       #("n", "number"),
       #("s", "string"),
@@ -561,6 +808,12 @@ fn body(screen, area: geometry.Rect, model: Model) {
   case model.screen {
     Boxes(boxes, chosen) ->
       list.map(boxes, fn(box) { option.unwrap(box.name, box.id) })
+      |> menu(screen, area, chosen)
+    Recent(threads, chosen, _) ->
+      list.map(threads, fn(entry) {
+        let #(thread, place) = entry
+        thread.id <> "  in " <> place
+      })
       |> menu(screen, area, chosen)
     Open(box, choices, chosen) -> {
       let name = option.unwrap(box.name, box.id)

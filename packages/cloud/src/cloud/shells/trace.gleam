@@ -87,6 +87,8 @@ fn turn_spans(shell, parent, turn) {
         ) -> Ok(#(at, Error(reason)))
         #(_, at, event.Output(stop: event.Finished(outcome, _), ..)) ->
           Ok(#(at, outcome))
+        #(_, at, event.Input(event.Cancelled, ..)) ->
+          Ok(#(at, Error("cancelled")))
         _ -> Error(Nil)
       }
     })

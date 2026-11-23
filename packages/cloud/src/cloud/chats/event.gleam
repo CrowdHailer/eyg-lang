@@ -20,6 +20,8 @@ pub type Entry {
   Returned(call: String, result: Result(String, String))
   /// The llm could not be asked, the turn ends and the llm is told why on the next turn.
   Failed(reason: String)
+  /// The turn was stopped. Tool calls that had not returned are recorded as cancelled before it.
+  Cancelled
 }
 
 /// What the chat does next, from its entries.
@@ -49,6 +51,7 @@ pub fn next(entries: List(Entry)) -> Next {
           list.filter(pending, fn(call: tool.Call) { call.id != id }),
         )
         Failed(reason) -> #(Error(reason), False, [])
+        Cancelled -> #(Error("cancelled"), False, [])
       }
     })
   case pending, asking {
@@ -72,6 +75,7 @@ pub fn conversation(entries: List(Entry)) -> chat.History {
       }
       Failed(reason) ->
         chat.UserMessage("The last reply failed.\n" <> reason, [])
+      Cancelled -> chat.UserMessage("The last reply was cancelled.", [])
     }
   })
 }
@@ -98,6 +102,7 @@ pub fn encode(entry: Entry) -> json.Json {
       #("type", json.string("failed")),
       #("reason", json.string(reason)),
     ]
+    Cancelled -> [#("type", json.string("cancelled"))]
   })
 }
 
@@ -125,7 +130,8 @@ pub fn decoder() -> decode.Decoder(Entry) {
       use reason <- decode.field("reason", decode.string)
       decode.success(Failed(reason))
     }
-    _ -> decode.failure(Failed(""), "Chat entry")
+    "cancelled" -> decode.success(Cancelled)
+    _ -> decode.failure(Cancelled, "Chat entry")
   }
 }
 
