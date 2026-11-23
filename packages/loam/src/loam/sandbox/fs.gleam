@@ -1,13 +1,14 @@
-import filepath
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
+import gleam/option.{None}
 import gleam/result
 import gleam/set
 import gleam/string
 import loam/system
 import simplifile.{type FileError, type FilePermissions}
+import touch_grass/file_system
 
 pub fn rw() {
   set.from_list([simplifile.Read, simplifile.Write])
@@ -42,19 +43,12 @@ pub fn file(contents: String) -> Entry {
 }
 
 fn path_parts(path: String) -> Result(List(String), FileError) {
-  case string.contains(path, "\u{0}") {
-    True -> Error(simplifile.Unknown("ERR_INVALID_ARG_VALUE"))
-    False ->
-      // filepath.expand doesn't leave paths beginning double slash as implementation specific.
-      case filepath.expand(path) {
-        Ok("/") -> Ok([])
-        Ok("/" <> rest) -> Ok(string.split(rest, "/"))
-        // relative paths should be handled before passing into the filesystem.
-        // it is a sandbox responsibility
-        Ok(_relative) -> Error(simplifile.Einval)
-        Error(Nil) -> Error(simplifile.Einval)
-      }
-  }
+  // The sandbox resolves relative paths before calling the filesystem.
+  use path <- result.map(
+    file_system.resolve_path(None, path)
+    |> result.replace_error(simplifile.Einval),
+  )
+  string.split(path, "/") |> list.filter(fn(part) { part != "" })
 }
 
 pub fn inspect(fs, path) {

@@ -60,7 +60,7 @@ pub fn write_create_directory_and_read_directory_test() {
   assert fs.set_permissions(file_system, "/one/two/a/", 0o600).0
     == Error(simplifile.Enotdir)
   assert fs.write(file_system, "/one/two/bad\u{0}", "invalid").0
-    == Error(simplifile.Unknown("ERR_INVALID_ARG_VALUE"))
+    == Error(simplifile.Einval)
 }
 
 pub fn permissions_are_metadata_not_access_checks_test() {
