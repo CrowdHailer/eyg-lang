@@ -11,12 +11,15 @@ import cloud/shell_helpers
 import cloud/shells/event
 import eyg/hub/cache
 import gleam/dict
+import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/http
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import howdy/testing as simulate
 import pog
 import unixfs/check
 
@@ -174,6 +177,41 @@ pub fn replay_recorded_answers_test() {
   assert int.to_string(number) == value
 }
 
+fn turns(context, shell: shells.Shell) {
+  simulate.request(http.Get, "/shells/" <> shell.id)
+  |> helpers.dispatch(context)
+  |> simulate.text
+  |> json.parse(decode.at(["turns"], decode.dynamic))
+}
+
+pub fn export_every_entry_test() {
+  use context <- helpers.context()
+  let shell = shell_helpers.shell(context)
+  let server = server.start(process.new_subject())
+  let _ =
+    shell_helpers.run(
+      context,
+      shell,
+      "let _ = " <> write <> "\nperform Random(100)",
+    )
+  let _ =
+    shell_helpers.run(
+      context,
+      shell,
+      "let _ = perform Flip({})\n" <> server.fetch(server, "GET", "/hello"),
+    )
+  let _ = shell_helpers.run(context, shell, "!int_add(1, \"two\")")
+  let _ = shell_helpers.run(context, shell, read)
+  let log = shell_helpers.export(context, shell)
+  assert 4 == list.length(string.split(log, "\"trigger\":\"started\"")) - 1
+  let lines = string.split(string.trim(log), "\n")
+  assert list.length(shell_helpers.entries(context, shell))
+    == list.length(lines)
+  let assert Ok(turns) = turns(context, shell)
+  let assert Ok(turns) = decode.run(turns, decode.list(decode.dynamic))
+  assert 4 == list.length(turns)
+}
+
 // Change a recorded answer, so the code no longer does what the journal says.
 fn tamper(context: Context, shell: shells.Shell, seq, number) {
   let update =
@@ -271,10 +309,7 @@ pub fn secrets_are_fingerprinted_test() {
     })
   let assert [_, event.Output(answers: [event.Read("KEY", _)], ..)] =
     shell_helpers.entries(context, shell)
-  assert !string.contains(
-    string.inspect(shell_helpers.entries(context, shell)),
-    "s3cr3t",
-  )
+  assert !string.contains(shell_helpers.export(context, shell), "s3cr3t")
 
   let changed = dict.from_list([#("KEY", "other")])
   let changed =

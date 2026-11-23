@@ -1,13 +1,16 @@
-//// Shells for tests, turns are run directly.
+//// Shells for tests, turns are run directly and journals are exported through the API.
 
 import cloud/apex/context.{type Context}
 import cloud/box
 import cloud/data/db
 import cloud/data/shells
+import cloud/helpers
 import cloud/registry
 import cloud/shells/turn
+import gleam/http
 import gleam/list
 import gleam/option.{Some}
+import howdy/testing as simulate
 import pog
 
 /// A shell in a new box called "home".
@@ -31,6 +34,12 @@ pub fn run(context, shell, code) {
   registry.call(process(context, shell), 10_000, fn(_) {
     #(Nil, turn.run(context, shell, code))
   })
+}
+
+pub fn export(context, shell: shells.Shell) {
+  simulate.request(http.Get, "/shells/" <> shell.id <> "/events")
+  |> helpers.dispatch(context)
+  |> simulate.text
 }
 
 /// A new shell in the same box with the first `length` entries of the shell's journal,

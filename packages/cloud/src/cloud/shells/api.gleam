@@ -26,6 +26,22 @@ pub fn create(box, context: Context) {
   api.json(encode(shell), 201)
 }
 
+/// Every entry of the journal as a line of JSON with the time it was recorded.
+pub fn export(id, context: Context) {
+  use history <- try(turn.history(context, id))
+  history
+  |> list.map(fn(entry) {
+    let #(at, entry) = entry
+    json.object([#("at", json.int(at)), ..event.fields(entry)])
+    |> json.to_string
+    <> "\n"
+  })
+  |> string.concat
+  |> content.Text
+  |> response.set_body(response.new(200), _)
+  |> response.set_header("content-type", "application/x-ndjson")
+}
+
 pub fn list(box, context: Context) {
   use rows <- try(run(shells.list(box), context))
   api.json(json.array(rows, encode), 200)
