@@ -12,7 +12,8 @@ pub type Context {
     boxes: registry.Registry(fn(Open) -> Open),
     // The hub, secrets and blob store used by code running in a box.
     state: execute.State,
-    policy: execute.Policy,
+    // The source of the policy for code run in shells.
+    policy: String,
   )
 }
 

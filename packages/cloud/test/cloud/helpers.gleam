@@ -14,7 +14,6 @@ import howdy/testing
 import ogre/origin
 import pog
 import simplifile
-import touch_grass/source
 
 @external(erlang, "cloud_test_ffi", "identity")
 fn unsafe_global_name(atom: Atom) -> Name(a)
@@ -53,14 +52,8 @@ pub fn pool_context() {
 }
 
 fn context_for(db) {
-  let assert Ok(code) = simplifile.read("policy.eyg")
-  let assert #(Ok(policy), state) =
-    execute.load_policy(
-      code,
-      source.Host("policy.eyg"),
-      state(),
-      execute.template(),
-    )
+  let assert Ok(policy) = simplifile.read("policy.eyg")
+  let state = state()
   let assert Ok(boxes) = registry.start()
   Context(db:, boxes: boxes.data, state:, policy:)
 }

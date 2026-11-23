@@ -18,7 +18,6 @@ import overlay/llm/provider
 import overlay/llm/provider/ollama
 import pog
 import simplifile
-import touch_grass/source
 
 /// Shared runtime configuration for the service and one-shot dev commands.
 pub fn setup(bucket) {
@@ -60,14 +59,7 @@ pub fn setup(bucket) {
 
 pub fn start(config: Config, state) {
   let pool_name = process.new_name("db_pool")
-  let assert Ok(code) = simplifile.read("policy.eyg")
-  let assert #(Ok(policy), state) =
-    execute.load_policy(
-      code,
-      source.Host("policy.eyg"),
-      state,
-      execute.template(),
-    )
+  let assert Ok(policy) = simplifile.read("policy.eyg")
   let assert Ok(boxes) = registry.start()
   let context =
     Context(
