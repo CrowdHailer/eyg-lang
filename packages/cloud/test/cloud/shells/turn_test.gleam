@@ -562,3 +562,18 @@ pub fn resume_a_stopped_turn_test() {
   // Nothing is left to resume.
   let assert Ok(Nil) = turn.resume(context, shell)
 }
+
+pub fn write_a_skill_test() {
+  use context <- helpers.context()
+  let shell = shell_helpers.shell(context)
+  let code =
+    "let _ = perform MakeDirectory(\"/skills/greet\")
+perform WriteFile({path: \"/skills/greet/SKILL.md\", contents: !string_to_binary(\"---\\nname: greet\\n---\")})"
+  let assert Ok(#(Ok("Ok({})"), [])) = shell_helpers.run(context, shell, code)
+  let assert Ok(home) = box.latest(context, shell.box)
+  let assert Ok(Ok(<<"---\nname: greet\n---">>)) =
+    execute.files(
+      file_system.read(home.root, "/skills/greet/SKILL.md"),
+      context.state,
+    )
+}
