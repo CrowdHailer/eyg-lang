@@ -165,6 +165,22 @@ Slack sessions and triggers still keep their own MFS root and agent history in m
 Shells run code with the policy in `policy.eyg`, read from the working directory at startup, each turn records the policy it ran with.
 Slack's sessions and triggers use the same policy.
 
+## Crons
+
+A named box runs code on a schedule from its configuration, the `/_box/config.eyg` module,
+so crons are made and changed by writing that file in a shell and the box only accepts them if they type check.
+Each field of `crons` is a cron, with a `schedule` in cron syntax in UTC and a `run` function called with an empty record.
+
+```eyg
+{crons: {hacker_news: {schedule: "7 8 * * *", run: import "../hn.eyg"}}}
+```
+
+New boxes start with a configuration without crons.
+Each cron runs as a turn in its own shell in the box, so its runs are in that shell's history.
+A cron first runs the next time its schedule matches, a run missed while the service was stopped runs once when it starts again.
+The next run of each cron is kept in Postgres and claimed before it runs, so each runs once.
+Transient boxes have no crons. See `cloud/crons.gleam`.
+
 ## Secrets
 
 Secrets are per whole workspace.

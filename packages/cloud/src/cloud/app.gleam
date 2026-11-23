@@ -5,6 +5,7 @@ import cloud/apex/context.{type Context, Context}
 import cloud/apex/server
 import cloud/beam/execute
 import cloud/config.{type Config}
+import cloud/crons
 import cloud/data/db
 import cloud/data/migrations
 import cloud/db/pool
@@ -99,5 +100,6 @@ pub fn start(config: Config, state, llm: Option(provider.Llm)) -> Context {
     supervisor.new(supervisor.OneForOne)
     |> supervisor.add(server.supervised(context, access, config.port))
     |> supervisor.start
+  let assert Ok(_) = crons.start(context)
   context
 }

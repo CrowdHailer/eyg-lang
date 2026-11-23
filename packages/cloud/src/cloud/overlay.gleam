@@ -59,6 +59,7 @@ pub fn box_context(hub: origin.Origin) -> provider.Context {
     hub,
     "context is an empty record. The working directory is / of a box, a file system that other chats and shells in the box also change. Changes to .eyg files are only kept if every module in the box type checks. Relative imports load modules from these files.
 A web page or image you write, such as /report.html, is shown beside the chat. Pages run in a sandbox, they can link to files beside them but cannot call this service.
+To run code on a schedule add a cron to the crons record of /_box/config.eyg, each field is a cron with a schedule in cron syntax in UTC and a run function called with an empty record, such as {crons: {daily: {schedule: \"0 8 * * *\", run: import \"../daily.eyg\"}}}.
 
 ## Skills
 
