@@ -21,8 +21,10 @@ import eyg/parser/parser.{type Reason} as _
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import gleam/string
+import touch_grass/file_system
 import unixfs
 import unixfs/mfs
 
@@ -195,28 +197,21 @@ fn loop(step, checker, path, importing) {
   }
 }
 
-// Links are already well-formed segments. Only import text needs normalising.
-// Parent components at the virtual root stay at the root.
+// Links are already well-formed segments. Resolve import text from the importing
+// file's directory, rejecting traversal above the virtual root.
+// TODO touch grass should expose a Path (list of segments based API) or path resolution gets moved lower
 fn resolve(path: Path, location: String) -> Result(Path, Problem) {
-  case location == "" || string.contains(location, "\u{0}") {
-    True -> Error(MissingModule)
-    False -> {
-      let reversed = case string.starts_with(location, "/") {
-        True -> []
-        False -> list.drop(list.reverse(path), 1)
-      }
-      string.split(location, "/")
-      |> list.fold(reversed, fn(parts, part) {
-        case part {
-          "" | "." -> parts
-          ".." -> list.drop(parts, 1)
-          _ -> [part, ..parts]
-        }
-      })
-      |> list.reverse
-      |> Ok
-    }
-  }
+  let directory =
+    path
+    |> list.reverse
+    |> list.drop(1)
+    |> list.reverse
+    |> string.join("/")
+  use resolved <- result.map(
+    file_system.resolve_path(Some("/" <> directory), location)
+    |> result.replace_error(MissingModule),
+  )
+  string.split(resolved, "/") |> list.filter(fn(part) { part != "" })
 }
 
 fn cycle_check(visited, path) {
