@@ -1,6 +1,7 @@
 //// A structural editor for the programs a shell runs.
 ////
-//// Keys edit and navigate code with the bindings of the EYG shell, see `morph/terminal`.
+//// Keys edit and navigate code with the bindings of the EYG shell, see `morph/terminal`,
+//// and `q` imports a file from the box. EYG text that is pasted replaces the expression in focus.
 //// When an edit needs a value, such as a name or a number, it is typed on a line below the code.
 //// The code is type checked after each edit, the types of packages are looked up through the hub,
 //// which blocks the interface while a package that is not cached is fetched.
@@ -11,6 +12,7 @@ import etui/style
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
 import eyg/ir/tree as ir
+import eyg/parser
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -65,16 +67,62 @@ fn effects() {
 }
 
 /// Handle a key, the error is a message for the person typing.
+/// `files` are the files of the box, offered when importing.
 /// The state is returned with the modules that were looked up to check the code.
 pub fn key(
   editor: Editor,
   key: String,
   state: execute.State,
+  files: List(String),
 ) -> #(Result(Editor, String), execute.State) {
-  let edited = case editor.input {
-    Some(input) -> typing(editor, input, key)
-    None -> navigating(editor, key, state)
+  let edited = case editor.input, key {
+    Some(input), _ -> typing(editor, input, key)
+    None, "q" -> import_(editor, files)
+    None, _ -> navigating(editor, key, state)
   }
+  checked(edited, state)
+}
+
+/// Replace the expression in focus with the program in the text.
+pub fn paste(
+  editor: Editor,
+  text: String,
+  state: execute.State,
+) -> #(Result(Editor, String), execute.State) {
+  let pasted = case
+    buffer.set_expression(editor.buffer),
+    parser.all_from_string(text)
+  {
+    Ok(rebuild), Ok(source) ->
+      Ok(
+        Editor(
+          ..editor,
+          buffer: rebuild(e.from_annotated(source) |> e.open_all),
+        ),
+      )
+    Error(Nil), _ -> Error("Select an expression to paste into")
+    _, Error(reason) -> Error(parser.format_error(reason, text))
+  }
+  checked(pasted, state)
+}
+
+fn import_(editor: Editor, files) {
+  case buffer.insert_explicit_reference(editor.buffer) {
+    Error(Nil) -> Error("Select an expression to import into")
+    Ok(rebuild) -> {
+      let input =
+        Input("Import", "", files, fn(path) {
+          case string.trim(path) {
+            "" -> Error("Choose a file to import")
+            path -> Ok(rebuild(ir.Relative(path)))
+          }
+        })
+      Ok(Editor(..editor, input: Some(input)))
+    }
+  }
+}
+
+fn checked(edited, state) {
   case edited {
     Ok(Editor(buffer:, ..) as editor) if buffer.analysis == None -> {
       let #(buffer, state) = check(editor.buffer, state)

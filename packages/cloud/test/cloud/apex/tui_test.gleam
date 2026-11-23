@@ -15,6 +15,8 @@ import eyg/ir/tree as ir
 import eyg/parser
 import gleam/dict
 import gleam/erlang/process
+import gleam/http/request
+import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -184,6 +186,54 @@ pub fn open_an_unfinished_turn_test() {
   let assert Ok(Nil) = turn.resume(context, shell)
   let #(model, _) = tui.update(model, tui.Opened(tui.open(context, shell.id)))
   assert string.contains(screen(model), "= 1")
+}
+
+pub fn show_progress_and_scroll_back_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let assert Ok(opening) = tui.start(context, home, False, None)
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Resized(80, 20))
+  let #(model, _) = tui.update(model, tui.Opened(Ok(opening)))
+  assert 20 == list.length(string.split(screen(model), "\n"))
+  let assert tui.Opening(thread: tui.InShell(shell:, ..), ..) = opening
+
+  // Many lines of output, the end is shown and earlier lines are a page up.
+  let output = list.repeat("line", 40)
+  let model = press(model, ["tab", "1", "enter"])
+  let #(model, _) =
+    tui.update(model, tui.Replied(shell.id, Ok(#(Ok("done"), output))))
+  assert string.contains(screen(model), "= done")
+  assert string.contains(screen(model), "earlier lines")
+  let model = press(model, ["pageup"])
+  assert !string.contains(screen(model), "= done")
+  assert string.contains(screen(model), "newer lines")
+  let model = press(model, ["pagedown"])
+  assert string.contains(screen(model), "= done")
+
+  // While a turn runs, what it has done is shown.
+  let model = press(model, ["2", "enter"])
+  let request =
+    request.new() |> request.set_host("example.com") |> request.set_body(<<>>)
+  let root = home.root
+  let progress =
+    tui.progress([
+      event.Input(event.Started("1", root), 1, root),
+      event.Output([], event.Finished(Ok("1"), []), root, event.Unchanged),
+      event.Input(event.Started("2", root), 1, root),
+      event.Output([], event.Requested(request), root, event.Unchanged),
+      event.Input(
+        event.Continued(
+          execute.Fetched(Ok(response.new(200) |> response.set_body(<<>>))),
+        ),
+        1,
+        root,
+      ),
+      event.Output([], event.Slept(10), root, event.Unchanged),
+    ])
+  assert progress == ["GET https://example.com", "sleeping 10ms"]
+  let #(model, _) = tui.update(model, tui.Progressed(shell.id, progress))
+  assert string.contains(screen(model), "· GET https://example.com")
 }
 
 pub fn transient_sessions_are_hidden_test() {

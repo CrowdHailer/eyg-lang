@@ -1,5 +1,6 @@
 //// A terminal in the browser, an etui buffer drawn as text with a span for each run of cells in the same style.
-//// Key presses are sent to the server with the names etui uses for them.
+//// Key presses are sent to the server with the names etui uses for them, with `ctrl+`, `alt+` or `shift+` before them.
+//// The page's `script` sends pasted text and the number of cells that fit, and leaves shortcuts such as copy to the browser.
 
 import etui/buffer
 import etui/geometry
@@ -19,7 +20,12 @@ const foreground = "#ddd"
 
 const background = "#181818"
 
-pub fn view(screen: buffer.Buffer, on_key: fn(String) -> msg) -> Element(msg) {
+pub fn view(
+  screen: buffer.Buffer,
+  on_key: fn(String) -> msg,
+  on_paste: fn(String) -> msg,
+  on_resize: fn(Int, Int) -> msg,
+) -> Element(msg) {
   html.pre(
     [
       attribute.tabindex(0),
@@ -35,8 +41,20 @@ pub fn view(screen: buffer.Buffer, on_key: fn(String) -> msg) -> Element(msg) {
       attribute.style("color", foreground),
       attribute.style("background", background),
       event.on("keydown", key(on_key))
-        |> server_component.include(["key"])
-        |> event.prevent_default,
+        |> server_component.include([
+          "key", "ctrlKey", "metaKey", "altKey", "shiftKey",
+        ]),
+      event.on(
+        "terminal-paste",
+        decode.at(["detail"], decode.string) |> decode.map(on_paste),
+      )
+        |> server_component.include(["detail"]),
+      event.on("terminal-resize", {
+        use columns <- decode.subfield(["detail", "columns"], decode.int)
+        use rows <- decode.subfield(["detail", "rows"], decode.int)
+        decode.success(on_resize(columns, rows))
+      })
+        |> server_component.include(["detail.columns", "detail.rows"]),
     ],
     list.repeat(Nil, buffer.height(screen))
       |> list.index_map(fn(_, y) {
@@ -52,9 +70,14 @@ pub fn view(screen: buffer.Buffer, on_key: fn(String) -> msg) -> Element(msg) {
   )
 }
 
-// Keys that only modify others, such as Shift, are not sent.
+// Keys that only modify others, such as Shift, are not sent on their own.
+// Shift is only named for keys that are not characters, a shifted character is already different.
 fn key(on_key) {
   use key <- decode.field("key", decode.string)
+  use ctrl <- decode.field("ctrlKey", decode.bool)
+  use meta <- decode.field("metaKey", decode.bool)
+  use alt <- decode.field("altKey", decode.bool)
+  use shift <- decode.field("shiftKey", decode.bool)
   let named = [
     #("ArrowUp", "up"),
     #("ArrowDown", "down"),
@@ -67,13 +90,66 @@ fn key(on_key) {
     #("Home", "home"),
     #("End", "end"),
     #("Tab", "tab"),
+    #("PageUp", "pageup"),
+    #("PageDown", "pagedown"),
   ]
+  let modifiers = fn(name, shifted) {
+    let name = case shifted {
+      True -> "shift+" <> name
+      False -> name
+    }
+    let name = case alt {
+      True -> "alt+" <> name
+      False -> name
+    }
+    case ctrl || meta {
+      True -> "ctrl+" <> name
+      False -> name
+    }
+  }
   case list.key_find(named, key), string.length(key) {
-    Ok(name), _ -> decode.success(on_key(name))
-    Error(Nil), 1 -> decode.success(on_key(key))
+    Ok(name), _ -> decode.success(on_key(modifiers(name, shift)))
+    Error(Nil), 1 -> decode.success(on_key(modifiers(key, False)))
     Error(Nil), _ -> decode.failure(on_key(key), "Key")
   }
 }
+
+/// The script for the page the terminal is on.
+/// Keys the terminal uses do nothing else on the page, keys with ctrl or meta and function keys keep doing what the browser does,
+/// such as copy and full screen.
+/// Pasted text is sent to the terminal, and the number of cells that fit the window when it changes size.
+pub const script =
+  "
+const terminal = () => document.querySelector('lustre-server-component')?.shadowRoot?.querySelector('pre');
+document.addEventListener('keydown', (event) => {
+  const pre = terminal();
+  // Function keys, such as F11 for full screen, are left to the browser too.
+  const shortcut = event.ctrlKey || event.metaKey || /^F[0-9]+$/.test(event.key);
+  if (pre && event.composedPath().includes(pre) && !shortcut) event.preventDefault();
+}, true);
+document.addEventListener('paste', (event) => {
+  const pre = terminal();
+  if (!pre) return;
+  event.preventDefault();
+  pre.dispatchEvent(new CustomEvent('terminal-paste', { detail: event.clipboardData.getData('text') }));
+});
+const probe = document.createElement('span');
+probe.style = 'position: absolute; visibility: hidden; font: 14px/1.15 monospace; white-space: pre';
+probe.textContent = 'x'.repeat(100);
+function resize() {
+  const pre = terminal();
+  if (!pre) return setTimeout(resize, 200);
+  pre.focus();
+  document.body.appendChild(probe);
+  const cell = probe.getBoundingClientRect();
+  probe.remove();
+  const columns = Math.floor((window.innerWidth - 32) / (cell.width / 100));
+  const rows = Math.floor((window.innerHeight - 32) / cell.height);
+  pre.dispatchEvent(new CustomEvent('terminal-resize', { detail: { columns, rows } }));
+}
+window.addEventListener('resize', resize);
+resize();
+"
 
 // Cells in the same style, newest first. The second cell of a wide character has no content.
 fn runs(cells: List(buffer.Cell), acc) {
