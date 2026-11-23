@@ -58,7 +58,18 @@ pub fn named(context: Context) -> Result(List(Box), Reason) {
   query(boxes.named(), context)
 }
 
+// A name is lowercase letters, digits and dashes.
 fn start(context, name, root) {
+  let allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
+  let valid = fn(name) {
+    name != ""
+    && list.all(string.to_graphemes(name), string.contains(allowed, _))
+  }
+  use Nil <- result.try(case option.map(name, valid) {
+    Some(False) ->
+      Error(Invalid(["A box name is lowercase letters, digits and dashes"]))
+    _ -> Ok(Nil)
+  })
   case query(boxes.create(name, root), context) {
     Ok([box]) -> Ok(box)
     Ok(_) -> Error(Taken)

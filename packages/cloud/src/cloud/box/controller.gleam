@@ -8,7 +8,6 @@ import gleam/bytes_tree
 import gleam/dynamic/decode
 import gleam/http/response
 import gleam/json
-import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
@@ -36,27 +35,17 @@ pub fn create(request: controller.Context, context: Context) {
   }
   case decode.run(body, decoder) {
     Error(_) -> reason(400, "Expected an optional name and box to start from")
-    Ok(#(name, from)) ->
-      case option.map(name, valid_name) {
-        Some(False) ->
-          reason(400, "A box name is lowercase letters, digits and dashes")
-        _ -> {
-          use box <- try(case from {
-            None -> box.create(context, name)
-            Some(from) -> {
-              use from <- result.try(box.latest(context, from))
-              box.clone(context, from, name)
-            }
-          })
-          api.json(encode(box), 201)
+    Ok(#(name, from)) -> {
+      use box <- try(case from {
+        None -> box.create(context, name)
+        Some(from) -> {
+          use from <- result.try(box.latest(context, from))
+          box.clone(context, from, name)
         }
-      }
+      })
+      api.json(encode(box), 201)
+    }
   }
-}
-
-fn valid_name(name) {
-  let allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
-  name != "" && list.all(string.to_graphemes(name), string.contains(allowed, _))
 }
 
 /// The named boxes, transient boxes are not listed.

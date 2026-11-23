@@ -51,11 +51,10 @@ pub fn start_a_shell_in_a_transient_copy_test() {
   let model = press(model, ["enter", "down"])
   assert string.contains(screen(model), "Shell in a transient copy of home")
   let assert tui.Open(_, choices, 1) = model.screen
-  let assert [_, choice] = choices
-  assert choice == tui.Choice(True, None)
+  let assert [_, tui.Start(True, None)] = choices
 
   let assert Ok(#(place, tui.InShell(shell:, ..) as thread)) =
-    tui.start(context, home, choice)
+    tui.start(context, home, True, None)
   assert place == "a transient copy of home"
   assert shell.box != home.id
   let #(model, _) = tui.update(model, tui.Started(Ok(#(place, thread))))
@@ -80,13 +79,13 @@ pub fn chat_in_the_box_test() {
   let assert Ok(home) = box.create(context, Some("home"))
   assert tui.choices(context)
     == [
-      tui.Choice(False, None),
-      tui.Choice(True, None),
-      tui.Choice(False, Some("test")),
-      tui.Choice(True, Some("test")),
+      tui.Start(False, None),
+      tui.Start(True, None),
+      tui.Start(False, Some("test")),
+      tui.Start(True, Some("test")),
     ]
   let assert Ok(#("home", tui.InChat(chat: talk, ..) as thread)) =
-    tui.start(context, home, tui.Choice(False, Some("test")))
+    tui.start(context, home, False, Some("test"))
   assert talk.box == home.id
   let #(model, _) = tui.init(context)
   let #(model, _) = tui.update(model, tui.Started(Ok(#("home", thread))))
@@ -96,4 +95,23 @@ pub fn chat_in_the_box_test() {
   let #(model, _) = tui.update(model, tui.Replied(talk.id, Ok(#(replied, []))))
   assert string.contains(screen(model), "you hi")
   assert string.contains(screen(model), "llm hi #1")
+}
+
+pub fn create_a_box_test() {
+  use context <- helpers.context()
+  let #(model, _) = tui.init(context)
+  let #(model, _) = tui.update(model, tui.Listed(Ok([])))
+  let model = press(model, ["n", ..string.to_graphemes("Bad")])
+  assert string.contains(screen(model), "Name of the new box")
+  let assert Some(prompt) = model.prompt
+  let #(model, _) = tui.update(model, Key("enter"))
+  assert None == model.prompt
+  let #(model, _) = tui.update(model, prompt.submit(prompt.input))
+  assert string.contains(screen(model), "lowercase letters")
+
+  let model = press(model, ["n", ..string.to_graphemes("garden")])
+  let assert Some(prompt) = model.prompt
+  let #(model, _) = tui.update(model, prompt.submit(prompt.input))
+  let #(model, _) = tui.update(model, tui.Listed(box.named(context)))
+  assert string.contains(screen(model), "garden")
 }
