@@ -9,36 +9,18 @@ import gleam/result
 import gleam/string
 import multiformats/cid/v1
 import simplifile.{type FileError}
+import touch_grass/file_system as filesystem_request
 import touch_grass/file_system/read_directory
 import unixfs
 import unixfs/mfs
 
-// Relative and absolute paths resolve from the virtual root. Parent components
-// at the root stay at the root, never reaching the host filesystem.
-// TODO move this to unixfs
+// Resolve from the virtual root using the same rules as policy checks.
 fn path_parts(path: String) -> Result(List(String), FileError) {
-  case path == "" || string.contains(path, "\u{0}") {
-    True -> Error(simplifile.Einval)
-    False ->
-      string.split(path, "/")
-      |> list.fold([], fn(parts, part) {
-        case part, parts {
-          "", _ | ".", _ -> parts
-          "..", [] -> []
-          "..", [_, ..rest] -> rest
-          _, _ -> [part, ..parts]
-        }
-      })
-      |> list.reverse
-      |> Ok
-  }
-}
-
-/// Use the same canonical path for policy checks and filesystem operations.
-pub fn resolve_path(path: String) -> Result(String, String) {
-  path_parts(path)
-  |> result.map(fn(parts) { "/" <> string.join(parts, "/") })
-  |> result.map_error(simplifile.describe_error)
+  use path <- result.map(
+    filesystem_request.resolve_path(Some("/"), path)
+    |> result.replace_error(simplifile.Einval),
+  )
+  string.split(path, "/") |> list.filter(fn(part) { part != "" })
 }
 
 /// The root of a file system with no files.
