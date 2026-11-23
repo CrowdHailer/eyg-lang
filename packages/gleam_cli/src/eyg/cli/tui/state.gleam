@@ -29,6 +29,7 @@ import morph/manipulation as m
 import morph/picker
 import morph/projection
 import morph/repl/history
+import morph/terminal
 import multiformats/cid/v1
 import touch_grass/abort
 import touch_grass/harness/computer as harness
@@ -399,63 +400,31 @@ fn command_key_press(
 ) -> #(State, List(system.Effect(Message))) {
   case key {
     "esc" -> #(state, [])
-    "right" -> navigate(state, "move right", buffer.next)
-    "left" -> navigate(state, "move left", buffer.previous)
     "up" ->
       case state.history != [] && empty_draft(state) {
         True -> #(State(..state, mode: History(0, set.new(), set.new())), [])
-        False -> navigate(state, "move up", buffer.up)
+        False -> bound(state, key)
       }
-    "down" -> navigate(state, "move down", buffer.down)
-    // "Q" -> link_filesystem(state)
     "q" -> import_input(state)
-    "w" -> edit(state, m.call_with())
-    "E" -> edit(state, m.assign_before())
-    "e" -> edit(state, m.assign())
-    "R" -> edit(state, m.create_empty_record())
-    "r" -> edit(state, m.create_record())
-    "t" -> edit(state, m.insert_tag())
     "y" -> #(fail(state, "Copy is not supported"), [])
     "Y" -> #(
       fail(state, "Use your terminal's native paste shortcut to paste"),
       [],
     )
-    // TODO mode is authenticating
-    // you won't see much on the front page
-    // "u" -> #(State(..state, mode: SigningPayload(None, "foo")), [
-    //   system.OpenPopup("/sign", resume: fn(result) {
-    //     system.Done(OpenPopupCompleted(result))
-    //   }),
-    // ])
-    "i" -> edit(state, m.insert())
-    "o" -> edit(state, m.overwrite())
-    "p" -> edit(state, m.perform(effect_types()))
-    "a" -> navigate(state, "increase selection", buffer.increase)
-    "s" -> edit(state, m.insert_string())
-    "d" -> edit(state, m.delete())
-    "f" -> edit(state, m.insert_function())
-    "g" -> edit(state, m.select_field())
-    "h" -> edit(state, m.insert_handle(effect_types()))
-    "j" -> edit(state, m.insert_builtin())
-    "k" -> navigate(state, "toggle", buffer.toggle_open)
-    "L" -> edit(state, m.create_empty_list())
-    "l" -> edit(state, m.create_list())
-    "@" -> edit(state, m.choose_release(packages(state)))
-    "#" -> edit(state, m.insert_reference())
-    "Z" -> edit(state, m.redo())
-    "z" -> edit(state, m.undo())
-    "x" -> edit(state, m.spread())
-    "c" -> edit(state, m.call_function())
-    "C" -> edit(state, m.call_once())
-    "b" -> edit(state, m.insert_binary())
-    "n" -> edit(state, m.insert_integer())
-    "m" -> edit(state, m.insert_case())
-    "v" -> edit(state, m.insert_variable())
-    "<" -> edit(state, m.insert_before())
-    ">" -> edit(state, m.insert_after())
     "enter" -> confirm(state)
-    " " -> navigate(state, "Jump to vacant", buffer.next_vacant)
-    _ -> #(fail(state, command.fail_message(command.NoKeyBinding(key))), [])
+    _ -> bound(state, key)
+  }
+}
+
+// Keys that edit and navigate code the same way in every terminal interface.
+fn bound(state: State, key: String) {
+  case terminal.binding(key, effect_types(), packages(state)) {
+    Ok(terminal.Move(name, move)) -> navigate(state, name, move)
+    Ok(terminal.Edit(operation)) -> edit(state, operation)
+    Error(Nil) -> #(
+      fail(state, command.fail_message(command.NoKeyBinding(key))),
+      [],
+    )
   }
 }
 
