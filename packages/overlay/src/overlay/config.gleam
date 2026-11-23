@@ -9,8 +9,8 @@ import ogre/origin
 import overlay/llm/provider
 import overlay/llm/provider/mistral
 import overlay/llm/provider/ollama
-import overlay/policy
 import touch_grass/interface
+import touch_grass/policy
 
 /// Configuration that is common to any overlay agent, chat or otherwise
 pub type Config(effect, meta) {

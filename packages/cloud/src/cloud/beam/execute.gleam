@@ -27,7 +27,6 @@ import gleam/string
 import multiformats/cid/v1
 import ogre/origin
 import overlay/agent
-import overlay/policy
 import simplifile
 import touch_grass/cryptography/hash
 import touch_grass/decode_json
@@ -42,6 +41,7 @@ import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
 import touch_grass/now
+import touch_grass/policy
 import touch_grass/random
 import touch_grass/sleep
 import touch_grass/standard_error

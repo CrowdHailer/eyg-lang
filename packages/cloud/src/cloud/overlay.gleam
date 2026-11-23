@@ -14,9 +14,9 @@ import overlay/agent
 import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/tool
-import overlay/policy
 import overlay/tools/run
 import touch_grass/harness/computer
+import touch_grass/policy
 
 /// Everything about an agent session that is fixed when it starts.
 pub type Session {

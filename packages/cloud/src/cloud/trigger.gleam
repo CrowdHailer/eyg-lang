@@ -12,9 +12,9 @@ import eyg/parser
 import gleam/list
 import gleam/result
 import gleam/string
-import overlay/policy
 import touch_grass/harness/computer
 import touch_grass/interface
+import touch_grass/policy
 
 pub type Checked =
   state.Value(execute.Meta)

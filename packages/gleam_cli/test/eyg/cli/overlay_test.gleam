@@ -10,11 +10,11 @@ import gleam/string
 import loam/sandbox
 import loam/source
 import loam/system
-import overlay/policy
 import touch_grass
 import touch_grass/file_system/read_file
 import touch_grass/harness/computer
 import touch_grass/interface
+import touch_grass/policy
 
 // const allow_policy =
 //   "

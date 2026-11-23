@@ -39,10 +39,10 @@ import overlay/config as overlay_config
 import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/tool
-import overlay/policy
 import overlay/tools/run
 import touch_grass/harness/computer as harness_computer
 import touch_grass/interface
+import touch_grass/policy
 
 // I don't need to implement streaming but if so that goes at the loam level
 // the tools module in overlay web should be reusable
