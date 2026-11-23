@@ -25,7 +25,7 @@ import gleam/erlang/process
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option.{type Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import overlay/llm/chat
@@ -39,20 +39,40 @@ pub fn start(
   box: String,
   llm: String,
 ) -> Result(Chat, box.Reason) {
+  create(context, box, llm, None)
+}
+
+/// A new chat in the box. `key` identifies what it belongs to outside the service,
+/// such as a Discord channel, it is taken if another chat has the key.
+pub fn create(
+  context: Context,
+  box: String,
+  llm: String,
+  key: Option(String),
+) -> Result(Chat, box.Reason) {
   use Nil <- result.try(case dict.has_key(context.llms, llm) {
     True -> Ok(Nil)
     False -> Error(box.Invalid(["No llm is configured as " <> llm]))
   })
   use _ <- result.try(box.latest(context, box))
-  case query(context, chats.create(box, llm)) {
+  case query(context, chats.create(box, llm, key)) {
     Ok([chat]) -> Ok(chat)
-    Ok(_) -> Error(box.Failed("the chat could not be made"))
+    Ok(_) -> Error(box.Taken)
     Error(reason) -> Error(reason)
   }
 }
 
 pub fn find(context: Context, id: String) -> Result(Chat, box.Reason) {
   case query(context, chats.get(id)) {
+    Ok([chat]) -> Ok(chat)
+    Ok(_) -> Error(box.Missing)
+    Error(reason) -> Error(reason)
+  }
+}
+
+/// The chat with the key.
+pub fn keyed(context: Context, key: String) -> Result(Chat, box.Reason) {
+  case query(context, chats.keyed(key)) {
     Ok([chat]) -> Ok(chat)
     Ok(_) -> Error(box.Missing)
     Error(reason) -> Error(reason)
@@ -87,6 +107,16 @@ pub fn reply(
 ) -> Result(Result(String, String), box.Reason) {
   registry.lookup(context.chats, chat.id, fn() { registry.serve(Nil) })
   |> registry.call(3_600_000, fn(_) { #(Nil, continue(context, chat)) })
+}
+
+/// Run code sent to the chat, such as a fenced block in a Discord message, in a shell of its own.
+pub fn run(
+  context: Context,
+  chat: Chat,
+  code: String,
+) -> Result(turn.Outcome, box.Reason) {
+  use shell <- result.try(turn.create(context, chat.box, shells.Sent(chat.id)))
+  turn.once(context, shell, code)
 }
 
 // Ask the llm and run its tool calls until it has replied to every message.

@@ -16,12 +16,20 @@ fn decoder() -> decode.Decoder(Chat) {
   decode.success(Chat(id:, box:, llm:))
 }
 
-/// A new chat in the box.
-pub fn create(box: String, llm: String) -> pog.Query(Chat) {
-  "INSERT INTO chats (box, llm) VALUES ($1, $2) RETURNING id, box, llm"
+/// A new chat in the box. `key` identifies what it belongs to outside the service,
+/// returns no rows if a chat already has the key.
+pub fn create(
+  box: String,
+  llm: String,
+  key: Option(String),
+) -> pog.Query(Chat) {
+  "INSERT INTO chats (box, llm, key) VALUES ($1, $2, $3)
+  ON CONFLICT (key) DO NOTHING
+  RETURNING id, box, llm"
   |> pog.query()
   |> pog.parameter(pog.text(box))
   |> pog.parameter(pog.text(llm))
+  |> pog.parameter(pog.nullable(pog.text, key))
   |> pog.returning(decoder())
 }
 
@@ -29,6 +37,14 @@ pub fn get(id: String) -> pog.Query(Chat) {
   "SELECT id, box, llm FROM chats WHERE id = $1"
   |> pog.query()
   |> pog.parameter(pog.text(id))
+  |> pog.returning(decoder())
+}
+
+/// The chat with the key.
+pub fn keyed(key: String) -> pog.Query(Chat) {
+  "SELECT id, box, llm FROM chats WHERE key = $1"
+  |> pog.query()
+  |> pog.parameter(pog.text(key))
   |> pog.returning(decoder())
 }
 

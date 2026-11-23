@@ -1,6 +1,6 @@
 //// The service: its database, the boxes, shells and chats, and the server.
 
-import cloud/apex/context.{Context}
+import cloud/apex/context.{type Context, Context}
 import cloud/apex/server
 import cloud/beam/execute
 import cloud/config.{type Config}
@@ -58,7 +58,7 @@ pub fn setup(bucket) {
 }
 
 /// Chats can be with the configured llm, by the name of its model.
-pub fn start(config: Config, state, llm: provider.Llm) {
+pub fn start(config: Config, state, llm: provider.Llm) -> Context {
   let pool_name = process.new_name("db_pool")
   let assert Ok(policy) = simplifile.read("policy.eyg")
   let assert Ok(boxes) = registry.start()
@@ -74,8 +74,10 @@ pub fn start(config: Config, state, llm: provider.Llm) {
       policy:,
       llms: dict.from_list([#(llm.model, llm)]),
     )
-  supervisor.new(supervisor.OneForOne)
-  |> supervisor.add(pool.supervised(pool_name, config.postgres))
-  |> supervisor.add(server.supervised(context, config.port))
-  |> supervisor.start
+  let assert Ok(_) =
+    supervisor.new(supervisor.OneForOne)
+    |> supervisor.add(pool.supervised(pool_name, config.postgres))
+    |> supervisor.add(server.supervised(context, config.port))
+    |> supervisor.start
+  context
 }

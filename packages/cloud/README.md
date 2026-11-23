@@ -114,17 +114,17 @@ S3_SECRET_ACCESS_KEY=
 PORT=8080
 ```
 
-## Sessions
+## Shells and chats
 
-A session is a shell session and/or agent session with persistent state and file system.
-External messages get routed to sessions to keep isolation.
-We do not yet solve inter session communication.
+A shell runs code in a box, a chat is a conversation with an llm whose tool calls run as shells.
+Both are durable and keep what happened in their journal.
 
-Each session ID retains its own MFS root and agent history in memory. Slack
-sessions are scoped to a workspace/channel and Discord sessions to a guild/channel.
+Discord channels are durable chats in a box, the same chats as the API and web interface.
+Each channel is bound to one chat and the binding is kept in Postgres, so a conversation continues after a restart.
+Slack sessions and triggers still keep their own MFS root and agent history in memory, scoped to a workspace/channel.
 
-The sessions process loads `policy.eyg` from the working directory at startup.
-Direct code, agent tools, and triggers use this policy.
+Shells run code with the policy in `policy.eyg`, read from the working directory at startup, each turn records the policy it ran with.
+Slack's sessions and triggers use the same policy.
 
 ## Secrets
 
@@ -223,6 +223,11 @@ channels with:
 ```sh
 (set -a; source .env.local; set +a; gleam dev discord channels)
 ```
+
+Discord also needs an llm, and `DISCORD_BOX` set to the name of the box its channels chat in.
+Set `DISCORD_CHANNELS` to a comma separated list of channel names to only serve those channels.
+A message to the bot goes to the channel's chat, fenced code runs in a shell of the chat's own.
+The scheduled check-in to a `#noise` channel is a demo, it only runs when `DISCORD_NOISE` is set.
 
 #### Storage
 

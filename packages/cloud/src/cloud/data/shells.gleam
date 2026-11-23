@@ -21,6 +21,8 @@ pub type For {
   /// A tool call, its code is the shell's only turn.
   /// A call made by a chat's llm has the chat, a call sent through the API has none.
   Call(chat: Option(String), call: String)
+  /// Code sent to a chat, such as a fenced block in a Discord message, it is the shell's only turn.
+  Sent(chat: String)
 }
 
 /// A new shell in the box.
@@ -29,6 +31,7 @@ pub fn create(box: String, for: For) -> pog.Query(Shell) {
   let #(chat, call) = case for {
     Anyone -> #(None, None)
     Call(chat, call) -> #(chat, Some(call))
+    Sent(chat) -> #(Some(chat), None)
   }
   "INSERT INTO shells (box, chat, call) VALUES ($1, $2, $3)
   ON CONFLICT (chat, call) DO NOTHING
