@@ -19,10 +19,12 @@ import eyg/ir/tree as ir
 import eyg/parser
 import eyg/parser/parser.{type Reason} as _
 import gleam/bit_array
+import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{Some}
 import gleam/result
+import gleam/set
 import gleam/string
 import touch_grass/file_system
 import unixfs
@@ -223,5 +225,136 @@ fn do_cycle_check(visited, path, acc) {
     [] -> Ok(Nil)
     [parent, ..] if parent == path -> Error([path, ..acc])
     [parent, ..rest] -> do_cycle_check(rest, path, [parent, ..acc])
+  }
+}
+
+/// What `changed` needs from an earlier check: for each file, a hash of its contents and,
+/// for each module, its outcome and the modules it imports. It is only kept in memory.
+pub opaque type Index {
+  Index(hashes: Dict(Path, BitArray), modules: Dict(Path, Indexed))
+}
+
+type Indexed {
+  Indexed(outcome: Result(binding.Poly, Problem), imports: List(Path))
+}
+
+/// An index of nothing, checking files from it checks every module.
+pub fn empty() -> Index {
+  Index(dict.new(), dict.new())
+}
+
+/// Check the files as `files` does, and index the outcome so later files can be checked with `changed`.
+pub fn index(
+  files: List(#(Path, BitArray)),
+) -> infer.Step(#(Dict(Path, Result(binding.Poly, Problem)), Index)) {
+  changed(empty(), files)
+}
+
+/// Check a later version of the files the index was made from.
+/// The outcome of every module is the same as `files` gives.
+/// Only the modules that changed or failed to type check, and the modules that import them, directly or not,
+/// are checked again. Modules that failed to type check are checked again because a package they
+/// referred to may now be available.
+pub fn changed(
+  index: Index,
+  files: List(#(Path, BitArray)),
+) -> infer.Step(#(Dict(Path, Result(binding.Poly, Problem)), Index)) {
+  let hashes =
+    list.map(files, fn(file) { #(file.0, hash(file.1)) }) |> dict.from_list
+  // Files that were added, changed or removed.
+  let changed =
+    dict.keys(dict.merge(index.hashes, hashes))
+    |> list.filter(fn(path) {
+      dict.get(index.hashes, path) != dict.get(hashes, path)
+    })
+  let failed =
+    dict.filter(index.modules, fn(_, indexed) {
+      case indexed.outcome {
+        Error(TypeErrors(_)) -> True
+        _ -> False
+      }
+    })
+    |> dict.keys
+  // Any file can be imported, so every changed file leads to the modules that import it.
+  let affected =
+    importers(index.modules, set.from_list(list.append(changed, failed)))
+  let kept =
+    dict.filter(index.modules, fn(path, _) { !set.contains(affected, path) })
+  let checked = dict.map_values(kept, fn(_, indexed) { indexed.outcome })
+  use checked <- infer.bind(do_files(files, dict.from_list(files), checked))
+  let contents = dict.from_list(files)
+  let imports =
+    dict.map_values(checked, fn(path, _) {
+      case dict.get(kept, path) {
+        Ok(indexed) -> indexed.imports
+        Error(Nil) ->
+          dict.get(contents, path)
+          |> result.map(imported(path, _))
+          |> result.unwrap([])
+      }
+    })
+  // Only the modules reached from an entry file are kept, as `files` only checks those.
+  let roots = dict.keys(checked) |> list.filter(is_entry_file) |> set.from_list
+  let reached = reach(imports, roots)
+  let checked =
+    dict.filter(checked, fn(path, _) { set.contains(reached, path) })
+  let modules =
+    dict.map_values(checked, fn(path, outcome) {
+      Indexed(outcome, dict.get(imports, path) |> result.unwrap([]))
+    })
+  infer.Done(#(checked, Index(hashes, modules)))
+}
+
+fn hash(bytes: BitArray) -> BitArray {
+  crypto.hash(crypto.Sha256, bytes)
+}
+
+// The paths and every indexed module that imports them.
+fn importers(modules: Dict(Path, Indexed), paths) {
+  let more =
+    dict.fold(modules, paths, fn(paths, path, indexed) {
+      case list.any(indexed.imports, set.contains(paths, _)) {
+        True -> set.insert(paths, path)
+        False -> paths
+      }
+    })
+  case set.size(more) == set.size(paths) {
+    True -> paths
+    False -> importers(modules, more)
+  }
+}
+
+// The paths and every path they import, directly or not.
+fn reach(imports: Dict(Path, List(Path)), paths) {
+  let more =
+    set.fold(paths, paths, fn(paths, path) {
+      dict.get(imports, path)
+      |> result.unwrap([])
+      |> list.fold(paths, set.insert)
+    })
+  case set.size(more) == set.size(paths) {
+    True -> paths
+    False -> reach(imports, more)
+  }
+}
+
+// The modules a source imports, nothing if it is not a valid module.
+fn imported(path: Path, bytes: BitArray) -> List(Path) {
+  case bit_array.to_string(bytes) {
+    Ok(source) ->
+      case parser.all_from_string(source) {
+        Ok(source) ->
+          ir.list_references(source)
+          |> list.filter_map(fn(reference) {
+            case reference {
+              ir.Relative(location) ->
+                resolve(path, location) |> result.replace_error(Nil)
+              _ -> Error(Nil)
+            }
+          })
+          |> list.unique
+        Error(_) -> []
+      }
+    Error(Nil) -> []
   }
 }
