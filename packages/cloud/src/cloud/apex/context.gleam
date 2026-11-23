@@ -10,9 +10,11 @@ pub type Context {
     db: db.Db,
     // The process for each box, all changes to a box are made by it.
     boxes: registry.Registry(fn(Open) -> Open),
+    // The process for each shell, it runs one turn at a time.
+    shells: registry.Registry(fn(Nil) -> Nil),
     // The hub, secrets and blob store used by code running in a box.
     state: execute.State,
-    // The source of the policy for code run in shells.
+    // The source of the policy for code run in shells, each turn records the policy it ran with.
     policy: String,
   )
 }

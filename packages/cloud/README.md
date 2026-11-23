@@ -35,6 +35,29 @@ A change that leaves an invalid module is rejected with status 422 and the box i
 Status 409 is returned when the name is taken, or a file changed by something else first.
 Changes are made away from the box and merged by the box's one process, which rejects files changed on both sides.
 
+### Shells API
+
+A shell runs EYG code in a box and records each turn so it can be read back later.
+Many shells can use the same box, they all see the latest files.
+A shell in a transient box, cloned from a named box, works on its own copy of the files.
+
+| Request | |
+| --- | --- |
+| `POST /boxes/:id/shells` | Start a shell in the box. |
+| `GET /boxes/:id/shells` | The shells in the box. |
+| `GET /shells/:id` | The shell and all of its turns. |
+| `POST /shells/:id/turns` | Run the code from `{"code": "1"}`. |
+
+A turn returns its `output` and either a `value` or an `error`.
+File changes are only kept if the code succeeds and the box accepts them, i.e. all modules type check.
+Code runs in the shell's own process. Before each request or sleep, and at the end, what it did is recorded in the same transaction as its file changes are merged into the box.
+A turn that only reads files never waits for other shells.
+
+Shells are durable, every turn is recorded in the shell's journal, which is enough to resume it.
+The journal is only appended to: an input before each segment of code runs, with the box event it starts from, and an output when it stops.
+If the process running a turn stops, the turn is finished the next time code is sent to the shell.
+See `cloud/shells/turn.gleam` for how a turn is recorded and replayed.
+
 ### Configuration
 
 ```sh

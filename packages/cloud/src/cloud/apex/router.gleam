@@ -1,6 +1,7 @@
 import cloud/apex/api
 import cloud/apex/context.{type Context}
 import cloud/box/controller as boxes
+import cloud/shells/api as shells
 import gleam/http
 import gleam/http/request
 import gleam/http/response.{type Response}
@@ -35,6 +36,10 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
           |> response.set_header("allow", "GET, PUT, DELETE")
       }
     }
+    ["boxes", id, "shells"], http.Post -> shells.create(id, context)
+    ["boxes", id, "shells"], http.Get -> shells.list(id, context)
+    ["shells", id], http.Get -> shells.get(id, context)
+    ["shells", id, "turns"], http.Post -> shells.turn(ctx, id, context)
     _, _ -> api.status(404)
   }
 }

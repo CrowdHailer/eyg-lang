@@ -1,4 +1,4 @@
-//// The service: its database, the boxes, and the server.
+//// The service: its database, the boxes and shells, and the server.
 
 import cloud/apex/context.{Context}
 import cloud/apex/server
@@ -61,10 +61,12 @@ pub fn start(config: Config, state) {
   let pool_name = process.new_name("db_pool")
   let assert Ok(policy) = simplifile.read("policy.eyg")
   let assert Ok(boxes) = registry.start()
+  let assert Ok(shells) = registry.start()
   let context =
     Context(
       db: db.Pool(pog.named_connection(pool_name)),
       boxes: boxes.data,
+      shells: shells.data,
       state:,
       policy:,
     )

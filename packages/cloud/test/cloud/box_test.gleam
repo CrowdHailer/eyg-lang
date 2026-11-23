@@ -1,8 +1,9 @@
 import cloud/beam/execute
 import cloud/box
+import cloud/data/journal
 import cloud/file_system
 import cloud/helpers
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/string
 
 pub fn merge_changes_from_the_same_base_test() {
@@ -37,4 +38,43 @@ pub fn type_check_the_merged_root_test() {
   let assert Error(box.Invalid([error])) =
     write(start.root, "/one.eyg", "\"one\"")
   assert string.starts_with(error, "/two.eyg: ")
+}
+
+// A query that fails, as the shell is missing.
+fn failing() {
+  journal.append("missing", "missing", journal.Row(1, None, "{}"))
+}
+
+pub fn a_change_is_recorded_with_what_became_of_it_test() {
+  use context <- helpers.context()
+  let assert Ok(home) = box.create(context, Some("home"))
+  let write = fn(base, path, code) {
+    let assert Ok(Ok(root)) =
+      execute.files(file_system.write(base, path, <<code:utf8>>), context.state)
+    root
+  }
+  // If what became of the change cannot be recorded the box does not change.
+  let root = write(home.root, "/a.txt", "a")
+  let assert Error(box.Failed(_)) =
+    box.merge_with(context, home.id, home.root, root, fn(_) { [failing()] })
+  assert Ok(home) == box.latest(context, home.id)
+  // The record is given the box after the change, or the box that refused it.
+  let assert Ok(box.Accepted(changed)) =
+    box.merge_with(context, home.id, home.root, root, fn(merged) {
+      let assert box.Accepted(after) = merged
+      assert after.sequence == 2
+      []
+    })
+  let invalid = write(changed.root, "/bad.eyg", "!int_add(1, \"two\")")
+  let assert Ok(box.Refused(box.Invalid(_), _)) =
+    box.merge_with(context, home.id, changed.root, invalid, fn(merged) {
+      let assert box.Refused(box.Invalid(_), refused) = merged
+      assert refused == changed
+      []
+    })
+  // A refused change is recorded too, failing to record it is a failure.
+  let assert Error(box.Failed(_)) =
+    box.merge_with(context, home.id, changed.root, invalid, fn(_) {
+      [failing()]
+    })
 }

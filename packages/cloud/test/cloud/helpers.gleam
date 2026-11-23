@@ -55,7 +55,8 @@ fn context_for(db) {
   let assert Ok(policy) = simplifile.read("policy.eyg")
   let state = state()
   let assert Ok(boxes) = registry.start()
-  Context(db:, boxes: boxes.data, state:, policy:)
+  let assert Ok(shells) = registry.start()
+  Context(db:, boxes: boxes.data, shells: shells.data, state:, policy:)
 }
 
 pub fn unique(name) {
