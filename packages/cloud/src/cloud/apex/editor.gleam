@@ -2,13 +2,21 @@
 ////
 //// Keys edit and navigate code with the bindings of the EYG shell, see `morph/terminal`,
 //// and `q` imports a file from the box. EYG text that is pasted replaces the expression in focus.
-//// When an edit needs a value, such as a name or a number, it is typed on a line below the code.
+//// When an edit needs a value it is entered in a box over the middle of the screen.
+//// Text and numbers are typed with a cursor that moves, a variable, builtin, package or file is chosen
+//// from suggestions that show each with its type.
 //// The code is type checked after each edit, the types of packages are looked up through the hub,
 //// which blocks the interface while a package that is not cached is fetched.
 
 import cloud/beam/execute
+import etui/backend
+import etui/buffer as screen_buffer
+import etui/geometry
 import etui/span
 import etui/style
+import etui/widgets/block
+import etui/widgets/clear
+import etui/widgets/input
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/hub/cache
 import eyg/ir/tree as ir
@@ -26,6 +34,8 @@ import morph/manipulation as m
 import morph/picker
 import morph/projection
 import morph/terminal
+import morph/terminal/combobox
+import morph/terminal/field
 import multiformats/cid/v1
 import touch_grass/harness/computer
 import touch_grass/interface
@@ -35,12 +45,19 @@ pub type Editor {
   Editor(buffer: Buffer, input: Option(Input))
 }
 
-/// A value being typed for an edit, `suggestions` are offered as it is typed.
+/// A value being typed for an edit.
 pub type Input {
-  Input(
+  /// Typed, such as text or a number.
+  Typed(
     label: String,
-    value: String,
-    suggestions: List(String),
+    widget: input.InputWidget,
+    editing: input.InputState,
+    submit: fn(String) -> Result(Buffer, String),
+  )
+  /// Chosen from suggestions, each with its type.
+  Picking(
+    label: String,
+    box: combobox.Combobox,
     submit: fn(String) -> Result(Buffer, String),
   )
 }
@@ -89,6 +106,25 @@ pub fn paste(
   text: String,
   state: execute.State,
 ) -> #(Result(Editor, String), execute.State) {
+  case editor.input {
+    Some(Picking(..) as input) -> #(
+      picking(editor, input, backend.Paste(text)),
+      state,
+    )
+    Some(Typed(widget:, editing:, ..) as input) -> {
+      let editing =
+        string.replace(text, "\n", " ")
+        |> string.to_graphemes
+        |> list.fold(editing, fn(editing, char) {
+          input.insert_char(widget, editing, char)
+        })
+      #(Ok(Editor(..editor, input: Some(Typed(..input, editing:)))), state)
+    }
+    _ -> replace(editor, text, state)
+  }
+}
+
+fn replace(editor: Editor, text, state) {
   let pasted = case
     buffer.set_expression(editor.buffer),
     parser.all_from_string(text)
@@ -110,8 +146,9 @@ fn import_(editor: Editor, files) {
   case buffer.insert_explicit_reference(editor.buffer) {
     Error(Nil) -> Error("Select an expression to import into")
     Ok(rebuild) -> {
+      let files = list.map(files, fn(path) { #(path, "file") })
       let input =
-        Input("Import", "", files, fn(path) {
+        Picking("Import a file", combobox.new(files), fn(path) {
           case string.trim(path) {
             "" -> Error("Choose a file to import")
             path -> Ok(rebuild(ir.Relative(path)))
@@ -148,34 +185,35 @@ fn do_check(step, state) {
 }
 
 fn typing(editor: Editor, input: Input, key) {
-  case key {
-    "esc" -> Ok(Editor(..editor, input: None))
-    "enter" ->
-      case input.submit(input.value) {
-        Ok(buffer) -> Ok(Editor(buffer:, input: None))
-        Error(reason) -> Error(reason)
-      }
-    "backspace" -> edit(editor, input, string.drop_end(input.value, 1))
-    "tab" ->
-      case matching(input) {
-        [first, ..] -> edit(editor, input, first)
-        [] -> Ok(editor)
-      }
-    _ ->
-      case string.length(key) {
-        1 -> edit(editor, input, input.value <> key)
-        _ -> Ok(editor)
+  case input {
+    Picking(..) -> picking(editor, input, backend.KeyPress(key))
+    Typed(widget:, editing:, submit:, ..) ->
+      case key {
+        "esc" -> Ok(Editor(..editor, input: None))
+        "enter" -> submitted(submit, editing.value)
+        _ -> {
+          let editing = field.edit(widget, editing, key)
+          Ok(Editor(..editor, input: Some(Typed(..input, editing:))))
+        }
       }
   }
 }
 
-fn edit(editor, input, value) {
-  Ok(Editor(..editor, input: Some(Input(..input, value:))))
+fn submitted(submit: fn(String) -> Result(Buffer, String), value) {
+  case submit(value) {
+    Ok(buffer) -> Ok(Editor(buffer:, input: None))
+    Error(reason) -> Error(reason)
+  }
 }
 
-/// The suggestions that contain what has been typed.
-pub fn matching(input: Input) -> List(String) {
-  list.filter(input.suggestions, string.contains(_, input.value))
+fn picking(editor, input, event) {
+  let assert Picking(submit:, ..) = input
+  case combobox.update(event, input.box) {
+    combobox.Cancelled -> Ok(Editor(..editor, input: None))
+    combobox.Selected(value) -> submitted(submit, value)
+    combobox.Updated(box) ->
+      Ok(Editor(..editor, input: Some(Picking(..input, box:))))
+  }
 }
 
 fn navigating(editor: Editor, key, state: execute.State) {
@@ -201,59 +239,81 @@ fn navigating(editor: Editor, key, state: execute.State) {
 }
 
 fn ask(asked, state: execute.State) -> Input {
-  let suggested = fn(picker: picker.Picker) {
+  // The choices offered and their types, with what has been typed so far.
+  let choosing = fn(picker: picker.Picker) {
     case picker {
-      picker.Typing(value, suggestions) -> #(
-        value,
-        list.map(suggestions, fn(s) { s.0 }),
-      )
-      picker.Scrolling(..) -> #("", [])
+      picker.Typing(value, choices) ->
+        combobox.Combobox(
+          ..combobox.new(choices),
+          input: input.state_from_string(value),
+        )
+      picker.Scrolling(..) -> combobox.new([])
     }
   }
   case asked {
     m.EnterText(value, rebuild) ->
-      Input("Text", value, [], fn(value) { Ok(rebuild(value)) })
+      Typed(
+        "Text",
+        input.input_new("Enter text"),
+        input.state_from_string(value),
+        fn(value) { Ok(rebuild(value)) },
+      )
     m.EnterInteger(value, rebuild) ->
-      Input("Number", int.to_string(value), [], fn(value) {
-        case int.parse(value) {
-          Ok(value) -> Ok(rebuild(value))
-          Error(Nil) -> Error("Enter a whole number")
-        }
-      })
-    m.PickSingle(picker, rebuild) -> {
-      let #(value, suggestions) = suggested(picker)
-      Input("Name", value, suggestions, fn(value) {
+      Typed(
+        "Number",
+        input.input_new("Enter a whole number")
+          |> input.with_validator(fn(value) {
+            int.parse(value)
+            |> result.replace(Nil)
+            |> result.replace_error("Enter a whole number")
+          }),
+        input.state_from_string(int.to_string(value)),
+        fn(value) {
+          case int.parse(value) {
+            Ok(value) -> Ok(rebuild(value))
+            Error(Nil) -> Error("Enter a whole number")
+          }
+        },
+      )
+    m.PickSingle(picker, rebuild) ->
+      Picking("Choose a value", choosing(picker), fn(value) {
         case value {
           "" -> Error("Enter a name")
           _ -> Ok(rebuild(value))
         }
       })
-    }
-    m.PickRelease(picker, rebuild) -> {
-      let #(value, suggestions) = suggested(picker)
-      Input("Package", value, suggestions, fn(name) {
+    m.PickRelease(picker, rebuild) ->
+      Picking("Choose a package", choosing(picker), fn(name) {
         case cache.package(state.cache, name) {
           Ok(cache.Entry(version:, module:, ..)) ->
             Ok(rebuild(ir.Release(name, version, module)))
           Error(Nil) -> Error("Choose a published package")
         }
       })
-    }
-    m.PickCid(_, rebuild) ->
-      Input("Content reference", "", [], fn(value) {
+    m.PickCid(_, rebuild) -> {
+      let parse = fn(value) {
         let value = case value {
           "#" <> value -> value
           value -> value
         }
-        case v1.from_string(value) {
-          Ok(#(cid, _)) -> Ok(rebuild(cid))
-          Error(_) -> Error("Enter a content reference")
-        }
-      })
+        v1.from_string(value)
+        |> result.map(fn(parsed) { parsed.0 })
+        |> result.replace_error("Enter a content reference")
+      }
+      Typed(
+        "Content reference",
+        input.input_new("Enter a content reference")
+          |> input.with_validator(fn(value) {
+            parse(value) |> result.replace(Nil)
+          }),
+        input.state_new(),
+        fn(value) { parse(value) |> result.map(rebuild) },
+      )
+    }
   }
 }
 
-/// The code with the focus marked, and the value being typed if there is one.
+/// The code with the focus marked.
 pub fn lines(editor: Editor, active: Bool) -> List(span.Line) {
   let errors = buffer.block_errors(editor.buffer)
   let code = case projection.rebuild(editor.buffer.projection) {
@@ -269,20 +329,33 @@ pub fn lines(editor: Editor, active: Bool) -> List(span.Line) {
       render.projection(editor.buffer.projection, render.Statements, errors)
       |> terminal.lines(active && editor.input == None)
   }
+  code
+}
+
+/// Draw the value being entered in the middle of the area, over what is there.
+pub fn render_input(
+  editor: Editor,
+  screen: screen_buffer.Buffer,
+  area: geometry.Rect,
+) -> screen_buffer.Buffer {
   case editor.input {
-    None -> code
-    Some(input) ->
-      list.append(code, [
-        span.line_new([
-          span.span_styled(input.label <> " ", style.dim_style()),
-          span.span_plain(input.value),
-          span.span_styled("▏", style.reversed()),
-          span.span_styled(
-            "  " <> string.join(list.take(matching(input), 5), "  "),
-            style.dim_style(),
-          ),
-        ]),
-      ])
+    Some(Typed(label:, widget:, editing:, ..)) ->
+      field.dialog(screen, area, label, widget, editing)
+    Some(Picking(label:, box:, ..)) -> {
+      let dialog = field.centered(area, 12)
+      let border =
+        block.block_new()
+        |> block.with_border(block.Rounded)
+        |> block.with_style(style.Rgb(97, 175, 239), style.Default)
+        |> block.with_bg_fill
+        |> block.with_title(label, block.Top)
+        |> block.with_padding(0, 0, 1, 1)
+      screen
+      |> clear.render(dialog)
+      |> block.render(dialog, border)
+      |> combobox.render(block.inner(dialog, border), box)
+    }
+    _ -> screen
   }
 }
 

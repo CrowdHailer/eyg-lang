@@ -105,6 +105,7 @@ A box is opened by starting a shell or a chat in it, or in a transient copy of i
 The terminal fills the window and a shell fills it from the bottom, as a terminal does.
 The log scrolls back with page up and page down or the mouse wheel, a reply longer than the screen is shown from its start.
 A shell's programs are written as EYG text, which can be pasted, or with the structural editor and the same keys as the EYG shell.
+Variables, builtins, packages and files are chosen in a box in the middle of the screen, which shows each with its type.
 Tab switches between them and keeps both, shift and enter starts a new line in text and in chat messages.
 Text is edited with arrows, home and end, ctrl or alt with an arrow moves by word, program text is highlighted.
 A wide window shows the files of the box beside the shell, and a running turn shows what it has done so far.

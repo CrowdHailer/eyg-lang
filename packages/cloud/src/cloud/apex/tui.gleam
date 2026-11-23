@@ -28,7 +28,7 @@ import etui/span
 import etui/style
 import etui/text
 import etui/widgets/block
-import etui/widgets/clear
+import etui/widgets/input
 import etui/widgets/list as list_widget
 import eyg/ir/dag_json
 import gleam/dict
@@ -44,6 +44,7 @@ import gleam/uri
 import lustre
 import lustre/effect.{type Effect}
 import morph/terminal as code
+import morph/terminal/field
 import morph/terminal/textarea
 import multiformats/cid/v1
 import overlay/agent
@@ -68,7 +69,7 @@ pub type Model {
 pub type Prompt {
   Prompt(
     label: String,
-    input: String,
+    input: input.InputState,
     masked: Bool,
     submit: fn(String) -> Message,
   )
@@ -230,7 +231,7 @@ pub fn update(model: Model, message: Message) -> #(Model, Effect(Message)) {
   let Model(screen:, prompt:, ..) = model
   case prompt, screen, message {
     Some(prompt), _, Key(key) -> #(ask(model, prompt, key), case key {
-      "enter" -> background(fn() { prompt.submit(prompt.input) })
+      "enter" -> background(fn() { prompt.submit(prompt.input.value) })
       _ -> effect.none()
     })
     _, _, Listed(Ok(boxes)) -> #(
@@ -296,21 +297,15 @@ fn ask(model, prompt: Prompt, key) {
   case key {
     "esc" -> Model(..model, prompt: None)
     "enter" -> Model(..model, prompt: None, status: Working("Working"))
-    "backspace" ->
-      Model(
-        ..model,
-        prompt: Some(Prompt(..prompt, input: string.drop_end(prompt.input, 1))),
-      )
-    _ ->
-      case string.length(key) {
-        1 ->
-          Model(
-            ..model,
-            prompt: Some(Prompt(..prompt, input: prompt.input <> key)),
-          )
-        _ -> model
-      }
+    _ -> {
+      let edited = field.edit(prompt_widget(prompt), prompt.input, key)
+      Model(..model, prompt: Some(Prompt(..prompt, input: edited)))
+    }
   }
+}
+
+fn prompt_widget(prompt: Prompt) {
+  input.input_new("") |> input.with_password(prompt.masked)
 }
 
 fn on_screen(model: Model, screen, message) {
@@ -337,12 +332,14 @@ fn on_screen(model: Model, screen, message) {
         )
         "o" -> {
           let submit = fn(id) { Opened(open(context, id)) }
-          let prompt = Prompt("Id of the shell or chat", "", False, submit)
+          let prompt =
+            Prompt("Id of the shell or chat", input.state_new(), False, submit)
           #(Model(..model, prompt: Some(prompt)), effect.none())
         }
         "n" -> {
           let submit = fn(name) { Created(box.create(context, Some(name))) }
-          let prompt = Prompt("Name of the new box", "", False, submit)
+          let prompt =
+            Prompt("Name of the new box", input.state_new(), False, submit)
           #(Model(..model, prompt: Some(prompt)), effect.none())
         }
         _ -> #(model, effect.none())
@@ -417,7 +414,8 @@ fn on_screen(model: Model, screen, message) {
           effect.none(),
         )
         "a" -> {
-          let prompt = Prompt("Name of the secret", "", False, SecretNamed)
+          let prompt =
+            Prompt("Name of the secret", input.state_new(), False, SecretNamed)
           #(Model(..model, prompt: Some(prompt)), effect.none())
         }
         "d" ->
@@ -446,7 +444,7 @@ fn on_screen(model: Model, screen, message) {
           secret_names(context, box)
         })
       }
-      let prompt = Prompt("Value of " <> name, "", True, submit)
+      let prompt = Prompt("Value of " <> name, input.state_new(), True, submit)
       #(Model(..model, prompt: Some(prompt), status: Quiet), effect.none())
     }
     Running(..) as running, Key("pageup") -> scroll(model, running, page(model))
@@ -1228,6 +1226,31 @@ pub fn render(model: Model) -> buffer.Buffer {
         #("esc", "boxes"),
       ],
     )
+    Running(
+      draft: draft.Program(
+        structured: True,
+        editor: editor.Editor(input: Some(editor.Picking(..)), ..),
+        ..,
+      ),
+      ..,
+    ) as running -> #(title(running), [
+      #("↑↓", "choose"),
+      #("tab", "complete"),
+      #("enter", "pick"),
+      #("esc", "cancel"),
+    ])
+    Running(
+      draft: draft.Program(
+        structured: True,
+        editor: editor.Editor(input: Some(editor.Typed(..)), ..),
+        ..,
+      ),
+      ..,
+    ) as running -> #(title(running), [
+      #("←→", "move"),
+      #("enter", "apply"),
+      #("esc", "cancel"),
+    ])
     Running(draft: draft.Program(..), ..) as running -> #(title(running), [
       #("enter", "run"),
       #("tab", "text"),
@@ -1285,6 +1308,14 @@ pub fn render(model: Model) -> buffer.Buffer {
     Problem(text) -> [span.span_styled(" " <> text, fg(red))]
   })
   |> dialog(model.prompt, model.size)
+  // A variable, builtin, package or file being chosen is in a box over the middle of the screen.
+  |> fn(screen) {
+    case model.screen {
+      Running(draft: draft.Program(structured: True, editor: edited, ..), ..) ->
+        editor.render_input(edited, screen, area)
+      _ -> screen
+    }
+  }
 }
 
 // The prompt in a box over the middle of the screen.
@@ -1292,36 +1323,14 @@ fn dialog(screen, prompt, size: #(Int, Int)) {
   let #(width, height) = size
   case prompt {
     None -> screen
-    Some(Prompt(label:, input:, masked:, ..)) -> {
-      let margin = int.min(20, width / 8)
-      let area =
-        geometry.rect_new(margin, height / 2 - 2, width - 2 * margin, 3)
-      let frame =
-        block.block_new()
-        |> block.with_border(block.Rounded)
-        |> block.with_style(accent, style.Default)
-        |> block.with_bg_fill
-        |> block.with_title_styled(
-          [span.span_styled(" " <> label <> " ", fg(accent))],
-          block.Top,
-        )
-      let inner = block.inner(area, frame)
-      let shown = case masked {
-        True -> string.repeat("•", string.length(input))
-        False -> input
-      }
-      screen
-      |> clear.render(area)
-      |> block.render(area, frame)
-      |> span.render_line(
-        inner.position,
-        span.line_new([
-          span.span_plain(text.truncate(shown, inner.size.width - 1, "…")),
-          span.span_styled("▏", fg(accent)),
-        ]),
-        inner.size.width,
+    Some(Prompt(label:, input: editing, ..) as prompt) ->
+      field.dialog(
+        screen,
+        geometry.rect_new(0, 0, width, height),
+        label,
+        prompt_widget(prompt),
+        editing,
       )
-    }
   }
 }
 
