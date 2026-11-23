@@ -31,7 +31,8 @@ pub type Trigger {
   Started(code: String, policy: v1.Cid)
   /// A program built in a structural editor was sent to the shell, it runs as code does.
   Submitted(program: ir.Node(Nil), policy: v1.Cid)
-  /// The answer to the request or sleep the last segment stopped at.
+  /// The answer to the request or sleep the last segment stopped at,
+  /// or the rejection of its change, when the box did not accept it.
   Continued(answer: execute.Answer)
 }
 
@@ -159,8 +160,7 @@ fn encode_answer(answer) {
     execute.Secret(_) -> []
     execute.Fetched(Ok(response)) -> [#("response", encode_response(response))]
     execute.Fetched(Error(reason)) -> [#("failed", json.string(reason))]
-    // Changes are not yet rejected by a wait.
-    execute.Rejected(_) -> []
+    execute.Rejected(reason) -> [#("rejected", json.string(reason))]
   }
 }
 
@@ -299,6 +299,7 @@ fn answer_decoder() {
         |> decode.map(fn(response) { execute.Fetched(Ok(response)) }),
       decode.at(["failed"], decode.string)
         |> decode.map(fn(reason) { execute.Fetched(Error(reason)) }),
+      decode.at(["rejected"], decode.string) |> decode.map(execute.Rejected),
       decode.at(["woke"], decode.bool) |> decode.map(fn(_) { execute.Slept }),
     ],
   )

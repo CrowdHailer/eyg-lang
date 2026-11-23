@@ -119,8 +119,10 @@ pub fn resume_from_any_stop_test() {
   }
   let entries = shell_helpers.entries(context, shell)
 
-  list.index_map(entries, fn(_, i) { i + 1 })
-  |> list.each(fn(length) {
+  list.index_map(entries, fn(entry, i) { #(entry, i + 1) })
+  |> list.filter(fn(entry) { ends_transaction(entries, entry.1) })
+  |> list.each(fn(entry) {
+    let #(_, length) = entry
     let prefix = list.take(entries, length)
     let copy = shell_helpers.prefix(context, shell, length)
     // Another process changes the box before the shell is resumed.
@@ -159,6 +161,18 @@ pub fn resume_from_any_stop_test() {
     })
     Nil
   })
+}
+
+// An output whose change was rejected while the code waits is appended with the input that answers it.
+fn ends_transaction(entries, length) {
+  case list.drop(entries, length - 1) {
+    [event.Output(change: event.Rejected(_), stop:, ..), event.Input(..), ..] ->
+      case stop {
+        event.Finished(..) -> True
+        _ -> False
+      }
+    _ -> True
+  }
 }
 
 fn is_finished(entry) {

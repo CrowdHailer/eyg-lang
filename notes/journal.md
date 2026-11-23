@@ -17,6 +17,7 @@ An output does not record the box event it made, the box event is written in the
 
 An output and the box event of its change are written in one transaction, by the box's process.
 Either both are recorded or neither is, so a change is never merged twice and there is nothing to merge again after a restart.
+When the box rejects a change that the code is waiting on, the output and the input that answers with the rejection are one transaction.
 
 Secrets are never recorded, each secret a turn reads is recorded as a fingerprint.
 A fingerprint is a short hash of the name and value, a weak secret could be guessed from it,
@@ -34,6 +35,9 @@ The finished output records the value and output of a turn although replay could
 so turns can be listed without running any code.
 
 Entries are recorded at the time they are inserted, not when their transaction started, so a trace shows them in order.
+
+The changes made by code that fails are not kept.
+A change that is rejected when it is merged is discarded and the rejection is the answer to the stop that merged it, code fails with it.
 
 A program built in a structural editor is recorded as its tree in DAG-JSON, not as text.
 There is no printer from a tree to EYG text, and some trees, such as binary literals, have no text syntax.

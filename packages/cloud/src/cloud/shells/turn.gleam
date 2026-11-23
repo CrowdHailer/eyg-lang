@@ -4,7 +4,8 @@
 //// Before a segment runs its input is appended to the journal, with the box event the segment starts from.
 //// When it stops its output is appended, in the same transaction as the box event of the files it changed,
 //// so the journal and the box never disagree. A segment that only read files never waits for the box process.
-//// A change that conflicts or does not type check is rejected, the turn finishes and the request is not made.
+//// A change that conflicts or does not type check is rejected and the request is not made.
+//// The code continues from the box's latest root with the rejection as its answer, and fails with it.
 //// The response to a request is appended as the input of the next segment as soon as it is received.
 ////
 //// If the process stops, the code is replayed with the recorded answers the next time the shell is used.
@@ -22,6 +23,7 @@
 import cloud/apex/context.{type Context, Context}
 import cloud/beam/execute
 import cloud/box
+import cloud/data/boxes.{type Box}
 import cloud/data/db
 import cloud/data/journal
 import cloud/data/shells.{type Shell}
@@ -233,7 +235,7 @@ pub fn outcome(
   change: event.Change,
 ) -> Result(String, String) {
   case stop, change {
-    _, event.Rejected(reason) -> Error(reason)
+    event.Finished(_, _), event.Rejected(reason) -> Error(reason)
     event.Finished(outcome, _), _ -> outcome
     _, _ -> Error("the turn did not finish")
   }
@@ -332,27 +334,50 @@ fn settle(
         box.merge_with(context, writer.shell.box, start, root, fn(merged) {
           case merged {
             box.Accepted(_) -> rows(writer, [output(event.Merged)])
-            box.Refused(reason, _) ->
+            box.Refused(reason, current) ->
               case rejected(reason) {
-                Ok(reason) -> rows(writer, [output(event.Rejected(reason))])
+                Ok(reason) ->
+                  rows(writer, refused(output, reason, next, current))
                 Error(_) -> []
               }
           }
         })
       case merged {
         Ok(box.Accepted(_)) -> proceed(context, advance(writer, 1), state, next)
-        Ok(box.Refused(reason, _)) -> {
+        Ok(box.Refused(reason, current)) -> {
           use reason <- result.try(rejected(reason))
-          // The turn finishes, the request or sleep it stopped at is not made.
-          let output = case next {
-            Return(output:, ..) -> output
-            Perform(..) -> []
+          case next {
+            Return(output:, ..) -> Ok(#(Error(reason), output))
+            // The code continues from the box that refused the change, without it.
+            Perform(_, resume) ->
+              drive(
+                context,
+                advance(writer, 2),
+                state,
+                continue(resume, execute.Rejected(reason)),
+                current.root,
+                state.pins,
+              )
           }
-          Ok(#(Error(reason), output))
         }
         Error(reason) -> Error(reason)
       }
     }
+  }
+}
+
+// The entries recorded when the box refuses a change, code that is waiting continues with the rejection.
+fn refused(output, reason, next, current: Box) {
+  case next {
+    Return(..) -> [output(event.Rejected(reason))]
+    Perform(..) -> [
+      output(event.Rejected(reason)),
+      event.Input(
+        event.Continued(execute.Rejected(reason)),
+        current.sequence,
+        current.root,
+      ),
+    ]
   }
 }
 
@@ -563,7 +588,6 @@ fn unfinished(entries: List(Entry)) {
     list.any(turn, fn(entry) {
       case entry {
         event.Output(stop: event.Finished(..), ..) -> True
-        event.Output(change: event.Rejected(_), ..) -> True
         _ -> False
       }
     })
@@ -615,10 +639,12 @@ fn walk(state, segment: Segment, entries) {
           case stopped == recorded && changed == root, next, change, entries {
             False, _, _, _ -> Error(mismatch)
             True, Return(..), _, _ -> Ok(Ended)
-            // A rejected change finishes the turn.
-            True, Perform(..), event.Rejected(_), _ -> Ok(Ended)
             True, Perform(wait, resume), _, [] ->
-              Ok(Unanswered(wait, resume, state))
+              case change {
+                // The rejection is recorded with the output, as the next input.
+                event.Rejected(_) -> Error(mismatch)
+                _ -> Ok(Unanswered(wait, resume, state))
+              }
             True,
               Perform(_, resume),
               _,

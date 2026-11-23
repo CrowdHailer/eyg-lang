@@ -112,10 +112,6 @@ fn turns(entries, acc) {
       let outcome = turn.outcome(stop, change)
       turns(entries, [#(input, Some(#(outcome, output))), ..acc])
     }
-    // A rejected change finishes the turn.
-    [event.Output(change: event.Rejected(reason), ..), ..entries],
-      [#(input, _), ..acc]
-    -> turns(entries, [#(input, Some(#(Error(reason), []))), ..acc])
     [_, ..entries], _ -> turns(entries, acc)
   }
 }

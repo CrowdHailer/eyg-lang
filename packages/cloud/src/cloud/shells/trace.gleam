@@ -76,8 +76,15 @@ fn turn_spans(shell, parent, turn) {
   let finished =
     list.find_map(entries, fn(entry) {
       case entry {
-        #(_, at, event.Output(change: event.Rejected(reason), ..)) ->
-          Ok(#(at, Error(reason)))
+        #(
+          _,
+          at,
+          event.Output(
+            stop: event.Finished(_, _),
+            change: event.Rejected(reason),
+            ..,
+          ),
+        ) -> Ok(#(at, Error(reason)))
         #(_, at, event.Output(stop: event.Finished(outcome, _), ..)) ->
           Ok(#(at, outcome))
         _ -> Error(Nil)
