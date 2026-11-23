@@ -250,7 +250,9 @@ fn join(cells) -> List(span.Span) {
   |> list.reverse
 }
 
-fn wrap(spans, width) -> List(span.Line) {
+/// Spans as lines at most `width` cells wide, broken between cells.
+pub fn wrap(spans: List(span.Span), width: Int) -> List(span.Line) {
+  let width = int.max(1, width)
   case cells(spans) {
     [] -> [span.line_new([])]
     cells ->

@@ -25,6 +25,7 @@ pub fn view(
   on_key: fn(String) -> msg,
   on_paste: fn(String) -> msg,
   on_resize: fn(Int, Int) -> msg,
+  on_scroll: fn(Int) -> msg,
 ) -> Element(msg) {
   html.pre(
     [
@@ -49,6 +50,20 @@ pub fn view(
         decode.at(["detail"], decode.string) |> decode.map(on_paste),
       )
         |> server_component.include(["detail"]),
+      // The wheel scrolls three lines a step, up is back.
+      event.on("wheel", {
+        use delta <- decode.field(
+          "deltaY",
+          decode.one_of(decode.float, [decode.int |> decode.map(int.to_float)]),
+        )
+        case delta <. 0.0, delta >. 0.0 {
+          True, _ -> decode.success(on_scroll(3))
+          _, True -> decode.success(on_scroll(-3))
+          _, _ -> decode.failure(on_scroll(0), "Scroll")
+        }
+      })
+        |> server_component.include(["deltaY"])
+        |> event.prevent_default,
       event.on("terminal-resize", {
         use columns <- decode.subfield(["detail", "columns"], decode.int)
         use rows <- decode.subfield(["detail", "rows"], decode.int)
@@ -136,10 +151,12 @@ document.addEventListener('paste', (event) => {
 const probe = document.createElement('span');
 probe.style = 'position: absolute; visibility: hidden; font: 14px/1.15 monospace; white-space: pre';
 probe.textContent = 'x'.repeat(100);
+// The size is sent again every few seconds, a connection that is made again starts a new terminal that does not know it.
+let focused = false;
 function resize() {
   const pre = terminal();
-  if (!pre) return setTimeout(resize, 200);
-  pre.focus();
+  if (!pre) return;
+  if (!focused) { pre.focus(); focused = true; }
   document.body.appendChild(probe);
   const cell = probe.getBoundingClientRect();
   probe.remove();
@@ -148,7 +165,8 @@ function resize() {
   pre.dispatchEvent(new CustomEvent('terminal-resize', { detail: { columns, rows } }));
 }
 window.addEventListener('resize', resize);
-resize();
+setInterval(resize, 2000);
+const first = setInterval(() => { if (terminal()) { clearInterval(first); resize(); } }, 100);
 "
 
 // Cells in the same style, newest first. The second cell of a wide character has no content.

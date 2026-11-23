@@ -41,6 +41,7 @@ import gleam/uri
 import lustre
 import lustre/effect.{type Effect}
 import morph/terminal as code
+import morph/terminal/textarea
 import overlay/agent
 import unixfs/mfs
 
@@ -136,6 +137,8 @@ pub type Message {
   /// Work in another process stopped without a reply.
   Stopped(String)
   Pasted(String)
+  /// Scroll the log back by lines, forward if negative.
+  Scrolled(Int)
   Resized(columns: Int, rows: Int)
   /// What the running turn in the shell with this id has done so far.
   Progressed(String, List(String))
@@ -404,17 +407,10 @@ fn on_screen(model: Model, screen, message) {
       let prompt = Prompt("Value of " <> name, "", True, submit)
       #(Model(..model, prompt: Some(prompt), status: Quiet), effect.none())
     }
-    Running(scroll:, ..) as running, Key("pageup") -> #(
-      Model(..model, screen: Running(..running, scroll: scroll + page(model))),
-      effect.none(),
-    )
-    Running(scroll:, ..) as running, Key("pagedown") -> #(
-      Model(
-        ..model,
-        screen: Running(..running, scroll: int.max(0, scroll - page(model))),
-      ),
-      effect.none(),
-    )
+    Running(..) as running, Key("pageup") -> scroll(model, running, page(model))
+    Running(..) as running, Key("pagedown") ->
+      scroll(model, running, 0 - page(model))
+    Running(..) as running, Scrolled(lines) -> scroll(model, running, lines)
     Running(waiting: True, ..), Key("esc") -> back(model)
     Running(thread:, waiting: True, ..), Key("x") -> #(
       Model(..model, status: Working("Cancelling the turn")),
@@ -473,7 +469,18 @@ fn on_screen(model: Model, screen, message) {
           ])
         Error(reason) -> [Failed(describe(reason))]
       }
+      // A reply too long for the screen is shown from its start,
+      // two more lines are scrolled back as the lines above and below say there is more.
+      let #(columns, rows) = log_size(model.size)
+      let chat = draft.mode(running.draft) == "message"
+      let reply = list.flat_map(lines, entry_lines(_, chat, columns))
       let log = list.append(log, lines)
+      let running = Running(..running, log:)
+      let scroll = case list.length(reply) > rows {
+        True ->
+          int.min(list.length(reply) - rows + 2, last_scroll(model, running))
+        False -> 0
+      }
       #(
         Model(
           ..model,
@@ -482,7 +489,7 @@ fn on_screen(model: Model, screen, message) {
             log:,
             waiting: False,
             progress: [],
-            scroll: 0,
+            scroll:,
           ),
         ),
         list_files(context, thread),
@@ -515,7 +522,37 @@ fn drafted(model: Model, running, key, outcome) {
 
 // The lines a page up or down scrolls.
 fn page(model: Model) {
-  int.max(1, model.size.1 - 8)
+  int.max(1, log_size(model.size).1 - 2)
+}
+
+// Scroll the log back by `lines`, forward if it is negative, from its end to its first line.
+fn scroll(model: Model, running, lines) {
+  let assert Running(scroll:, ..) = running
+  let scroll = int.clamp(scroll + lines, 0, last_scroll(model, running))
+  #(Model(..model, screen: Running(..running, scroll:)), effect.none())
+}
+
+// How far the log scrolls back before its first line is at the top.
+fn last_scroll(model: Model, running) {
+  let assert Running(log:, draft: current, ..) = running
+  let #(columns, rows) = log_size(model.size)
+  let chat = draft.mode(current) == "message"
+  let lines = list.flat_map(log, entry_lines(_, chat, columns)) |> list.length
+  int.max(0, lines - rows)
+}
+
+// A wide screen shows the files of the box beside the shell.
+const pane = 26
+
+// The columns and rows of a shell's log, inside the frame, beside the files and above a one line draft.
+fn log_size(size: #(Int, Int)) {
+  let #(width, height) = size
+  let inner = width - 2
+  let columns = case inner >= 90 {
+    True -> inner - pane - 1
+    False -> inner
+  }
+  #(columns, height - 6)
 }
 
 // Check what a running turn has done, again and again while it runs.
@@ -857,7 +894,7 @@ fn describe(reason) {
 }
 
 pub fn view(model: Model) {
-  terminal.view(render(model), Key, Pasted, Resized)
+  terminal.view(render(model), Key, Pasted, Resized, Scrolled)
 }
 
 // The colours of the interface, the code uses the editor's own.
@@ -1079,8 +1116,6 @@ fn body(screen, area: geometry.Rect, model: Model) {
       list.map(names, fn(name) { name <> "  ••••••" })
       |> menu(screen, area, chosen)
     Running(log:, draft: current, waiting:, progress:, scroll:, files:, ..) -> {
-      // A wide screen shows the files of the box beside the shell.
-      let pane = 26
       let #(area, screen) = case area.size.width >= 90 {
         True -> #(
           geometry.rect_new(
@@ -1154,11 +1189,14 @@ fn body(screen, area: geometry.Rect, model: Model) {
           ])
         False -> shown
       }
-      list.append(shown, below)
-      |> list.index_fold(screen, fn(screen, line, i) {
+      // The shell fills the screen from the bottom, as a terminal does, the log grows up from the draft.
+      let lines = list.append(shown, below)
+      let top =
+        area.position.y + int.max(0, area.size.height - list.length(lines))
+      list.index_fold(lines, screen, fn(screen, line, i) {
         span.render_line(
           screen,
-          Position(area.position.x, area.position.y + i),
+          Position(area.position.x, top + i),
           line,
           columns,
         )
@@ -1223,7 +1261,10 @@ fn entry_lines(entry, chat, columns) {
     |> list.map(fn(line) { span.line_new([span.span_styled(line, style)]) })
   }
   case entry, chat {
-    Ran(lines), _ -> prompted(lines)
+    // Code is wrapped beside its prompt.
+    Ran(lines), _ ->
+      list.flat_map(lines, fn(line) { textarea.wrap(line.spans, columns - 2) })
+      |> prompted
     Sent(content), _ ->
       text("you ", content, fg(accent) |> style.add_modifier(style.bold()))
     Printed(content), _ -> text("", content, fg(muted))

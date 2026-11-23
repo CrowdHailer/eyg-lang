@@ -134,3 +134,9 @@ pub fn highlight_eyg_test() {
   assert style_of(second, "std") == style_of(second, "@")
   assert style.has(style_of(second, "^").modifier, style.underline())
 }
+
+pub fn wrap_spans_test() {
+  let spans = [span.span_plain("abc"), span.span_plain("def")]
+  assert ["abcd", "ef"] == text(textarea.wrap(spans, 4))
+  assert [""] == text(textarea.wrap([], 4))
+}
