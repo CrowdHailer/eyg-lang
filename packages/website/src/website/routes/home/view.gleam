@@ -156,7 +156,7 @@ pub fn view() {
           h.p([a.class("")], [
             // element.text("EYG"),
             h.img([
-              a.class("w-full max-w-xl"),
+              a.class("w-full max-w-xl rounded-3xl"),
               a.src(asset.src(penelopea)),
               a.alt("Penelopea, EYG's mascot"),
               // a.styles([

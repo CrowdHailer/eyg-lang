@@ -34,6 +34,7 @@ pub const embed_area_styles = [
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
   ),
   #("background-color", "rgb(255, 255, 255)"),
+  #("color", "rgb(0, 0, 0)"),
   #("border-color", "rgb(0, 0, 0)"),
   #("border-width", "1px"),
   #("flex-direction", "column"),

@@ -135,3 +135,19 @@
 .pamphlet td {
   vertical-align: top;
 }
+
+@media (prefers-color-scheme: dark) {
+  .pamphlet blockquote {
+    border-left-color: #4b5563;
+    color: #d1d5db;
+  }
+
+  .pamphlet th,
+  .pamphlet td {
+    border-color: #4b5563;
+  }
+
+  .pamphlet th {
+    background-color: #1f2937;
+  }
+}
