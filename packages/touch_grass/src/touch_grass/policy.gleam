@@ -4,13 +4,17 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/cast
+import eyg/interpreter/evaluation
 import eyg/interpreter/expression
+import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
+import touch_grass/file_system
 import touch_grass/interface
+import touch_grass/source
 
 /// Require a user-supplied gate in the named field or
 /// expose the effect without a user-supplied gate.
@@ -70,6 +74,32 @@ pub fn type_(rules: List(#(interface.Interface(_, _), Rule))) {
   t.record(fields)
 }
 
+// TODO this might take source because type checking is needed as well
+pub fn prepare(
+  code: String,
+  input: source.Origin,
+  rules: List(#(interface.Interface(t, source.Location), Rule)),
+) -> evaluation.Evaluation(
+  Result(Policy(t, source.Location), String),
+  source.Location,
+) {
+  case source.parse(code, input) {
+    Ok(source) -> {
+      let outcome = evaluation.await(expression.execute(source, []))
+      use returned <- evaluation.map(outcome)
+      case returned {
+        Ok(value) ->
+          case decode_policy(rules, value) {
+            Ok(policy) -> Ok(policy)
+            Error(reason) -> Error(simple_debug.describe(reason))
+          }
+        Error(#(reason, _, _, _)) -> Error(simple_debug.describe(reason))
+      }
+    }
+    Error(reason) -> evaluation.Done(Error(reason))
+  }
+}
+
 pub fn decode_policy(
   rules: List(#(interface.Interface(_, _), Rule)),
   value: state.Value(_),
@@ -107,6 +137,7 @@ pub type Action(m, eff) {
 
 /// Decide an effect using the host's pure evaluator. The host owns reference
 /// resolution and state; `done` handles decisions that need no evaluation.
+/// TODO remove this one
 pub fn decide(
   policy: Policy(eff, meta),
   label: String,
@@ -121,24 +152,62 @@ pub fn decide(
   case dict.get(policy, label) {
     Ok(Interface(interface, Gated(gate))) -> {
       use returned <- evaluate(expression.call(gate, [#(input, meta)]))
-      case returned {
-        Ok(value) ->
-          case decision_from_value(value) {
-            Ok(Pass(modified)) -> Perform(interface, modified)
-            Ok(Mock(value)) -> Resume(value)
-            Error(Nil) ->
-              Failed(#(
-                break.IncorrectTerm(expected: "Pass/Mock", got: value),
-                meta,
-                builtin.default([]),
-                state.Empty,
-              ))
-          }
-        Error(debug) -> Failed(debug)
-      }
+      action_from_outcome(returned, interface, meta)
     }
     Ok(Interface(interface, Unrestricted)) -> done(Perform(interface, input))
     Error(Nil) -> done(Unavailable)
+  }
+}
+
+pub fn decide_host(
+  policy: Policy(eff, source.Location),
+  label: String,
+  input: state.Value(source.Location),
+  meta: source.Location,
+  cwd: String,
+) -> evaluation.Evaluation(Action(source.Location, eff), source.Location) {
+  let base = source.base(meta.origin, cwd)
+  case file_system.resolve_input(base, label, input) {
+    Ok(input) -> decide_m(policy, label, input, meta)
+    Error(_) -> evaluation.Done(Resume(v.error(v.String("invalid path"))))
+  }
+}
+
+pub fn decide_m(
+  policy: Policy(eff, meta),
+  label: String,
+  input: state.Value(meta),
+  meta: meta,
+) -> evaluation.Evaluation(Action(meta, eff), meta) {
+  case dict.get(policy, label) {
+    Ok(Interface(interface, Gated(gate))) -> {
+      use returned <- evaluation.map(
+        evaluation.await(expression.call(gate, [#(input, meta)])),
+      )
+      action_from_outcome(returned, interface, meta)
+    }
+    Ok(Interface(interface, Unrestricted)) ->
+      evaluation.Done(Perform(interface, input))
+
+    Error(Nil) -> evaluation.Done(Unavailable)
+  }
+}
+
+fn action_from_outcome(returned, interface, meta) {
+  case returned {
+    Ok(value) ->
+      case decision_from_value(value) {
+        Ok(Pass(modified)) -> Perform(interface, modified)
+        Ok(Mock(value)) -> Resume(value)
+        Error(Nil) ->
+          Failed(#(
+            break.IncorrectTerm(expected: "Pass/Mock", got: value),
+            meta,
+            builtin.default([]),
+            state.Empty,
+          ))
+      }
+    Error(debug) -> Failed(debug)
   }
 }
 
