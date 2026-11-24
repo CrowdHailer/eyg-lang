@@ -6,6 +6,8 @@
 import cloud/data/blobs
 import cloud/file_system
 import cloud/system
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug as type_debug
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -93,18 +95,54 @@ pub fn load_policy(
   case parser.all_from_string(code) {
     Error(reason) -> #(Error(parser.format_error(reason, code)), state)
     Ok(source) -> {
-      let #(value, state) = pure_loop(expression.execute(source, []), state)
-      let decoded = {
-        use value <- result.try(
-          result.map_error(value, fn(debug) { simple_debug.describe(debug.0) }),
+      let rules = policy.match_rules(computer.effects(), rules)
+      let #(analysis, state) = check_policy(policy.check(source, rules), state)
+      case infer.all_errors(analysis) {
+        [] -> {
+          // Checking populated the cache; evaluation must not refresh references.
+          let value =
+            cache.static_loop(
+              expression.execute(source, []),
+              state.cache,
+              expression.resume,
+            )
+          let decoded = {
+            use value <- result.try(
+              result.map_error(value, fn(debug) {
+                simple_debug.describe(debug.0)
+              }),
+            )
+            policy.decode_policy(rules, value)
+            |> result.map_error(simple_debug.describe)
+          }
+          #(decoded, state)
+        }
+        errors -> #(
+          Error(
+            errors
+            |> list.map(fn(error) {
+              parser.render_error(
+                type_debug.render_reason(error.1),
+                type_debug.hint(error.1),
+                code,
+                error.0,
+              )
+            })
+            |> string.join("\n"),
+          ),
+          state,
         )
-        policy.decode_policy(
-          policy.match_rules(computer.effects(), rules),
-          value,
-        )
-        |> result.map_error(simple_debug.describe)
       }
-      #(decoded, state)
+    }
+  }
+}
+
+fn check_policy(step, state: State) {
+  case step {
+    infer.Done(analysis) -> #(analysis, state)
+    infer.Lookup(reference, resume) -> {
+      let #(type_, state) = lookup_type(reference, state)
+      check_policy(resume(result.replace_error(type_, Nil)), state)
     }
   }
 }

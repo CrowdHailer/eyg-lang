@@ -1,5 +1,6 @@
 //// Bind a host's effect rules to a runtime policy.
 
+import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/break
 import eyg/interpreter/builtin
@@ -9,6 +10,7 @@ import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/result
@@ -74,7 +76,18 @@ pub fn type_(rules: List(#(interface.Interface(_, _), Rule))) {
   t.record(fields)
 }
 
-// TODO this might take source because type checking is needed as well
+/// Check that policy construction and its gates are pure and match the rules.
+/// The host supplies dependency types through the inference lookup requests.
+pub fn check(
+  source: ir.Node(meta),
+  rules: List(#(interface.Interface(eff, meta), Rule)),
+) -> infer.Step(infer.Analysis(meta)) {
+  infer.pure()
+  |> infer.with_expected_type(type_(rules))
+  |> infer.check(source)
+}
+
+// TODO accept checked source so preparation can reuse its resolved dependencies.
 pub fn prepare(
   code: String,
   input: source.Origin,
@@ -85,19 +98,28 @@ pub fn prepare(
   source.Location,
 ) {
   case source.parse(code, input) {
-    Ok(source) -> {
-      let outcome = evaluation.await(expression.execute(source, []))
-      use returned <- evaluation.map(outcome)
-      case returned {
-        Ok(value) ->
-          case decode_policy(rules, value) {
-            Ok(policy) -> Ok(policy)
-            Error(reason) -> Error(simple_debug.describe(reason))
-          }
-        Error(#(reason, _, _, _)) -> Error(simple_debug.describe(reason))
-      }
-    }
+    Ok(source) -> prepare_source(source, rules)
     Error(reason) -> evaluation.Done(Error(reason))
+  }
+}
+
+pub fn prepare_source(
+  source: #(ir.Expression(meta), meta),
+  rules: List(#(interface.Interface(a, meta), Rule)),
+) -> evaluation.Evaluation(
+  Result(Dict(String, Interface(a, meta)), String),
+  v.Value(meta, #(List(#(state.Kontinue(meta), meta)), state.Env(meta))),
+  meta,
+) {
+  let outcome = evaluation.await(expression.execute(source, []))
+  use returned <- evaluation.map(outcome)
+  case returned {
+    Ok(value) ->
+      case decode_policy(rules, value) {
+        Ok(policy) -> Ok(policy)
+        Error(reason) -> Error(simple_debug.describe(reason))
+      }
+    Error(#(reason, _, _, _)) -> Error(simple_debug.describe(reason))
   }
 }
 
