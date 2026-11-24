@@ -17,6 +17,7 @@ import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
 import simplifile
+import touch_grass/source
 
 pub type Config {
   Config(name: String, cron: String, code: String)
@@ -43,7 +44,8 @@ pub fn runtime(state: execute.State) -> Result(Runtime, String) {
   use code <- result.try(
     simplifile.read("policy.eyg") |> result.map_error(simplifile.describe_error),
   )
-  let #(policy, state) = execute.load_policy(code, state)
+  let #(policy, state) =
+    execute.load_policy(code, source.Inline, state, execute.template())
   result.map(policy, fn(policy) { Runtime(state, policy) })
 }
 

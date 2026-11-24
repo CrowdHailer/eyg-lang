@@ -8,16 +8,16 @@ import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/ir/tree as ir
-import eyg/parser
 import gleam/list
 import gleam/result
 import gleam/string
 import touch_grass/harness/computer
 import touch_grass/interface
 import touch_grass/policy
+import touch_grass/source
 
 pub type Checked =
-  state.Value(execute.Meta)
+  state.Value(source.Location)
 
 pub fn prepare(
   triggers: List(#(String, String)),
@@ -49,10 +49,7 @@ pub fn prepare_returning(
 }
 
 fn prepare_function(code, event_type, return_type, state) {
-  use source <- result.try(
-    parser.all_from_string(code)
-    |> result.map_error(parser.format_error(_, code)),
-  )
+  use source <- result.try(source.parse(code, source.Inline))
   let effects =
     policy.match_rules(computer.effects(), execute.rules)
     |> list.map(fn(rule) { rule.0 })

@@ -10,15 +10,15 @@ import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/ir/tree as ir
-import eyg/parser
 import gleam/dict
 import gleam/list
 import gleam/result
 import gleam/string
 import touch_grass/interface
+import touch_grass/source
 
 pub opaque type Checked {
-  Checked(name: String, function: state.Value(execute.Meta))
+  Checked(name: String, function: state.Value(source.Location))
 }
 
 pub fn prepare(
@@ -41,10 +41,7 @@ pub fn prepare(
 }
 
 fn prepare_discord(code, state, policy: execute.Policy) {
-  use source <- result.try(
-    parser.all_from_string(code)
-    |> result.map_error(parser.format_error(_, code)),
-  )
+  use source <- result.try(source.parse(code, source.Inline))
   let effects =
     dict.values(policy)
     |> list.map(fn(entry) { entry.interface })

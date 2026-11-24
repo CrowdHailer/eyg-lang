@@ -8,15 +8,16 @@ import cloud/file_system
 import cloud/system
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug as type_debug
+import eyg/analysis/type_/binding/error
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/builtin
+import eyg/interpreter/evaluation
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/parser
 import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/erlang/process
@@ -43,10 +44,12 @@ import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 import touch_grass/flip
 import touch_grass/harness/computer
+import touch_grass/interface
 import touch_grass/now
 import touch_grass/policy
 import touch_grass/random
 import touch_grass/sleep
+import touch_grass/source
 import touch_grass/standard_error
 import touch_grass/standard_out
 import unixfs/mfs
@@ -59,14 +62,14 @@ pub type Output {
 pub type State {
   State(
     origin: origin.Origin,
-    cache: cache.Cache(Meta),
+    cache: cache.Cache(source.Location),
     secrets: Dict(String, String),
     blobs: blobs.Blobs,
   )
 }
 
 pub type Policy =
-  policy.Policy(computer.Effect, Meta)
+  policy.Policy(computer.Effect, source.Location)
 
 pub const rules = [
   #("AppendFile", policy.PolicyField("append_file")),
@@ -88,61 +91,70 @@ pub const rules = [
   #("WriteFile", policy.PolicyField("write_file")),
 ]
 
+pub fn template() -> List(
+  #(interface.Interface(computer.Effect, a), policy.Rule),
+) {
+  policy.match_rules(computer.effects(), rules)
+}
+
 pub fn load_policy(
   code: String,
+  origin: source.Origin,
   state: State,
+  template: List(
+    #(interface.Interface(computer.Effect, source.Location), policy.Rule),
+  ),
 ) -> #(Result(Policy, String), State) {
-  case parser.all_from_string(code) {
-    Error(reason) -> #(Error(parser.format_error(reason, code)), state)
+  case source.parse(code, origin) {
+    Error(reason) -> #(Error(reason), state)
     Ok(source) -> {
-      let rules = policy.match_rules(computer.effects(), rules)
-      let #(analysis, state) = check_policy(policy.check(source, rules), state)
+      let #(analysis, state) = check_loop(policy.check(source, template), state)
       case infer.all_errors(analysis) {
-        [] -> {
-          // Checking populated the cache; evaluation must not refresh references.
-          let value =
-            cache.static_loop(
-              expression.execute(source, []),
-              state.cache,
-              expression.resume,
-            )
-          let decoded = {
-            use value <- result.try(
-              result.map_error(value, fn(debug) {
-                simple_debug.describe(debug.0)
-              }),
-            )
-            policy.decode_policy(rules, value)
-            |> result.map_error(simple_debug.describe)
+        [] ->
+          case execute_loop(policy.prepare_source(source, template), state) {
+            Ok(policy) -> #(Ok(policy), state)
+            Error(reason) -> #(Error(reason), state)
           }
-          #(decoded, state)
-        }
-        errors -> #(
-          Error(
-            errors
-            |> list.map(fn(error) {
-              parser.render_error(
-                type_debug.render_reason(error.1),
-                type_debug.hint(error.1),
-                code,
-                error.0,
-              )
-            })
-            |> string.join("\n"),
-          ),
-          state,
-        )
+        errors -> #(Error(type_errors(errors)), state)
       }
     }
   }
 }
 
-fn check_policy(step, state: State) {
+// TODO this will replace loop
+fn execute_loop(return, state) {
+  case return {
+    evaluation.Done(value) -> value
+    evaluation.Conclude(returned:, resume:) -> {
+      let assert Error(#(reason, meta, env, k)) = returned
+      let next = case reason {
+        break.UndefinedReference(reference) -> {
+          // drop when lookup is not a state value
+          let #(value, _state) = lookup_value(reference, state)
+          case value {
+            Ok(value) -> expression.resume(value, env, k)
+            Error(_reason) -> Error(#(reason, meta, env, k))
+          }
+        }
+        reason -> Error(#(reason, meta, env, k))
+      }
+      execute_loop(resume(next), state)
+    }
+  }
+}
+
+fn type_errors(errors: List(#(source.Location, error.Reason))) {
+  errors
+  |> list.map(fn(error) { type_debug.render_reason(error.1) })
+  |> string.join("\n")
+}
+
+fn check_loop(step, state: State) {
   case step {
     infer.Done(analysis) -> #(analysis, state)
     infer.Lookup(reference, resume) -> {
       let #(type_, state) = lookup_type(reference, state)
-      check_policy(resume(result.replace_error(type_, Nil)), state)
+      check_loop(resume(result.replace_error(type_, Nil)), state)
     }
   }
 }
@@ -178,13 +190,8 @@ pub fn run(
 }
 
 fn evaluate(code, scope, inspect, state, policy, root, emit) {
-  case parser.all_from_string(code) {
-    Error(reason) -> #(
-      Error(parser.format_error(reason, code)),
-      state,
-      root,
-      [],
-    )
+  case source.parse(code, source.Inline) {
+    Error(reason) -> #(Error(reason), state, root, [])
     Ok(source) -> {
       let #(outcome, state, root, output) =
         loop(block.execute(source, scope), state, policy, root, emit, [])
@@ -211,7 +218,11 @@ pub fn call(function, input, state: State, policy: Policy, root, emit) {
 pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
   let #(outcome, state, root, _) =
     loop(
-      block.call(function, [#(input, #(0, 0))], builtin.default([])),
+      block.call(
+        function,
+        [#(input, source.Location(source.Inline, source.Json))],
+        builtin.default([]),
+      ),
       state,
       policy,
       root,
@@ -419,13 +430,13 @@ pub fn files(effect: mfs.Effect(a), state: State) -> Result(a, String) {
   }
 }
 
-pub type Meta =
-  #(Int, Int)
-
 pub fn lookup(
   reference: ir.Reference,
   state: State,
-) -> #(Result(cache.Module(#(Int, Int)), String), cache.Cache(Meta)) {
+) -> #(
+  Result(cache.Module(source.Location), String),
+  cache.Cache(source.Location),
+) {
   let refresh = case reference {
     ir.Content(_) | ir.Relative(_) -> False
     _ -> True
@@ -482,14 +493,20 @@ pub fn lookup_value(reference: ir.Reference, state: State) {
   #(value, State(..state, cache:))
 }
 
-fn flush(cache: cache.Cache(Meta), origin) -> cache.Cache(Meta) {
+fn flush(
+  cache: cache.Cache(source.Location),
+  origin,
+) -> cache.Cache(source.Location) {
   let #(cache, actions) = cache.flush(cache)
   case actions {
     [] -> cache
     _ -> {
       let cache =
         list.fold(actions, cache, fn(cache, action) {
-          cache.update(cache, compute(action, origin), fn(_) { #(0, 0) }).0
+          cache.update(cache, compute(action, origin), fn(_) {
+            // TODO this should be correct based on the action
+            source.Location(source.Inline, source.Json)
+          }).0
         })
       flush(cache, origin)
     }

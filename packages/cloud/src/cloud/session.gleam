@@ -17,6 +17,7 @@ import ogre/origin
 import overlay/llm/chat
 import overlay/llm/provider
 import simplifile
+import touch_grass/source
 
 pub type Payload {
   Code(String)
@@ -25,7 +26,7 @@ pub type Payload {
 
 pub type Message {
   Message(id: String, payload: Payload, print: fn(execute.Output) -> Nil)
-  Trigger(function: trigger.Checked, value: state.Value(execute.Meta))
+  Trigger(function: trigger.Checked, value: state.Value(source.Location))
 }
 
 type State {
@@ -62,12 +63,14 @@ pub fn start_with_session(
   let #(policy, execute_state) =
     execute.load_policy(
       code,
+      source.Host("policy.eyg"),
       execute.State(
         origin: hub,
         cache: cache.ready(),
         secrets:,
         blobs: blobs.data,
       ),
+      execute.template(),
     )
   let assert Ok(policy) = policy
   actor.new(State(

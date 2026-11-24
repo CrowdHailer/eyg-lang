@@ -107,8 +107,8 @@ pub fn prepare_source(
   source: #(ir.Expression(meta), meta),
   rules: List(#(interface.Interface(a, meta), Rule)),
 ) -> evaluation.Evaluation(
-  Result(Dict(String, Interface(a, meta)), String),
-  v.Value(meta, #(List(#(state.Kontinue(meta), meta)), state.Env(meta))),
+  Result(Policy(a, meta), String),
+  state.Value(meta),
   meta,
 ) {
   let outcome = evaluation.await(expression.execute(source, []))
