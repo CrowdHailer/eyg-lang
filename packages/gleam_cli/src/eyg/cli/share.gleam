@@ -11,11 +11,12 @@ import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import loam/source
+import loam/source as source_io
 import loam/system
 import midas/continuation.{type Continuation as K, return, then}
 import multiformats/cid/v1
 import touch_grass/file_system
+import touch_grass/source
 
 pub fn execute(
   input: source.Input,
@@ -35,15 +36,14 @@ pub fn upload(
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
   use input <- system.try(source.normalize_input(cwd, input))
-  use code <- system.then(source.read_input(input))
+  use code <- system.then(source_io.read_input(input))
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
+  // TODO deduplicate this between other cli commands
   let #(dir, path) = case source.1.origin {
-    source.Disk(path:) -> #(filepath.directory_name(path), path)
+    source.Host(path:) -> #(filepath.directory_name(path), path)
     // source without a file resolves imports against the working directory.
-    source.Pipe -> #(cwd, "")
     source.Inline -> #(cwd, "")
-    source.Repl -> #(cwd, "")
     source.Content(..) -> #(cwd, "")
     source.Release(..) -> #(cwd, "")
   }

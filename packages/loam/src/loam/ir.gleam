@@ -1,8 +1,8 @@
 import eyg/ir/tree as ir
 import gleam/list
-import loam/source
+import touch_grass/source
 
-pub const meta = source.Location(source.Repl, source.Json)
+pub const meta = source.Location(source.Inline, source.Json)
 
 pub fn variable(label) {
   #(ir.Variable(label), meta)

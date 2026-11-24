@@ -12,8 +12,8 @@ import gleam/string
 import loam/execute
 import loam/ir
 import loam/sandbox
-import loam/source
 import multiformats/cid/v1
+import touch_grass/source
 
 pub fn interactive_session_retains_modules_and_types_test() {
   let #(reference, sandbox) = module_server()

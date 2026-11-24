@@ -2,8 +2,8 @@ import eyg/cli/check
 import eyg/cli/helpers
 import gleam/string
 import loam/sandbox
-import loam/source
 import multiformats/cid/v1
+import touch_grass/source
 
 pub fn check_simple_expression_test() {
   let input = source.Code("3")

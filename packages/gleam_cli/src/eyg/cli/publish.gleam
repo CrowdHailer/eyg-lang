@@ -5,9 +5,9 @@ import eyg/cli/share
 import eyg/hub/cache
 import gleam/int
 import gleam/option.{None, Some}
-import loam/source
 import loam/system
 import multiformats/cid/v1
+import touch_grass/source
 
 pub fn execute(
   package: String,

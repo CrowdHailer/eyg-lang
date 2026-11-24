@@ -15,8 +15,9 @@ import gleam/result
 import gleam/string
 import loam/execute
 import loam/ir
-import loam/source
+import loam/source as source_io
 import loam/system
+import touch_grass/source
 
 pub fn execute(input, config: config.Config) {
   let state = execute.State(config.client.origin, cache.empty())
@@ -32,7 +33,7 @@ pub fn read_input(input, state) {
       use cwd <- system.then(system.cwd())
       use cwd <- system.try(cwd)
       use input <- system.try(source.normalize_input(cwd, input))
-      use code <- system.then(source.read_input(input))
+      use code <- system.then(source_io.read_input(input))
       use code <- system.try(code)
       use source <- system.try(source.parse_input(code, input))
       let source = ir.apply(ir.apply(ir.select("shell"), source), ir.unit())
@@ -98,7 +99,7 @@ pub fn handle(code, scope, defs, state) {
             })
           let located =
             tree.map_annotation(source, fn(span) {
-              source.Location(source.Repl, source.Text(code, span))
+              source.Location(source.Inline, source.Text(code, span))
             })
           use cwd <- system.then(system.cwd())
           let cwd = result.unwrap(cwd, "")

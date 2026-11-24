@@ -5,8 +5,8 @@ import eyg/ir/dag_json
 import gleam/http/request
 import loam/ir
 import loam/sandbox
-import loam/source
 import multiformats/cid/v1
+import touch_grass/source
 
 pub fn share_simple_expression_test() {
   let sandbox =

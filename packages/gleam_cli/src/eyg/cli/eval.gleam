@@ -3,8 +3,9 @@ import eyg/hub/cache
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import loam/execute
-import loam/source
+import loam/source as source_io
 import loam/system
+import touch_grass/source
 
 pub fn execute(
   input: source.Input,
@@ -13,7 +14,7 @@ pub fn execute(
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
   use input <- system.try(source.normalize_input(cwd, input))
-  use code <- system.then(source.read_input(input))
+  use code <- system.then(source_io.read_input(input))
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
 

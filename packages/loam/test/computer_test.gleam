@@ -8,7 +8,6 @@ import loam/ir
 import loam/platform/computer
 import loam/sandbox
 import loam/sandbox/fs
-import loam/source
 import loam/system
 import simplifile
 import touch_grass/cryptography/create_key
@@ -18,8 +17,9 @@ import touch_grass/file_system/read_directory
 import touch_grass/file_system/read_file
 import touch_grass/file_system/write_file
 import touch_grass/harness/computer as harness
+import touch_grass/source
 
-const origin = source.Disk("/project/entry.eyg")
+const origin = source.Host("/project/entry.eyg")
 
 pub fn make_directory_is_source_relative_and_deferred_test() {
   let assert system.Cwd(resume) = computer.make_directory(source.Inline, "data")
@@ -27,7 +27,7 @@ pub fn make_directory_is_source_relative_and_deferred_test() {
     resume(Ok("/project"))
   assert resume(Ok(Nil)) == system.Done(Ok(Nil))
   let assert system.CreateDirectory("/project/data", _) =
-    computer.make_directory(source.Disk("/project/entry.eyg"), "data")
+    computer.make_directory(source.Host("/project/entry.eyg"), "data")
   let assert system.GenerateKey(_) = computer.create_key(create_key.Eddsa)
 }
 
@@ -102,7 +102,7 @@ pub fn failed_path_resolution_never_requests_a_write_test() {
   assert resume(Error("cwd unavailable"))
     == system.Done(Error("cwd unavailable"))
   assert computer.write_file(
-      source.Disk("/entry.eyg"),
+      source.Host("/entry.eyg"),
       write_file.Input("../file", <<1>>),
     )
     == system.Done(Error("invalid relative path outside filesystem"))

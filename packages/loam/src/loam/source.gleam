@@ -1,167 +1,39 @@
-//// EYG source inputs, origins, parsing, and effectful source loading.
+//// Read source inputs and resolve paths using the local computer.
 
-import eyg/ir/dag_json
-import eyg/ir/tree as ir
-import eyg/parser
-import eyg/parser/location
 import filepath
-import gleam/json
-import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/result
-import gleam/string
 import loam/system
-import multiformats/cid/v1
 import touch_grass/file_system
+import touch_grass/source
 
-pub type Input {
-  File(path: String)
-  Code(code: String)
-  Stdin
-}
-
-/// Where a piece of IR ultimately came from.
-pub type Origin {
-  Disk(path: String)
-  Pipe
-  Inline
-  Repl
-  Content(cid: v1.Cid)
-  Release(package: String, version: Int, cid: v1.Cid)
-}
-
-pub type Location {
-  Location(origin: Origin, source: Source)
-}
-
-/// A span carrying its source-of-truth.
-pub type Source {
-  Text(code: String, span: location.Span)
-  Json
-}
-
-/// Read the source a command was given, from a file, standard input, or the
-/// command line.
-pub fn read_input(input: Input) -> system.Effect(Result(String, String)) {
+pub fn read_input(
+  input: source.Input,
+) -> system.Effect(Result(String, String)) {
   case input {
-    File(path:) -> system.read_file(path)
-    Code(code:) -> system.Done(Ok(code))
-    Stdin -> system.stdin()
-  }
-}
-
-pub fn strip_shebang(code: String) -> String {
-  case string.starts_with(code, "#!") {
-    True ->
-      case string.split_once(code, "\n") {
-        Ok(#(_, rest)) -> rest
-        Error(Nil) -> ""
-      }
-    False -> code
-  }
-}
-
-/// parse the code adding it's span to an origin identifier
-pub fn parse(
-  code: String,
-  origin: Origin,
-) -> Result(ir.Node(Location), String) {
-  let code = strip_shebang(code)
-  case json.parse(code, dag_json.decoder(Location(origin, Json))) {
-    Ok(source) -> Ok(source)
-    Error(_) ->
-      case parser.all_from_string(code) {
-        Ok(source) -> {
-          let source =
-            ir.map_annotation(source, fn(span) {
-              Location(origin, Text(code, span))
-            })
-          Ok(source)
-        }
-        Error(reason) -> Error(parser.format_error(reason, code))
-      }
-  }
-}
-
-pub fn parse_input(code: String, input: Input) {
-  let origin = input_origin(input)
-  parse(code, origin)
-}
-
-/// Input is valid input this doesn't include release or module, the origin type does.
-pub fn input_origin(input) {
-  case input {
-    File(path:) -> Disk(path:)
-    Code(code: _) -> Inline
-    Stdin -> Pipe
-  }
-}
-
-/// Normalize a file input against an explicit working directory.
-pub fn normalize_input(working_directory: String, input: Input) {
-  case input {
-    File(path:) -> {
-      use path <- result.map(
-        file_system.resolve_path(Some(working_directory), path)
-        |> result.replace_error("invalid relative path outside filesystem"),
-      )
-      File(path)
-    }
-    Code(_) | Stdin -> Ok(input)
-  }
-}
-
-/// The directory for relative paths from this origin.
-/// Published modules have no filesystem base.
-pub fn base(origin: Origin, cwd: String) -> Option(String) {
-  case origin {
-    Disk(path) -> Some(filepath.directory_name(path))
-    Inline | Pipe | Repl -> Some(cwd)
-    Content(_) | Release(..) -> None
+    source.File(path:) -> system.read_file(path)
+    source.Code(code:) -> system.Done(Ok(code))
+    source.Stdin -> system.stdin()
   }
 }
 
 /// Resolve a source-relative path, requesting CWD only for interactive origins.
 pub fn resolve_filepath(
-  origin: Origin,
+  origin: source.Origin,
   path: String,
 ) -> system.Effect(Result(String, String)) {
   use base <- system.map(case filepath.is_absolute(path), origin {
     True, _ -> system.Done(Ok(None))
-    False, Disk(path) -> system.Done(Ok(Some(filepath.directory_name(path))))
-    False, Inline | False, Pipe | False, Repl -> {
+    False, source.Host(path) ->
+      system.Done(Ok(Some(filepath.directory_name(path))))
+    False, source.Inline -> {
       use cwd <- system.map(system.cwd())
       result.map(cwd, Some)
     }
-    False, Content(_) | False, Release(..) -> system.Done(Ok(None))
+    False, source.Content(_) | False, source.Release(..) ->
+      system.Done(Ok(None))
   })
   use base <- result.try(base)
   file_system.resolve_path(base, path)
   |> result.replace_error("invalid relative path outside filesystem")
-}
-
-pub fn block_expression(code) {
-  use #(#(assignments, tail), _) <- result.map(parser.block_from_string(code))
-  let tail = option.unwrap(tail, #(ir.Vacant, #(0, 0)))
-
-  list.fold_right(assignments, tail, fn(acc, assignment) {
-    let #(label, value, at) = assignment
-    #(ir.Let(label, value, acc), at)
-  })
-}
-
-pub fn code(location: Location) {
-  let Location(_origin, source) = location
-  case source {
-    Text(code:, span: _) -> code
-    Json -> ""
-  }
-}
-
-pub fn span(location: Location) {
-  let Location(_origin, source) = location
-  case source {
-    Text(code: _, span:) -> span
-    Json -> #(0, 0)
-  }
 }

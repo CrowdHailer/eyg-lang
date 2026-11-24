@@ -2,7 +2,7 @@ import eyg/cli/helpers
 import eyg/cli/parse
 import gleam/string
 import loam/sandbox
-import loam/source
+import touch_grass/source
 
 pub fn parse_simple_expression_test() {
   let input = source.Code("3")

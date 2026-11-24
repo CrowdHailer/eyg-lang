@@ -7,8 +7,8 @@ import eyg/ir/dag_json
 import gleam/dict
 import gleam/list
 import loam/execute
-import loam/source
 import multiformats/cid/v1
+import touch_grass/source
 
 /// Run a snippet of EYG source text and capture the formatted runtime error.
 fn snap_text(code: String) -> String {
@@ -69,7 +69,7 @@ fn stack_of(frames: List(#(source.Location, execute.Value))) -> execute.Stack {
 
 /// A user-code Disk origin stamped on a span of `code`.
 fn at_disk(path: String, code: String, span: #(Int, Int)) -> source.Location {
-  source.Location(source.Disk(path), source.Text(code, span))
+  source.Location(source.Host(path), source.Text(code, span))
 }
 
 /// A hub-fetched Content origin with no recoverable source.

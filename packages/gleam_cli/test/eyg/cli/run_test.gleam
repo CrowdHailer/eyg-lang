@@ -2,9 +2,9 @@ import birdie
 import eyg/cli/helpers
 import eyg/cli/run
 import gleam/javascript/promise
-import loam/source
 import loam/system
 import simplifile
+import touch_grass/source
 
 pub fn print_error_in_import_test() {
   use return <- promise.map(

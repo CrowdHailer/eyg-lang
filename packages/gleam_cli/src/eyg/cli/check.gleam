@@ -11,10 +11,11 @@ import gleam/list
 import gleam/option.{Some}
 import loam/execute
 import loam/platform/computer
-import loam/source
+import loam/source as source_io
 import loam/system
 import touch_grass/file_system
 import touch_grass/interface
+import touch_grass/source
 
 pub fn allway_pass_gate(path, state) {
   system.Done(#(Ok(path), state))
@@ -27,7 +28,7 @@ pub fn execute(
   use cwd <- system.then(system.cwd())
   use cwd <- system.try(cwd)
   use input <- system.try(source.normalize_input(cwd, input))
-  use code <- system.then(source.read_input(input))
+  use code <- system.then(source_io.read_input(input))
   use code <- system.try(code)
   use source <- system.try(source.parse_input(code, input))
 
@@ -66,6 +67,7 @@ pub fn execute(
 /// 
 /// The source location is taken from the top level meta data.
 /// TODO extract the source location metadata to something outside the tree
+/// TODO move this loop to touch grass
 pub fn check_from(
   source: ir.Node(source.Location),
   cwd: String,
@@ -76,11 +78,9 @@ pub fn check_from(
   #(binding.Poly, binding.Mono, List(#(source.Location, error.Reason)), _),
 ) {
   let #(dir, path) = case source.1.origin {
-    source.Disk(path:) -> #(filepath.directory_name(path), path)
+    source.Host(path:) -> #(filepath.directory_name(path), path)
     // source without a file resolves imports against the working directory.
-    source.Pipe -> #(cwd, "")
     source.Inline -> #(cwd, "")
-    source.Repl -> #(cwd, "")
     source.Content(..) -> #(cwd, "")
     source.Release(..) -> #(cwd, "")
   }

@@ -9,7 +9,7 @@ import gleam/list
 import gleam/result
 import gleam/string
 import kryptos/eddsa
-import loam/source
+import loam/source as source_io
 import loam/system
 import midas/effect as host_effect
 import simplifile
@@ -33,6 +33,7 @@ import touch_grass/interface
 import touch_grass/now
 import touch_grass/random
 import touch_grass/sleep
+import touch_grass/source
 import touch_grass/standard_error
 import touch_grass/standard_in
 import touch_grass/standard_out
@@ -102,14 +103,14 @@ pub fn extrinsic(
 }
 
 pub fn make_directory(origin: source.Origin, path: String) {
-  use path <- system.then(source.resolve_filepath(origin, path))
+  use path <- system.then(source_io.resolve_filepath(origin, path))
   use path <- system.try(path)
   system.create_directory(path)
 }
 
 pub fn read_file(origin: source.Origin, input: read_file.Input) {
   let read_file.Input(path:, offset:, limit:) = input
-  use path <- system.then(source.resolve_filepath(origin, path))
+  use path <- system.then(source_io.resolve_filepath(origin, path))
   use path <- system.try(path)
   use contents <- system.map(system.read_file_range(path, offset, limit))
   result.map_error(contents, simplifile.describe_error)
@@ -117,7 +118,7 @@ pub fn read_file(origin: source.Origin, input: read_file.Input) {
 
 pub fn write_file(origin: source.Origin, input: write_file.Input) {
   let write_file.Input(path:, contents:) = input
-  use path <- system.then(source.resolve_filepath(origin, path))
+  use path <- system.then(source_io.resolve_filepath(origin, path))
   use path <- system.try(path)
   use result <- system.map(system.write_file_bits(path, contents))
   result.map_error(result, simplifile.describe_error)
@@ -125,21 +126,21 @@ pub fn write_file(origin: source.Origin, input: write_file.Input) {
 
 pub fn append_file(origin: source.Origin, input: append_file.Input) {
   let append_file.Input(path:, contents:) = input
-  use path <- system.then(source.resolve_filepath(origin, path))
+  use path <- system.then(source_io.resolve_filepath(origin, path))
   use path <- system.try(path)
   use result <- system.map(system.append_file_bits(path, contents))
   result.map_error(result, simplifile.describe_error)
 }
 
 pub fn delete_file(origin: source.Origin, path: String) {
-  use path <- system.then(source.resolve_filepath(origin, path))
+  use path <- system.then(source_io.resolve_filepath(origin, path))
   use path <- system.try(path)
   use result <- system.map(system.delete_file(path))
   result.map_error(result, simplifile.describe_error)
 }
 
 pub fn read_directory(origin: source.Origin, path: String) {
-  use path <- system.then(source.resolve_filepath(origin, path))
+  use path <- system.then(source_io.resolve_filepath(origin, path))
   use path <- system.try(path)
   use children <- system.then(system.read_directory(path))
   use children <- system.try(result.map_error(

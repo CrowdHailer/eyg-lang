@@ -15,10 +15,11 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import loam/platform/computer
-import loam/source
+import loam/source as source_io
 import loam/system
 import multiformats/cid/v1
 import ogre/origin
+import touch_grass/source
 
 pub type Module =
   cache.Module(source.Location)
@@ -280,14 +281,14 @@ pub fn lookup_relative(
   lookup: fn(ir.Reference, source.Location, State) ->
     system.Effect(#(Result(Value, Reason), State)),
 ) -> system.Effect(#(Result(Value, Reason), State)) {
-  use resolved <- system.then(source.resolve_filepath(origin, location))
+  use resolved <- system.then(source_io.resolve_filepath(origin, location))
 
   case resolved {
     Ok(path) -> {
       use code <- system.then(system.read_file(path))
       case code {
         Ok(code) ->
-          case source.parse(code, source.Disk(path:)) {
+          case source.parse(code, source.Host(path:)) {
             Ok(source) -> {
               use #(result, state) <- system.then(pure_loop_with_lookup(
                 expression.execute(source, []),
@@ -441,7 +442,7 @@ fn render_frames(
 
 fn render_frame(frame: Frame, is_focus: Bool, cwd: String) -> List(String) {
   let Frame(source.Location(origin, source), arg) = frame
-  let label = origin_label(origin, cwd)
+  let label = source.origin_label(origin, cwd)
   let prefix = case is_focus {
     True -> "→ in "
     False -> "  in "
@@ -453,7 +454,7 @@ fn render_frame(frame: Frame, is_focus: Bool, cwd: String) -> List(String) {
   case source {
     source.Text(code:, span:) -> {
       let #(start, _) = span
-      let line_no = line_at(code, start)
+      let line_no = source.line_at(code, start)
       let header = case line_no {
         0 -> prefix <> label <> suffix
         n -> prefix <> label <> ":" <> int.to_string(n) <> suffix
@@ -468,26 +469,5 @@ fn render_frame(frame: Frame, is_focus: Bool, cwd: String) -> List(String) {
         True -> [prefix <> label <> " (no source)" <> suffix]
         False -> [prefix <> label <> suffix]
       }
-  }
-}
-
-fn origin_label(origin: source.Origin, cwd: String) -> String {
-  case origin {
-    source.Disk(path:) -> string.replace(path, cwd <> "/", "")
-    source.Pipe -> "<pipe>"
-    source.Inline -> "<inline>"
-    source.Repl -> "<repl>"
-    source.Content(cid:) -> "#" <> v1.to_string(cid)
-    source.Release(package:, version:, cid: _) ->
-      "@" <> package <> ":" <> int.to_string(version)
-  }
-}
-
-/// 1-based line number for a byte offset into `code`. Returns 0 when
-/// `code` is empty.
-fn line_at(code: String, offset: Int) -> Int {
-  case code {
-    "" -> 0
-    _ -> string.slice(code, 0, offset) |> string.split("\n") |> list.length
   }
 }

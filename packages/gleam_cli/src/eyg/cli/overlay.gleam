@@ -31,7 +31,7 @@ import gleam/string
 import gleam_community/ansi
 import loam/execute
 import loam/platform/computer
-import loam/source
+import loam/source as source_io
 import loam/system
 import midas/continuation.{type Continuation as K}
 import overlay/agent
@@ -44,6 +44,7 @@ import touch_grass/file_system
 import touch_grass/harness/computer as harness_computer
 import touch_grass/interface
 import touch_grass/policy
+import touch_grass/source
 
 // I don't need to implement streaming but if so that goes at the loam level
 // the tools module in overlay web should be reusable
@@ -112,7 +113,7 @@ pub fn setup(
   use cwd <- system.then(system.cwd())
   use cwd <- try(cwd, state)
   use input <- try(source.normalize_input(cwd, input), state)
-  use code <- system.then(source.read_input(input))
+  use code <- system.then(source_io.read_input(input))
   use code <- try(code, state)
   use source <- try(source.parse_input(code, input), state)
 

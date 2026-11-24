@@ -2,7 +2,7 @@ import eyg/cli/helpers
 import eyg/cli/script
 import gleam/string
 import loam/sandbox
-import loam/source
+import touch_grass/source
 
 pub fn print_error_in_import_test() {
   let assert #(sandbox.Returned(return), _) =

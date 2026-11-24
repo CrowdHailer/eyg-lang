@@ -20,7 +20,6 @@ import gleam/set
 import gleam/string
 import loam/execute
 import loam/platform/computer
-import loam/source
 import loam/system
 import morph/analysis
 import morph/buffer.{type Buffer}
@@ -34,6 +33,7 @@ import multiformats/cid/v1
 import touch_grass/abort
 import touch_grass/harness/computer as harness
 import touch_grass/interface
+import touch_grass/source
 import touch_grass/standard_in
 
 /// Note the buffer is a morph buffer not an etui buffer
@@ -553,7 +553,9 @@ fn run(state: State) -> #(State, List(system.Effect(Message))) {
     _ -> {
       let source =
         e.to_annotated(expression, [])
-        |> ir.map_annotation(fn(_) { source.Location(source.Repl, source.Json) })
+        |> ir.map_annotation(fn(_) {
+          source.Location(source.Inline, source.Json)
+        })
 
       loop(block.execute(source, state.scope), state, [])
     }
@@ -792,7 +794,7 @@ fn fail(state, message) {
 }
 
 pub fn paste(state: State, text: String) -> State {
-  case buffer.set_expression(state.buffer), source.parse(text, source.Repl) {
+  case buffer.set_expression(state.buffer), source.parse(text, source.Inline) {
     Ok(rebuild), Ok(source) -> {
       let expression = e.from_annotated(source) |> e.open_all
       State(..state, buffer: rebuild(expression))

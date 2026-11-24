@@ -1,14 +1,18 @@
 # Touch Grass
 
-Common effect definitions for your Eat Your Greens (EYG) runtime.
+Interface bettween EYG execution an host systems.
+This module specifies:
+
+- Common effect interfaces, including types, decoders, and encoders.
+- Source origins, location metadata, and parsing and path-resolution helpers.
+- Define, check and apply effect policies written in EYG.
 
 [![Package Version](https://img.shields.io/hexpm/v/touch_grass)](https://hex.pm/packages/touch_grass)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/touch_grass/)
 
 Every interaction between an EYG program and the outside world is managed via an [effect](https://crowdhailer.me/2025-02-14/algebraic-effects-are-a-functional-approach-to-manage-side-effects/). This includes filesystems, network sockets, clocks, randomness, environment variables and anything else.
 
-**Note**, this library defines only interfaces, the types and encode/decode functions, not a concrete implementation.
-Your runtime will need to do that.
+**Note**, The host runtime supplies the implementations of effects, such as filesystem access and network requests.
 
 ## Usage
 

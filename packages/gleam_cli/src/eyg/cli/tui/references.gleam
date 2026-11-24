@@ -10,8 +10,9 @@ import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
 import gleam/set
-import loam/source
+import loam/source as source_io
 import loam/system
+import touch_grass/source
 
 pub type FileKey =
   #(source.Origin, String)
@@ -50,7 +51,7 @@ pub fn check(
   let tracking =
     Tracking(cache, files, counter, previous, set.new(), [], dict.new())
   let #(checked, tracking, _) =
-    loop(step, source.Repl, [], tracking, retry, False)
+    loop(step, source.Inline, [], tracking, retry, False)
   #(checked, tracking)
 }
 
@@ -229,7 +230,7 @@ pub fn static_loop(
 pub fn loading(files, cache, reference) {
   case reference {
     ir.Relative(location) ->
-      case dict.get(files, #(source.Repl, location)) {
+      case dict.get(files, #(source.Inline, location)) {
         Ok(Reading(_)) -> True
         Ok(Read(_, loading)) -> loading
         _ -> False
@@ -240,13 +241,13 @@ pub fn loading(files, cache, reference) {
 
 pub fn read(key: FileKey) {
   let #(origin, location) = key
-  use path <- system.then(source.resolve_filepath(origin, location))
+  use path <- system.then(source_io.resolve_filepath(origin, location))
   case path {
     Error(reason) -> system.Done(Error(reason))
     Ok(path) -> {
       use code <- system.map(system.read_file(path))
       case code {
-        Ok(code) -> source.parse(code, source.Disk(path))
+        Ok(code) -> source.parse(code, source.Host(path))
         Error(_) -> Error("failed to read module from location: " <> location)
       }
     }

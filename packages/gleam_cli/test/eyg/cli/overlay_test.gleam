@@ -8,13 +8,13 @@ import gleam/list
 import gleam/option.{Some}
 import gleam/string
 import loam/sandbox
-import loam/source
 import loam/system
 import touch_grass
 import touch_grass/file_system/read_file
 import touch_grass/harness/computer
 import touch_grass/interface
 import touch_grass/policy
+import touch_grass/source
 
 // const allow_policy =
 //   "

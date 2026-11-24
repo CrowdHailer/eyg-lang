@@ -12,8 +12,8 @@ import gleam/set
 import gleam/string
 import loam/execute
 import loam/sandbox
-import loam/source
 import morph/buffer
+import touch_grass/source
 
 fn project() {
   sandbox.sandbox()
@@ -35,7 +35,7 @@ pub fn inserting_an_import_checks_and_queues_it_test() {
   assert "✔  · Integer" == h.status_text(state)
   assert set.contains(
     state.dependencies,
-    references.Import(#(source.Repl, "lib/answer.eyg")),
+    references.Import(#(source.Inline, "lib/answer.eyg")),
   )
 }
 
@@ -73,7 +73,7 @@ pub fn nested_imports_resolve_from_the_imported_file_test() {
   assert "✔  · Integer" == h.status_text(state)
   assert set.contains(
     state.dependencies,
-    references.Import(#(source.Disk("/project/lib/main.eyg"), "answer.eyg")),
+    references.Import(#(source.Host("/project/lib/main.eyg"), "answer.eyg")),
   )
 }
 
