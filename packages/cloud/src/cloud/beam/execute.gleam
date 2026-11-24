@@ -126,18 +126,7 @@ fn execute_loop(return, state) {
   case return {
     evaluation.Done(value) -> value
     evaluation.Conclude(returned:, resume:) -> {
-      let assert Error(#(reason, meta, env, k)) = returned
-      let next = case reason {
-        break.UndefinedReference(reference) -> {
-          // drop when lookup is not a state value
-          let #(value, _state) = lookup_value(reference, state)
-          case value {
-            Ok(value) -> expression.resume(value, env, k)
-            Error(_reason) -> Error(#(reason, meta, env, k))
-          }
-        }
-        reason -> Error(#(reason, meta, env, k))
-      }
+      let #(next, state) = pure_loop(returned, state)
       execute_loop(resume(next), state)
     }
   }
