@@ -125,8 +125,8 @@ pub fn load_policy(
 fn execute_loop(return, state) {
   case return {
     evaluation.Done(value) -> value
-    evaluation.Conclude(returned:, resume:) -> {
-      let #(next, state) = pure_loop(returned, state)
+    evaluation.Conclude(break:, resume:) -> {
+      let #(next, state) = pure_loop(Error(break), state)
       execute_loop(resume(next), state)
     }
   }

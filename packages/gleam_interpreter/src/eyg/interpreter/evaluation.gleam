@@ -16,7 +16,7 @@ pub type Outcome(value, m) =
 pub type Evaluation(a, value, m) {
   Done(a)
   Conclude(
-    returned: Outcome(value, m),
+    break: state.Debug(m),
     resume: fn(Outcome(value, m)) -> Evaluation(a, value, m),
   )
 }
@@ -25,7 +25,10 @@ pub type Evaluation(a, value, m) {
 pub fn await(
   returned: Outcome(value, m),
 ) -> Evaluation(Outcome(value, m), value, m) {
-  Conclude(returned, Done)
+  case returned {
+    Ok(value) -> Done(Ok(value))
+    Error(debug) -> Conclude(debug, Done)
+  }
 }
 
 pub fn then(
