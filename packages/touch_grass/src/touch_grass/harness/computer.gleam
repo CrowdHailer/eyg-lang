@@ -5,6 +5,7 @@
 //// This is the default based on some assumption, so a machine with filesystem etc.
 //// Is posix a better name, I've not dived in that deeply and maybe Linux etc is not very Posix.
 
+import eyg/interpreter/state
 import gleam/http/request.{type Request}
 import touch_grass as tg
 import touch_grass/cryptography/create_key
@@ -43,6 +44,13 @@ pub type Effect {
   StandardIn
   StandardOut(String)
   WriteFile(write_file.Input)
+}
+
+pub fn cast(
+  label: String,
+  lift: state.Value(m),
+) -> Result(Effect, state.Reason(m)) {
+  interface.cast(effects(), label, lift)
 }
 
 /// The complete computer harness.

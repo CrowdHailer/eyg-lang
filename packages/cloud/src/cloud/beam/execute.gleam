@@ -215,16 +215,12 @@ fn outer_loop(returned, state: State, context, perform, output) {
     evaluation.Conclude(#(reason, _, env, k) as debug, resume) -> {
       let #(outcome, state, context, output) = case reason {
         break.UnhandledEffect(label, input) -> {
-          let effect =
-            computer.effects()
-            |> list.find(fn(interface) { interface.name == label })
-            |> result.map_error(string.inspect)
-            |> result.try(fn(interface) {
-              interface.decode(input) |> result.map_error(string.inspect)
-            })
+          // In Loam there is a separate platform/computer module that implements computer.execute
+          // That separation doesn't exist here so we can track output and state etc.
+          let effect = computer.cast(label, input)
           let #(outcome, context) = case effect {
             Ok(effect) -> perform(effect, label, state, context)
-            Error(reason) -> #(Error(reason), context)
+            Error(break) -> #(Error(string.inspect(break)), context)
           }
           let output = case label, input, outcome {
             "StandardOut", v.String(text), Ok(_)

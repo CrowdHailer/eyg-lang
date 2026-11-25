@@ -42,7 +42,7 @@ pub fn cast(
   label: String,
   lift: state.Value(m),
 ) -> Result(computer.Effect, state.Reason(m)) {
-  interface.cast(computer.effects(), label, lift)
+  computer.cast(label, lift)
 }
 
 pub fn effects() -> interface.Harness(computer.Effect, meta) {
