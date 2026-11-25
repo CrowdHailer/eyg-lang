@@ -31,7 +31,7 @@ import gleam/http/response.{type Response}
 import gleam/httpc
 import gleam/int
 import gleam/list
-import gleam/option
+import gleam/option.{type Option}
 import gleam/result
 import gleam/string
 import multiformats/cid/v1
@@ -79,6 +79,7 @@ pub type State {
 
 /// Effects whose result is not known from the code and the file system.
 pub type Wait {
+  Env(String)
   Fetch(Request(BitArray))
   Random(Int)
   Now
@@ -87,6 +88,7 @@ pub type Wait {
 }
 
 pub type Answer {
+  Secret(Option(String))
   Fetched(Result(Response(BitArray), String))
   Number(Int)
   Flipped(Bool)
@@ -121,12 +123,13 @@ pub fn complete(
   case run {
     Finished(outcome, state, root, output) -> #(outcome, state, root, output)
     Waiting(wait, state, root, resume) ->
-      complete(resume(perform(wait), state, root))
+      complete(resume(perform(wait, state), state, root))
   }
 }
 
-pub fn perform(wait: Wait) -> Answer {
+pub fn perform(wait: Wait, state: State) -> Answer {
   case wait {
+    Env(name) -> Secret(dict.get(state.secrets, name) |> option.from_result)
     Fetch(request) -> Fetched(fetch(request))
     Random(max) -> Number(random.sync(max))
     Now -> Number(now.sync())
@@ -140,6 +143,7 @@ pub fn perform(wait: Wait) -> Answer {
 
 fn answer_to_value(answer) {
   case answer {
+    Secret(value) -> env.encode(value)
     Fetched(result) -> fetch.encode(result)
     Number(number) -> v.Integer(number)
     Flipped(value) -> flip.encode(value)
@@ -548,10 +552,7 @@ fn perform_effect(effect, state: State, root, emit) {
     computer.DecodeJson(bytes) -> Ok(Answers(decode_json.sync(bytes), root))
     computer.DeleteFile(path) ->
       file_system.delete(root, path) |> change(state, root, delete_file.encode)
-    computer.Env(name:) -> {
-      let value = dict.get(state.secrets, name) |> option.from_result
-      Ok(Answers(env.encode(value), root))
-    }
+    computer.Env(name:) -> Ok(Waits(Env(name)))
     computer.Fetch(request) -> Ok(Waits(Fetch(request)))
     computer.Flip -> Ok(Waits(Flip))
     computer.Hash(input) -> Ok(Answers(hash(input), root))

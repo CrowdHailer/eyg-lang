@@ -9,6 +9,7 @@ import eyg/ir/tree as ir
 import gleam/dict
 import gleam/erlang/process
 import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import gleam/string
 import ogre/origin
@@ -165,4 +166,14 @@ fn permissive(state) {
       execute.template(),
     )
   policy
+}
+
+pub fn secrets_are_answered_by_the_caller_test() {
+  let assert execute.Waiting(execute.Env("KEY"), state, root, resume) =
+    start("perform Env(\"KEY\")")
+  let assert execute.Finished(Ok(value), _, _, _) =
+    resume(execute.Secret(Some("value")), state, root)
+  assert "Some(\"value\")" == value
+  let state = execute.State(..state, secrets: dict.from_list([#("KEY", "x")]))
+  assert execute.Secret(Some("x")) == execute.perform(execute.Env("KEY"), state)
 }
