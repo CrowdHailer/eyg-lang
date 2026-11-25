@@ -4,8 +4,8 @@ import cloud/beam/execute
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/evaluation
 import eyg/interpreter/expression
-import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/ir/tree as ir
 import gleam/list
@@ -65,10 +65,12 @@ fn prepare_function(code, event_type, return_type, state) {
   case infer.all_errors(analysis) {
     [] -> {
       let #(value, state) =
-        execute.pure_loop(expression.execute(source, []), state)
-      use value <- result.map(
-        result.map_error(value, fn(debug) { simple_debug.describe(debug.0) }),
-      )
+        execute.pure(
+          evaluation.await(expression.execute(source, []))
+            |> evaluation.map(result.map_error(_, string.inspect)),
+          state,
+        )
+      use value <- result.map(value)
       #(value, state)
     }
     errors ->

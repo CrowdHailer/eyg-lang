@@ -109,17 +109,7 @@ pub fn load_policy(
     Ok(source) -> {
       let #(analysis, state) = check_loop(policy.check(source, template), state)
       case infer.all_errors(analysis) {
-        [] -> {
-          let #(outcome, state, _, _) =
-            outer_loop(
-              policy.prepare_source(source, template),
-              state,
-              Nil,
-              fn(effect, _, _, _) { #(Error(string.inspect(effect)), Nil) },
-              [],
-            )
-          #(outcome, state)
-        }
+        [] -> pure(policy.prepare_source(source, template), state)
         errors -> #(Error(type_errors(errors)), state)
       }
     }
@@ -268,19 +258,17 @@ fn outer_loop(returned, state: State, context, perform, output) {
   }
 }
 
-/// Policy evaluation can resolve references but cannot perform effects.
-/// TODO this should be continuation based.
-pub fn pure_loop(returned, state: State) {
-  case returned {
-    Error(#(break.UndefinedReference(reference), _, env, k) as debug) -> {
-      let #(value, state) = lookup_value(reference, state)
-      case value {
-        Ok(value) -> pure_loop(expression.resume(value, env, k), state)
-        Error(_) -> #(Error(debug), state)
-      }
-    }
-    _ -> #(returned, state)
-  }
+/// Drive an evaluation with reference resolution, rejecting host effects.
+pub fn pure(returned, state: State) {
+  let #(outcome, state, _, _) =
+    outer_loop(
+      returned,
+      state,
+      Nil,
+      fn(effect, _, _, _) { #(Error(string.inspect(effect)), Nil) },
+      [],
+    )
+  #(outcome, state)
 }
 
 fn perform_effect(effect, label, state: State, root, emit) {
