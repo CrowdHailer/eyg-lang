@@ -8,9 +8,11 @@ import eyg/interpreter/expression
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/erlang/process
+import gleam/list
 import gleam/result
 import gleam/string
 import ogre/origin
+import simplifile
 import touch_grass/source
 
 fn state() {
@@ -62,4 +64,59 @@ pub fn a_package_that_was_not_pinned_is_refused_test() {
   let assert #(Error(reason), _) =
     execute.lookup_value(ir.Package("lib"), state)
   assert string.ends_with(reason, "not pinned")
+}
+
+fn files(files: List(#(String, String)), state) {
+  let assert Ok(root) = execute.files(file_system.empty(), state)
+  let assert Ok(Ok(root)) =
+    execute.files(file_system.make_directory(root, "/lib"), state)
+  list.fold(files, root, fn(root, file) {
+    let #(path, contents) = file
+    let assert Ok(Ok(root)) =
+      execute.files(file_system.write(root, path, <<contents:utf8>>), state)
+    root
+  })
+}
+
+// A module's imports are relative to its own directory.
+pub fn import_a_module_test() {
+  let state = state()
+  let root =
+    files([#("/lib/a.eyg", "import \"./b.eyg\""), #("/lib/b.eyg", "2")], state)
+  let code = "import \"./lib/a.eyg\""
+  let assert #(Ok("2"), _, _, _) =
+    execute.run(code, state, dict.new(), root, fn(_) { Nil })
+}
+
+// Modules are checked as pure when the code that imports them is checked.
+pub fn modules_are_pure_test() {
+  let state = state()
+  let root = files([#("/a.eyg", "perform Random(10)")], state)
+  let policy = permissive(state)
+  let assert #(Error(reason), _, _, _) =
+    execute.run("import \"./a.eyg\"", state, policy, root, fn(_) { Nil })
+  assert "import ./a.eyg: missing row 'Random'" == reason
+}
+
+// Imports are loaded before the code runs, a module the code writes is not there yet.
+pub fn imports_are_loaded_before_running_test() {
+  let state = state()
+  let assert Ok(root) = execute.files(file_system.empty(), state)
+  let assert #(Error(reason), _, _, _) =
+    execute.run("import \"./missing.eyg\"", state, dict.new(), root, fn(_) {
+      Nil
+    })
+  assert string.starts_with(reason, "import ./missing.eyg: ")
+}
+
+fn permissive(state) {
+  let assert Ok(policy) = simplifile.read("policy.eyg")
+  let assert #(Ok(policy), _) =
+    execute.load_policy(
+      policy,
+      source.Host("policy.eyg"),
+      state,
+      execute.template(),
+    )
+  policy
 }

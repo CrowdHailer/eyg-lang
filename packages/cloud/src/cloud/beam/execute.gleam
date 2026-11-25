@@ -22,6 +22,7 @@ import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
+import gleam/bit_array
 import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/erlang/process
@@ -39,6 +40,7 @@ import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env
 import touch_grass/fetch
+import touch_grass/file_system as file_system_request
 import touch_grass/file_system/append_file
 import touch_grass/file_system/delete_file
 import touch_grass/file_system/make_directory
@@ -149,7 +151,7 @@ pub fn run(
   case source.parse(code, source.Inline) {
     Error(reason) -> #(Error(reason), state, root, [])
     Ok(source) -> {
-      use state <- checked(source, policy, state, root)
+      use state, modules <- checked(source, policy, state, root)
       let #(outcome, state, root, output) =
         outer_loop(
           policy.apply_policy(
@@ -162,6 +164,9 @@ pub fn run(
           root,
           fn(effect, label, state, root) {
             perform_effect(effect, label, state, root, emit)
+          },
+          fn(location, meta, _state, _root) {
+            imported(modules, location, meta)
           },
           [],
         )
@@ -180,17 +185,104 @@ pub fn run(
 
 /// Type check code before it runs, with the effects the policy offers.
 /// Each package it refers to is pinned to the module it resolves to, so it runs with the modules it was checked with.
+/// Every module it imports is loaded from the file system and checked, the code runs with the loaded modules.
 fn checked(source, policy: Policy, state, root, then) {
   let effects =
     dict.values(policy)
     |> list.map(fn(entry) { entry.interface })
     |> interface.types
   let context = infer.pure() |> infer.with_effects(effects)
-  let #(analysis, state) = check_loop(infer.check(context, source), state)
-  case infer.all_errors(analysis) {
-    [] -> then(state)
-    errors -> #(Error(type_errors(errors)), state, root, [])
+  let checking = infer.check(context, source)
+  case check_imports(checking, option.Some("/"), [], state, root, dict.new()) {
+    Error(reason) -> #(Error(reason), state, root, [])
+    Ok(#(analysis, state, modules)) ->
+      case infer.all_errors(analysis) {
+        [] -> then(state, dict.map_values(modules, fn(_, module) { module.1 }))
+        errors -> #(Error(type_errors(errors)), state, root, [])
+      }
   }
+}
+
+/// Check code, loading each module it imports relative to `directory`.
+/// `importing` is the sequence of modules being imported, to refuse a module that imports itself.
+fn check_imports(checking, directory, importing, state, root, modules) {
+  case checking {
+    infer.Done(analysis) -> Ok(#(analysis, state, modules))
+    infer.Lookup(ir.Relative(location), resume) -> {
+      use #(type_, state, modules) <- result.try(
+        import_module(location, directory, importing, state, root, modules)
+        |> result.map_error(fn(reason) {
+          "import " <> location <> ": " <> reason
+        }),
+      )
+      check_imports(
+        resume(Ok(type_)),
+        directory,
+        importing,
+        state,
+        root,
+        modules,
+      )
+    }
+    infer.Lookup(reference, resume) -> {
+      let #(type_, state) = lookup_type(reference, state)
+      resume(result.replace_error(type_, Nil))
+      |> check_imports(directory, importing, state, root, modules)
+    }
+  }
+}
+
+/// A module is the source of a file in the file system the code is running against.
+/// Its imports are relative to its own directory, and it is pure.
+fn import_module(location, directory, importing, state, root, modules) {
+  use path <- result.try(
+    file_system_request.resolve_path(directory, location)
+    |> result.replace_error("invalid path"),
+  )
+  use Nil <- result.try(case list.contains(importing, path) {
+    True -> Error("imports itself")
+    False -> Ok(Nil)
+  })
+  case dict.get(modules, path) {
+    Ok(#(type_, _source)) -> Ok(#(type_, state, modules))
+    Error(Nil) -> {
+      use bytes <- result.try(
+        files(file_system.read(root, path), state)
+        |> result.try(result.map_error(_, simplifile.describe_error)),
+      )
+      use code <- result.try(
+        bit_array.to_string(bytes) |> result.replace_error("is not text"),
+      )
+      use source <- result.try(source.parse(code, source.Host(path)))
+      let checking = infer.check(infer.pure(), source)
+      let directory = source.base(source.Host(path), "/")
+      use #(analysis, state, modules) <- result.try(check_imports(
+        checking,
+        directory,
+        [path, ..importing],
+        state,
+        root,
+        modules,
+      ))
+      case infer.all_errors(analysis) {
+        [] -> {
+          let type_ = infer.poly_type(analysis)
+          Ok(#(type_, state, dict.insert(modules, path, #(type_, source))))
+        }
+        errors -> Error(type_errors(errors))
+      }
+    }
+  }
+}
+
+/// The source of a module the code imports, it was loaded when the code was checked.
+fn imported(modules, location, meta: source.Location) {
+  use path <- result.try(
+    file_system_request.resolve_path(source.base(meta.origin, "/"), location)
+    |> result.replace_error("import " <> location <> ": invalid path"),
+  )
+  dict.get(modules, path)
+  |> result.replace_error("import " <> location <> ": not loaded")
 }
 
 /// Run a checked automation through the same policy-gated loop as other code.
@@ -219,6 +311,9 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
       fn(effect, label, state, root) {
         perform_effect(effect, label, state, root, emit)
       },
+      fn(location, _meta, _state, _root) {
+        Error("import " <> location <> ": not loaded")
+      },
       [],
     )
   #(
@@ -231,9 +326,35 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
   )
 }
 
-fn outer_loop(returned, state: State, context, perform, output) {
+fn outer_loop(returned, state: State, context, perform, load, output) {
   case returned {
     evaluation.Done(outcome) -> #(outcome, state, context, output)
+    // A module is evaluated in place of its import, with an empty policy so it is pure.
+    evaluation.Conclude(
+      #(break.UndefinedReference(ir.Relative(location)), meta, env, k) as debug,
+      resume,
+    ) ->
+      case load(location, meta, state, context) {
+        Error(reason) -> #(Error(reason), state, context, output)
+        Ok(source) -> {
+          let next = {
+            let module =
+              evaluation.await(block.execute(source, []))
+              |> policy.apply_policy(dict.new(), "/")
+            use returned <- evaluation.then(module)
+            case returned {
+              Ok(#(option.Some(value), _scope)) ->
+                evaluation.then(
+                  evaluation.await(expression.resume(value, env, k)),
+                  resume,
+                )
+              Ok(#(option.None, _scope)) -> resume(Error(debug))
+              Error(debug) -> resume(Error(debug))
+            }
+          }
+          outer_loop(next, state, context, perform, load, output)
+        }
+      }
     evaluation.Conclude(#(reason, _, env, k) as debug, resume) -> {
       let #(outcome, state, context, output) = case reason {
         break.UnhandledEffect(label, input) -> {
@@ -268,6 +389,7 @@ fn outer_loop(returned, state: State, context, perform, output) {
             state,
             context,
             perform,
+            load,
             output,
           )
         Error(reason) -> #(Error(reason), state, context, output)
@@ -286,6 +408,7 @@ pub fn pure(returned, state: State) {
       fn(_effect, label, _, _) {
         #(Error(describe_reason(break.UnhandledEffect(label, v.unit()))), Nil)
       },
+      fn(location, _, _, _) { Error("import " <> location <> ": not loaded") },
       [],
     )
   #(outcome, state)
