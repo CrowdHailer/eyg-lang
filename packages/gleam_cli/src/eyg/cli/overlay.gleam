@@ -389,12 +389,6 @@ fn truncate(text) {
   }
 }
 
-// There's a problem that the final execute is tied to runtime
-// ---------------------- run
-
-/// If extracted this would be the implementation of a tool called run.
-/// In a module run.gleam this would be the execute function
-/// A better name might be check_and_execute
 pub fn check_and_execute(
   session: Session(harness_computer.Effect),
   code: String,

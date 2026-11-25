@@ -102,9 +102,6 @@ fn check_loop(
   state: execute.State,
   errors: List(#(source.Location, error.Reason)),
   visited: List(String),
-  // The gate returns a modified path or is denied, for any reason
-  // The function is passed in so that we don't need to understand policy.
-  // but if rules and policy become part of the runtime we can be more concrete
 ) -> system.Effect(#(binding.Poly, binding.Mono, _, _)) {
   case step {
     infer.Done(analysis) ->

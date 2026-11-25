@@ -212,30 +212,6 @@ pub fn apply_policy(
   }
 }
 
-/// Decide an effect using the host's pure evaluator. The host owns reference
-/// resolution and state; `done` handles decisions that need no evaluation.
-/// TODO remove this one
-pub fn decide(
-  policy: Policy(eff, meta),
-  label: String,
-  input: state.Value(meta),
-  meta: meta,
-  evaluate: fn(
-    Result(state.Value(meta), state.Debug(meta)),
-    fn(Result(state.Value(meta), state.Debug(meta))) -> Action(meta, eff),
-  ) -> output,
-  done: fn(Action(meta, eff)) -> output,
-) -> output {
-  case dict.get(policy, label) {
-    Ok(Interface(interface, Gated(gate))) -> {
-      use returned <- evaluate(expression.call(gate, [#(input, meta)]))
-      action_from_outcome(returned, interface, meta)
-    }
-    Ok(Interface(interface, Unrestricted)) -> done(Perform(interface, input))
-    Error(Nil) -> done(Unavailable)
-  }
-}
-
 pub fn decide_host(
   policy: Policy(eff, source.Location),
   label: String,
@@ -249,12 +225,12 @@ pub fn decide_host(
 ) {
   let base = source.base(meta.origin, cwd)
   case file_system.resolve_input(base, label, input) {
-    Ok(input) -> decide_m(policy, label, input, meta)
+    Ok(input) -> decide(policy, label, input, meta)
     Error(_) -> evaluation.Done(Resume(v.error(v.String("invalid path"))))
   }
 }
 
-pub fn decide_m(
+pub fn decide(
   policy: Policy(eff, meta),
   label: String,
   input: state.Value(meta),
