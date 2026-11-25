@@ -16,6 +16,7 @@ import eyg/interpreter/builtin
 import eyg/interpreter/evaluation
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
+import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/crypto
@@ -150,7 +151,7 @@ pub fn run(
             policy,
             "/",
           )
-            |> evaluation.map(result.map_error(_, string.inspect)),
+            |> evaluation.map(result.map_error(_, describe_debug)),
           state,
           root,
           fn(effect, label, state, root) {
@@ -191,7 +192,7 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
         policy,
         "/",
       )
-        |> evaluation.map(result.map_error(_, string.inspect)),
+        |> evaluation.map(result.map_error(_, describe_debug)),
       state,
       root,
       fn(effect, label, state, root) {
@@ -220,7 +221,7 @@ fn outer_loop(returned, state: State, context, perform, output) {
           let effect = computer.cast(label, input)
           let #(outcome, context) = case effect {
             Ok(effect) -> perform(effect, label, state, context)
-            Error(break) -> #(Error(string.inspect(break)), context)
+            Error(break) -> #(Error(describe_reason(break)), context)
           }
           let output = case label, input, outcome {
             "StandardOut", v.String(text), Ok(_)
@@ -234,7 +235,7 @@ fn outer_loop(returned, state: State, context, perform, output) {
           let #(value, state) = lookup_value(reference, state)
           #(value, state, context, output)
         }
-        _ -> #(Error(string.inspect(debug)), state, context, output)
+        _ -> #(Error(describe_debug(debug)), state, context, output)
       }
       case outcome {
         Ok(value) ->
@@ -261,7 +262,9 @@ pub fn pure(returned, state: State) {
       returned,
       state,
       Nil,
-      fn(effect, _, _, _) { #(Error(string.inspect(effect)), Nil) },
+      fn(_effect, _, _, _) {
+        #(Error(describe_reason(break.UnhandledEffect("TODO", v.unit()))), Nil)
+      },
       [],
     )
   #(outcome, state)
@@ -499,4 +502,12 @@ fn random(max) {
 fn sleep(milliseconds) {
   process.sleep(int.max(0, milliseconds))
   Ok(sleep.encode(Nil))
+}
+
+pub fn describe_debug(debug: state.Debug(m)) -> String {
+  describe_reason(debug.0)
+}
+
+pub fn describe_reason(reason: state.Reason(_)) -> String {
+  simple_debug.describe(reason)
 }
