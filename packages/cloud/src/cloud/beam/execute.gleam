@@ -26,6 +26,8 @@ import gleam/bit_array
 import gleam/crypto
 import gleam/dict.{type Dict}
 import gleam/erlang/process
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
 import gleam/httpc
 import gleam/int
 import gleam/list
@@ -73,6 +75,91 @@ pub type State {
     // The module each package reference resolved to when the code was checked, the code runs with it.
     pins: Dict(ir.Reference, v1.Cid),
   )
+}
+
+/// Effects whose result is not known from the code and the file system.
+pub type Wait {
+  Fetch(Request(BitArray))
+  Random(Int)
+  Now
+  Flip
+  Sleep(Int)
+}
+
+pub type Answer {
+  Fetched(Result(Response(BitArray), String))
+  Number(Int)
+  Flipped(Bool)
+  Slept
+}
+
+/// Code runs until it finishes or waits for the answer to an effect.
+/// `context` is what the code runs against, such as the root of a file system.
+pub type Running(a, context) {
+  Finished(
+    outcome: Result(a, String),
+    state: State,
+    root: context,
+    output: List(String),
+  )
+  Waiting(
+    wait: Wait,
+    state: State,
+    root: context,
+    resume: fn(Answer, State, context) -> Running(a, context),
+  )
+}
+
+/// Code that runs against a file system.
+pub type Run(a) =
+  Running(a, v1.Cid)
+
+/// Answer every effect by performing it.
+pub fn complete(
+  run: Running(a, context),
+) -> #(Result(a, String), State, context, List(String)) {
+  case run {
+    Finished(outcome, state, root, output) -> #(outcome, state, root, output)
+    Waiting(wait, state, root, resume) ->
+      complete(resume(perform(wait), state, root))
+  }
+}
+
+pub fn perform(wait: Wait) -> Answer {
+  case wait {
+    Fetch(request) -> Fetched(fetch(request))
+    Random(max) -> Number(random.sync(max))
+    Now -> Number(now.sync())
+    Flip -> Flipped(flip.sync())
+    Sleep(milliseconds) -> {
+      process.sleep(int.max(0, milliseconds))
+      Slept
+    }
+  }
+}
+
+fn answer_to_value(answer) {
+  case answer {
+    Fetched(result) -> fetch.encode(result)
+    Number(number) -> v.Integer(number)
+    Flipped(value) -> flip.encode(value)
+    Slept -> sleep.encode(Nil)
+  }
+}
+
+/// Continue with `next` when the code finishes, after every effect it waits for.
+pub fn then(
+  run: Running(a, context),
+  next: fn(Result(a, String), State, context, List(String)) ->
+    Running(b, context),
+) -> Running(b, context) {
+  case run {
+    Finished(outcome, state, root, output) -> next(outcome, state, root, output)
+    Waiting(wait, state, root, resume) ->
+      Waiting(wait, state, root, fn(answer, state, root) {
+        then(resume(answer, state, root), next)
+      })
+  }
 }
 
 pub type Policy =
@@ -146,13 +233,13 @@ pub fn run(
   policy: Policy,
   root: v1.Cid,
   emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, v1.Cid, List(String)) {
+) -> Run(String) {
   let scope = []
   case source.parse(code, source.Inline) {
-    Error(reason) -> #(Error(reason), state, root, [])
+    Error(reason) -> Finished(Error(reason), state, root, [])
     Ok(source) -> {
       use state, modules <- checked(source, policy, state, root)
-      let #(outcome, state, root, output) =
+      use outcome, state, root, output <- then(
         outer_loop(
           policy.apply_policy(
             evaluation.await(block.execute(source, scope)),
@@ -169,8 +256,9 @@ pub fn run(
             imported(modules, location, meta)
           },
           [],
-        )
-      #(
+        ),
+      )
+      Finished(
         result.map(outcome, fn(value) {
           let #(value, _scope) = value
           value |> option.map(agent.inspect_result) |> option.unwrap("")
@@ -194,11 +282,11 @@ fn checked(source, policy: Policy, state, root, then) {
   let context = infer.pure() |> infer.with_effects(effects)
   let checking = infer.check(context, source)
   case check_imports(checking, option.Some("/"), [], state, root, dict.new()) {
-    Error(reason) -> #(Error(reason), state, root, [])
+    Error(reason) -> Finished(Error(reason), state, root, [])
     Ok(#(analysis, state, modules)) ->
       case infer.all_errors(analysis) {
         [] -> then(state, dict.map_values(modules, fn(_, module) { module.1 }))
-        errors -> #(Error(type_errors(errors)), state, root, [])
+        errors -> Finished(Error(type_errors(errors)), state, root, [])
       }
   }
 }
@@ -316,6 +404,7 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
       },
       [],
     )
+    |> complete
   #(
     result.map(outcome, fn(value) {
       let #(value, _scope) = value
@@ -326,16 +415,31 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
   )
 }
 
-fn outer_loop(returned, state: State, context, perform, load, output) {
+/// What performing an effect did.
+type Performed(context) {
+  /// The value for the code, and what it runs against after the effect.
+  Answers(state.Value(source.Location), context)
+  /// The result is not known from the code and the file system, the caller answers it.
+  Waits(Wait)
+}
+
+fn outer_loop(
+  returned,
+  state: State,
+  context,
+  perform,
+  load,
+  output,
+) -> Running(a, context) {
   case returned {
-    evaluation.Done(outcome) -> #(outcome, state, context, output)
+    evaluation.Done(outcome) -> Finished(outcome, state, context, output)
     // A module is evaluated in place of its import, with an empty policy so it is pure.
     evaluation.Conclude(
       #(break.UndefinedReference(ir.Relative(location)), meta, env, k) as debug,
       resume,
     ) ->
       case load(location, meta, state, context) {
-        Error(reason) -> #(Error(reason), state, context, output)
+        Error(reason) -> Finished(Error(reason), state, context, output)
         Ok(source) -> {
           let next = {
             let module =
@@ -356,7 +460,24 @@ fn outer_loop(returned, state: State, context, perform, load, output) {
         }
       }
     evaluation.Conclude(#(reason, _, env, k) as debug, resume) -> {
-      let #(outcome, state, context, output) = case reason {
+      let continue = fn(outcome, state, context, output) {
+        case outcome {
+          Ok(value) ->
+            outer_loop(
+              evaluation.then(
+                evaluation.await(expression.resume(value, env, k)),
+                resume,
+              ),
+              state,
+              context,
+              perform,
+              load,
+              output,
+            )
+          Error(reason) -> Finished(Error(reason), state, context, output)
+        }
+      }
+      case reason {
         break.UnhandledEffect(label, input) -> {
           // In Loam there is a separate platform/computer module that implements computer.execute
           // That separation doesn't exist here so we can track output and state etc.
@@ -364,37 +485,26 @@ fn outer_loop(returned, state: State, context, perform, load, output) {
             computer.cast(label, input) |> result.map_error(describe_reason)
           case result.try(effect, perform(_, label, state, context)) {
             // A block of the file system that cannot be read or written fails the run.
-            Error(reason) -> #(Error(reason), state, context, output)
-            Ok(#(value, context)) -> {
+            Error(reason) -> Finished(Error(reason), state, context, output)
+            Ok(Waits(wait)) ->
+              Waiting(wait, state, context, fn(answer, state, context) {
+                continue(Ok(answer_to_value(answer)), state, context, output)
+              })
+            Ok(Answers(value, context)) -> {
               let output = case effect {
                 Ok(computer.StandardOut(text))
                 | Ok(computer.StandardError(text)) -> [text, ..output]
                 _ -> output
               }
-              #(Ok(value), state, context, output)
+              continue(Ok(value), state, context, output)
             }
           }
         }
         break.UndefinedReference(reference) -> {
           let #(value, state) = lookup_value(reference, state)
-          #(value, state, context, output)
+          continue(value, state, context, output)
         }
-        _ -> #(Error(describe_debug(debug)), state, context, output)
-      }
-      case outcome {
-        Ok(value) ->
-          outer_loop(
-            evaluation.then(
-              evaluation.await(expression.resume(value, env, k)),
-              resume,
-            ),
-            state,
-            context,
-            perform,
-            load,
-            output,
-          )
-        Error(reason) -> #(Error(reason), state, context, output)
+        _ -> continue(Error(describe_debug(debug)), state, context, output)
       }
     }
   }
@@ -402,7 +512,7 @@ fn outer_loop(returned, state: State, context, perform, load, output) {
 
 /// Drive an evaluation with reference resolution, rejecting host effects.
 pub fn pure(returned, state: State) {
-  let #(outcome, state, _, _) =
+  case
     outer_loop(
       returned,
       state,
@@ -413,50 +523,50 @@ pub fn pure(returned, state: State) {
       fn(location, _, _, _) { Error("import " <> location <> ": not loaded") },
       [],
     )
-  #(outcome, state)
+  {
+    Finished(outcome, state, _, _) -> #(outcome, state)
+    // A pure evaluation performs no effects so never waits.
+    Waiting(state:, ..) -> #(Error("a pure evaluation waited"), state)
+  }
 }
 
-/// The value for the code, and the file system after the effect.
 /// A block of the file system that cannot be read or written is an error.
 fn perform_effect(effect, state: State, root, emit) {
   case effect {
     computer.StandardOut(text) -> {
       emit(StandardOut(text))
-      Ok(#(standard_out.encode(Nil), root))
+      Ok(Answers(standard_out.encode(Nil), root))
     }
     computer.StandardError(text) -> {
       emit(StandardError(text))
-      Ok(#(standard_error.encode(Nil), root))
+      Ok(Answers(standard_error.encode(Nil), root))
     }
     computer.AppendFile(input) ->
       file_system.append(root, input.path, input.contents)
       |> change(state, root, append_file.encode)
-    computer.Cwd -> Ok(#(v.ok(v.String("/")), root))
-    computer.DecodeJson(bytes) -> Ok(#(decode_json.sync(bytes), root))
+    computer.Cwd -> Ok(Answers(v.ok(v.String("/")), root))
+    computer.DecodeJson(bytes) -> Ok(Answers(decode_json.sync(bytes), root))
     computer.DeleteFile(path) ->
       file_system.delete(root, path) |> change(state, root, delete_file.encode)
     computer.Env(name:) -> {
       let value = dict.get(state.secrets, name) |> option.from_result
-      Ok(#(env.encode(value), root))
+      Ok(Answers(env.encode(value), root))
     }
-    computer.Fetch(request) -> Ok(#(fetch.encode(fetch(request)), root))
-    computer.Flip -> Ok(#(flip.encode(flip.sync()), root))
-    computer.Hash(input) -> Ok(#(hash(input), root))
+    computer.Fetch(request) -> Ok(Waits(Fetch(request)))
+    computer.Flip -> Ok(Waits(Flip))
+    computer.Hash(input) -> Ok(Answers(hash(input), root))
     computer.MakeDirectory(path) ->
       file_system.make_directory(root, path)
       |> change(state, root, make_directory.encode)
-    computer.Now -> Ok(#(now.encode(now.sync()), root))
-    computer.Random(max) -> Ok(#(random.encode(random.sync(max)), root))
+    computer.Now -> Ok(Waits(Now))
+    computer.Random(max) -> Ok(Waits(Random(max)))
     computer.ReadDirectory(path) ->
       file_system.read_directory(root, path)
       |> read(state, root, read_directory.encode)
     computer.ReadFile(input) ->
       file_system.read_range(root, input.path, input.offset, input.limit)
       |> read(state, root, read_file.encode)
-    computer.Sleep(milliseconds) -> {
-      process.sleep(int.max(0, milliseconds))
-      Ok(#(sleep.encode(Nil), root))
-    }
+    computer.Sleep(milliseconds) -> Ok(Waits(Sleep(milliseconds)))
     computer.WriteFile(input) ->
       file_system.write(root, input.path, input.contents)
       |> change(state, root, write_file.encode)
@@ -473,14 +583,15 @@ fn perform_effect(effect, state: State, root, emit) {
 fn change(effect, state, root, encode) {
   use changed <- result.map(files(effect, state))
   case changed {
-    Ok(root) -> #(encode(Ok(Nil)), root)
-    Error(reason) -> #(encode(Error(simplifile.describe_error(reason))), root)
+    Ok(root) -> Answers(encode(Ok(Nil)), root)
+    Error(reason) ->
+      Answers(encode(Error(simplifile.describe_error(reason))), root)
   }
 }
 
 fn read(effect, state, root, encode) {
   use outcome <- result.map(files(effect, state))
-  #(encode(result.map_error(outcome, simplifile.describe_error)), root)
+  Answers(encode(result.map_error(outcome, simplifile.describe_error)), root)
 }
 
 /// Run file system effects by getting and putting blocks in the blob store.

@@ -120,6 +120,7 @@ fn handle_session(state: State, id, action, print) {
     Code(code) -> {
       let #(outcome, execute_state, root, _) =
         execute.run(code, state.execute_state, state.policy, root, print)
+        |> execute.complete
       case outcome {
         Ok(value) -> print(execute.StandardOut(value))
         Error(reason) -> print(execute.StandardError(reason))

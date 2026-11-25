@@ -126,7 +126,7 @@ fn execute_call(call, eyg_state, policy, files, emit) {
     )
     Ok(agent.Run(code)) -> {
       let #(result, eyg_state, files, output) =
-        execute.run(code, eyg_state, policy, files, emit)
+        execute.run(code, eyg_state, policy, files, emit) |> execute.complete
       let result = case result {
         Ok(text) -> Ok(tool.Return(run.report(output, text), []))
         Error(reason) -> Error(run.report(output, reason))

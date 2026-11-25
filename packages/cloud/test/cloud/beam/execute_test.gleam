@@ -14,6 +14,7 @@ import gleam/string
 import ogre/origin
 import simplifile
 import touch_grass/source
+import unixfs/mfs
 
 fn state() {
   let assert Ok(bucket) = config.bucket()
@@ -30,9 +31,54 @@ fn state() {
 pub fn an_empty_policy_offers_no_effects_test() {
   let state = state()
   let assert Ok(root) = execute.files(file_system.empty(), state)
-  let assert #(Error(reason), _, _, []) =
+  let assert execute.Finished(Error(reason), _, _, []) =
     execute.run("perform Random(10)", state, dict.new(), root, fn(_) { Nil })
   assert "missing row 'Random'" == reason
+}
+
+fn start(code) {
+  let state = state()
+  let assert Ok(root) = execute.files(file_system.empty(), state)
+  execute.run(code, state, permissive(state), root, fn(_) { Nil })
+}
+
+const write =
+  "perform WriteFile({path: \"/a.txt\", contents: !string_to_binary(\"a\")})"
+
+pub fn wait_for_answer_test() {
+  let assert execute.Waiting(execute.Random(10), state, root, resume) =
+    start("let _ = " <> write <> "\nperform Random(10)")
+  // File changes made before waiting are in the root.
+  assert Ok(Ok(<<"a">>))
+    == execute.files(file_system.read(root, "/a.txt"), state)
+  let assert execute.Finished(Ok("7"), _, after, _) =
+    resume(execute.Number(7), state, root)
+  assert root == after
+}
+
+pub fn resume_with_another_root_test() {
+  let assert execute.Waiting(execute.Now, state, _, resume) =
+    start(
+      "let _ = perform Now({})\nperform ReadFile({path: \"/b.txt\", offset: 0, limit: 10})",
+    )
+  let assert Ok(Ok(other)) =
+    {
+      use root <- mfs.then(file_system.empty())
+      file_system.write(root, "/b.txt", <<"b">>)
+    }
+    |> execute.files(state)
+  let assert execute.Finished(Ok(value), _, root, _) =
+    resume(execute.Number(0), state, other)
+  assert other == root
+  assert "Ok(Binary(1 bytes): Yg==)" == value
+}
+
+pub fn complete_performs_effects_test() {
+  let assert #(Ok("{}"), _, _, _) =
+    start(
+      "let _ = perform Random(10)\nlet _ = perform Flip({})\nperform Sleep(1)",
+    )
+    |> execute.complete
 }
 
 pub fn a_pure_evaluation_names_the_effect_it_refuses_test() {
@@ -53,7 +99,7 @@ pub fn checking_pins_the_packages_code_refers_to_test() {
       cache: server.release(cache.empty(), "lib", "1"),
     )
   let assert Ok(root) = execute.files(file_system.empty(), state)
-  let assert #(Ok("[1, 1]"), state, _, _) =
+  let assert execute.Finished(Ok("[1, 1]"), state, _, _) =
     execute.run("[@lib, @lib]", state, dict.new(), root, fn(_) { Nil })
   let assert Ok(_) = dict.get(state.pins, ir.Package("lib"))
 }
@@ -84,7 +130,7 @@ pub fn import_a_module_test() {
   let root =
     files([#("/lib/a.eyg", "import \"./b.eyg\""), #("/lib/b.eyg", "2")], state)
   let code = "import \"./lib/a.eyg\""
-  let assert #(Ok("2"), _, _, _) =
+  let assert execute.Finished(Ok("2"), _, _, _) =
     execute.run(code, state, dict.new(), root, fn(_) { Nil })
 }
 
@@ -93,7 +139,7 @@ pub fn modules_are_pure_test() {
   let state = state()
   let root = files([#("/a.eyg", "perform Random(10)")], state)
   let policy = permissive(state)
-  let assert #(Error(reason), _, _, _) =
+  let assert execute.Finished(Error(reason), _, _, _) =
     execute.run("import \"./a.eyg\"", state, policy, root, fn(_) { Nil })
   assert "import ./a.eyg: missing row 'Random'" == reason
 }
@@ -102,7 +148,7 @@ pub fn modules_are_pure_test() {
 pub fn imports_are_loaded_before_running_test() {
   let state = state()
   let assert Ok(root) = execute.files(file_system.empty(), state)
-  let assert #(Error(reason), _, _, _) =
+  let assert execute.Finished(Error(reason), _, _, _) =
     execute.run("import \"./missing.eyg\"", state, dict.new(), root, fn(_) {
       Nil
     })
