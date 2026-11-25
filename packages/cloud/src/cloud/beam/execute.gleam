@@ -162,8 +162,8 @@ pub fn run(
             |> evaluation.map(result.map_error(_, describe_debug)),
           state,
           root,
-          fn(effect, label, state, root) {
-            perform_effect(effect, label, state, root, emit)
+          fn(effect, _label, state, root) {
+            perform_effect(effect, state, root, emit)
           },
           fn(location, meta, _state, _root) {
             imported(modules, location, meta)
@@ -308,8 +308,8 @@ pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
         |> evaluation.map(result.map_error(_, describe_debug)),
       state,
       root,
-      fn(effect, label, state, root) {
-        perform_effect(effect, label, state, root, emit)
+      fn(effect, _label, state, root) {
+        perform_effect(effect, state, root, emit)
       },
       fn(location, _meta, _state, _root) {
         Error("import " <> location <> ": not loaded")
@@ -360,18 +360,20 @@ fn outer_loop(returned, state: State, context, perform, load, output) {
         break.UnhandledEffect(label, input) -> {
           // In Loam there is a separate platform/computer module that implements computer.execute
           // That separation doesn't exist here so we can track output and state etc.
-          let effect = computer.cast(label, input)
-          let #(outcome, context) = case effect {
-            Ok(effect) -> perform(effect, label, state, context)
-            Error(break) -> #(Error(describe_reason(break)), context)
+          let effect =
+            computer.cast(label, input) |> result.map_error(describe_reason)
+          case result.try(effect, perform(_, label, state, context)) {
+            // A block of the file system that cannot be read or written fails the run.
+            Error(reason) -> #(Error(reason), state, context, output)
+            Ok(#(value, context)) -> {
+              let output = case effect {
+                Ok(computer.StandardOut(text))
+                | Ok(computer.StandardError(text)) -> [text, ..output]
+                _ -> output
+              }
+              #(Ok(value), state, context, output)
+            }
           }
-          let output = case label, input, outcome {
-            "StandardOut", v.String(text), Ok(_)
-            | "StandardError", v.String(text), Ok(_)
-            -> [text, ..output]
-            _, _, _ -> output
-          }
-          #(outcome, state, context, output)
         }
         break.UndefinedReference(reference) -> {
           let #(value, state) = lookup_value(reference, state)
@@ -406,7 +408,7 @@ pub fn pure(returned, state: State) {
       state,
       Nil,
       fn(_effect, label, _, _) {
-        #(Error(describe_reason(break.UnhandledEffect(label, v.unit()))), Nil)
+        Error(describe_reason(break.UnhandledEffect(label, v.unit())))
       },
       fn(location, _, _, _) { Error("import " <> location <> ": not loaded") },
       [],
@@ -414,70 +416,71 @@ pub fn pure(returned, state: State) {
   #(outcome, state)
 }
 
-fn perform_effect(effect, label, state: State, root, emit) {
+/// The value for the code, and the file system after the effect.
+/// A block of the file system that cannot be read or written is an error.
+fn perform_effect(effect, state: State, root, emit) {
   case effect {
     computer.StandardOut(text) -> {
       emit(StandardOut(text))
-      #(Ok(standard_out.encode(Nil)), root)
+      Ok(#(standard_out.encode(Nil), root))
     }
     computer.StandardError(text) -> {
       emit(StandardError(text))
-      #(Ok(standard_error.encode(Nil)), root)
+      Ok(#(standard_error.encode(Nil), root))
     }
     computer.AppendFile(input) ->
       file_system.append(root, input.path, input.contents)
       |> change(state, root, append_file.encode)
-    computer.Cwd -> #(cwd(), root)
-    computer.DecodeJson(bytes) -> #(decode_json(bytes), root)
+    computer.Cwd -> Ok(#(v.ok(v.String("/")), root))
+    computer.DecodeJson(bytes) -> Ok(#(decode_json.sync(bytes), root))
     computer.DeleteFile(path) ->
       file_system.delete(root, path) |> change(state, root, delete_file.encode)
-    computer.Env(name:) -> #(get_env(name, state.secrets), root)
-    computer.Fetch(request) -> #(fetch(request), root)
-    computer.Flip -> #(flip(), root)
-    computer.Hash(input) -> #(hash(input), root)
+    computer.Env(name:) -> {
+      let value = dict.get(state.secrets, name) |> option.from_result
+      Ok(#(env.encode(value), root))
+    }
+    computer.Fetch(request) -> Ok(#(fetch.encode(fetch(request)), root))
+    computer.Flip -> Ok(#(flip.encode(flip.sync()), root))
+    computer.Hash(input) -> Ok(#(hash(input), root))
     computer.MakeDirectory(path) ->
       file_system.make_directory(root, path)
       |> change(state, root, make_directory.encode)
-    computer.Now -> #(now(), root)
-    computer.Random(max) -> #(random(max), root)
+    computer.Now -> Ok(#(now.encode(now.sync()), root))
+    computer.Random(max) -> Ok(#(random.encode(random.sync(max)), root))
     computer.ReadDirectory(path) ->
       file_system.read_directory(root, path)
       |> read(state, root, read_directory.encode)
     computer.ReadFile(input) ->
       file_system.read_range(root, input.path, input.offset, input.limit)
       |> read(state, root, read_file.encode)
-    computer.Sleep(milliseconds) -> #(sleep(milliseconds), root)
+    computer.Sleep(milliseconds) -> {
+      process.sleep(int.max(0, milliseconds))
+      Ok(#(sleep.encode(Nil), root))
+    }
     computer.WriteFile(input) ->
       file_system.write(root, input.path, input.contents)
       |> change(state, root, write_file.encode)
+    // The rules offer no other effect of the harness.
     computer.CreateKey(_)
     | computer.Exit(_)
     | computer.EygParse(_)
     | computer.Sign(_)
-    | computer.StandardIn -> #(Error("Unhandled effect: " <> label), root)
+    | computer.StandardIn -> Error("Unhandled effect")
   }
 }
 
 // A failed file operation is a value for the program and leaves the root unchanged.
 fn change(effect, state, root, encode) {
-  case files(effect, state) {
-    Error(reason) -> #(Error(reason), root)
-    Ok(Ok(root)) -> #(Ok(encode(Ok(Nil))), root)
-    Ok(Error(reason)) -> #(
-      Ok(encode(Error(simplifile.describe_error(reason)))),
-      root,
-    )
+  use changed <- result.map(files(effect, state))
+  case changed {
+    Ok(root) -> #(encode(Ok(Nil)), root)
+    Error(reason) -> #(encode(Error(simplifile.describe_error(reason))), root)
   }
 }
 
 fn read(effect, state, root, encode) {
-  case files(effect, state) {
-    Error(reason) -> #(Error(reason), root)
-    Ok(outcome) -> #(
-      Ok(encode(result.map_error(outcome, simplifile.describe_error))),
-      root,
-    )
-  }
+  use outcome <- result.map(files(effect, state))
+  #(encode(result.map_error(outcome, simplifile.describe_error)), root)
 }
 
 /// Run file system effects by getting and putting blocks in the blob store.
@@ -619,45 +622,14 @@ fn compute(action, origin) {
   cache.compute(action, origin, system.fetch, system.hash)(fn(x) { x })
 }
 
-fn cwd() {
-  Ok(v.ok(v.String("/")))
-}
-
-fn decode_json(bytes) {
-  Ok(decode_json.sync(bytes))
-}
-
-fn get_env(name, secrets) {
-  Ok(dict.get(secrets, name) |> option.from_result |> env.encode)
-}
-
 fn fetch(request) {
   httpc.send_bits(request)
   |> result.map_error(string.inspect)
-  |> fetch.encode
-  |> Ok
-}
-
-fn flip() {
-  Ok(flip.encode(flip.sync()))
 }
 
 fn hash(input) {
   let hash.Input(algorithm: hash.Sha256, bytes:) = input
-  Ok(hash.encode(crypto.hash(crypto.Sha256, bytes)))
-}
-
-fn now() {
-  Ok(now.encode(now.sync()))
-}
-
-fn random(max) {
-  Ok(random.encode(random.sync(max)))
-}
-
-fn sleep(milliseconds) {
-  process.sleep(int.max(0, milliseconds))
-  Ok(sleep.encode(Nil))
+  hash.encode(crypto.hash(crypto.Sha256, bytes))
 }
 
 pub fn describe_debug(debug: state.Debug(m)) -> String {
