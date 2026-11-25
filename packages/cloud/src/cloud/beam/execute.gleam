@@ -109,20 +109,19 @@ pub fn load_policy(
     Ok(source) -> {
       let #(analysis, state) = check_loop(policy.check(source, template), state)
       case infer.all_errors(analysis) {
-        [] -> execute_loop(policy.prepare_source(source, template), state)
+        [] -> {
+          let #(outcome, state, _, _) =
+            outer_loop(
+              policy.prepare_source(source, template),
+              state,
+              Nil,
+              fn(effect, _, _, _) { #(Error(string.inspect(effect)), Nil) },
+              [],
+            )
+          #(outcome, state)
+        }
         errors -> #(Error(type_errors(errors)), state)
       }
-    }
-  }
-}
-
-// TODO this will replace loop
-fn execute_loop(return, state) {
-  case return {
-    evaluation.Done(value) -> #(value, state)
-    evaluation.Conclude(break:, resume:) -> {
-      let #(next, state) = pure_loop(Error(break), state)
-      execute_loop(resume(next), state)
     }
   }
 }
@@ -155,9 +154,23 @@ pub fn run(
     Error(reason) -> #(Error(reason), state, root, [])
     Ok(source) -> {
       let #(outcome, state, root, output) =
-        loop(block.execute(source, scope), state, policy, root, emit, [])
+        outer_loop(
+          policy.apply_policy(
+            evaluation.await(block.execute(source, scope)),
+            policy,
+            "/",
+          )
+            |> evaluation.map(result.map_error(_, string.inspect)),
+          state,
+          root,
+          fn(effect, label, state, root) {
+            perform_effect(effect, label, state, root, emit)
+          },
+          [],
+        )
       #(
         result.map(outcome, fn(value) {
+          let #(value, _scope) = value
           value |> option.map(agent.inspect_result) |> option.unwrap("")
         }),
         state,
@@ -178,32 +191,50 @@ pub fn call(function, input, state: State, policy: Policy, root, emit) {
 /// Preserve the result of a trigger while applying the normal effect policy.
 pub fn call_value(function, input, state: State, policy: Policy, root, emit) {
   let #(outcome, state, root, _) =
-    loop(
-      block.call(
-        function,
-        [#(input, source.Location(source.Inline, source.Json))],
-        builtin.default([]),
-      ),
+    outer_loop(
+      policy.apply_policy(
+        evaluation.await(block.call(
+          function,
+          [#(input, source.Location(source.Inline, source.Json))],
+          builtin.default([]),
+        )),
+        policy,
+        "/",
+      )
+        |> evaluation.map(result.map_error(_, string.inspect)),
       state,
-      policy,
       root,
-      emit,
+      fn(effect, label, state, root) {
+        perform_effect(effect, label, state, root, emit)
+      },
       [],
     )
-  #(result.map(outcome, option.unwrap(_, v.unit())), state, root)
+  #(
+    result.map(outcome, fn(value) {
+      let #(value, _scope) = value
+      option.unwrap(value, v.unit())
+    }),
+    state,
+    root,
+  )
 }
 
-fn loop(returned, state: State, policy, root, emit, output) {
+fn outer_loop(returned, state: State, context, perform, output) {
   case returned {
-    Ok(#(value, _scope)) -> #(Ok(value), state, root, output)
-    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      let #(action, state) =
-        execute_loop(policy.decide_host(policy, label, lift, meta, "/"), state)
-      let #(outcome, root, output) = case action {
-        policy.Perform(interface, input) -> {
-          let #(outcome, root) = case interface.decode(input) {
-            Ok(effect) -> perform_effect(effect, label, state, root, emit)
-            Error(reason) -> #(Error(simple_debug.describe(reason)), root)
+    evaluation.Done(outcome) -> #(outcome, state, context, output)
+    evaluation.Conclude(#(reason, _, env, k) as debug, resume) -> {
+      let #(outcome, state, context, output) = case reason {
+        break.UnhandledEffect(label, input) -> {
+          let effect =
+            computer.effects()
+            |> list.find(fn(interface) { interface.name == label })
+            |> result.map_error(string.inspect)
+            |> result.try(fn(interface) {
+              interface.decode(input) |> result.map_error(string.inspect)
+            })
+          let #(outcome, context) = case effect {
+            Ok(effect) -> perform(effect, label, state, context)
+            Error(reason) -> #(Error(reason), context)
           }
           let output = case label, input, outcome {
             "StandardOut", v.String(text), Ok(_)
@@ -211,40 +242,29 @@ fn loop(returned, state: State, policy, root, emit, output) {
             -> [text, ..output]
             _, _, _ -> output
           }
-          #(outcome, root, output)
+          #(outcome, state, context, output)
         }
-        policy.Resume(value) -> #(Ok(value), root, output)
-        policy.Failed(debug) -> #(
-          Error("Policy failed: " <> simple_debug.describe(debug.0)),
-          root,
-          output,
-        )
-        policy.Unavailable -> #(
-          Error("Unhandled effect: " <> label),
-          root,
-          output,
-        )
+        break.UndefinedReference(reference) -> {
+          let #(value, state) = lookup_value(reference, state)
+          #(value, state, context, output)
+        }
+        _ -> #(Error(string.inspect(debug)), state, context, output)
       }
       case outcome {
         Ok(value) ->
-          loop(block.resume(value, env, k), state, policy, root, emit, output)
-        Error(reason) -> #(Error(reason), state, root, output)
+          outer_loop(
+            evaluation.then(
+              evaluation.await(expression.resume(value, env, k)),
+              resume,
+            ),
+            state,
+            context,
+            perform,
+            output,
+          )
+        Error(reason) -> #(Error(reason), state, context, output)
       }
     }
-    Error(#(break.UndefinedReference(reference), _, env, k)) -> {
-      let #(value, state) = lookup_value(reference, state)
-      case value {
-        Ok(value) ->
-          loop(block.resume(value, env, k), state, policy, root, emit, output)
-        Error(reason) -> #(Error(reason), state, root, output)
-      }
-    }
-    Error(debug) -> #(
-      Error(simple_debug.describe(debug.0)),
-      state,
-      root,
-      output,
-    )
   }
 }
 

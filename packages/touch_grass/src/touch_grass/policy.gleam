@@ -2,6 +2,7 @@
 
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/builtin
 import eyg/interpreter/cast
@@ -156,6 +157,59 @@ pub type Action(m, eff) {
   Resume(state.Value(m))
   Failed(state.Debug(m))
   Unavailable
+}
+
+/// Apply policy to a block evaluation.
+/// Returns another block evaluation.
+/// 
+/// Note it assumes meta is a source.Location for resolving file paths for file effects.
+pub fn apply_policy(
+  returned,
+  policy: Policy(eff, source.Location),
+  cwd: String,
+) {
+  case returned {
+    evaluation.Done(outcome) -> evaluation.Done(outcome)
+    evaluation.Conclude(#(reason, meta, env, k) as debug, resume) -> {
+      let continue = fn(outcome) {
+        case outcome {
+          Ok(value) -> {
+            use outcome <- evaluation.then(apply_policy(
+              evaluation.await(block.resume(value, env, k)),
+              policy,
+              cwd,
+            ))
+            apply_policy(resume(outcome), policy, cwd)
+          }
+          Error(debug) -> apply_policy(resume(Error(debug)), policy, cwd)
+        }
+      }
+      case reason {
+        break.UnhandledEffect(label, lift) -> {
+          use action <- evaluation.then(decide_host(
+            policy,
+            label,
+            lift,
+            meta,
+            cwd,
+          ))
+          case action {
+            Perform(_, input) ->
+              evaluation.Conclude(
+                #(break.UnhandledEffect(label, input), meta, env, state.Empty),
+                continue,
+              )
+            Resume(value) -> continue(Ok(value))
+            Failed(debug) -> apply_policy(resume(Error(debug)), policy, cwd)
+            Unavailable -> apply_policy(resume(Error(debug)), policy, cwd)
+          }
+        }
+        break.UndefinedReference(_) ->
+          evaluation.Conclude(#(reason, meta, env, state.Empty), continue)
+        _ -> apply_policy(resume(Error(debug)), policy, cwd)
+      }
+    }
+  }
 }
 
 /// Decide an effect using the host's pure evaluator. The host owns reference
