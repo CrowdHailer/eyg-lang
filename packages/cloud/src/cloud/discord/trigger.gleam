@@ -59,7 +59,7 @@ fn prepare_discord(code, state, policy: execute.Policy) {
       let #(value, state) =
         execute.pure(
           evaluation.await(expression.execute(source, []))
-            |> evaluation.map(result.map_error(_, string.inspect)),
+            |> evaluation.map(result.map_error(_, execute.describe_debug)),
           state,
         )
       use value <- result.map(value)

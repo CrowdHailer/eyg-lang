@@ -67,7 +67,7 @@ fn prepare_function(code, event_type, return_type, state) {
       let #(value, state) =
         execute.pure(
           evaluation.await(expression.execute(source, []))
-            |> evaluation.map(result.map_error(_, string.inspect)),
+            |> evaluation.map(result.map_error(_, execute.describe_debug)),
           state,
         )
       use value <- result.map(value)
