@@ -35,7 +35,6 @@ import touch_grass/cryptography/hash
 import touch_grass/decode_json
 import touch_grass/env
 import touch_grass/fetch
-import touch_grass/file_system as filesystem_request
 import touch_grass/file_system/append_file
 import touch_grass/file_system/delete_file
 import touch_grass/file_system/make_directory
@@ -110,11 +109,7 @@ pub fn load_policy(
     Ok(source) -> {
       let #(analysis, state) = check_loop(policy.check(source, template), state)
       case infer.all_errors(analysis) {
-        [] ->
-          case execute_loop(policy.prepare_source(source, template), state) {
-            Ok(policy) -> #(Ok(policy), state)
-            Error(reason) -> #(Error(reason), state)
-          }
+        [] -> execute_loop(policy.prepare_source(source, template), state)
         errors -> #(Error(type_errors(errors)), state)
       }
     }
@@ -124,7 +119,7 @@ pub fn load_policy(
 // TODO this will replace loop
 fn execute_loop(return, state) {
   case return {
-    evaluation.Done(value) -> value
+    evaluation.Done(value) -> #(value, state)
     evaluation.Conclude(break:, resume:) -> {
       let #(next, state) = pure_loop(Error(break), state)
       execute_loop(resume(next), state)
@@ -225,7 +220,8 @@ fn loop(returned, state: State, policy, root, emit, output) {
   case returned {
     Ok(#(value, _scope)) -> #(Ok(value), state, root, output)
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
-      let #(action, state) = decide(policy, label, lift, meta, state)
+      let #(action, state) =
+        execute_loop(policy.decide_host(policy, label, lift, meta, "/"), state)
       let #(outcome, root, output) = case action {
         policy.Perform(interface, input) -> {
           let #(outcome, root) = case interface.decode(input) {
@@ -272,29 +268,6 @@ fn loop(returned, state: State, policy, root, emit, output) {
       root,
       output,
     )
-  }
-}
-
-fn decide(policy, label, lift, meta, state) {
-  case filesystem_request.resolve_input(option.Some("/"), label, lift) {
-    Error(Nil) -> #(
-      policy.Resume(
-        v.error(v.String(simplifile.describe_error(simplifile.Einval))),
-      ),
-      state,
-    )
-    Ok(input) ->
-      policy.decide(
-        policy,
-        label,
-        input,
-        meta,
-        fn(returned, then) {
-          let #(result, state) = pure_loop(returned, state)
-          #(then(result), state)
-        },
-        fn(action) { #(action, state) },
-      )
   }
 }
 
