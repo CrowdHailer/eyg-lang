@@ -16,8 +16,6 @@ import eyg/cli/internal/terminal
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
-import eyg/interpreter/cast
-import eyg/interpreter/simple_debug
 import eyg/interpreter/state
 import eyg/interpreter/value
 import eyg/ir/tree as ir
@@ -136,7 +134,6 @@ pub fn setup(
     cwd,
     context,
     state,
-    check.allway_pass_gate,
   ))
   use Nil <- try(
     case errors {
@@ -451,47 +448,9 @@ fn type_check(session: Session(_), source, eyg_state) {
     session.cwd,
     context,
     eyg_state,
-    import_gate(session.policy, source.1, session.cwd),
     // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
   ))
   errors
-}
-
-/// The ReadFile request a relative import of `path` is decided by.
-fn import_request(path) {
-  value.Record(
-    dict.from_list([
-      #("path", value.String(path)),
-      #("offset", value.Integer(0)),
-      #("limit", value.Integer(100_000_000)),
-    ]),
-  )
-}
-
-/// Decide the agent's relative imports when type checking, as they are decided when it runs.
-/// Policies are pure so asking the ReadFile gate performs no effects.
-fn import_gate(
-  policy: policy.Policy(harness_computer.Effect, source.Location),
-  meta: source.Location,
-  cwd: String,
-) {
-  fn(path, state) {
-    use #(decided, state) <- system.map(decide(
-      policy,
-      "ReadFile",
-      import_request(path),
-      meta,
-      state,
-      cwd,
-    ))
-    let path = case decided {
-      policy.Perform(_, modified) ->
-        cast.field("path", cast.as_string, modified)
-        |> result.replace_error(Nil)
-      policy.Resume(_) | policy.Failed(_) | policy.Unavailable -> Error(Nil)
-    }
-    #(path, state)
-  }
 }
 
 /// This is a replacement for execute.loop because of the policy
@@ -547,7 +506,6 @@ fn loop(
             reference,
             meta,
             state,
-            policy,
             cwd,
           ))
           case result {
@@ -605,7 +563,7 @@ fn decide_resolved(policy, label, lift, meta, state) {
 // Resolve imports before asking the ReadFile gate, matching type checking.
 // This is lookup_reference_value there is a separate lookup_reference_type
 // is it worth loam/execute.lookup_relative handling a policy, maybe if eval and spawn is included.
-fn lookup_reference(reference, meta: source.Location, state, policy, cwd) {
+fn lookup_reference(reference, meta: source.Location, state, cwd) {
   case reference {
     ir.Relative(path) -> {
       let resolved =
@@ -614,60 +572,15 @@ fn lookup_reference(reference, meta: source.Location, state, policy, cwd) {
         result.replace_error(resolved, break.UndefinedReference(reference)),
         state,
       )
-      let request = import_request(path)
-      use #(decided, state) <- system.then(decide(
-        policy,
-        "ReadFile",
-        request,
-        meta,
-        state,
-        cwd,
-      ))
 
-      case decided {
-        policy.Perform(_, modified) ->
-          case cast.field("path", cast.as_string, modified) {
-            Ok(path) ->
-              execute.lookup_relative(
-                path,
-                meta.origin,
-                state,
-                fn(reference, meta, state) {
-                  // lookup reference in overlay accepts the policy
-                  lookup_reference(reference, meta, state, policy, cwd)
-                },
-              )
-            Error(reason) -> system.Done(#(Error(reason), state))
-          }
-        policy.Resume(value.Tagged("Error", reason)) ->
-          system.Done(#(
-            Error(break.UnhandledEffect(
-              "Abort",
-              value.String(
-                "import of "
-                <> path
-                <> " denied by policy: "
-                <> simple_debug.inspect(reason),
-              ),
-            )),
-            state,
-          ))
-        policy.Resume(returned) ->
-          system.Done(#(
-            Error(break.IncorrectTerm(
-              "Pass(request) or Mock(Error(reason)) for an import",
-              returned,
-            )),
-            state,
-          ))
-        policy.Failed(#(reason, _, _, _)) ->
-          system.Done(#(Error(reason), state))
-        policy.Unavailable ->
-          system.Done(#(
-            Error(break.UnhandledEffect("ReadFile", request)),
-            state,
-          ))
-      }
+      execute.lookup_relative(
+        path,
+        meta.origin,
+        state,
+        fn(reference, meta, state) {
+          lookup_reference(reference, meta, state, cwd)
+        },
+      )
     }
     _ -> execute.lookup(reference, meta.origin, state)
   }
