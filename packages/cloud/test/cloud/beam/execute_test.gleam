@@ -177,3 +177,18 @@ pub fn secrets_are_answered_by_the_caller_test() {
   let state = execute.State(..state, secrets: dict.from_list([#("KEY", "x")]))
   assert execute.Secret(Some("x")) == execute.perform(execute.Env("KEY"), state)
 }
+
+// A program from the structural editor is checked like code, an unfinished program does not run.
+pub fn a_program_is_checked_test() {
+  let state = state()
+  let assert Ok(root) = execute.files(file_system.empty(), state)
+  let program = #(
+    ir.Let("x", #(ir.Integer(1), Nil), #(ir.Variable("x"), Nil)),
+    Nil,
+  )
+  let assert execute.Finished(Ok("1"), _, _, _) =
+    execute.program(program, state, dict.new(), root, fn(_) { Nil })
+  let unfinished = #(ir.Let("x", #(ir.Integer(1), Nil), #(ir.Vacant, Nil)), Nil)
+  let assert execute.Finished(Error("code incomplete"), _, _, _) =
+    execute.program(unfinished, state, dict.new(), root, fn(_) { Nil })
+}

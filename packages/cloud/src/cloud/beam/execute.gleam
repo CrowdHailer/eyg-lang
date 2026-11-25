@@ -238,41 +238,54 @@ pub fn run(
   root: v1.Cid,
   emit: fn(Output) -> Nil,
 ) -> Run(String) {
-  let scope = []
   case source.parse(code, source.Inline) {
     Error(reason) -> Finished(Error(reason), state, root, [])
-    Ok(source) -> {
-      use state, modules <- checked(source, policy, state, root)
-      use outcome, state, root, output <- then(
-        outer_loop(
-          policy.apply_policy(
-            evaluation.await(block.execute(source, scope)),
-            policy,
-            "/",
-          )
-            |> evaluation.map(result.map_error(_, describe_debug)),
-          state,
-          root,
-          fn(effect, _label, state, root) {
-            perform_effect(effect, state, root, emit)
-          },
-          fn(location, meta, _state, _root) {
-            imported(modules, location, meta)
-          },
-          [],
-        ),
-      )
-      Finished(
-        result.map(outcome, fn(value) {
-          let #(value, _scope) = value
-          value |> option.map(agent.inspect_result) |> option.unwrap("")
-        }),
-        state,
-        root,
-        output,
-      )
-    }
+    Ok(source) -> run_source(source, state, policy, root, emit)
   }
+}
+
+/// Run a program that was built rather than written, such as in a structural editor.
+pub fn program(
+  source: ir.Node(Nil),
+  state: State,
+  policy: Policy,
+  root: v1.Cid,
+  emit: fn(Output) -> Nil,
+) -> Run(String) {
+  let meta = source.Location(source.Inline, source.Json)
+  ir.map_annotation(source, fn(_) { meta })
+  |> run_source(state, policy, root, emit)
+}
+
+/// Code is run as a block, it can end without a value.
+fn run_source(source, state, policy, root, emit) {
+  use state, modules <- checked(source, policy, state, root)
+  use outcome, state, root, output <- then(
+    outer_loop(
+      policy.apply_policy(
+        evaluation.await(block.execute(source, [])),
+        policy,
+        "/",
+      )
+        |> evaluation.map(result.map_error(_, describe_debug)),
+      state,
+      root,
+      fn(effect, _label, state, root) {
+        perform_effect(effect, state, root, emit)
+      },
+      fn(location, meta, _state, _root) { imported(modules, location, meta) },
+      [],
+    ),
+  )
+  Finished(
+    result.map(outcome, fn(value) {
+      let #(value, _scope) = value
+      value |> option.map(agent.inspect_result) |> option.unwrap("")
+    }),
+    state,
+    root,
+    output,
+  )
 }
 
 /// Type check code before it runs, with the effects the policy offers.
