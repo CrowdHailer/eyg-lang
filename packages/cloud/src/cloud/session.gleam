@@ -116,7 +116,7 @@ fn handle_session(state: State, id, action, print) {
   let #(history, execute_state, root) = case action {
     Code(code) -> {
       let #(outcome, execute_state, root, _) =
-        execute.block(code, state.execute_state, state.policy, root, print)
+        execute.run(code, state.execute_state, state.policy, root, print)
       case outcome {
         Ok(value) -> print(execute.StandardOut(value))
         Error(reason) -> print(execute.StandardError(reason))

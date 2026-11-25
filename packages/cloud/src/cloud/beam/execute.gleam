@@ -143,18 +143,6 @@ fn check_loop(step, state: State) {
   }
 }
 
-pub fn block(
-  code: String,
-  state: State,
-  policy: Policy,
-  root: v1.Cid,
-  emit: fn(Output) -> Nil,
-) -> #(Result(String, String), State, v1.Cid, List(String)) {
-  evaluate(code, [], simple_debug.inspect, state, policy, root, emit)
-}
-
-/// Execute an agent tool with fresh context and capture output for the model.
-/// TODO I think the agent can use block execute as well.
 pub fn run(
   code: String,
   state: State,
@@ -162,18 +150,7 @@ pub fn run(
   root: v1.Cid,
   emit: fn(Output) -> Nil,
 ) -> #(Result(String, String), State, v1.Cid, List(String)) {
-  evaluate(
-    code,
-    [#("context", v.unit())],
-    agent.inspect_result,
-    state,
-    policy,
-    root,
-    emit,
-  )
-}
-
-fn evaluate(code, scope, inspect, state, policy, root, emit) {
+  let scope = []
   case source.parse(code, source.Inline) {
     Error(reason) -> #(Error(reason), state, root, [])
     Ok(source) -> {
@@ -181,7 +158,7 @@ fn evaluate(code, scope, inspect, state, policy, root, emit) {
         loop(block.execute(source, scope), state, policy, root, emit, [])
       #(
         result.map(outcome, fn(value) {
-          value |> option.map(inspect) |> option.unwrap("")
+          value |> option.map(agent.inspect_result) |> option.unwrap("")
         }),
         state,
         root,
