@@ -93,6 +93,9 @@ pub type Answer {
   Number(Int)
   Flipped(Bool)
   Slept
+  /// The box rejected the files changed before the wait, so they were discarded.
+  /// Code that waited fails with the reason.
+  Rejected(String)
 }
 
 /// Code runs until it finishes or waits for the answer to an effect.
@@ -148,6 +151,8 @@ fn answer_to_value(answer) {
     Number(number) -> v.Integer(number)
     Flipped(value) -> flip.encode(value)
     Slept -> sleep.encode(Nil)
+    // Code that waited fails when its changes are rejected, see `outer_loop`.
+    Rejected(_) -> v.unit()
   }
 }
 
@@ -505,7 +510,17 @@ fn outer_loop(
             Error(reason) -> Finished(Error(reason), state, context, output)
             Ok(Waits(wait)) ->
               Waiting(wait, state, context, fn(answer, state, context) {
-                continue(Ok(answer_to_value(answer)), state, context, output)
+                case answer {
+                  Rejected(reason) ->
+                    Finished(Error(reason), state, context, output)
+                  _ ->
+                    continue(
+                      Ok(answer_to_value(answer)),
+                      state,
+                      context,
+                      output,
+                    )
+                }
               })
             Ok(Answers(value, context)) -> {
               let output = case effect {

@@ -74,6 +74,13 @@ pub fn resume_with_another_root_test() {
   assert "Ok(Binary(1 bytes): Yg==)" == value
 }
 
+pub fn code_fails_when_its_changes_are_rejected_test() {
+  let assert execute.Waiting(execute.Random(10), state, root, resume) =
+    start("let _ = " <> write <> "\nperform Random(10)")
+  let assert execute.Finished(Error("conflict"), _, _, _) =
+    resume(execute.Rejected("conflict"), state, root)
+}
+
 pub fn complete_performs_effects_test() {
   let assert #(Ok("{}"), _, _, _) =
     start(
