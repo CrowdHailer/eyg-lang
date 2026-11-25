@@ -16,6 +16,14 @@ To run Gleam with the same configuration:
 (set -a; source .env.local; set +a; gleam run)
 ```
 
+### Tests
+
+Tests read and write blocks in the local S3.
+
+```sh
+(set -a; source .env.local; set +a; gleam test)
+```
+
 ### S3 storage
 
 S3 from railway.com is the backend for the content addressible storage (CAS).

@@ -68,6 +68,8 @@ pub type State {
     cache: cache.Cache(source.Location),
     secrets: Dict(String, String),
     bucket: config.S3Bucket,
+    // The module each package reference resolved to when the code was checked, the code runs with it.
+    pins: Dict(ir.Reference, v1.Cid),
   )
 }
 
@@ -147,6 +149,7 @@ pub fn run(
   case source.parse(code, source.Inline) {
     Error(reason) -> #(Error(reason), state, root, [])
     Ok(source) -> {
+      use state <- checked(source, policy, state, root)
       let #(outcome, state, root, output) =
         outer_loop(
           policy.apply_policy(
@@ -172,6 +175,21 @@ pub fn run(
         output,
       )
     }
+  }
+}
+
+/// Type check code before it runs, with the effects the policy offers.
+/// Each package it refers to is pinned to the module it resolves to, so it runs with the modules it was checked with.
+fn checked(source, policy: Policy, state, root, then) {
+  let effects =
+    dict.values(policy)
+    |> list.map(fn(entry) { entry.interface })
+    |> interface.types
+  let context = infer.pure() |> infer.with_effects(effects)
+  let #(analysis, state) = check_loop(infer.check(context, source), state)
+  case infer.all_errors(analysis) {
+    [] -> then(state)
+    errors -> #(Error(type_errors(errors)), state, root, [])
   }
 }
 
@@ -374,13 +392,26 @@ pub fn files(effect: mfs.Effect(a), state: State) -> Result(a, String) {
   }
 }
 
+/// A reference to a package is pinned to the module it resolves to.
 pub fn lookup(
   reference: ir.Reference,
   state: State,
-) -> #(
-  Result(cache.Module(source.Location), String),
-  cache.Cache(source.Location),
-) {
+) -> #(Result(cache.Module(source.Location), String), State) {
+  case dict.get(state.pins, reference) {
+    Ok(cid) -> lookup(ir.Content(cid), state)
+    Error(Nil) -> {
+      let #(module, cache, cid) = resolve_reference(reference, state)
+      let pins = case reference, cid {
+        ir.Package(..), Ok(cid) | ir.Version(..), Ok(cid) ->
+          dict.insert(state.pins, reference, cid)
+        _, _ -> state.pins
+      }
+      #(module, State(..state, cache:, pins:))
+    }
+  }
+}
+
+fn resolve_reference(reference, state: State) {
   let refresh = case reference {
     ir.Content(_) | ir.Relative(_) -> False
     _ -> True
@@ -403,8 +434,8 @@ pub fn lookup(
     ir.Relative(_) -> Error(Nil)
   }
   case cid, cache.cursor_status {
-    _, cache.PullFailed(reason) if refresh -> #(Error(reason), cache)
-    Error(Nil), _ -> #(Error(missing), cache)
+    _, cache.PullFailed(reason) if refresh -> #(Error(reason), cache, Error(Nil))
+    Error(Nil), _ -> #(Error(missing), cache, Error(Nil))
     Ok(cid), _ -> {
       let cache = flush(cache.fetch(cache, cid), state.origin)
       let module = case cache.get_module(cache, cid) {
@@ -413,28 +444,32 @@ pub fn lookup(
         Error(cache.Invalid(reason)) -> Error(simple_debug.describe(reason))
         Error(_) -> Error(missing)
       }
-      #(module, cache)
+      #(module, cache, result.replace_error(module, Nil) |> result.replace(cid))
     }
   }
 }
 
-/// The type of a published module.
+/// The type of a published module, checking code pins the packages it refers to.
 pub fn lookup_type(reference: ir.Reference, state: State) {
-  let #(module, cache) = lookup(reference, state)
-  let type_ =
-    module
-    |> result.map(fn(m) { m.type_ })
-
-  #(type_, State(..state, cache:))
+  let #(module, state) = lookup(reference, state)
+  #(result.map(module, fn(m) { m.type_ }), state)
 }
 
+/// The value of a published module, a package must have been pinned when the code was checked.
 pub fn lookup_value(reference: ir.Reference, state: State) {
-  let #(module, cache) = lookup(reference, state)
-  let value =
-    module
-    |> result.map(fn(m) { m.value })
-
-  #(value, State(..state, cache:))
+  case reference, dict.get(state.pins, reference) {
+    ir.Package(..), Error(Nil) | ir.Version(..), Error(Nil) -> #(
+      Error(
+        simple_debug.describe(break.UndefinedReference(reference))
+        <> ", not pinned",
+      ),
+      state,
+    )
+    _, _ -> {
+      let #(module, state) = lookup(reference, state)
+      #(result.map(module, fn(m) { m.value }), state)
+    }
+  }
 }
 
 fn flush(

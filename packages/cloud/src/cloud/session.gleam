@@ -66,7 +66,13 @@ pub fn start_with_session(
     execute.load_policy(
       code,
       source.Host("policy.eyg"),
-      execute.State(origin: hub, cache: cache.ready(), secrets:, bucket:),
+      execute.State(
+        origin: hub,
+        cache: cache.ready(),
+        secrets:,
+        bucket:,
+        pins: dict.new(),
+      ),
       execute.template(),
     )
   let assert Ok(policy) = policy

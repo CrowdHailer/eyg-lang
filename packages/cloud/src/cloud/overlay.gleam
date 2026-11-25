@@ -1,4 +1,4 @@
-//// The cloud adapter for Overlay's sequential completion/tool loop.
+//// The cloud adapter for Overlay's completion and tool loop.
 
 import cloud/beam/execute
 import cloud/system

@@ -44,7 +44,13 @@ pub fn setup(bucket) {
   }
 
   let state =
-    execute.State(origin: hub, cache: cache.ready(), secrets:, bucket:)
+    execute.State(
+      origin: hub,
+      cache: cache.ready(),
+      secrets:,
+      bucket:,
+      pins: dict.new(),
+    )
   #(state, llm)
 }
 
