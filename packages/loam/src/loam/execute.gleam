@@ -3,6 +3,7 @@
 import eyg/hub/cache.{type Cache}
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/evaluation
 import eyg/interpreter/expression
 import eyg/interpreter/simple_debug
 import eyg/interpreter/state
@@ -47,7 +48,8 @@ pub type State {
 }
 
 pub fn block(source, scope, state) {
-  loop(block.execute(source, scope), state)
+  let m = evaluation.await(block.execute(source, scope))
+  loop(m, state)
 }
 
 /// Rebuild a failed reason back into full debug information
@@ -66,35 +68,51 @@ pub fn try_await(
 }
 
 pub fn loop(
-  return: Result(#(Option(Value), Scope), Debug),
+  return: evaluation.Evaluation(_, _, source.Location),
   state: State,
 ) -> system.Effect(#(Result(#(Option(Value), Scope), Debug), State)) {
   case return {
-    Ok(return) -> system.Done(#(Ok(return), state))
-    Error(#(reason, meta, env, k)) ->
-      case reason {
+    evaluation.Done(return) -> system.Done(#(return, state))
+    evaluation.Conclude(#(reason, meta, env, k), resume) -> {
+      use #(outcome, state) <- system.then(case reason {
         break.UnhandledEffect(label, lift) ->
           case computer.cast(label, lift) {
             Ok(effect) -> {
-              use value <- system.then(computer.extrinsic(effect, meta.origin))
-              loop(block.resume(value, env, k), state)
+              use value <- system.map(computer.extrinsic(effect, meta.origin))
+              #(
+                evaluation.then(
+                  evaluation.await(block.resume(value, env, k)),
+                  resume,
+                ),
+                state,
+              )
             }
 
             Error(reason) ->
-              system.Done(#(Error(#(reason, meta, env, k)), state))
+              system.Done(#(resume(Error(#(reason, meta, env, k))), state))
           }
         break.UndefinedReference(reference) -> {
-          use value, state <- try_await(
-            lookup(reference, meta.origin, state),
-            meta,
-            env,
-            k,
-          )
-          loop(block.resume(value, env, k), state)
+          use #(result, state) <- system.map(lookup(
+            reference,
+            meta.origin,
+            state,
+          ))
+          case result {
+            Ok(value) -> #(
+              evaluation.then(
+                evaluation.await(block.resume(value, env, k)),
+                resume,
+              ),
+              state,
+            )
+            Error(reason) -> #(resume(Error(#(reason, meta, env, k))), state)
+          }
         }
 
-        _ -> system.Done(#(Error(#(reason, meta, env, k)), state))
-      }
+        _ -> system.Done(#(resume(Error(#(reason, meta, env, k))), state))
+      })
+      loop(outcome, state)
+    }
   }
 }
 
