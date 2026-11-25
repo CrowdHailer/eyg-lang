@@ -5,6 +5,7 @@ import cloud/server
 import eyg/hub/cache
 import eyg/interpreter/evaluation
 import eyg/interpreter/expression
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import gleam/dict
 import gleam/erlang/process
@@ -198,4 +199,11 @@ pub fn a_program_is_checked_test() {
   let unfinished = #(ir.Let("x", #(ir.Integer(1), Nil), #(ir.Vacant, Nil)), Nil)
   let assert execute.Finished(Error("code incomplete"), _, _, _) =
     execute.program(unfinished, state, dict.new(), root, fn(_) { Nil })
+}
+
+pub fn the_value_of_a_module_test() {
+  let state = state()
+  let root =
+    files([#("/lib/a.eyg", "import \"./b.eyg\""), #("/lib/b.eyg", "2")], state)
+  let assert #(Ok(v.Integer(2)), _) = execute.module("/lib/a.eyg", state, root)
 }

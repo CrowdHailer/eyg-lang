@@ -542,6 +542,40 @@ fn outer_loop(
   }
 }
 
+/// The value of the module at the absolute `path`, it can import other modules and do nothing else.
+/// Its imports are loaded and checked first, and the packages it refers to are pinned.
+pub fn module(path: String, state: State, root: v1.Cid) {
+  let reference = #(
+    ir.Reference(ir.Relative(path)),
+    source.Location(source.Inline, source.Json),
+  )
+  let checking = infer.check(infer.pure(), reference)
+  case check_imports(checking, option.Some("/"), [], state, root, dict.new()) {
+    Error(reason) -> #(Error(reason), state)
+    Ok(#(_analysis, state, modules)) -> {
+      let modules = dict.map_values(modules, fn(_, module) { module.1 })
+      evaluation.await(expression.execute(reference, []))
+      |> evaluation.map(result.map_error(_, describe_debug))
+      |> outer_loop(
+        state,
+        root,
+        fn(_effect, label, _, _) {
+          Error(describe_reason(break.UnhandledEffect(label, v.unit())))
+        },
+        fn(location, meta, _state, _root) { imported(modules, location, meta) },
+        [],
+      )
+      |> fn(run) {
+        case run {
+          Finished(outcome, state, _, _) -> #(outcome, state)
+          // A pure evaluation performs no effects so never waits.
+          Waiting(state:, ..) -> #(Error("a pure evaluation waited"), state)
+        }
+      }
+    }
+  }
+}
+
 /// Drive an evaluation with reference resolution, rejecting host effects.
 pub fn pure(returned, state: State) {
   case
