@@ -199,5 +199,5 @@ pub fn invalid_filesystem_paths_return_an_effect_error_test() {
       state,
     )
     |> sandbox.run(sandbox)
-  assert reason == "invalid relative path outside filesystem"
+  assert reason == "invalid path"
 }

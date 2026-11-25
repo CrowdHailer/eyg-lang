@@ -16,15 +16,14 @@ import eyg/cli/internal/terminal
 import eyg/hub/cache
 import eyg/interpreter/block
 import eyg/interpreter/break
+import eyg/interpreter/evaluation
+import eyg/interpreter/expression
 import eyg/interpreter/state
-import eyg/interpreter/value
-import eyg/ir/tree as ir
 import gleam/dict
 import gleam/http/response
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/pair
-import gleam/result
 import gleam/string
 import gleam_community/ansi
 import loam/execute
@@ -38,7 +37,6 @@ import overlay/llm/chat
 import overlay/llm/provider
 import overlay/llm/tool
 import overlay/tools/run
-import touch_grass/file_system
 import touch_grass/harness/computer as harness_computer
 import touch_grass/interface
 import touch_grass/policy
@@ -411,21 +409,19 @@ pub fn check_and_execute(
         [] -> {
           let scope = [#("context", session.context.value)]
 
-          use #(result, state, output) <- system.map(
-            loop(
-              block.execute(source, scope),
-              eyg_state,
-              session.policy,
-              session.cwd,
-              [],
-            ),
-          )
+          let work =
+            block.execute(source, scope)
+            |> evaluation.await
+            |> policy.apply_policy(session.policy, session.cwd)
+            |> execute.loop(eyg_state, expression.resume)
+          use #(result, state) <- system.map(work)
           let result = case result {
             Ok(value) -> Ok(value)
             Error(#(reason, location, _env, k)) ->
               Error(execute.render_error(reason, location, k, session.cwd))
           }
-          #(result, state, output)
+          // "TODO capture logs with a pure middleware like apply policy",
+          #(result, state, [])
         }
         _errors -> system.Done(#(Error("type error"), eyg_state, []))
       }
@@ -451,139 +447,6 @@ fn type_check(session: Session(_), source, eyg_state) {
     // Don't use check_from instead expose the lookup function from check so reference lookup is reusable.
   ))
   errors
-}
-
-/// This is a replacement for execute.loop because of the policy
-/// In the future a unrestrained harness can have a rule of unrestrained for all interfaces
-fn loop(
-  return: Result(_, execute.Debug),
-  state: execute.State,
-  policy: policy.Policy(_, _),
-  cwd: String,
-  output: List(String),
-) -> system.Effect(#(Result(_, execute.Debug), execute.State, List(String))) {
-  case return {
-    Ok(return) -> system.Done(#(Ok(return), state, output))
-    Error(#(reason, meta, env, k)) ->
-      case reason {
-        break.UnhandledEffect(label, lift) -> {
-          use #(decided, state) <- system.then(decide(
-            policy,
-            label,
-            lift,
-            meta,
-            state,
-            cwd,
-          ))
-          case decided {
-            // This could return just the decoded value but that would require keeping meta data for the full debug state.
-            policy.Perform(interface, modified) ->
-              case interface.decode(modified) {
-                Ok(effect) -> {
-                  let effect = computer.extrinsic(effect, meta.origin)
-                  // Capture the actual write after policy transformation while
-                  // still forwarding it to the terminal.
-                  let output = case effect {
-                    system.WriteStdout(text, _) -> [text, ..output]
-                    system.WriteStderr(text, _) -> [text, ..output]
-                    _ -> output
-                  }
-                  use value <- system.then(effect)
-                  loop(block.resume(value, env, k), state, policy, cwd, output)
-                }
-                Error(reason) ->
-                  system.Done(#(Error(#(reason, meta, env, k)), state, output))
-              }
-            policy.Resume(returned) ->
-              loop(block.resume(returned, env, k), state, policy, cwd, output)
-            policy.Failed(debug) -> system.Done(#(Error(debug), state, output))
-            policy.Unavailable ->
-              system.Done(#(Error(#(reason, meta, env, k)), state, output))
-          }
-        }
-        break.UndefinedReference(reference) -> {
-          use #(result, state) <- system.then(lookup_reference(
-            reference,
-            meta,
-            state,
-            cwd,
-          ))
-          case result {
-            Ok(value) ->
-              loop(block.resume(value, env, k), state, policy, cwd, output)
-            Error(reason) ->
-              system.Done(#(Error(#(reason, meta, env, k)), state, output))
-          }
-        }
-
-        _ -> system.Done(#(Error(#(reason, meta, env, k)), state, output))
-      }
-  }
-}
-
-/// Call the gate with absolute filesystem paths. Policy redirects must also
-/// use absolute paths. Unchecked effects are always performed.
-fn decide(
-  policy: policy.Policy(harness_computer.Effect, source.Location),
-  label: String,
-  lift: execute.Value,
-  meta: source.Location,
-  state: execute.State,
-  cwd: String,
-) -> system.Effect(
-  #(policy.Action(source.Location, harness_computer.Effect), execute.State),
-) {
-  case file_system.resolve_input(source.base(meta.origin, cwd), label, lift) {
-    Ok(lift) -> decide_resolved(policy, label, lift, meta, state)
-    // Path resolution failures are ordinary filesystem effect errors.
-    Error(Nil) ->
-      system.Done(#(
-        policy.Resume(
-          value.error(value.String("invalid relative path outside filesystem")),
-        ),
-        state,
-      ))
-  }
-}
-
-fn decide_resolved(policy, label, lift, meta, state) {
-  policy.decide(
-    policy,
-    label,
-    lift,
-    meta,
-    fn(returned, then) {
-      use #(result, state) <- system.map(execute.pure_loop(returned, state))
-      #(then(result), state)
-    },
-    fn(action) { system.Done(#(action, state)) },
-  )
-}
-
-// Resolve imports before asking the ReadFile gate, matching type checking.
-// This is lookup_reference_value there is a separate lookup_reference_type
-// is it worth loam/execute.lookup_relative handling a policy, maybe if eval and spawn is included.
-fn lookup_reference(reference, meta: source.Location, state, cwd) {
-  case reference {
-    ir.Relative(path) -> {
-      let resolved =
-        file_system.resolve_path(source.base(meta.origin, cwd), path)
-      use path <- try(
-        result.replace_error(resolved, break.UndefinedReference(reference)),
-        state,
-      )
-
-      execute.lookup_relative(
-        path,
-        meta.origin,
-        state,
-        fn(reference, meta, state) {
-          lookup_reference(reference, meta, state, cwd)
-        },
-      )
-    }
-    _ -> execute.lookup(reference, meta.origin, state)
-  }
 }
 
 // Only deterministic computations over supplied values bypass policy.

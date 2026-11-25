@@ -48,8 +48,8 @@ pub type State {
 }
 
 pub fn block(source, scope, state) {
-  let m = evaluation.await(block.execute(source, scope))
-  loop(m, state)
+  evaluation.await(block.execute(source, scope))
+  |> loop(state, block.resume)
 }
 
 /// Rebuild a failed reason back into full debug information
@@ -68,9 +68,10 @@ pub fn try_await(
 }
 
 pub fn loop(
-  return: evaluation.Evaluation(_, _, source.Location),
+  return: evaluation.Evaluation(a, b, source.Location),
   state: State,
-) -> system.Effect(#(Result(#(Option(Value), Scope), Debug), State)) {
+  resume_interpreter: fn(Value, Env, Stack) -> Result(b, Debug),
+) -> system.Effect(#(a, State)) {
   case return {
     evaluation.Done(return) -> system.Done(#(return, state))
     evaluation.Conclude(#(reason, meta, env, k), resume) -> {
@@ -81,7 +82,7 @@ pub fn loop(
               use value <- system.map(computer.extrinsic(effect, meta.origin))
               #(
                 evaluation.then(
-                  evaluation.await(block.resume(value, env, k)),
+                  evaluation.await(resume_interpreter(value, env, k)),
                   resume,
                 ),
                 state,
@@ -100,7 +101,7 @@ pub fn loop(
           case result {
             Ok(value) -> #(
               evaluation.then(
-                evaluation.await(block.resume(value, env, k)),
+                evaluation.await(resume_interpreter(value, env, k)),
                 resume,
               ),
               state,
@@ -111,7 +112,7 @@ pub fn loop(
 
         _ -> system.Done(#(resume(Error(#(reason, meta, env, k))), state))
       })
-      loop(outcome, state)
+      loop(outcome, state, resume_interpreter)
     }
   }
 }
