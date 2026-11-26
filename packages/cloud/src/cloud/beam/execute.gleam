@@ -262,8 +262,8 @@ pub fn pure(returned, state: State) {
       returned,
       state,
       Nil,
-      fn(_effect, _, _, _) {
-        #(Error(describe_reason(break.UnhandledEffect("TODO", v.unit()))), Nil)
+      fn(_effect, label, _, _) {
+        #(Error(describe_reason(break.UnhandledEffect(label, v.unit()))), Nil)
       },
       [],
     )

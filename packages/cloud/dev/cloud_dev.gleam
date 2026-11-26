@@ -1,6 +1,6 @@
 import argv
-import cloud
 import cloud/discord/api/client as discord
+import cloud/old
 import cloud/schedule
 import cloud/schedules
 import cloud/session
@@ -21,7 +21,7 @@ pub fn main() {
 fn do_main(args) {
   case args {
     ["cron", name] -> {
-      let #(state, llm) = cloud.setup()
+      let #(state, llm) = old.setup()
       let assert Ok(#(schedules, state)) = schedules.load(state)
       let assert Ok(runtime) = schedule.runtime(state)
       let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
