@@ -27,6 +27,9 @@ overlay_llm = { path = "../overlay_llm" }
 simplifile = ">= 2.7.0 and < 3.0.0"
 touch_grass = { path = "../touch_grass" }
 unixfs = { path = "../unixfs" }
+pog = ">= 4.1.0 and < 5.0.0"
+wisp = ">= 2.2.2 and < 3.0.0"
+mist = ">= 6.0.3 and < 7.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
