@@ -1,8 +1,6 @@
-import cloud/apex/context
-import wisp
+import howdy/controller
 
-pub fn route(request, _context: context.Context) {
-  case request {
-    _ -> wisp.html_response("Nothing", 404)
-  }
+pub fn route(_context) {
+  controller.new("/")
+  |> controller.build
 }
