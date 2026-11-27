@@ -51,6 +51,7 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
     ["chats", id], http.Get -> chats.get(id, context)
     ["chats", id, "events"], http.Get -> chats.export(id, context)
     ["chats", id, "messages"], http.Post -> chats.send(ctx, id, context)
+    ["chats", id, "trace"], http.Get -> chats.trace(id, context)
     _, _ -> api.status(404)
   }
 }

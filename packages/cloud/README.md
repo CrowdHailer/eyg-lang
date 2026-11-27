@@ -80,6 +80,7 @@ There are no accounts yet, so every configured llm is available to every chat.
 | `GET /chats/:id` | The chat and its messages. |
 | `POST /chats/:id/messages` | Send `{"message": "hi"}` and wait for the `reply`, or the `error` the reply failed with. |
 | `GET /chats/:id/events` | Every entry of the chat's journal as JSON lines. |
+| `GET /chats/:id/trace` | OpenTelemetry spans for the chat, each turn, completion and tool call, as OTLP JSON. |
 | `GET /llms` | The names of the llms a chat can be with. |
 | `POST /boxes/:id/calls` | Run tool calls from an agent outside the service, `{"tool_calls": calls}` in the shape OpenAI uses, and return a tool message for each with the shell it ran in. |
 

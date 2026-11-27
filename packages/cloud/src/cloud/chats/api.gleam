@@ -8,6 +8,7 @@ import cloud/box/controller.{reason, try} as _
 import cloud/calls
 import cloud/chats/chat
 import cloud/chats/event
+import cloud/chats/trace
 import cloud/data/chats.{type Chat}
 import cloud/data/db
 import gleam/dict
@@ -82,6 +83,13 @@ pub fn export(id, context: Context) {
   |> content.Text
   |> response.set_body(response.new(200), _)
   |> response.set_header("content-type", "application/x-ndjson")
+}
+
+/// OpenTelemetry spans for the chat, its turns, completions and tool calls, as OTLP JSON.
+pub fn trace(id, context: Context) {
+  use history <- try(chat.history(context, id))
+  trace.encode(id, trace.spans(id, history))
+  |> api.json(200)
 }
 
 /// The names of the llms a chat can be with.

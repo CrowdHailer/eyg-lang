@@ -129,8 +129,9 @@ fn requests(shell, parent, entries) {
   }
 }
 
-fn span_id(shell, i) {
-  hex(<<shell:utf8, i:64>>, 8)
+/// The id of a span, from what it is part of and the entry it starts at.
+pub fn span_id(of: String, i: Int) -> String {
+  hex(<<of:utf8, i:64>>, 8)
 }
 
 fn hex(seed, bytes) {
@@ -141,7 +142,12 @@ fn hex(seed, bytes) {
 
 /// An OTLP export request with every span of the shell.
 pub fn encode(shell: String, spans: List(Span)) -> json.Json {
-  let trace = hex(<<shell:utf8>>, 16)
+  otlp(shell, "cloud/shells", spans)
+}
+
+/// An OTLP export request with the spans, the trace's id is made from `of`.
+pub fn otlp(of: String, scope: String, spans: List(Span)) -> json.Json {
+  let trace = hex(<<of:utf8>>, 16)
   json.object([
     #(
       "resourceSpans",
@@ -157,10 +163,7 @@ pub fn encode(shell: String, spans: List(Span)) -> json.Json {
             "scopeSpans",
             json.preprocessed_array([
               json.object([
-                #(
-                  "scope",
-                  json.object([#("name", json.string("cloud/shells"))]),
-                ),
+                #("scope", json.object([#("name", json.string(scope))])),
                 #("spans", json.array(spans, encode_span(trace, _))),
               ]),
             ]),
