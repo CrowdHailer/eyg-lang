@@ -66,6 +66,26 @@ The journal is only appended to: an input before each segment of code runs, with
 If the process running a turn stops, the turn is finished the next time code is sent to the shell.
 See `cloud/shells/turn.gleam` for how a turn is recorded and replayed.
 
+### Chats API
+
+A chat is a conversation with an llm about a box. The llm's tool calls run as shells,
+the code of each call is the only turn of a shell made for it, and the calls of one reply run at the same time.
+Their changes are merged into the box by the box's process, so a call whose change conflicts with another's returns the conflict.
+There are no accounts yet, so every configured llm is available to every chat.
+
+| Request | |
+| --- | --- |
+| `POST /boxes/:id/chats` | Start a chat with the llm in `{"llm": name}`. |
+| `GET /boxes/:id/chats` | The chats in the box. |
+| `GET /chats/:id` | The chat and its messages. |
+| `POST /chats/:id/messages` | Send `{"message": "hi"}` and wait for the `reply`, or the `error` the reply failed with. |
+| `GET /chats/:id/events` | Every entry of the chat's journal as JSON lines. |
+| `GET /llms` | The names of the llms a chat can be with. |
+
+Chats are durable: the journal records each message, completion and tool call result, and the shell of a call records its code.
+A chat that stopped continues from its journal, a call that was running is finished in its shell rather than run again.
+See `cloud/chats/chat.gleam`.
+
 ### Configuration
 
 ```sh

@@ -1,4 +1,4 @@
-//// The service: its database, the boxes and shells, and the server.
+//// The service: its database, the boxes, shells and chats, and the server.
 
 import cloud/apex/context.{Context}
 import cloud/apex/server
@@ -57,18 +57,22 @@ pub fn setup(bucket) {
   #(state, llm)
 }
 
-pub fn start(config: Config, state) {
+/// Chats can be with the configured llm, by the name of its model.
+pub fn start(config: Config, state, llm: provider.Llm) {
   let pool_name = process.new_name("db_pool")
   let assert Ok(policy) = simplifile.read("policy.eyg")
   let assert Ok(boxes) = registry.start()
   let assert Ok(shells) = registry.start()
+  let assert Ok(chats) = registry.start()
   let context =
     Context(
       db: db.Pool(pog.named_connection(pool_name)),
       boxes: boxes.data,
       shells: shells.data,
+      chats: chats.data,
       state:,
       policy:,
+      llms: dict.from_list([#(llm.model, llm)]),
     )
   supervisor.new(supervisor.OneForOne)
   |> supervisor.add(pool.supervised(pool_name, config.postgres))

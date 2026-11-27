@@ -17,7 +17,7 @@ import pog
 pub fn shell(context: Context) {
   let assert Ok(home) = box.create(context, Some("home"))
   let assert Ok(pog.Returned(rows: [shell], ..)) =
-    db.execute(shells.create(home.id), context.db)
+    db.execute(shells.create(home.id, shells.Anyone), context.db)
   shell
 }
 
@@ -46,7 +46,7 @@ pub fn export(context, shell: shells.Shell) {
 /// as if the shell had stopped there.
 pub fn prefix(context: Context, shell: shells.Shell, length: Int) {
   let assert Ok(pog.Returned(rows: [copy], ..)) =
-    db.execute(shells.create(shell.box), context.db)
+    db.execute(shells.create(shell.box, shells.Anyone), context.db)
   let copy_entries =
     "INSERT INTO journal (shell, box, seq, start, entry, recorded_at)
     SELECT $2, box, seq, start, entry, recorded_at FROM journal WHERE shell = $1 AND seq <= $3"

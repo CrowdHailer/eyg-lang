@@ -1,17 +1,25 @@
 //// A local HTTP server that records the requests it receives.
 //// The first request to `/slow` is held until the test releases it.
+//// It is also an llm, see `chat`.
 
 import eyg/hub/cache
 import gleam/bytes_tree
 import gleam/dict
+import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/int
+import gleam/json
+import gleam/list
+import gleam/option.{None}
 import gleam/otp/actor
+import gleam/string
 import mist
 import ogre/origin
+import overlay/llm/provider
+import overlay/llm/provider/ollama
 import touch_grass/source
 import unixfs/mfs
 
@@ -61,6 +69,10 @@ pub fn start(arrived: Subject(Subject(Nil))) -> Server {
       // The server is also a hub with no releases, packages are added to the cache directly.
       let body = case request.path {
         "/packages/pull" -> "{\"entries\":[]}"
+        "/api/chat" -> {
+          let assert Ok(request) = mist.read_body(request, 10_000_000)
+          chat(request.body)
+        }
         path -> path
       }
       response.new(200)
@@ -72,6 +84,74 @@ pub fn start(arrived: Subject(Subject(Nil))) -> Server {
     |> mist.start
   let assert Ok(port) = process.receive(started, 1000)
   Server(port, received)
+}
+
+/// The server as an Ollama llm, it does what the last message from the user says.
+/// A message `run:` followed by code blocks separated by `---` is a tool call for each block, one at a time.
+/// After the last call it answers with the result of that call.
+/// A message `all:` followed by code blocks makes every call in one completion,
+/// then answers with the results of the calls, one per line.
+/// Any other message is answered with itself and the number of messages from the user in the chat.
+pub fn llm(server: Server) {
+  provider.Llm(provider.Ollama(ollama.Config(origin(server), None)), "test")
+}
+
+fn chat(body) {
+  let message = {
+    use role <- decode.field("role", decode.string)
+    use content <- decode.field("content", decode.string)
+    decode.success(#(role, content))
+  }
+  let assert Ok(messages) =
+    json.parse_bits(body, decode.at(["messages"], decode.list(message)))
+  let #(results, earlier) =
+    list.reverse(messages) |> list.split_while(fn(m) { m.0 != "user" })
+  let assert [#(_, last), ..] = earlier
+  let results = list.filter(results, fn(m) { m.0 == "tool" })
+  let reply = fn(content, calls) {
+    json.object([
+      #(
+        "message",
+        json.object([
+          #("content", json.string(content)),
+          #("tool_calls", json.preprocessed_array(calls)),
+        ]),
+      ),
+    ])
+    |> json.to_string
+  }
+  case last {
+    "run:" <> blocks ->
+      case list.drop(string.split(blocks, "\n---\n"), list.length(results)) {
+        [code, ..] -> {
+          reply("", [call(code)])
+        }
+        [] -> {
+          let assert [#(_, result), ..] = results
+          reply(result, [])
+        }
+      }
+    "all:" <> blocks ->
+      case results {
+        [] -> reply("", list.map(string.split(blocks, "\n---\n"), call))
+        _ ->
+          list.reverse(results)
+          |> list.map(fn(result) { result.1 })
+          |> string.join("\n")
+          |> reply([])
+      }
+    message -> {
+      let count = list.count(messages, fn(m) { m.0 == "user" })
+      reply(message <> " #" <> int.to_string(count), [])
+    }
+  }
+}
+
+fn call(code) {
+  let arguments = json.object([#("code", json.string(code))])
+  let function =
+    json.object([#("name", json.string("run")), #("arguments", arguments)])
+  json.object([#("function", function)])
 }
 
 fn count(counts, method, path) {

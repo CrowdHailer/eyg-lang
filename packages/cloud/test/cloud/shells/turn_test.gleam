@@ -229,7 +229,7 @@ pub fn fail_to_replay_a_journal_that_does_not_match_test() {
   let context = helpers.pool_context()
   let assert Ok(home) = box.create(context, Some(helpers.unique("tamper")))
   let assert Ok(pog.Returned(rows: [shell], ..)) =
-    db.execute(shells.create(home.id), context.db)
+    db.execute(shells.create(home.id, shells.Anyone), context.db)
   // How long the code sleeps depends on the random number.
   process.spawn_unlinked(fn() {
     shell_helpers.run(
@@ -238,7 +238,7 @@ pub fn fail_to_replay_a_journal_that_does_not_match_test() {
       "let n = perform Random(1000)\nlet _ = perform Sleep(!int_add(n, 60000))\nn",
     )
   })
-  wait_until(
+  helpers.wait_until(
     fn() { list.length(shell_helpers.entries(context, shell)) == 2 },
     200,
   )
@@ -380,24 +380,13 @@ pub fn reject_a_conflicting_shell_test() {
   assert 0 == server.count_requests(server, http.Get, "/hello")
 }
 
-fn wait_until(check, attempts) {
-  case check(), attempts {
-    True, _ -> Nil
-    False, 0 -> panic as "timed out waiting"
-    False, _ -> {
-      process.sleep(10)
-      wait_until(check, attempts - 1)
-    }
-  }
-}
-
 pub fn record_a_change_with_its_output_test() {
   // The test reads while the shell and box processes write, which one connection can not do.
   let context = helpers.pool_context()
   let assert Ok(home) = box.create(context, Some(helpers.unique("once")))
   let name = home.id
   let assert Ok(pog.Returned(rows: [shell], ..)) =
-    db.execute(shells.create(name), context.db)
+    db.execute(shells.create(name, shells.Anyone), context.db)
   let server = server.start(process.new_subject())
   let release = hold_box(context, name)
   process.spawn_unlinked(fn() {
@@ -410,7 +399,7 @@ pub fn record_a_change_with_its_output_test() {
     shell_helpers.run(context, shell, code)
   })
   // The shell stops while its change waits to be merged.
-  wait_until(
+  helpers.wait_until(
     fn() { list.length(shell_helpers.entries(context, shell)) == 1 },
     200,
   )
@@ -420,7 +409,7 @@ pub fn record_a_change_with_its_output_test() {
   process.kill(pid)
   // The box merges the change and records the shell's output with it.
   process.send(release, Nil)
-  wait_until(
+  helpers.wait_until(
     fn() {
       case shell_helpers.entries(context, shell) {
         [_, event.Output(stop: event.Requested(..), change: event.Merged, ..)] ->

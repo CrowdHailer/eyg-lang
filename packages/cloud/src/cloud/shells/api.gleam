@@ -22,7 +22,7 @@ import pog
 
 pub fn create(box, context: Context) {
   use _ <- try(box.latest(context, box))
-  use rows <- try(run(shells.create(box), context))
+  use rows <- try(run(shells.create(box, shells.Anyone), context))
   let assert [shell] = rows
   api.json(encode(shell), 201)
 }

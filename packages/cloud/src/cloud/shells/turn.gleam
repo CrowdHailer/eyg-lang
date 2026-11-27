@@ -23,6 +23,7 @@ import cloud/box
 import cloud/data/db
 import cloud/data/journal
 import cloud/data/shells.{type Shell}
+import cloud/registry
 import cloud/shells/event.{type Entry}
 import eyg/ir/tree as ir
 import gleam/bit_array
@@ -90,13 +91,53 @@ pub fn find(context: Context, id: String) -> Result(Shell, box.Reason) {
 pub fn fork(context: Context, id: String) -> Result(Shell, box.Reason) {
   use shell <- result.try(find(context, id))
   transaction(context, fn(context) {
-    use forked <- result.try(case query(context, shells.create(shell.box)) {
-      Ok([forked]) -> Ok(forked)
-      Ok(_) -> Error(box.Failed("the shell could not be forked"))
-      Error(reason) -> Error(reason)
-    })
+    use forked <- result.try(
+      case query(context, shells.create(shell.box, shells.Anyone)) {
+        Ok([forked]) -> Ok(forked)
+        Ok(_) -> Error(box.Failed("the shell could not be forked"))
+        Error(reason) -> Error(reason)
+      },
+    )
     use _ <- result.map(query(context, journal.copy(id, forked.id)))
     forked
+  })
+}
+
+/// Run the code as the only turn of a shell made for it, such as for a tool call.
+/// A turn that already started is finished rather than started again, so the code runs once
+/// however many times this is called, and each call has what it came to.
+/// It runs in the shell's process, as every turn does.
+pub fn once(
+  context: Context,
+  shell: Shell,
+  code: String,
+) -> Result(Outcome, box.Reason) {
+  registry.lookup(context.shells, shell.id, fn() { registry.serve(Nil) })
+  |> registry.call(600_000, fn(_) {
+    #(Nil, {
+      use recorded <- result.try(entries(context, shell.id))
+      case recorded {
+        [] -> run(context, shell, code)
+        _ -> {
+          use Nil <- result.try(recover(context, shell))
+          use recorded <- result.try(entries(context, shell.id))
+          Ok(ended(recorded))
+        }
+      }
+    })
+  })
+}
+
+// What the last turn in the entries came to, it has finished.
+fn ended(entries: List(Entry)) -> Outcome {
+  list.fold(entries, #(Error("the turn did not finish"), []), fn(ended, entry) {
+    case entry {
+      event.Output(stop: event.Finished(_, output) as stop, change:, ..) -> #(
+        outcome(stop, change),
+        output,
+      )
+      _ -> ended
+    }
   })
 }
 

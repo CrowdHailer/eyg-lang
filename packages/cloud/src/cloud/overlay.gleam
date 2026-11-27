@@ -1,4 +1,7 @@
 //// The cloud adapter for Overlay's completion and tool loop.
+////
+//// `box_context` is what a chat's llm is told about the box, a chat runs the loop itself, see `chats/chat`.
+//// `inner_loop` performs each completion as it is reached, for channels that keep their history in memory.
 
 import cloud/beam/execute
 import cloud/system
@@ -29,22 +32,33 @@ pub type Session {
 }
 
 pub fn setup(hub: origin.Origin, llm: provider.Llm) -> Session {
-  let effects =
-    computer.effects()
-    |> policy.match_rules(execute.rules)
-    |> list.map(fn(rule) { rule.0 })
   let provider_context =
-    provider.Context(
-      system_prompt: agent.system_prompt(
-        hub,
-        effects,
-        "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports load modules from these files. Env reads configured workspace secrets and returns Some(value) or None({}) when missing. Respond using the chat platform's Markdown formatting.",
-      ),
-      tools: agent.tools(),
+    context(
+      hub,
+      "context is an empty record. The working directory is /. Files belong to this conversation and are shared with direct code execution. Relative imports load modules from these files. Env reads configured workspace secrets and returns Some(value) or None({}) when missing. Respond using the chat platform's Markdown formatting.",
     )
   Session(llm:, provider_context:, fetch: fn(request) {
     system.fetch(request)(fn(x) { x })
   })
+}
+
+fn context(hub, readme) {
+  let effects =
+    computer.effects()
+    |> policy.match_rules(execute.rules)
+    |> list.map(fn(rule) { rule.0 })
+  provider.Context(
+    system_prompt: agent.system_prompt(hub, effects, readme),
+    tools: agent.tools(),
+  )
+}
+
+/// The context of a chat in a box.
+pub fn box_context(hub: origin.Origin) -> provider.Context {
+  context(
+    hub,
+    "context is an empty record. The working directory is / of a box, a file system that other chats and shells in the box also change. Changes to .eyg files are only kept if every module in the box type checks. Relative imports load modules from these files.",
+  )
 }
 
 /// History is newest-first, matching the CLI loop. Keep completed tool results

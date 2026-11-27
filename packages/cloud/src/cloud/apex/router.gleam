@@ -1,6 +1,7 @@
 import cloud/apex/api
 import cloud/apex/context.{type Context}
 import cloud/box/controller as boxes
+import cloud/chats/api as chats
 import cloud/shells/api as shells
 import gleam/http
 import gleam/http/request
@@ -43,6 +44,12 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
     ["shells", id, "fork"], http.Post -> shells.fork(id, context)
     ["shells", id, "trace"], http.Get -> shells.trace(id, context)
     ["shells", id, "turns"], http.Post -> shells.turn(ctx, id, context)
+    ["boxes", id, "chats"], http.Post -> chats.create(ctx, id, context)
+    ["boxes", id, "chats"], http.Get -> chats.list(id, context)
+    ["llms"], http.Get -> chats.llms(context)
+    ["chats", id], http.Get -> chats.get(id, context)
+    ["chats", id, "events"], http.Get -> chats.export(id, context)
+    ["chats", id, "messages"], http.Post -> chats.send(ctx, id, context)
     _, _ -> api.status(404)
   }
 }

@@ -10,7 +10,7 @@ pub fn main() -> Nil {
 pub fn start(mode) {
   io.println("Starting in " <> mode <> " mode.")
   let assert Ok(config) = config.from_env()
-  let #(state, _llm) = app.setup(config.bucket)
-  let assert Ok(_) = app.start(config, state)
+  let #(state, llm) = app.setup(config.bucket)
+  let assert Ok(_) = app.start(config, state, llm)
   process.sleep_forever()
 }

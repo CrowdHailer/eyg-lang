@@ -56,7 +56,16 @@ fn context_for(db) {
   let state = state()
   let assert Ok(boxes) = registry.start()
   let assert Ok(shells) = registry.start()
-  Context(db:, boxes: boxes.data, shells: shells.data, state:, policy:)
+  let assert Ok(chats) = registry.start()
+  Context(
+    db:,
+    boxes: boxes.data,
+    shells: shells.data,
+    chats: chats.data,
+    state:,
+    policy:,
+    llms: dict.new(),
+  )
 }
 
 pub fn unique(name) {
@@ -77,4 +86,16 @@ pub fn state() {
 
 pub fn dispatch(request, context) {
   testing.send(request, server.app(context))
+}
+
+/// Wait for the check to pass, checking every 10ms.
+pub fn wait_until(check: fn() -> Bool, attempts: Int) -> Nil {
+  case check(), attempts {
+    True, _ -> Nil
+    False, 0 -> panic as "timed out waiting"
+    False, _ -> {
+      process.sleep(10)
+      wait_until(check, attempts - 1)
+    }
+  }
 }
