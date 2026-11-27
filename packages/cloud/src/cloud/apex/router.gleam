@@ -46,6 +46,7 @@ pub fn route(ctx: controller.Context, context: Context) -> Response(Content) {
     ["shells", id, "turns"], http.Post -> shells.turn(ctx, id, context)
     ["boxes", id, "chats"], http.Post -> chats.create(ctx, id, context)
     ["boxes", id, "chats"], http.Get -> chats.list(id, context)
+    ["boxes", id, "calls"], http.Post -> chats.calls(ctx, id, context)
     ["llms"], http.Get -> chats.llms(context)
     ["chats", id], http.Get -> chats.get(id, context)
     ["chats", id, "events"], http.Get -> chats.export(id, context)

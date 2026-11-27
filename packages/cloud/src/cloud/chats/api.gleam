@@ -1,10 +1,11 @@
 //// A chat is a conversation with an llm about a box. Everything that happens is recorded in its journal.
-//// The code of the llm's tool calls runs in shells.
+//// The code of the llm's tool calls runs in shells, and tool calls from an agent outside the service run the same way.
 
 import cloud/apex/api
 import cloud/apex/context.{type Context}
 import cloud/box
 import cloud/box/controller.{reason, try} as _
+import cloud/calls
 import cloud/chats/chat
 import cloud/chats/event
 import cloud/data/chats.{type Chat}
@@ -14,6 +15,8 @@ import gleam/dynamic/decode
 import gleam/http/response
 import gleam/json
 import gleam/list
+import gleam/option.{None}
+import gleam/result
 import gleam/string
 import howdy/content
 import howdy/controller
@@ -87,6 +90,49 @@ pub fn llms(context: Context) {
   |> list.sort(string.compare)
   |> json.array(json.string)
   |> api.json(200)
+}
+
+/// Run tool calls from an agent outside the service, `{"tool_calls": calls}` in the shape OpenAI uses.
+/// Each call's code runs in a shell of its own in the box, at the same time, and the response has
+/// a tool message for each call with the shell it ran in.
+pub fn calls(request: controller.Context, box, context: Context) {
+  use body <- api.read_json(request)
+  let call = {
+    use id <- decode.field("id", decode.string)
+    use name <- decode.subfield(["function", "name"], decode.string)
+    use arguments <- decode.subfield(["function", "arguments"], decode.string)
+    case json.parse(arguments, utils.fields_decoder()) {
+      Ok(arguments) ->
+        decode.success(tool.Call(id, tool.FunctionCall(name, arguments)))
+      Error(_) ->
+        decode.failure(
+          tool.Call(id, tool.FunctionCall(name, dict.new())),
+          "JSON arguments",
+        )
+    }
+  }
+  case decode.run(body, decode.at(["tool_calls"], decode.list(call))) {
+    Error(_) -> reason(400, "Expected tool calls")
+    Ok(tool_calls) -> {
+      use _ <- try(box.latest(context, box))
+      calls.run(context, box, None, tool_calls)
+      |> json.array(fn(returned: calls.Returned) {
+        json.object([
+          #("role", json.string("tool")),
+          #("tool_call_id", json.string(returned.call)),
+          #("shell", json.nullable(returned.shell, json.string)),
+          #(
+            "content",
+            json.string(case returned.result {
+              Ok(text) | Error(text) -> text
+            }),
+          ),
+          #("error", json.bool(result.is_error(returned.result))),
+        ])
+      })
+      |> api.json(200)
+    }
+  }
 }
 
 fn outcome(replied) {

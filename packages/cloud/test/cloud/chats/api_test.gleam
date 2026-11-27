@@ -7,6 +7,7 @@ import gleam/erlang/process
 import gleam/http
 import gleam/json
 import gleam/list
+import gleam/option.{Some}
 import gleam/string
 import howdy/testing as simulate
 
@@ -70,4 +71,69 @@ fn field_list(response) {
       decode.list(decode.at(["id"], decode.string)),
     )
   ids
+}
+
+pub fn run_tool_calls_from_an_agent_test() {
+  // The calls run at the same time, which one connection cannot.
+  let context = helpers.pool_context()
+  let home = box(context, helpers.unique("agent"))
+  let call = fn(id, code) {
+    json.object([
+      #("id", json.string(id)),
+      #("type", json.string("function")),
+      #(
+        "function",
+        json.object([
+          #("name", json.string("run")),
+          #(
+            "arguments",
+            json.string(
+              json.to_string(json.object([#("code", json.string(code))])),
+            ),
+          ),
+        ]),
+      ),
+    ])
+  }
+  let response =
+    simulate.request(http.Post, "/boxes/" <> home <> "/calls")
+    |> simulate.json_body(
+      json.object([
+        #(
+          "tool_calls",
+          json.preprocessed_array([
+            call("a", "!int_add(1, 2)"),
+            call("b", "!int_add(1, \"two\")"),
+            call("c", "perform Nope({})"),
+          ]),
+        ),
+      ]),
+    )
+    |> dispatch(context)
+  assert 200 == response.status
+  let message = {
+    use id <- decode.field("tool_call_id", decode.string)
+    use content <- decode.field("content", decode.string)
+    use error <- decode.field("error", decode.bool)
+    use shell <- decode.field("shell", decode.optional(decode.string))
+    decode.success(#(id, content, error, shell))
+  }
+  let assert Ok([a, b, c]) =
+    json.parse(simulate.text(response), decode.list(message))
+  assert #("a", False) == #(a.0, a.2)
+  assert string.contains(a.1, "3")
+  assert #("b", True) == #(b.0, b.2)
+  assert #("c", True) == #(c.0, c.2)
+  // Each call ran in a shell of its own in the box.
+  let assert Some(shell) = a.3
+  let response =
+    dispatch(simulate.request(http.Get, "/shells/" <> shell), context)
+  assert home == field(response, "box", decode.string)
+  assert a.3 != b.3
+
+  let response =
+    simulate.request(http.Post, "/boxes/" <> home <> "/calls")
+    |> simulate.json_body(json.object([#("tool_calls", json.string("no"))]))
+    |> dispatch(context)
+  assert 400 == response.status
 }
