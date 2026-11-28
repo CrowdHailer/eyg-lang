@@ -159,7 +159,7 @@ fn do_main(args) {
     }
     _ ->
       io.println(
-        "Usage: gleam dev cron <name> | gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
+        "Usage: gleam dev blobs check | gleam dev blobs list | gleam dev blobs get <cid> | gleam dev cron <name> | gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
       )
   }
 }

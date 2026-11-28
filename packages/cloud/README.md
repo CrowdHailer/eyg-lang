@@ -2,9 +2,11 @@
 
 A place to run EYG code away from your local machine
 
-```
-(set -a; source .env; set +a; gleam dev)
-```
+## Local development
+
+Run PostgreSQL and S3-compatible storage locally with Docker Compose, while
+running Gleam on the host. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup,
+storage checks, and resetting local data.
 
 ## Sessions
 
@@ -102,18 +104,18 @@ On the bot page choose "Reset Token" and copy the token.
 Enable "Message Content Intent".
 enable "Developer Mode" to copy server and channel IDs from the ui.
 
-Set `DISCORD_BOT_TOKEN` in the local, gitignored `packages/cloud/.env` file.
+Set `DISCORD_BOT_TOKEN` in the local, gitignored `packages/cloud/.env.local` file.
 It is not loaded automatically. From `packages/cloud`, check authentication:
 
 ```sh
-(set -a; source .env; set +a; gleam dev discord)
+(set -a; source .env.local; set +a; gleam dev discord)
 ```
 
 Set `DISCORD_GUILD_ID` to the server ID and list its text and announcement
 channels with:
 
 ```sh
-(set -a; source .env; set +a; gleam dev discord channels)
+(set -a; source .env.local; set +a; gleam dev discord channels)
 ```
 
 #### Storage

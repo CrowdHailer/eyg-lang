@@ -13,9 +13,10 @@ pub fn supervised(postgres_pool_name, postgres) {
 }
 
 pub fn build_config(postgres_pool_name, postgres) {
-  let config.Postgres(host:, password:) = postgres
+  let config.Postgres(host:, port:, password:) = postgres
   pog.default_config(postgres_pool_name)
   |> pog.host(host)
+  |> pog.port(port)
   |> pog.password(Some(password))
   |> pog.pool_size(2)
 }

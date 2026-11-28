@@ -3,4 +3,4 @@
 /build
 erl_crash.dump
 .env*
-!.env.example
+!.env.local

@@ -1,5 +1,6 @@
 import bucket
 import envoy
+import gleam/int
 import gleam/option.{None}
 import gleam/result.{try}
 import ogre/origin
@@ -9,7 +10,7 @@ pub type Config {
 }
 
 pub type Postgres {
-  Postgres(host: String, password: String)
+  Postgres(host: String, port: Int, password: String)
 }
 
 pub type S3Bucket {
@@ -43,7 +44,15 @@ pub fn from_env() {
   use secret_key_base <- try(envoy.get("SECRET_KEY_BASE"))
   use bucket <- try(bucket())
   use postgres_host <- try(envoy.get("POSTGRES_HOST"))
+  use postgres_port <- try(
+    envoy.get("POSTGRES_PORT") |> result.unwrap("5432") |> int.parse,
+  )
   use postgres_password <- try(envoy.get("POSTGRES_PASSWORD"))
-  let postgres = Postgres(host: postgres_host, password: postgres_password)
+  let postgres =
+    Postgres(
+      host: postgres_host,
+      port: postgres_port,
+      password: postgres_password,
+    )
   Ok(Config(secret_key_base:, bucket:, postgres:))
 }
