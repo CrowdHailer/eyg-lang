@@ -14,6 +14,7 @@ To run Gleam with the same configuration:
 
 ```sh
 (set -a; source .env.local; set +a; gleam run)
+(set -a; source .env.local; set +a; gleam test)
 ```
 
 ### Database

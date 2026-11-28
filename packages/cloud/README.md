@@ -1,12 +1,9 @@
 # EYG Cloud
 
-A place to run EYG code away from your local machine
+Durable compute platform for EYG.
+For development instructions see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-## Local development
 
-Run PostgreSQL and S3-compatible storage locally with Docker Compose, while
-running Gleam on the host. See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup,
-storage checks, and resetting local data.
 
 ## Sessions
 
