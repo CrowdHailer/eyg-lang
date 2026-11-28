@@ -329,6 +329,8 @@ fn change(effect, state, root, encode) {
   }
 }
 
+/// the read operation works over files but expects no change to be made.
+/// Why does it return root
 fn read(effect, state, root, encode) {
   case files(effect, state) {
     Error(reason) -> #(Error(reason), root)

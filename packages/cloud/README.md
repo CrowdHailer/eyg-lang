@@ -1,5 +1,15 @@
 # EYG Cloud
 
+- I like this talk https://www.youtube.com/watch?v=1S4hx3wgvBE
+- simple website https://beads.gascity.com/
+- https://www.youtube.com/watch?v=Xyb1Bn_L2U4 how the company looks
+  - Work in Production (amp) Follow your energy Speaker ends saying they'll help build this new kind of company
+- Message the distilled.io guy about the job
+- https://lookingforgrowth.uk/kickstartbritain/
+- 3d graphic lessons https://aurora-machina.com/p/uv_free_lessons?gad_source=2&gad_campaignid=23981357678&gclid=Cj0KCQjw-frTBhCvARIsADv4XY68DKMKPJ0h1185zgkNcZKCGdpu4CqItP_BQSyGlL_wJr2gkaudJnMaAvgLEALw_wcB
+- Dubai chamber of comerce agent competition
+- design https://quilling.dev/ https://meodai.github.io/design-book/tour/ audacity of huge
+
 A place to run EYG code away from your local machine
 
 ## Local development
