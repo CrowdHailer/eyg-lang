@@ -16,6 +16,18 @@ To run Gleam with the same configuration:
 (set -a; source .env.local; set +a; gleam run)
 ```
 
+### Database
+
+Run a SQL query against the configured database using the dev task:
+
+```sh
+(set -a; source .env.local; set +a; gleam dev db query "SELECT 42")
+```
+
+This prints the returned row count and rows. Only `POSTGRES_HOST`,
+`POSTGRES_PASSWORD`, and optionally `POSTGRES_PORT` (default `5432`) are needed.
+The `set -a` exports the sourced variables so Gleam can read them.
+
 ### S3 storage
 
 S3 from railway.com is the backend for the content addressible storage (CAS).

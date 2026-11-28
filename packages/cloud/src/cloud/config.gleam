@@ -40,19 +40,22 @@ pub fn bucket() -> Result(S3Bucket, Nil) {
   |> Ok
 }
 
-pub fn from_env() {
-  use secret_key_base <- try(envoy.get("SECRET_KEY_BASE"))
-  use bucket <- try(bucket())
+pub fn postgres() -> Result(Postgres, Nil) {
   use postgres_host <- try(envoy.get("POSTGRES_HOST"))
   use postgres_port <- try(
     envoy.get("POSTGRES_PORT") |> result.unwrap("5432") |> int.parse,
   )
   use postgres_password <- try(envoy.get("POSTGRES_PASSWORD"))
-  let postgres =
-    Postgres(
-      host: postgres_host,
-      port: postgres_port,
-      password: postgres_password,
-    )
+  Ok(Postgres(
+    host: postgres_host,
+    port: postgres_port,
+    password: postgres_password,
+  ))
+}
+
+pub fn from_env() {
+  use secret_key_base <- try(envoy.get("SECRET_KEY_BASE"))
+  use bucket <- try(bucket())
+  use postgres <- try(postgres())
   Ok(Config(secret_key_base:, bucket:, postgres:))
 }

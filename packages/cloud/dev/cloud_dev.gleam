@@ -3,6 +3,7 @@ import bucket/get_object
 import bucket/list_objects
 import cloud/blobs/blobs
 import cloud/config
+import cloud/db/pool
 import cloud/discord/api/client as discord
 import cloud/old
 import cloud/schedule
@@ -13,6 +14,7 @@ import cloud/slack/api/schema
 import cloud/system
 import envoy
 import gleam/bit_array
+import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/int
 import gleam/io
@@ -20,6 +22,7 @@ import gleam/json
 import gleam/list
 import gleam/string
 import multiformats/cid/v1
+import pog
 
 pub fn main() {
   do_main(argv.load().arguments)
@@ -27,6 +30,16 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["db", "query", sql] -> {
+      let assert Ok(postgres) = config.postgres()
+      let name = process.new_name("dev_db")
+      let assert Ok(_) = pool.start(name, postgres)
+      let query = pog.query(sql) |> pog.returning(decode.dynamic)
+      case pog.execute(query, pog.named_connection(name)) {
+        Ok(returned) -> io.println(string.inspect(returned))
+        Error(reason) -> io.println_error(string.inspect(reason))
+      }
+    }
     ["blobs", ..rest] -> {
       let assert Ok(config) = config.bucket()
       case rest {
@@ -159,7 +172,7 @@ fn do_main(args) {
     }
     _ ->
       io.println(
-        "Usage: gleam dev blobs check | gleam dev blobs list | gleam dev blobs get <cid> | gleam dev cron <name> | gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
+        "Usage: gleam dev db query <sql> | gleam dev blobs check | gleam dev blobs list | gleam dev blobs get <cid> | gleam dev cron <name> | gleam dev slack | gleam dev slack channels | gleam dev slack messages <channel-id> | gleam dev discord | gleam dev discord channels | gleam dev discord messages <channel-id>",
       )
   }
 }
