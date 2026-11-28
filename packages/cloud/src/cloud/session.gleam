@@ -1,7 +1,7 @@
 //// A single actor executes queued code and agent turns in each session.
 
 import cloud/beam/execute
-import cloud/data/blobs
+import cloud/config
 import cloud/file_system
 import cloud/overlay
 import cloud/trigger
@@ -48,28 +48,25 @@ pub fn start(
   hub: origin.Origin,
   llm: provider.Llm,
   secrets: Dict(String, String),
+  bucket: config.S3Bucket,
 ) -> actor.StartResult(Subject(Message)) {
-  start_with_session(hub, overlay.setup(hub, llm), secrets)
+  start_with_session(hub, overlay.setup(hub, llm), secrets, bucket)
 }
 
 pub fn start_with_session(
   hub: origin.Origin,
   agent_session: overlay.Session,
   secrets: Dict(String, String),
+  bucket,
 ) -> actor.StartResult(Subject(Message)) {
   // policy.eyg could be moved to shared startup configuration later.
   let assert Ok(code) = simplifile.read("policy.eyg")
-  let assert Ok(blobs) = blobs.start()
+
   let #(policy, execute_state) =
     execute.load_policy(
       code,
       source.Host("policy.eyg"),
-      execute.State(
-        origin: hub,
-        cache: cache.ready(),
-        secrets:,
-        blobs: blobs.data,
-      ),
+      execute.State(origin: hub, cache: cache.ready(), secrets:, bucket:),
       execute.template(),
     )
   let assert Ok(policy) = policy

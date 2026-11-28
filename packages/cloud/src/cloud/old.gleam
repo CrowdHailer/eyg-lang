@@ -1,5 +1,4 @@
 import cloud/beam/execute
-import cloud/data/blobs
 import cloud/discord/discord
 import cloud/schedule
 import cloud/schedules
@@ -17,7 +16,7 @@ import overlay/llm/provider/ollama
 import simplifile
 
 /// Shared runtime configuration for the service and one-shot dev commands.
-pub fn setup() {
+pub fn setup(bucket) {
   let slack_token = envoy.get("SLACK_BOT_TOKEN")
   let discord_token = envoy.get("DISCORD_BOT_TOKEN")
   let ollama_token = envoy.get("OLLAMA_API_KEY")
@@ -43,19 +42,14 @@ pub fn setup() {
     Ok(guild) -> dict.insert(secrets, "DISCORD_GUILD_ID", guild)
     Error(_) -> secrets
   }
-  let assert Ok(blobs) = blobs.start()
+
   let state =
-    execute.State(
-      origin: hub,
-      cache: cache.ready(),
-      secrets:,
-      blobs: blobs.data,
-    )
+    execute.State(origin: hub, cache: cache.ready(), secrets:, bucket:)
   #(state, llm)
 }
 
-pub fn main() -> Nil {
-  let #(state, llm) = setup()
+pub fn main(bucket) -> Nil {
+  let #(state, llm) = setup(bucket)
   let assert Ok(#(schedules, state)) = schedules.load(state)
   let assert Ok(code) = simplifile.read("right_on.eyg")
   let discord_triggers = [#("Right on", code)]
@@ -65,7 +59,8 @@ pub fn main() -> Nil {
   let assert Ok(code) = simplifile.read("right_on_slack.eyg")
   let assert Ok(#(slack_triggers, state)) =
     trigger.prepare([#("Right on", code)], slack.trigger_type(), state)
-  let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
+  let assert Ok(sessions) =
+    session.start(state.origin, llm, state.secrets, bucket)
   let assert Ok(runtime) = schedule.runtime(state)
   let assert Ok(_) = schedule.start(schedules, sessions.data, runtime)
   case dict.get(state.secrets, "SLACK_BOT_TOKEN") {

@@ -62,10 +62,12 @@ fn do_main(args) {
       }
     }
     ["cron", name] -> {
-      let #(state, llm) = old.setup()
+      let assert Ok(config) = config.bucket()
+      let #(state, llm) = old.setup(config)
       let assert Ok(#(schedules, state)) = schedules.load(state)
       let assert Ok(runtime) = schedule.runtime(state)
-      let assert Ok(sessions) = session.start(state.origin, llm, state.secrets)
+      let assert Ok(sessions) =
+        session.start(state.origin, llm, state.secrets, config)
       let #(outcome, _) =
         schedule.trigger_named(schedules, name, sessions.data, runtime)
       case outcome {

@@ -3,7 +3,10 @@
 //// The `beam` modules are where continuation based code, which is pure, is turned into idiomatic BEAM code.
 //// Functions here perform their effects directly, they block, make requests and call other processes.
 
-import cloud/data/blobs
+import bucket/get_object
+import bucket/put_object
+import cloud/blobs/blobs
+import cloud/config
 import cloud/file_system
 import cloud/system
 import eyg/analysis/inference/levels_j/contextual as infer
@@ -64,7 +67,7 @@ pub type State {
     origin: origin.Origin,
     cache: cache.Cache(source.Location),
     secrets: Dict(String, String),
-    blobs: blobs.Blobs,
+    bucket: config.S3Bucket,
   )
 }
 
@@ -343,33 +346,28 @@ pub fn files(effect: mfs.Effect(a), state: State) -> Result(a, String) {
   case effect {
     mfs.Done(value) -> Ok(value)
     mfs.Get(cid, resume) -> {
-      use bytes <- result.try(
-        blobs.get(state.blobs, v1.to_string(cid))
-        |> result.map_error(fn(reason) {
-          "Could not read file system block "
-          <> v1.to_string(cid)
-          <> ": "
-          <> reason
-        }),
+      use found <- result.try(
+        blobs.get(state.bucket, cid)
+        |> result.map_error(blobs.describe_reason),
       )
-      use entry <- result.try(
-        mfs.decode(cid, bytes)
-        |> result.replace_error(
-          "Invalid file system block " <> v1.to_string(cid),
-        ),
-      )
-      files(resume(entry), state)
+      case found {
+        get_object.Found(bytes) -> {
+          use entry <- result.try(
+            mfs.decode(cid, bytes)
+            |> result.replace_error(
+              "Invalid file system block " <> v1.to_string(cid),
+            ),
+          )
+          files(resume(entry), state)
+        }
+        get_object.NotFound -> Error("not found")
+      }
     }
     mfs.Put(entry, resume) -> {
       let stored = mfs.identify(entry)
-      use Nil <- result.try(
-        blobs.put(state.blobs, v1.to_string(stored.cid), mfs.encode(entry))
-        |> result.map_error(fn(reason) {
-          "Could not write file system block "
-          <> v1.to_string(stored.cid)
-          <> ": "
-          <> reason
-        }),
+      use put_object.PutObjectResult(_etag) <- result.try(
+        blobs.put(state.bucket, stored.cid, mfs.encode(entry))
+        |> result.map_error(blobs.describe_reason),
       )
       files(resume(stored), state)
     }

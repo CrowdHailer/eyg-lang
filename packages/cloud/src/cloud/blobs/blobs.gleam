@@ -1,8 +1,10 @@
 import bucket
 import bucket/get_object
 import bucket/list_objects
+import bucket/put_object
 import cloud/config
 import gleam/httpc
+import gleam/string
 import multiformats/cid/v1
 
 pub type Error {
@@ -24,6 +26,13 @@ pub fn get(config: config.S3Bucket, key: v1.Cid) {
   sent(request, get_object.response)
 }
 
+pub fn put(config: config.S3Bucket, key: v1.Cid, bytes: BitArray) {
+  let request =
+    put_object.request(config.bucket, v1.to_string(key), bytes)
+    |> put_object.build(config.credentials)
+  sent(request, put_object.response)
+}
+
 fn sent(request, decode_response) {
   case httpc.send_bits(request) {
     Ok(response) ->
@@ -33,4 +42,8 @@ fn sent(request, decode_response) {
       }
     Error(reason) -> Error(HttpError(reason))
   }
+}
+
+pub fn describe_reason(reason) {
+  string.inspect(reason)
 }
