@@ -33,6 +33,8 @@ The tests for all packages can be run using the repository level `entry.eyg` fil
 The infrastructure for the website and hub application is specified as a Docker Compose file in the eyg.run [package](./packages/eyg.run)
 This includes a local development setup.
 
+Local development for the cloud package is described in `packages/cloud/CONTRIBUTING.md`
+
 ### Create a `.env` file
 
 All configuration is expected to be stored in a `.env` file in the `packages/eyg.run` directory.

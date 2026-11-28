@@ -9,8 +9,10 @@
 packages = [
   { name = "alpacki", version = "3.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "alpacki", source = "hex", outer_checksum = "5BCB617A9606E56018790D4F24AB1E06B6D05BC17ACD6686B99E8D4D18B1F5FD" },
   { name = "argv", version = "1.1.0", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "3277D100448BDB4A29B6D58C0F36F631CBC349E8BDD09766C6309DF202831140" },
+  { name = "aws4_request", version = "1.2.3", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_http", "gleam_stdlib"], otp_app = "aws4_request", source = "hex", outer_checksum = "7607A68BB61F0E2DF76C32013D0758BC96883E2892E87DDAE46E7F20040EF312" },
   { name = "backoff", version = "1.1.6", build_tools = ["rebar3"], requirements = [], otp_app = "backoff", source = "hex", outer_checksum = "CF0CFFF8995FB20562F822E5CC47D8CCF664C5ECDC26A684CBE85C225F9D7C39" },
   { name = "base32", version = "1.0.1", build_tools = ["rebar3"], requirements = [], otp_app = "base32", source = "hex", outer_checksum = "2C6D7F501B4C480FCD55D76E116D37EB8F3E3392563B60892B0310C894047D3F" },
+  { name = "bucket", version = "1.5.0", build_tools = ["gleam"], requirements = ["aws4_request", "gleam_crypto", "gleam_http", "gleam_stdlib", "xmb", "xmlm"], otp_app = "bucket", source = "hex", outer_checksum = "71FCB2160B33DE86CDC0CE75C3D50CDD9FCE10BB6574D1B0C5C40F595B6CD710" },
   { name = "castor", version = "2.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "non_empty_list", "oas_generator_utils"], otp_app = "castor", source = "hex", outer_checksum = "D3659680ABFE81634E27479479431ED66FC43F2547FDB41F0E9ACDE798CD4B13" },
   { name = "clockwork", version = "4.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_time"], otp_app = "clockwork", source = "hex", outer_checksum = "A84AC8734E350EFCCF1336C73F33C7FB2BF6761065D714778905ACF384B0CCB9" },
   { name = "dag_json", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "multiformats"], otp_app = "dag_json", source = "hex", outer_checksum = "63DB4075C29092D7A22FB36A01774E56A6E1A62788C7FDA873115546AE1064E2" },
@@ -70,10 +72,13 @@ packages = [
   { name = "untethered", version = "0.0.0", build_tools = ["gleam"], requirements = ["dag_json", "gleam_http", "gleam_json", "gleam_stdlib", "multiformats", "ogre"], source = "local", path = "../untethered" },
   { name = "websocks", version = "4.0.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_erlang", "gleam_stdlib"], otp_app = "websocks", source = "hex", outer_checksum = "89B0C31A032CBE28D4C5FB5CC25A8A690669FEBA501C63F99A4E8F5748750B2A" },
   { name = "wisp", version = "2.2.2", build_tools = ["gleam"], requirements = ["directories", "exception", "filepath", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "houdini", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "5FF5F1E288C3437252ABB93D8F9CF42FF652CE7AD54480CFE736038DC09C4F22" },
+  { name = "xmb", version = "1.4.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "xmb", source = "hex", outer_checksum = "1C4B67ACBFE703122414691A63DC3591AE6FCACF7DC13A78A1C1E96D7B56B757" },
+  { name = "xmlm", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "xmlm", source = "hex", outer_checksum = "F23155B6F0B22CB8E09DAD41BB6B1CD036725FD0A80EE25B1D1B14138683A81D" },
 ]
 
 [requirements]
 argv = { version = ">= 1.1.0 and < 2.0.0" }
+bucket = { version = ">= 1.5.0 and < 2.0.0" }
 clockwork = { version = ">= 4.0.0 and < 5.0.0" }
 envoy = { version = ">= 1.2.0 and < 2.0.0" }
 eyg_analysis = { path = "../gleam_analysis" }

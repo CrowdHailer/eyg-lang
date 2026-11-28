@@ -1,4 +1,8 @@
 import argv
+import bucket/get_object
+import bucket/list_objects
+import cloud/blobs/blobs
+import cloud/config
 import cloud/discord/api/client as discord
 import cloud/old
 import cloud/schedule
@@ -8,11 +12,14 @@ import cloud/slack/api/client
 import cloud/slack/api/schema
 import cloud/system
 import envoy
+import gleam/bit_array
 import gleam/erlang/process
+import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
 import gleam/string
+import multiformats/cid/v1
 
 pub fn main() {
   do_main(argv.load().arguments)
@@ -20,6 +27,40 @@ pub fn main() {
 
 fn do_main(args) {
   case args {
+    ["blobs", ..rest] -> {
+      let assert Ok(config) = config.bucket()
+      case rest {
+        ["list"] -> {
+          case blobs.list(config) {
+            Ok(list_objects.ListObjectsResult(contents:, ..)) -> {
+              list.each(contents, fn(object) {
+                io.println(
+                  object.key
+                  <> " size: "
+                  <> { int.to_string(object.size) |> string.pad_end(5, " ") }
+                  <> " last_modified: "
+                  <> object.last_modified,
+                )
+              })
+            }
+            Error(reason) -> io.println_error(string.inspect(reason))
+          }
+        }
+        ["get", key] -> {
+          case v1.from_string(key) {
+            Ok(#(key, _)) ->
+              case blobs.get(config, key) {
+                Ok(get_object.Found(content)) ->
+                  io.println(int.to_string(bit_array.byte_size(content)))
+                Error(reason) -> io.println_error(string.inspect(reason))
+                Ok(get_object.NotFound) -> io.println_error("not found")
+              }
+            Error(_) -> io.println_error("invalid key")
+          }
+        }
+        _ -> io.println("unknown bucket action")
+      }
+    }
     ["cron", name] -> {
       let #(state, llm) = old.setup()
       let assert Ok(#(schedules, state)) = schedules.load(state)
