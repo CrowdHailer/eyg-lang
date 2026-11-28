@@ -24,9 +24,13 @@ Run a SQL query against the configured database using the dev task:
 (set -a; source .env.local; set +a; gleam dev db query "SELECT 42")
 ```
 
-This prints the returned row count and rows. Only `POSTGRES_HOST`,
-`POSTGRES_PASSWORD`, and optionally `POSTGRES_PORT` (default `5432`) are needed.
-The `set -a` exports the sourced variables so Gleam can read them.
+Run the migrations using application dev scripts
+
+```sh
+(set -a; source .env.local; set +a; gleam dev migrate)
+(set -a; source .env.local; set +a; gleam dev migrate 1)
+(set -a; source .env.local; set +a; gleam dev rollback 1)
+```
 
 ### S3 storage
 

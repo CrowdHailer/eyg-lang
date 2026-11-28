@@ -1,8 +1,10 @@
 import argv
 import bucket/get_object
 import bucket/list_objects
+import cigogne
 import cloud/blobs/blobs
 import cloud/config
+import cloud/db/migrations
 import cloud/db/pool
 import cloud/discord/api/client as discord
 import cloud/old
@@ -20,6 +22,7 @@ import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
+import gleam/result
 import gleam/string
 import multiformats/cid/v1
 import pog
@@ -31,14 +34,29 @@ pub fn main() {
 fn do_main(args) {
   case args {
     ["db", "query", sql] -> {
-      let assert Ok(postgres) = config.postgres()
-      let name = process.new_name("dev_db")
-      let assert Ok(_) = pool.start(name, postgres)
       let query = pog.query(sql) |> pog.returning(decode.dynamic)
-      case pog.execute(query, pog.named_connection(name)) {
+      case pog.execute(query, db_conn()) {
         Ok(returned) -> io.println(string.inspect(returned))
         Error(reason) -> io.println_error(string.inspect(reason))
       }
+    }
+    ["migrate"] -> {
+      migrations.apply_all(db_conn())
+      |> result.map_error(cigogne.print_error)
+      |> result.unwrap(Nil)
+    }
+    ["migrate", count] -> {
+      let assert Ok(count) = int.parse(count)
+      migrations.apply_n(db_conn(), count)
+      |> result.map_error(cigogne.print_error)
+      |> result.unwrap(Nil)
+    }
+    ["rollback", count] -> {
+      let assert Ok(count) = int.parse(count)
+      migrations.rollback_n(db_conn(), count)
+      |> result.map_error(cigogne.print_error)
+      |> result.unwrap(Nil)
+      Nil
     }
     ["blobs", ..rest] -> {
       let assert Ok(config) = config.bucket()
@@ -179,4 +197,11 @@ fn do_main(args) {
 
 fn identity(x) {
   x
+}
+
+fn db_conn() {
+  let assert Ok(postgres) = config.postgres()
+  let name = process.new_name("dev_db")
+  let assert Ok(_) = pool.start(name, postgres)
+  pog.named_connection(name)
 }
